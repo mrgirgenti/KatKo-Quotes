@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
-import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, StyleSheet, TextInput, Platform, Image } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { ChevronDown, ChevronUp, Trash2, Upload, RefreshCw, X } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { 
   LineItem, 
@@ -131,6 +132,25 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   const formattedDtfCost2 = '$' + dtfCalculatedCost2.toFixed(2);
   const formattedDtfTotalCost = '$' + dtfTotalCalculatedCost.toFixed(2);
 
+  const isWeb = Platform.OS === 'web';
+
+  const handlePickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.5,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      const mimeType = asset.mimeType || 'image/jpeg';
+      const uri = asset.base64
+        ? `data:${mimeType};base64,${asset.base64}`
+        : asset.uri;
+      onChange({ ...item, mockupUri: uri });
+    }
+  };
+
   return (
     <View style={styles.container}>
       <TouchableOpacity style={styles.header} onPress={() => setExpanded(!expanded)}>
@@ -138,6 +158,13 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
           <View style={styles.indexBadge}>
             <Text style={styles.indexText}>{index + 1}</Text>
           </View>
+          {item.mockupUri && !expanded && (
+            <Image
+              source={{ uri: item.mockupUri }}
+              style={styles.headerThumbnail}
+              resizeMode="cover"
+            />
+          )}
           <View>
             <Text style={styles.title} numberOfLines={1}>
               {item.designName || 'Untitled Design'}
@@ -160,7 +187,43 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
       </TouchableOpacity>
 
       {expanded && (
-        <View style={styles.content}>
+        <View style={[styles.content, isWeb && styles.contentWeb]}>
+
+          {/* ── Mockup Panel ── */}
+          <View style={[styles.mockupPanel, isWeb && styles.mockupPanelWeb]}>
+            <Text style={styles.mockupLabel}>MOCKUP</Text>
+            {item.mockupUri ? (
+              <View style={styles.mockupImageContainer}>
+                <Image
+                  source={{ uri: item.mockupUri }}
+                  style={styles.mockupImage}
+                  resizeMode="contain"
+                />
+                <View style={styles.mockupActions}>
+                  <TouchableOpacity style={styles.mockupChangeBtn} onPress={handlePickImage}>
+                    <RefreshCw size={13} color="#fff" />
+                    <Text style={styles.mockupChangeBtnText}>Change</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.mockupRemoveBtn}
+                    onPress={() => onChange({ ...item, mockupUri: undefined })}
+                  >
+                    <X size={13} color={Colors.light.error} />
+                    <Text style={styles.mockupRemoveBtnText}>Remove</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.mockupPlaceholder} onPress={handlePickImage}>
+                <Upload size={28} color={Colors.light.borderDark} />
+                <Text style={styles.mockupPlaceholderTitle}>Upload Mockup</Text>
+                <Text style={styles.mockupPlaceholderSub}>Click to browse files</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* ── Form Fields ── */}
+          <View style={styles.formFieldsSection}>
           <FormInput
             label="Design Name"
             value={item.designName}
@@ -573,6 +636,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
               </View>
             </View>
           </View>
+          </View>{/* closes formFieldsSection */}
         </View>
       )}
     </View>
@@ -635,6 +699,107 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 14,
+  },
+  contentWeb: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    gap: 16,
+  },
+  mockupPanel: {
+    marginBottom: 14,
+  },
+  mockupPanelWeb: {
+    width: 220,
+    flexShrink: 0,
+    marginBottom: 0,
+  },
+  mockupLabel: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase' as const,
+    marginBottom: 8,
+  },
+  mockupPlaceholder: {
+    borderWidth: 2,
+    borderStyle: 'dashed' as const,
+    borderColor: Colors.light.border,
+    borderRadius: 10,
+    height: 200,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    backgroundColor: Colors.light.background,
+  },
+  mockupPlaceholderTitle: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.light.textSecondary,
+  },
+  mockupPlaceholderSub: {
+    fontSize: 12,
+    color: Colors.light.border,
+  },
+  mockupImageContainer: {
+    borderRadius: 10,
+    overflow: 'hidden' as const,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: Colors.light.background,
+  },
+  mockupImage: {
+    width: '100%' as any,
+    height: 200,
+    backgroundColor: Colors.light.background,
+  },
+  mockupActions: {
+    flexDirection: 'row' as const,
+    gap: 8,
+    padding: 8,
+    backgroundColor: Colors.light.surface,
+  },
+  mockupChangeBtn: {
+    flex: 1,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 5,
+    backgroundColor: Colors.light.tint,
+    paddingVertical: 7,
+    borderRadius: 6,
+  },
+  mockupChangeBtnText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#fff',
+  },
+  mockupRemoveBtn: {
+    flex: 1,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 5,
+    paddingVertical: 7,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
+  mockupRemoveBtnText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.light.error,
+  },
+  formFieldsSection: {
+    flex: 1,
+  },
+  headerThumbnail: {
+    width: 40,
+    height: 40,
+    borderRadius: 6,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
   },
   row: {
     flexDirection: 'row',

@@ -61,6 +61,7 @@ export interface LineItem {
   serviceCostEach: number;
   serviceFeeEach: number;
   markupEach: number;
+  mockupUri?: string;
 }
 
 export interface QuoteCalculations {
