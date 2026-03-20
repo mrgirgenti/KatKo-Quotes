@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput, Platform, Image } from 'react-native';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import * as ImagePicker from 'expo-image-picker';
 import { ChevronDown, ChevronUp, Trash2, Upload, RefreshCw, X, Brush } from 'lucide-react-native';
 import Colors from '@/constants/colors';
@@ -134,7 +135,8 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   const formattedDtfCost2 = '$' + dtfCalculatedCost2.toFixed(2);
   const formattedDtfTotalCost = '$' + dtfTotalCalculatedCost.toFixed(2);
 
-  const isWeb = Platform.OS === 'web';
+  const { isMobile, isTablet, isDesktop } = useBreakpoint();
+  const useSideBySide = Platform.OS === 'web' && !isMobile;
 
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -189,10 +191,10 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
       </TouchableOpacity>
 
       {expanded && (
-        <View style={[styles.content, isWeb && styles.contentWeb]}>
+        <View style={[styles.content, useSideBySide && styles.contentWeb, isMobile && styles.contentMobile]}>
 
           {/* ── Mockup Panel ── */}
-          <View style={[styles.mockupPanel, isWeb && styles.mockupPanelWeb]}>
+          <View style={[styles.mockupPanel, useSideBySide && styles.mockupPanelWeb, isMobile && styles.mockupPanelMobile]}>
             <Text style={styles.mockupLabel}>MOCKUP</Text>
             {item.mockupUri ? (
               <View style={styles.mockupImageContainer}>
@@ -734,6 +736,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start' as const,
     gap: 16,
   },
+  contentMobile: {
+    padding: 10,
+  },
   mockupPanel: {
     marginBottom: 14,
   },
@@ -741,6 +746,10 @@ const styles = StyleSheet.create({
     width: 220,
     flexShrink: 0,
     marginBottom: 0,
+  },
+  mockupPanelMobile: {
+    marginBottom: 16,
+    width: '100%' as any,
   },
   mockupLabel: {
     fontSize: 11,
