@@ -238,13 +238,15 @@ export default function NewQuoteScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.logoContainer}>
-          <Image
-            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/4xwcbfcj6r2usqk7tds89' }}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-        </View>
+        {!isWeb && (
+          <View style={styles.logoContainer}>
+            <Image
+              source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/4xwcbfcj6r2usqk7tds89' }}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
+        )}
 
         {isWeb ? (
           <View style={styles.twoColumnLayout}>
