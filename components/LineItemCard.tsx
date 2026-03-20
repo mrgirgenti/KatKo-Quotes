@@ -40,7 +40,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   const isPromotional = item.serviceStyle === 'Promotional';
   const isDTF = item.serviceStyle === 'Direct to Film';
   const isEmbroidery = item.serviceStyle === 'Embroidery';
-  const hasSecondLocation = item.location2 && item.location2.length > 0;
+  const hasSecondLocation = !!(item.location2 && item.location2.length > 0);
   const quantity = getTotalQuantity(item.sizes, isPromotional);
   const lineItemCalcs = calculateLineItemSubtotal(item);
 
