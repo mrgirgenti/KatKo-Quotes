@@ -60,6 +60,8 @@ const getTodayDate = () => {
   return `${month} ${day}, ${year}`;
 };
 
+const isWeb = Platform.OS === 'web';
+
 export default function NewQuoteScreen() {
   const { addQuote, isAdding } = useQuotes();
 
@@ -179,6 +181,46 @@ export default function NewQuoteScreen() {
     resetForm,
   ]);
 
+  const summaryPanel = (
+    <>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Quote Summary</Text>
+        <CalculationDisplay
+          calculations={calculations}
+          lineItems={lineItems}
+          hasOnlineFee={hasOnlineFee}
+          hasSalesTax={hasSalesTax}
+          hasCardFee={hasCardFee}
+        />
+      </View>
+
+      <View style={styles.actions}>
+        <TouchableOpacity
+          style={styles.resetButton}
+          onPress={() => {
+            Alert.alert('Reset Form', 'Are you sure you want to clear all fields?', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Reset', style: 'destructive', onPress: resetForm },
+            ]);
+          }}
+        >
+          <RotateCcw size={18} color={Colors.light.textSecondary} />
+          <Text style={styles.resetButtonText}>Reset</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.submitButton, (!calculations || isAdding) && styles.submitButtonDisabled]}
+          onPress={handleSubmit}
+          disabled={!calculations || isAdding}
+        >
+          <Send size={18} color="#fff" />
+          <Text style={styles.submitButtonText}>
+            {isAdding ? 'Submitting...' : 'Submit Quote'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </>
+  );
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -204,133 +246,211 @@ export default function NewQuoteScreen() {
           />
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Information</Text>
-          <View style={styles.card}>
-            <FormInput
-              label="Person / Organization"
-              value={personOrganization}
-              onChangeText={setPersonOrganization}
-              placeholder="Client name or company"
-              autoTitleCase
-            />
-            <FormInput
-              label="Project Name"
-              value={projectName}
-              onChangeText={setProjectName}
-              placeholder="e.g., Summer Event T-Shirts"
-              autoTitleCase
-            />
-            <SegmentedControl
-              label="Order Type"
-              options={ORDER_TYPES}
-              value={orderType}
-              onChange={setOrderType}
-            />
-            <View style={styles.row}>
-              <View style={styles.halfField}>
-                <DateInput
-                  label="Order Date"
-                  value={orderDate}
-                  onChangeText={setOrderDate}
-                />
+        {isWeb ? (
+          <View style={styles.twoColumnLayout}>
+            {/* Left column: form */}
+            <View style={styles.leftColumn}>
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Order Information</Text>
+                <View style={styles.card}>
+                  <FormInput
+                    label="Person / Organization"
+                    value={personOrganization}
+                    onChangeText={setPersonOrganization}
+                    placeholder="Client name or company"
+                    autoTitleCase
+                  />
+                  <FormInput
+                    label="Project Name"
+                    value={projectName}
+                    onChangeText={setProjectName}
+                    placeholder="e.g., Summer Event T-Shirts"
+                    autoTitleCase
+                  />
+                  <SegmentedControl
+                    label="Order Type"
+                    options={ORDER_TYPES}
+                    value={orderType}
+                    onChange={setOrderType}
+                  />
+                  <View style={styles.row}>
+                    <View style={styles.halfField}>
+                      <DateInput
+                        label="Order Date"
+                        value={orderDate}
+                        onChangeText={setOrderDate}
+                      />
+                    </View>
+                    <View style={styles.halfField}>
+                      <DateInput
+                        label="In-Hands Date"
+                        value={inHandsDate}
+                        onChangeText={setInHandsDate}
+                      />
+                    </View>
+                  </View>
+                  <FormInput
+                    label="Invoice Number"
+                    value={invoiceNumber}
+                    onChangeText={setInvoiceNumber}
+                    placeholder=""
+                    autoTitleCase
+                  />
+                </View>
               </View>
-              <View style={styles.halfField}>
-                <DateInput
-                  label="In-Hands Date"
-                  value={inHandsDate}
-                  onChangeText={setInHandsDate}
+
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Line Items</Text>
+                  <TouchableOpacity style={styles.addButton} onPress={handleAddLineItem}>
+                    <Plus size={18} color="#fff" />
+                    <Text style={styles.addButtonText}>Add Item</Text>
+                  </TouchableOpacity>
+                </View>
+                {lineItems.map((item, index) => (
+                  <LineItemCard
+                    key={item.id}
+                    item={item}
+                    index={index}
+                    onChange={(updated) => handleUpdateLineItem(index, updated)}
+                    onDelete={() => handleDeleteLineItem(index)}
+                  />
+                ))}
+              </View>
+
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Pricing & Fees</Text>
+                <View style={styles.card}>
+                  <ToggleButton
+                    label="Online Fee"
+                    description="2.9% + $0.60"
+                    value={hasOnlineFee}
+                    onChange={setHasOnlineFee}
+                  />
+                  <ToggleButton
+                    label="Card Fee"
+                    description="3.75%"
+                    value={hasCardFee}
+                    onChange={setHasCardFee}
+                  />
+                  <ToggleButton
+                    label="Sales Tax"
+                    description="8.3%"
+                    value={hasSalesTax}
+                    onChange={setHasSalesTax}
+                  />
+                </View>
+              </View>
+            </View>
+
+            {/* Right column: sticky summary */}
+            <View
+              style={[
+                styles.rightColumn,
+                // @ts-ignore - position: 'sticky' is web-only
+                { position: 'sticky', top: 16, alignSelf: 'flex-start' },
+              ]}
+            >
+              {summaryPanel}
+            </View>
+          </View>
+        ) : (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Order Information</Text>
+              <View style={styles.card}>
+                <FormInput
+                  label="Person / Organization"
+                  value={personOrganization}
+                  onChangeText={setPersonOrganization}
+                  placeholder="Client name or company"
+                  autoTitleCase
+                />
+                <FormInput
+                  label="Project Name"
+                  value={projectName}
+                  onChangeText={setProjectName}
+                  placeholder="e.g., Summer Event T-Shirts"
+                  autoTitleCase
+                />
+                <SegmentedControl
+                  label="Order Type"
+                  options={ORDER_TYPES}
+                  value={orderType}
+                  onChange={setOrderType}
+                />
+                <View style={styles.row}>
+                  <View style={styles.halfField}>
+                    <DateInput
+                      label="Order Date"
+                      value={orderDate}
+                      onChangeText={setOrderDate}
+                    />
+                  </View>
+                  <View style={styles.halfField}>
+                    <DateInput
+                      label="In-Hands Date"
+                      value={inHandsDate}
+                      onChangeText={setInHandsDate}
+                    />
+                  </View>
+                </View>
+                <FormInput
+                  label="Invoice Number"
+                  value={invoiceNumber}
+                  onChangeText={setInvoiceNumber}
+                  placeholder=""
+                  autoTitleCase
                 />
               </View>
             </View>
-            <FormInput
-              label="Invoice Number"
-              value={invoiceNumber}
-              onChangeText={setInvoiceNumber}
-              placeholder=""
-              autoTitleCase
-            />
-          </View>
-        </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Line Items</Text>
-            <TouchableOpacity style={styles.addButton} onPress={handleAddLineItem}>
-              <Plus size={18} color="#fff" />
-              <Text style={styles.addButtonText}>Add Item</Text>
-            </TouchableOpacity>
-          </View>
-          {lineItems.map((item, index) => (
-            <LineItemCard
-              key={item.id}
-              item={item}
-              index={index}
-              onChange={(updated) => handleUpdateLineItem(index, updated)}
-              onDelete={() => handleDeleteLineItem(index)}
-            />
-          ))}
-        </View>
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Line Items</Text>
+                <TouchableOpacity style={styles.addButton} onPress={handleAddLineItem}>
+                  <Plus size={18} color="#fff" />
+                  <Text style={styles.addButtonText}>Add Item</Text>
+                </TouchableOpacity>
+              </View>
+              {lineItems.map((item, index) => (
+                <LineItemCard
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  onChange={(updated) => handleUpdateLineItem(index, updated)}
+                  onDelete={() => handleDeleteLineItem(index)}
+                />
+              ))}
+            </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Pricing & Fees</Text>
-          <View style={styles.card}>
-            <ToggleButton
-              label="Online Fee"
-              description="2.9% + $0.60"
-              value={hasOnlineFee}
-              onChange={setHasOnlineFee}
-            />
-            <ToggleButton
-              label="Card Fee"
-              description="3.75%"
-              value={hasCardFee}
-              onChange={setHasCardFee}
-            />
-            <ToggleButton
-              label="Sales Tax"
-              description="8.3%"
-              value={hasSalesTax}
-              onChange={setHasSalesTax}
-            />
-          </View>
-        </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Pricing & Fees</Text>
+              <View style={styles.card}>
+                <ToggleButton
+                  label="Online Fee"
+                  description="2.9% + $0.60"
+                  value={hasOnlineFee}
+                  onChange={setHasOnlineFee}
+                />
+                <ToggleButton
+                  label="Card Fee"
+                  description="3.75%"
+                  value={hasCardFee}
+                  onChange={setHasCardFee}
+                />
+                <ToggleButton
+                  label="Sales Tax"
+                  description="8.3%"
+                  value={hasSalesTax}
+                  onChange={setHasSalesTax}
+                />
+              </View>
+            </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quote Summary</Text>
-          <CalculationDisplay
-            calculations={calculations}
-            lineItems={lineItems}
-            hasOnlineFee={hasOnlineFee}
-            hasSalesTax={hasSalesTax}
-            hasCardFee={hasCardFee}
-          />
-        </View>
-
-        <View style={styles.actions}>
-          <TouchableOpacity
-            style={styles.resetButton}
-            onPress={() => {
-              Alert.alert('Reset Form', 'Are you sure you want to clear all fields?', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Reset', style: 'destructive', onPress: resetForm },
-              ]);
-            }}
-          >
-            <RotateCcw size={18} color={Colors.light.textSecondary} />
-            <Text style={styles.resetButtonText}>Reset</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.submitButton, (!calculations || isAdding) && styles.submitButtonDisabled]}
-            onPress={handleSubmit}
-            disabled={!calculations || isAdding}
-          >
-            <Send size={18} color="#fff" />
-            <Text style={styles.submitButtonText}>
-              {isAdding ? 'Submitting...' : 'Submit Quote'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+            {summaryPanel}
+          </>
+        )}
 
         <View style={styles.bottomPadding} />
       </ScrollView>
@@ -347,7 +467,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+  },
+  twoColumnLayout: {
+    flexDirection: 'row',
+    gap: 24,
+    alignItems: 'flex-start',
+  },
+  leftColumn: {
+    flex: 1,
+    minWidth: 0,
+  },
+  rightColumn: {
+    width: 420,
+    flexShrink: 0,
   },
   section: {
     marginBottom: 24,
@@ -396,6 +530,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginTop: 8,
+    marginBottom: 24,
   },
   resetButton: {
     flexDirection: 'row',
