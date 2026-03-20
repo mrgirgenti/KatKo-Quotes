@@ -31,6 +31,9 @@ import {
   calculateQuote,
   generateId,
 } from '@/utils/quoteCalculations';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
+
+const LOGO_URI = 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/4xwcbfcj6r2usqk7tds89';
 
 const createEmptyLineItem = (): LineItem => ({
   id: generateId(),
@@ -60,10 +63,10 @@ const getTodayDate = () => {
   return `${month} ${day}, ${year}`;
 };
 
-const isWeb = Platform.OS === 'web';
-
 export default function NewQuoteScreen() {
   const { addQuote, isAdding } = useQuotes();
+  const { isMobile, isTablet, isDesktop } = useBreakpoint();
+  const isNative = Platform.OS !== 'web';
 
   const [personOrganization, setPersonOrganization] = useState('');
   const [projectName, setProjectName] = useState('');
@@ -125,19 +128,19 @@ export default function NewQuoteScreen() {
       Alert.alert('Missing Info', 'Please enter project name.');
       return;
     }
-    
-    const missingDesignNames = lineItems.filter((item, index) => !item.designName.trim());
+
+    const missingDesignNames = lineItems.filter((item) => !item.designName.trim());
     if (missingDesignNames.length > 0) {
       const lineNumbers = lineItems
-        .map((item, index) => !item.designName.trim() ? index + 1 : null)
-        .filter(n => n !== null);
+        .map((item, index) => (!item.designName.trim() ? index + 1 : null))
+        .filter((n) => n !== null);
       Alert.alert(
         'Missing Design Name',
         `Please enter a design name for Line Item${lineNumbers.length > 1 ? 's' : ''} ${lineNumbers.join(', ')}.`
       );
       return;
     }
-    
+
     if (!calculations) {
       Alert.alert('Incomplete', 'Please add line items with quantities to calculate the quote.');
       return;
@@ -181,6 +184,29 @@ export default function NewQuoteScreen() {
     resetForm,
   ]);
 
+  const feesCard = (
+    <View style={styles.card}>
+      <ToggleButton
+        label="Online Fee"
+        description="2.9% + $0.60"
+        value={hasOnlineFee}
+        onChange={setHasOnlineFee}
+      />
+      <ToggleButton
+        label="Card Fee"
+        description="3.75%"
+        value={hasCardFee}
+        onChange={setHasCardFee}
+      />
+      <ToggleButton
+        label="Sales Tax"
+        description="8.3%"
+        value={hasSalesTax}
+        onChange={setHasSalesTax}
+      />
+    </View>
+  );
+
   const summaryPanel = (
     <>
       <View style={styles.section}>
@@ -221,6 +247,75 @@ export default function NewQuoteScreen() {
     </>
   );
 
+  const orderForm = (
+    <View style={styles.card}>
+      <FormInput
+        label="Person / Organization"
+        value={personOrganization}
+        onChangeText={setPersonOrganization}
+        placeholder="Client name or company"
+        autoTitleCase
+      />
+      <FormInput
+        label="Project Name"
+        value={projectName}
+        onChangeText={setProjectName}
+        placeholder="e.g., Summer Event T-Shirts"
+        autoTitleCase
+      />
+      <SegmentedControl
+        label="Order Type"
+        options={ORDER_TYPES}
+        value={orderType}
+        onChange={setOrderType}
+      />
+      <View style={styles.row}>
+        <View style={styles.halfField}>
+          <DateInput
+            label="Order Date"
+            value={orderDate}
+            onChangeText={setOrderDate}
+          />
+        </View>
+        <View style={styles.halfField}>
+          <DateInput
+            label="In-Hands Date"
+            value={inHandsDate}
+            onChangeText={setInHandsDate}
+          />
+        </View>
+      </View>
+      <FormInput
+        label="Invoice Number"
+        value={invoiceNumber}
+        onChangeText={setInvoiceNumber}
+        placeholder=""
+        autoTitleCase
+      />
+    </View>
+  );
+
+  const lineItemsSection = (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Line Items</Text>
+        <TouchableOpacity style={styles.addButton} onPress={handleAddLineItem}>
+          <Plus size={18} color="#fff" />
+          <Text style={styles.addButtonText}>Add Item</Text>
+        </TouchableOpacity>
+      </View>
+      {lineItems.map((item, index) => (
+        <LineItemCard
+          key={item.id}
+          item={item}
+          index={index}
+          onChange={(updated) => handleUpdateLineItem(index, updated)}
+          onDelete={() => handleDeleteLineItem(index)}
+        />
+      ))}
+    </View>
+  );
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -232,222 +327,65 @@ export default function NewQuoteScreen() {
         type="success"
         onHide={() => setToastVisible(false)}
       />
+
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          isMobile && styles.contentMobile,
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {!isWeb && (
+        {/* Logo: show on native OR mobile web (no sidebar) */}
+        {(isNative || isMobile) && (
           <View style={styles.logoContainer}>
             <Image
-              source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/4xwcbfcj6r2usqk7tds89' }}
+              source={{ uri: LOGO_URI }}
               style={styles.logo}
               resizeMode="contain"
             />
           </View>
         )}
 
-        {isWeb ? (
+        {/* Desktop: two-column layout */}
+        {isDesktop && !isNative ? (
           <View style={styles.twoColumnLayout}>
-            {/* Left column: form */}
             <View style={styles.leftColumn}>
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Order Information</Text>
-                <View style={styles.card}>
-                  <FormInput
-                    label="Person / Organization"
-                    value={personOrganization}
-                    onChangeText={setPersonOrganization}
-                    placeholder="Client name or company"
-                    autoTitleCase
-                  />
-                  <FormInput
-                    label="Project Name"
-                    value={projectName}
-                    onChangeText={setProjectName}
-                    placeholder="e.g., Summer Event T-Shirts"
-                    autoTitleCase
-                  />
-                  <SegmentedControl
-                    label="Order Type"
-                    options={ORDER_TYPES}
-                    value={orderType}
-                    onChange={setOrderType}
-                  />
-                  <View style={styles.row}>
-                    <View style={styles.halfField}>
-                      <DateInput
-                        label="Order Date"
-                        value={orderDate}
-                        onChangeText={setOrderDate}
-                      />
-                    </View>
-                    <View style={styles.halfField}>
-                      <DateInput
-                        label="In-Hands Date"
-                        value={inHandsDate}
-                        onChangeText={setInHandsDate}
-                      />
-                    </View>
-                  </View>
-                  <FormInput
-                    label="Invoice Number"
-                    value={invoiceNumber}
-                    onChangeText={setInvoiceNumber}
-                    placeholder=""
-                    autoTitleCase
-                  />
-                </View>
+                {orderForm}
               </View>
-
-              <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Line Items</Text>
-                  <TouchableOpacity style={styles.addButton} onPress={handleAddLineItem}>
-                    <Plus size={18} color="#fff" />
-                    <Text style={styles.addButtonText}>Add Item</Text>
-                  </TouchableOpacity>
-                </View>
-                {lineItems.map((item, index) => (
-                  <LineItemCard
-                    key={item.id}
-                    item={item}
-                    index={index}
-                    onChange={(updated) => handleUpdateLineItem(index, updated)}
-                    onDelete={() => handleDeleteLineItem(index)}
-                  />
-                ))}
-              </View>
-
+              {lineItemsSection}
             </View>
 
-            {/* Right column: sticky pricing + summary */}
             <View
               style={[
                 styles.rightColumn,
-                // @ts-ignore - position: 'sticky' is web-only
+                // @ts-ignore
                 { position: 'sticky', top: 16, alignSelf: 'flex-start' },
               ]}
             >
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Pricing & Fees</Text>
-                <View style={styles.card}>
-                  <ToggleButton
-                    label="Online Fee"
-                    description="2.9% + $0.60"
-                    value={hasOnlineFee}
-                    onChange={setHasOnlineFee}
-                  />
-                  <ToggleButton
-                    label="Card Fee"
-                    description="3.75%"
-                    value={hasCardFee}
-                    onChange={setHasCardFee}
-                  />
-                  <ToggleButton
-                    label="Sales Tax"
-                    description="8.3%"
-                    value={hasSalesTax}
-                    onChange={setHasSalesTax}
-                  />
-                </View>
+                {feesCard}
               </View>
               {summaryPanel}
             </View>
           </View>
         ) : (
+          /* Tablet + Mobile: single column */
           <>
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Order Information</Text>
-              <View style={styles.card}>
-                <FormInput
-                  label="Person / Organization"
-                  value={personOrganization}
-                  onChangeText={setPersonOrganization}
-                  placeholder="Client name or company"
-                  autoTitleCase
-                />
-                <FormInput
-                  label="Project Name"
-                  value={projectName}
-                  onChangeText={setProjectName}
-                  placeholder="e.g., Summer Event T-Shirts"
-                  autoTitleCase
-                />
-                <SegmentedControl
-                  label="Order Type"
-                  options={ORDER_TYPES}
-                  value={orderType}
-                  onChange={setOrderType}
-                />
-                <View style={styles.row}>
-                  <View style={styles.halfField}>
-                    <DateInput
-                      label="Order Date"
-                      value={orderDate}
-                      onChangeText={setOrderDate}
-                    />
-                  </View>
-                  <View style={styles.halfField}>
-                    <DateInput
-                      label="In-Hands Date"
-                      value={inHandsDate}
-                      onChangeText={setInHandsDate}
-                    />
-                  </View>
-                </View>
-                <FormInput
-                  label="Invoice Number"
-                  value={invoiceNumber}
-                  onChangeText={setInvoiceNumber}
-                  placeholder=""
-                  autoTitleCase
-                />
-              </View>
+              {orderForm}
             </View>
 
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Line Items</Text>
-                <TouchableOpacity style={styles.addButton} onPress={handleAddLineItem}>
-                  <Plus size={18} color="#fff" />
-                  <Text style={styles.addButtonText}>Add Item</Text>
-                </TouchableOpacity>
-              </View>
-              {lineItems.map((item, index) => (
-                <LineItemCard
-                  key={item.id}
-                  item={item}
-                  index={index}
-                  onChange={(updated) => handleUpdateLineItem(index, updated)}
-                  onDelete={() => handleDeleteLineItem(index)}
-                />
-              ))}
-            </View>
+            {lineItemsSection}
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Pricing & Fees</Text>
-              <View style={styles.card}>
-                <ToggleButton
-                  label="Online Fee"
-                  description="2.9% + $0.60"
-                  value={hasOnlineFee}
-                  onChange={setHasOnlineFee}
-                />
-                <ToggleButton
-                  label="Card Fee"
-                  description="3.75%"
-                  value={hasCardFee}
-                  onChange={setHasCardFee}
-                />
-                <ToggleButton
-                  label="Sales Tax"
-                  description="8.3%"
-                  value={hasSalesTax}
-                  onChange={setHasSalesTax}
-                />
-              </View>
+              {feesCard}
             </View>
 
             {summaryPanel}
@@ -472,6 +410,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 16,
   },
+  contentMobile: {
+    paddingHorizontal: 16,
+  },
   twoColumnLayout: {
     flexDirection: 'row',
     gap: 24,
@@ -482,7 +423,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   rightColumn: {
-    width: 420,
+    width: 380,
     flexShrink: 0,
   },
   section: {

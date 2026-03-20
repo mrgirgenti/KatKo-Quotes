@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Image,
   Animated,
-  Pressable,
 } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import {
@@ -18,7 +17,6 @@ import {
   Users,
   BookOpen,
   User,
-  X,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
@@ -53,11 +51,24 @@ function isRouteActive(href: string, pathname: string): boolean {
   return pathname.startsWith(href);
 }
 
-export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+interface SidebarProps {
+  defaultCollapsed?: boolean;
+}
+
+export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const router = useRouter();
   const pathname = usePathname();
-  const widthAnim = useRef(new Animated.Value(EXPANDED_WIDTH)).current;
+  const widthAnim = useRef(new Animated.Value(defaultCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH)).current;
+
+  useEffect(() => {
+    setCollapsed(defaultCollapsed);
+    Animated.timing(widthAnim, {
+      toValue: defaultCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH,
+      duration: 0,
+      useNativeDriver: false,
+    }).start();
+  }, [defaultCollapsed]);
 
   const toggle = () => {
     const toValue = collapsed ? EXPANDED_WIDTH : COLLAPSED_WIDTH;
@@ -75,7 +86,6 @@ export function Sidebar() {
 
   return (
     <Animated.View style={[styles.sidebar, { width: widthAnim }]}>
-      {/* Header row */}
       <View style={styles.header}>
         <TouchableOpacity onPress={toggle} style={styles.hamburger}>
           <Menu size={22} color={SB.headerText} />
@@ -87,7 +97,6 @@ export function Sidebar() {
         )}
       </View>
 
-      {/* Logo */}
       {!collapsed && (
         <View style={styles.logoContainer}>
           <Image source={{ uri: LOGO_URI }} style={styles.logo} resizeMode="contain" />
@@ -96,7 +105,6 @@ export function Sidebar() {
 
       <View style={styles.divider} />
 
-      {/* Nav items */}
       <View style={styles.nav}>
         {NAV_ITEMS.map((item) => {
           const active = isRouteActive(item.href, pathname);
@@ -126,7 +134,6 @@ export function Sidebar() {
 
       <View style={styles.divider} />
 
-      {/* Profile button */}
       <TouchableOpacity
         style={[styles.navItem, collapsed && styles.navItemCollapsed]}
         onPress={() => navigate('/profile')}

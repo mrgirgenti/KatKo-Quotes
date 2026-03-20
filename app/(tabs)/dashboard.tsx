@@ -12,23 +12,24 @@ import {
   FileText,
   TrendingUp,
   Clock,
-  ChevronRight,
   FilePlus,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { useClients } from '@/contexts/ClientsContext';
 import { formatCurrency } from '@/utils/quoteCalculations';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 export default function DashboardScreen() {
   const router = useRouter();
   const { quotes } = useQuotes();
   const { clients } = useClients();
+  const { isMobile } = useBreakpoint();
 
   const stats = useMemo(() => {
-    const sales = quotes.filter((q) => q.status === 'sale');
+    const salesList = quotes.filter((q) => q.status === 'sale');
     const activeQuotes = quotes.filter((q) => q.status === 'submitted');
-    const totalRevenue = sales.reduce(
+    const totalRevenue = salesList.reduce(
       (sum, q) => sum + (q.salesData?.amountCollected ?? q.calculations?.total ?? 0),
       0
     );
@@ -39,7 +40,7 @@ export default function DashboardScreen() {
     const thisMonth = new Date();
     thisMonth.setDate(1);
     thisMonth.setHours(0, 0, 0, 0);
-    const salesThisMonth = sales.filter(
+    const salesThisMonth = salesList.filter(
       (q) => new Date(q.salesData?.convertedDate || q.createdAt) >= thisMonth
     );
     const revenueThisMonth = salesThisMonth.reduce(
@@ -49,7 +50,7 @@ export default function DashboardScreen() {
     return {
       totalRevenue,
       totalQuoted,
-      salesCount: sales.length,
+      salesCount: salesList.length,
       activeQuotesCount: activeQuotes.length,
       totalQuotesCount: quotes.length,
       revenueThisMonth,
@@ -60,7 +61,10 @@ export default function DashboardScreen() {
   }, [quotes, clients]);
 
   const recentQuotes = useMemo(
-    () => [...quotes].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5),
+    () =>
+      [...quotes]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 5),
     [quotes]
   );
 
@@ -102,30 +106,43 @@ export default function DashboardScreen() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[
+        styles.content,
+        isMobile && styles.contentMobile,
+      ]}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.pageHeader}>
-        <Text style={styles.pageTitle}>Dashboard</Text>
+        <View>
+          <Text style={[styles.pageTitle, isMobile && styles.pageTitleMobile]}>
+            Dashboard
+          </Text>
+          <Text style={styles.pageSubtitle}>Welcome back</Text>
+        </View>
         <TouchableOpacity
           style={styles.newQuoteBtn}
           onPress={() => router.push('/')}
         >
           <FilePlus size={16} color="#fff" />
-          <Text style={styles.newQuoteBtnText}>New Quote</Text>
+          {!isMobile && <Text style={styles.newQuoteBtnText}>New Quote</Text>}
         </TouchableOpacity>
       </View>
 
-      {/* Stat cards */}
-      <View style={styles.statsGrid}>
+      {/* Stat cards — 2 per row on mobile, 4 on larger screens */}
+      <View style={[styles.statsGrid, isMobile && styles.statsGridMobile]}>
         {statCards.map((card) => {
           const IconComponent = card.icon;
           return (
-            <View key={card.label} style={styles.statCard}>
+            <View
+              key={card.label}
+              style={[styles.statCard, isMobile && styles.statCardMobile]}
+            >
               <View style={[styles.statIconWrap, { backgroundColor: card.bg }]}>
-                <IconComponent size={22} color={card.color} />
+                <IconComponent size={20} color={card.color} />
               </View>
-              <Text style={styles.statValue}>{card.value}</Text>
+              <Text style={[styles.statValue, isMobile && styles.statValueMobile]}>
+                {card.value}
+              </Text>
               <Text style={styles.statLabel}>{card.label}</Text>
               <Text style={styles.statSub}>{card.sub}</Text>
             </View>
@@ -161,8 +178,20 @@ export default function DashboardScreen() {
               onPress={() => router.push(`/quote/${quote.id}` as any)}
             >
               <View style={styles.quoteRowLeft}>
-                <View style={[styles.statusDot, { backgroundColor: quote.status === 'sale' ? '#059669' : quote.status === 'submitted' ? Colors.light.tint : Colors.light.border }]} />
-                <View>
+                <View
+                  style={[
+                    styles.statusDot,
+                    {
+                      backgroundColor:
+                        quote.status === 'sale'
+                          ? '#059669'
+                          : quote.status === 'submitted'
+                          ? Colors.light.tint
+                          : Colors.light.border,
+                    },
+                  ]}
+                />
+                <View style={styles.quoteRowText}>
                   <Text style={styles.quoteName} numberOfLines={1}>
                     {quote.personOrganization}
                   </Text>
@@ -176,13 +205,37 @@ export default function DashboardScreen() {
                 <Text style={styles.quoteTotal}>
                   {formatCurrency(quote.calculations?.total ?? 0)}
                 </Text>
-                <View style={[styles.statusBadge, {
-                  backgroundColor: quote.status === 'sale' ? '#ECFDF5' : quote.status === 'submitted' ? Colors.light.highlightBg : '#F3F4F6',
-                }]}>
-                  <Text style={[styles.statusBadgeText, {
-                    color: quote.status === 'sale' ? '#059669' : quote.status === 'submitted' ? Colors.light.tint : Colors.light.textSecondary,
-                  }]}>
-                    {quote.status === 'sale' ? 'Sale' : quote.status === 'submitted' ? 'Quote' : 'Draft'}
+                <View
+                  style={[
+                    styles.statusBadge,
+                    {
+                      backgroundColor:
+                        quote.status === 'sale'
+                          ? '#ECFDF5'
+                          : quote.status === 'submitted'
+                          ? Colors.light.highlightBg
+                          : '#F3F4F6',
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusBadgeText,
+                      {
+                        color:
+                          quote.status === 'sale'
+                            ? '#059669'
+                            : quote.status === 'submitted'
+                            ? Colors.light.tint
+                            : Colors.light.textSecondary,
+                      },
+                    ]}
+                  >
+                    {quote.status === 'sale'
+                      ? 'Sale'
+                      : quote.status === 'submitted'
+                      ? 'Quote'
+                      : 'Draft'}
                   </Text>
                 </View>
               </View>
@@ -204,16 +257,28 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     paddingBottom: 40,
   },
+  contentMobile: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
   pageHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
+    alignItems: 'flex-start',
+    marginBottom: 20,
   },
   pageTitle: {
     fontSize: 26,
     fontWeight: '800' as const,
     color: Colors.light.text,
+  },
+  pageTitleMobile: {
+    fontSize: 22,
+  },
+  pageSubtitle: {
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+    marginTop: 2,
   },
   newQuoteBtn: {
     flexDirection: 'row',
@@ -232,40 +297,51 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
-    marginBottom: 32,
+    gap: 12,
+    marginBottom: 28,
+  },
+  statsGridMobile: {
+    gap: 10,
   },
   statCard: {
     flex: 1,
     minWidth: 180,
     backgroundColor: Colors.light.surface,
     borderRadius: 14,
-    padding: 20,
+    padding: 18,
     borderWidth: 1,
     borderColor: Colors.light.border,
   },
-  statIconWrap: {
-    width: 44,
-    height: 44,
+  statCardMobile: {
+    minWidth: '45%' as any,
+    padding: 14,
     borderRadius: 12,
+  },
+  statIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   statValue: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '800' as const,
     color: Colors.light.text,
     marginBottom: 2,
   },
+  statValueMobile: {
+    fontSize: 20,
+  },
   statLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600' as const,
     color: Colors.light.text,
-    marginBottom: 4,
+    marginBottom: 3,
   },
   statSub: {
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.light.textSecondary,
   },
   section: {
@@ -278,7 +354,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700' as const,
     color: Colors.light.text,
   },
@@ -328,10 +404,15 @@ const styles = StyleSheet.create({
     gap: 10,
     flex: 1,
   },
+  quoteRowText: {
+    flex: 1,
+    minWidth: 0,
+  },
   statusDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
+    flexShrink: 0,
   },
   quoteName: {
     fontSize: 14,
@@ -346,6 +427,8 @@ const styles = StyleSheet.create({
   quoteRowRight: {
     alignItems: 'flex-end',
     gap: 4,
+    flexShrink: 0,
+    marginLeft: 8,
   },
   quoteTotal: {
     fontSize: 14,

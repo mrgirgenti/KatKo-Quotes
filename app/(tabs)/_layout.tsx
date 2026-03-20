@@ -11,12 +11,15 @@ import React from 'react';
 import { View, Platform, StyleSheet } from 'react-native';
 import Colors from '@/constants/colors';
 import { Sidebar } from '@/components/Sidebar';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 export default function TabLayout() {
-  if (Platform.OS === 'web') {
+  const { isMobile, isTablet } = useBreakpoint();
+
+  if (Platform.OS === 'web' && !isMobile) {
     return (
       <View style={styles.webLayout}>
-        <Sidebar />
+        <Sidebar defaultCollapsed={isTablet} />
         <View style={styles.webContent}>
           <Slot />
         </View>
@@ -33,6 +36,12 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: Colors.light.surface,
           borderTopColor: Colors.light.border,
+          height: 60,
+          paddingBottom: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '500',
         },
       }}
     >
