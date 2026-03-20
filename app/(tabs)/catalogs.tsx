@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -6,28 +6,25 @@ import {
   StyleSheet,
   TouchableOpacity,
   Linking,
-  Platform,
 } from 'react-native';
-import { ExternalLink, BookOpen, Search } from 'lucide-react-native';
+import { ExternalLink, BookOpen, Tag } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
 interface Vendor {
   id: string;
   name: string;
   description: string;
-  category: string;
   catalogUrl: string;
   websiteUrl: string;
   color: string;
   initials: string;
 }
 
-const VENDORS: Vendor[] = [
+const APPAREL_VENDORS: Vendor[] = [
   {
     id: 'sanmar',
     name: 'SanMar',
-    description: 'Leading wholesale supplier of imprintable apparel, bags and caps. Extensive catalog including popular brands like Port & Company, Sport-Tek, and more.',
-    category: 'Apparel & Accessories',
+    description: 'Leading wholesale supplier of imprintable apparel, bags and caps. Extensive catalog including Port & Company, Sport-Tek, and more.',
     catalogUrl: 'https://www.sanmar.com/catalog',
     websiteUrl: 'https://www.sanmar.com',
     color: '#C41230',
@@ -36,8 +33,7 @@ const VENDORS: Vendor[] = [
   {
     id: 'ssactivewear',
     name: 'S&S Activewear',
-    description: 'National wholesale distributor of imprintable sportswear and activewear. Wide selection of brands including Gildan, Next Level, and Bella+Canvas.',
-    category: 'Apparel & Accessories',
+    description: 'National wholesale distributor of imprintable sportswear and activewear. Wide selection of top brands and the best prices in the industry.',
     catalogUrl: 'https://www.ssactivewear.com/category/Catalog',
     websiteUrl: 'https://www.ssactivewear.com',
     color: '#003087',
@@ -47,7 +43,6 @@ const VENDORS: Vendor[] = [
     id: 'mccreary',
     name: "McCreary's",
     description: 'Regional apparel and promotional products supplier. Reliable source for a wide variety of blank garments and promotional items.',
-    category: 'Apparel & Promotional',
     catalogUrl: 'https://www.mccrearyspromoproducts.com',
     websiteUrl: 'https://www.mccrearyspromoproducts.com',
     color: '#1A6B3C',
@@ -56,67 +51,143 @@ const VENDORS: Vendor[] = [
   {
     id: 'laapparel',
     name: 'LA Apparel',
-    description: 'Premium basics made in the USA. Known for high quality, heavyweight garments with a fashion-forward fit. Great for retail and premium brands.',
-    category: 'Premium Apparel',
+    description: 'Premium basics made in the USA. Known for high quality, heavyweight garments with a fashion-forward fit. Great for retail and premium print projects.',
     catalogUrl: 'https://laapparel.com/pages/catalog',
     websiteUrl: 'https://laapparel.com',
-    color: '#000000',
+    color: '#111111',
     initials: 'LA',
   },
   {
-    id: 'nextlevel',
-    name: 'Next Level Apparel',
-    description: 'Fashion-forward premium basics with a modern fit. Popular for DTG, DTF, and screen printing projects. Rings and yarns for superior softness.',
-    category: 'Premium Apparel',
-    catalogUrl: 'https://www.nextlevelapparel.com/collections/all',
-    websiteUrl: 'https://www.nextlevelapparel.com',
-    color: '#2C2C2C',
-    initials: 'NL',
+    id: 'independenttrading',
+    name: 'Independent Trading Co.',
+    description: 'Premium fleece and lifestyle apparel brand. Known for high-quality hoodies, crewnecks, and streetwear-inspired blanks at competitive wholesale prices.',
+    catalogUrl: 'https://www.independenttrading.com/catalog',
+    websiteUrl: 'https://www.independenttrading.com',
+    color: '#1C3557',
+    initials: 'ITC',
   },
   {
-    id: 'bella',
-    name: 'Bella+Canvas',
-    description: 'Industry leader in sustainable, soft basics. Made ethically in the USA and Peru. Soft triblend and jersey fabrics perfect for fashion brands.',
-    category: 'Premium Apparel',
-    catalogUrl: 'https://www.bellacanvas.com/styles',
-    websiteUrl: 'https://www.bellacanvas.com',
-    color: '#8B1A1A',
-    initials: 'BC',
+    id: 'shakawear',
+    name: 'Shaka Wear',
+    description: 'Heavyweight, high-quality basics built for decorating. Popular for oversized and streetwear aesthetics with exceptional value for high-volume orders.',
+    catalogUrl: 'https://shakawear.com/pages/catalog',
+    websiteUrl: 'https://shakawear.com',
+    color: '#E05A00',
+    initials: 'SW',
   },
   {
-    id: 'gildan',
-    name: 'Gildan',
-    description: 'One of the world\'s largest suppliers of basic activewear. Affordable, durable, and widely available. Ideal for high-volume and budget-conscious orders.',
-    category: 'Value Apparel',
-    catalogUrl: 'https://www.gildan.com/us/activewear',
-    websiteUrl: 'https://www.gildan.com',
-    color: '#002F6C',
-    initials: 'GD',
-  },
-  {
-    id: 'alphabroder',
-    name: 'alphabroder',
-    description: 'One of North America\'s largest wholesale distributors of imprintable sportswear and promotional products with an extensive product selection.',
-    category: 'Apparel & Accessories',
-    catalogUrl: 'https://www.alphabroder.com/catalog',
-    websiteUrl: 'https://www.alphabroder.com',
-    color: '#E4002B',
-    initials: 'AB',
+    id: 'augusta',
+    name: 'Augusta Sportswear',
+    description: 'Industry leader in performance and team sportswear. Extensive selection of sublimated and moisture-wicking apparel for teams and organizations.',
+    catalogUrl: 'https://www.augustasportswear.com/catalog',
+    websiteUrl: 'https://www.augustasportswear.com',
+    color: '#004B8D',
+    initials: 'AS',
   },
 ];
 
-const CATEGORIES = ['All', 'Apparel & Accessories', 'Premium Apparel', 'Value Apparel', 'Apparel & Promotional'];
+const PROMO_VENDORS: Vendor[] = [
+  {
+    id: 'katalystpromo',
+    name: 'Katalyst Ko Promo',
+    description: 'Our in-house promotional products line. Custom branded merchandise, giveaways, and corporate swag sourced and decorated by Katalyst Ko.',
+    catalogUrl: 'https://katalystko.com',
+    websiteUrl: 'https://katalystko.com',
+    color: '#FF5A00',
+    initials: 'KK',
+  },
+  {
+    id: 'sinalite',
+    name: 'Sinalite',
+    description: 'Wholesale trade printer specializing in large-format printing, banners, signs, and display graphics. Fast turnaround for trade-only orders.',
+    catalogUrl: 'https://www.sinalite.com/catalog',
+    websiteUrl: 'https://www.sinalite.com',
+    color: '#0066CC',
+    initials: 'SL',
+  },
+  {
+    id: 'bestofsigns',
+    name: 'Best of Signs',
+    description: 'Online print supplier for banners, signs, trade show displays, and vehicle graphics. Competitive pricing with a wide range of custom print products.',
+    catalogUrl: 'https://www.bestofsigns.com',
+    websiteUrl: 'https://www.bestofsigns.com',
+    color: '#C8002D',
+    initials: 'BS',
+  },
+  {
+    id: 'signsdotcom',
+    name: 'Signs.com',
+    description: 'Custom sign printing made easy — banners, yard signs, window decals, and more. Instant online pricing with fast production and shipping.',
+    catalogUrl: 'https://www.signs.com/signs',
+    websiteUrl: 'https://www.signs.com',
+    color: '#007A33',
+    initials: 'SC',
+  },
+  {
+    id: '4allpromos',
+    name: '4 All Promos',
+    description: 'Full-service promotional products distributor. Pens, drinkware, bags, tech accessories, and thousands of customizable items for any campaign.',
+    catalogUrl: 'https://www.4allpromos.com',
+    websiteUrl: 'https://www.4allpromos.com',
+    color: '#6A1F8E',
+    initials: '4A',
+  },
+  {
+    id: 'jpplus',
+    name: 'JP Plus',
+    description: 'Promotional products and incentive merchandise. Specializing in custom-branded giveaways, awards, and recognition items for corporate clients.',
+    catalogUrl: 'https://www.jpplus.com',
+    websiteUrl: 'https://www.jpplus.com',
+    color: '#8B4513',
+    initials: 'JP',
+  },
+  {
+    id: 'jdsindustries',
+    name: 'JDS Industries',
+    description: 'Wholesale supplier of awards, trophies, plaques, and recognition products. Extensive sublimation blanks and laser-engravable merchandise.',
+    catalogUrl: 'https://www.jdsindustries.com/catalog',
+    websiteUrl: 'https://www.jdsindustries.com',
+    color: '#2D5016',
+    initials: 'JDS',
+  },
+];
 
 export default function CatalogsScreen() {
-  const [selectedCategory, setSelectedCategory] = useState('All');
-
-  const filtered = selectedCategory === 'All'
-    ? VENDORS
-    : VENDORS.filter((v) => v.category === selectedCategory);
-
   const openLink = (url: string) => {
     Linking.openURL(url);
   };
+
+  const renderVendorCard = (vendor: Vendor) => (
+    <View key={vendor.id} style={styles.vendorCard}>
+      <View style={styles.vendorCardTop}>
+        <View style={[styles.vendorAvatar, { backgroundColor: vendor.color }]}>
+          <Text style={styles.vendorInitials}>{vendor.initials}</Text>
+        </View>
+        <View style={styles.vendorMeta}>
+          <Text style={styles.vendorName}>{vendor.name}</Text>
+        </View>
+      </View>
+
+      <Text style={styles.vendorDescription}>{vendor.description}</Text>
+
+      <View style={styles.vendorActions}>
+        <TouchableOpacity
+          style={styles.catalogBtn}
+          onPress={() => openLink(vendor.catalogUrl)}
+        >
+          <BookOpen size={15} color="#fff" />
+          <Text style={styles.catalogBtnText}>View Catalog</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.websiteBtn}
+          onPress={() => openLink(vendor.websiteUrl)}
+        >
+          <ExternalLink size={15} color={Colors.light.tint} />
+          <Text style={styles.websiteBtnText}>Website</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   return (
     <ScrollView
@@ -131,62 +202,37 @@ export default function CatalogsScreen() {
         </View>
       </View>
 
-      {/* Category filter */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterScroll}
-        contentContainerStyle={styles.filterContent}
-      >
-        {CATEGORIES.map((cat) => (
-          <TouchableOpacity
-            key={cat}
-            style={[styles.filterChip, selectedCategory === cat && styles.filterChipActive]}
-            onPress={() => setSelectedCategory(cat)}
-          >
-            <Text style={[styles.filterChipText, selectedCategory === cat && styles.filterChipTextActive]}>
-              {cat}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {/* Apparel Vendors Section */}
+      <View style={styles.sectionHeader}>
+        <View style={[styles.sectionIconBg, { backgroundColor: '#EEF2FF' }]}>
+          <BookOpen size={16} color="#4F46E5" />
+        </View>
+        <View>
+          <Text style={styles.sectionTitle}>Apparel Vendors</Text>
+          <Text style={styles.sectionSubtitle}>{APPAREL_VENDORS.length} suppliers</Text>
+        </View>
+      </View>
 
-      {/* Vendor grid */}
       <View style={styles.vendorGrid}>
-        {filtered.map((vendor) => (
-          <View key={vendor.id} style={styles.vendorCard}>
-            <View style={styles.vendorCardTop}>
-              <View style={[styles.vendorAvatar, { backgroundColor: vendor.color }]}>
-                <Text style={styles.vendorInitials}>{vendor.initials}</Text>
-              </View>
-              <View style={styles.vendorMeta}>
-                <Text style={styles.vendorName}>{vendor.name}</Text>
-                <View style={styles.categoryBadge}>
-                  <Text style={styles.categoryBadgeText}>{vendor.category}</Text>
-                </View>
-              </View>
-            </View>
+        {APPAREL_VENDORS.map(renderVendorCard)}
+      </View>
 
-            <Text style={styles.vendorDescription}>{vendor.description}</Text>
+      {/* Divider */}
+      <View style={styles.sectionDivider} />
 
-            <View style={styles.vendorActions}>
-              <TouchableOpacity
-                style={styles.catalogBtn}
-                onPress={() => openLink(vendor.catalogUrl)}
-              >
-                <BookOpen size={15} color="#fff" />
-                <Text style={styles.catalogBtnText}>View Catalog</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.websiteBtn}
-                onPress={() => openLink(vendor.websiteUrl)}
-              >
-                <ExternalLink size={15} color={Colors.light.tint} />
-                <Text style={styles.websiteBtnText}>Website</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ))}
+      {/* Promotional Vendors Section */}
+      <View style={styles.sectionHeader}>
+        <View style={[styles.sectionIconBg, { backgroundColor: '#FFF7ED' }]}>
+          <Tag size={16} color={Colors.light.tint} />
+        </View>
+        <View>
+          <Text style={styles.sectionTitle}>Promotional Vendors</Text>
+          <Text style={styles.sectionSubtitle}>{PROMO_VENDORS.length} suppliers</Text>
+        </View>
+      </View>
+
+      <View style={styles.vendorGrid}>
+        {PROMO_VENDORS.map(renderVendorCard)}
       </View>
 
       <View style={styles.addVendorNote}>
@@ -211,10 +257,10 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   pageHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 20,
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'flex-start' as const,
+    marginBottom: 24,
   },
   pageTitle: {
     fontSize: 26,
@@ -226,38 +272,37 @@ const styles = StyleSheet.create({
     color: Colors.light.textSecondary,
     marginTop: 4,
   },
-  filterScroll: {
-    marginBottom: 20,
-    marginHorizontal: -24,
+  sectionHeader: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 12,
+    marginBottom: 16,
   },
-  filterContent: {
-    paddingHorizontal: 24,
-    gap: 8,
+  sectionIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
   },
-  filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: Colors.light.surface,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '700' as const,
+    color: Colors.light.text,
   },
-  filterChipActive: {
-    backgroundColor: Colors.light.tint,
-    borderColor: Colors.light.tint,
-  },
-  filterChipText: {
-    fontSize: 13,
-    fontWeight: '500' as const,
+  sectionSubtitle: {
+    fontSize: 12,
     color: Colors.light.textSecondary,
+    marginTop: 1,
   },
-  filterChipTextActive: {
-    color: '#fff',
-    fontWeight: '600' as const,
+  sectionDivider: {
+    height: 1,
+    backgroundColor: Colors.light.border,
+    marginVertical: 28,
   },
   vendorGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
     gap: 16,
   },
   vendorCard: {
@@ -271,44 +316,31 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   vendorCardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
     gap: 14,
   },
   vendorAvatar: {
     width: 52,
     height: 52,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
     flexShrink: 0,
   },
   vendorInitials: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '800' as const,
     color: '#fff',
     letterSpacing: 0.5,
   },
   vendorMeta: {
     flex: 1,
-    gap: 4,
   },
   vendorName: {
     fontSize: 17,
     fontWeight: '700' as const,
     color: Colors.light.text,
-  },
-  categoryBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.light.highlightBg,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  categoryBadgeText: {
-    fontSize: 11,
-    fontWeight: '600' as const,
-    color: Colors.light.highlight,
   },
   vendorDescription: {
     fontSize: 13,
@@ -316,14 +348,14 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   vendorActions: {
-    flexDirection: 'row',
+    flexDirection: 'row' as const,
     gap: 10,
   },
   catalogBtn: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     gap: 6,
     backgroundColor: Colors.light.tint,
     paddingVertical: 10,
@@ -335,9 +367,9 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   websiteBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     gap: 6,
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -351,8 +383,8 @@ const styles = StyleSheet.create({
     color: Colors.light.tint,
   },
   addVendorNote: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
     gap: 10,
     backgroundColor: Colors.light.surface,
     borderRadius: 10,
