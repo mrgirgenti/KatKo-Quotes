@@ -1,0 +1,864 @@
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  StyleSheet,
+  ScrollView,
+  Platform,
+  ActivityIndicator,
+  Image,
+} from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import Svg, { Path, Rect, Circle, Line, G } from 'react-native-svg';
+import {
+  X,
+  Upload,
+  Download,
+  Save,
+  ChevronLeft,
+  ChevronRight,
+  Trash2,
+  CheckCircle,
+  Image as ImageIcon,
+  Brush,
+  RotateCcw,
+} from 'lucide-react-native';
+import Colors from '@/constants/colors';
+import {
+  CANVAS_W,
+  CANVAS_H,
+  GARMENTS,
+  GARMENT_COLORS,
+  BRANDS,
+  GarmentType,
+  GarmentView,
+  PrintLocation,
+  ZoneDefinition,
+} from './garmentData';
+import { generateId } from '@/utils/quoteCalculations';
+
+const DISPLAY_W = 340;
+const DISPLAY_H = (CANVAS_H / CANVAS_W) * DISPLAY_W;
+const SCALE = DISPLAY_W / CANVAS_W;
+
+interface UploadedArtwork {
+  id: string;
+  uri: string;
+  name: string;
+}
+
+interface Placement {
+  zoneId: PrintLocation;
+  artworkId: string;
+  artworkUri: string;
+}
+
+interface Props {
+  visible: boolean;
+  onClose: () => void;
+  onSave: (finalImageUri: string) => void;
+  initialMockupUri?: string;
+  suggestedLocations?: string[];
+}
+
+export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, suggestedLocations }: Props) {
+  const [garmentType, setGarmentType] = useState<GarmentType>('tshirt');
+  const [garmentColor, setGarmentColor] = useState('#FFFFFF');
+  const [brand, setBrand] = useState('Any Brand');
+  const [currentView, setCurrentView] = useState<GarmentView>('front');
+  const [uploadedArtworks, setUploadedArtworks] = useState<UploadedArtwork[]>([]);
+  const [placements, setPlacements] = useState<Placement[]>([]);
+  const [selectedArtworkId, setSelectedArtworkId] = useState<string | null>(null);
+  const [activeZoneId, setActiveZoneId] = useState<PrintLocation | null>(null);
+  const [saving, setSaving] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const garment = GARMENTS[garmentType];
+  const svgPath = currentView === 'front' ? garment.frontPath : garment.backPath;
+  const currentZones = garment.zones.filter(z => z.view === currentView);
+  const isDark = GARMENT_COLORS.find(c => c.value === garmentColor)?.dark ?? false;
+
+  const isColorDark = useCallback((hex: string) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return (r * 299 + g * 587 + b * 114) / 1000 < 128;
+  }, []);
+
+  const getOutlineColor = () => (isColorDark(garmentColor) ? '#444' : '#888');
+  const getDetailColor = () => (isColorDark(garmentColor) ? '#555' : '#ccc');
+
+  const handleUploadArtwork = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.8,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      const mimeType = asset.mimeType || 'image/png';
+      const uri = asset.base64
+        ? `data:${mimeType};base64,${asset.base64}`
+        : asset.uri;
+      const newArtwork: UploadedArtwork = {
+        id: generateId(),
+        uri,
+        name: asset.fileName || `Artwork ${uploadedArtworks.length + 1}`,
+      };
+      setUploadedArtworks(prev => [...prev, newArtwork]);
+      setSelectedArtworkId(newArtwork.id);
+    }
+  };
+
+  const handleZonePress = (zone: ZoneDefinition) => {
+    if (selectedArtworkId) {
+      const artwork = uploadedArtworks.find(a => a.id === selectedArtworkId);
+      if (!artwork) return;
+      setPlacements(prev => {
+        const filtered = prev.filter(p => p.zoneId !== zone.id);
+        return [...filtered, { zoneId: zone.id, artworkId: artwork.id, artworkUri: artwork.uri }];
+      });
+      setActiveZoneId(zone.id);
+    } else {
+      setActiveZoneId(prev => prev === zone.id ? null : zone.id);
+    }
+  };
+
+  const handleRemovePlacement = (zoneId: PrintLocation) => {
+    setPlacements(prev => prev.filter(p => p.zoneId !== zoneId));
+    if (activeZoneId === zoneId) setActiveZoneId(null);
+  };
+
+  const handleRemoveArtwork = (artworkId: string) => {
+    setUploadedArtworks(prev => prev.filter(a => a.id !== artworkId));
+    setPlacements(prev => prev.filter(p => p.artworkId !== artworkId));
+    if (selectedArtworkId === artworkId) setSelectedArtworkId(null);
+  };
+
+  const composeCanvas = useCallback(async (): Promise<string | null> => {
+    if (Platform.OS !== 'web') return null;
+    const scale = 2;
+    const W = CANVAS_W * scale;
+    const H = CANVAS_H * scale;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    ctx.scale(scale, scale);
+
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    const garmentPath = new Path2D(svgPath);
+    ctx.fillStyle = garmentColor;
+    ctx.fill(garmentPath);
+    ctx.strokeStyle = getOutlineColor();
+    ctx.lineWidth = 1.5;
+    ctx.stroke(garmentPath);
+
+    const placementPromises = currentZones
+      .map(zone => placements.find(p => p.zoneId === zone.id))
+      .filter(Boolean)
+      .map(placement => {
+        return new Promise<void>(resolve => {
+          if (!placement) { resolve(); return; }
+          const zone = currentZones.find(z => z.id === placement.zoneId);
+          if (!zone) { resolve(); return; }
+          const img = new window.Image();
+          img.onload = () => {
+            const padding = 6;
+            const zx = zone.x + padding;
+            const zy = zone.y + padding;
+            const zw = zone.w - padding * 2;
+            const zh = zone.h - padding * 2;
+            const imgRatio = img.width / img.height;
+            const zoneRatio = zw / zh;
+            let dw = zw, dh = zh;
+            if (imgRatio > zoneRatio) { dh = zw / imgRatio; } else { dw = zh * imgRatio; }
+            const dx = zx + (zw - dw) / 2;
+            const dy = zy + (zh - dh) / 2;
+            ctx.drawImage(img, dx, dy, dw, dh);
+            resolve();
+          };
+          img.onerror = () => resolve();
+          img.src = placement.artworkUri;
+        });
+      });
+
+    await Promise.all(placementPromises);
+    return canvas.toDataURL('image/png');
+  }, [svgPath, garmentColor, currentZones, placements]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const uri = await composeCanvas();
+      if (uri) {
+        onSave(uri);
+        onClose();
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDownload = async (format: 'png' | 'pdf') => {
+    if (Platform.OS !== 'web') return;
+    const uri = await composeCanvas();
+    if (!uri) return;
+
+    if (format === 'png') {
+      const link = document.createElement('a');
+      link.href = uri;
+      link.download = `mockup-${garmentType}-${Date.now()}.png`;
+      link.click();
+    } else {
+      const win = window.open('', '_blank');
+      if (!win) return;
+      win.document.write(`
+        <html><head><title>Mockup</title><style>
+          body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #fff; }
+          img { max-width: 100%; max-height: 100vh; }
+        </style></head>
+        <body><img src="${uri}" onload="window.print()"/></body></html>
+      `);
+      win.document.close();
+    }
+  };
+
+  const handleReset = () => {
+    setPlacements([]);
+    setActiveZoneId(null);
+    setSelectedArtworkId(null);
+  };
+
+  const isSuggestedZone = (zoneId: string) =>
+    suggestedLocations?.some(l => l.toLowerCase().includes(zoneId.toLowerCase())) ?? false;
+
+  const placementForZone = (zoneId: PrintLocation) =>
+    placements.find(p => p.zoneId === zoneId);
+
+  return (
+    <Modal visible={visible} animationType="fade" transparent statusBarTranslucent>
+      <View style={styles.overlay}>
+        <View style={styles.panel}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <Brush size={18} color={Colors.light.tint} />
+              <Text style={styles.headerTitle}>Mockup Designer</Text>
+            </View>
+            <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+              <X size={20} color={Colors.light.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.body}>
+            {/* ── Left Panel: Controls ── */}
+            <ScrollView style={styles.leftPanel} showsVerticalScrollIndicator={false}>
+              {/* Garment Type */}
+              <Text style={styles.sectionLabel}>GARMENT TYPE</Text>
+              <View style={styles.garmentTypes}>
+                {(Object.keys(GARMENTS) as GarmentType[]).map(type => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[styles.typeBtn, garmentType === type && styles.typeBtnActive]}
+                    onPress={() => { setGarmentType(type); setCurrentView('front'); }}
+                  >
+                    <Text style={[styles.typeBtnText, garmentType === type && styles.typeBtnTextActive]}>
+                      {GARMENTS[type].label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Brand */}
+              <Text style={styles.sectionLabel}>BRAND</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.brandScroll}>
+                {BRANDS.map(b => (
+                  <TouchableOpacity
+                    key={b}
+                    style={[styles.brandChip, brand === b && styles.brandChipActive]}
+                    onPress={() => setBrand(b)}
+                  >
+                    <Text style={[styles.brandChipText, brand === b && styles.brandChipTextActive]}>{b}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* Color */}
+              <Text style={styles.sectionLabel}>GARMENT COLOR</Text>
+              <View style={styles.colorGrid}>
+                {GARMENT_COLORS.map(color => (
+                  <TouchableOpacity
+                    key={color.value}
+                    style={[
+                      styles.colorSwatch,
+                      { backgroundColor: color.value },
+                      garmentColor === color.value && styles.colorSwatchSelected,
+                      color.value === '#FFFFFF' && styles.colorSwatchWhite,
+                    ]}
+                    onPress={() => setGarmentColor(color.value)}
+                  >
+                    {garmentColor === color.value && (
+                      <CheckCircle size={14} color={color.dark ? '#fff' : '#333'} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={styles.colorLabel}>
+                {GARMENT_COLORS.find(c => c.value === garmentColor)?.label ?? ''}
+              </Text>
+
+              {/* View toggle */}
+              {garmentType !== 'hat' && (
+                <>
+                  <Text style={styles.sectionLabel}>VIEW</Text>
+                  <View style={styles.viewToggle}>
+                    <TouchableOpacity
+                      style={[styles.viewBtn, currentView === 'front' && styles.viewBtnActive]}
+                      onPress={() => setCurrentView('front')}
+                    >
+                      <Text style={[styles.viewBtnText, currentView === 'front' && styles.viewBtnTextActive]}>Front</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.viewBtn, currentView === 'back' && styles.viewBtnActive]}
+                      onPress={() => setCurrentView('back')}
+                    >
+                      <Text style={[styles.viewBtnText, currentView === 'back' && styles.viewBtnTextActive]}>Back</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+
+              {/* Instructions */}
+              <View style={styles.instructions}>
+                <Text style={styles.instructionsTitle}>How to use:</Text>
+                <Text style={styles.instructionsText}>1. Upload artwork on the right</Text>
+                <Text style={styles.instructionsText}>2. Select artwork (click it)</Text>
+                <Text style={styles.instructionsText}>3. Tap a print zone to place it</Text>
+                <Text style={styles.instructionsText}>4. Save your mockup</Text>
+              </View>
+            </ScrollView>
+
+            {/* ── Center: Garment Canvas ── */}
+            <View style={styles.centerPanel}>
+              <View style={[styles.canvasContainer, { width: DISPLAY_W, height: DISPLAY_H }]}>
+                {/* SVG Garment */}
+                <Svg
+                  width={DISPLAY_W}
+                  height={DISPLAY_H}
+                  viewBox={`0 -30 ${CANVAS_W} ${CANVAS_H + 30}`}
+                  style={styles.garmentSvg}
+                >
+                  <G>
+                    <Path
+                      d={svgPath}
+                      fill={garmentColor}
+                      stroke={getOutlineColor()}
+                      strokeWidth={2}
+                    />
+                    {/* Collar/pocket details */}
+                    {garmentType === 'hoodie' && currentView === 'front' && (
+                      <>
+                        <Line x1={250} y1={80} x2={250} y2={560} stroke={getDetailColor()} strokeWidth={2} />
+                        <Rect x={165} y={450} width={170} height={100} rx={8} ry={8}
+                          fill="none" stroke={getDetailColor()} strokeWidth={1.5} />
+                        <Line x1={165} y1={500} x2={335} y2={500} stroke={getDetailColor()} strokeWidth={1} />
+                      </>
+                    )}
+                    {garmentType === 'hat' && (
+                      <>
+                        <Line x1={250} y1={60} x2={250} y2={260} stroke={getDetailColor()} strokeWidth={1.5} strokeDasharray="4,3" />
+                        <Circle cx={250} cy={50} r={8} fill={getDetailColor()} />
+                      </>
+                    )}
+                  </G>
+                </Svg>
+
+                {/* Zone overlays */}
+                {currentZones.map(zone => {
+                  const placement = placementForZone(zone.id);
+                  const isActive = activeZoneId === zone.id;
+                  const isSuggested = isSuggestedZone(zone.id);
+                  const hasArtwork = !!placement;
+
+                  return (
+                    <TouchableOpacity
+                      key={zone.id}
+                      style={[
+                        styles.zone,
+                        {
+                          left: zone.x * SCALE,
+                          top: (zone.y + 30) * SCALE,
+                          width: zone.w * SCALE,
+                          height: zone.h * SCALE,
+                        },
+                        isSuggested && styles.zoneSuggested,
+                        isActive && styles.zoneActive,
+                        hasArtwork && styles.zoneHasArtwork,
+                      ]}
+                      onPress={() => handleZonePress(zone)}
+                      activeOpacity={0.7}
+                    >
+                      {placement ? (
+                        <View style={styles.zoneArtworkContainer}>
+                          <Image
+                            source={{ uri: placement.artworkUri }}
+                            style={styles.zoneArtworkImage}
+                            resizeMode="contain"
+                          />
+                          <TouchableOpacity
+                            style={styles.zoneRemoveBtn}
+                            onPress={() => handleRemovePlacement(zone.id)}
+                          >
+                            <X size={8} color="#fff" />
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <Text style={[
+                          styles.zoneLabel,
+                          { fontSize: Math.max(7, zone.w * SCALE * 0.09) }
+                        ]}>
+                          {zone.id}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Placement summary */}
+              {placements.length > 0 && (
+                <View style={styles.placementSummary}>
+                  <Text style={styles.placementSummaryTitle}>Placements: {placements.length}</Text>
+                  <View style={styles.placementChips}>
+                    {placements.map(p => (
+                      <View key={p.zoneId} style={styles.placementChip}>
+                        <Text style={styles.placementChipText}>{p.zoneId}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* ── Right Panel: Artwork ── */}
+            <View style={styles.rightPanel}>
+              <Text style={styles.sectionLabel}>ARTWORK</Text>
+              <TouchableOpacity style={styles.uploadArtworkBtn} onPress={handleUploadArtwork}>
+                <Upload size={16} color={Colors.light.tint} />
+                <Text style={styles.uploadArtworkText}>Upload Logo / Graphic</Text>
+              </TouchableOpacity>
+
+              {uploadedArtworks.length === 0 ? (
+                <View style={styles.artworkEmptyState}>
+                  <ImageIcon size={32} color={Colors.light.borderDark} />
+                  <Text style={styles.artworkEmptyText}>Upload your client's{'\n'}logo or artwork</Text>
+                </View>
+              ) : (
+                <ScrollView style={styles.artworkList} showsVerticalScrollIndicator={false}>
+                  {uploadedArtworks.map(artwork => (
+                    <TouchableOpacity
+                      key={artwork.id}
+                      style={[
+                        styles.artworkItem,
+                        selectedArtworkId === artwork.id && styles.artworkItemSelected,
+                      ]}
+                      onPress={() => setSelectedArtworkId(prev => prev === artwork.id ? null : artwork.id)}
+                    >
+                      <Image source={{ uri: artwork.uri }} style={styles.artworkThumbnail} resizeMode="contain" />
+                      <Text style={styles.artworkName} numberOfLines={1}>{artwork.name}</Text>
+                      {selectedArtworkId === artwork.id && (
+                        <View style={styles.artworkSelectedBadge}>
+                          <Text style={styles.artworkSelectedText}>Selected</Text>
+                        </View>
+                      )}
+                      <TouchableOpacity
+                        style={styles.artworkDeleteBtn}
+                        onPress={() => handleRemoveArtwork(artwork.id)}
+                      >
+                        <Trash2 size={11} color={Colors.light.error} />
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+
+              {selectedArtworkId && (
+                <View style={styles.placingHint}>
+                  <Text style={styles.placingHintText}>
+                    Tap a zone on the garment to place this artwork
+                  </Text>
+                </View>
+              )}
+
+              {/* Zone reference */}
+              <Text style={[styles.sectionLabel, { marginTop: 16 }]}>PRINT LOCATIONS</Text>
+              <ScrollView style={styles.zoneRef} showsVerticalScrollIndicator={false}>
+                {currentZones.map(zone => {
+                  const placement = placementForZone(zone.id);
+                  return (
+                    <View key={zone.id} style={styles.zoneRefItem}>
+                      <View style={[styles.zoneRefDot, placement && styles.zoneRefDotFilled]} />
+                      <Text style={[styles.zoneRefText, placement && styles.zoneRefTextFilled]}>
+                        {zone.id}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </View>
+
+          {/* Footer */}
+          <View style={styles.footer}>
+            <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
+              <RotateCcw size={14} color={Colors.light.textSecondary} />
+              <Text style={styles.resetBtnText}>Reset</Text>
+            </TouchableOpacity>
+            <View style={styles.footerRight}>
+              <TouchableOpacity style={styles.downloadBtn} onPress={() => handleDownload('pdf')}>
+                <Download size={14} color={Colors.light.tint} />
+                <Text style={styles.downloadBtnText}>PDF</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.downloadBtn} onPress={() => handleDownload('png')}>
+                <Download size={14} color={Colors.light.tint} />
+                <Text style={styles.downloadBtnText}>PNG</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
+                {saving ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Save size={14} color="#fff" />
+                    <Text style={styles.saveBtnText}>Save Mockup</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  panel: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 1100,
+    maxHeight: '95%',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+    backgroundColor: Colors.light.surface,
+  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerTitle: { fontSize: 16, fontWeight: '700', color: Colors.light.text },
+  closeBtn: { padding: 4 },
+  body: {
+    flexDirection: 'row',
+    flex: 1,
+    overflow: 'hidden',
+    minHeight: 480,
+  },
+  leftPanel: {
+    width: 170,
+    borderRightWidth: 1,
+    borderRightColor: Colors.light.border,
+    backgroundColor: Colors.light.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  centerPanel: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingVertical: 12,
+    backgroundColor: '#EAECF0',
+  },
+  rightPanel: {
+    width: 180,
+    borderLeftWidth: 1,
+    borderLeftColor: Colors.light.border,
+    backgroundColor: Colors.light.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    backgroundColor: Colors.light.surface,
+  },
+  footerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+
+  sectionLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.light.textSecondary,
+    letterSpacing: 0.8,
+    marginBottom: 8,
+    marginTop: 14,
+  },
+  garmentTypes: { gap: 4 },
+  typeBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: '#fff',
+  },
+  typeBtnActive: {
+    backgroundColor: Colors.light.tint,
+    borderColor: Colors.light.tint,
+  },
+  typeBtnText: { fontSize: 12, color: Colors.light.text, fontWeight: '500' },
+  typeBtnTextActive: { color: '#fff', fontWeight: '600' },
+
+  brandScroll: { marginBottom: 4 },
+  brandChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    marginRight: 6,
+    backgroundColor: '#fff',
+  },
+  brandChipActive: { backgroundColor: '#FFF0E8', borderColor: Colors.light.tint },
+  brandChipText: { fontSize: 10, color: Colors.light.textSecondary },
+  brandChipTextActive: { color: Colors.light.tint, fontWeight: '600' },
+
+  colorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  colorSwatch: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  colorSwatchWhite: { borderWidth: 1, borderColor: '#ddd' },
+  colorSwatchSelected: { borderWidth: 2.5, borderColor: Colors.light.tint },
+  colorLabel: { fontSize: 11, color: Colors.light.textSecondary, marginTop: 4 },
+
+  viewToggle: { flexDirection: 'row', gap: 6 },
+  viewBtn: {
+    flex: 1,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  viewBtnActive: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
+  viewBtnText: { fontSize: 11, color: Colors.light.textSecondary, fontWeight: '500' },
+  viewBtnTextActive: { color: '#fff', fontWeight: '600' },
+
+  instructions: {
+    marginTop: 14,
+    padding: 10,
+    backgroundColor: '#FFF8F5',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFD9C5',
+  },
+  instructionsTitle: { fontSize: 10, fontWeight: '700', color: Colors.light.tint, marginBottom: 4 },
+  instructionsText: { fontSize: 10, color: Colors.light.textSecondary, lineHeight: 16 },
+
+  canvasContainer: {
+    position: 'relative',
+    backgroundColor: '#EAECF0',
+    overflow: 'visible',
+  },
+  garmentSvg: { position: 'absolute', top: 0, left: 0 },
+
+  zone: {
+    position: 'absolute',
+    borderWidth: 1.5,
+    borderColor: 'rgba(100,100,100,0.35)',
+    borderStyle: 'dashed',
+    borderRadius: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  zoneSuggested: {
+    borderColor: 'rgba(255,90,0,0.6)',
+    backgroundColor: 'rgba(255,90,0,0.06)',
+  },
+  zoneActive: {
+    borderColor: Colors.light.tint,
+    borderWidth: 2,
+    backgroundColor: 'rgba(255,90,0,0.1)',
+  },
+  zoneHasArtwork: {
+    borderColor: '#22C55E',
+    borderWidth: 2,
+    borderStyle: 'solid',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  zoneLabel: {
+    color: 'rgba(60,60,60,0.7)',
+    fontWeight: '600',
+    textAlign: 'center',
+    padding: 2,
+  },
+  zoneArtworkContainer: { width: '100%', height: '100%', position: 'relative' },
+  zoneArtworkImage: { width: '100%', height: '100%' },
+  zoneRemoveBtn: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 8,
+    width: 14,
+    height: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  placementSummary: {
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  placementSummaryTitle: { fontSize: 11, color: Colors.light.textSecondary, marginBottom: 4 },
+  placementChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, justifyContent: 'center' },
+  placementChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: '#DCFCE7',
+    borderRadius: 10,
+  },
+  placementChipText: { fontSize: 10, color: '#15803D', fontWeight: '600' },
+
+  uploadArtworkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#FFF0E8',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.light.tint,
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  uploadArtworkText: { fontSize: 12, color: Colors.light.tint, fontWeight: '600' },
+
+  artworkEmptyState: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    gap: 8,
+  },
+  artworkEmptyText: { fontSize: 11, color: Colors.light.textSecondary, textAlign: 'center', lineHeight: 16 },
+
+  artworkList: { maxHeight: 180 },
+  artworkItem: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: Colors.light.border,
+    marginBottom: 6,
+    backgroundColor: '#fff',
+    gap: 4,
+    position: 'relative',
+  },
+  artworkItemSelected: {
+    borderColor: Colors.light.tint,
+    backgroundColor: '#FFF8F5',
+  },
+  artworkThumbnail: { width: 60, height: 60 },
+  artworkName: { fontSize: 10, color: Colors.light.textSecondary, textAlign: 'center' },
+  artworkSelectedBadge: {
+    backgroundColor: Colors.light.tint,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  artworkSelectedText: { fontSize: 9, color: '#fff', fontWeight: '700' },
+  artworkDeleteBtn: { position: 'absolute', top: 4, right: 4 },
+
+  placingHint: {
+    padding: 8,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    marginTop: 4,
+  },
+  placingHintText: { fontSize: 10, color: '#1D4ED8', textAlign: 'center', lineHeight: 14 },
+
+  zoneRef: { maxHeight: 150 },
+  zoneRefItem: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 3 },
+  zoneRefDot: {
+    width: 8, height: 8, borderRadius: 4,
+    borderWidth: 1.5, borderColor: Colors.light.borderDark,
+    backgroundColor: 'transparent',
+  },
+  zoneRefDotFilled: { backgroundColor: '#22C55E', borderColor: '#22C55E' },
+  zoneRefText: { fontSize: 11, color: Colors.light.textSecondary },
+  zoneRefTextFilled: { color: '#15803D', fontWeight: '600' },
+
+  resetBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingVertical: 8, paddingHorizontal: 12,
+    borderRadius: 8, borderWidth: 1, borderColor: Colors.light.border,
+  },
+  resetBtnText: { fontSize: 13, color: Colors.light.textSecondary },
+
+  downloadBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingVertical: 8, paddingHorizontal: 12,
+    borderRadius: 8, borderWidth: 1, borderColor: Colors.light.tint,
+  },
+  downloadBtnText: { fontSize: 13, color: Colors.light.tint, fontWeight: '600' },
+
+  saveBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingVertical: 8, paddingHorizontal: 16,
+    backgroundColor: Colors.light.tint, borderRadius: 8,
+    minWidth: 120, justifyContent: 'center',
+  },
+  saveBtnText: { fontSize: 13, color: '#fff', fontWeight: '700' },
+});

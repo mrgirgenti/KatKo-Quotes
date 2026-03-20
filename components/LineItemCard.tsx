@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput, Platform, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { ChevronDown, ChevronUp, Trash2, Upload, RefreshCw, X } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, Trash2, Upload, RefreshCw, X, Brush } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { MockupDesigner } from './MockupDesigner/MockupDesigner';
 import { 
   LineItem, 
   SERVICE_STYLES, 
@@ -29,6 +30,7 @@ interface LineItemCardProps {
 
 export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardProps) {
   const [expanded, setExpanded] = useState(true);
+  const [showDesigner, setShowDesigner] = useState(false);
   const [dtfWidth1, setDtfWidth1] = useState('');
   const [dtfHeight1, setDtfHeight1] = useState('');
   const [dtfWidth2, setDtfWidth2] = useState('');
@@ -200,27 +202,54 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                   resizeMode="contain"
                 />
                 <View style={styles.mockupActions}>
+                  <TouchableOpacity style={styles.mockupDesignBtn} onPress={() => setShowDesigner(true)}>
+                    <Brush size={12} color="#fff" />
+                    <Text style={styles.mockupChangeBtnText}>Edit Design</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity style={styles.mockupChangeBtn} onPress={handlePickImage}>
-                    <RefreshCw size={13} color="#fff" />
-                    <Text style={styles.mockupChangeBtnText}>Change</Text>
+                    <RefreshCw size={12} color="#fff" />
+                    <Text style={styles.mockupChangeBtnText}>Upload</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.mockupRemoveBtn}
                     onPress={() => onChange({ ...item, mockupUri: undefined })}
                   >
-                    <X size={13} color={Colors.light.error} />
+                    <X size={12} color={Colors.light.error} />
                     <Text style={styles.mockupRemoveBtnText}>Remove</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             ) : (
-              <TouchableOpacity style={styles.mockupPlaceholder} onPress={handlePickImage}>
-                <Upload size={28} color={Colors.light.borderDark} />
-                <Text style={styles.mockupPlaceholderTitle}>Upload Mockup</Text>
-                <Text style={styles.mockupPlaceholderSub}>Click to browse files</Text>
-              </TouchableOpacity>
+              <View style={styles.mockupPlaceholderContainer}>
+                <TouchableOpacity style={styles.mockupDesignBtnLarge} onPress={() => setShowDesigner(true)}>
+                  <Brush size={22} color={Colors.light.tint} />
+                  <Text style={styles.mockupDesignBtnTitle}>Design Mockup</Text>
+                  <Text style={styles.mockupDesignBtnSub}>Select template + place artwork</Text>
+                </TouchableOpacity>
+                <View style={styles.mockupDivider}>
+                  <View style={styles.mockupDividerLine} />
+                  <Text style={styles.mockupDividerText}>or</Text>
+                  <View style={styles.mockupDividerLine} />
+                </View>
+                <TouchableOpacity style={styles.mockupUploadBtn} onPress={handlePickImage}>
+                  <Upload size={15} color={Colors.light.textSecondary} />
+                  <Text style={styles.mockupUploadBtnText}>Upload Image</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
+
+          {/* Mockup Designer Modal */}
+          <MockupDesigner
+            visible={showDesigner}
+            onClose={() => setShowDesigner(false)}
+            onSave={(uri) => {
+              onChange({ ...item, mockupUri: uri });
+              setShowDesigner(false);
+            }}
+            initialMockupUri={item.mockupUri}
+            suggestedLocations={[item.location1, item.location2].filter(Boolean)}
+          />
 
           {/* ── Form Fields ── */}
           <View style={styles.formFieldsSection}>
@@ -789,6 +818,75 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600' as const,
     color: Colors.light.error,
+  },
+  mockupDesignBtn: {
+    flex: 1,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 5,
+    backgroundColor: '#0D1B2A',
+    paddingVertical: 7,
+    borderRadius: 6,
+  },
+  mockupPlaceholderContainer: {
+    borderWidth: 2,
+    borderStyle: 'dashed' as const,
+    borderColor: Colors.light.border,
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    backgroundColor: Colors.light.background,
+    gap: 10,
+  },
+  mockupDesignBtnLarge: {
+    alignItems: 'center' as const,
+    paddingVertical: 14,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: Colors.light.tint,
+    backgroundColor: '#FFF8F5',
+    gap: 4,
+  },
+  mockupDesignBtnTitle: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.light.tint,
+  },
+  mockupDesignBtnSub: {
+    fontSize: 10,
+    color: Colors.light.textSecondary,
+    textAlign: 'center' as const,
+  },
+  mockupDivider: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+  },
+  mockupDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.light.border,
+  },
+  mockupDividerText: {
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+  },
+  mockupUploadBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: '#fff',
+  },
+  mockupUploadBtnText: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    fontWeight: '500' as const,
   },
   formFieldsSection: {
     flex: 1,
