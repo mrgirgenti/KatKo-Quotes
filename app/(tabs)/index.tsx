@@ -318,6 +318,16 @@ export default function NewQuoteScreen() {
                 ))}
               </View>
 
+            </View>
+
+            {/* Right column: sticky pricing + summary */}
+            <View
+              style={[
+                styles.rightColumn,
+                // @ts-ignore - position: 'sticky' is web-only
+                { position: 'sticky', top: 16, alignSelf: 'flex-start' },
+              ]}
+            >
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Pricing & Fees</Text>
                 <View style={styles.card}>
@@ -341,16 +351,6 @@ export default function NewQuoteScreen() {
                   />
                 </View>
               </View>
-            </View>
-
-            {/* Right column: sticky summary */}
-            <View
-              style={[
-                styles.rightColumn,
-                // @ts-ignore - position: 'sticky' is web-only
-                { position: 'sticky', top: 16, alignSelf: 'flex-start' },
-              ]}
-            >
               {summaryPanel}
             </View>
           </View>
