@@ -36,6 +36,7 @@ import {
   PrintLocation,
   ZoneDefinition,
 } from './garmentData';
+import { VENDOR_CATALOG, ProductColor } from './vendorCatalog';
 import { generateId } from '@/utils/quoteCalculations';
 
 const DISPLAY_W = 340;
@@ -71,7 +72,19 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
   const [selectedArtworkId, setSelectedArtworkId] = useState<string | null>(null);
   const [activeZoneId, setActiveZoneId] = useState<PrintLocation | null>(null);
   const [saving, setSaving] = useState(false);
+  const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
+  const [selectedStyleNumber, setSelectedStyleNumber] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const selectedVendor = selectedVendorId
+    ? VENDOR_CATALOG.find(v => v.id === selectedVendorId) ?? null
+    : null;
+  const selectedStyle = selectedVendor && selectedStyleNumber
+    ? selectedVendor.styles.find(s => s.styleNumber === selectedStyleNumber) ?? null
+    : null;
+  const genericColors: ProductColor[] = GARMENT_COLORS.map(c => ({ name: c.label, hex: c.value, dark: c.dark }));
+  const activeColors: ProductColor[] = selectedStyle ? selectedStyle.colors : genericColors;
+  const activeColorName = activeColors.find(c => c.hex === garmentColor)?.name ?? '';
 
   const garment = GARMENTS[garmentType];
   const svgPath = currentView === 'front' ? garment.frontPath : garment.backPath;
@@ -128,6 +141,27 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
   const handleRemovePlacement = (zoneId: PrintLocation) => {
     setPlacements(prev => prev.filter(p => p.zoneId !== zoneId));
     if (activeZoneId === zoneId) setActiveZoneId(null);
+  };
+
+  const handleVendorSelect = (vendorId: string) => {
+    if (selectedVendorId === vendorId) {
+      setSelectedVendorId(null);
+      setSelectedStyleNumber(null);
+    } else {
+      setSelectedVendorId(vendorId);
+      setSelectedStyleNumber(null);
+    }
+  };
+
+  const handleStyleSelect = (styleNumber: string) => {
+    const vendor = VENDOR_CATALOG.find(v => v.id === selectedVendorId);
+    const style = vendor?.styles.find(s => s.styleNumber === styleNumber);
+    if (!style) return;
+    setSelectedStyleNumber(styleNumber);
+    setGarmentType(style.garmentType);
+    setCurrentView('front');
+    const firstColor = style.colors[0];
+    if (firstColor) setGarmentColor(firstColor.hex);
   };
 
   const handleRemoveArtwork = (artworkId: string) => {
@@ -260,8 +294,47 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
           <View style={styles.body}>
             {/* ── Left Panel: Controls ── */}
             <ScrollView style={styles.leftPanel} showsVerticalScrollIndicator={false}>
-              {/* Garment Type */}
-              <Text style={styles.sectionLabel}>GARMENT TYPE</Text>
+              {/* Vendor */}
+              <Text style={styles.sectionLabel}>VENDOR</Text>
+              <View style={styles.garmentTypes}>
+                {VENDOR_CATALOG.map(vendor => (
+                  <TouchableOpacity
+                    key={vendor.id}
+                    style={[styles.typeBtn, selectedVendorId === vendor.id && styles.typeBtnActive]}
+                    onPress={() => handleVendorSelect(vendor.id)}
+                  >
+                    <Text style={[styles.typeBtnText, selectedVendorId === vendor.id && styles.typeBtnTextActive]} numberOfLines={1}>
+                      {vendor.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Product Style */}
+              {selectedVendor && (
+                <>
+                  <Text style={styles.sectionLabel}>PRODUCT STYLE</Text>
+                  <View style={styles.garmentTypes}>
+                    {selectedVendor.styles.map(style => (
+                      <TouchableOpacity
+                        key={style.styleNumber}
+                        style={[styles.styleBtn, selectedStyleNumber === style.styleNumber && styles.styleBtnActive]}
+                        onPress={() => handleStyleSelect(style.styleNumber)}
+                      >
+                        <Text style={[styles.styleNumber, selectedStyleNumber === style.styleNumber && styles.styleNumberActive]}>
+                          {style.styleNumber}
+                        </Text>
+                        <Text style={[styles.styleName, selectedStyleNumber === style.styleNumber && styles.styleNameActive]} numberOfLines={2}>
+                          {style.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              {/* Garment Type (manual override) */}
+              <Text style={styles.sectionLabel}>GARMENT TEMPLATE</Text>
               <View style={styles.garmentTypes}>
                 {(Object.keys(GARMENTS) as GarmentType[]).map(type => (
                   <TouchableOpacity
@@ -277,28 +350,28 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
               </View>
 
               {/* Color */}
-              <Text style={styles.sectionLabel}>GARMENT COLOR</Text>
+              <Text style={styles.sectionLabel}>
+                {selectedStyle ? `${selectedStyle.styleNumber} COLORS (${activeColors.length})` : 'GARMENT COLOR'}
+              </Text>
               <View style={styles.colorGrid}>
-                {GARMENT_COLORS.map(color => (
+                {activeColors.map(color => (
                   <TouchableOpacity
-                    key={color.value}
+                    key={color.hex + color.name}
                     style={[
                       styles.colorSwatch,
-                      { backgroundColor: color.value },
-                      garmentColor === color.value && styles.colorSwatchSelected,
-                      color.value === '#FFFFFF' && styles.colorSwatchWhite,
+                      { backgroundColor: color.hex },
+                      garmentColor === color.hex && styles.colorSwatchSelected,
+                      color.hex === '#FFFFFF' && styles.colorSwatchWhite,
                     ]}
-                    onPress={() => setGarmentColor(color.value)}
+                    onPress={() => setGarmentColor(color.hex)}
                   >
-                    {garmentColor === color.value && (
+                    {garmentColor === color.hex && (
                       <CheckCircle size={14} color={color.dark ? '#fff' : '#333'} />
                     )}
                   </TouchableOpacity>
                 ))}
               </View>
-              <Text style={styles.colorLabel}>
-                {GARMENT_COLORS.find(c => c.value === garmentColor)?.label ?? ''}
-              </Text>
+              <Text style={styles.colorLabel}>{activeColorName}</Text>
 
               {/* View toggle */}
               {garmentType !== 'hat' && (
@@ -324,9 +397,9 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
               {/* Instructions */}
               <View style={styles.instructions}>
                 <Text style={styles.instructionsTitle}>How to use:</Text>
-                <Text style={styles.instructionsText}>1. Upload artwork on the right</Text>
-                <Text style={styles.instructionsText}>2. Select artwork (click it)</Text>
-                <Text style={styles.instructionsText}>3. Tap a print zone to place it</Text>
+                <Text style={styles.instructionsText}>1. Pick a vendor &amp; product</Text>
+                <Text style={styles.instructionsText}>2. Choose a color</Text>
+                <Text style={styles.instructionsText}>3. Upload &amp; place artwork</Text>
                 <Text style={styles.instructionsText}>4. Save your mockup</Text>
               </View>
             </ScrollView>
@@ -416,6 +489,24 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                     </TouchableOpacity>
                   );
                 })}
+              </View>
+
+              {/* Product info bar */}
+              <View style={styles.productInfoBar}>
+                {selectedStyle ? (
+                  <>
+                    <Text style={styles.productInfoName} numberOfLines={1}>
+                      {selectedStyle.name}
+                    </Text>
+                    <Text style={styles.productInfoSub} numberOfLines={1}>
+                      {selectedStyle.styleNumber} · {selectedVendor?.name} · {activeColorName || 'Select color'}
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={styles.productInfoSub}>
+                    No product selected · {activeColorName || 'Select color'}
+                  </Text>
+                )}
               </View>
 
               {/* Placement summary */}
@@ -574,7 +665,7 @@ const styles = StyleSheet.create({
     minHeight: 480,
   },
   leftPanel: {
-    width: 170,
+    width: 210,
     borderRightWidth: 1,
     borderRightColor: Colors.light.border,
     backgroundColor: Colors.light.surface,
@@ -631,6 +722,34 @@ const styles = StyleSheet.create({
   },
   typeBtnText: { fontSize: 12, color: Colors.light.text, fontWeight: '500' },
   typeBtnTextActive: { color: '#fff', fontWeight: '600' },
+
+  styleBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: '#fff',
+  },
+  styleBtnActive: {
+    backgroundColor: '#FFF0E8',
+    borderColor: Colors.light.tint,
+  },
+  styleNumber: { fontSize: 11, fontWeight: '700', color: Colors.light.tint },
+  styleNumberActive: { color: Colors.light.tint },
+  styleName: { fontSize: 11, color: Colors.light.textSecondary, lineHeight: 14, marginTop: 1 },
+  styleNameActive: { color: Colors.light.text },
+
+  productInfoBar: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  productInfoName: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  productInfoSub: { fontSize: 10, color: 'rgba(255,255,255,0.75)', marginTop: 1 },
 
   colorGrid: {
     flexDirection: 'row',
