@@ -5,6 +5,8 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 ## Features
 - Create and manage sales quotes with line items
 - Quote history and sales tracking
+- Client management with profile pages (linked quotes, stats, edit, delete)
+- Client auto-add on quote submit (Prospect) and sale finalize (Active)
 - Reports generation (PDF, CSV, Google Sheets export)
 - User profiles with avatar support
 
@@ -18,8 +20,9 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 
 ## Project Structure
 - `app/` - Expo Router pages (file-based routing)
-  - `(tabs)/` - Main tab screens (New Quote, History, Sales)
+  - `(tabs)/` - Main tab screens (New Quote, History, Sales, Clients)
   - `quote/` - Quote detail, edit, and sales tracking screens
+  - `clients/[id].tsx` - Client profile page (info panel + linked quotes)
   - `profile.tsx`, `reports.tsx`, `modal.tsx`
 - `components/` - Reusable UI components
 - `contexts/` - React Context providers (QuotesContext, UserContext)

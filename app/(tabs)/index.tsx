@@ -13,6 +13,7 @@ import {
 import { Plus, Send, RotateCcw } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useQuotes } from '@/contexts/QuotesContext';
+import { useClients } from '@/contexts/ClientsContext';
 import { FormInput } from '@/components/FormInput';
 import { DateInput } from '@/components/DateInput';
 import { SegmentedControl } from '@/components/SegmentedControl';
@@ -65,6 +66,7 @@ const getTodayDate = () => {
 
 export default function NewQuoteScreen() {
   const { addQuote, isAdding } = useQuotes();
+  const { clients, addClient } = useClients();
   const { isMobile, isTablet, isDesktop } = useBreakpoint();
   const isNative = Platform.OS !== 'web';
 
@@ -167,6 +169,34 @@ export default function NewQuoteScreen() {
     addQuote(quote);
     setToastMessage(`Quote ${invoiceNumber ? '#' + invoiceNumber : ''} has been submitted!`);
     setToastVisible(true);
+
+    const clientName = personOrganization.trim();
+    const existingClient = clients.find(
+      (c) =>
+        c.name.toLowerCase() === clientName.toLowerCase() ||
+        (c.organization || '').toLowerCase() === clientName.toLowerCase()
+    );
+    if (!existingClient) {
+      Alert.alert(
+        'Save Client?',
+        `Would you like to add "${clientName}" to your client list?`,
+        [
+          { text: 'Not Now', style: 'cancel' },
+          {
+            text: 'Add Client',
+            onPress: () => {
+              addClient({
+                name: clientName,
+                status: 'Prospect',
+                totalOrders: 1,
+                totalSpent: calculations?.total ?? 0,
+              });
+            },
+          },
+        ]
+      );
+    }
+
     resetForm();
   }, [
     personOrganization,
@@ -181,6 +211,8 @@ export default function NewQuoteScreen() {
     hasCardFee,
     calculations,
     addQuote,
+    clients,
+    addClient,
     resetForm,
   ]);
 

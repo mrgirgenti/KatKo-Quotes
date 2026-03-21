@@ -21,6 +21,7 @@ function RootLayoutNav() {
       <Stack.Screen name="quote/sales-tracking" options={{ title: 'Sales Tracking' }} />
       <Stack.Screen name="profile" options={{ title: 'Profile', presentation: 'modal' }} />
       <Stack.Screen name="reports" options={{ title: 'Reports' }} />
+      <Stack.Screen name="clients/[id]" options={{ title: 'Client Profile', headerStyle: { backgroundColor: '#000000' }, headerTintColor: '#fff' }} />
     </Stack>
   );
 }

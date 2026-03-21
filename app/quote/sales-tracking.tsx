@@ -34,6 +34,8 @@ import {
   AlertCircle,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { useClients } from '@/contexts/ClientsContext';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { SalesData, VENDORS, APPLICATORS, LineItemActualCosts, SIZE_LABELS, LineItem } from '@/types/quote';
@@ -48,6 +50,8 @@ export default function SalesTrackingScreen() {
   const router = useRouter();
   const { quotes, sales, updateSalesData, lockSale } = useQuotes();
   const { currentUser } = useUser();
+  const { clients, addClient } = useClients();
+  const { isDesktop } = useBreakpoint();
 
   const quote = useMemo(() => {
     const allItems = [...quotes, ...sales];
@@ -246,18 +250,35 @@ export default function SalesTrackingScreen() {
     return { salesData, updatedLineItems };
   }, [quote, completedDate, lineItemCosts, actualOnlineFee, actualSalesTax, actualCardFee, amountCollected, notes, calculations]);
 
+  const autoAddClientIfNew = useCallback((clientName: string, amountCollected: number) => {
+    const existing = clients.find(
+      (c) =>
+        c.name.toLowerCase() === clientName.toLowerCase() ||
+        (c.organization || '').toLowerCase() === clientName.toLowerCase()
+    );
+    if (!existing) {
+      addClient({
+        name: clientName,
+        status: 'Active',
+        totalOrders: 1,
+        totalSpent: amountCollected,
+      });
+    }
+  }, [clients, addClient]);
+
   const handleSaveOnly = useCallback(() => {
     const data = buildSalesData();
     if (!data || !quote) return;
     
     updateSalesData({ quoteId: quote.id, salesData: data.salesData, updatedLineItems: data.updatedLineItems });
+    autoAddClientIfNew(quote.personOrganization, data.salesData.amountCollected);
     setSaveModalVisible(false);
     setToastMessage('Sales tracking data saved!');
     setToastVisible(true);
     setTimeout(() => {
       router.back();
     }, 1500);
-  }, [buildSalesData, quote, updateSalesData, router]);
+  }, [buildSalesData, quote, updateSalesData, autoAddClientIfNew, router]);
 
   const handleSaveAndLock = useCallback(() => {
     const data = buildSalesData();
@@ -265,13 +286,14 @@ export default function SalesTrackingScreen() {
     
     updateSalesData({ quoteId: quote.id, salesData: data.salesData, updatedLineItems: data.updatedLineItems });
     lockSale(quote.id);
+    autoAddClientIfNew(quote.personOrganization, data.salesData.amountCollected);
     setSaveModalVisible(false);
     setToastMessage('Sale saved and locked!');
     setToastVisible(true);
     setTimeout(() => {
       router.back();
     }, 1500);
-  }, [buildSalesData, quote, updateSalesData, lockSale, router]);
+  }, [buildSalesData, quote, updateSalesData, lockSale, autoAddClientIfNew, router]);
 
   const handleSave = useCallback(() => {
     setSaveModalVisible(true);
@@ -365,8 +387,8 @@ export default function SalesTrackingScreen() {
         }}
       />
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={[styles.content, isDesktop && { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start' }]}>
+        <View style={[styles.header, isDesktop && { width: '100%' }]}>
           <Text style={styles.clientName}>{quote.personOrganization}</Text>
           <Text style={styles.projectName}>{quote.projectName}</Text>
           <View style={styles.quotedInfo}>
@@ -375,7 +397,7 @@ export default function SalesTrackingScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
+        <View style={[styles.section, isDesktop && { width: '100%' }]}>
           <DateInput
             label="Completion Date"
             value={completedDate}
@@ -383,7 +405,7 @@ export default function SalesTrackingScreen() {
           />
         </View>
 
-        <View style={styles.section}>
+        <View style={[styles.section, isDesktop && { flex: 1, minWidth: 0, marginRight: 12 }]}>
           <Text style={styles.sectionTitle}>
             Line Item Costs ({quote.lineItems.length})
           </Text>
@@ -693,7 +715,7 @@ export default function SalesTrackingScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
+        <View style={[styles.section, isDesktop && { width: 420 }]}>
           <Text style={styles.sectionTitle}>Sales Overview</Text>
           <View style={styles.overviewCard}>
             <View style={styles.vendorApplicatorRow}>
@@ -842,7 +864,7 @@ export default function SalesTrackingScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
+        <View style={[styles.section, isDesktop && { width: '100%' }]}>
           <Text style={styles.sectionTitle}>Notes</Text>
           <TextInput
             style={styles.notesInput}

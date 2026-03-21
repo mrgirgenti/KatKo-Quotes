@@ -12,7 +12,8 @@ import {
   Platform,
   Pressable,
 } from 'react-native';
-import { Plus, Search, Edit3, Trash2, X, Users } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { Plus, Search, Edit3, Trash2, X, Users, ChevronRight } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useClients } from '@/contexts/ClientsContext';
 import { Client, ClientStatus } from '@/types/client';
@@ -38,6 +39,7 @@ const EMPTY_FORM = {
 };
 
 export default function ClientsScreen() {
+  const router = useRouter();
   const { clients, addClient, updateClient, deleteClient } = useClients();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<ClientStatus | 'All'>('All');
@@ -203,7 +205,12 @@ export default function ClientsScreen() {
           filtered.map((client) => {
             const st = STATUS_STYLE[client.status];
             return (
-              <View key={client.id} style={styles.clientCard}>
+              <TouchableOpacity
+                key={client.id}
+                style={styles.clientCard}
+                onPress={() => router.push(`/clients/${client.id}` as any)}
+                activeOpacity={0.85}
+              >
                 <View style={styles.clientCardLeft}>
                   <View style={styles.avatarCircle}>
                     <Text style={styles.avatarInitial}>
@@ -240,18 +247,19 @@ export default function ClientsScreen() {
                 <View style={styles.clientActions}>
                   <TouchableOpacity
                     style={styles.actionBtn}
-                    onPress={() => openEditModal(client)}
+                    onPress={(e) => { e.stopPropagation?.(); openEditModal(client); }}
                   >
                     <Edit3 size={16} color={Colors.light.textSecondary} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.actionBtn}
-                    onPress={() => handleDelete(client)}
+                    onPress={(e) => { e.stopPropagation?.(); handleDelete(client); }}
                   >
                     <Trash2 size={16} color={Colors.light.error} />
                   </TouchableOpacity>
+                  <ChevronRight size={16} color={Colors.light.border} />
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })
         )}

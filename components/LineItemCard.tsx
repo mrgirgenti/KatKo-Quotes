@@ -434,7 +434,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                 {!isPromotional && variants.length < 10 && (
                   <TouchableOpacity style={styles.addVariantBtn} onPress={addVariant}>
                     <Plus size={13} color="#fff" />
-                    <Text style={styles.addVariantBtnText}>Add Color</Text>
+                    <Text style={styles.addVariantBtnText}>Add Style/Color</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -456,7 +456,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                   <View style={styles.variantTable}>
                     {/* Table header — matches reference work order format */}
                     <View style={styles.variantTableHeader}>
-                      <Text style={[styles.variantTH, styles.variantColStyleColor]}>Style Number &amp; Garment Color</Text>
+                      <Text style={[styles.variantTH, styles.variantColStyleColor]}>Style &amp; Color</Text>
                       {APPAREL_SIZES.map(({ label }) => (
                         <Text key={label} style={[styles.variantTH, styles.variantColSize]}>
                           {label}
@@ -473,23 +473,27 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                         <View key={vIdx} style={[styles.variantRow, vIdx % 2 === 1 && styles.variantRowAlt]}>
                           {/* Style + Color combined column */}
                           <View style={styles.variantColStyleColor}>
-                            <ComboBox
-                              label=""
-                              value={variant.product}
-                              options={PRODUCTS}
-                              onChange={(v) => updateVariant(vIdx, { product: v })}
-                              placeholder="Style / Garment..."
-                              autoTitleCase
-                            />
-                            <View style={styles.variantColorPicker}>
-                              <ComboBox
-                                label=""
-                                value={variant.color}
-                                options={PRODUCT_COLORS}
-                                onChange={(v) => updateVariant(vIdx, { color: v })}
-                                placeholder="Color..."
-                                autoTitleCase
-                              />
+                            <View style={styles.variantStyleColorRow}>
+                              <View style={{ flex: 3 }}>
+                                <ComboBox
+                                  label=""
+                                  value={variant.product}
+                                  options={PRODUCTS}
+                                  onChange={(v) => updateVariant(vIdx, { product: v })}
+                                  placeholder="Style..."
+                                  autoTitleCase
+                                />
+                              </View>
+                              <View style={{ flex: 2 }}>
+                                <ComboBox
+                                  label=""
+                                  value={variant.color}
+                                  options={PRODUCT_COLORS}
+                                  onChange={(v) => updateVariant(vIdx, { color: v })}
+                                  placeholder="Color..."
+                                  autoTitleCase
+                                />
+                              </View>
                             </View>
                           </View>
                           {/* Size inputs */}
@@ -1150,11 +1154,13 @@ const styles = StyleSheet.create({
   },
   // Column widths
   variantColStyleColor: {
-    width: 220,
+    width: 300,
     paddingRight: 8,
   },
-  variantColorPicker: {
-    marginTop: 4,
+  variantStyleColorRow: {
+    flexDirection: 'row' as const,
+    gap: 4,
+    alignItems: 'center' as const,
   },
   variantColSize: {
     width: 42,
@@ -1200,14 +1206,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 8,
     backgroundColor: '#1a1a1a',
-    borderTopWidth: 2,
-    borderTopColor: Colors.light.tint,
   },
   variantGrandTotalLabel: {
     fontSize: 12,
     fontWeight: '800' as const,
     color: '#fff',
-    textAlign: 'right' as const,
+    textAlign: 'left' as const,
     paddingRight: 8,
   },
   variantGrandTotalCell: {
@@ -1217,8 +1221,9 @@ const styles = StyleSheet.create({
     textAlign: 'center' as const,
   },
   variantGrandTotalBold: {
-    color: Colors.light.tint,
+    color: '#fff',
     fontSize: 14,
+    fontWeight: '800' as const,
   },
   // Promotional
   promotionalQty: {

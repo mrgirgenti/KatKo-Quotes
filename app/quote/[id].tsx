@@ -32,6 +32,7 @@ import {
   Lock,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { formatCurrency, calculateLineItemSubtotal, getTotalQuantity } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
@@ -50,7 +51,7 @@ export default function QuoteDetailScreen() {
   const [toastMessage, setToastMessage] = useState('');
   const [menuVisible, setMenuVisible] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  
+  const { isDesktop } = useBreakpoint();
 
   const quote = useMemo(() => {
     const allQuotes = [...quotes, ...sales];
@@ -293,8 +294,8 @@ export default function QuoteDetailScreen() {
         }}
       />
       
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <View style={styles.section}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={[styles.content, isDesktop && { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start' }]}>
+        <View style={[styles.section, isDesktop && { width: '100%' }]}>
           <Text style={styles.sectionTitle}>Order Information</Text>
           <View style={styles.card}>
             <View style={styles.orderHeaderRow}>
@@ -332,7 +333,7 @@ export default function QuoteDetailScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
+        <View style={[styles.section, isDesktop && { flex: 1, minWidth: 0, marginRight: 12 }]}>
           <Text style={styles.sectionTitle}>
             Line Items ({quote.lineItems.length})
           </Text>
@@ -426,7 +427,7 @@ export default function QuoteDetailScreen() {
           ))}
         </View>
 
-        <View style={styles.section}>
+        <View style={[styles.section, isDesktop && { width: 380 }]}>
           <Text style={styles.sectionTitle}>Pricing Summary</Text>
           <View style={styles.summaryCard}>
             <View style={styles.summaryRow}>
@@ -531,8 +532,11 @@ export default function QuoteDetailScreen() {
           </View>
         </View>
 
+        {isDesktop && quote.status === 'sale' && quote.salesData && (
+          <View style={{ flex: 1, minWidth: 0, marginRight: 12 }} />
+        )}
         {quote.status === 'sale' && quote.salesData && (
-          <View style={styles.section}>
+          <View style={[styles.section, isDesktop && { width: 380 }]}>
             <Text style={styles.sectionTitle}>Sales Tracking</Text>
             <View style={styles.salesTrackingCard}>
               {(() => {
@@ -688,6 +692,7 @@ export default function QuoteDetailScreen() {
           </View>
         )}
 
+        {isDesktop && <View style={{ width: '100%' }} />}
         <View style={styles.bottomPadding} />
       </ScrollView>
 
