@@ -27,6 +27,7 @@ import {
   RotateCcw,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import {
   CANVAS_W,
   CANVAS_H,
@@ -66,7 +67,10 @@ interface Props {
   suggestedLocations?: string[];
 }
 
+type MobileTab = 'controls' | 'canvas' | 'artwork';
+
 export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, suggestedLocations }: Props) {
+  const { isMobile } = useBreakpoint();
   const [garmentType, setGarmentType] = useState<GarmentType>('tshirt');
   const [garmentColor, setGarmentColor] = useState('#FFFFFF');
   const [currentView, setCurrentView] = useState<GarmentView>('front');
@@ -77,6 +81,7 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
   const [saving, setSaving] = useState(false);
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
   const [selectedStyleNumber, setSelectedStyleNumber] = useState<string | null>(null);
+  const [mobileTab, setMobileTab] = useState<MobileTab>('controls');
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const selectedVendor = selectedVendorId
@@ -315,9 +320,31 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
             </TouchableOpacity>
           </View>
 
-          <View style={styles.body}>
+          {/* Mobile Tab Bar */}
+          {isMobile && (
+            <View style={styles.mobileTabBar}>
+              {(['controls', 'canvas', 'artwork'] as MobileTab[]).map(tab => (
+                <TouchableOpacity
+                  key={tab}
+                  style={[styles.mobileTabBtn, mobileTab === tab && styles.mobileTabBtnActive]}
+                  onPress={() => setMobileTab(tab)}
+                >
+                  <Text style={[styles.mobileTabText, mobileTab === tab && styles.mobileTabTextActive]}>
+                    {tab === 'controls' ? 'Controls' : tab === 'canvas' ? 'Canvas' : 'Artwork'}
+                  </Text>
+                  {tab === 'artwork' && placements.length > 0 && (
+                    <View style={styles.mobileTabBadge}>
+                      <Text style={styles.mobileTabBadgeText}>{placements.length}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          <View style={[styles.body, isMobile && styles.bodyMobile]}>
             {/* ── Left Panel: Controls ── */}
-            <ScrollView style={styles.leftPanel} showsVerticalScrollIndicator={false}>
+            <ScrollView style={[styles.leftPanel, isMobile && mobileTab !== 'controls' && { display: 'none' }, isMobile && { width: '100%' }]} showsVerticalScrollIndicator={false}>
 
               {/* 1. Garment Template — always first */}
               <Text style={styles.sectionLabel}>GARMENT TEMPLATE</Text>
@@ -437,7 +464,7 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
             </ScrollView>
 
             {/* ── Center: Garment Canvas ── */}
-            <View style={styles.centerPanel}>
+            <View style={[styles.centerPanel, isMobile && mobileTab !== 'canvas' && { display: 'none' }, isMobile && { width: '100%' }]}>
               <View style={[styles.canvasContainer, { width: DISPLAY_W, height: DISPLAY_H }]}>
                 {/* SVG Garment */}
                 <Svg
@@ -557,7 +584,7 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
             </View>
 
             {/* ── Right Panel: Artwork ── */}
-            <View style={styles.rightPanel}>
+            <View style={[styles.rightPanel, isMobile && mobileTab !== 'artwork' && { display: 'none' }, isMobile && { width: '100%' }]}>
               <Text style={styles.sectionLabel}>ARTWORK</Text>
               <TouchableOpacity style={styles.uploadArtworkBtn} onPress={handleUploadArtwork}>
                 <Upload size={16} color={Colors.light.tint} />
@@ -820,6 +847,53 @@ const styles = StyleSheet.create({
   },
   productInfoName: { fontSize: 12, fontWeight: '700', color: '#fff' },
   productInfoSub: { fontSize: 10, color: 'rgba(255,255,255,0.75)', marginTop: 1 },
+
+  bodyMobile: {
+    flexDirection: 'column',
+  },
+
+  mobileTabBar: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+    backgroundColor: Colors.light.surface,
+  },
+  mobileTabBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 4,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  mobileTabBtnActive: {
+    borderBottomColor: Colors.light.tint,
+  },
+  mobileTabText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: Colors.light.textSecondary,
+  },
+  mobileTabTextActive: {
+    color: Colors.light.tint,
+    fontWeight: '700',
+  },
+  mobileTabBadge: {
+    backgroundColor: Colors.light.tint,
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  mobileTabBadgeText: {
+    fontSize: 10,
+    color: '#fff',
+    fontWeight: '700',
+  },
 
   colorGrid: {
     flexDirection: 'row',

@@ -644,52 +644,60 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                   <Text style={styles.dtfCalcTitle}>DTF Cost Calculator</Text>
 
                   <Text style={styles.dtfLocationLabel}>Location #1 {item.location1 ? `(${item.location1})` : ''}</Text>
-                  <View style={styles.dtfCalcRow}>
-                    <View style={styles.dtfInputGroup}>
-                      <Text style={styles.dtfInputLabel}>Width</Text>
-                      <View style={styles.dtfInputWrapper}>
-                        <TextInput
-                          style={styles.dtfInput}
-                          value={dtfWidth1}
-                          onChangeText={(text) => setDtfWidth1(formatDecimalInput(text))}
-                          keyboardType="decimal-pad"
-                          placeholder="0.00 in"
-                          placeholderTextColor={Colors.light.textSecondary}
-                        />
-                        {dtfWidth1 !== '' ? <Text style={styles.dtfInputSuffix}>in</Text> : null}
+                  {isMobile ? (
+                    <>
+                      <View style={styles.dtfCalcRowMobile}>
+                        <View style={styles.dtfInputGroup}>
+                          <Text style={styles.dtfInputLabel}>Width</Text>
+                          <View style={styles.dtfInputWrapper}>
+                            <TextInput style={styles.dtfInput} value={dtfWidth1} onChangeText={t => setDtfWidth1(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={Colors.light.textSecondary} />
+                            {dtfWidth1 !== '' ? <Text style={styles.dtfInputSuffix}>in</Text> : null}
+                          </View>
+                        </View>
+                        <Text style={styles.dtfOperatorCenter}>×</Text>
+                        <View style={styles.dtfInputGroup}>
+                          <Text style={styles.dtfInputLabel}>Height</Text>
+                          <View style={styles.dtfInputWrapper}>
+                            <TextInput style={styles.dtfInput} value={dtfHeight1} onChangeText={t => setDtfHeight1(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={Colors.light.textSecondary} />
+                            {dtfHeight1 !== '' ? <Text style={styles.dtfInputSuffix}>in</Text> : null}
+                          </View>
+                        </View>
+                      </View>
+                      <View style={[styles.dtfCalcRowMobile, { marginTop: 6 }]}>
+                        <Text style={styles.dtfRateLabel}>Rate: $</Text>
+                        <View style={[styles.dtfInputWrapper, { flex: 1 }]}>
+                          <TextInput style={styles.dtfRateInputInline} value={dtfRate} onChangeText={t => setDtfRate(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.04" placeholderTextColor={Colors.light.textSecondary} />
+                        </View>
+                        <Text style={styles.dtfRateLabel}>/sq in</Text>
+                      </View>
+                    </>
+                  ) : (
+                    <View style={styles.dtfCalcRow}>
+                      <View style={styles.dtfInputGroup}>
+                        <Text style={styles.dtfInputLabel}>Width</Text>
+                        <View style={styles.dtfInputWrapper}>
+                          <TextInput style={styles.dtfInput} value={dtfWidth1} onChangeText={t => setDtfWidth1(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.00 in" placeholderTextColor={Colors.light.textSecondary} />
+                          {dtfWidth1 !== '' ? <Text style={styles.dtfInputSuffix}>in</Text> : null}
+                        </View>
+                      </View>
+                      <Text style={styles.dtfOperator}>x</Text>
+                      <View style={styles.dtfInputGroup}>
+                        <Text style={styles.dtfInputLabel}>Height</Text>
+                        <View style={styles.dtfInputWrapper}>
+                          <TextInput style={styles.dtfInput} value={dtfHeight1} onChangeText={t => setDtfHeight1(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.00 in" placeholderTextColor={Colors.light.textSecondary} />
+                          {dtfHeight1 !== '' ? <Text style={styles.dtfInputSuffix}>in</Text> : null}
+                        </View>
+                      </View>
+                      <Text style={styles.dtfOperator}>x</Text>
+                      <View style={styles.dtfInputGroup}>
+                        <Text style={styles.dtfInputLabel}>Rate</Text>
+                        <View style={styles.dtfInputWrapper}>
+                          <Text style={styles.dtfDollar}>$</Text>
+                          <TextInput style={styles.dtfRateInputInline} value={dtfRate} onChangeText={t => setDtfRate(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.04" placeholderTextColor={Colors.light.textSecondary} />
+                        </View>
                       </View>
                     </View>
-                    <Text style={styles.dtfOperator}>x</Text>
-                    <View style={styles.dtfInputGroup}>
-                      <Text style={styles.dtfInputLabel}>Height</Text>
-                      <View style={styles.dtfInputWrapper}>
-                        <TextInput
-                          style={styles.dtfInput}
-                          value={dtfHeight1}
-                          onChangeText={(text) => setDtfHeight1(formatDecimalInput(text))}
-                          keyboardType="decimal-pad"
-                          placeholder="0.00 in"
-                          placeholderTextColor={Colors.light.textSecondary}
-                        />
-                        {dtfHeight1 !== '' ? <Text style={styles.dtfInputSuffix}>in</Text> : null}
-                      </View>
-                    </View>
-                    <Text style={styles.dtfOperator}>x</Text>
-                    <View style={styles.dtfInputGroup}>
-                      <Text style={styles.dtfInputLabel}>Rate</Text>
-                      <View style={styles.dtfInputWrapper}>
-                        <Text style={styles.dtfDollar}>$</Text>
-                        <TextInput
-                          style={styles.dtfRateInputInline}
-                          value={dtfRate}
-                          onChangeText={(text) => setDtfRate(formatDecimalInput(text))}
-                          keyboardType="decimal-pad"
-                          placeholder="0.04"
-                          placeholderTextColor={Colors.light.textSecondary}
-                        />
-                      </View>
-                    </View>
-                  </View>
+                  )}
                   <View style={styles.dtfResultRowInline}>
                     <Text style={styles.dtfResultLabel}>
                       {dtfSquareInches1.toFixed(2)} sq in = ${dtfCalculatedCost1.toFixed(2)}
@@ -700,52 +708,60 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                     <>
                       <View style={styles.dtfLocationDivider} />
                       <Text style={styles.dtfLocationLabel}>Location #2 ({item.location2})</Text>
-                      <View style={styles.dtfCalcRow}>
-                        <View style={styles.dtfInputGroup}>
-                          <Text style={styles.dtfInputLabel}>Width</Text>
-                          <View style={styles.dtfInputWrapper}>
-                            <TextInput
-                              style={styles.dtfInput}
-                              value={dtfWidth2}
-                              onChangeText={(text) => setDtfWidth2(formatDecimalInput(text))}
-                              keyboardType="decimal-pad"
-                              placeholder="0.00 in"
-                              placeholderTextColor={Colors.light.textSecondary}
-                            />
-                            {dtfWidth2 !== '' ? <Text style={styles.dtfInputSuffix}>in</Text> : null}
+                      {isMobile ? (
+                        <>
+                          <View style={styles.dtfCalcRowMobile}>
+                            <View style={styles.dtfInputGroup}>
+                              <Text style={styles.dtfInputLabel}>Width</Text>
+                              <View style={styles.dtfInputWrapper}>
+                                <TextInput style={styles.dtfInput} value={dtfWidth2} onChangeText={t => setDtfWidth2(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={Colors.light.textSecondary} />
+                                {dtfWidth2 !== '' ? <Text style={styles.dtfInputSuffix}>in</Text> : null}
+                              </View>
+                            </View>
+                            <Text style={styles.dtfOperatorCenter}>×</Text>
+                            <View style={styles.dtfInputGroup}>
+                              <Text style={styles.dtfInputLabel}>Height</Text>
+                              <View style={styles.dtfInputWrapper}>
+                                <TextInput style={styles.dtfInput} value={dtfHeight2} onChangeText={t => setDtfHeight2(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={Colors.light.textSecondary} />
+                                {dtfHeight2 !== '' ? <Text style={styles.dtfInputSuffix}>in</Text> : null}
+                              </View>
+                            </View>
+                          </View>
+                          <View style={[styles.dtfCalcRowMobile, { marginTop: 6 }]}>
+                            <Text style={styles.dtfRateLabel}>Rate: $</Text>
+                            <View style={[styles.dtfInputWrapper, { flex: 1 }]}>
+                              <TextInput style={styles.dtfRateInputInline} value={dtfRate} editable={false} keyboardType="decimal-pad" placeholder="0.04" placeholderTextColor={Colors.light.textSecondary} />
+                            </View>
+                            <Text style={styles.dtfRateLabel}>/sq in</Text>
+                          </View>
+                        </>
+                      ) : (
+                        <View style={styles.dtfCalcRow}>
+                          <View style={styles.dtfInputGroup}>
+                            <Text style={styles.dtfInputLabel}>Width</Text>
+                            <View style={styles.dtfInputWrapper}>
+                              <TextInput style={styles.dtfInput} value={dtfWidth2} onChangeText={t => setDtfWidth2(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.00 in" placeholderTextColor={Colors.light.textSecondary} />
+                              {dtfWidth2 !== '' ? <Text style={styles.dtfInputSuffix}>in</Text> : null}
+                            </View>
+                          </View>
+                          <Text style={styles.dtfOperator}>x</Text>
+                          <View style={styles.dtfInputGroup}>
+                            <Text style={styles.dtfInputLabel}>Height</Text>
+                            <View style={styles.dtfInputWrapper}>
+                              <TextInput style={styles.dtfInput} value={dtfHeight2} onChangeText={t => setDtfHeight2(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.00 in" placeholderTextColor={Colors.light.textSecondary} />
+                              {dtfHeight2 !== '' ? <Text style={styles.dtfInputSuffix}>in</Text> : null}
+                            </View>
+                          </View>
+                          <Text style={styles.dtfOperator}>x</Text>
+                          <View style={styles.dtfInputGroup}>
+                            <Text style={styles.dtfInputLabel}>Rate</Text>
+                            <View style={styles.dtfInputWrapper}>
+                              <Text style={styles.dtfDollar}>$</Text>
+                              <TextInput style={styles.dtfRateInputInline} value={dtfRate} editable={false} keyboardType="decimal-pad" placeholder="0.04" placeholderTextColor={Colors.light.textSecondary} />
+                            </View>
                           </View>
                         </View>
-                        <Text style={styles.dtfOperator}>x</Text>
-                        <View style={styles.dtfInputGroup}>
-                          <Text style={styles.dtfInputLabel}>Height</Text>
-                          <View style={styles.dtfInputWrapper}>
-                            <TextInput
-                              style={styles.dtfInput}
-                              value={dtfHeight2}
-                              onChangeText={(text) => setDtfHeight2(formatDecimalInput(text))}
-                              keyboardType="decimal-pad"
-                              placeholder="0.00 in"
-                              placeholderTextColor={Colors.light.textSecondary}
-                            />
-                            {dtfHeight2 !== '' ? <Text style={styles.dtfInputSuffix}>in</Text> : null}
-                          </View>
-                        </View>
-                        <Text style={styles.dtfOperator}>x</Text>
-                        <View style={styles.dtfInputGroup}>
-                          <Text style={styles.dtfInputLabel}>Rate</Text>
-                          <View style={styles.dtfInputWrapper}>
-                            <Text style={styles.dtfDollar}>$</Text>
-                            <TextInput
-                              style={styles.dtfRateInputInline}
-                              value={dtfRate}
-                              editable={false}
-                              keyboardType="decimal-pad"
-                              placeholder="0.04"
-                              placeholderTextColor={Colors.light.textSecondary}
-                            />
-                          </View>
-                        </View>
-                      </View>
+                      )}
                       <View style={styles.dtfResultRowInline}>
                         <Text style={styles.dtfResultLabel}>
                           {dtfSquareInches2.toFixed(2)} sq in = ${dtfCalculatedCost2.toFixed(2)}
@@ -1304,6 +1320,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row' as const,
     alignItems: 'flex-end' as const,
     gap: 6,
+  },
+  dtfCalcRowMobile: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+  },
+  dtfOperatorCenter: {
+    fontSize: 18,
+    fontWeight: '600' as const,
+    color: Colors.light.textSecondary,
+  },
+  dtfRateLabel: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.light.textSecondary,
   },
   dtfInputGroup: {
     flex: 1,

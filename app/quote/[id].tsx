@@ -719,6 +719,13 @@ export default function QuoteDetailScreen() {
             <TouchableOpacity style={styles.iconButton} onPress={() => setMenuVisible(true)}>
               <MoreVertical size={20} color={Colors.light.tint} />
             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.productionViewButton}
+              onPress={() => router.push(`/quote/production/${id}`)}
+            >
+              <Printer size={18} color={Colors.light.tint} />
+              <Text style={styles.productionViewButtonText}>Production</Text>
+            </TouchableOpacity>
             <TouchableOpacity 
               style={styles.convertButton} 
               onPress={handleConvertToSale}
@@ -1249,6 +1256,22 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600' as const,
     color: '#fff',
+  },
+  productionViewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: Colors.light.tint,
+    gap: 6,
+  },
+  productionViewButtonText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.light.tint,
   },
   convertButton: {
     flex: 1,
