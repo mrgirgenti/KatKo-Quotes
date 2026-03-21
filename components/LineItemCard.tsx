@@ -452,7 +452,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                   />
                 </View>
               ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={true} style={styles.variantScrollView}>
+                <View style={styles.variantTableWrap}>
                   <View style={styles.variantTable}>
                     {/* Table header — matches reference work order format */}
                     <View style={styles.variantTableHeader}>
@@ -543,7 +543,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                       <View style={styles.variantColDelete} />
                     </View>
                   </View>
-                </ScrollView>
+                </View>
               )}
             </View>
 
@@ -1117,11 +1117,11 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: '#fff',
   },
-  variantScrollView: {
+  variantTableWrap: {
     backgroundColor: Colors.light.background,
   },
   variantTable: {
-    minWidth: '100%' as any,
+    width: '100%' as any,
   },
   variantTableHeader: {
     flexDirection: 'row',
@@ -1154,8 +1154,9 @@ const styles = StyleSheet.create({
   },
   // Column widths
   variantColStyleColor: {
-    width: 300,
-    paddingRight: 8,
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 6,
   },
   variantStyleColorRow: {
     flexDirection: 'row' as const,
@@ -1163,10 +1164,10 @@ const styles = StyleSheet.create({
     alignItems: 'center' as const,
   },
   variantColSize: {
-    width: 42,
+    width: 36,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    paddingHorizontal: 2,
+    paddingHorizontal: 1,
   },
   variantSizeCell: {
     alignItems: 'center' as const,
@@ -1188,10 +1189,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.light.border,
     borderRadius: 4,
-    width: 38,
-    height: 34,
+    width: 32,
+    height: 32,
     textAlign: 'center',
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.light.text,
   },
   variantRowQty: {

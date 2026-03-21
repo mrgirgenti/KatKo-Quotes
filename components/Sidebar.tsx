@@ -40,8 +40,8 @@ const SB = {
   borderColor: 'rgba(255,255,255,0.07)',
   headerText: '#E5E7EB',
   text: '#9CA3AF',
-  textActive: '#FF5A00',
-  activeBg: 'rgba(255,90,0,0.12)',
+  textActive: '#FFFFFF',
+  activeBg: 'rgba(255,90,0,0.15)',
   activeBar: '#FF5A00',
   iconColor: '#6B7280',
 };
@@ -118,7 +118,7 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
               {active && !collapsed && <View style={styles.activeBar} />}
               <IconComponent
                 size={20}
-                color={active ? SB.textActive : SB.iconColor}
+                color={active ? '#FFFFFF' : SB.iconColor}
               />
               {!collapsed && (
                 <Text style={[styles.navLabel, active && styles.navLabelActive]}>
