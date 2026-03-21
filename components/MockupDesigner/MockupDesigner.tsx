@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
   Image,
+  TextInput,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Path, Rect, Circle, Line, G } from 'react-native-svg';
@@ -53,6 +54,8 @@ interface Placement {
   zoneId: PrintLocation;
   artworkId: string;
   artworkUri: string;
+  artWidthIn?: string;
+  artHeightIn?: string;
 }
 
 interface Props {
@@ -85,6 +88,15 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
   const genericColors: ProductColor[] = GARMENT_COLORS.map(c => ({ name: c.label, hex: c.value, dark: c.dark }));
   const activeColors: ProductColor[] = selectedStyle ? selectedStyle.colors : genericColors;
   const activeColorName = activeColors.find(c => c.hex === garmentColor)?.name ?? '';
+
+  // Vendors that carry at least one product matching the current garment template
+  const vendorsByTemplate = VENDOR_CATALOG.filter(v =>
+    v.styles.some(s => s.garmentType === garmentType)
+  );
+  // Products from the selected vendor that match the current garment template
+  const filteredStyles = selectedVendor
+    ? selectedVendor.styles.filter(s => s.garmentType === garmentType)
+    : [];
 
   const garment = GARMENTS[garmentType];
   const svgPath = currentView === 'front' ? garment.frontPath : garment.backPath;
@@ -153,13 +165,25 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
     }
   };
 
+  const handleGarmentTypeChange = (type: GarmentType) => {
+    setGarmentType(type);
+    setCurrentView('front');
+    setSelectedStyleNumber(null);
+    // If the selected vendor has no products of this type, deselect vendor
+    if (selectedVendorId) {
+      const v = VENDOR_CATALOG.find(v => v.id === selectedVendorId);
+      if (v && !v.styles.some(s => s.garmentType === type)) {
+        setSelectedVendorId(null);
+      }
+    }
+  };
+
   const handleStyleSelect = (styleNumber: string) => {
     const vendor = VENDOR_CATALOG.find(v => v.id === selectedVendorId);
     const style = vendor?.styles.find(s => s.styleNumber === styleNumber);
     if (!style) return;
     setSelectedStyleNumber(styleNumber);
-    setGarmentType(style.garmentType);
-    setCurrentView('front');
+    // Template stays as-is; only color auto-selects from this style's palette
     const firstColor = style.colors[0];
     if (firstColor) setGarmentColor(firstColor.hex);
   };
@@ -294,10 +318,27 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
           <View style={styles.body}>
             {/* ── Left Panel: Controls ── */}
             <ScrollView style={styles.leftPanel} showsVerticalScrollIndicator={false}>
-              {/* Vendor */}
+
+              {/* 1. Garment Template — always first */}
+              <Text style={styles.sectionLabel}>GARMENT TEMPLATE</Text>
+              <View style={styles.garmentTypes}>
+                {(Object.keys(GARMENTS) as GarmentType[]).map(type => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[styles.typeBtn, garmentType === type && styles.typeBtnActive]}
+                    onPress={() => handleGarmentTypeChange(type)}
+                  >
+                    <Text style={[styles.typeBtnText, garmentType === type && styles.typeBtnTextActive]}>
+                      {GARMENTS[type].label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* 2. Vendor — filtered to those carrying the selected template */}
               <Text style={styles.sectionLabel}>VENDOR</Text>
               <View style={styles.garmentTypes}>
-                {VENDOR_CATALOG.map(vendor => (
+                {vendorsByTemplate.map(vendor => (
                   <TouchableOpacity
                     key={vendor.id}
                     style={[styles.typeBtn, selectedVendorId === vendor.id && styles.typeBtnActive]}
@@ -310,48 +351,38 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                 ))}
               </View>
 
-              {/* Product Style */}
+              {/* 3. Product Style — filtered by selected template */}
               {selectedVendor && (
                 <>
-                  <Text style={styles.sectionLabel}>PRODUCT STYLE</Text>
-                  <View style={styles.garmentTypes}>
-                    {selectedVendor.styles.map(style => (
-                      <TouchableOpacity
-                        key={style.styleNumber}
-                        style={[styles.styleBtn, selectedStyleNumber === style.styleNumber && styles.styleBtnActive]}
-                        onPress={() => handleStyleSelect(style.styleNumber)}
-                      >
-                        <Text style={[styles.styleNumber, selectedStyleNumber === style.styleNumber && styles.styleNumberActive]}>
-                          {style.styleNumber}
-                        </Text>
-                        <Text style={[styles.styleName, selectedStyleNumber === style.styleNumber && styles.styleNameActive]} numberOfLines={2}>
-                          {style.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                  <Text style={styles.sectionLabel}>
+                    PRODUCT STYLE {filteredStyles.length > 0 ? `(${filteredStyles.length})` : ''}
+                  </Text>
+                  {filteredStyles.length === 0 ? (
+                    <Text style={styles.styleName}>No {GARMENTS[garmentType].label.toLowerCase()} styles found for this vendor.</Text>
+                  ) : (
+                    <View style={styles.garmentTypes}>
+                      {filteredStyles.map(style => (
+                        <TouchableOpacity
+                          key={style.styleNumber}
+                          style={[styles.styleBtn, selectedStyleNumber === style.styleNumber && styles.styleBtnActive]}
+                          onPress={() => handleStyleSelect(style.styleNumber)}
+                        >
+                          <Text style={[styles.styleNumber, selectedStyleNumber === style.styleNumber && styles.styleNumberActive]}>
+                            {style.styleNumber}{style.isYouth ? ' (Youth)' : ''}
+                          </Text>
+                          <Text style={[styles.styleName, selectedStyleNumber === style.styleNumber && styles.styleNameActive]} numberOfLines={2}>
+                            {style.name}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
                 </>
               )}
 
-              {/* Garment Type (manual override) */}
-              <Text style={styles.sectionLabel}>GARMENT TEMPLATE</Text>
-              <View style={styles.garmentTypes}>
-                {(Object.keys(GARMENTS) as GarmentType[]).map(type => (
-                  <TouchableOpacity
-                    key={type}
-                    style={[styles.typeBtn, garmentType === type && styles.typeBtnActive]}
-                    onPress={() => { setGarmentType(type); setCurrentView('front'); }}
-                  >
-                    <Text style={[styles.typeBtnText, garmentType === type && styles.typeBtnTextActive]}>
-                      {GARMENTS[type].label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Color */}
+              {/* 4. Color palette */}
               <Text style={styles.sectionLabel}>
-                {selectedStyle ? `${selectedStyle.styleNumber} COLORS (${activeColors.length})` : 'GARMENT COLOR'}
+                {selectedStyle ? `COLOR — ${selectedStyle.styleNumber} (${activeColors.length})` : 'GARMENT COLOR'}
               </Text>
               <View style={styles.colorGrid}>
                 {activeColors.map(color => (
@@ -397,10 +428,11 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
               {/* Instructions */}
               <View style={styles.instructions}>
                 <Text style={styles.instructionsTitle}>How to use:</Text>
-                <Text style={styles.instructionsText}>1. Pick a vendor &amp; product</Text>
-                <Text style={styles.instructionsText}>2. Choose a color</Text>
-                <Text style={styles.instructionsText}>3. Upload &amp; place artwork</Text>
-                <Text style={styles.instructionsText}>4. Save your mockup</Text>
+                <Text style={styles.instructionsText}>1. Pick a garment template</Text>
+                <Text style={styles.instructionsText}>2. Select a vendor &amp; product</Text>
+                <Text style={styles.instructionsText}>3. Choose a color</Text>
+                <Text style={styles.instructionsText}>4. Upload &amp; place artwork</Text>
+                <Text style={styles.instructionsText}>5. Enter art size → Save</Text>
               </View>
             </ScrollView>
 
@@ -574,17 +606,55 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                 </View>
               )}
 
-              {/* Zone reference */}
+              {/* Zone reference + art size inputs */}
               <Text style={[styles.sectionLabel, { marginTop: 16 }]}>PRINT LOCATIONS</Text>
               <ScrollView style={styles.zoneRef} showsVerticalScrollIndicator={false}>
                 {currentZones.map(zone => {
                   const placement = placementForZone(zone.id);
+                  const zoneMaxW = (zone.w / 25).toFixed(1);
+                  const zoneMaxH = (zone.h / 25).toFixed(1);
                   return (
                     <View key={zone.id} style={styles.zoneRefItem}>
                       <View style={[styles.zoneRefDot, placement && styles.zoneRefDotFilled]} />
-                      <Text style={[styles.zoneRefText, placement && styles.zoneRefTextFilled]}>
-                        {zone.id}
-                      </Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.zoneRefText, placement && styles.zoneRefTextFilled]}>
+                          {zone.id}
+                        </Text>
+                        {placement ? (
+                          <View style={styles.artSizeRow}>
+                            <View style={styles.artSizeField}>
+                              <Text style={styles.artSizeLabel}>W&quot;</Text>
+                              <TextInput
+                                style={styles.artSizeInput}
+                                placeholder={zoneMaxW}
+                                placeholderTextColor="#aaa"
+                                keyboardType="decimal-pad"
+                                value={placement.artWidthIn ?? ''}
+                                onChangeText={val => setPlacements(prev =>
+                                  prev.map(p => p.zoneId === zone.id ? { ...p, artWidthIn: val } : p)
+                                )}
+                              />
+                            </View>
+                            <Text style={styles.artSizeSep}>×</Text>
+                            <View style={styles.artSizeField}>
+                              <Text style={styles.artSizeLabel}>H&quot;</Text>
+                              <TextInput
+                                style={styles.artSizeInput}
+                                placeholder={zoneMaxH}
+                                placeholderTextColor="#aaa"
+                                keyboardType="decimal-pad"
+                                value={placement.artHeightIn ?? ''}
+                                onChangeText={val => setPlacements(prev =>
+                                  prev.map(p => p.zoneId === zone.id ? { ...p, artHeightIn: val } : p)
+                                )}
+                              />
+                            </View>
+                            <Text style={styles.artSizeMax}>(max {zoneMaxW}×{zoneMaxH}&quot;)</Text>
+                          </View>
+                        ) : (
+                          <Text style={styles.artSizeMax}>Max {zoneMaxW}&quot; × {zoneMaxH}&quot;</Text>
+                        )}
+                      </View>
                     </View>
                   );
                 })}
@@ -918,16 +988,33 @@ const styles = StyleSheet.create({
   },
   placingHintText: { fontSize: 10, color: '#1D4ED8', textAlign: 'center', lineHeight: 14 },
 
-  zoneRef: { maxHeight: 150 },
-  zoneRefItem: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 3 },
+  zoneRef: { maxHeight: 260 },
+  zoneRefItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, paddingVertical: 4 },
   zoneRefDot: {
-    width: 8, height: 8, borderRadius: 4,
+    width: 8, height: 8, borderRadius: 4, marginTop: 3,
     borderWidth: 1.5, borderColor: Colors.light.borderDark,
     backgroundColor: 'transparent',
   },
   zoneRefDotFilled: { backgroundColor: '#22C55E', borderColor: '#22C55E' },
   zoneRefText: { fontSize: 11, color: Colors.light.textSecondary },
   zoneRefTextFilled: { color: '#15803D', fontWeight: '600' },
+
+  artSizeRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4, flexWrap: 'wrap' },
+  artSizeField: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  artSizeLabel: { fontSize: 10, color: Colors.light.textSecondary, fontWeight: '600' },
+  artSizeInput: {
+    width: 42,
+    height: 22,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    fontSize: 11,
+    color: Colors.light.text,
+    backgroundColor: '#fff',
+  },
+  artSizeSep: { fontSize: 11, color: Colors.light.textSecondary, marginHorizontal: 1 },
+  artSizeMax: { fontSize: 9, color: Colors.light.textSecondary, marginTop: 2 },
 
   resetBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,

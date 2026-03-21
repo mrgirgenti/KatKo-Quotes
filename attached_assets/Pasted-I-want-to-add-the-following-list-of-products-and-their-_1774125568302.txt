@@ -1,0 +1,62 @@
+I want to add the following list of products and their youth/kids counterpart as well: 
+Shirts:
+- Gildan 2000 - SS Activewear + SanMar
+- Gildan 5000 - SS Activewear + SanMar
+- Gildan 8000 - SS Activewear + SanMar
+- Gildan 64000 - SS Activewear + SanMar
+- Bella+Canvas 3001 - SS Activewear + SanMar
+- Next Level 6210 - SS Activewear + SanMar
+- Next Level 7200 - SS Activewear + SanMar
+- Comfort Colors 1717 - SS Activewear + SanMar
+- Shaka Wear SHMSS - SS Activewear + Shaka Wear
+Hats:
+- YP Classics (5 Panel) 6506 - SS Activewear
+- YP Classics (Retro Trucker) 6606 - SS Activewear
+- Richardson 122 - SS Activewear
+- Otto Caps (Mid 5 Panel) 31-069 - Otto Caps
+Polos:
+- Sport Tek ST550 - SanMar
+- Nike Micro Pique 2.0 NKDC1963 - SanMar
+- Nike Women's Micro Pique 2.0 NKDC1991 - SanMar
+- Ogio Caliber 2.0 OG101 - SanMar
+Crewnecks:
+- Lane Seven LS14004 - SS Activewear
+- Jerzees 562MR - SS Activewear + SanMar
+- Gildan 18000 - SS Activewear + SanMar
+- Independent SS3000 - SS Activewear 
+Hoodie (Pullovers):
+- Lane Seven LS14001 - SS Activewear
+- Jerzees 996MR - SS Activewear
+- Gildan 18500 - SS Activewear + SanMar
+- Independent Trading SS4500 (Midweight) - SS Activewear
+- Independent Trading IND4000 (Heavyweight) - SS Activewear
+Hoodie (Zip Ups):
+- Independent Trading SS4500Z (Midweight) - SS Activewear
+- Independent Trading EXP30PZ (Performance) - SS Activewear
+Activewear:
+- SportTek ST357 (1/4 Zip) - SanMar
+
+I want to remove these products you have listed as we dont use these as go-to options:
+- G500
+- G185
+- BC3719
+- NL3600
+- NL9300
+- PC54
+- PC90H
+- DT1100
+- PC78H
+- IND500
+- SS150
+- IND5000P
+- SHGWC
+
+I need to add Otto Caps as a vendor and eventually incorporate their API as well. 
+
+I want the Garment Templates to come first, then Vendor and Product Style. 
+
+When a template is selected, I want to be sure the options provided in the vendor section correlate. For example, if I select the Tshirt template and select SS Activewear as the vendor, the products offered based on that template should only be tshirts. I should nit see hoodies or other apparel options listed. However, if I selected Hoodie and SS Activewear, then I should see only hoodies and not tshirts, hats or other apparel.
+
+I want the actual mockup to be the actual product we're working with and not a general outline mockup. Not sure if this needs to pull from the API or if yo ucan generate a blank tshirt and correct colors associated with that SKU or not? 
+
+The mockup generator should also generate art size as well. For example, if the art uploaded is 10" wide, it should have a place where that is made known. We should be able to auto size the artwork uploaded as well with drag arrows and crops so that we can ensure that the art is exactly what a client wants and represents the right art dimensions. 
