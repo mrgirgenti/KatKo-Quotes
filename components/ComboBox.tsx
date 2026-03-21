@@ -77,7 +77,7 @@ export function ComboBox({ label, value, options, onChange, placeholder, autoTit
         onPress={() => setVisible(true)}
         activeOpacity={0.7}
       >
-        <Text 
+        <Text
           style={[styles.selectorText, !value && styles.placeholder, isCustomValue && styles.customValueText]}
           numberOfLines={1}
           adjustsFontSizeToFit
@@ -85,7 +85,7 @@ export function ComboBox({ label, value, options, onChange, placeholder, autoTit
         >
           {value || placeholder || 'Select...'}
         </Text>
-        <ChevronDown size={18} color={Colors.light.textSecondary} />
+        <ChevronDown size={16} color={Colors.light.textSecondary} />
       </TouchableOpacity>
 
       <Modal
@@ -95,11 +95,11 @@ export function ComboBox({ label, value, options, onChange, placeholder, autoTit
         onRequestClose={handleClose}
       >
         <Pressable style={styles.overlay} onPress={handleClose}>
-          <View style={styles.modalContent}>
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{label}</Text>
             </View>
-            
+
             {isCustomMode ? (
               <View style={styles.customInputContainer}>
                 <Text style={styles.customInputLabel}>Enter custom value:</Text>
@@ -113,13 +113,13 @@ export function ComboBox({ label, value, options, onChange, placeholder, autoTit
                   onSubmitEditing={handleCustomSubmit}
                 />
                 <View style={styles.customInputActions}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.cancelButton}
                     onPress={() => setIsCustomMode(false)}
                   >
                     <Text style={styles.cancelButtonText}>Back</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.confirmButton, !customValue.trim() && styles.confirmButtonDisabled]}
                     onPress={handleCustomSubmit}
                     disabled={!customValue.trim()}
@@ -134,7 +134,7 @@ export function ComboBox({ label, value, options, onChange, placeholder, autoTit
                   style={styles.customOption}
                   onPress={handleOpenCustom}
                 >
-                  <Edit2 size={16} color={Colors.light.tint} />
+                  <Edit2 size={13} color={Colors.light.tint} />
                   <Text style={styles.customOptionText}>Enter custom value...</Text>
                 </TouchableOpacity>
                 <FlatList
@@ -145,12 +145,10 @@ export function ComboBox({ label, value, options, onChange, placeholder, autoTit
                       style={[styles.option, value === item && styles.optionSelected]}
                       onPress={() => handleSelect(item)}
                     >
-                      <Text
-                        style={[styles.optionText, value === item && styles.optionTextSelected]}
-                      >
+                      <Text style={[styles.optionText, value === item && styles.optionTextSelected]}>
                         {item}
                       </Text>
-                      {value === item && <Check size={18} color={Colors.light.tint} />}
+                      {value === item && <Check size={14} color={Colors.light.tint} />}
                     </TouchableOpacity>
                   )}
                   showsVerticalScrollIndicator={false}
@@ -158,7 +156,7 @@ export function ComboBox({ label, value, options, onChange, placeholder, autoTit
                 />
               </>
             )}
-          </View>
+          </Pressable>
         </Pressable>
       </Modal>
     </View>
@@ -167,13 +165,13 @@ export function ComboBox({ label, value, options, onChange, placeholder, autoTit
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 12,
+    marginBottom: 10,
   },
   label: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600' as const,
     color: Colors.light.text,
-    marginBottom: 6,
+    marginBottom: 5,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -185,11 +183,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.light.border,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
   },
   selectorText: {
-    fontSize: 15,
+    fontSize: 13,
     color: Colors.light.text,
     flex: 1,
     minWidth: 0,
@@ -203,25 +201,27 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: 40,
   },
   modalContent: {
     backgroundColor: Colors.light.surface,
-    borderRadius: 16,
+    borderRadius: 12,
     width: '100%',
-    maxHeight: '70%',
+    maxWidth: 340,
+    maxHeight: '60%',
     overflow: 'hidden',
   },
   modalHeader: {
-    padding: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.border,
   },
   modalTitle: {
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: '700' as const,
     color: Colors.light.text,
     textAlign: 'center',
@@ -229,27 +229,27 @@ const styles = StyleSheet.create({
   customOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.border,
     backgroundColor: Colors.light.highlightBg,
-    gap: 10,
+    gap: 8,
   },
   customOptionText: {
-    fontSize: 15,
+    fontSize: 13,
     color: Colors.light.tint,
     fontWeight: '500' as const,
   },
   list: {
-    maxHeight: 350,
+    maxHeight: 240,
   },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.border,
   },
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.highlightBg,
   },
   optionText: {
-    fontSize: 15,
+    fontSize: 13,
     color: Colors.light.text,
   },
   optionTextSelected: {
@@ -265,44 +265,44 @@ const styles = StyleSheet.create({
     color: Colors.light.tint,
   },
   customInputContainer: {
-    padding: 16,
+    padding: 14,
   },
   customInputLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: Colors.light.textSecondary,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   customInput: {
     backgroundColor: Colors.light.background,
     borderWidth: 1,
     borderColor: Colors.light.border,
     borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
     color: Colors.light.text,
   },
   customInputActions: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 16,
+    gap: 10,
+    marginTop: 12,
   },
   cancelButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: Colors.light.border,
     alignItems: 'center',
   },
   cancelButtonText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600' as const,
     color: Colors.light.textSecondary,
   },
   confirmButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: 8,
     backgroundColor: Colors.light.tint,
     alignItems: 'center',
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.border,
   },
   confirmButtonText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600' as const,
     color: '#fff',
   },

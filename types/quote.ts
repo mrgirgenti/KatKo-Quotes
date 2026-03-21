@@ -45,6 +45,12 @@ export interface SizeQuantities {
   flat: number;
 }
 
+export interface GarmentVariant {
+  product: string;
+  color: string;
+  sizes: SizeQuantities;
+}
+
 export interface LineItem {
   id: string;
   designName: string;
@@ -55,8 +61,11 @@ export interface LineItem {
   serviceStyle: ServiceStyle;
   location1: string;
   location2: string;
+  location3?: string;
+  location4?: string;
   locationDetails: string;
   sizes: SizeQuantities;
+  garmentVariants?: GarmentVariant[];
   productCostEach: number;
   serviceCostEach: number;
   serviceFeeEach: number;

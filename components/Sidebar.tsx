@@ -36,7 +36,7 @@ const NAV_ITEMS = [
 ];
 
 const SB = {
-  bg: '#0D1B2A',
+  bg: '#000000',
   borderColor: 'rgba(255,255,255,0.07)',
   headerText: '#E5E7EB',
   text: '#9CA3AF',

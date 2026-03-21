@@ -249,20 +249,62 @@ export default function NewQuoteScreen() {
 
   const orderForm = (
     <View style={styles.card}>
-      <FormInput
-        label="Person / Organization"
-        value={personOrganization}
-        onChangeText={setPersonOrganization}
-        placeholder="Client name or company"
-        autoTitleCase
-      />
-      <FormInput
-        label="Project Name"
-        value={projectName}
-        onChangeText={setProjectName}
-        placeholder="e.g., Summer Event T-Shirts"
-        autoTitleCase
-      />
+      {/* Person/Org + Project Name + Invoice on one row for tablet/desktop */}
+      {!isMobile && !isNative ? (
+        <View style={styles.threeColRow}>
+          <View style={styles.thirdField}>
+            <FormInput
+              label="Person / Organization"
+              value={personOrganization}
+              onChangeText={setPersonOrganization}
+              placeholder="Client name or company"
+              autoTitleCase
+            />
+          </View>
+          <View style={styles.thirdField}>
+            <FormInput
+              label="Project Name"
+              value={projectName}
+              onChangeText={setProjectName}
+              placeholder="e.g., Summer Event T-Shirts"
+              autoTitleCase
+            />
+          </View>
+          <View style={styles.thirdField}>
+            <FormInput
+              label="Invoice Number"
+              value={invoiceNumber}
+              onChangeText={setInvoiceNumber}
+              placeholder=""
+              autoTitleCase
+            />
+          </View>
+        </View>
+      ) : (
+        <>
+          <FormInput
+            label="Person / Organization"
+            value={personOrganization}
+            onChangeText={setPersonOrganization}
+            placeholder="Client name or company"
+            autoTitleCase
+          />
+          <FormInput
+            label="Project Name"
+            value={projectName}
+            onChangeText={setProjectName}
+            placeholder="e.g., Summer Event T-Shirts"
+            autoTitleCase
+          />
+          <FormInput
+            label="Invoice Number"
+            value={invoiceNumber}
+            onChangeText={setInvoiceNumber}
+            placeholder=""
+            autoTitleCase
+          />
+        </>
+      )}
       <SegmentedControl
         label="Order Type"
         options={ORDER_TYPES}
@@ -285,13 +327,6 @@ export default function NewQuoteScreen() {
           />
         </View>
       </View>
-      <FormInput
-        label="Invoice Number"
-        value={invoiceNumber}
-        onChangeText={setInvoiceNumber}
-        placeholder=""
-        autoTitleCase
-      />
     </View>
   );
 
@@ -453,6 +488,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   halfField: {
+    flex: 1,
+  },
+  threeColRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  thirdField: {
     flex: 1,
   },
   addButton: {

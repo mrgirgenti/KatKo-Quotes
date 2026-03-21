@@ -46,6 +46,33 @@ The app uses a width-based breakpoint system (`hooks/useBreakpoint.ts`) for resp
 
 Breakpoints are detected via `useWindowDimensions` so they respond to live browser resizing. The navigation switches between `Tabs` (bottom bar, mobile) and `Sidebar + Slot` (web, tablet/desktop) in `app/(tabs)/_layout.tsx`.
 
+## UI Conventions
+- **Brand colors**: Primary/tint `#FF5A00`, sidebar/header `#000000`
+- **Line Item Card header**: `#000000` (black) with white text
+- **ToggleButton**: Selected state (Yes or No) is always orange (`#FF5A00`); unselected is grey
+- **ComboBox popup**: `maxWidth: 340`, compact paddings/fonts, capped list height `240`
+
+## LineItem Card Layout (field order)
+1. Design Name
+2. Service Style (SegmentedControl)
+3. Service Applicator + Product Source (side-by-side row)
+4. Location #1 + Location #2 (side-by-side row)
+5. `+ Add Location #3 / #4` (expandable — shows Location 3 + 4 row inline)
+6. Project Notes
+7. **Garment & Sizes** section — multi-color variant table (up to 10 rows)
+   - Each row: Style/Product | Color | XS | S | M | L | XL | 2XL | 3XL | 4XL | Qty | [X]
+   - `GarmentVariant = { product, color, sizes: SizeQuantities }`
+   - Stored as `item.garmentVariants?: GarmentVariant[]`
+   - All variant sizes merged into `item.sizes` for downstream calculations
+8. Embroidery Calculator (if Embroidery style)
+9. DTF Calculator (if Direct to Film style), inside costs section
+10. Costs Per Piece (Product / Service / Fees / Markup)
+11. Line Item Subtotal table
+
+## Order Information Form
+- Tablet/Desktop: Person/Organization | Project Name | Invoice Number on same row (3 columns)
+- Mobile: stacked fields
+
 ## Known Patches
 - `node_modules/metro-file-map/src/watchers/FallbackWatcher.js`: ENOSPC/EINVAL treated as ignorable (prevents Metro crash on Replit)
 - `stubs/react-native-reanimated.js`: Comprehensive stub; wired via `metro.config.js` `extraNodeModules`

@@ -24,10 +24,10 @@ export function ToggleButton({ label, value, onChange, description }: ToggleButt
           <Text style={[styles.buttonText, value && styles.buttonTextActive]}>Yes</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.button, styles.buttonRight, !value && styles.buttonInactive]}
+          style={[styles.button, styles.buttonRight, !value && styles.buttonActive]}
           onPress={() => onChange(false)}
         >
-          <Text style={[styles.buttonText, !value && styles.buttonTextInactive]}>No</Text>
+          <Text style={[styles.buttonText, !value && styles.buttonTextActive]}>No</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -75,9 +75,6 @@ const styles = StyleSheet.create({
   buttonActive: {
     backgroundColor: Colors.light.tint,
   },
-  buttonInactive: {
-    backgroundColor: Colors.light.border,
-  },
   buttonText: {
     fontSize: 13,
     fontWeight: '600' as const,
@@ -85,8 +82,5 @@ const styles = StyleSheet.create({
   },
   buttonTextActive: {
     color: '#fff',
-  },
-  buttonTextInactive: {
-    color: Colors.light.textSecondary,
   },
 });
