@@ -10,6 +10,7 @@ export type PrintLocation =
   | 'Full Front'
   | 'Upper Back'
   | 'Full Back'
+  | 'Neck Tag'
   | 'Left Sleeve'
   | 'Right Sleeve'
   | 'Pocket (literal)';
@@ -62,6 +63,7 @@ const TSHIRT_ZONES: ZoneDefinition[] = [
   { id: 'Full Front',   label: 'Full Front\n10"–12" × 10"–14"',  x: 85,  y: 175, w: 330, h: 285, view: 'front' },
   { id: 'Left Sleeve',  label: 'Left Sleeve\n1"–4" × 1"–4"',     x: 424, y: 105, w: 68,  h: 95,  view: 'front' },
   { id: 'Right Sleeve', label: 'Right Sleeve\n1"–4" × 1"–4"',    x: 8,   y: 105, w: 68,  h: 95,  view: 'front' },
+  { id: 'Neck Tag',     label: 'Neck Tag\n~2"–3" wide',          x: 185, y: 60,  w: 130, h: 70,  view: 'back'  },
   { id: 'Upper Back',   label: 'Upper Back\n10"–14" × 1"–6"',    x: 95,  y: 135, w: 310, h: 120, view: 'back'  },
   { id: 'Full Back',    label: 'Full Back\n10"–14" × 6"–15"',    x: 85,  y: 130, w: 330, h: 280, view: 'back'  },
 ];
@@ -74,6 +76,7 @@ const HOODIE_ZONES: ZoneDefinition[] = [
   { id: 'Pocket (literal)',label: 'Pocket\n4"–8" wide',             x: 170, y: 450, w: 160, h: 90,  view: 'front' },
   { id: 'Left Sleeve',     label: 'Left Sleeve',                    x: 422, y: 120, w: 70,  h: 80,  view: 'front' },
   { id: 'Right Sleeve',    label: 'Right Sleeve',                   x: 8,   y: 120, w: 70,  h: 80,  view: 'front' },
+  { id: 'Neck Tag',        label: 'Neck Tag\n~2"–3" wide',          x: 185, y: 60,  w: 130, h: 70,  view: 'back'  },
   { id: 'Upper Back',      label: 'Upper Back\n10"–14" × 1"–6"',    x: 95,  y: 135, w: 310, h: 120, view: 'back'  },
   { id: 'Full Back',       label: 'Full Back\n10"–14" × 6"–15"',    x: 85,  y: 130, w: 330, h: 280, view: 'back'  },
 ];
@@ -85,6 +88,7 @@ const LONGSLEEVE_ZONES: ZoneDefinition[] = [
   { id: 'Full Front',   label: 'Full Front\n10"–12" × 10"–14"',  x: 85,  y: 175, w: 330, h: 280, view: 'front' },
   { id: 'Left Sleeve',  label: 'Left Sleeve\n1"–4"',              x: 425, y: 150, w: 70,  h: 200, view: 'front' },
   { id: 'Right Sleeve', label: 'Right Sleeve\n1"–4"',             x: 5,   y: 150, w: 70,  h: 200, view: 'front' },
+  { id: 'Neck Tag',     label: 'Neck Tag\n~2"–3" wide',          x: 185, y: 60,  w: 130, h: 70,  view: 'back'  },
   { id: 'Upper Back',   label: 'Upper Back\n10"–14" × 1"–6"',    x: 95,  y: 135, w: 310, h: 120, view: 'back'  },
   { id: 'Full Back',    label: 'Full Back\n10"–14" × 6"–15"',    x: 85,  y: 130, w: 330, h: 280, view: 'back'  },
 ];

@@ -244,6 +244,7 @@ export const LOCATIONS = [
   'Full Front',
   'Upper Back',
   'Full Back',
+  'Neck Tag',
   'Left Sleeve',
   'Right Sleeve',
   'Pocket (literal)',

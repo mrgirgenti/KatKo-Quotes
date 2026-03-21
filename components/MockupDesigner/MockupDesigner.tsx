@@ -31,7 +31,6 @@ import {
   CANVAS_H,
   GARMENTS,
   GARMENT_COLORS,
-  BRANDS,
   GarmentType,
   GarmentView,
   PrintLocation,
@@ -66,7 +65,6 @@ interface Props {
 export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, suggestedLocations }: Props) {
   const [garmentType, setGarmentType] = useState<GarmentType>('tshirt');
   const [garmentColor, setGarmentColor] = useState('#FFFFFF');
-  const [brand, setBrand] = useState('Any Brand');
   const [currentView, setCurrentView] = useState<GarmentView>('front');
   const [uploadedArtworks, setUploadedArtworks] = useState<UploadedArtwork[]>([]);
   const [placements, setPlacements] = useState<Placement[]>([]);
@@ -277,20 +275,6 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                   </TouchableOpacity>
                 ))}
               </View>
-
-              {/* Brand */}
-              <Text style={styles.sectionLabel}>BRAND</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.brandScroll}>
-                {BRANDS.map(b => (
-                  <TouchableOpacity
-                    key={b}
-                    style={[styles.brandChip, brand === b && styles.brandChipActive]}
-                    onPress={() => setBrand(b)}
-                  >
-                    <Text style={[styles.brandChipText, brand === b && styles.brandChipTextActive]}>{b}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
 
               {/* Color */}
               <Text style={styles.sectionLabel}>GARMENT COLOR</Text>
@@ -647,20 +631,6 @@ const styles = StyleSheet.create({
   },
   typeBtnText: { fontSize: 12, color: Colors.light.text, fontWeight: '500' },
   typeBtnTextActive: { color: '#fff', fontWeight: '600' },
-
-  brandScroll: { marginBottom: 4 },
-  brandChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    marginRight: 6,
-    backgroundColor: '#fff',
-  },
-  brandChipActive: { backgroundColor: '#FFF0E8', borderColor: Colors.light.tint },
-  brandChipText: { fontSize: 10, color: Colors.light.textSecondary },
-  brandChipTextActive: { color: Colors.light.tint, fontWeight: '600' },
 
   colorGrid: {
     flexDirection: 'row',
