@@ -5,6 +5,7 @@ export type GarmentType = 'tshirt' | 'hoodie' | 'crewneck' | 'longsleeve' | 'hat
 export type GarmentView = 'front' | 'back';
 export type PrintLocation =
   | 'Left Chest'
+  | 'Right Chest'
   | 'Center Chest'
   | 'Full Front'
   | 'Upper Back'
@@ -55,34 +56,37 @@ const HAT_FRONT =
   'M 100,260 C 80,200 80,80 250,60 C 420,80 420,200 400,260 L 460,275 Q 470,280 460,295 L 40,295 Q 30,280 40,275 Z';
 
 const TSHIRT_ZONES: ZoneDefinition[] = [
-  { id: 'Left Chest', label: 'Left Chest\n2.5"–5" × 2.5"–5"', x: 85, y: 195, w: 115, h: 90, view: 'front' },
-  { id: 'Center Chest', label: 'Center Chest\n6"–10" × 6"–8"', x: 165, y: 185, w: 170, h: 110, view: 'front' },
-  { id: 'Full Front', label: 'Full Front\n10"–12" × 10"–14"', x: 85, y: 175, w: 330, h: 285, view: 'front' },
-  { id: 'Left Sleeve', label: 'Left Sleeve\n1"–4" × 1"–4"', x: 8, y: 105, w: 68, h: 95, view: 'front' },
-  { id: 'Right Sleeve', label: 'Right Sleeve\n1"–4" × 1"–4"', x: 424, y: 105, w: 68, h: 95, view: 'front' },
-  { id: 'Upper Back', label: 'Upper Back\n10"–14" × 1"–6"', x: 95, y: 135, w: 310, h: 120, view: 'back' },
-  { id: 'Full Back', label: 'Full Back\n10"–14" × 6"–15"', x: 85, y: 130, w: 330, h: 280, view: 'back' },
+  { id: 'Left Chest',   label: 'Left Chest\n2.5"–5" × 2.5"–5"',  x: 300, y: 195, w: 115, h: 90,  view: 'front' },
+  { id: 'Right Chest',  label: 'Right Chest\n2.5"–5" × 2.5"–5"', x: 85,  y: 195, w: 115, h: 90,  view: 'front' },
+  { id: 'Center Chest', label: 'Center Chest\n6"–10" × 6"–8"',   x: 165, y: 185, w: 170, h: 110, view: 'front' },
+  { id: 'Full Front',   label: 'Full Front\n10"–12" × 10"–14"',  x: 85,  y: 175, w: 330, h: 285, view: 'front' },
+  { id: 'Left Sleeve',  label: 'Left Sleeve\n1"–4" × 1"–4"',     x: 424, y: 105, w: 68,  h: 95,  view: 'front' },
+  { id: 'Right Sleeve', label: 'Right Sleeve\n1"–4" × 1"–4"',    x: 8,   y: 105, w: 68,  h: 95,  view: 'front' },
+  { id: 'Upper Back',   label: 'Upper Back\n10"–14" × 1"–6"',    x: 95,  y: 135, w: 310, h: 120, view: 'back'  },
+  { id: 'Full Back',    label: 'Full Back\n10"–14" × 6"–15"',    x: 85,  y: 130, w: 330, h: 280, view: 'back'  },
 ];
 
 const HOODIE_ZONES: ZoneDefinition[] = [
-  { id: 'Left Chest', label: 'Left Chest\n2.5"–5" × 2.5"–5"', x: 90, y: 215, w: 115, h: 90, view: 'front' },
-  { id: 'Center Chest', label: 'Center Chest\n6"–10" × 6"–8"', x: 170, y: 205, w: 160, h: 110, view: 'front' },
-  { id: 'Full Front', label: 'Full Front\n10"–12" × 10"–14"', x: 90, y: 200, w: 320, h: 280, view: 'front' },
-  { id: 'Pocket (literal)', label: 'Pocket\n4"–8" wide', x: 170, y: 450, w: 160, h: 90, view: 'front' },
-  { id: 'Left Sleeve', label: 'Sleeve', x: 8, y: 120, w: 70, h: 80, view: 'front' },
-  { id: 'Right Sleeve', label: 'Sleeve', x: 422, y: 120, w: 70, h: 80, view: 'front' },
-  { id: 'Upper Back', label: 'Upper Back\n10"–14" × 1"–6"', x: 95, y: 135, w: 310, h: 120, view: 'back' },
-  { id: 'Full Back', label: 'Full Back\n10"–14" × 6"–15"', x: 85, y: 130, w: 330, h: 280, view: 'back' },
+  { id: 'Left Chest',      label: 'Left Chest\n2.5"–5" × 2.5"–5"',  x: 295, y: 215, w: 115, h: 90,  view: 'front' },
+  { id: 'Right Chest',     label: 'Right Chest\n2.5"–5" × 2.5"–5"', x: 90,  y: 215, w: 115, h: 90,  view: 'front' },
+  { id: 'Center Chest',    label: 'Center Chest\n6"–10" × 6"–8"',   x: 170, y: 205, w: 160, h: 110, view: 'front' },
+  { id: 'Full Front',      label: 'Full Front\n10"–12" × 10"–14"',  x: 90,  y: 200, w: 320, h: 280, view: 'front' },
+  { id: 'Pocket (literal)',label: 'Pocket\n4"–8" wide',             x: 170, y: 450, w: 160, h: 90,  view: 'front' },
+  { id: 'Left Sleeve',     label: 'Left Sleeve',                    x: 422, y: 120, w: 70,  h: 80,  view: 'front' },
+  { id: 'Right Sleeve',    label: 'Right Sleeve',                   x: 8,   y: 120, w: 70,  h: 80,  view: 'front' },
+  { id: 'Upper Back',      label: 'Upper Back\n10"–14" × 1"–6"',    x: 95,  y: 135, w: 310, h: 120, view: 'back'  },
+  { id: 'Full Back',       label: 'Full Back\n10"–14" × 6"–15"',    x: 85,  y: 130, w: 330, h: 280, view: 'back'  },
 ];
 
 const LONGSLEEVE_ZONES: ZoneDefinition[] = [
-  { id: 'Left Chest', label: 'Left Chest\n2.5"–5" × 2.5"–5"', x: 85, y: 195, w: 115, h: 90, view: 'front' },
-  { id: 'Center Chest', label: 'Center Chest\n6"–10" × 6"–8"', x: 165, y: 185, w: 170, h: 110, view: 'front' },
-  { id: 'Full Front', label: 'Full Front\n10"–12" × 10"–14"', x: 85, y: 175, w: 330, h: 280, view: 'front' },
-  { id: 'Left Sleeve', label: 'Left Sleeve\n1"–4"', x: 5, y: 150, w: 70, h: 200, view: 'front' },
-  { id: 'Right Sleeve', label: 'Right Sleeve\n1"–4"', x: 425, y: 150, w: 70, h: 200, view: 'front' },
-  { id: 'Upper Back', label: 'Upper Back\n10"–14" × 1"–6"', x: 95, y: 135, w: 310, h: 120, view: 'back' },
-  { id: 'Full Back', label: 'Full Back\n10"–14" × 6"–15"', x: 85, y: 130, w: 330, h: 280, view: 'back' },
+  { id: 'Left Chest',   label: 'Left Chest\n2.5"–5" × 2.5"–5"',  x: 300, y: 195, w: 115, h: 90,  view: 'front' },
+  { id: 'Right Chest',  label: 'Right Chest\n2.5"–5" × 2.5"–5"', x: 85,  y: 195, w: 115, h: 90,  view: 'front' },
+  { id: 'Center Chest', label: 'Center Chest\n6"–10" × 6"–8"',   x: 165, y: 185, w: 170, h: 110, view: 'front' },
+  { id: 'Full Front',   label: 'Full Front\n10"–12" × 10"–14"',  x: 85,  y: 175, w: 330, h: 280, view: 'front' },
+  { id: 'Left Sleeve',  label: 'Left Sleeve\n1"–4"',              x: 425, y: 150, w: 70,  h: 200, view: 'front' },
+  { id: 'Right Sleeve', label: 'Right Sleeve\n1"–4"',             x: 5,   y: 150, w: 70,  h: 200, view: 'front' },
+  { id: 'Upper Back',   label: 'Upper Back\n10"–14" × 1"–6"',    x: 95,  y: 135, w: 310, h: 120, view: 'back'  },
+  { id: 'Full Back',    label: 'Full Back\n10"–14" × 6"–15"',    x: 85,  y: 130, w: 330, h: 280, view: 'back'  },
 ];
 
 const HAT_ZONES: ZoneDefinition[] = [

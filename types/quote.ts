@@ -239,6 +239,7 @@ export const APPLICATORS = [
 
 export const LOCATIONS = [
   'Left Chest',
+  'Right Chest',
   'Center Chest',
   'Full Front',
   'Upper Back',
