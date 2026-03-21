@@ -454,93 +454,84 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
               ) : (
                 <View style={styles.variantTableWrap}>
                   <View style={styles.variantTable}>
-                    {/* Table header — matches reference work order format */}
-                    <View style={styles.variantTableHeader}>
-                      <Text style={[styles.variantTH, styles.variantColStyleColor]}>Style &amp; Color</Text>
-                      {APPAREL_SIZES.map(({ label }) => (
-                        <Text key={label} style={[styles.variantTH, styles.variantColSize]}>
-                          {label}
-                        </Text>
-                      ))}
-                      <Text style={[styles.variantTH, styles.variantColTotal]}>Total</Text>
-                      <View style={styles.variantColDelete} />
-                    </View>
-
-                    {/* Variant rows */}
+                    {/* Variant rows — two sub-rows each */}
                     {variants.map((variant, vIdx) => {
                       const rowQty = getVariantQty(variant);
                       return (
                         <View key={vIdx} style={[styles.variantRow, vIdx % 2 === 1 && styles.variantRowAlt]}>
-                          {/* Style + Color combined column */}
-                          <View style={styles.variantColStyleColor}>
-                            <View style={styles.variantStyleColorRow}>
-                              <View style={{ flex: 3 }}>
-                                <ComboBox
-                                  label=""
-                                  value={variant.product}
-                                  options={PRODUCTS}
-                                  onChange={(v) => updateVariant(vIdx, { product: v })}
-                                  placeholder="Style..."
-                                  autoTitleCase
-                                />
-                              </View>
-                              <View style={{ flex: 2 }}>
-                                <ComboBox
-                                  label=""
-                                  value={variant.color}
-                                  options={PRODUCT_COLORS}
-                                  onChange={(v) => updateVariant(vIdx, { color: v })}
-                                  placeholder="Color..."
-                                  autoTitleCase
-                                />
-                              </View>
-                            </View>
-                          </View>
-                          {/* Size inputs */}
-                          {APPAREL_SIZES.map(({ key }) => (
-                            <View key={key} style={[styles.variantColSize, styles.variantSizeCell]}>
-                              <TextInput
-                                style={styles.variantSizeInput}
-                                value={variant.sizes[key] > 0 ? variant.sizes[key].toString() : ''}
-                                onChangeText={(v) => updateVariantSize(vIdx, key, v)}
-                                keyboardType="number-pad"
-                                placeholder=""
-                                placeholderTextColor={Colors.light.textSecondary}
-                                maxLength={3}
+                          {/* Sub-row 1: Style | Color | Delete */}
+                          <View style={styles.variantTopRow}>
+                            <View style={{ flex: 3 }}>
+                              <ComboBox
+                                label=""
+                                value={variant.product}
+                                options={PRODUCTS}
+                                onChange={(v) => updateVariant(vIdx, { product: v })}
+                                placeholder="Style / Product..."
+                                autoTitleCase
                               />
                             </View>
-                          ))}
-                          {/* Row total */}
-                          <View style={[styles.variantColTotal, styles.variantSizeCell]}>
-                            <Text style={styles.variantRowQty}>{rowQty > 0 ? rowQty : ''}</Text>
+                            <View style={{ flex: 2 }}>
+                              <ComboBox
+                                label=""
+                                value={variant.color}
+                                options={PRODUCT_COLORS}
+                                onChange={(v) => updateVariant(vIdx, { color: v })}
+                                placeholder="Color..."
+                                autoTitleCase
+                              />
+                            </View>
+                            <TouchableOpacity
+                              style={[styles.variantDeleteBtn, variants.length <= 1 && { opacity: 0.2 }]}
+                              onPress={() => removeVariant(vIdx)}
+                              disabled={variants.length <= 1}
+                            >
+                              <X size={14} color={Colors.light.error} />
+                            </TouchableOpacity>
                           </View>
-                          {/* Delete */}
-                          <TouchableOpacity
-                            style={[styles.variantColDelete, !variants.length || variants.length <= 1 ? { opacity: 0.2 } : {}]}
-                            onPress={() => removeVariant(vIdx)}
-                            disabled={variants.length <= 1}
-                          >
-                            <X size={14} color={Colors.light.error} />
-                          </TouchableOpacity>
+                          {/* Sub-row 2: Size inputs with labels */}
+                          <View style={styles.variantSizeSubRow}>
+                            {APPAREL_SIZES.map(({ key, label }) => (
+                              <View key={key} style={styles.variantSizeLabelCell}>
+                                <Text style={styles.variantSizeColLabel}>{label}</Text>
+                                <TextInput
+                                  style={styles.variantSizeInput}
+                                  value={variant.sizes[key] > 0 ? variant.sizes[key].toString() : ''}
+                                  onChangeText={(v) => updateVariantSize(vIdx, key, v)}
+                                  keyboardType="number-pad"
+                                  placeholder=""
+                                  placeholderTextColor={Colors.light.textSecondary}
+                                  maxLength={3}
+                                />
+                              </View>
+                            ))}
+                            <View style={styles.variantTotalLabelCell}>
+                              <Text style={styles.variantSizeColLabel}>Total</Text>
+                              <Text style={styles.variantRowQty}>{rowQty > 0 ? rowQty : '—'}</Text>
+                            </View>
+                          </View>
                         </View>
                       );
                     })}
 
-                    {/* Grand Total footer row — always shown */}
+                    {/* Grand Total footer */}
                     <View style={styles.variantGrandTotalRow}>
-                      <Text style={[styles.variantGrandTotalLabel, styles.variantColStyleColor]}>Grand Total:</Text>
-                      {APPAREL_SIZES.map(({ key, label }) => {
-                        const colTotal = variants.reduce((s, v) => s + (v.sizes[key] || 0), 0);
-                        return (
-                          <Text key={label} style={[styles.variantGrandTotalCell, styles.variantColSize]}>
-                            {colTotal > 0 ? colTotal : ''}
-                          </Text>
-                        );
-                      })}
-                      <Text style={[styles.variantGrandTotalCell, styles.variantColTotal, styles.variantGrandTotalBold]}>
-                        {quantity}
-                      </Text>
-                      <View style={styles.variantColDelete} />
+                      <Text style={styles.variantGrandTotalLabel}>Grand Total</Text>
+                      <View style={styles.variantGrandTotalSizesRow}>
+                        {APPAREL_SIZES.map(({ key, label }) => {
+                          const colTotal = variants.reduce((s, v) => s + (v.sizes[key] || 0), 0);
+                          return (
+                            <View key={label} style={styles.variantGrandTotalCell}>
+                              <Text style={styles.variantGrandTotalSizeLabel}>{label}</Text>
+                              <Text style={styles.variantGrandTotalNum}>{colTotal > 0 ? colTotal : ''}</Text>
+                            </View>
+                          );
+                        })}
+                        <View style={styles.variantGrandTotalCell}>
+                          <Text style={styles.variantGrandTotalSizeLabel}>Total</Text>
+                          <Text style={[styles.variantGrandTotalNum, styles.variantGrandTotalBold]}>{quantity}</Text>
+                        </View>
+                      </View>
                     </View>
                   </View>
                 </View>
@@ -1123,28 +1114,8 @@ const styles = StyleSheet.create({
   variantTable: {
     width: '100%' as any,
   },
-  variantTableHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.light.surface,
-    paddingVertical: 7,
-    paddingHorizontal: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-  },
-  variantTH: {
-    fontSize: 10,
-    fontWeight: '700' as const,
-    color: Colors.light.textSecondary,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.3,
-    textAlign: 'center' as const,
-  },
   variantRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    flexDirection: 'column',
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.border,
     backgroundColor: Colors.light.background,
@@ -1152,47 +1123,53 @@ const styles = StyleSheet.create({
   variantRowAlt: {
     backgroundColor: '#fafafa',
   },
-  // Column widths
-  variantColStyleColor: {
-    flex: 1,
-    minWidth: 0,
-    paddingRight: 6,
+  variantTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
-  variantStyleColorRow: {
-    flexDirection: 'row' as const,
+  variantDeleteBtn: {
+    width: 28,
+    height: 28,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    flexShrink: 0,
+  },
+  variantSizeSubRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 10,
+    paddingBottom: 8,
     gap: 4,
+  },
+  variantSizeLabelCell: {
+    flex: 1,
     alignItems: 'center' as const,
   },
-  variantColSize: {
-    width: 36,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    paddingHorizontal: 1,
+  variantSizeColLabel: {
+    fontSize: 9,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.3,
+    marginBottom: 3,
   },
-  variantSizeCell: {
+  variantTotalLabelCell: {
+    flex: 1,
     alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-  variantColTotal: {
-    width: 44,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-  variantColDelete: {
-    width: 30,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    paddingLeft: 4,
+    justifyContent: 'flex-end' as const,
   },
   variantSizeInput: {
     backgroundColor: Colors.light.surface,
     borderWidth: 1,
     borderColor: Colors.light.border,
     borderRadius: 4,
-    width: 32,
+    width: '100%' as any,
     height: 32,
     textAlign: 'center',
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.light.text,
   },
   variantRowQty: {
@@ -1200,30 +1177,47 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: Colors.light.tint,
     textAlign: 'center' as const,
+    paddingTop: 6,
   },
   variantGrandTotalRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 8,
     backgroundColor: '#1a1a1a',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
   variantGrandTotalLabel: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '800' as const,
-    color: '#fff',
-    textAlign: 'left' as const,
-    paddingRight: 8,
+    color: 'rgba(255,255,255,0.6)',
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  variantGrandTotalSizesRow: {
+    flexDirection: 'row',
+    gap: 4,
   },
   variantGrandTotalCell: {
+    flex: 1,
+    alignItems: 'center' as const,
+  },
+  variantGrandTotalSizeLabel: {
+    fontSize: 9,
+    fontWeight: '700' as const,
+    color: 'rgba(255,255,255,0.5)',
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.3,
+    marginBottom: 3,
+    textAlign: 'center' as const,
+  },
+  variantGrandTotalNum: {
     fontSize: 13,
     fontWeight: '700' as const,
     color: '#fff',
     textAlign: 'center' as const,
   },
   variantGrandTotalBold: {
-    color: '#fff',
-    fontSize: 14,
+    color: Colors.light.tint,
+    fontSize: 15,
     fontWeight: '800' as const,
   },
   // Promotional
