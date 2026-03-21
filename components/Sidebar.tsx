@@ -41,7 +41,7 @@ const SB = {
   headerText: '#E5E7EB',
   text: '#9CA3AF',
   textActive: '#FFFFFF',
-  activeBg: 'rgba(255,90,0,0.15)',
+  activeBg: '#FF5A00',
   activeBar: '#FF5A00',
   iconColor: '#6B7280',
 };
