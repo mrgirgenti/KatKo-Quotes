@@ -454,17 +454,16 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
               ) : (
                 <ScrollView horizontal showsHorizontalScrollIndicator={true} style={styles.variantScrollView}>
                   <View style={styles.variantTable}>
-                    {/* Table header */}
+                    {/* Table header — matches reference work order format */}
                     <View style={styles.variantTableHeader}>
-                      <Text style={[styles.variantTH, styles.variantColProduct]}>Style / Garment</Text>
-                      <Text style={[styles.variantTH, styles.variantColColor]}>Color</Text>
+                      <Text style={[styles.variantTH, styles.variantColStyleColor]}>Style Number &amp; Garment Color</Text>
                       {APPAREL_SIZES.map(({ label }) => (
                         <Text key={label} style={[styles.variantTH, styles.variantColSize]}>
                           {label}
                         </Text>
                       ))}
-                      <Text style={[styles.variantTH, styles.variantColTotal]}>Qty</Text>
-                      {variants.length > 1 && <View style={styles.variantColDelete} />}
+                      <Text style={[styles.variantTH, styles.variantColTotal]}>Total</Text>
+                      <View style={styles.variantColDelete} />
                     </View>
 
                     {/* Variant rows */}
@@ -472,76 +471,73 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                       const rowQty = getVariantQty(variant);
                       return (
                         <View key={vIdx} style={[styles.variantRow, vIdx % 2 === 1 && styles.variantRowAlt]}>
-                          {/* Product */}
-                          <View style={styles.variantColProduct}>
+                          {/* Style + Color combined column */}
+                          <View style={styles.variantColStyleColor}>
                             <ComboBox
                               label=""
                               value={variant.product}
                               options={PRODUCTS}
                               onChange={(v) => updateVariant(vIdx, { product: v })}
-                              placeholder="Style..."
+                              placeholder="Style / Garment..."
                               autoTitleCase
                             />
-                          </View>
-                          {/* Color */}
-                          <View style={styles.variantColColor}>
-                            <ComboBox
-                              label=""
-                              value={variant.color}
-                              options={PRODUCT_COLORS}
-                              onChange={(v) => updateVariant(vIdx, { color: v })}
-                              placeholder="Color..."
-                              autoTitleCase
-                            />
+                            <View style={styles.variantColorPicker}>
+                              <ComboBox
+                                label=""
+                                value={variant.color}
+                                options={PRODUCT_COLORS}
+                                onChange={(v) => updateVariant(vIdx, { color: v })}
+                                placeholder="Color..."
+                                autoTitleCase
+                              />
+                            </View>
                           </View>
                           {/* Size inputs */}
                           {APPAREL_SIZES.map(({ key }) => (
-                            <View key={key} style={styles.variantColSize}>
+                            <View key={key} style={[styles.variantColSize, styles.variantSizeCell]}>
                               <TextInput
                                 style={styles.variantSizeInput}
                                 value={variant.sizes[key] > 0 ? variant.sizes[key].toString() : ''}
                                 onChangeText={(v) => updateVariantSize(vIdx, key, v)}
                                 keyboardType="number-pad"
-                                placeholder="0"
+                                placeholder=""
                                 placeholderTextColor={Colors.light.textSecondary}
                                 maxLength={3}
                               />
                             </View>
                           ))}
                           {/* Row total */}
-                          <View style={styles.variantColTotal}>
-                            <Text style={styles.variantRowQty}>{rowQty}</Text>
+                          <View style={[styles.variantColTotal, styles.variantSizeCell]}>
+                            <Text style={styles.variantRowQty}>{rowQty > 0 ? rowQty : ''}</Text>
                           </View>
                           {/* Delete */}
-                          {variants.length > 1 && (
-                            <TouchableOpacity
-                              style={styles.variantColDelete}
-                              onPress={() => removeVariant(vIdx)}
-                            >
-                              <X size={14} color={Colors.light.error} />
-                            </TouchableOpacity>
-                          )}
+                          <TouchableOpacity
+                            style={[styles.variantColDelete, !variants.length || variants.length <= 1 ? { opacity: 0.2 } : {}]}
+                            onPress={() => removeVariant(vIdx)}
+                            disabled={variants.length <= 1}
+                          >
+                            <X size={14} color={Colors.light.error} />
+                          </TouchableOpacity>
                         </View>
                       );
                     })}
 
-                    {/* Totals footer row */}
-                    {variants.length > 1 && (
-                      <View style={styles.variantTotalsRow}>
-                        <Text style={[styles.variantTotalLabel, styles.variantColProduct]}>TOTAL</Text>
-                        <View style={styles.variantColColor} />
-                        {APPAREL_SIZES.map(({ key, label }) => {
-                          const colTotal = variants.reduce((s, v) => s + (v.sizes[key] || 0), 0);
-                          return (
-                            <Text key={label} style={[styles.variantTotalCell, styles.variantColSize]}>
-                              {colTotal > 0 ? colTotal : '—'}
-                            </Text>
-                          );
-                        })}
-                        <Text style={[styles.variantTotalCell, styles.variantColTotal]}>{quantity}</Text>
-                        <View style={styles.variantColDelete} />
-                      </View>
-                    )}
+                    {/* Grand Total footer row — always shown */}
+                    <View style={styles.variantGrandTotalRow}>
+                      <Text style={[styles.variantGrandTotalLabel, styles.variantColStyleColor]}>Grand Total:</Text>
+                      {APPAREL_SIZES.map(({ key, label }) => {
+                        const colTotal = variants.reduce((s, v) => s + (v.sizes[key] || 0), 0);
+                        return (
+                          <Text key={label} style={[styles.variantGrandTotalCell, styles.variantColSize]}>
+                            {colTotal > 0 ? colTotal : ''}
+                          </Text>
+                        );
+                      })}
+                      <Text style={[styles.variantGrandTotalCell, styles.variantColTotal, styles.variantGrandTotalBold]}>
+                        {quantity}
+                      </Text>
+                      <View style={styles.variantColDelete} />
+                    </View>
                   </View>
                 </ScrollView>
               )}
@@ -1152,68 +1148,77 @@ const styles = StyleSheet.create({
   variantRowAlt: {
     backgroundColor: '#fafafa',
   },
-  variantTotalsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    backgroundColor: Colors.light.highlightBg,
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.tint,
-  },
-  variantTotalLabel: {
-    fontSize: 10,
-    fontWeight: '800' as const,
-    color: Colors.light.tint,
-    textTransform: 'uppercase' as const,
-  },
-  variantTotalCell: {
-    fontSize: 12,
-    fontWeight: '700' as const,
-    color: Colors.light.text,
-    textAlign: 'center' as const,
-  },
   // Column widths
-  variantColProduct: {
-    width: 150,
-    paddingRight: 6,
+  variantColStyleColor: {
+    width: 220,
+    paddingRight: 8,
   },
-  variantColColor: {
-    width: 110,
-    paddingRight: 6,
+  variantColorPicker: {
+    marginTop: 4,
   },
   variantColSize: {
-    width: 40,
+    width: 42,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
     paddingHorizontal: 2,
   },
+  variantSizeCell: {
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
   variantColTotal: {
-    width: 36,
+    width: 44,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
   variantColDelete: {
-    width: 28,
+    width: 30,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
+    paddingLeft: 4,
   },
   variantSizeInput: {
     backgroundColor: Colors.light.surface,
     borderWidth: 1,
     borderColor: Colors.light.border,
     borderRadius: 4,
-    width: 36,
-    height: 32,
+    width: 38,
+    height: 34,
     textAlign: 'center',
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.light.text,
   },
   variantRowQty: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700' as const,
-    color: Colors.light.text,
+    color: Colors.light.tint,
     textAlign: 'center' as const,
+  },
+  variantGrandTotalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    backgroundColor: '#1a1a1a',
+    borderTopWidth: 2,
+    borderTopColor: Colors.light.tint,
+  },
+  variantGrandTotalLabel: {
+    fontSize: 12,
+    fontWeight: '800' as const,
+    color: '#fff',
+    textAlign: 'right' as const,
+    paddingRight: 8,
+  },
+  variantGrandTotalCell: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: '#fff',
+    textAlign: 'center' as const,
+  },
+  variantGrandTotalBold: {
+    color: Colors.light.tint,
+    fontSize: 14,
   },
   // Promotional
   promotionalQty: {
