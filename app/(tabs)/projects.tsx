@@ -28,6 +28,10 @@ import {
   Download,
   Printer,
   Sheet,
+  Check,
+  Minus,
+  Trophy,
+  Play,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useQuotes } from '@/contexts/QuotesContext';
@@ -57,6 +61,18 @@ function StatusBadge({ status }: { status: QuoteStatus }) {
   );
 }
 
+function Checkbox({ checked, indeterminate, onToggle }: { checked: boolean; indeterminate?: boolean; onToggle: () => void }) {
+  const filled = checked || indeterminate;
+  return (
+    <TouchableOpacity onPress={onToggle} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+      <View style={[styles.checkbox, filled && styles.checkboxChecked]}>
+        {checked && !indeterminate && <Check size={11} color="#fff" strokeWidth={3} />}
+        {indeterminate && <Minus size={11} color="#fff" strokeWidth={3} />}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 function parseDate(str: string): Date | null {
   if (!str) return null;
   const d = new Date(str.replace(/-/g, '/'));
@@ -75,9 +91,12 @@ interface ProjectRowProps {
   onExportSheets: () => void;
   onPrint: () => void;
   isDesktop: boolean;
+  isSelected: boolean;
+  onToggleSelect: () => void;
+  selectionMode: boolean;
 }
 
-function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRevert, onEdit, onExportPDF, onExportSheets, onPrint, isDesktop }: ProjectRowProps) {
+function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRevert, onEdit, onExportPDF, onExportSheets, onPrint, isDesktop, isSelected, onToggleSelect, selectionMode }: ProjectRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const menuBtnRef = useRef<View>(null);
@@ -101,7 +120,14 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
 
   if (isDesktop) {
     return (
-      <TouchableOpacity style={styles.tableRow} onPress={onPress} activeOpacity={0.7}>
+      <TouchableOpacity
+        style={[styles.tableRow, isSelected && styles.tableRowSelected]}
+        onPress={selectionMode ? onToggleSelect : onPress}
+        activeOpacity={0.7}
+      >
+        <View style={styles.colCheckbox}>
+          <Checkbox checked={isSelected} onToggle={onToggleSelect} />
+        </View>
         <View style={styles.colStatus}>
           <StatusBadge status={effectiveStatus} />
         </View>
@@ -204,14 +230,23 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
   }
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={[styles.card, isSelected && styles.cardSelected]}
+      onPress={selectionMode ? onToggleSelect : onPress}
+      activeOpacity={0.7}
+    >
       <View style={styles.cardHeader}>
-        <StatusBadge status={effectiveStatus} />
+        <View style={styles.cardHeaderLeft}>
+          {selectionMode && (
+            <Checkbox checked={isSelected} onToggle={onToggleSelect} />
+          )}
+          <StatusBadge status={effectiveStatus} />
+        </View>
         <View style={styles.cardHeaderRight}>
           {quote.invoiceNumber ? (
             <Text style={styles.cardInvoice}>#{quote.invoiceNumber}</Text>
           ) : null}
-          <ChevronRight size={16} color={Colors.light.textSecondary} />
+          {selectionMode ? null : <ChevronRight size={16} color={Colors.light.textSecondary} />}
         </View>
       </View>
       <Text style={styles.cardClient} numberOfLines={1}>{quote.personOrganization}</Text>
@@ -238,9 +273,74 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
   );
 }
 
+function BulkActionBar({
+  count,
+  onClear,
+  onConvertToActive,
+  onComplete,
+  onRevert,
+  onExportPDF,
+  onExportSheets,
+  onPrint,
+  onDelete,
+}: {
+  count: number;
+  onClear: () => void;
+  onConvertToActive: () => void;
+  onComplete: () => void;
+  onRevert: () => void;
+  onExportPDF: () => void;
+  onExportSheets: () => void;
+  onPrint: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <View style={styles.bulkBar}>
+      <View style={styles.bulkBarLeft}>
+        <Text style={styles.bulkCount}>{count} selected</Text>
+        <TouchableOpacity onPress={onClear} style={styles.bulkClearBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+          <X size={13} color={Colors.light.textSecondary} />
+        </TouchableOpacity>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bulkActionsRow}>
+        <TouchableOpacity style={styles.bulkAction} onPress={onConvertToActive}>
+          <Play size={14} color={Colors.light.tint} />
+          <Text style={[styles.bulkActionText, { color: Colors.light.tint }]}>Activate</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.bulkAction} onPress={onComplete}>
+          <Trophy size={14} color={Colors.light.success} />
+          <Text style={[styles.bulkActionText, { color: Colors.light.success }]}>Complete</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.bulkAction} onPress={onRevert}>
+          <RotateCcw size={14} color={Colors.light.textSecondary} />
+          <Text style={styles.bulkActionText}>Revert to Quoted</Text>
+        </TouchableOpacity>
+        <View style={styles.bulkDivider} />
+        <TouchableOpacity style={styles.bulkAction} onPress={onExportPDF}>
+          <Download size={14} color={Colors.light.text} />
+          <Text style={styles.bulkActionText}>Export PDF</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.bulkAction} onPress={onExportSheets}>
+          <Sheet size={14} color={Colors.light.success} />
+          <Text style={[styles.bulkActionText, { color: Colors.light.success }]}>Sheets</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.bulkAction} onPress={onPrint}>
+          <Printer size={14} color={Colors.light.text} />
+          <Text style={styles.bulkActionText}>Print</Text>
+        </TouchableOpacity>
+        <View style={styles.bulkDivider} />
+        <TouchableOpacity style={[styles.bulkAction, styles.bulkActionDanger]} onPress={onDelete}>
+          <Trash2 size={14} color="#EF4444" />
+          <Text style={[styles.bulkActionText, { color: '#EF4444' }]}>Delete</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
+}
+
 export default function ProjectsScreen() {
   const router = useRouter();
-  const { projects, deleteQuote, convertToSale, convertToQuote, isLoading } = useQuotes();
+  const { projects, deleteQuote, convertToSale, convertToQuote, markProjectComplete, isLoading } = useQuotes();
   const { isMobile, isDesktop } = useBreakpoint();
 
   const [search, setSearch] = useState('');
@@ -251,6 +351,20 @@ export default function ProjectsScreen() {
   const [minTotal, setMinTotal] = useState('');
   const [maxTotal, setMinMax] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Quote | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteVisible, setBulkDeleteVisible] = useState(false);
+
+  const selectionMode = selectedIds.size > 0;
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
   const resolvedProjects = useMemo(() =>
     projects.map(q => ({ quote: q, effectiveStatus: getEffectiveStatus(q) })),
@@ -321,6 +435,106 @@ export default function ProjectsScreen() {
       setSortDir('desc');
     }
   }, [sortField]);
+
+  const selectedQuotes = useMemo(() =>
+    filtered.filter(({ quote }) => selectedIds.has(quote.id)).map(f => f.quote),
+    [filtered, selectedIds]
+  );
+
+  const toggleSelectAll = useCallback(() => {
+    if (selectedIds.size === filtered.length && filtered.length > 0) {
+      clearSelection();
+    } else {
+      setSelectedIds(new Set(filtered.map(f => f.quote.id)));
+    }
+  }, [filtered, selectedIds, clearSelection]);
+
+  const handleBulkConvertToActive = useCallback(() => {
+    const targets = selectedQuotes.filter(q => {
+      const es = getEffectiveStatus(q);
+      return es === 'quoted' || es === 'expired';
+    });
+    if (targets.length === 0) { Alert.alert('No eligible projects', 'Selected projects are already active or completed.'); return; }
+    Alert.alert(
+      'Activate Projects',
+      `Convert ${targets.length} project${targets.length !== 1 ? 's' : ''} to Active?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Activate', onPress: () => { targets.forEach(q => convertToSale(q.id)); clearSelection(); } },
+      ]
+    );
+  }, [selectedQuotes, convertToSale, clearSelection]);
+
+  const handleBulkComplete = useCallback(() => {
+    const targets = selectedQuotes.filter(q => {
+      const es = getEffectiveStatus(q);
+      return es === 'active';
+    });
+    if (targets.length === 0) { Alert.alert('No eligible projects', 'Only active projects can be marked complete.'); return; }
+    Alert.alert(
+      'Complete Projects',
+      `Mark ${targets.length} project${targets.length !== 1 ? 's' : ''} as Completed?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Complete', onPress: () => { targets.forEach(q => markProjectComplete(q.id)); clearSelection(); } },
+      ]
+    );
+  }, [selectedQuotes, markProjectComplete, clearSelection]);
+
+  const handleBulkRevert = useCallback(() => {
+    const targets = selectedQuotes.filter(q => {
+      const es = getEffectiveStatus(q);
+      return es === 'active' || es === 'completed';
+    });
+    if (targets.length === 0) { Alert.alert('No eligible projects', 'Only active or completed projects can be reverted.'); return; }
+    Alert.alert(
+      'Revert to Quoted',
+      `Revert ${targets.length} project${targets.length !== 1 ? 's' : ''} back to Quoted?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Revert', onPress: () => { targets.forEach(q => convertToQuote(q.id)); clearSelection(); } },
+      ]
+    );
+  }, [selectedQuotes, convertToQuote, clearSelection]);
+
+  const handleBulkExportPDF = useCallback(async () => {
+    try {
+      for (const q of selectedQuotes) {
+        await generateAndSharePDF(q, null);
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Could not export one or more PDFs.');
+    }
+  }, [selectedQuotes]);
+
+  const handleBulkPrint = useCallback(async () => {
+    if (selectedQuotes.length > 1) {
+      Alert.alert('Print', `Print ${selectedQuotes.length} projects one at a time?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Print All', onPress: async () => { for (const q of selectedQuotes) { await printQuote(q, null); } } },
+      ]);
+    } else if (selectedQuotes.length === 1) {
+      await printQuote(selectedQuotes[0], null);
+    }
+  }, [selectedQuotes]);
+
+  const handleBulkExportSheets = useCallback(() => {
+    if (selectedQuotes.length === 1) {
+      router.push(`/quote/${selectedQuotes[0].id}`);
+    } else {
+      Alert.alert('Export to Sheets', 'Select one project at a time to export to Google Sheets.');
+    }
+  }, [selectedQuotes, router]);
+
+  const handleBulkDelete = useCallback(() => {
+    setBulkDeleteVisible(true);
+  }, []);
+
+  const confirmBulkDelete = useCallback(() => {
+    selectedQuotes.forEach(q => deleteQuote(q.id));
+    clearSelection();
+    setBulkDeleteVisible(false);
+  }, [selectedQuotes, deleteQuote, clearSelection]);
 
   const handleView = useCallback((quote: Quote) => {
     router.push(`/quote/${quote.id}`);
@@ -498,6 +712,13 @@ export default function ProjectsScreen() {
         {/* Desktop: Sort row / Table header */}
         {isDesktop && (
           <View style={styles.tableHeader}>
+            <View style={styles.colCheckbox}>
+              <Checkbox
+                checked={selectedIds.size > 0 && selectedIds.size === filtered.length}
+                indeterminate={selectedIds.size > 0 && selectedIds.size < filtered.length}
+                onToggle={toggleSelectAll}
+              />
+            </View>
             <View style={styles.colStatus}><Text style={styles.thText}>Status</Text></View>
             <View style={styles.colOrderDate}>
               <SortBtn field="date" label="Order Date" />
@@ -520,6 +741,21 @@ export default function ProjectsScreen() {
           </View>
         )}
       </View>
+
+      {/* Bulk action bar */}
+      {selectionMode && (
+        <BulkActionBar
+          count={selectedIds.size}
+          onClear={clearSelection}
+          onConvertToActive={handleBulkConvertToActive}
+          onComplete={handleBulkComplete}
+          onRevert={handleBulkRevert}
+          onExportPDF={handleBulkExportPDF}
+          onExportSheets={handleBulkExportSheets}
+          onPrint={handleBulkPrint}
+          onDelete={handleBulkDelete}
+        />
+      )}
 
       {/* Mobile sort bar */}
       {!isDesktop && (
@@ -569,6 +805,9 @@ export default function ProjectsScreen() {
               onExportSheets={() => handleExportSheets(quote)}
               onPrint={() => handlePrint(quote)}
               isDesktop={isDesktop}
+              isSelected={selectedIds.has(quote.id)}
+              onToggleSelect={() => toggleSelect(quote.id)}
+              selectionMode={selectionMode}
             />
           )}
         />
@@ -586,6 +825,17 @@ export default function ProjectsScreen() {
           setDeleteTarget(null);
         }}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <ConfirmDialog
+        visible={bulkDeleteVisible}
+        title="Delete Selected Projects?"
+        message={`Permanently delete ${selectedIds.size} project${selectedIds.size !== 1 ? 's' : ''}? This cannot be undone.`}
+        confirmText="Delete All"
+        cancelText="Cancel"
+        confirmDestructive
+        onConfirm={confirmBulkDelete}
+        onCancel={() => setBulkDeleteVisible(false)}
       />
     </View>
   );
@@ -906,4 +1156,83 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: 16, fontWeight: '700', color: Colors.light.text },
   emptyText: { fontSize: 14, color: Colors.light.textSecondary, textAlign: 'center' },
+
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: Colors.light.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.light.surface,
+  },
+  checkboxChecked: {
+    backgroundColor: Colors.light.tint,
+    borderColor: Colors.light.tint,
+  },
+
+  colCheckbox: { width: 36, alignItems: 'center', justifyContent: 'center' },
+
+  tableRowSelected: { backgroundColor: '#FFF4EE' },
+  cardSelected: { borderColor: Colors.light.tint, backgroundColor: '#FFF9F6' },
+  cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+
+  bulkBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1C1C1E',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  bulkBarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minWidth: 100,
+  },
+  bulkCount: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  bulkClearBtn: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bulkActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  bulkAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 7,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  bulkActionDanger: {
+    backgroundColor: 'rgba(239,68,68,0.15)',
+  },
+  bulkActionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)',
+  },
+  bulkDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginHorizontal: 4,
+  },
 });
