@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Image,
+  Modal,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import {
@@ -32,6 +34,8 @@ import {
   Lock,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Flame,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
@@ -57,13 +61,33 @@ export default function QuoteDetailScreen() {
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
   const toggleItem = useCallback((itemId: string) => {
-    setExpandedItems(prev => ({ ...prev, [itemId]: prev[itemId] === false ? true : false }));
+    setExpandedItems(prev => ({ ...prev, [itemId]: !prev[itemId] }));
   }, []);
   const { isDesktop } = useBreakpoint();
 
+  const allProjects = useMemo(() => {
+    return (projects || [...quotes, ...sales]).slice().sort((a, b) => {
+      const da = new Date(a.orderDate).getTime();
+      const db = new Date(b.orderDate).getTime();
+      return db - da;
+    });
+  }, [projects, quotes, sales]);
+
   const quote = useMemo(() => {
-    return (projects || [...quotes, ...sales]).find((q) => q.id === id);
-  }, [projects, quotes, sales, id]);
+    return allProjects.find((q) => q.id === id);
+  }, [allProjects, id]);
+
+  const currentIndex = useMemo(() => allProjects.findIndex(q => q.id === id), [allProjects, id]);
+  const prevQuote = currentIndex > 0 ? allProjects[currentIndex - 1] : null;
+  const nextQuote = currentIndex < allProjects.length - 1 ? allProjects[currentIndex + 1] : null;
+
+  const goToPrev = useCallback(() => {
+    if (prevQuote) router.replace(`/quote/${prevQuote.id}`);
+  }, [prevQuote, router]);
+
+  const goToNext = useCallback(() => {
+    if (nextQuote) router.replace(`/quote/${nextQuote.id}`);
+  }, [nextQuote, router]);
 
   
 
@@ -197,16 +221,16 @@ export default function QuoteDetailScreen() {
     if (!quote) return;
     setMenuVisible(false);
     Alert.alert(
-      'Delete',
-      `Are you sure you want to delete "${quote.projectName}"? This action cannot be undone.`,
+      'Are you sure?',
+      `Delete "${quote.projectName}"? This cannot be undone.`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'No', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'Yes, Delete',
           style: 'destructive',
           onPress: () => {
             deleteQuote(quote.id);
-            router.back();
+            router.replace('/(tabs)/projects');
           },
         },
       ]
@@ -307,100 +331,128 @@ export default function QuoteDetailScreen() {
     </View>
   );
 
-  const renderLineItems = () => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeaderRow}>
-        <Text style={styles.sectionTitle}>Line Items ({quote.lineItems.length})</Text>
-      </View>
-      {quote.lineItems.map((item, index) => {
-        const isExpanded = expandedItems[item.id] !== false;
-        const qty = getItemQuantity(item);
-        const calcs = calculateLineItemSubtotal(item);
-        return (
-          <View key={item.id} style={styles.lineItemCard}>
-            <TouchableOpacity style={styles.lineItemHeader} onPress={() => toggleItem(item.id)} activeOpacity={0.8}>
-              <View style={styles.lineItemHeaderLeft}>
-                <Text style={styles.lineItemNumber}>#{index + 1}</Text>
-                <View style={styles.lineItemHeaderInfo}>
-                  <Text style={styles.lineItemHeaderName} numberOfLines={1}>{item.designName || 'Untitled Design'}</Text>
-                  <Text style={styles.lineItemHeaderSub}>{item.serviceStyle}{item.applicator ? ` · ${item.applicator}` : ''}</Text>
+  const renderLineItems = () => {
+    const totalItems = quote.lineItems.reduce((sum, item) => sum + getItemQuantity(item), 0);
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Line Items ({quote.lineItems.length})</Text>
+        </View>
+        {quote.lineItems.map((item, index) => {
+          const isExpanded = !!expandedItems[item.id];
+          const qty = getItemQuantity(item);
+          const calcs = calculateLineItemSubtotal(item);
+          return (
+            <View key={item.id} style={styles.lineItemCard}>
+              <TouchableOpacity style={styles.lineItemHeader} onPress={() => toggleItem(item.id)} activeOpacity={0.8}>
+                <View style={styles.lineItemHeaderLeft}>
+                  <Text style={styles.lineItemNumber}>#{index + 1}</Text>
+                  <View style={styles.lineItemHeaderInfo}>
+                    <Text style={styles.lineItemHeaderName} numberOfLines={1}>{item.designName || 'Untitled Design'}</Text>
+                    <Text style={styles.lineItemHeaderSub}>{item.serviceStyle}{item.applicator ? ` · ${item.applicator}` : ''}</Text>
+                  </View>
                 </View>
-              </View>
-              <View style={styles.lineItemHeaderRight}>
-                <Text style={styles.lineItemHeaderQty}>{qty} pcs</Text>
-                {isExpanded ? <ChevronUp size={16} color="rgba(255,255,255,0.7)" /> : <ChevronDown size={16} color="rgba(255,255,255,0.7)" />}
-              </View>
-            </TouchableOpacity>
+                <View style={styles.lineItemHeaderRight}>
+                  <Text style={styles.lineItemHeaderQty}>{qty} pcs</Text>
+                  {isExpanded ? <ChevronUp size={16} color="rgba(255,255,255,0.7)" /> : <ChevronDown size={16} color="rgba(255,255,255,0.7)" />}
+                </View>
+              </TouchableOpacity>
 
-            {isExpanded && (
-              <View style={styles.lineItemBody}>
-                <View style={styles.lineItemDetails}>
-                  {item.applicator ? (
-                    <View style={styles.detailRow}>
-                      <User size={13} color={Colors.light.tint} style={{ flexShrink: 0 }} />
-                      <Text style={styles.detailLabel}>Applicator</Text>
-                      <Text style={[styles.detailValue, styles.applicatorValue]} numberOfLines={1}>{item.applicator}</Text>
+              {isExpanded && (
+                <View style={styles.lineItemBody}>
+                  {/* Mockup image */}
+                  {item.mockupUri ? (
+                    <Image
+                      source={{ uri: item.mockupUri }}
+                      style={styles.mockupImage}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <View style={styles.mockupPlaceholder}>
+                      <Package size={28} color={Colors.light.border} />
+                      <Text style={styles.mockupPlaceholderText}>No mockup attached</Text>
                     </View>
-                  ) : null}
-                  <View style={styles.detailRow}>
-                    <Truck size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
-                    <Text style={styles.detailLabel}>Source</Text>
-                    <Text style={styles.detailValue} numberOfLines={1}>{item.apparelProvider}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Package size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
-                    <Text style={styles.detailLabel}>Product</Text>
-                    <Text style={styles.detailValue} numberOfLines={2}>{item.product} — {item.productColor}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <MapPin size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
-                    <Text style={styles.detailLabel}>Location</Text>
-                    <Text style={styles.detailValue} numberOfLines={2}>
-                      {[item.location1, item.location2].filter(Boolean).join(', ') || 'N/A'}
-                      {item.locationDetails ? ` — ${item.locationDetails}` : ''}
-                    </Text>
-                  </View>
-                </View>
+                  )}
 
-                <View style={styles.sizesBox}>
-                  <Text style={styles.sizesLabel}>Sizes & Quantities</Text>
-                  <Text style={styles.sizesValue}>{getTotalSizeQuantities(item)}</Text>
-                  <Text style={styles.totalQty}>Total: {qty} pcs</Text>
-                </View>
+                  <View style={styles.lineItemDetails}>
+                    {item.applicator ? (
+                      <View style={styles.detailRow}>
+                        <User size={13} color={Colors.light.tint} style={{ flexShrink: 0 }} />
+                        <Text style={styles.detailLabel}>Applicator</Text>
+                        <Text style={[styles.detailValue, styles.applicatorValue]} numberOfLines={1}>{item.applicator}</Text>
+                      </View>
+                    ) : null}
+                    <View style={styles.detailRow}>
+                      <Truck size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
+                      <Text style={styles.detailLabel}>Source</Text>
+                      <Text style={styles.detailValue} numberOfLines={1}>{item.apparelProvider}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Package size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
+                      <Text style={styles.detailLabel}>Product</Text>
+                      <Text style={styles.detailValue} numberOfLines={2}>{item.product} — {item.productColor}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <MapPin size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
+                      <Text style={styles.detailLabel}>Location</Text>
+                      <Text style={styles.detailValue} numberOfLines={2}>
+                        {[item.location1, item.location2].filter(Boolean).join(', ') || 'N/A'}
+                        {item.locationDetails ? ` — ${item.locationDetails}` : ''}
+                      </Text>
+                    </View>
+                  </View>
 
-                <View style={styles.costsBox}>
-                  <View style={styles.costItem}>
-                    <Text style={styles.costLabel}>Product</Text>
-                    <Text style={styles.costValue}>{formatCurrency(item.productCostEach)}/ea</Text>
+                  <View style={styles.sizesBox}>
+                    <Text style={styles.sizesLabel}>Sizes & Quantities</Text>
+                    <Text style={styles.sizesValue}>{getTotalSizeQuantities(item)}</Text>
+                    <Text style={styles.totalQty}>Total: {qty} pcs</Text>
                   </View>
-                  <View style={styles.costItem}>
-                    <Text style={styles.costLabel}>Service</Text>
-                    <Text style={styles.costValue}>{formatCurrency(item.serviceCostEach)}/ea</Text>
-                  </View>
-                  <View style={styles.costItem}>
-                    <Text style={styles.costLabel}>Fees</Text>
-                    <Text style={styles.costValue}>{formatCurrency(item.serviceFeeEach)}/ea</Text>
-                  </View>
-                  <View style={styles.costItem}>
-                    <Text style={styles.costLabel}>Markup</Text>
-                    <Text style={styles.costValue}>{formatCurrency(item.markupEach || 0)}/ea</Text>
-                  </View>
-                </View>
 
-                <View style={styles.lineItemSubtotalBox}>
-                  <Text style={styles.lineItemSubtotalLabel}>Subtotal</Text>
-                  <View style={styles.lineItemSubtotalRight}>
-                    <Text style={styles.lineItemSubtotalPer}>{calcs.quantity} pcs @ {formatCurrency(calcs.perPiece)}/ea</Text>
-                    <Text style={styles.lineItemSubtotalValue}>{formatCurrency(calcs.subtotal)}</Text>
+                  <View style={styles.costsBox}>
+                    <View style={styles.costItem}>
+                      <Text style={styles.costLabel}>Product</Text>
+                      <Text style={styles.costValue}>{formatCurrency(item.productCostEach)}/ea</Text>
+                    </View>
+                    <View style={styles.costItem}>
+                      <Text style={styles.costLabel}>Service</Text>
+                      <Text style={styles.costValue}>{formatCurrency(item.serviceCostEach)}/ea</Text>
+                    </View>
+                    <View style={styles.costItem}>
+                      <Text style={styles.costLabel}>Fees</Text>
+                      <Text style={styles.costValue}>{formatCurrency(item.serviceFeeEach)}/ea</Text>
+                    </View>
+                    <View style={styles.costItem}>
+                      <Text style={styles.costLabel}>Markup</Text>
+                      <Text style={styles.costValue}>{formatCurrency(item.markupEach || 0)}/ea</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.lineItemSubtotalBox}>
+                    <Text style={styles.lineItemSubtotalLabel}>Subtotal</Text>
+                    <View style={styles.lineItemSubtotalRight}>
+                      <Text style={styles.lineItemSubtotalPer}>{calcs.quantity} pcs @ {formatCurrency(calcs.perPiece)}/ea</Text>
+                      <Text style={styles.lineItemSubtotalValue}>{formatCurrency(calcs.subtotal)}</Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-            )}
-          </View>
-        );
-      })}
-    </View>
-  );
+              )}
+            </View>
+          );
+        })}
+
+        {/* Totals bar */}
+        <View style={styles.lineItemTotalsBar}>
+          <Text style={styles.lineItemTotalsText}>
+            {quote.lineItems.length} Line Item{quote.lineItems.length !== 1 ? 's' : ''}
+          </Text>
+          <View style={styles.lineItemTotalsDot} />
+          <Text style={styles.lineItemTotalsText}>
+            {totalItems} Total Item{totalItems !== 1 ? 's' : ''}
+          </Text>
+        </View>
+      </View>
+    );
+  };
 
   const renderPricingSummary = () => {
     const q = quote.calculations;
@@ -666,6 +718,31 @@ export default function QuoteDetailScreen() {
         <View style={styles.bottomPadding} />
       </ScrollView>
 
+      {/* Prev / Next navigation strip */}
+      <View style={styles.quoteNavStrip}>
+        <TouchableOpacity
+          style={[styles.quoteNavBtn, !prevQuote && styles.quoteNavBtnDisabled]}
+          onPress={goToPrev}
+          disabled={!prevQuote}
+        >
+          <ChevronLeft size={15} color={prevQuote ? Colors.light.tint : Colors.light.border} />
+          <Text style={[styles.quoteNavBtnText, !prevQuote && styles.quoteNavBtnTextDisabled]}>
+            {prevQuote ? (prevQuote.personOrganization || 'Prev') : 'No Previous'}
+          </Text>
+        </TouchableOpacity>
+        <Text style={styles.quoteNavCount}>{currentIndex + 1} / {allProjects.length}</Text>
+        <TouchableOpacity
+          style={[styles.quoteNavBtn, !nextQuote && styles.quoteNavBtnDisabled]}
+          onPress={goToNext}
+          disabled={!nextQuote}
+        >
+          <Text style={[styles.quoteNavBtnText, !nextQuote && styles.quoteNavBtnTextDisabled]}>
+            {nextQuote ? (nextQuote.personOrganization || 'Next') : 'No Next'}
+          </Text>
+          <ChevronRight size={15} color={nextQuote ? Colors.light.tint : Colors.light.border} />
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.actionBar}>
         <TouchableOpacity style={styles.iconButton} onPress={() => setMenuVisible(true)}>
           <MoreVertical size={20} color={Colors.light.tint} />
@@ -674,89 +751,115 @@ export default function QuoteDetailScreen() {
         {(quote.status === 'active' || quote.status === 'completed') ? (
           <>
             {quote.isLocked ? (
-              <View style={styles.lockedButton}>
+              <View style={[styles.actionBtn, styles.actionBtnSolid, { backgroundColor: '#6b7280', flex: 1 }]}>
                 <Lock size={17} color="#fff" />
-                <Text style={styles.lockedButtonText}>Locked</Text>
+                <Text style={styles.actionBtnSolidText}>Locked</Text>
               </View>
             ) : (
-              <TouchableOpacity style={styles.trackButton} onPress={handleTrackSales}>
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnOutline, { flex: 1 }]} onPress={handleTrackSales}>
                 <ClipboardList size={17} color={Colors.light.tint} />
-                <Text style={styles.trackButtonText}>Track Costs</Text>
+                <Text style={styles.actionBtnOutlineText}>Track Costs</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.productionViewButton} onPress={() => router.push(`/quote/production/${id}`)}>
-              <Flame size={17} color={Colors.light.tint} />
-              <Text style={styles.productionViewButtonText}>Start Production</Text>
+            <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1 }]} onPress={() => router.push(`/quote/production/${id}`)}>
+              <Flame size={17} color="#fff" />
+              <Text style={styles.actionBtnSolidText}>Start Production</Text>
             </TouchableOpacity>
           </>
         ) : (
           <>
-            <TouchableOpacity style={styles.convertButton} onPress={handleConvertToSale} disabled={isConverting}>
-              <CheckCircle size={17} color="#fff" />
-              <Text style={styles.convertButtonText}>{isConverting ? 'Converting...' : 'Mark as Active'}</Text>
+            <TouchableOpacity style={[styles.actionBtn, styles.actionBtnOutline, { flex: 1 }]} onPress={handleConvertToSale} disabled={isConverting}>
+              <CheckCircle size={17} color={Colors.light.tint} />
+              <Text style={styles.actionBtnOutlineText}>{isConverting ? 'Converting...' : 'Mark as Active'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.productionViewButton} onPress={() => router.push(`/quote/production/${id}`)}>
-              <Flame size={17} color={Colors.light.tint} />
-              <Text style={styles.productionViewButtonText}>Start Production</Text>
+            <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1 }]} onPress={() => router.push(`/quote/production/${id}`)}>
+              <Flame size={17} color="#fff" />
+              <Text style={styles.actionBtnSolidText}>Start Production</Text>
             </TouchableOpacity>
           </>
         )}
       </View>
 
       {menuVisible && (
-        <TouchableOpacity style={styles.menuOverlay} activeOpacity={1} onPress={() => setMenuVisible(false)}>
-          <View style={styles.menuContainer}>
-            <View style={styles.menuHeader}>
-              <Text style={styles.menuTitle}>Options</Text>
-              <TouchableOpacity onPress={() => setMenuVisible(false)}>
-                <X size={20} color={Colors.light.text} />
-              </TouchableOpacity>
+        <Modal visible transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>
+          <TouchableOpacity style={styles.menuOverlay} activeOpacity={1} onPress={() => setMenuVisible(false)}>
+            <View style={styles.menuContainer}>
+              <View style={styles.menuHeader}>
+                <Text style={styles.menuTitle}>Options</Text>
+                <TouchableOpacity onPress={() => setMenuVisible(false)}>
+                  <X size={20} color={Colors.light.text} />
+                </TouchableOpacity>
+              </View>
+
+              {(quote.status === 'active' || quote.status === 'completed') ? (
+                <>
+                  {!quote.isLocked ? (
+                    <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleEdit(); }}>
+                      <Edit3 size={18} color={Colors.light.text} />
+                      <Text style={styles.menuItemText}>Edit Quote</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.menuItem}>
+                      <Lock size={18} color={Colors.light.textSecondary} />
+                      <Text style={[styles.menuItemText, { color: Colors.light.textSecondary }]}>Project is Locked</Text>
+                    </View>
+                  )}
+                  {!quote.isLocked && (
+                    <TouchableOpacity style={styles.menuItem} onPress={handleRevertToQuote}>
+                      <RotateCcw size={18} color={Colors.light.textSecondary} />
+                      <Text style={[styles.menuItemText, { color: Colors.light.textSecondary }]}>Revert to Quoted</Text>
+                    </TouchableOpacity>
+                  )}
+                  <View style={styles.menuSeparator} />
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleExportPDF(); }}>
+                    <Download size={18} color={Colors.light.text} />
+                    <Text style={styles.menuItemText}>Export to PDF</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleExportToSheets(); }}>
+                    <Sheet size={18} color={Colors.light.success} />
+                    <Text style={[styles.menuItemText, { color: Colors.light.success }]}>Export to Sheets</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handlePrint(); }}>
+                    <Printer size={18} color={Colors.light.text} />
+                    <Text style={styles.menuItemText}>Print</Text>
+                  </TouchableOpacity>
+                  <View style={styles.menuSeparator} />
+                  {!quote.isLocked && (
+                    <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]} onPress={handleDelete}>
+                      <Trash2 size={18} color={Colors.light.error} />
+                      <Text style={[styles.menuItemText, { color: Colors.light.error }]}>Delete</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleConvertToSale(); }}>
+                    <CheckCircle size={18} color={Colors.light.tint} />
+                    <Text style={[styles.menuItemText, { color: Colors.light.tint }]}>Mark as Active</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleEdit(); }}>
+                    <Edit3 size={18} color={Colors.light.text} />
+                    <Text style={styles.menuItemText}>Edit Quote</Text>
+                  </TouchableOpacity>
+                  <View style={styles.menuSeparator} />
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleExportPDF(); }}>
+                    <Download size={18} color={Colors.light.text} />
+                    <Text style={styles.menuItemText}>Export to PDF</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handlePrint(); }}>
+                    <Printer size={18} color={Colors.light.text} />
+                    <Text style={styles.menuItemText}>Print</Text>
+                  </TouchableOpacity>
+                  <View style={styles.menuSeparator} />
+                  <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]} onPress={handleDelete}>
+                    <Trash2 size={18} color={Colors.light.error} />
+                    <Text style={[styles.menuItemText, { color: Colors.light.error }]}>Delete</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
-
-            {quote.isLocked ? (
-              <TouchableOpacity style={styles.menuItem} onPress={() => setMenuVisible(false)}>
-                <Lock size={18} color={Colors.light.textSecondary} />
-                <Text style={[styles.menuItemText, { color: Colors.light.textSecondary }]}>Project is Locked</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleEdit(); }}>
-                <Edit3 size={18} color={Colors.light.text} />
-                <Text style={styles.menuItemText}>Edit Quote</Text>
-              </TouchableOpacity>
-            )}
-
-            {(quote.status === 'active' || quote.status === 'completed') && !quote.isLocked && (
-              <TouchableOpacity style={styles.menuItem} onPress={handleRevertToQuote}>
-                <RotateCcw size={18} color={Colors.light.textSecondary} />
-                <Text style={[styles.menuItemText, { color: Colors.light.textSecondary }]}>Revert to Quoted</Text>
-              </TouchableOpacity>
-            )}
-
-            {(quote.status === 'active' || quote.status === 'completed') && (
-              <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleExportToSheets(); }}>
-                <Sheet size={18} color={Colors.light.success} />
-                <Text style={[styles.menuItemText, { color: Colors.light.success }]}>Export to Sheets</Text>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleExportPDF(); }}>
-              <Download size={18} color={Colors.light.text} />
-              <Text style={styles.menuItemText}>Export PDF</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handlePrint(); }}>
-              <Printer size={18} color={Colors.light.text} />
-              <Text style={styles.menuItemText}>Print</Text>
-            </TouchableOpacity>
-
-            {!quote.isLocked && (
-              <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]} onPress={handleDelete}>
-                <Trash2 size={18} color={Colors.light.error} />
-                <Text style={[styles.menuItemText, { color: Colors.light.error }]}>Delete</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
       )}
     </View>
   );
@@ -1263,89 +1366,116 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  pdfButton: {
-    flex: 1,
+  actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
     borderRadius: 10,
-    backgroundColor: Colors.light.tint,
-    gap: 8,
+    gap: 7,
   },
-  pdfButtonText: {
-    fontSize: 15,
+  actionBtnSolid: {
+    backgroundColor: Colors.light.tint,
+  },
+  actionBtnOutline: {
+    borderWidth: 1.5,
+    borderColor: Colors.light.tint,
+  },
+  actionBtnSolidText: {
+    fontSize: 14,
     fontWeight: '600' as const,
     color: '#fff',
   },
-  productionViewButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: Colors.light.tint,
-    gap: 6,
-  },
-  productionViewButtonText: {
+  actionBtnOutlineText: {
     fontSize: 14,
     fontWeight: '600' as const,
     color: Colors.light.tint,
   },
-  convertButton: {
-    flex: 1,
+  quoteNavStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 10,
-    backgroundColor: Colors.light.tint,
-    gap: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: Colors.light.surface,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
   },
-  convertButtonText: {
-    fontSize: 15,
-    fontWeight: '600' as const,
-    color: '#fff',
-  },
-  trackButton: {
+  quoteNavBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: Colors.light.tint,
-    gap: 6,
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    maxWidth: '40%',
   },
-  trackButtonText: {
-    fontSize: 14,
+  quoteNavBtnDisabled: { opacity: 0.35 },
+  quoteNavBtnText: {
+    fontSize: 12,
     fontWeight: '600' as const,
     color: Colors.light.tint,
+    flexShrink: 1,
   },
-  lockedButton: {
-    flex: 1,
+  quoteNavBtnTextDisabled: { color: Colors.light.border },
+  quoteNavCount: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    fontWeight: '500' as const,
+  },
+  mockupImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: 8,
+    marginBottom: 12,
+    backgroundColor: Colors.light.background,
+  },
+  mockupPlaceholder: {
+    width: '100%',
+    height: 90,
+    borderRadius: 8,
+    backgroundColor: Colors.light.background,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    gap: 6,
+    flexDirection: 'row',
+  },
+  mockupPlaceholderText: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+  },
+  lineItemTotalsBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    gap: 10,
+    backgroundColor: Colors.light.tint,
     borderRadius: 10,
-    backgroundColor: '#6b7280',
-    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginTop: 4,
   },
-  lockedButtonText: {
-    fontSize: 15,
-    fontWeight: '600' as const,
+  lineItemTotalsText: {
+    fontSize: 13,
+    fontWeight: '700' as const,
     color: '#fff',
+  },
+  lineItemTotalsDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+  },
+  menuSeparator: {
+    height: 1,
+    backgroundColor: Colors.light.border,
+    marginVertical: 4,
   },
   menuOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },

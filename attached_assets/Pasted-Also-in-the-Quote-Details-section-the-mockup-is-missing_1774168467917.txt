@@ -1,0 +1,11 @@
+Also, in the Quote Details section, the mockup is missing. I think this needs to be incorporated for each line item like it is for the each line item for a New Quote. Can you rework the layout of the Line Items to better facilitiate this and the line items specific details? 
+
+While in the Quote Details section, I noticed that if I have more than one line item, it isnt clear how many TOTAL items I am producing unless i calculate each line item from its subtotal area. I'd like to have an orange bar at the bottom of the left side (where the line items are) that has a running total of this. It should display # of Line Items, Total # of Items,
+
+I want to have an easy way to scroll to next and previous quotes when Im in the Quote Details view. 
+
+At the bottom of the Quote Details view, the Start Production button should have the orange background and white text. 
+
+In the Quote Details, the buttons are different sizes when they are "Active" status vs when they are "Quoted" status. these need to be the same sizes across the board. Mimic the size and layout of the sized buttons in "Active" status. 
+
+In the same way the dropdown in the Projects tab incorporated the line break, i want to do the following in the Options elipsis button in the Quote Details view. The following actions should be available in the dropdown for "Active" Quotes and in this order: Edit Quote, Revert to Quoted, [a line break should go here], then Export to PDF, Export to Sheets, Print, [a line break should go here], and then Delete. The following actions should be available in the dropdown for "Quoted" Quotes and in this order: Mark as Active, Edit Quote, [a line break should go here], then Export to PDF, Print, [a line break should go here], and then Delete. Whenever "Delete" is selected in either area of this system, a dialog box should pop up and ask "Are you sure?" and then a no or yes option. When yes is selected, it should remove that quote altogether and reload to the Projects tab page. If no, it should go back to the screen where "Delete" was selected. Clicking outside of the dialogue box should also suffice as a "no".
