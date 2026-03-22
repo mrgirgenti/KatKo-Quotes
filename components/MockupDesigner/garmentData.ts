@@ -1,7 +1,7 @@
 export const CANVAS_W = 500;
 export const CANVAS_H = 600;
 
-export type GarmentType = 'tshirt' | 'hoodie' | 'crewneck' | 'longsleeve' | 'hat';
+export type GarmentType = 'tshirt' | 'polo' | 'crewneck' | 'hoodie' | 'longsleeve' | 'hat';
 export type GarmentView = 'front' | 'back';
 export type PrintLocation =
   | 'Left Chest'
@@ -98,37 +98,54 @@ const HAT_ZONES: ZoneDefinition[] = [
   { id: 'Left Chest', label: 'Left Panel', x: 60, y: 130, w: 85, h: 100, view: 'front' },
 ];
 
+const POLO_ZONES: ZoneDefinition[] = [
+  { id: 'Left Chest',   label: 'Left Chest\n2.5"–4" × 2.5"–4"',  x: 295, y: 215, w: 105, h: 85,  view: 'front' },
+  { id: 'Right Chest',  label: 'Right Chest\n2.5"–4" × 2.5"–4"', x: 100, y: 215, w: 105, h: 85,  view: 'front' },
+  { id: 'Center Chest', label: 'Center Chest\n6"–9" × 6"–8"',    x: 170, y: 215, w: 160, h: 100, view: 'front' },
+  { id: 'Full Front',   label: 'Full Front\n10"–12" × 10"–14"',  x: 90,  y: 200, w: 320, h: 280, view: 'front' },
+  { id: 'Neck Tag',     label: 'Neck Tag\n~2"–3" wide',           x: 185, y: 60,  w: 130, h: 70,  view: 'back'  },
+  { id: 'Upper Back',   label: 'Upper Back\n10"–14" × 1"–6"',    x: 95,  y: 135, w: 310, h: 120, view: 'back'  },
+  { id: 'Full Back',    label: 'Full Back\n10"–14" × 6"–15"',    x: 85,  y: 130, w: 330, h: 280, view: 'back'  },
+];
+
 export const GARMENTS: Record<GarmentType, GarmentDefinition> = {
   tshirt: {
-    label: 'T-Shirt',
+    label: 'T-Shirts',
+    frontPath: BODY_FRONT,
+    backPath: BODY_BACK,
+    defaultColor: '#FFFFFF',
+    zones: TSHIRT_ZONES,
+  },
+  polo: {
+    label: 'Polos',
+    frontPath: BODY_FRONT,
+    backPath: BODY_BACK,
+    defaultColor: '#FFFFFF',
+    zones: POLO_ZONES,
+  },
+  crewneck: {
+    label: 'Crewnecks',
     frontPath: BODY_FRONT,
     backPath: BODY_BACK,
     defaultColor: '#FFFFFF',
     zones: TSHIRT_ZONES,
   },
   hoodie: {
-    label: 'Hoodie',
+    label: 'Hoodies',
     frontPath: HOODIE_FRONT,
     backPath: HOODIE_BACK,
     defaultColor: '#FFFFFF',
     zones: HOODIE_ZONES,
   },
-  crewneck: {
-    label: 'Crewneck',
-    frontPath: BODY_FRONT,
-    backPath: BODY_BACK,
-    defaultColor: '#FFFFFF',
-    zones: TSHIRT_ZONES,
-  },
   longsleeve: {
-    label: 'Long Sleeve',
+    label: 'Long Sleeves',
     frontPath: SLEEVE_BODY_FRONT,
     backPath: SLEEVE_BODY_BACK,
     defaultColor: '#FFFFFF',
     zones: LONGSLEEVE_ZONES,
   },
   hat: {
-    label: 'Hat',
+    label: 'Hats',
     frontPath: HAT_FRONT,
     backPath: HAT_FRONT,
     defaultColor: '#FFFFFF',

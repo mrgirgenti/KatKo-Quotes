@@ -361,22 +361,6 @@ const ITC_EXP30PZ_COLORS: ProductColor[] = [
   { name: 'Silver',       hex: '#C0C0C0', dark: false },
 ];
 
-const DT6000_COLORS: ProductColor[] = [
-  { name: 'White',              hex: '#FFFFFF', dark: false },
-  { name: 'Black',              hex: '#1A1A1A', dark: true  },
-  { name: 'Heathered Charcoal', hex: '#546E7A', dark: true  },
-  { name: 'Heathered Navy',     hex: '#2D3F6B', dark: true  },
-  { name: 'True Royal',         hex: '#1560BD', dark: true  },
-  { name: 'Red Pepper',         hex: '#C8102E', dark: true  },
-  { name: 'Pomegranate',        hex: '#9B2335', dark: true  },
-  { name: 'Heathered Teal',     hex: '#2E8B8B', dark: true  },
-  { name: 'Forest Green',       hex: '#1B5E20', dark: true  },
-  { name: 'Light Pink',         hex: '#F48FB1', dark: false },
-  { name: 'New Navy',           hex: '#0D1B3E', dark: true  },
-  { name: 'Heathered Grape',    hex: '#7B4F8A', dark: true  },
-  { name: 'Cloud',              hex: '#E8E8E8', dark: false },
-  { name: 'Washed Coal',        hex: '#5A5A5A', dark: true  },
-];
 
 const SPORTTEK_ST550_COLORS: ProductColor[] = [
   { name: 'White',         hex: '#FFFFFF', dark: false },
@@ -630,12 +614,11 @@ export const VENDOR_CATALOG: Vendor[] = [
       { styleNumber: 'BC3001Y', name: 'Bella+Canvas Youth Jersey Tee',      garmentType: 'tshirt',    isYouth: true, colors: BC3001Y_COLORS },
       { styleNumber: 'NL6210',  name: 'Next Level CVC Crew',                garmentType: 'tshirt',    colors: NL6210_COLORS },
       { styleNumber: '1717',    name: 'Comfort Colors Garment Dyed Tee',    garmentType: 'tshirt',    colors: CC1717_COLORS },
-      { styleNumber: 'DT6000',  name: 'District Very Important Tee',        garmentType: 'tshirt',    colors: DT6000_COLORS },
       // ── Polos ─────────────────────────────────────────────────────────────
-      { styleNumber: 'ST550',     name: 'Sport-Tek Micropique Polo',         garmentType: 'tshirt',    colors: SPORTTEK_ST550_COLORS },
-      { styleNumber: 'NKDC1963',  name: 'Nike Micro Pique 2.0 Polo',        garmentType: 'tshirt',    colors: NIKE_POLO_COLORS },
-      { styleNumber: 'NKDC1991',  name: "Nike Women's Micro Pique 2.0 Polo",garmentType: 'tshirt',    colors: NIKE_POLO_COLORS },
-      { styleNumber: 'OG101',     name: 'Ogio Caliber 2.0 Polo',            garmentType: 'tshirt',    colors: OGIO_OG101_COLORS },
+      { styleNumber: 'ST550',     name: 'Sport-Tek Micropique Polo',          garmentType: 'polo',      colors: SPORTTEK_ST550_COLORS },
+      { styleNumber: 'NKDC1963',  name: 'Nike Micro Pique 2.0 Polo',         garmentType: 'polo',      colors: NIKE_POLO_COLORS },
+      { styleNumber: 'NKDC1991',  name: "Nike Women's Micro Pique 2.0 Polo", garmentType: 'polo',      colors: NIKE_POLO_COLORS },
+      { styleNumber: 'OG101',     name: 'Ogio Caliber 2.0 Polo',             garmentType: 'polo',      colors: OGIO_OG101_COLORS },
       // ── Long Sleeve ──────────────────────────────────────────────────────
       { styleNumber: 'NL7200',  name: 'Next Level Tri-Blend Long Sleeve',   garmentType: 'longsleeve',colors: NL7200_COLORS },
       // ── Activewear ────────────────────────────────────────────────────────

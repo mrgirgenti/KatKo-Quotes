@@ -1,0 +1,13 @@
+In the Mockup Designer, lets give the style number more room - the whole style number (for example: 2000B (Y)) should be on the same line and not text wrapped.
+
+I want the default of the Product Style, search area to auto populate the first 5 options as soon as a Garment Template and a Vendor are selected. I should not have to wait to click "Search styles" bar for these to start populating. 
+
+In the Artwork area of the Mockup Designer, I should be able to Upload or Drop Image in there. Currently i need to click. 
+
+When a darker Garment Color is selected in the Mockup Designer, the artwork locations on the mockup should be a white or lighter color so the text is legible. Also, the when i click to add art to those artwork locations, I almost always have to select the full front because the others are hard to select. Lets have Full Front option be the furthest overlay so that Center Chest, Right Chest, and Left Chest are able to be clicked. 
+
+Additionally, when artwork is uploaded, I should be able to [1] either click the artwork and click the location, OR [2] click and drag the artwork from the artwork bin to the location desired. 
+
+For the polos (style numbers ST550, NKDC1963, NKDC1991, and OG101) they should have their own Garment Template as these are different than tshirts. Please create that. The Garment Template list should be as follows: T-Shirts, Polos, Crewnecks, Hoodies, Long Sleeves, and Hats.  Also, remove DT6000 style altogether - we dont use that . 
+
+I want to figure out a way to auto detect the artwork placement size and for the mockup generator to understand that, for example, if a 10" wide artwork is uploaded, that it can only really fit in the center chest or full front. Technically, the largest we can print is 14"wide x 14" tall. I want it to snap to size and for us to auto resize the artwork on the mockup placement area. Also, right above Print Locations in the Mockup Designer, an "artwork size" section would be helpful. See attached as an example of what I mean. The cropped feature would be helpful as well as a true way to remove background! 

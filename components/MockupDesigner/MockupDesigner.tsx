@@ -50,6 +50,8 @@ interface UploadedArtwork {
   id: string;
   uri: string;
   name: string;
+  naturalW?: number;
+  naturalH?: number;
 }
 
 interface Placement {
@@ -86,6 +88,8 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
   const [styleSearchTerm, setStyleSearchTerm] = useState('');
   const [styleDropdownOpen, setStyleDropdownOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab>('controls');
+  const [artworkDragOver, setArtworkDragOver] = useState(false);
+  const [draggedArtworkId, setDraggedArtworkId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visible) return;
@@ -96,6 +100,110 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
     setStyleDropdownOpen(false);
   }, [visible]);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const artworkDropRef = useRef<any>(null);
+  const canvasContainerRef = useRef<any>(null);
+
+  const addArtworkFromUri = useCallback((uri: string, name: string, naturalW?: number, naturalH?: number) => {
+    const newArtwork: UploadedArtwork = { id: generateId(), uri, name, naturalW, naturalH };
+    setUploadedArtworks(prev => [...prev, newArtwork]);
+    setSelectedArtworkId(newArtwork.id);
+  }, []);
+
+  const placeArtworkInZone = useCallback((artworkId: string, zone: ZoneDefinition) => {
+    setUploadedArtworks(prev => {
+      const artwork = prev.find(a => a.id === artworkId);
+      if (!artwork) return prev;
+      const zoneMaxWIn = zone.w / 25;
+      const zoneMaxHIn = zone.h / 25;
+      let autoW: string | undefined;
+      let autoH: string | undefined;
+      if (artwork.naturalW && artwork.naturalH) {
+        const ratio = artwork.naturalW / artwork.naturalH;
+        let fitW = Math.min(14, artwork.naturalW / 96);
+        let fitH = Math.min(14, artwork.naturalH / 96);
+        if (fitW > zoneMaxWIn) { fitW = zoneMaxWIn; fitH = fitW / ratio; }
+        if (fitH > zoneMaxHIn) { fitH = zoneMaxHIn; fitW = fitH * ratio; }
+        autoW = fitW.toFixed(1);
+        autoH = fitH.toFixed(1);
+      }
+      setPlacements(curr => {
+        const filtered = curr.filter(p => p.zoneId !== zone.id);
+        return [...filtered, { zoneId: zone.id, artworkId: artwork.id, artworkUri: artwork.uri, artWidthIn: autoW, artHeightIn: autoH }];
+      });
+      setActiveZoneId(zone.id);
+      return prev;
+    });
+  }, []);
+
+  // Drag-drop image files into the artwork panel
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const el = artworkDropRef.current;
+    if (!el) return;
+    const domEl = el as HTMLElement;
+    const onDragOver = (e: DragEvent) => { e.preventDefault(); e.stopPropagation(); setArtworkDragOver(true); };
+    const onDragLeave = (e: DragEvent) => { if (!domEl.contains(e.relatedTarget as Node)) setArtworkDragOver(false); };
+    const onDrop = (e: DragEvent) => {
+      e.preventDefault(); e.stopPropagation(); setArtworkDragOver(false);
+      const files = e.dataTransfer?.files;
+      if (!files) return;
+      Array.from(files).forEach(file => {
+        if (!file.type.startsWith('image/')) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const uri = ev.target?.result as string;
+          if (!uri) return;
+          const img = new (window as any).Image();
+          img.onload = () => addArtworkFromUri(uri, file.name, img.naturalWidth, img.naturalHeight);
+          img.src = uri;
+        };
+        reader.readAsDataURL(file);
+      });
+    };
+    domEl.addEventListener('dragover', onDragOver);
+    domEl.addEventListener('dragleave', onDragLeave);
+    domEl.addEventListener('drop', onDrop);
+    return () => {
+      domEl.removeEventListener('dragover', onDragOver);
+      domEl.removeEventListener('dragleave', onDragLeave);
+      domEl.removeEventListener('drop', onDrop);
+    };
+  }, [addArtworkFromUri]);
+
+  // Drag artwork items from the bin and drop onto a canvas zone
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const el = canvasContainerRef.current;
+    if (!el) return;
+    const domEl = el as HTMLElement;
+    const onDragOver = (e: DragEvent) => { e.preventDefault(); };
+    const onDrop = (e: DragEvent) => {
+      e.preventDefault();
+      const artId = (e as any).dataTransfer?.getData('text/artwork-id') || draggedArtworkIdRef.current;
+      if (!artId) return;
+      const rect = domEl.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const canvasX = mouseX / SCALE;
+      const canvasY = (mouseY / SCALE) - 30;
+      const allZones = GARMENTS[garmentType].zones.filter(z => z.view === currentView);
+      const hit = allZones.find(z =>
+        canvasX >= z.x && canvasX <= z.x + z.w &&
+        canvasY >= z.y && canvasY <= z.y + z.h
+      );
+      if (hit) placeArtworkInZone(artId, hit);
+      setDraggedArtworkId(null);
+    };
+    domEl.addEventListener('dragover', onDragOver);
+    domEl.addEventListener('drop', onDrop);
+    return () => {
+      domEl.removeEventListener('dragover', onDragOver);
+      domEl.removeEventListener('drop', onDrop);
+    };
+  }, [garmentType, currentView, placeArtworkInZone]);
+
+  const draggedArtworkIdRef = useRef<string | null>(null);
+  useEffect(() => { draggedArtworkIdRef.current = draggedArtworkId; }, [draggedArtworkId]);
 
   const selectedVendor = selectedVendorId
     ? VENDOR_CATALOG.find(v => v.id === selectedVendorId) ?? null
@@ -116,11 +224,6 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
     ? selectedVendor.styles.filter(s => s.garmentType === garmentType)
     : [];
 
-  const garment = GARMENTS[garmentType];
-  const svgPath = currentView === 'front' ? garment.frontPath : garment.backPath;
-  const currentZones = garment.zones.filter(z => z.view === currentView);
-  const isDark = GARMENT_COLORS.find(c => c.value === garmentColor)?.dark ?? false;
-
   const isColorDark = useCallback((hex: string) => {
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
@@ -130,6 +233,32 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
 
   const getOutlineColor = () => (isColorDark(garmentColor) ? '#444' : '#888');
   const getDetailColor = () => (isColorDark(garmentColor) ? '#555' : '#ccc');
+
+  const garment = GARMENTS[garmentType];
+  const svgPath = currentView === 'front' ? garment.frontPath : garment.backPath;
+  // Full Front / Full Back rendered first so smaller zones overlap them (stay clickable on top)
+  const currentZones = garment.zones
+    .filter(z => z.view === currentView)
+    .sort((a, b) => {
+      const aFull = a.id === 'Full Front' || a.id === 'Full Back';
+      const bFull = b.id === 'Full Front' || b.id === 'Full Back';
+      if (aFull && !bFull) return -1;
+      if (!aFull && bFull) return 1;
+      return 0;
+    });
+  const isDark = GARMENT_COLORS.find(c => c.value === garmentColor)?.dark ?? isColorDark(garmentColor);
+  const zoneLabelColor = isDark ? 'rgba(255,255,255,0.88)' : 'rgba(40,40,40,0.75)';
+
+  const selectedArtwork = uploadedArtworks.find(a => a.id === selectedArtworkId) ?? null;
+  const artworkSizeIn = selectedArtwork?.naturalW && selectedArtwork?.naturalH
+    ? { w: Math.min(14, selectedArtwork.naturalW / 96), h: Math.min(14, selectedArtwork.naturalH / 96) }
+    : null;
+  const artworkSizeSuggest = artworkSizeIn
+    ? artworkSizeIn.w > 8 ? 'Best fit: Full Front'
+      : artworkSizeIn.w > 5 ? 'Best fit: Center Chest or Full Front'
+      : artworkSizeIn.w > 3 ? 'Best fit: Left/Right Chest'
+      : 'Best fit: small locations (Chest / Neck Tag)'
+    : '';
 
   const handleUploadArtwork = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -144,25 +273,18 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
       const uri = asset.base64
         ? `data:${mimeType};base64,${asset.base64}`
         : asset.uri;
-      const newArtwork: UploadedArtwork = {
-        id: generateId(),
+      addArtworkFromUri(
         uri,
-        name: asset.fileName || `Artwork ${uploadedArtworks.length + 1}`,
-      };
-      setUploadedArtworks(prev => [...prev, newArtwork]);
-      setSelectedArtworkId(newArtwork.id);
+        asset.fileName || `Artwork ${uploadedArtworks.length + 1}`,
+        asset.width ?? undefined,
+        asset.height ?? undefined,
+      );
     }
   };
 
   const handleZonePress = (zone: ZoneDefinition) => {
     if (selectedArtworkId) {
-      const artwork = uploadedArtworks.find(a => a.id === selectedArtworkId);
-      if (!artwork) return;
-      setPlacements(prev => {
-        const filtered = prev.filter(p => p.zoneId !== zone.id);
-        return [...filtered, { zoneId: zone.id, artworkId: artwork.id, artworkUri: artwork.uri }];
-      });
-      setActiveZoneId(zone.id);
+      placeArtworkInZone(selectedArtworkId, zone);
     } else {
       setActiveZoneId(prev => prev === zone.id ? null : zone.id);
     }
@@ -177,12 +299,13 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
     if (selectedVendorId === vendorId) {
       setSelectedVendorId(null);
       setSelectedStyleNumber(null);
+      setStyleDropdownOpen(false);
     } else {
       setSelectedVendorId(vendorId);
       setSelectedStyleNumber(null);
+      setStyleDropdownOpen(true);
     }
     setStyleSearchTerm('');
-    setStyleDropdownOpen(false);
   };
 
   const handleGarmentTypeChange = (type: GarmentType) => {
@@ -191,11 +314,12 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
     setSelectedStyleNumber(null);
     setStyleSearchTerm('');
     setStyleDropdownOpen(false);
-    // If the selected vendor has no products of this type, deselect vendor
     if (selectedVendorId) {
       const v = VENDOR_CATALOG.find(v => v.id === selectedVendorId);
       if (v && !v.styles.some(s => s.garmentType === type)) {
         setSelectedVendorId(null);
+      } else if (v) {
+        setStyleDropdownOpen(true);
       }
     }
   };
@@ -527,7 +651,7 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
 
             {/* ── Center: Garment Canvas ── */}
             <View style={[styles.centerPanel, isMobile && mobileTab !== 'canvas' && { display: 'none' }, isMobile && { width: '100%' }]}>
-              <View style={[styles.canvasContainer, { width: DISPLAY_W, height: DISPLAY_H }]}>
+              <View ref={canvasContainerRef} style={[styles.canvasContainer, { width: DISPLAY_W, height: DISPLAY_H }]}>
                 {/* SVG Garment */}
                 <Svg
                   width={DISPLAY_W}
@@ -549,6 +673,24 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                         <Rect x={165} y={450} width={170} height={100} rx={8} ry={8}
                           fill="none" stroke={getDetailColor()} strokeWidth={1.5} />
                         <Line x1={165} y1={500} x2={335} y2={500} stroke={getDetailColor()} strokeWidth={1} />
+                      </>
+                    )}
+                    {garmentType === 'polo' && currentView === 'front' && (
+                      <>
+                        {/* Button placket strip */}
+                        <Rect x={234} y={100} width={32} height={130} rx={3}
+                          fill="none" stroke={getDetailColor()} strokeWidth={1.5} />
+                        {/* Buttons */}
+                        <Circle cx={250} cy={116} r={3.5} fill={getDetailColor()} />
+                        <Circle cx={250} cy={136} r={3.5} fill={getDetailColor()} />
+                        <Circle cx={250} cy={156} r={3.5} fill={getDetailColor()} />
+                        <Circle cx={250} cy={176} r={3.5} fill={getDetailColor()} />
+                        {/* Left collar lapel */}
+                        <Path d="M 185,55 C 210,75 220,100 228,135 L 250,108 Z"
+                          fill={garmentColor} stroke={getDetailColor()} strokeWidth={1.5} />
+                        {/* Right collar lapel */}
+                        <Path d="M 315,55 C 290,75 280,100 272,135 L 250,108 Z"
+                          fill={garmentColor} stroke={getDetailColor()} strokeWidth={1.5} />
                       </>
                     )}
                     {garmentType === 'hat' && (
@@ -602,7 +744,7 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                       ) : (
                         <Text style={[
                           styles.zoneLabel,
-                          { fontSize: Math.max(7, zone.w * SCALE * 0.09) }
+                          { fontSize: Math.max(7, zone.w * SCALE * 0.09), color: zoneLabelColor }
                         ]}>
                           {zone.id}
                         </Text>
@@ -646,17 +788,27 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
             </View>
 
             {/* ── Right Panel: Artwork ── */}
-            <View style={[styles.rightPanel, isMobile && mobileTab !== 'artwork' && { display: 'none' }, isMobile && { width: '100%' }]}>
+            <View
+              ref={artworkDropRef}
+              style={[
+                styles.rightPanel,
+                artworkDragOver && styles.rightPanelDragOver,
+                isMobile && mobileTab !== 'artwork' && { display: 'none' },
+                isMobile && { width: '100%' },
+              ]}
+            >
               <Text style={styles.sectionLabel}>ARTWORK</Text>
               <TouchableOpacity style={styles.uploadArtworkBtn} onPress={handleUploadArtwork}>
                 <Upload size={16} color={Colors.light.tint} />
-                <Text style={styles.uploadArtworkText}>Upload Logo / Graphic</Text>
+                <Text style={styles.uploadArtworkText}>Upload or Drop Image</Text>
               </TouchableOpacity>
 
               {uploadedArtworks.length === 0 ? (
                 <View style={styles.artworkEmptyState}>
-                  <ImageIcon size={32} color={Colors.light.borderDark} />
-                  <Text style={styles.artworkEmptyText}>Upload your client's{'\n'}logo or artwork</Text>
+                  <ImageIcon size={32} color={artworkDragOver ? Colors.light.tint : Colors.light.borderDark} />
+                  <Text style={styles.artworkEmptyText}>
+                    {artworkDragOver ? 'Drop to add artwork' : 'Upload or drag & drop\nyour logo or artwork'}
+                  </Text>
                 </View>
               ) : (
                 <ScrollView style={styles.artworkList} showsVerticalScrollIndicator={false}>
@@ -666,8 +818,18 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                       style={[
                         styles.artworkItem,
                         selectedArtworkId === artwork.id && styles.artworkItemSelected,
+                        draggedArtworkId === artwork.id && styles.artworkItemDragging,
                       ]}
                       onPress={() => setSelectedArtworkId(prev => prev === artwork.id ? null : artwork.id)}
+                      {...(Platform.OS === 'web' ? {
+                        draggable: true,
+                        onDragStart: (e: any) => {
+                          setDraggedArtworkId(artwork.id);
+                          setSelectedArtworkId(artwork.id);
+                          e.dataTransfer?.setData('text/artwork-id', artwork.id);
+                        },
+                        onDragEnd: () => setDraggedArtworkId(null),
+                      } : {})}
                     >
                       <Image source={{ uri: artwork.uri }} style={styles.artworkThumbnail} resizeMode="contain" />
                       <Text style={styles.artworkName} numberOfLines={1}>{artwork.name}</Text>
@@ -690,9 +852,20 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
               {selectedArtworkId && (
                 <View style={styles.placingHint}>
                   <Text style={styles.placingHintText}>
-                    Tap a zone on the garment to place this artwork
+                    Tap a zone or drag artwork onto the garment to place it
                   </Text>
                 </View>
+              )}
+
+              {/* Artwork size detection */}
+              {artworkSizeIn && (
+                <>
+                  <Text style={[styles.sectionLabel, { marginTop: 12 }]}>ARTWORK SIZE</Text>
+                  <View style={styles.artworkSizeBanner}>
+                    <Text style={styles.artworkSizeVal}>{artworkSizeIn.w.toFixed(1)}&quot; × {artworkSizeIn.h.toFixed(1)}&quot;</Text>
+                    <Text style={styles.artworkSizeSuggest}>{artworkSizeSuggest}</Text>
+                  </View>
+                </>
               )}
 
               {/* Zone reference + art size inputs */}
@@ -970,7 +1143,8 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: Colors.light.tint,
-    width: 52,
+    minWidth: 80,
+    flexShrink: 0,
   },
   styleDropdownNumActive: {
     color: Colors.light.tint,
@@ -1164,12 +1338,28 @@ const styles = StyleSheet.create({
   },
   uploadArtworkText: { fontSize: 12, color: Colors.light.tint, fontWeight: '600' },
 
+  rightPanelDragOver: {
+    backgroundColor: '#FFF8F5',
+    borderLeftColor: Colors.light.tint,
+    borderLeftWidth: 2,
+  },
   artworkEmptyState: {
     alignItems: 'center',
     paddingVertical: 24,
     gap: 8,
   },
   artworkEmptyText: { fontSize: 11, color: Colors.light.textSecondary, textAlign: 'center', lineHeight: 16 },
+  artworkItemDragging: { opacity: 0.4 },
+  artworkSizeBanner: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 6,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    gap: 2,
+  },
+  artworkSizeVal: { fontSize: 13, fontWeight: '700', color: '#1D4ED8', textAlign: 'center' },
+  artworkSizeSuggest: { fontSize: 9, color: '#3B82F6', textAlign: 'center', lineHeight: 13 },
 
   artworkList: { maxHeight: 180 },
   artworkItem: {

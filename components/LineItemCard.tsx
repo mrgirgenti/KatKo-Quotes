@@ -79,7 +79,7 @@ function getColorOptionsForStyle(apparelProvider: string, productValue: string):
   return style.colors.map((c) => c.name);
 }
 
-const ALL_GARMENT_TYPES: GarmentType[] = ['tshirt', 'hoodie', 'crewneck', 'longsleeve', 'hat'];
+const ALL_GARMENT_TYPES: GarmentType[] = ['tshirt', 'polo', 'crewneck', 'hoodie', 'longsleeve', 'hat'];
 const ALL_CATALOG_STYLES = Array.from(
   new Map(VENDOR_CATALOG.flatMap((v) => v.styles).map((s) => [s.styleNumber, s])).values()
 );
