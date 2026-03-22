@@ -19,22 +19,24 @@ import {
   Layers,
   User,
   Truck,
-  ArrowLeft,
   CheckSquare,
   ChevronLeft,
   ChevronRight,
   X,
   FileText,
   Palette,
+  Calendar,
+  LogOut,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { formatDate } from '@/utils/textFormatting';
 import { getTotalQuantity } from '@/utils/quoteCalculations';
-import { LineItem, SIZE_LABELS, GarmentVariant, SizeQuantities } from '@/types/quote';
+import { LineItem, SIZE_LABELS, GarmentVariant, SizeQuantities, getEffectiveStatus, STATUS_CONFIG, QuoteStatus, Quote } from '@/types/quote';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+/* ─── Size grid ─────────────────────────────────────────────── */
 function SizeGridDisplay({ sizes, isPromotional }: { sizes: SizeQuantities; isPromotional: boolean }) {
   if (isPromotional) {
     return (
@@ -74,6 +76,50 @@ function SizeGridDisplay({ sizes, isPromotional }: { sizes: SizeQuantities; isPr
   );
 }
 
+/* ─── Project info card (matches screenshot style) ──────────── */
+function ProjectInfoCard({ quote }: { quote: Quote }) {
+  const status = getEffectiveStatus(quote);
+  const cfg = STATUS_CONFIG[status];
+  return (
+    <View style={styles.projectCard}>
+      <View style={styles.projectCardTop}>
+        <View style={styles.projectCardBadges}>
+          <View style={[styles.statusBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+            {status === 'completed' && <CheckCircle size={11} color={cfg.color} />}
+            <Text style={[styles.statusBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
+          </View>
+          {quote.orderType ? (
+            <View style={styles.orderTypeBadge}>
+              <Text style={styles.orderTypeBadgeText}>{quote.orderType}</Text>
+            </View>
+          ) : null}
+        </View>
+        {quote.invoiceNumber ? (
+          <Text style={styles.invoiceNum}>#{quote.invoiceNumber}</Text>
+        ) : null}
+      </View>
+      <Text style={styles.projectCardClient} numberOfLines={1}>{quote.personOrganization}</Text>
+      <Text style={styles.projectCardProject} numberOfLines={1}>{quote.projectName}</Text>
+      <View style={styles.projectCardDivider} />
+      <View style={styles.projectCardDates}>
+        <View style={styles.projectCardDateRow}>
+          <Calendar size={13} color={Colors.light.textSecondary} />
+          <Text style={styles.projectCardDateLabel}>Order Date</Text>
+          <Text style={styles.projectCardDateValue}>{formatDate(quote.orderDate)}</Text>
+        </View>
+        {quote.inHandsDate ? (
+          <View style={styles.projectCardDateRow}>
+            <Calendar size={13} color={Colors.light.textSecondary} />
+            <Text style={styles.projectCardDateLabel}>In-Hands</Text>
+            <Text style={styles.projectCardDateValue}>{formatDate(quote.inHandsDate)}</Text>
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+/* ─── Detail modal ───────────────────────────────────────────── */
 interface DetailModalProps {
   items: LineItem[];
   initialIndex: number;
@@ -155,20 +201,28 @@ function DetailModal({ items, initialIndex, onClose, onMarkDone, onUnmarkDone }:
               <Text style={styles.modalDetailLabel}>Source</Text>
               <Text style={styles.modalDetailValue}>{item.apparelProvider || '—'}</Text>
             </View>
-            {variants.map((v, vi) => (
-              <View key={vi}>
-                <View style={styles.modalDetailRow}>
-                  <Package size={14} color={Colors.light.textSecondary} />
-                  <Text style={styles.modalDetailLabel}>{variants.length > 1 ? `Style ${vi + 1}` : 'Product'}</Text>
-                  <Text style={styles.modalDetailValue}>{v.product || '—'}</Text>
-                </View>
-                <View style={styles.modalDetailRow}>
-                  <Palette size={14} color={Colors.light.textSecondary} />
-                  <Text style={styles.modalDetailLabel}>{variants.length > 1 ? `Color ${vi + 1}` : 'Color'}</Text>
-                  <Text style={styles.modalDetailValue}>{v.color || '—'}</Text>
-                </View>
+
+            {/* Product rows — combined "Product — Color" or numbered per variant */}
+            {variants.length === 1 ? (
+              <View style={styles.modalDetailRow}>
+                <Package size={14} color={Colors.light.textSecondary} />
+                <Text style={styles.modalDetailLabel}>Product</Text>
+                <Text style={styles.modalDetailValue}>
+                  {variants[0].product || '—'}{variants[0].color ? ` — ${variants[0].color}` : ''}
+                </Text>
               </View>
-            ))}
+            ) : (
+              variants.map((v, vi) => (
+                <View key={vi} style={styles.modalDetailRow}>
+                  <Package size={14} color={Colors.light.textSecondary} />
+                  <Text style={styles.modalDetailLabel}>Product #{vi + 1}</Text>
+                  <Text style={styles.modalDetailValue}>
+                    {v.product || '—'}{v.color ? ` — ${v.color}` : ''}
+                  </Text>
+                </View>
+              ))
+            )}
+
             {locations.length > 0 && (
               <View style={styles.modalDetailRow}>
                 <MapPin size={14} color={Colors.light.textSecondary} />
@@ -176,20 +230,22 @@ function DetailModal({ items, initialIndex, onClose, onMarkDone, onUnmarkDone }:
                 <Text style={styles.modalDetailValue}>{locations.join(', ')}</Text>
               </View>
             )}
-            {item.locationDetails ? (
-              <View style={styles.modalDetailRow}>
-                <FileText size={14} color={Colors.light.textSecondary} />
-                <Text style={styles.modalDetailLabel}>Notes</Text>
-                <Text style={styles.modalDetailValue}>{item.locationDetails}</Text>
-              </View>
-            ) : null}
+            <View style={styles.modalDetailRow}>
+              <FileText size={14} color={Colors.light.textSecondary} />
+              <Text style={styles.modalDetailLabel}>Project Notes</Text>
+              <Text style={[styles.modalDetailValue, !item.locationDetails && styles.modalDetailValueMuted]}>
+                {item.locationDetails || 'N/A'}
+              </Text>
+            </View>
           </View>
 
           {/* Sizes — one per variant */}
           {variants.map((v, vi) => (
             <View key={vi} style={styles.modalSection}>
               {variants.length > 1 && (
-                <Text style={styles.modalVariantHeading}>{v.product}{v.color ? ` — ${v.color}` : ''}</Text>
+                <Text style={styles.modalVariantHeading}>
+                  {v.product}{v.color ? ` — ${v.color}` : ''}
+                </Text>
               )}
               <Text style={styles.modalSectionTitle}>SIZE QUANTITIES</Text>
               <SizeGridDisplay sizes={v.sizes} isPromotional={isPromotional} />
@@ -250,6 +306,7 @@ function DetailModal({ items, initialIndex, onClose, onMarkDone, onUnmarkDone }:
   );
 }
 
+/* ─── Compact card ───────────────────────────────────────────── */
 interface CompactCardProps {
   item: LineItem;
   index: number;
@@ -283,7 +340,9 @@ function CompactCard({ item, index, onPress }: CompactCardProps) {
             ) : null}
           </View>
           <Text style={styles.compactVariants} numberOfLines={1}>
-            {variants.map(v => `${v.product}${v.color ? ` / ${v.color}` : ''}`).join(' · ')}
+            {variants.length === 1
+              ? `${variants[0].product || ''}${variants[0].color ? ` — ${variants[0].color}` : ''}`
+              : variants.map((v, vi) => `#${vi + 1}: ${v.product || ''}${v.color ? ` — ${v.color}` : ''}`).join(' · ')}
           </Text>
         </View>
       </View>
@@ -300,6 +359,7 @@ function CompactCard({ item, index, onPress }: CompactCardProps) {
   );
 }
 
+/* ─── Main screen ────────────────────────────────────────────── */
 export default function ProductionViewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -316,7 +376,11 @@ export default function ProductionViewScreen() {
   const handleMarkItemDone = useCallback((itemId: string) => {
     if (!quote) return;
     markLineItemComplete({ quoteId: quote.id, lineItemId: itemId });
-  }, [quote, markLineItemComplete]);
+    const remainingUndone = items.filter(i => !i.completedAt && i.id !== itemId).length;
+    if (remainingUndone === 0) {
+      setModalIndex(null);
+    }
+  }, [quote, items, markLineItemComplete]);
 
   const handleUnmarkItemDone = useCallback((itemId: string) => {
     if (!quote) return;
@@ -372,7 +436,7 @@ export default function ProductionViewScreen() {
         }}
       />
       <View style={styles.container}>
-        {/* Banner */}
+        {/* Progress banner */}
         <View style={styles.banner}>
           <View style={styles.bannerLeft}>
             <Text style={styles.bannerClient} numberOfLines={1}>{quote.personOrganization}</Text>
@@ -383,13 +447,17 @@ export default function ProductionViewScreen() {
           </View>
         </View>
 
-        {/* Compact card list */}
+        {/* Content list */}
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator
         >
+          {/* Project info card */}
+          <ProjectInfoCard quote={quote} />
+
           <Text style={styles.tapHint}>Tap a line item to view details and sizes</Text>
+
           {items.map((item, index) => (
             <CompactCard
               key={item.id}
@@ -403,10 +471,6 @@ export default function ProductionViewScreen() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <ArrowLeft size={17} color={Colors.light.tint} />
-            <Text style={styles.backBtnText}>Back to Project</Text>
-          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.completeBtn, allDone && styles.completeBtnAllDone, !!isCompletingProject && styles.completeBtnDisabled]}
             onPress={handleCompleteProject}
@@ -416,6 +480,10 @@ export default function ProductionViewScreen() {
             <Text style={styles.completeBtnText}>
               {isCompletingProject ? 'Completing…' : 'Complete Project'}
             </Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.exitBtn} onPress={() => router.replace(`/quote/${id}`)}>
+            <LogOut size={17} color={Colors.light.tint} />
+            <Text style={styles.exitBtnText}>Exit Production</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -434,6 +502,7 @@ export default function ProductionViewScreen() {
   );
 }
 
+/* ─── Styles ─────────────────────────────────────────────────── */
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.light.background },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
@@ -469,9 +538,52 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.light.textSecondary,
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
 
+  /* ── Project info card ── */
+  projectCard: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    padding: 16,
+    gap: 6,
+  },
+  projectCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  projectCardBadges: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  statusBadgeText: { fontSize: 11, fontWeight: '700' },
+  orderTypeBadge: {
+    backgroundColor: 'rgba(255,90,0,0.1)',
+    borderRadius: 20,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
+  orderTypeBadgeText: { fontSize: 11, fontWeight: '700', color: Colors.light.tint },
+  invoiceNum: { fontSize: 13, fontWeight: '600', color: Colors.light.textSecondary },
+  projectCardClient: { fontSize: 17, fontWeight: '800', color: Colors.light.text },
+  projectCardProject: { fontSize: 14, color: Colors.light.textSecondary },
+  projectCardDivider: { height: 1, backgroundColor: Colors.light.border, marginVertical: 8 },
+  projectCardDates: { gap: 6 },
+  projectCardDateRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  projectCardDateLabel: { fontSize: 13, color: Colors.light.textSecondary, width: 80 },
+  projectCardDateValue: { fontSize: 13, fontWeight: '700', color: Colors.light.text },
+
+  /* ── Compact cards ── */
   compactCard: {
     backgroundColor: Colors.light.surface,
     borderRadius: 12,
@@ -524,6 +636,7 @@ const styles = StyleSheet.create({
   itemNumBadgeDone: { backgroundColor: '#16A34A' },
   itemNumText: { fontSize: 12, fontWeight: '700', color: '#fff' },
 
+  /* ── Footer ── */
   footer: {
     flexDirection: 'row',
     gap: 12,
@@ -533,18 +646,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.light.border,
   },
-  backBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 14,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: Colors.light.tint,
-  },
-  backBtnText: { fontSize: 14, fontWeight: '600', color: Colors.light.tint },
   completeBtn: {
     flex: 1,
     flexDirection: 'row',
@@ -558,6 +659,18 @@ const styles = StyleSheet.create({
   completeBtnAllDone: { backgroundColor: '#16A34A' },
   completeBtnDisabled: { opacity: 0.6 },
   completeBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  exitBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: Colors.light.tint,
+  },
+  exitBtnText: { fontSize: 14, fontWeight: '600', color: Colors.light.tint },
 
   /* ── Detail Modal ── */
   modalContainer: { flex: 1, backgroundColor: Colors.light.background },
@@ -609,20 +722,9 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.border,
     overflow: 'hidden',
   },
-  modalMockup: {
-    width: '100%',
-    height: '100%',
-  },
-  modalMockupPlaceholder: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  modalMockupPlaceholderText: {
-    fontSize: 13,
-    color: Colors.light.textSecondary,
-  },
+  modalMockup: { width: '100%', height: '100%' },
+  modalMockupPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
+  modalMockupPlaceholderText: { fontSize: 13, color: Colors.light.textSecondary },
 
   modalBadgeRow: {
     flexDirection: 'row',
@@ -672,15 +774,11 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
 
-  modalDetailRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-  },
+  modalDetailRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   modalDetailLabel: {
     fontSize: 14,
     color: Colors.light.textSecondary,
-    width: 80,
+    width: 100,
     flexShrink: 0,
     marginTop: 1,
   },
@@ -691,11 +789,9 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 20,
   },
+  modalDetailValueMuted: { color: Colors.light.textSecondary, fontWeight: '400' as const },
 
-  sizeGridRow: {
-    flexDirection: 'row',
-    gap: 6,
-  },
+  sizeGridRow: { flexDirection: 'row', gap: 6 },
   sizeCell: {
     flex: 1,
     alignItems: 'center',
@@ -706,9 +802,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     minWidth: 0,
   },
-  sizeCellEmpty: {
-    borderColor: Colors.light.border,
-  },
+  sizeCellEmpty: { borderColor: Colors.light.border },
   sizeCellLabel: {
     fontSize: 10,
     fontWeight: '700' as const,
@@ -716,16 +810,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
-  sizeCellQty: {
-    fontSize: 20,
-    fontWeight: '800' as const,
-    color: Colors.light.text,
-    lineHeight: 24,
-  },
-  sizeCellQtyEmpty: {
-    color: Colors.light.border,
-    fontWeight: '400' as const,
-  },
+  sizeCellQty: { fontSize: 20, fontWeight: '800' as const, color: Colors.light.text, lineHeight: 24 },
+  sizeCellQtyEmpty: { color: Colors.light.border, fontWeight: '400' as const },
 
   completedBanner: {
     flexDirection: 'row',
@@ -764,23 +850,9 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.light.border,
     gap: 8,
   },
-  modalNavBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    maxWidth: '38%',
-  },
+  modalNavBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '38%' },
   modalNavBtnDisabled: { opacity: 0.35 },
-  modalNavBtnText: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    color: Colors.light.tint,
-    flexShrink: 1,
-  },
+  modalNavBtnText: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.tint, flexShrink: 1 },
   modalNavBtnTextDisabled: { color: Colors.light.border },
-  modalNavCount: {
-    fontSize: 13,
-    fontWeight: '500' as const,
-    color: Colors.light.textSecondary,
-  },
+  modalNavCount: { fontSize: 13, fontWeight: '500' as const, color: Colors.light.textSecondary },
 });

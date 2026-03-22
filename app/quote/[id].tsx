@@ -16,7 +16,6 @@ import {
   Calendar,
   MapPin,
   Package,
-  Palette,
   Truck,
   Layers,
   CheckCircle,
@@ -378,21 +377,26 @@ export default function QuoteDetailScreen() {
                         <Text style={styles.detailValue} numberOfLines={1}>{item.apparelProvider}</Text>
                       </View>
 
-                      {/* Product & Color per variant */}
-                      {variants.map((v, vi) => (
-                        <View key={vi}>
-                          <View style={styles.detailRow}>
-                            <Package size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
-                            <Text style={styles.detailLabel}>{variants.length > 1 ? `Style ${vi + 1}` : 'Product'}</Text>
-                            <Text style={styles.detailValue} numberOfLines={2}>{v.product || '—'}</Text>
-                          </View>
-                          <View style={styles.detailRow}>
-                            <Palette size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
-                            <Text style={styles.detailLabel}>{variants.length > 1 ? `Color ${vi + 1}` : 'Color'}</Text>
-                            <Text style={styles.detailValue} numberOfLines={1}>{v.color || '—'}</Text>
-                          </View>
+                      {/* Product per variant — single: "Gildan 64000 — Blue", multiple: "Product #1: ..." */}
+                      {variants.length === 1 ? (
+                        <View style={styles.detailRow}>
+                          <Package size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
+                          <Text style={styles.detailLabel}>Product</Text>
+                          <Text style={styles.detailValue} numberOfLines={2}>
+                            {variants[0].product || '—'}{variants[0].color ? ` — ${variants[0].color}` : ''}
+                          </Text>
                         </View>
-                      ))}
+                      ) : (
+                        variants.map((v, vi) => (
+                          <View key={vi} style={styles.detailRow}>
+                            <Package size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
+                            <Text style={styles.detailLabel}>Product #{vi + 1}</Text>
+                            <Text style={styles.detailValue} numberOfLines={2}>
+                              {v.product || '—'}{v.color ? ` — ${v.color}` : ''}
+                            </Text>
+                          </View>
+                        ))
+                      )}
 
                       {/* Locations */}
                       {locations.length > 0 && (
@@ -403,14 +407,14 @@ export default function QuoteDetailScreen() {
                         </View>
                       )}
 
-                      {/* Project Notes */}
-                      {item.locationDetails ? (
-                        <View style={styles.detailRow}>
-                          <FileText size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
-                          <Text style={styles.detailLabel}>Notes</Text>
-                          <Text style={styles.detailValue}>{item.locationDetails}</Text>
-                        </View>
-                      ) : null}
+                      {/* Project Notes — always shown */}
+                      <View style={styles.detailRow}>
+                        <FileText size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
+                        <Text style={styles.detailLabel}>Project Notes</Text>
+                        <Text style={[styles.detailValue, !item.locationDetails && styles.detailValueMuted]}>
+                          {item.locationDetails || 'N/A'}
+                        </Text>
+                      </View>
                     </View>
 
                     {/* Mockup on the right */}
@@ -1164,6 +1168,9 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
     flex: 1,
     lineHeight: 20,
+  },
+  detailValueMuted: {
+    color: Colors.light.textSecondary,
   },
   applicatorValue: {
     color: Colors.light.tint,
