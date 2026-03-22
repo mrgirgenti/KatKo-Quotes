@@ -330,6 +330,11 @@ export default function QuoteDetailScreen() {
           const isExpanded = expandedItems[item.id] !== false;
           const qty = getItemQuantity(item);
           const calcs = calculateLineItemSubtotal(item);
+          const variants: GarmentVariant[] = item.garmentVariants && item.garmentVariants.length > 0
+            ? item.garmentVariants
+            : [{ product: item.product, color: item.productColor, sizes: item.sizes }];
+          const locations = [item.location1, item.location2, item.location3, item.location4].filter(Boolean) as string[];
+          const isPromotional = item.serviceStyle === 'Promotional';
           return (
             <View key={item.id} style={styles.lineItemCard}>
               <TouchableOpacity style={styles.lineItemHeader} onPress={() => toggleItem(item.id)} activeOpacity={0.8}>
@@ -345,13 +350,7 @@ export default function QuoteDetailScreen() {
                 </View>
               </TouchableOpacity>
 
-              {isExpanded && (() => {
-                const variants: GarmentVariant[] = item.garmentVariants && item.garmentVariants.length > 0
-                  ? item.garmentVariants
-                  : [{ product: item.product, color: item.productColor, sizes: item.sizes }];
-                const locations = [item.location1, item.location2, item.location3, item.location4].filter(Boolean) as string[];
-                const isPromotional = item.serviceStyle === 'Promotional';
-                return (
+              {isExpanded && (
                 <View style={styles.lineItemBody}>
                   {/* Top row: details left, mockup right */}
                   <View style={styles.lineItemTopRow}>
@@ -512,8 +511,7 @@ export default function QuoteDetailScreen() {
                     </View>
                   </View>
                 </View>
-                );
-              })()}
+              )}
             </View>
           );
         })}
