@@ -570,56 +570,76 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                             </TouchableOpacity>
                           </View>
 
-                          {/* Row B: Style cards (filtered by garment type) */}
-                          {stylesForType.length > 0 && (
-                            <View style={styles.variantStyleGrid}>
-                              {stylesForType.map((style) => {
-                                const styleValue = `${style.styleNumber} — ${style.name}`;
-                                const isSelected = variant.product === styleValue;
-                                return (
-                                  <TouchableOpacity
-                                    key={style.styleNumber}
-                                    style={[styles.variantStyleBtn, isSelected && styles.variantStyleBtnActive]}
-                                    onPress={() => updateVariant(vIdx, { product: styleValue, color: '' })}
-                                  >
-                                    <Text style={[styles.variantStyleNumber, isSelected && styles.variantStyleNumberActive]}>
-                                      {style.styleNumber}{style.isYouth ? ' (Youth)' : ''}
-                                    </Text>
-                                    <Text style={[styles.variantStyleName, isSelected && styles.variantStyleNameActive]} numberOfLines={2}>
-                                      {style.name}
-                                    </Text>
-                                  </TouchableOpacity>
-                                );
-                              })}
-                            </View>
-                          )}
-
-                          {/* Row C: Color swatches */}
-                          {colorObjects.length > 0 && (
-                            <View style={styles.variantColorSection}>
-                              <View style={styles.variantColorGrid}>
-                                {colorObjects.map((color) => (
-                                  <TouchableOpacity
-                                    key={color.hex + color.name}
-                                    style={[
-                                      styles.variantColorSwatch,
-                                      { backgroundColor: color.hex },
-                                      variant.color === color.name && styles.variantColorSwatchSelected,
-                                      color.hex === '#FFFFFF' && styles.variantColorSwatchWhite,
-                                    ]}
-                                    onPress={() => updateVariant(vIdx, { color: color.name })}
-                                  >
-                                    {variant.color === color.name && (
-                                      <CheckCircle size={12} color={color.dark ? '#fff' : '#333'} />
-                                    )}
-                                  </TouchableOpacity>
-                                ))}
+                          {/* Row B: Product style list */}
+                          <View style={styles.variantPickerSection}>
+                            <Text style={styles.variantSectionLabel}>
+                              PRODUCT STYLE{stylesForType.length > 0 ? ` (${stylesForType.length})` : ''}
+                            </Text>
+                            {stylesForType.length === 0 ? (
+                              <Text style={styles.variantStyleName}>No styles found for this vendor / garment type.</Text>
+                            ) : (
+                              <View style={styles.variantStyleList}>
+                                {stylesForType.map((style) => {
+                                  const styleValue = `${style.styleNumber} — ${style.name}`;
+                                  const isSelected = variant.product === styleValue;
+                                  return (
+                                    <TouchableOpacity
+                                      key={style.styleNumber}
+                                      style={[styles.variantStyleBtn, isSelected && styles.variantStyleBtnActive]}
+                                      onPress={() => updateVariant(vIdx, { product: styleValue, color: '' })}
+                                    >
+                                      <Text style={[styles.variantStyleNumber, isSelected && styles.variantStyleNumberActive]}>
+                                        {style.styleNumber}{style.isYouth ? ' (Youth)' : ''}
+                                      </Text>
+                                      <Text style={[styles.variantStyleName, isSelected && styles.variantStyleNameActive]} numberOfLines={2}>
+                                        {style.name}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  );
+                                })}
                               </View>
-                              <Text style={[styles.variantColorLabel, !variant.color && { color: Colors.light.textSecondary }]}>
-                                {variant.color || 'Tap a swatch to select color'}
-                              </Text>
-                            </View>
-                          )}
+                            )}
+
+                            {/* Color swatches */}
+                            {(() => {
+                              const selectedStyleObj = getStyleObjectForProduct(item.apparelProvider, variant.product);
+                              const label = selectedStyleObj
+                                ? `COLOR — ${selectedStyleObj.styleNumber} (${colorObjects.length})`
+                                : 'COLOR';
+                              return (
+                                <>
+                                  <Text style={styles.variantSectionLabel}>{label}</Text>
+                                  {colorObjects.length > 0 ? (
+                                    <>
+                                      <View style={styles.variantColorGrid}>
+                                        {colorObjects.map((color) => (
+                                          <TouchableOpacity
+                                            key={color.hex + color.name}
+                                            style={[
+                                              styles.variantColorSwatch,
+                                              { backgroundColor: color.hex },
+                                              variant.color === color.name && styles.variantColorSwatchSelected,
+                                              color.hex === '#FFFFFF' && styles.variantColorSwatchWhite,
+                                            ]}
+                                            onPress={() => updateVariant(vIdx, { color: color.name })}
+                                          >
+                                            {variant.color === color.name && (
+                                              <CheckCircle size={14} color={color.dark ? '#fff' : '#333'} />
+                                            )}
+                                          </TouchableOpacity>
+                                        ))}
+                                      </View>
+                                      <Text style={styles.variantColorLabel}>
+                                        {variant.color || ''}
+                                      </Text>
+                                    </>
+                                  ) : (
+                                    <Text style={styles.variantStyleName}>Select a product style above to see color options.</Text>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </View>
 
                           {/* Row D: Size inputs */}
                           <View style={styles.variantSizeSubRow}>
@@ -1314,21 +1334,28 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700' as const,
   },
-  variantStyleGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
+  variantPickerSection: {
     paddingHorizontal: 10,
-    paddingBottom: 8,
+    paddingBottom: 10,
+  },
+  variantSectionLabel: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    letterSpacing: 0.8,
+    marginBottom: 6,
+    marginTop: 12,
+  },
+  variantStyleList: {
+    gap: 4,
   },
   variantStyleBtn: {
-    paddingVertical: 5,
-    paddingHorizontal: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: Colors.light.border,
     backgroundColor: '#fff',
-    minWidth: 64,
   },
   variantStyleBtnActive: {
     backgroundColor: '#FFF0E8',
@@ -1343,28 +1370,24 @@ const styles = StyleSheet.create({
     color: Colors.light.tint,
   },
   variantStyleName: {
-    fontSize: 10,
+    fontSize: 11,
     color: Colors.light.textSecondary,
-    lineHeight: 13,
+    lineHeight: 14,
     marginTop: 1,
   },
   variantStyleNameActive: {
     color: Colors.light.text,
   },
-  variantColorSection: {
-    paddingHorizontal: 10,
-    paddingBottom: 8,
-  },
   variantColorGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginBottom: 5,
+    marginBottom: 4,
   },
   variantColorSwatch: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1378,8 +1401,8 @@ const styles = StyleSheet.create({
   },
   variantColorLabel: {
     fontSize: 11,
-    color: Colors.light.text,
-    fontWeight: '500' as const,
+    color: Colors.light.textSecondary,
+    marginTop: 4,
   },
   variantDeleteBtn: {
     width: 28,
