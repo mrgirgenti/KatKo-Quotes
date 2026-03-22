@@ -117,6 +117,9 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
         <View style={styles.colProject}>
           <Text style={styles.tableProject} numberOfLines={1}>{quote.projectName}</Text>
         </View>
+        <View style={styles.colInvoice}>
+          <Text style={styles.tableInvoice} numberOfLines={1}>{quote.invoiceNumber || '—'}</Text>
+        </View>
         <View style={styles.colApplicator}>
           <Text style={styles.tableApplicator} numberOfLines={2}>
             {applicators.length > 0 ? applicators.join('\n') : '—'}
@@ -506,6 +509,7 @@ export default function ProjectsScreen() {
               <SortBtn field="client" label="Client" />
             </View>
             <View style={styles.colProject}><Text style={styles.thText}>Project</Text></View>
+            <View style={styles.colInvoice}><Text style={styles.thText}>Invoice #</Text></View>
             <View style={styles.colApplicator}><Text style={styles.thText}>Applicator(s)</Text></View>
             <View style={styles.colServices}><Text style={styles.thText}>Service(s)</Text></View>
             <View style={styles.colTotal}>
@@ -794,6 +798,7 @@ const styles = StyleSheet.create({
   colDueDate:   { width: 110 },
   colClient:    { flex: 1.2 },
   colProject:   { flex: 1.2 },
+  colInvoice:   { width: 90 },
   colApplicator:{ flex: 1.2 },
   colServices:  { flex: 1.0 },
   colTotal:     { width: 85, alignItems: 'flex-end' },
@@ -804,6 +809,7 @@ const styles = StyleSheet.create({
   tableDateSub:    { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
   tableClient:     { fontSize: 13, fontWeight: '700', color: Colors.light.text },
   tableProject:    { fontSize: 13, color: Colors.light.text },
+  tableInvoice:    { fontSize: 13, color: Colors.light.textSecondary },
   tableApplicator: { fontSize: 12, color: Colors.light.text, lineHeight: 17 },
   tableServices:   { fontSize: 12, color: Colors.light.tint, fontWeight: '600', lineHeight: 17 },
   tableTotal:      { fontSize: 14, fontWeight: '700', color: Colors.light.text },

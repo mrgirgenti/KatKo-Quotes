@@ -351,8 +351,24 @@ export default function QuoteDetailScreen() {
 
               {isExpanded && (
                 <View style={styles.lineItemBody}>
-                  {/* Top row: details left, mockup right */}
+                  {/* Top row: mockup left (1/3), details right (2/3) */}
                   <View style={styles.lineItemTopRow}>
+                    {/* Mockup on the left */}
+                    <View style={styles.lineItemMockupCol}>
+                      {item.mockupUri ? (
+                        <Image
+                          source={{ uri: item.mockupUri }}
+                          style={styles.mockupImage}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <View style={styles.mockupPlaceholder}>
+                          <Package size={28} color={Colors.light.border} />
+                          <Text style={styles.mockupPlaceholderText}>No mockup</Text>
+                        </View>
+                      )}
+                    </View>
+
                     <View style={styles.lineItemDetailsCol}>
                       {/* Service Style */}
                       <View style={styles.detailRow}>
@@ -416,22 +432,6 @@ export default function QuoteDetailScreen() {
                         </Text>
                       </View>
                     </View>
-
-                    {/* Mockup on the right */}
-                    <View style={styles.lineItemMockupCol}>
-                      {item.mockupUri ? (
-                        <Image
-                          source={{ uri: item.mockupUri }}
-                          style={styles.mockupImage}
-                          resizeMode="contain"
-                        />
-                      ) : (
-                        <View style={styles.mockupPlaceholder}>
-                          <Package size={22} color={Colors.light.border} />
-                          <Text style={styles.mockupPlaceholderText}>No mockup</Text>
-                        </View>
-                      )}
-                    </View>
                   </View>
 
                   {/* Sizes grid — one per variant */}
@@ -442,7 +442,7 @@ export default function QuoteDetailScreen() {
                           {v.product}{v.color ? ` — ${v.color}` : ''}
                         </Text>
                       )}
-                      <Text style={styles.sizesGridLabel}>SIZE QUANTITIES</Text>
+                      <Text style={styles.sizesGridLabel}>Sizes + Quantities</Text>
                       {isPromotional ? (
                         <View style={styles.sizesGridRow}>
                           <View style={styles.sizeGridCell}>
@@ -1525,15 +1525,16 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 10,
   },
-  lineItemDetailsCol: {
-    flex: 1,
-    minWidth: 0,
-    gap: 8,
-  },
   lineItemMockupCol: {
-    width: 150,
+    flex: 1,
     flexShrink: 0,
     alignSelf: 'stretch',
+    minHeight: 200,
+  },
+  lineItemDetailsCol: {
+    flex: 2,
+    minWidth: 0,
+    gap: 8,
   },
   mockupImage: {
     width: '100%',
