@@ -1473,8 +1473,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 10,
+    paddingVertical: 16,
+    borderRadius: 12,
     gap: 7,
   },
   actionBtnSolid: {
@@ -1485,13 +1485,13 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.tint,
   },
   actionBtnSolidText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
+    fontSize: 15,
+    fontWeight: '700' as const,
     color: '#fff',
   },
   actionBtnOutlineText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
+    fontSize: 15,
+    fontWeight: '700' as const,
     color: Colors.light.tint,
   },
   quoteNavStrip: {

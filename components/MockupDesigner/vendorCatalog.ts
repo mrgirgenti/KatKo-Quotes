@@ -585,7 +585,7 @@ export const VENDOR_CATALOG: Vendor[] = [
       { styleNumber: '64000B',  name: 'Gildan Youth SoftStyle Tee',         garmentType: 'tshirt',    isYouth: true, colors: GILDAN_YOUTH },
       { styleNumber: 'BC3001',  name: 'Bella+Canvas Unisex Jersey Tee',     garmentType: 'tshirt',    colors: BC3001_COLORS },
       { styleNumber: 'BC3001Y', name: 'Bella+Canvas Youth Jersey Tee',      garmentType: 'tshirt',    isYouth: true, colors: BC3001Y_COLORS },
-      { styleNumber: 'NL6210',  name: 'Next Level Tri-Blend Tee',           garmentType: 'tshirt',    colors: NL6210_COLORS },
+      { styleNumber: 'NL6210',  name: 'Next Level CVC Crew',                garmentType: 'tshirt',    colors: NL6210_COLORS },
       { styleNumber: '1717',    name: 'Comfort Colors Garment Dyed Tee',    garmentType: 'tshirt',    colors: CC1717_COLORS },
       { styleNumber: '9018',    name: 'Comfort Colors Youth Garment Tee',   garmentType: 'tshirt',    isYouth: true, colors: CC9018_COLORS },
       { styleNumber: 'SHMSS',   name: 'Shaka Wear Max Heavyweight Tee',     garmentType: 'tshirt',    colors: SHMSS_COLORS },
@@ -628,7 +628,7 @@ export const VENDOR_CATALOG: Vendor[] = [
       { styleNumber: '64000B',  name: 'Gildan Youth SoftStyle Tee',         garmentType: 'tshirt',    isYouth: true, colors: GILDAN_YOUTH },
       { styleNumber: 'BC3001',  name: 'Bella+Canvas Unisex Jersey Tee',     garmentType: 'tshirt',    colors: BC3001_COLORS },
       { styleNumber: 'BC3001Y', name: 'Bella+Canvas Youth Jersey Tee',      garmentType: 'tshirt',    isYouth: true, colors: BC3001Y_COLORS },
-      { styleNumber: 'NL6210',  name: 'Next Level Tri-Blend Tee',           garmentType: 'tshirt',    colors: NL6210_COLORS },
+      { styleNumber: 'NL6210',  name: 'Next Level CVC Crew',                garmentType: 'tshirt',    colors: NL6210_COLORS },
       { styleNumber: '1717',    name: 'Comfort Colors Garment Dyed Tee',    garmentType: 'tshirt',    colors: CC1717_COLORS },
       { styleNumber: 'DT6000',  name: 'District Very Important Tee',        garmentType: 'tshirt',    colors: DT6000_COLORS },
       // ── Polos ─────────────────────────────────────────────────────────────

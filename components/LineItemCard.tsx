@@ -175,7 +175,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   };
   const [variantGarmentTypes, setVariantGarmentTypes] = useState<GarmentType[]>(getInitialGarmentTypes);
   const [variantSearchTerms, setVariantSearchTerms] = useState<string[]>(() =>
-    getInitialVariants().map(() => '')
+    getInitialVariants().map((v) => v.product || '')
   );
   const [variantStyleFocused, setVariantStyleFocused] = useState<boolean[]>(() =>
     getInitialVariants().map(() => false)
@@ -205,9 +205,10 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
 
   const addVariant = () => {
     if (variants.length >= 10) return;
-    handleVariantsChange([...variants, { product: 'NL6210 — Next Level Tri-Blend Tee', color: 'Black', sizes: { ...EMPTY_SIZES } }]);
+    const defaultStyle = 'NL6210 — Next Level CVC Crew';
+    handleVariantsChange([...variants, { product: defaultStyle, color: 'Black', sizes: { ...EMPTY_SIZES } }]);
     setVariantGarmentTypes((prev) => [...prev, 'tshirt']);
-    setVariantSearchTerms((prev) => [...prev, '']);
+    setVariantSearchTerms((prev) => [...prev, defaultStyle]);
     setVariantStyleFocused((prev) => [...prev, false]);
     setVariantColorOpen((prev) => [...prev, false]);
   };
@@ -571,14 +572,17 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                         <View key={vIdx} style={[styles.variantRow, vIdx % 2 === 1 && styles.variantRowAlt]}>
                           {/* Compact single-line 3-column picker */}
                           {(() => {
-                            const searchTerm = (variantSearchTerms[vIdx] ?? '').toLowerCase();
-                            const filteredStyles = searchTerm
-                              ? stylesForType.filter(
+                            const rawSearch = variantSearchTerms[vIdx] ?? '';
+                            const searchTerm = rawSearch.toLowerCase();
+                            const selectedLabel = variant.product?.toLowerCase() ?? '';
+                            const isShowingSelection = searchTerm === selectedLabel;
+                            const filteredStyles = (!searchTerm || isShowingSelection)
+                              ? stylesForType
+                              : stylesForType.filter(
                                   (s) =>
                                     s.styleNumber.toLowerCase().includes(searchTerm) ||
                                     s.name.toLowerCase().includes(searchTerm)
-                                )
-                              : stylesForType;
+                                );
                             const selectedColorObj = colorObjects.find((c) => c.name === variant.color);
                             return (
                               <View style={styles.variantPickerSection}>
@@ -673,7 +677,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                                               ]}
                                               onPress={() => {
                                                 updateVariant(vIdx, { product: styleValue, color: '' });
-                                                setVariantSearchTerms((prev) => prev.map((t, i) => (i === vIdx ? '' : t)));
+                                                setVariantSearchTerms((prev) => prev.map((t, i) => (i === vIdx ? styleValue : t)));
                                                 setVariantStyleFocused((prev) => prev.map((f, i) => (i === vIdx ? false : f)));
                                               }}
                                             >
