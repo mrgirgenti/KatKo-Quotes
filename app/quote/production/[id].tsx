@@ -263,21 +263,12 @@ function DetailModal({ items, initialIndex, onClose, onMarkDone, onUnmarkDone }:
             </View>
           )}
 
-          {/* Mark Done button */}
-          <TouchableOpacity
-            style={[styles.markDoneBtn, isDone && styles.markDoneBtnDone]}
-            onPress={() => isDone ? onUnmarkDone(item.id) : onMarkDone(item.id)}
-          >
-            {isDone ? <CheckSquare size={18} color="#fff" /> : <Circle size={18} color="#fff" />}
-            <Text style={styles.markDoneBtnText}>{isDone ? 'Unmark as Done' : 'Mark as Done'}</Text>
-          </TouchableOpacity>
-
           <View style={{ height: 20 }} />
         </ScrollView>
 
-        {/* Prev / Next navigation */}
-        {items.length > 1 && (
-          <View style={styles.modalNav}>
+        {/* Bottom action bar */}
+        <View style={styles.modalNav}>
+          {items.length > 1 ? (
             <TouchableOpacity
               style={[styles.modalNavBtn, currentIndex === 0 && styles.modalNavBtnDisabled]}
               onPress={() => goTo(currentIndex - 1)}
@@ -285,22 +276,26 @@ function DetailModal({ items, initialIndex, onClose, onMarkDone, onUnmarkDone }:
             >
               <ChevronLeft size={18} color={currentIndex === 0 ? Colors.light.border : Colors.light.tint} />
               <Text style={[styles.modalNavBtnText, currentIndex === 0 && styles.modalNavBtnTextDisabled]}>
-                {currentIndex > 0 ? (items[currentIndex - 1].designName || `Item ${currentIndex}`) : 'Previous'}
+                Prev
               </Text>
             </TouchableOpacity>
-            <Text style={styles.modalNavCount}>{currentIndex + 1} / {items.length}</Text>
-            <TouchableOpacity
-              style={[styles.modalNavBtn, currentIndex === items.length - 1 && styles.modalNavBtnDisabled]}
-              onPress={() => goTo(currentIndex + 1)}
-              disabled={currentIndex === items.length - 1}
-            >
-              <Text style={[styles.modalNavBtnText, currentIndex === items.length - 1 && styles.modalNavBtnTextDisabled]}>
-                {currentIndex < items.length - 1 ? (items[currentIndex + 1].designName || `Item ${currentIndex + 2}`) : 'Next'}
-              </Text>
-              <ChevronRight size={18} color={currentIndex === items.length - 1 ? Colors.light.border : Colors.light.tint} />
-            </TouchableOpacity>
-          </View>
-        )}
+          ) : (
+            <View style={styles.modalNavPlaceholder} />
+          )}
+
+          <TouchableOpacity style={styles.modalExitBtn} onPress={onClose}>
+            <LogOut size={14} color="#fff" />
+            <Text style={styles.modalExitBtnText}>Exit Production</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.modalMarkDoneBtn, isDone && styles.modalMarkDoneBtnDone]}
+            onPress={() => isDone ? onUnmarkDone(item.id) : onMarkDone(item.id)}
+          >
+            {isDone ? <CheckSquare size={15} color="#fff" /> : <Circle size={15} color="#fff" />}
+            <Text style={styles.modalMarkDoneBtnText}>{isDone ? 'Unmark' : 'Mark Done'}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </Modal>
   );
@@ -471,8 +466,12 @@ export default function ProductionViewScreen() {
 
         {/* Footer */}
         <View style={styles.footer}>
+          <TouchableOpacity style={styles.exitBtn} onPress={() => router.replace(`/quote/${id}`)}>
+            <LogOut size={17} color="#fff" />
+            <Text style={styles.exitBtnText}>Exit Production</Text>
+          </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.completeBtn, allDone && styles.completeBtnAllDone, !!isCompletingProject && styles.completeBtnDisabled]}
+            style={[styles.completeBtn, !!isCompletingProject && styles.completeBtnDisabled]}
             onPress={handleCompleteProject}
             disabled={!!isCompletingProject}
           >
@@ -480,10 +479,6 @@ export default function ProductionViewScreen() {
             <Text style={styles.completeBtnText}>
               {isCompletingProject ? 'Completing…' : 'Complete Project'}
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.exitBtn} onPress={() => router.replace(`/quote/${id}`)}>
-            <LogOut size={17} color={Colors.light.tint} />
-            <Text style={styles.exitBtnText}>Exit Production</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -646,19 +641,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.light.border,
   },
-  completeBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: Colors.light.tint,
-    borderRadius: 10,
-    paddingVertical: 14,
-  },
-  completeBtnAllDone: { backgroundColor: '#16A34A' },
-  completeBtnDisabled: { opacity: 0.6 },
-  completeBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
   exitBtn: {
     flex: 1,
     flexDirection: 'row',
@@ -667,10 +649,21 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 14,
     borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: Colors.light.tint,
+    backgroundColor: Colors.light.tint,
   },
-  exitBtnText: { fontSize: 14, fontWeight: '600', color: Colors.light.tint },
+  exitBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  completeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#16A34A',
+    borderRadius: 10,
+    paddingVertical: 14,
+  },
+  completeBtnDisabled: { opacity: 0.6 },
+  completeBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 
   /* ── Detail Modal ── */
   modalContainer: { flex: 1, backgroundColor: Colors.light.background },
@@ -826,18 +819,6 @@ const styles = StyleSheet.create({
   },
   completedBannerText: { fontSize: 13, color: '#16A34A', fontWeight: '600' },
 
-  markDoneBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: Colors.light.textSecondary,
-    borderRadius: 12,
-    paddingVertical: 15,
-  },
-  markDoneBtnDone: { backgroundColor: '#16A34A' },
-  markDoneBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
-
   modalNav: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -850,9 +831,30 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.light.border,
     gap: 8,
   },
-  modalNavBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '38%' },
+  modalNavBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   modalNavBtnDisabled: { opacity: 0.35 },
-  modalNavBtnText: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.tint, flexShrink: 1 },
+  modalNavBtnText: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.tint },
   modalNavBtnTextDisabled: { color: Colors.light.border },
-  modalNavCount: { fontSize: 13, fontWeight: '500' as const, color: Colors.light.textSecondary },
+  modalNavPlaceholder: { width: 60 },
+  modalExitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.light.tint,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  modalExitBtnText: { fontSize: 12, fontWeight: '700' as const, color: '#fff' },
+  modalMarkDoneBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.light.textSecondary,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  modalMarkDoneBtnDone: { backgroundColor: '#16A34A' },
+  modalMarkDoneBtnText: { fontSize: 12, fontWeight: '700' as const, color: '#fff' },
 });
