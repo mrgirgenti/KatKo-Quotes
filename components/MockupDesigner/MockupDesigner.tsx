@@ -138,6 +138,18 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
     });
   }, []);
 
+  // Prevent browser default (opening file in new tab) while modal is open
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !visible) return;
+    const prevent = (e: Event) => { e.preventDefault(); };
+    document.addEventListener('dragover', prevent);
+    document.addEventListener('drop', prevent);
+    return () => {
+      document.removeEventListener('dragover', prevent);
+      document.removeEventListener('drop', prevent);
+    };
+  }, [visible]);
+
   // Drag-drop image files into the artwork panel
   useEffect(() => {
     if (Platform.OS !== 'web') return;
@@ -171,7 +183,7 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
       domEl.removeEventListener('dragleave', onDragLeave);
       domEl.removeEventListener('drop', onDrop);
     };
-  }, [addArtworkFromUri]);
+  }, [addArtworkFromUri, artworkDropRef.current]);
 
   // Drag artwork items from the bin and drop onto a canvas zone
   useEffect(() => {
