@@ -47,6 +47,7 @@ import { LineItem, SIZE_LABELS } from '@/types/quote';
 import { useUser } from '@/contexts/UserContext';
 import { generateAndSharePDF, printQuote } from '@/utils/pdfGenerator';
 import { Toast } from '@/components/Toast';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { exportSingleSaleToSheets } from '@/utils/googleSheetsExport';
 
 export default function QuoteDetailScreen() {
@@ -59,6 +60,7 @@ export default function QuoteDetailScreen() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+  const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
 
   const toggleItem = useCallback((itemId: string) => {
     setExpandedItems(prev => ({ ...prev, [itemId]: !prev[itemId] }));
@@ -220,22 +222,8 @@ export default function QuoteDetailScreen() {
   const handleDelete = useCallback(() => {
     if (!quote) return;
     setMenuVisible(false);
-    Alert.alert(
-      'Are you sure?',
-      `Delete "${quote.projectName}"? This cannot be undone.`,
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Delete',
-          style: 'destructive',
-          onPress: () => {
-            deleteQuote(quote.id);
-            router.replace('/(tabs)/projects');
-          },
-        },
-      ]
-    );
-  }, [quote, deleteQuote, router]);
+    setConfirmDeleteVisible(true);
+  }, [quote]);
 
   const getSalesCalculations = useCallback(() => {
     if (!quote?.salesData) return null;
@@ -339,7 +327,7 @@ export default function QuoteDetailScreen() {
           <Text style={styles.sectionTitle}>Line Items ({quote.lineItems.length})</Text>
         </View>
         {quote.lineItems.map((item, index) => {
-          const isExpanded = !!expandedItems[item.id];
+          const isExpanded = expandedItems[item.id] !== false;
           const qty = getItemQuantity(item);
           const calcs = calculateLineItemSubtotal(item);
           return (
@@ -360,52 +348,96 @@ export default function QuoteDetailScreen() {
 
               {isExpanded && (
                 <View style={styles.lineItemBody}>
-                  {/* Mockup image */}
-                  {item.mockupUri ? (
-                    <Image
-                      source={{ uri: item.mockupUri }}
-                      style={styles.mockupImage}
-                      resizeMode="contain"
-                    />
-                  ) : (
-                    <View style={styles.mockupPlaceholder}>
-                      <Package size={28} color={Colors.light.border} />
-                      <Text style={styles.mockupPlaceholderText}>No mockup attached</Text>
-                    </View>
-                  )}
-
-                  <View style={styles.lineItemDetails}>
-                    {item.applicator ? (
+                  {/* Top row: details left, mockup right */}
+                  <View style={styles.lineItemTopRow}>
+                    <View style={styles.lineItemDetailsCol}>
+                      {item.applicator ? (
+                        <View style={styles.detailRow}>
+                          <User size={13} color={Colors.light.tint} style={{ flexShrink: 0 }} />
+                          <Text style={styles.detailLabel}>Applicator</Text>
+                          <Text style={[styles.detailValue, styles.applicatorValue]} numberOfLines={1}>{item.applicator}</Text>
+                        </View>
+                      ) : null}
                       <View style={styles.detailRow}>
-                        <User size={13} color={Colors.light.tint} style={{ flexShrink: 0 }} />
-                        <Text style={styles.detailLabel}>Applicator</Text>
-                        <Text style={[styles.detailValue, styles.applicatorValue]} numberOfLines={1}>{item.applicator}</Text>
+                        <Truck size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
+                        <Text style={styles.detailLabel}>Source</Text>
+                        <Text style={styles.detailValue} numberOfLines={1}>{item.apparelProvider}</Text>
                       </View>
-                    ) : null}
-                    <View style={styles.detailRow}>
-                      <Truck size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
-                      <Text style={styles.detailLabel}>Source</Text>
-                      <Text style={styles.detailValue} numberOfLines={1}>{item.apparelProvider}</Text>
+                      <View style={styles.detailRow}>
+                        <Package size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
+                        <Text style={styles.detailLabel}>Product</Text>
+                        <Text style={styles.detailValue} numberOfLines={2}>{item.product} — {item.productColor}</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <MapPin size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
+                        <Text style={styles.detailLabel}>Location</Text>
+                        <Text style={styles.detailValue} numberOfLines={2}>
+                          {[item.location1, item.location2].filter(Boolean).join(', ') || 'N/A'}
+                          {item.locationDetails ? ` — ${item.locationDetails}` : ''}
+                        </Text>
+                      </View>
                     </View>
-                    <View style={styles.detailRow}>
-                      <Package size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
-                      <Text style={styles.detailLabel}>Product</Text>
-                      <Text style={styles.detailValue} numberOfLines={2}>{item.product} — {item.productColor}</Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <MapPin size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
-                      <Text style={styles.detailLabel}>Location</Text>
-                      <Text style={styles.detailValue} numberOfLines={2}>
-                        {[item.location1, item.location2].filter(Boolean).join(', ') || 'N/A'}
-                        {item.locationDetails ? ` — ${item.locationDetails}` : ''}
-                      </Text>
+
+                    {/* Mockup on the right */}
+                    <View style={styles.lineItemMockupCol}>
+                      {item.mockupUri ? (
+                        <Image
+                          source={{ uri: item.mockupUri }}
+                          style={styles.mockupImage}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <View style={styles.mockupPlaceholder}>
+                          <Package size={22} color={Colors.light.border} />
+                          <Text style={styles.mockupPlaceholderText}>No mockup</Text>
+                        </View>
+                      )}
                     </View>
                   </View>
 
-                  <View style={styles.sizesBox}>
-                    <Text style={styles.sizesLabel}>Sizes & Quantities</Text>
-                    <Text style={styles.sizesValue}>{getTotalSizeQuantities(item)}</Text>
-                    <Text style={styles.totalQty}>Total: {qty} pcs</Text>
+                  {/* Sizes grid */}
+                  <View style={styles.sizesGridSection}>
+                    <Text style={styles.sizesGridLabel}>SIZE QUANTITIES</Text>
+                    {item.serviceStyle === 'Promotional' ? (
+                      <View style={styles.sizesGridRow}>
+                        <View style={styles.sizeGridCell}>
+                          <Text style={styles.sizeGridCellLabel}>Qty</Text>
+                          <View style={styles.sizeGridCellBox}>
+                            <Text style={styles.sizeGridCellValue}>{item.sizes.flat || 0}</Text>
+                          </View>
+                        </View>
+                      </View>
+                    ) : (
+                      <>
+                        <View style={styles.sizesGridRow}>
+                          {(['xs','s','m','l'] as const).map(k => {
+                            const entry = SIZE_LABELS.find(sl => sl.key === k)!;
+                            return (
+                              <View key={k} style={styles.sizeGridCell}>
+                                <Text style={styles.sizeGridCellLabel}>{entry.label}</Text>
+                                <View style={[styles.sizeGridCellBox, !item.sizes[k] && styles.sizeGridCellBoxEmpty]}>
+                                  <Text style={[styles.sizeGridCellValue, !item.sizes[k] && styles.sizeGridCellValueEmpty]}>{item.sizes[k] || 0}</Text>
+                                </View>
+                              </View>
+                            );
+                          })}
+                        </View>
+                        <View style={[styles.sizesGridRow, { marginTop: 6 }]}>
+                          {(['xl','xxl','xxxl','xxxxl'] as const).map(k => {
+                            const entry = SIZE_LABELS.find(sl => sl.key === k)!;
+                            return (
+                              <View key={k} style={styles.sizeGridCell}>
+                                <Text style={styles.sizeGridCellLabel}>{entry.label}</Text>
+                                <View style={[styles.sizeGridCellBox, !item.sizes[k] && styles.sizeGridCellBoxEmpty]}>
+                                  <Text style={[styles.sizeGridCellValue, !item.sizes[k] && styles.sizeGridCellValueEmpty]}>{item.sizes[k] || 0}</Text>
+                                </View>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      </>
+                    )}
+                    <Text style={styles.sizesGridTotal}>Total: {qty} pcs</Text>
                   </View>
 
                   <View style={styles.costsBox}>
@@ -686,6 +718,19 @@ export default function QuoteDetailScreen() {
         message={toastMessage}
         type="success"
         onHide={() => setToastVisible(false)}
+      />
+      <ConfirmDialog
+        visible={confirmDeleteVisible}
+        title="Are you sure?"
+        message={quote ? `Delete "${quote.projectName}"? This cannot be undone.` : ''}
+        confirmText="Yes, Delete"
+        cancelText="No"
+        confirmDestructive
+        onConfirm={() => {
+          if (quote) { deleteQuote(quote.id); router.replace('/(tabs)/projects'); }
+          setConfirmDeleteVisible(false);
+        }}
+        onCancel={() => setConfirmDeleteVisible(false)}
       />
       <Stack.Screen
         options={{
@@ -1423,29 +1468,97 @@ const styles = StyleSheet.create({
     color: Colors.light.textSecondary,
     fontWeight: '500' as const,
   },
-  mockupImage: {
-    width: '100%',
-    height: 180,
-    borderRadius: 8,
+  lineItemTopRow: {
+    flexDirection: 'row',
+    gap: 12,
     marginBottom: 12,
+  },
+  lineItemDetailsCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  lineItemMockupCol: {
+    width: 120,
+    flexShrink: 0,
+  },
+  mockupImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 8,
     backgroundColor: Colors.light.background,
   },
   mockupPlaceholder: {
-    width: '100%',
-    height: 90,
+    width: 120,
+    height: 120,
     borderRadius: 8,
     backgroundColor: Colors.light.background,
     borderWidth: 1,
     borderColor: Colors.light.border,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
-    gap: 6,
-    flexDirection: 'row',
+    gap: 4,
   },
   mockupPlaceholderText: {
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.light.textSecondary,
+    textAlign: 'center',
+  },
+  sizesGridSection: {
+    backgroundColor: Colors.light.background,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+  },
+  sizesGridLabel: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  sizesGridRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  sizeGridCell: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  sizeGridCellLabel: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: Colors.light.textSecondary,
+    marginBottom: 4,
+  },
+  sizeGridCellBox: {
+    width: '100%',
+    height: 36,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.tint,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sizeGridCellBoxEmpty: {
+    borderColor: Colors.light.border,
+  },
+  sizeGridCellValue: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.light.text,
+  },
+  sizeGridCellValueEmpty: {
+    color: Colors.light.border,
+    fontWeight: '400' as const,
+  },
+  sizesGridTotal: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.light.textSecondary,
+    marginTop: 8,
+    textAlign: 'right',
   },
   lineItemTotalsBar: {
     flexDirection: 'row',

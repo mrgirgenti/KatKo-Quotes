@@ -11,6 +11,7 @@ import {
   ScrollView,
   Platform,
 } from 'react-native';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useRouter } from 'expo-router';
 import {
   Search,
@@ -246,6 +247,7 @@ export default function ProjectsScreen() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [minTotal, setMinTotal] = useState('');
   const [maxTotal, setMinMax] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<Quote | null>(null);
 
   const resolvedProjects = useMemo(() =>
     projects.map(q => ({ quote: q, effectiveStatus: getEffectiveStatus(q) })),
@@ -322,15 +324,8 @@ export default function ProjectsScreen() {
   }, [router]);
 
   const handleDelete = useCallback((quote: Quote) => {
-    Alert.alert(
-      'Delete Project',
-      `Are you sure you want to delete "${quote.projectName}"? This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => deleteQuote(quote.id) },
-      ]
-    );
-  }, [deleteQuote]);
+    setDeleteTarget(quote);
+  }, []);
 
   const handleConvert = useCallback((quote: Quote) => {
     Alert.alert(
@@ -574,6 +569,20 @@ export default function ProjectsScreen() {
           )}
         />
       )}
+
+      <ConfirmDialog
+        visible={!!deleteTarget}
+        title="Are you sure?"
+        message={deleteTarget ? `Delete "${deleteTarget.projectName}"? This cannot be undone.` : ''}
+        confirmText="Yes, Delete"
+        cancelText="No"
+        confirmDestructive
+        onConfirm={() => {
+          if (deleteTarget) deleteQuote(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </View>
   );
 }
