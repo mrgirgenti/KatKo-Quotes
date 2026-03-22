@@ -45,7 +45,7 @@ import { exportSingleSaleToSheets } from '@/utils/googleSheetsExport';
 export default function QuoteDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { quotes, sales, convertToSale, convertToQuote, deleteQuote, isConverting, markExportedToSheets, lockSale } = useQuotes();
+  const { quotes, sales, convertToSale, convertToQuote, deleteQuote, isConverting, markExportedToSheets, lockSale, projects } = useQuotes();
   const { currentUser } = useUser();
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -54,9 +54,8 @@ export default function QuoteDetailScreen() {
   const { isDesktop } = useBreakpoint();
 
   const quote = useMemo(() => {
-    const allQuotes = [...quotes, ...sales];
-    return allQuotes.find((q) => q.id === id);
-  }, [quotes, sales, id]);
+    return (projects || [...quotes, ...sales]).find((q) => q.id === id);
+  }, [projects, quotes, sales, id]);
 
   
 
@@ -109,10 +108,10 @@ export default function QuoteDetailScreen() {
   const handleConvertToSale = useCallback(() => {
     if (!quote) return;
     convertToSale(quote.id);
-    setToastMessage('Quote converted to sale!');
+    setToastMessage('Project marked as Active!');
     setToastVisible(true);
     setTimeout(() => {
-      router.replace('/(tabs)/sales');
+      router.replace('/(tabs)/projects');
     }, 500);
   }, [quote, convertToSale, router]);
 
@@ -143,7 +142,7 @@ export default function QuoteDetailScreen() {
             setToastMessage('Sale reverted to quote!');
             setToastVisible(true);
             setTimeout(() => {
-              router.replace('/(tabs)/history');
+              router.replace('/(tabs)/projects');
             }, 500);
           },
         },
@@ -300,10 +299,10 @@ export default function QuoteDetailScreen() {
           <View style={styles.card}>
             <View style={styles.orderHeaderRow}>
               <View style={styles.orderHeaderLeft}>
-                {quote.status === 'sale' && (
-                  <View style={styles.saleBadge}>
+                {(quote.status === 'active' || quote.status === 'completed') && (
+                  <View style={[styles.saleBadge, quote.status === 'completed' && { backgroundColor: '#16A34A' }]}>
                     <CheckCircle size={12} color="#fff" />
-                    <Text style={styles.saleBadgeText}>SALE</Text>
+                    <Text style={styles.saleBadgeText}>{quote.status === 'completed' ? 'COMPLETED' : 'ACTIVE'}</Text>
                   </View>
                 )}
                 <View style={styles.orderTypeBadge}>
@@ -532,10 +531,10 @@ export default function QuoteDetailScreen() {
           </View>
         </View>
 
-        {isDesktop && quote.status === 'sale' && quote.salesData && (
+        {isDesktop && (quote.status === 'active' || quote.status === 'completed') && quote.salesData && (
           <View style={{ flex: 1, minWidth: 0, marginRight: 12 }} />
         )}
-        {quote.status === 'sale' && quote.salesData && (
+        {(quote.status === 'active' || quote.status === 'completed') && quote.salesData && (
           <View style={[styles.section, isDesktop && { width: 380 }]}>
             <Text style={styles.sectionTitle}>Sales Tracking</Text>
             <View style={styles.salesTrackingCard}>
@@ -697,20 +696,27 @@ export default function QuoteDetailScreen() {
       </ScrollView>
 
       <View style={styles.actionBar}>
-        {quote.status === 'sale' ? (
+        {(quote.status === 'active' || quote.status === 'completed') ? (
           <>
             <TouchableOpacity style={styles.iconButton} onPress={() => setMenuVisible(true)}>
               <MoreVertical size={20} color={Colors.light.tint} />
             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.productionViewButton}
+              onPress={() => router.push(`/quote/production/${id}`)}
+            >
+              <Printer size={18} color={Colors.light.tint} />
+              <Text style={styles.productionViewButtonText}>Production</Text>
+            </TouchableOpacity>
             {quote.isLocked ? (
               <View style={styles.lockedButton}>
                 <Lock size={18} color="#fff" />
-                <Text style={styles.lockedButtonText}>Sale Locked</Text>
+                <Text style={styles.lockedButtonText}>Locked</Text>
               </View>
             ) : (
               <TouchableOpacity style={styles.trackButton} onPress={handleTrackSales}>
                 <ClipboardList size={18} color="#fff" />
-                <Text style={styles.trackButtonText}>Track Actual Costs</Text>
+                <Text style={styles.trackButtonText}>Track Costs</Text>
               </TouchableOpacity>
             )}
           </>
@@ -732,7 +738,7 @@ export default function QuoteDetailScreen() {
               disabled={isConverting}
             >
               <CheckCircle size={18} color="#fff" />
-              <Text style={styles.convertButtonText}>{isConverting ? 'Converting...' : 'Convert to Sale'}</Text>
+              <Text style={styles.convertButtonText}>{isConverting ? 'Converting...' : 'Mark as Active'}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -751,13 +757,13 @@ export default function QuoteDetailScreen() {
                 <X size={20} color={Colors.light.text} />
               </TouchableOpacity>
             </View>
-            {quote.status === 'sale' && quote.isLocked ? (
+            {(quote.status === 'active' || quote.status === 'completed') && quote.isLocked ? (
               <TouchableOpacity 
                 style={styles.menuItem} 
                 onPress={() => setMenuVisible(false)}
               >
                 <Lock size={18} color={Colors.light.textSecondary} />
-                <Text style={[styles.menuItemText, { color: Colors.light.textSecondary }]}>Sale is Locked</Text>
+                <Text style={[styles.menuItemText, { color: Colors.light.textSecondary }]}>Project is Locked</Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity 
@@ -771,7 +777,7 @@ export default function QuoteDetailScreen() {
                 <Text style={styles.menuItemText}>Edit Quote</Text>
               </TouchableOpacity>
             )}
-            {quote.status === 'sale' && !quote.isLocked && (
+            {(quote.status === 'active' || quote.status === 'completed') && !quote.isLocked && (
               <TouchableOpacity 
                 style={styles.menuItem} 
                 onPress={handleSaveAndLock}
@@ -780,7 +786,7 @@ export default function QuoteDetailScreen() {
                 <Text style={[styles.menuItemText, { color: Colors.light.tint }]}>Save & Lock</Text>
               </TouchableOpacity>
             )}
-            {quote.status !== 'sale' && (
+            {quote.status !== 'active' && quote.status !== 'completed' && (
               <TouchableOpacity 
                 style={styles.menuItem} 
                 onPress={() => {
@@ -789,19 +795,19 @@ export default function QuoteDetailScreen() {
                 }}
               >
                 <CheckCircle size={18} color={Colors.light.success} />
-                <Text style={[styles.menuItemText, { color: Colors.light.success }]}>Convert to Sale</Text>
+                <Text style={[styles.menuItemText, { color: Colors.light.success }]}>Mark as Active</Text>
               </TouchableOpacity>
             )}
-            {quote.status === 'sale' && !quote.isLocked && (
+            {(quote.status === 'active' || quote.status === 'completed') && !quote.isLocked && (
               <TouchableOpacity 
                 style={styles.menuItem} 
                 onPress={handleRevertToQuote}
               >
                 <RotateCcw size={18} color={Colors.light.textSecondary} />
-                <Text style={[styles.menuItemText, { color: Colors.light.textSecondary }]}>Revert Back</Text>
+                <Text style={[styles.menuItemText, { color: Colors.light.textSecondary }]}>Revert to Quoted</Text>
               </TouchableOpacity>
             )}
-            {quote.status === 'sale' && (
+            {(quote.status === 'active' || quote.status === 'completed') && (
               <TouchableOpacity 
                 style={styles.menuItem} 
                 onPress={handleExportToSheets}
@@ -830,7 +836,7 @@ export default function QuoteDetailScreen() {
               <Printer size={18} color={Colors.light.text} />
               <Text style={styles.menuItemText}>Print</Text>
             </TouchableOpacity>
-            {(!quote.isLocked || quote.status !== 'sale') && (
+            {(!quote.isLocked || (quote.status !== 'active' && quote.status !== 'completed')) && (
               <TouchableOpacity 
                 style={[styles.menuItem, styles.menuItemLast]} 
                 onPress={handleDelete}

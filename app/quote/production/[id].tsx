@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckCircle,
+  Circle,
   Package,
   Palette,
   MapPin,
@@ -22,6 +23,7 @@ import {
   User,
   Calendar,
   Hash,
+  CheckSquare,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useQuotes } from '@/contexts/QuotesContext';
@@ -56,34 +58,76 @@ function LocationBadge({ label }: { label: string }) {
   );
 }
 
-function LineItemCard({ item, index, total }: { item: LineItem; index: number; total: number }) {
+interface LineItemCardProps {
+  item: LineItem;
+  index: number;
+  total: number;
+  completedCount: number;
+  onMarkDone: () => void;
+  onUnmarkDone: () => void;
+}
+
+function LineItemCard({ item, index, total, completedCount, onMarkDone, onUnmarkDone }: LineItemCardProps) {
   const qty = getTotalQuantity(item.sizes);
   const locations = [item.location1, item.location2, item.location3, item.location4].filter(Boolean) as string[];
+  const isDone = !!item.completedAt;
 
   return (
     <ScrollView style={styles.itemCard} showsVerticalScrollIndicator={false}>
       {/* Counter pill */}
       <View style={styles.counterRow}>
-        <View style={styles.counterPill}>
+        <View style={[styles.counterPill, isDone && styles.counterPillDone]}>
           <Text style={styles.counterText}>{index + 1} of {total}</Text>
+        </View>
+        <View style={styles.progressRow}>
+          <Text style={styles.progressText}>{completedCount}/{total} complete</Text>
         </View>
       </View>
 
       {/* Mockup image */}
       {item.mockupUri ? (
-        <View style={styles.mockupContainer}>
+        <View style={[styles.mockupContainer, isDone && styles.mockupContainerDone]}>
           <Image source={{ uri: item.mockupUri }} style={styles.mockupImage} resizeMode="contain" />
+          {isDone && (
+            <View style={styles.mockupDoneOverlay}>
+              <CheckCircle size={40} color="#fff" />
+              <Text style={styles.mockupDoneText}>Complete</Text>
+            </View>
+          )}
         </View>
       ) : (
-        <View style={styles.mockupPlaceholder}>
-          <Package size={40} color={Colors.light.border} />
-          <Text style={styles.mockupPlaceholderText}>No mockup attached</Text>
+        <View style={[styles.mockupPlaceholder, isDone && styles.mockupContainerDone]}>
+          <Package size={40} color={isDone ? '#22C55E' : Colors.light.border} />
+          <Text style={styles.mockupPlaceholderText}>{isDone ? 'Completed' : 'No mockup attached'}</Text>
         </View>
       )}
 
-      {/* Design name */}
-      <Text style={styles.designName}>{item.designName || 'Untitled Design'}</Text>
-      <Text style={styles.serviceStyle}>{item.serviceStyle}</Text>
+      {/* Design name + completion toggle */}
+      <View style={styles.designRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.designName}>{item.designName || 'Untitled Design'}</Text>
+          <Text style={styles.serviceStyle}>{item.serviceStyle}</Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.itemCompleteBtn, isDone && styles.itemCompleteBtnDone]}
+          onPress={isDone ? onUnmarkDone : onMarkDone}
+        >
+          {isDone
+            ? <CheckSquare size={18} color="#fff" />
+            : <Circle size={18} color={Colors.light.textSecondary} />
+          }
+          <Text style={[styles.itemCompleteBtnText, isDone && styles.itemCompleteBtnTextDone]}>
+            {isDone ? 'Done' : 'Mark Done'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {isDone && item.completedAt && (
+        <View style={styles.completedBanner}>
+          <CheckCircle size={13} color="#16A34A" />
+          <Text style={styles.completedBannerText}>Completed {formatDate(item.completedAt)}</Text>
+        </View>
+      )}
 
       {/* Garment info */}
       <View style={styles.section}>
@@ -167,26 +211,17 @@ function LineItemCard({ item, index, total }: { item: LineItem; index: number; t
 export default function ProductionViewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { quotes, convertToSale, isConverting } = useQuotes();
+  const { projects, quotes, sales, markProjectComplete, markLineItemComplete, unmarkLineItemComplete, isCompletingProject } = useQuotes();
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
-  const quote = quotes.find(q => q.id === id);
+  const quote = (projects || [...quotes, ...sales]).find(q => q.id === id);
 
-  if (!quote) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.notFoundText}>Quote not found.</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backLink}>
-          <Text style={styles.backLinkText}>Go back</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  const items = quote.lineItems;
+  const items = quote?.lineItems ?? [];
   const total = items.length;
+  const completedCount = items.filter(i => !!i.completedAt).length;
+  const allDone = completedCount === total && total > 0;
 
   const goTo = useCallback((index: number) => {
     if (index < 0 || index >= total) return;
@@ -194,17 +229,42 @@ export default function ProductionViewScreen() {
     flatListRef.current?.scrollToIndex({ index, animated: true });
   }, [total]);
 
-  const handleMarkComplete = () => {
+  const handleMarkItemDone = useCallback((itemId: string) => {
+    if (!quote) return;
+    markLineItemComplete({ quoteId: quote.id, lineItemId: itemId });
+  }, [quote, markLineItemComplete]);
+
+  const handleUnmarkItemDone = useCallback((itemId: string) => {
+    if (!quote) return;
+    unmarkLineItemComplete({ quoteId: quote.id, lineItemId: itemId });
+  }, [quote, unmarkLineItemComplete]);
+
+  if (!quote) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.notFoundText}>Project not found.</Text>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backLink}>
+          <Text style={styles.backLinkText}>Go back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const handleMarkAllComplete = () => {
+    const message = allDone
+      ? 'All items are already complete. Mark project as Completed?'
+      : `${completedCount} of ${total} items done. Mark all remaining items and the project as Completed?`;
+
     Alert.alert(
-      'Mark Complete',
-      'This will convert the quote to a Sale. Continue?',
+      'Mark Project Complete',
+      message,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Mark Complete',
+          text: 'Complete Project',
           style: 'default',
-          onPress: async () => {
-            await convertToSale(quote.id);
+          onPress: () => {
+            markProjectComplete(quote.id);
             router.replace(`/quote/${id}`);
           },
         },
@@ -216,7 +276,7 @@ export default function ProductionViewScreen() {
     <>
       <Stack.Screen
         options={{
-          title: 'Production View',
+          title: 'Production',
           headerStyle: { backgroundColor: Colors.light.background },
           headerTintColor: Colors.light.text,
           headerTitleStyle: { fontWeight: '700' },
@@ -228,10 +288,14 @@ export default function ProductionViewScreen() {
           <View style={styles.quoteBannerLeft}>
             <User size={14} color={Colors.light.tint} />
             <Text style={styles.quoteBannerClient} numberOfLines={1}>{quote.personOrganization}</Text>
+            <Text style={styles.quoteBannerProject} numberOfLines={1}>· {quote.projectName}</Text>
           </View>
           <View style={styles.quoteBannerRight}>
-            <Calendar size={13} color={Colors.light.textSecondary} />
-            <Text style={styles.quoteBannerDate}>{formatDate(quote.inHandsDate)}</Text>
+            <View style={[styles.progressPill, allDone && styles.progressPillDone]}>
+              <Text style={[styles.progressPillText, allDone && styles.progressPillTextDone]}>
+                {completedCount}/{total} done
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -246,7 +310,14 @@ export default function ProductionViewScreen() {
           showsHorizontalScrollIndicator={false}
           renderItem={({ item, index }) => (
             <View style={{ width: SCREEN_W }}>
-              <LineItemCard item={item} index={index} total={total} />
+              <LineItemCard
+                item={item}
+                index={index}
+                total={total}
+                completedCount={completedCount}
+                onMarkDone={() => handleMarkItemDone(item.id)}
+                onUnmarkDone={() => handleUnmarkItemDone(item.id)}
+              />
             </View>
           )}
           style={styles.carousel}
@@ -263,11 +334,14 @@ export default function ProductionViewScreen() {
             <Text style={[styles.navBtnText, currentIndex === 0 && styles.navBtnTextDisabled]}>Prev</Text>
           </TouchableOpacity>
 
-          {/* Dot indicators */}
           <View style={styles.dots}>
-            {items.map((_, i) => (
+            {items.map((item, i) => (
               <TouchableOpacity key={i} onPress={() => goTo(i)}>
-                <View style={[styles.dot, i === currentIndex && styles.dotActive]} />
+                <View style={[
+                  styles.dot,
+                  i === currentIndex && styles.dotActive,
+                  item.completedAt ? styles.dotDone : null,
+                ]} />
               </TouchableOpacity>
             ))}
           </View>
@@ -282,15 +356,21 @@ export default function ProductionViewScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Mark Complete */}
+        {/* Complete Project */}
         <View style={styles.footer}>
           <TouchableOpacity
-            style={[styles.completeBtn, isConverting && styles.completeBtnDisabled]}
-            onPress={handleMarkComplete}
-            disabled={isConverting}
+            style={[styles.completeBtn, isCompletingProject && styles.completeBtnDisabled, allDone && styles.completeBtnAllDone]}
+            onPress={handleMarkAllComplete}
+            disabled={!!isCompletingProject}
           >
             <CheckCircle size={20} color="#fff" />
-            <Text style={styles.completeBtnText}>{isConverting ? 'Processing...' : 'Mark Complete → Convert to Sale'}</Text>
+            <Text style={styles.completeBtnText}>
+              {isCompletingProject
+                ? 'Completing…'
+                : allDone
+                  ? 'Mark Project Complete ✓'
+                  : `Complete Project (${completedCount}/${total} done)`}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -313,9 +393,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.light.textSecondary,
   },
-  backLink: {
-    padding: 8,
-  },
+  backLink: { padding: 8 },
   backLinkText: {
     color: Colors.light.tint,
     fontSize: 15,
@@ -331,6 +409,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.surface,
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.border,
+    gap: 8,
   },
   quoteBannerLeft: {
     flexDirection: 'row',
@@ -342,21 +421,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: Colors.light.text,
-    flex: 1,
+    flexShrink: 1,
+  },
+  quoteBannerProject: {
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+    flexShrink: 1,
   },
   quoteBannerRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  quoteBannerDate: {
-    fontSize: 13,
-    color: Colors.light.textSecondary,
+  progressPill: {
+    backgroundColor: Colors.light.border,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
+  progressPillDone: { backgroundColor: '#D1FAE5' },
+  progressPillText: { fontSize: 12, fontWeight: '700', color: Colors.light.textSecondary },
+  progressPillTextDone: { color: '#16A34A' },
 
-  carousel: {
-    flex: 1,
-  },
+  carousel: { flex: 1 },
 
   itemCard: {
     flex: 1,
@@ -365,7 +452,9 @@ const styles = StyleSheet.create({
   },
 
   counterRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 12,
   },
   counterPill: {
@@ -374,12 +463,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 4,
   },
-  counterText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.5,
-  },
+  counterPillDone: { backgroundColor: '#16A34A' },
+  counterText: { fontSize: 13, fontWeight: '700', color: '#fff', letterSpacing: 0.5 },
+  progressRow: {},
+  progressText: { fontSize: 12, color: Colors.light.textSecondary },
 
   mockupContainer: {
     width: '100%',
@@ -387,48 +474,94 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: Colors.light.surface,
-    marginBottom: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: Colors.light.border,
   },
-  mockupImage: {
-    width: '100%',
-    height: '100%',
+  mockupContainerDone: {
+    borderColor: '#86EFAC',
+    borderWidth: 2,
   },
+  mockupImage: { width: '100%', height: '100%' },
+  mockupDoneOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(22,163,74,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  mockupDoneText: { fontSize: 16, fontWeight: '800', color: '#fff' },
   mockupPlaceholder: {
     width: '100%',
-    height: 160,
+    height: 120,
     borderRadius: 12,
     backgroundColor: Colors.light.surface,
     borderWidth: 1,
     borderColor: Colors.light.border,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
     gap: 8,
   },
-  mockupPlaceholderText: {
-    fontSize: 13,
-    color: Colors.light.textSecondary,
-  },
+  mockupPlaceholderText: { fontSize: 13, color: Colors.light.textSecondary },
 
+  designRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 6,
+  },
   designName: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '800',
     color: Colors.light.text,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   serviceStyle: {
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.light.tint,
     fontWeight: '600',
-    marginBottom: 16,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  itemCompleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: Colors.light.border,
+    marginTop: 2,
+  },
+  itemCompleteBtnDone: {
+    borderColor: '#16A34A',
+    backgroundColor: '#16A34A',
+  },
+  itemCompleteBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.light.textSecondary,
+  },
+  itemCompleteBtnTextDone: { color: '#fff' },
+
+  completedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  completedBannerText: { fontSize: 12, color: '#16A34A', fontWeight: '600' },
 
   section: {
-    marginBottom: 16,
+    marginBottom: 12,
     backgroundColor: Colors.light.surface,
     borderRadius: 10,
     padding: 12,
@@ -440,48 +573,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: Colors.light.tint,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
   },
-  infoLabel: {
-    fontSize: 13,
-    color: Colors.light.textSecondary,
-    flex: 1,
-  },
-  infoValue: {
-    fontSize: 13,
-    color: Colors.light.text,
-    fontWeight: '500',
-    textAlign: 'right',
-  },
-  infoValueBold: {
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  colorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
+  infoLabel: { fontSize: 13, color: Colors.light.textSecondary, flex: 1 },
+  infoValue: { fontSize: 13, color: Colors.light.text, fontWeight: '500', textAlign: 'right' },
+  infoValueBold: { fontWeight: '700', fontSize: 14 },
+  colorRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
 
-  sizeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
+  sizeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   sizeCell: {
     minWidth: 44,
     backgroundColor: Colors.light.background,
@@ -492,45 +604,21 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     alignItems: 'center',
   },
-  sizeCellLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: Colors.light.textSecondary,
-    textTransform: 'uppercase',
-  },
-  sizeCellQty: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.light.text,
-  },
+  sizeCellLabel: { fontSize: 10, fontWeight: '600', color: Colors.light.textSecondary, textTransform: 'uppercase' },
+  sizeCellQty: { fontSize: 16, fontWeight: '700', color: Colors.light.text },
 
   variantsLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: Colors.light.textSecondary,
     marginTop: 4,
-    marginBottom: 4,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
-  variantRow: {
-    gap: 6,
-    marginBottom: 8,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-  },
-  variantName: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.light.text,
-  },
+  variantRow: { gap: 6, marginBottom: 8, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: Colors.light.border },
+  variantName: { fontSize: 12, fontWeight: '600', color: Colors.light.text },
 
-  locationBadges: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
+  locationBadges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   locationBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -542,17 +630,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,90,0,0.2)',
   },
-  locationBadgeText: {
-    fontSize: 12,
-    color: Colors.light.tint,
-    fontWeight: '600',
-  },
-  locationDetails: {
-    fontSize: 12,
-    color: Colors.light.textSecondary,
-    marginTop: 4,
-    lineHeight: 17,
-  },
+  locationBadgeText: { fontSize: 12, color: Colors.light.tint, fontWeight: '600' },
+  locationDetails: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 4, lineHeight: 17 },
 
   navRow: {
     flexDirection: 'row',
@@ -564,43 +643,18 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.light.border,
     backgroundColor: Colors.light.surface,
   },
-  navBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    padding: 8,
-    borderRadius: 8,
-  },
-  navBtnDisabled: {
-    opacity: 0.4,
-  },
-  navBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.light.tint,
-  },
-  navBtnTextDisabled: {
-    color: Colors.light.border,
-  },
-  dots: {
-    flexDirection: 'row',
-    gap: 6,
-    alignItems: 'center',
-  },
-  dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: Colors.light.border,
-  },
-  dotActive: {
-    backgroundColor: Colors.light.tint,
-    width: 18,
-  },
+  navBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, padding: 8, borderRadius: 8 },
+  navBtnDisabled: { opacity: 0.35 },
+  navBtnText: { fontSize: 14, fontWeight: '600', color: Colors.light.tint },
+  navBtnTextDisabled: { color: Colors.light.border },
+  dots: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.light.border },
+  dotActive: { backgroundColor: Colors.light.tint, width: 18 },
+  dotDone: { backgroundColor: '#22C55E' },
 
   footer: {
     padding: 16,
-    paddingBottom: 24,
+    paddingBottom: 28,
     backgroundColor: Colors.light.surface,
     borderTopWidth: 1,
     borderTopColor: Colors.light.border,
@@ -614,12 +668,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     gap: 8,
   },
-  completeBtnDisabled: {
-    opacity: 0.6,
-  },
-  completeBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-  },
+  completeBtnAllDone: { backgroundColor: '#16A34A' },
+  completeBtnDisabled: { opacity: 0.6 },
+  completeBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 });

@@ -12,8 +12,7 @@ import {
   Menu,
   LayoutDashboard,
   FilePlus,
-  History,
-  DollarSign,
+  FolderKanban,
   Users,
   BookOpen,
   User,
@@ -29,8 +28,7 @@ const LOGO_URI =
 const NAV_ITEMS = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
   { label: 'New Quote', icon: FilePlus, href: '/' },
-  { label: 'Quote History', icon: History, href: '/history' },
-  { label: 'Sales', icon: DollarSign, href: '/sales' },
+  { label: 'Projects', icon: FolderKanban, href: '/projects' },
   { label: 'Clients', icon: Users, href: '/clients' },
   { label: 'Catalogs', icon: BookOpen, href: '/catalogs' },
 ];

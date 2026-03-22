@@ -2,8 +2,7 @@ import { Tabs, Slot, useRouter } from 'expo-router';
 import {
   LayoutDashboard,
   FilePlus,
-  History,
-  DollarSign,
+  FolderKanban,
   Users,
   BookOpen,
 } from 'lucide-react-native';
@@ -60,17 +59,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="history"
+        name="projects"
         options={{
-          title: 'History',
-          tabBarIcon: ({ color, size }) => <History size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="sales"
-        options={{
-          title: 'Sales',
-          tabBarIcon: ({ color, size }) => <DollarSign size={size} color={color} />,
+          title: 'Projects',
+          tabBarIcon: ({ color, size }) => <FolderKanban size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -87,6 +79,8 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <BookOpen size={size} color={color} />,
         }}
       />
+      <Tabs.Screen name="history" options={{ href: null }} />
+      <Tabs.Screen name="sales" options={{ href: null }} />
     </Tabs>
   );
 }

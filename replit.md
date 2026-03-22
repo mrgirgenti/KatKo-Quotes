@@ -4,11 +4,20 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 
 ## Features
 - Create and manage sales quotes with line items
-- Quote history and sales tracking
+- Unified Projects tab (replaces separate Quote History + Sales tabs)
+- Project lifecycle: Draft → Quoted → Active → Completed (auto-Expired after 30 days)
+- Per-line-item completion tracking in Production View
+- Rich filter bar: status pills, search, total range, sort
 - Client management with profile pages (linked quotes, stats, edit, delete)
-- Client auto-add on quote submit (Prospect) and sale finalize (Active)
 - Reports generation (PDF, CSV, Google Sheets export)
 - User profiles with avatar support
+
+## Project Status Flow
+- `draft` — quote being built (New Quote tab only)
+- `quoted` — submitted to client (appears in Projects tab)
+- `active` — client accepted, in production
+- `completed` — all line items marked done in Production View
+- `expired` — auto-computed: quoted + orderDate > 30 days ago (no action needed)
 
 ## Tech Stack
 - **Framework**: React Native with Expo (~54.0.27)

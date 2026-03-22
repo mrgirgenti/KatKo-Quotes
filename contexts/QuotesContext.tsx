@@ -1,15 +1,26 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
-import { Quote, SalesData, LineItemActualCosts } from '@/types/quote';
+import { Quote, SalesData, LineItemActualCosts, QuoteStatus } from '@/types/quote';
 import { useUser } from '@/contexts/UserContext';
 
 const QUOTES_STORAGE_KEY = 'printshop_quotes';
 
+function migrateQuote(q: any): Quote {
+  let status: QuoteStatus = q.status;
+  if ((q.status as string) === 'submitted') status = 'quoted';
+  if ((q.status as string) === 'sale') {
+    status = q.salesData?.completedDate ? 'completed' : 'active';
+  }
+  return { ...q, status };
+}
+
 async function loadQuotes(): Promise<Quote[]> {
   try {
     const stored = await AsyncStorage.getItem(QUOTES_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
+    if (!stored) return [];
+    const raw: any[] = JSON.parse(stored);
+    return raw.map(migrateQuote);
   } catch (error) {
     console.log('Error loading quotes:', error);
     return [];
@@ -24,6 +35,11 @@ async function saveQuotes(quotes: Quote[]): Promise<Quote[]> {
     console.log('Error saving quotes:', error);
     throw error;
   }
+}
+
+function nowDateStr(): string {
+  const now = new Date();
+  return `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${now.getFullYear()}`;
 }
 
 export const [QuotesProvider, useQuotes] = createContextHook(() => {
@@ -42,9 +58,7 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
       const updated = [quoteWithUser, ...current];
       return saveQuotes(updated);
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData(['quotes'], data);
-    },
+    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
   });
 
   const updateQuoteMutation = useMutation({
@@ -53,9 +67,7 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
       const updated = current.map(q => q.id === updatedQuote.id ? updatedQuote : q);
       return saveQuotes(updated);
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData(['quotes'], data);
-    },
+    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
   });
 
   const deleteQuoteMutation = useMutation({
@@ -64,16 +76,13 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
       const updated = current.filter(q => q.id !== quoteId);
       return saveQuotes(updated);
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData(['quotes'], data);
-    },
+    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
   });
 
-  const convertToSaleMutation = useMutation({
+  const convertToActiveMutation = useMutation({
     mutationFn: async (quoteId: string) => {
       const current = quotesQuery.data || [];
-      const now = new Date();
-      const dateStr = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${now.getFullYear()}`;
+      const dateStr = nowDateStr();
       const updated = current.map(q => {
         if (q.id === quoteId) {
           const lineItemCosts: LineItemActualCosts[] = q.lineItems.map(item => {
@@ -92,7 +101,8 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
           });
           return {
             ...q,
-            status: 'sale' as const,
+            status: 'active' as QuoteStatus,
+            activeDate: dateStr,
             salesData: {
               convertedDate: dateStr,
               completedDate: '',
@@ -117,9 +127,77 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
       });
       return saveQuotes(updated);
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData(['quotes'], data);
+    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
+  });
+
+  const markProjectCompleteMutation = useMutation({
+    mutationFn: async (quoteId: string) => {
+      const current = quotesQuery.data || [];
+      const dateStr = nowDateStr();
+      const updated = current.map(q => {
+        if (q.id === quoteId) {
+          const completedItems = q.lineItems.map(item => ({
+            ...item,
+            completedAt: item.completedAt || dateStr,
+          }));
+          return {
+            ...q,
+            status: 'completed' as QuoteStatus,
+            lineItems: completedItems,
+            salesData: q.salesData
+              ? { ...q.salesData, completedDate: dateStr }
+              : undefined,
+          };
+        }
+        return q;
+      });
+      return saveQuotes(updated);
     },
+    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
+  });
+
+  const markLineItemCompleteMutation = useMutation({
+    mutationFn: async ({ quoteId, lineItemId }: { quoteId: string; lineItemId: string }) => {
+      const current = quotesQuery.data || [];
+      const dateStr = nowDateStr();
+      const updated = current.map(q => {
+        if (q.id !== quoteId) return q;
+        const updatedItems = q.lineItems.map(item =>
+          item.id === lineItemId ? { ...item, completedAt: dateStr } : item
+        );
+        const allDone = updatedItems.every(item => !!item.completedAt);
+        return {
+          ...q,
+          lineItems: updatedItems,
+          status: allDone ? ('completed' as QuoteStatus) : q.status,
+          salesData: allDone && q.salesData
+            ? { ...q.salesData, completedDate: dateStr }
+            : q.salesData,
+        };
+      });
+      return saveQuotes(updated);
+    },
+    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
+  });
+
+  const unmarkLineItemCompleteMutation = useMutation({
+    mutationFn: async ({ quoteId, lineItemId }: { quoteId: string; lineItemId: string }) => {
+      const current = quotesQuery.data || [];
+      const updated = current.map(q => {
+        if (q.id !== quoteId) return q;
+        const updatedItems = q.lineItems.map(item =>
+          item.id === lineItemId ? { ...item, completedAt: undefined } : item
+        );
+        return {
+          ...q,
+          lineItems: updatedItems,
+          status: 'active' as QuoteStatus,
+          salesData: q.salesData ? { ...q.salesData, completedDate: '' } : q.salesData,
+        };
+      });
+      return saveQuotes(updated);
+    },
+    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
   });
 
   const updateSalesDataMutation = useMutation({
@@ -127,8 +205,8 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
       const current = quotesQuery.data || [];
       const updated = current.map(q => {
         if (q.id === quoteId) {
-          return { 
-            ...q, 
+          return {
+            ...q,
             salesData,
             lineItems: updatedLineItems || q.lineItems,
           };
@@ -137,119 +215,95 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
       });
       return saveQuotes(updated);
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData(['quotes'], data);
-    },
+    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
   });
 
-  const convertToQuoteMutation = useMutation({
+  const revertToQuotedMutation = useMutation({
     mutationFn: async (quoteId: string) => {
       const current = quotesQuery.data || [];
       const updated = current.map(q => {
         if (q.id === quoteId) {
           return {
             ...q,
-            status: 'draft' as const,
+            status: 'quoted' as QuoteStatus,
             salesData: undefined,
+            activeDate: undefined,
           };
         }
         return q;
       });
       return saveQuotes(updated);
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData(['quotes'], data);
-    },
+    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
   });
 
   const lockSaleMutation = useMutation({
     mutationFn: async (quoteId: string) => {
       const current = quotesQuery.data || [];
-      const now = new Date();
-      const dateStr = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${now.getFullYear()}`;
-      const updated = current.map(q => {
-        if (q.id === quoteId) {
-          return {
-            ...q,
-            isLocked: true,
-            lockedDate: dateStr,
-          };
-        }
-        return q;
-      });
+      const dateStr = nowDateStr();
+      const updated = current.map(q =>
+        q.id === quoteId ? { ...q, isLocked: true, lockedDate: dateStr } : q
+      );
       return saveQuotes(updated);
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData(['quotes'], data);
-    },
+    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
   });
 
   const unlockSaleMutation = useMutation({
     mutationFn: async (quoteId: string) => {
       const current = quotesQuery.data || [];
-      const updated = current.map(q => {
-        if (q.id === quoteId) {
-          return {
-            ...q,
-            isLocked: false,
-            lockedDate: undefined,
-          };
-        }
-        return q;
-      });
+      const updated = current.map(q =>
+        q.id === quoteId ? { ...q, isLocked: false, lockedDate: undefined } : q
+      );
       return saveQuotes(updated);
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData(['quotes'], data);
-    },
+    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
   });
 
   const markExportedToSheetsMutation = useMutation({
     mutationFn: async (quoteId: string) => {
       const current = quotesQuery.data || [];
-      const now = new Date();
-      const dateStr = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${now.getFullYear()}`;
-      const updated = current.map(q => {
-        if (q.id === quoteId) {
-          return {
-            ...q,
-            exportedToSheets: true,
-            exportedToSheetsDate: dateStr,
-            isLocked: true,
-            lockedDate: dateStr,
-          };
-        }
-        return q;
-      });
+      const dateStr = nowDateStr();
+      const updated = current.map(q =>
+        q.id === quoteId
+          ? { ...q, exportedToSheets: true, exportedToSheetsDate: dateStr, isLocked: true, lockedDate: dateStr }
+          : q
+      );
       return saveQuotes(updated);
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData(['quotes'], data);
-    },
+    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
   });
 
-  const userQuotes = (quotesQuery.data || []).filter(q => 
+  const userQuotes = (quotesQuery.data || []).filter(q =>
     !q.userId || q.userId === currentUserId || q.userId === 'default'
   );
-  const pendingQuotes = userQuotes.filter(q => q.status !== 'sale');
-  const sales = userQuotes.filter(q => q.status === 'sale');
+
+  const projects = userQuotes.filter(q => q.status !== 'draft');
+  const quotes = userQuotes.filter(q => q.status !== 'draft');
+  const sales = userQuotes.filter(q => q.status === 'active' || q.status === 'completed');
 
   return {
-    quotes: pendingQuotes,
+    quotes,
+    projects,
     allQuotes: quotesQuery.data || [],
     sales,
     isLoading: quotesQuery.isLoading,
     addQuote: addQuoteMutation.mutate,
     updateQuote: updateQuoteMutation.mutate,
     deleteQuote: deleteQuoteMutation.mutate,
-    convertToSale: convertToSaleMutation.mutate,
-    convertToQuote: convertToQuoteMutation.mutate,
+    convertToSale: convertToActiveMutation.mutate,
+    convertToActive: convertToActiveMutation.mutate,
+    convertToQuote: revertToQuotedMutation.mutate,
+    markProjectComplete: markProjectCompleteMutation.mutate,
+    markLineItemComplete: markLineItemCompleteMutation.mutate,
+    unmarkLineItemComplete: unmarkLineItemCompleteMutation.mutate,
     updateSalesData: updateSalesDataMutation.mutate,
     lockSale: lockSaleMutation.mutate,
     unlockSale: unlockSaleMutation.mutate,
     markExportedToSheets: markExportedToSheetsMutation.mutate,
     isAdding: addQuoteMutation.isPending,
-    isConverting: convertToSaleMutation.isPending,
+    isConverting: convertToActiveMutation.isPending,
     isLocking: lockSaleMutation.isPending,
+    isCompletingProject: markProjectCompleteMutation.isPending,
   };
 });

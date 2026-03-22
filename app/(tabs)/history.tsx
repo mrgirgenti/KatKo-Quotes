@@ -94,7 +94,7 @@ export default function HistoryScreen() {
           text: 'Convert',
           onPress: () => {
             convertToSale(quote.id);
-            router.replace('/(tabs)/sales');
+            router.replace('/(tabs)/projects');
           },
         },
       ]

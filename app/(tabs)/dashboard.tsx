@@ -27,8 +27,8 @@ export default function DashboardScreen() {
   const { isMobile } = useBreakpoint();
 
   const stats = useMemo(() => {
-    const salesList = quotes.filter((q) => q.status === 'sale');
-    const activeQuotes = quotes.filter((q) => q.status === 'submitted');
+    const salesList = quotes.filter((q) => q.status === 'active' || q.status === 'completed');
+    const activeQuotes = quotes.filter((q) => q.status === 'quoted');
     const totalRevenue = salesList.reduce(
       (sum, q) => sum + (q.salesData?.amountCollected ?? q.calculations?.total ?? 0),
       0

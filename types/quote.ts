@@ -1,6 +1,7 @@
 export type ServiceStyle = 'Screen Printing' | 'Direct to Film' | 'Embroidery' | 'Promotional';
 export type OrderType = 'New' | 'Re-Order';
-export type QuoteStatus = 'draft' | 'submitted' | 'sale';
+
+export type QuoteStatus = 'draft' | 'quoted' | 'active' | 'completed' | 'expired';
 
 export interface LineItemActualCosts {
   lineItemId: string;
@@ -71,6 +72,7 @@ export interface LineItem {
   serviceFeeEach: number;
   markupEach: number;
   mockupUri?: string;
+  completedAt?: string;
 }
 
 export interface QuoteCalculations {
@@ -110,6 +112,7 @@ export interface Quote {
   calculations: QuoteCalculations;
   createdAt: string;
   status: QuoteStatus;
+  activeDate?: string;
   salesData?: SalesData;
   isLocked?: boolean;
   lockedDate?: string;
@@ -249,3 +252,25 @@ export const LOCATIONS = [
   'Right Sleeve',
   'Pocket (literal)',
 ] as const;
+
+export function getEffectiveStatus(quote: Quote): QuoteStatus {
+  if (quote.status === 'quoted') {
+    const dateStr = quote.orderDate;
+    if (dateStr) {
+      const date = new Date(dateStr.replace(/-/g, '/'));
+      if (!isNaN(date.getTime())) {
+        const daysSince = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysSince > 30) return 'expired';
+      }
+    }
+  }
+  return quote.status;
+}
+
+export const STATUS_CONFIG: Record<QuoteStatus, { label: string; color: string; bg: string; borderColor: string }> = {
+  draft:     { label: 'Draft',     color: '#6B7280', bg: '#F3F4F6', borderColor: '#D1D5DB' },
+  quoted:    { label: 'Quoted',    color: '#2563EB', bg: '#EFF6FF', borderColor: '#BFDBFE' },
+  active:    { label: 'Active',    color: '#FF5A00', bg: '#FFF4EE', borderColor: '#FDBA97' },
+  completed: { label: 'Completed', color: '#16A34A', bg: '#F0FDF4', borderColor: '#BBF7D0' },
+  expired:   { label: 'Expired',   color: '#9CA3AF', bg: '#F9FAFB', borderColor: '#E5E7EB' },
+};
