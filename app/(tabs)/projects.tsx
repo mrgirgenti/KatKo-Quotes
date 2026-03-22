@@ -370,6 +370,13 @@ export default function ProjectsScreen() {
   const [deleteTarget, setDeleteTarget] = useState<Quote | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteVisible, setBulkDeleteVisible] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    title: string;
+    message: string;
+    confirmText: string;
+    destructive?: boolean;
+    onConfirm: () => void;
+  } | null>(null);
 
   const selectionMode = selectedIds.size > 0;
 
@@ -468,38 +475,33 @@ export default function ProjectsScreen() {
 
   const handleBulkConvertToActive = useCallback(() => {
     const n = selectedQuotes.length;
-    Alert.alert(
-      'Convert to Active',
-      `Convert ${n} project${n !== 1 ? 's' : ''} to Active status?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Convert', onPress: () => { selectedQuotes.forEach(q => convertToSale(q.id)); clearSelection(); } },
-      ]
-    );
+    setPendingConfirm({
+      title: 'Convert to Active',
+      message: `Convert ${n} project${n !== 1 ? 's' : ''} to Active status?`,
+      confirmText: 'Convert',
+      onConfirm: () => { selectedQuotes.forEach(q => convertToSale(q.id)); clearSelection(); },
+    });
   }, [selectedQuotes, convertToSale, clearSelection]);
 
   const handleBulkComplete = useCallback(() => {
     const n = selectedQuotes.length;
-    Alert.alert(
-      'Complete Projects',
-      `Mark ${n} project${n !== 1 ? 's' : ''} as Completed? All line items will be auto-completed.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Complete Project', onPress: () => { selectedQuotes.forEach(q => markProjectComplete(q.id)); clearSelection(); } },
-      ]
-    );
+    setPendingConfirm({
+      title: 'Complete Projects',
+      message: `Mark ${n} project${n !== 1 ? 's' : ''} as Completed? All line items will be auto-completed.`,
+      confirmText: 'Complete Project',
+      onConfirm: () => { selectedQuotes.forEach(q => markProjectComplete(q.id)); clearSelection(); },
+    });
   }, [selectedQuotes, markProjectComplete, clearSelection]);
 
   const handleBulkRevert = useCallback(() => {
     const n = selectedQuotes.length;
-    Alert.alert(
-      'Revert to Quoted',
-      `Revert ${n} project${n !== 1 ? 's' : ''} back to Quoted status? This will clear any sales data and production progress.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Revert', style: 'destructive', onPress: () => { selectedQuotes.forEach(q => convertToQuote(q.id)); clearSelection(); } },
-      ]
-    );
+    setPendingConfirm({
+      title: 'Revert to Quoted',
+      message: `Revert ${n} project${n !== 1 ? 's' : ''} back to Quoted status? This will clear any sales data and production progress.`,
+      confirmText: 'Revert',
+      destructive: true,
+      onConfirm: () => { selectedQuotes.forEach(q => convertToQuote(q.id)); clearSelection(); },
+    });
   }, [selectedQuotes, convertToQuote, clearSelection]);
 
   const handleBulkExportPDF = useCallback(async () => {
@@ -550,14 +552,12 @@ export default function ProjectsScreen() {
   }, []);
 
   const handleConvert = useCallback((quote: Quote) => {
-    Alert.alert(
-      'Mark as Active',
-      `Convert "${quote.projectName}" to Active status?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Convert', onPress: () => convertToSale(quote.id) },
-      ]
-    );
+    setPendingConfirm({
+      title: 'Mark as Active',
+      message: `Convert "${quote.projectName}" to Active status?`,
+      confirmText: 'Convert',
+      onConfirm: () => convertToSale(quote.id),
+    });
   }, [convertToSale]);
 
   const handleRevert = useCallback((quote: Quote) => {
@@ -565,14 +565,12 @@ export default function ProjectsScreen() {
   }, [convertToQuote]);
 
   const handleComplete = useCallback((quote: Quote) => {
-    Alert.alert(
-      'Complete Project',
-      `Mark "${quote.projectName}" as Completed? All line items will be auto-completed.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Complete Project', onPress: () => markProjectComplete(quote.id) },
-      ]
-    );
+    setPendingConfirm({
+      title: 'Complete Project',
+      message: `Mark "${quote.projectName}" as Completed? All line items will be auto-completed.`,
+      confirmText: 'Complete Project',
+      onConfirm: () => markProjectComplete(quote.id),
+    });
   }, [markProjectComplete]);
 
   const handleEdit = useCallback((quote: Quote) => {
@@ -607,9 +605,7 @@ export default function ProjectsScreen() {
   const SortBtn = ({ field, label }: { field: SortField; label: string }) => (
     <TouchableOpacity style={styles.sortBtn} onPress={() => toggleSort(field)}>
       <Text style={[styles.sortBtnText, sortField === field && styles.sortBtnTextActive]}>{label}</Text>
-      {sortField === field && (
-        <ArrowUpDown size={11} color={Colors.light.tint} />
-      )}
+      <ArrowUpDown size={11} color={sortField === field ? Colors.light.tint : 'rgba(255,255,255,0.35)'} />
     </TouchableOpacity>
   );
 
@@ -830,6 +826,17 @@ export default function ProjectsScreen() {
           )}
         />
       )}
+
+      <ConfirmDialog
+        visible={!!pendingConfirm}
+        title={pendingConfirm?.title ?? ''}
+        message={pendingConfirm?.message ?? ''}
+        confirmText={pendingConfirm?.confirmText ?? 'Confirm'}
+        cancelText="Cancel"
+        confirmDestructive={pendingConfirm?.destructive}
+        onConfirm={() => { pendingConfirm?.onConfirm(); setPendingConfirm(null); }}
+        onCancel={() => setPendingConfirm(null)}
+      />
 
       <ConfirmDialog
         visible={!!deleteTarget}
@@ -1062,7 +1069,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.surface,
   },
   colStatus:    { width: 100 },
-  colOrderDate: { width: 110 },
+  colOrderDate: { width: 125 },
   colDueDate:   { width: 110 },
   colClient:    { flex: 1.2 },
   colProject:   { flex: 1.2 },

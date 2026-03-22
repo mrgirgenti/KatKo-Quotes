@@ -20,6 +20,7 @@ import {
   Save,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Trash2,
   CheckCircle,
   Image as ImageIcon,
@@ -82,7 +83,18 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
   const [saving, setSaving] = useState(false);
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
   const [selectedStyleNumber, setSelectedStyleNumber] = useState<string | null>(null);
+  const [styleSearchTerm, setStyleSearchTerm] = useState('');
+  const [styleDropdownOpen, setStyleDropdownOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab>('controls');
+
+  useEffect(() => {
+    if (!visible) return;
+    setSelectedVendorId('ss-activewear');
+    setSelectedStyleNumber('NL6210');
+    setGarmentColor('#2C2C2C');
+    setStyleSearchTerm('');
+    setStyleDropdownOpen(false);
+  }, [visible]);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const selectedVendor = selectedVendorId
@@ -169,12 +181,16 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
       setSelectedVendorId(vendorId);
       setSelectedStyleNumber(null);
     }
+    setStyleSearchTerm('');
+    setStyleDropdownOpen(false);
   };
 
   const handleGarmentTypeChange = (type: GarmentType) => {
     setGarmentType(type);
     setCurrentView('front');
     setSelectedStyleNumber(null);
+    setStyleSearchTerm('');
+    setStyleDropdownOpen(false);
     // If the selected vendor has no products of this type, deselect vendor
     if (selectedVendorId) {
       const v = VENDOR_CATALOG.find(v => v.id === selectedVendorId);
@@ -384,31 +400,67 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                 </View>
               </View>
 
-              {/* 3. Product Style — filtered by selected template */}
+              {/* 3. Product Style — searchable dropdown */}
               {selectedVendor && (
                 <>
-                  <Text style={styles.sectionLabel}>
-                    PRODUCT STYLE {filteredStyles.length > 0 ? `(${filteredStyles.length})` : ''}
-                  </Text>
+                  <Text style={styles.sectionLabel}>PRODUCT STYLE</Text>
                   {filteredStyles.length === 0 ? (
                     <Text style={styles.styleName}>No {GARMENTS[garmentType].label.toLowerCase()} styles found for this vendor.</Text>
-                  ) : (
-                    <View style={styles.garmentTypes}>
-                      {filteredStyles.map(style => (
-                        <TouchableOpacity
-                          key={style.styleNumber}
-                          style={[styles.styleBtn, selectedStyleNumber === style.styleNumber && styles.styleBtnActive]}
-                          onPress={() => handleStyleSelect(style.styleNumber)}
-                        >
-                          <Text style={[styles.styleNumber, selectedStyleNumber === style.styleNumber && styles.styleNumberActive]}>
-                            {style.styleNumber}{style.isYouth ? ' (Youth)' : ''}
-                          </Text>
-                          <Text style={[styles.styleName, selectedStyleNumber === style.styleNumber && styles.styleNameActive]} numberOfLines={2}>
-                            {style.name}
-                          </Text>
+                  ) : styleDropdownOpen ? (
+                    <View>
+                      <View style={styles.styleSearchRow}>
+                        <TextInput
+                          style={styles.styleSearchInput}
+                          placeholder="Search styles…"
+                          placeholderTextColor={Colors.light.textSecondary}
+                          value={styleSearchTerm}
+                          onChangeText={setStyleSearchTerm}
+                          autoFocus
+                        />
+                        <TouchableOpacity style={styles.styleSearchClose} onPress={() => { setStyleDropdownOpen(false); setStyleSearchTerm(''); }}>
+                          <X size={14} color={Colors.light.textSecondary} />
                         </TouchableOpacity>
-                      ))}
+                      </View>
+                      <ScrollView style={styles.styleDropdownScroll} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                        {filteredStyles
+                          .filter(s =>
+                            styleSearchTerm.trim() === '' ||
+                            s.styleNumber.toLowerCase().includes(styleSearchTerm.toLowerCase()) ||
+                            s.name.toLowerCase().includes(styleSearchTerm.toLowerCase())
+                          )
+                          .map(style => {
+                            const isSelected = selectedStyleNumber === style.styleNumber;
+                            return (
+                              <TouchableOpacity
+                                key={style.styleNumber}
+                                style={[styles.styleDropdownRow, isSelected && styles.styleDropdownRowActive]}
+                                onPress={() => { handleStyleSelect(style.styleNumber); setStyleDropdownOpen(false); setStyleSearchTerm(''); }}
+                              >
+                                <Text style={[styles.styleDropdownNum, isSelected && styles.styleDropdownNumActive]}>
+                                  {style.styleNumber}{style.isYouth ? ' (Y)' : ''}
+                                </Text>
+                                <Text style={[styles.styleDropdownName, isSelected && styles.styleDropdownNameActive]} numberOfLines={1}>
+                                  {style.name}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })
+                        }
+                      </ScrollView>
                     </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.styleSelectedBtn}
+                      onPress={() => setStyleDropdownOpen(true)}
+                    >
+                      <Text style={styles.styleSelectedBtnText} numberOfLines={1}>
+                        {selectedStyleNumber
+                          ? `${selectedStyleNumber} — ${filteredStyles.find(s => s.styleNumber === selectedStyleNumber)?.name ?? ''}`
+                          : 'Select a style…'
+                        }
+                      </Text>
+                      <ChevronDown size={14} color={Colors.light.textSecondary} />
+                    </TouchableOpacity>
                   )}
                 </>
               )}
@@ -854,6 +906,83 @@ const styles = StyleSheet.create({
   styleNumberActive: { color: Colors.light.tint },
   styleName: { fontSize: 11, color: Colors.light.textSecondary, lineHeight: 14, marginTop: 1 },
   styleNameActive: { color: Colors.light.text },
+
+  styleSelectedBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: '#fff',
+  },
+  styleSelectedBtnText: {
+    fontSize: 12,
+    color: Colors.light.text,
+    fontWeight: '500',
+    flex: 1,
+    marginRight: 6,
+  },
+  styleSearchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.light.tint,
+    borderRadius: 8,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    backgroundColor: '#fff',
+    paddingHorizontal: 8,
+  },
+  styleSearchInput: {
+    flex: 1,
+    height: 34,
+    fontSize: 12,
+    color: Colors.light.text,
+  },
+  styleSearchClose: {
+    padding: 4,
+  },
+  styleDropdownScroll: {
+    maxHeight: 6 * 46,
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderColor: Colors.light.border,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    backgroundColor: '#fff',
+  },
+  styleDropdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+  },
+  styleDropdownRowActive: {
+    backgroundColor: '#FFF4EE',
+  },
+  styleDropdownNum: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.light.tint,
+    width: 52,
+  },
+  styleDropdownNumActive: {
+    color: Colors.light.tint,
+  },
+  styleDropdownName: {
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+    flex: 1,
+  },
+  styleDropdownNameActive: {
+    color: Colors.light.text,
+  },
 
   productInfoBar: {
     marginTop: 8,
