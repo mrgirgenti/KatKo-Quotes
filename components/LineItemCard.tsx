@@ -668,26 +668,36 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                                     }
                                   />
 
-                                  {/* Color button */}
-                                  <TouchableOpacity
-                                    style={styles.variantColorBtn}
-                                    onPress={() =>
-                                      setVariantColorOpen((prev) => prev.map((o, i) => (i === vIdx ? !o : o)))
-                                    }
-                                  >
-                                    <View
-                                      style={[
-                                        styles.variantColorDot,
-                                        { backgroundColor: selectedColorObj?.hex ?? '#ccc' },
-                                        !selectedColorObj && styles.variantColorDotEmpty,
-                                        selectedColorObj?.hex === '#FFFFFF' && styles.variantColorSwatchWhite,
-                                      ]}
+                                  {/* Color button or free-text input */}
+                                  {colorObjects.length === 0 ? (
+                                    <TextInput
+                                      style={styles.variantColorFreeInput}
+                                      value={variant.color}
+                                      onChangeText={(v) => updateVariant(vIdx, { color: v })}
+                                      placeholder="Colorway"
+                                      placeholderTextColor={Colors.light.textSecondary}
                                     />
-                                    <Text style={styles.variantColorBtnText} numberOfLines={1}>
-                                      {variant.color || 'Color'}
-                                    </Text>
-                                    <ChevronDown size={12} color={Colors.light.textSecondary} />
-                                  </TouchableOpacity>
+                                  ) : (
+                                    <TouchableOpacity
+                                      style={styles.variantColorBtn}
+                                      onPress={() =>
+                                        setVariantColorOpen((prev) => prev.map((o, i) => (i === vIdx ? !o : o)))
+                                      }
+                                    >
+                                      <View
+                                        style={[
+                                          styles.variantColorDot,
+                                          { backgroundColor: selectedColorObj?.hex ?? '#ccc' },
+                                          !selectedColorObj && styles.variantColorDotEmpty,
+                                          selectedColorObj?.hex === '#FFFFFF' && styles.variantColorSwatchWhite,
+                                        ]}
+                                      />
+                                      <Text style={styles.variantColorBtnText} numberOfLines={1}>
+                                        {variant.color || 'Color'}
+                                      </Text>
+                                      <ChevronDown size={12} color={Colors.light.textSecondary} />
+                                    </TouchableOpacity>
+                                  )}
 
                                   {/* Delete */}
                                   <TouchableOpacity
@@ -703,35 +713,49 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                                 {variantStyleFocused[vIdx] && (
                                   <View style={styles.variantStyleDropdown}>
                                     <ScrollView style={{ maxHeight: 180 }} nestedScrollEnabled showsVerticalScrollIndicator={false}>
-                                      {filteredStyles.length === 0 ? (
-                                        <Text style={styles.variantDropdownEmpty}>No matching styles.</Text>
-                                      ) : (
-                                        filteredStyles.map((style, sIdx) => {
-                                          const styleValue = `${style.styleNumber} — ${style.name}`;
-                                          const isSelected = variant.product === styleValue;
-                                          return (
-                                            <TouchableOpacity
-                                              key={style.styleNumber}
-                                              style={[
-                                                styles.variantDropdownItem,
-                                                isSelected && styles.variantDropdownItemActive,
-                                                sIdx < filteredStyles.length - 1 && styles.variantDropdownItemBorder,
-                                              ]}
-                                              onPress={() => {
-                                                updateVariant(vIdx, { product: styleValue, color: '' });
-                                                setVariantSearchTerms((prev) => prev.map((t, i) => (i === vIdx ? styleValue : t)));
-                                                setVariantStyleFocused((prev) => prev.map((f, i) => (i === vIdx ? false : f)));
-                                              }}
-                                            >
-                                              <Text style={[styles.variantDropdownNum, isSelected && styles.variantDropdownNumActive]}>
-                                                {style.styleNumber}{style.isYouth ? ' (Y)' : ''}
-                                              </Text>
-                                              <Text style={[styles.variantDropdownName, isSelected && styles.variantDropdownNameActive]} numberOfLines={1}>
-                                                {style.name}
-                                              </Text>
-                                            </TouchableOpacity>
-                                          );
-                                        })
+                                      {filteredStyles.map((style, sIdx) => {
+                                        const styleValue = `${style.styleNumber} — ${style.name}`;
+                                        const isSelected = variant.product === styleValue;
+                                        return (
+                                          <TouchableOpacity
+                                            key={style.styleNumber}
+                                            style={[
+                                              styles.variantDropdownItem,
+                                              isSelected && styles.variantDropdownItemActive,
+                                              sIdx < filteredStyles.length - 1 && styles.variantDropdownItemBorder,
+                                            ]}
+                                            onPress={() => {
+                                              updateVariant(vIdx, { product: styleValue, color: '' });
+                                              setVariantSearchTerms((prev) => prev.map((t, i) => (i === vIdx ? styleValue : t)));
+                                              setVariantStyleFocused((prev) => prev.map((f, i) => (i === vIdx ? false : f)));
+                                            }}
+                                          >
+                                            <Text style={[styles.variantDropdownNum, isSelected && styles.variantDropdownNumActive]}>
+                                              {style.styleNumber}{style.isYouth ? ' (Y)' : ''}
+                                            </Text>
+                                            <Text style={[styles.variantDropdownName, isSelected && styles.variantDropdownNameActive]} numberOfLines={1}>
+                                              {style.name}
+                                            </Text>
+                                          </TouchableOpacity>
+                                        );
+                                      })}
+                                      {rawSearch.trim().length > 0 && (
+                                        <TouchableOpacity
+                                          style={styles.variantDropdownCustom}
+                                          onPress={() => {
+                                            const customVal = rawSearch.trim();
+                                            updateVariant(vIdx, { product: customVal, color: '' });
+                                            setVariantSearchTerms((prev) => prev.map((t, i) => (i === vIdx ? customVal : t)));
+                                            setVariantStyleFocused((prev) => prev.map((f, i) => (i === vIdx ? false : f)));
+                                          }}
+                                        >
+                                          <Text style={styles.variantDropdownCustomText}>
+                                            Use "{rawSearch.trim()}" as custom style
+                                          </Text>
+                                        </TouchableOpacity>
+                                      )}
+                                      {filteredStyles.length === 0 && rawSearch.trim().length === 0 && (
+                                        <Text style={styles.variantDropdownEmpty}>Type a style number or name to search.</Text>
                                       )}
                                     </ScrollView>
                                   </View>
@@ -1543,6 +1567,31 @@ const styles = StyleSheet.create({
     padding: 10,
     fontSize: 12,
     color: Colors.light.textSecondary,
+  },
+  variantDropdownCustom: {
+    paddingVertical: 9,
+    paddingHorizontal: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    backgroundColor: '#FFF8F5',
+  },
+  variantDropdownCustomText: {
+    fontSize: 11,
+    color: Colors.light.tint,
+    fontWeight: '600' as const,
+    fontStyle: 'italic' as const,
+  },
+  variantColorFreeInput: {
+    height: 34,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: '#fff',
+    paddingHorizontal: 8,
+    fontSize: 12,
+    color: Colors.light.text,
+    minWidth: 90,
+    maxWidth: 130,
   },
   variantColorDropdown: {
     marginTop: 6,

@@ -85,6 +85,7 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
   const [saving, setSaving] = useState(false);
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
   const [selectedStyleNumber, setSelectedStyleNumber] = useState<string | null>(null);
+  const [isCustomStyle, setIsCustomStyle] = useState(false);
   const [styleSearchTerm, setStyleSearchTerm] = useState('');
   const [styleDropdownOpen, setStyleDropdownOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab>('controls');
@@ -102,6 +103,7 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const artworkDropRef = useRef<any>(null);
   const canvasContainerRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const addArtworkFromUri = useCallback((uri: string, name: string, naturalW?: number, naturalH?: number) => {
     const newArtwork: UploadedArtwork = { id: generateId(), uri, name, naturalW, naturalH };
@@ -260,27 +262,52 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
       : 'Best fit: small locations (Chest / Neck Tag)'
     : '';
 
-  const handleUploadArtwork = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false,
-      quality: 0.8,
-      base64: true,
-    });
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      const mimeType = asset.mimeType || 'image/png';
-      const uri = asset.base64
-        ? `data:${mimeType};base64,${asset.base64}`
-        : asset.uri;
-      addArtworkFromUri(
-        uri,
-        asset.fileName || `Artwork ${uploadedArtworks.length + 1}`,
-        asset.width ?? undefined,
-        asset.height ?? undefined,
-      );
+  const MAX_ARTWORKS = 5;
+
+  const handleUploadArtwork = useCallback(() => {
+    if (uploadedArtworks.length >= MAX_ARTWORKS) return;
+    if (Platform.OS === 'web') {
+      if (!fileInputRef.current) {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.multiple = true;
+        fileInputRef.current = input;
+      }
+      const input = fileInputRef.current;
+      input.onchange = (e: any) => {
+        const files: File[] = Array.from(e.target.files || []);
+        const remaining = MAX_ARTWORKS - uploadedArtworks.length;
+        files.slice(0, remaining).forEach(file => {
+          const reader = new FileReader();
+          reader.onload = ev => {
+            const uri = ev.target?.result as string;
+            if (!uri) return;
+            const img = new (window as any).Image();
+            img.onload = () => addArtworkFromUri(uri, file.name, img.naturalWidth, img.naturalHeight);
+            img.src = uri;
+          };
+          reader.readAsDataURL(file);
+        });
+        input.value = '';
+      };
+      input.click();
+    } else {
+      ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.8,
+        base64: true,
+      }).then(result => {
+        if (!result.canceled && result.assets[0]) {
+          const asset = result.assets[0];
+          const mimeType = asset.mimeType || 'image/png';
+          const uri = asset.base64 ? `data:${mimeType};base64,${asset.base64}` : asset.uri;
+          addArtworkFromUri(uri, asset.fileName || `Artwork ${uploadedArtworks.length + 1}`, asset.width ?? undefined, asset.height ?? undefined);
+        }
+      });
     }
-  };
+  }, [addArtworkFromUri, uploadedArtworks.length]);
 
   const handleZonePress = (zone: ZoneDefinition) => {
     if (selectedArtworkId) {
@@ -299,10 +326,12 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
     if (selectedVendorId === vendorId) {
       setSelectedVendorId(null);
       setSelectedStyleNumber(null);
+      setIsCustomStyle(false);
       setStyleDropdownOpen(false);
     } else {
       setSelectedVendorId(vendorId);
       setSelectedStyleNumber(null);
+      setIsCustomStyle(false);
       setStyleDropdownOpen(true);
     }
     setStyleSearchTerm('');
@@ -312,6 +341,7 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
     setGarmentType(type);
     setCurrentView('front');
     setSelectedStyleNumber(null);
+    setIsCustomStyle(false);
     setStyleSearchTerm('');
     setStyleDropdownOpen(false);
     if (selectedVendorId) {
@@ -329,9 +359,17 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
     const style = vendor?.styles.find(s => s.styleNumber === styleNumber);
     if (!style) return;
     setSelectedStyleNumber(styleNumber);
+    setIsCustomStyle(false);
     // Template stays as-is; only color auto-selects from this style's palette
     const firstColor = style.colors[0];
     if (firstColor) setGarmentColor(firstColor.hex);
+  };
+
+  const handleUseCustomStyle = (term: string) => {
+    setSelectedStyleNumber(term);
+    setIsCustomStyle(true);
+    setStyleDropdownOpen(false);
+    setStyleSearchTerm('');
   };
 
   const handleRemoveArtwork = (artworkId: string) => {
@@ -528,14 +566,12 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
               {selectedVendor && (
                 <>
                   <Text style={styles.sectionLabel}>PRODUCT STYLE</Text>
-                  {filteredStyles.length === 0 ? (
-                    <Text style={styles.styleName}>No {GARMENTS[garmentType].label.toLowerCase()} styles found for this vendor.</Text>
-                  ) : styleDropdownOpen ? (
+                  {styleDropdownOpen ? (
                     <View>
                       <View style={styles.styleSearchRow}>
                         <TextInput
                           style={styles.styleSearchInput}
-                          placeholder="Search styles…"
+                          placeholder="Search or enter style #…"
                           placeholderTextColor={Colors.light.textSecondary}
                           value={styleSearchTerm}
                           onChangeText={setStyleSearchTerm}
@@ -570,6 +606,14 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                             );
                           })
                         }
+                        {styleSearchTerm.trim().length > 0 && (
+                          <TouchableOpacity
+                            style={styles.styleCustomRow}
+                            onPress={() => handleUseCustomStyle(styleSearchTerm.trim())}
+                          >
+                            <Text style={styles.styleCustomText}>Use "{styleSearchTerm.trim()}" as custom style</Text>
+                          </TouchableOpacity>
+                        )}
                       </ScrollView>
                     </View>
                   ) : (
@@ -579,8 +623,12 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                     >
                       <Text style={styles.styleSelectedBtnText} numberOfLines={1}>
                         {selectedStyleNumber
-                          ? `${selectedStyleNumber} — ${filteredStyles.find(s => s.styleNumber === selectedStyleNumber)?.name ?? ''}`
-                          : 'Select a style…'
+                          ? isCustomStyle
+                            ? `Custom: ${selectedStyleNumber}`
+                            : `${selectedStyleNumber} — ${filteredStyles.find(s => s.styleNumber === selectedStyleNumber)?.name ?? ''}`
+                          : filteredStyles.length === 0
+                            ? `No catalog styles — tap to enter custom`
+                            : 'Select a style…'
                         }
                       </Text>
                       <ChevronDown size={14} color={Colors.light.textSecondary} />
@@ -798,16 +846,22 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
               ]}
             >
               <Text style={styles.sectionLabel}>ARTWORK</Text>
-              <TouchableOpacity style={styles.uploadArtworkBtn} onPress={handleUploadArtwork}>
-                <Upload size={16} color={Colors.light.tint} />
-                <Text style={styles.uploadArtworkText}>Upload or Drop Image</Text>
-              </TouchableOpacity>
+              {uploadedArtworks.length < MAX_ARTWORKS ? (
+                <TouchableOpacity style={styles.uploadArtworkBtn} onPress={handleUploadArtwork}>
+                  <Upload size={16} color={Colors.light.tint} />
+                  <Text style={styles.uploadArtworkText}>Upload or Drop Image</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.artworkMaxReached}>
+                  <Text style={styles.artworkMaxText}>Max 5 artworks — delete one to add more</Text>
+                </View>
+              )}
 
               {uploadedArtworks.length === 0 ? (
                 <View style={styles.artworkEmptyState}>
                   <ImageIcon size={32} color={artworkDragOver ? Colors.light.tint : Colors.light.borderDark} />
                   <Text style={styles.artworkEmptyText}>
-                    {artworkDragOver ? 'Drop to add artwork' : 'Upload or drag & drop\nyour logo or artwork'}
+                    {artworkDragOver ? 'Drop to add artwork' : 'Drop images here'}
                   </Text>
                 </View>
               ) : (
@@ -1119,13 +1173,26 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   styleDropdownScroll: {
-    maxHeight: 6 * 46,
+    maxHeight: 5 * 42,
     borderWidth: 1,
     borderTopWidth: 0,
     borderColor: Colors.light.border,
     borderBottomLeftRadius: 8,
     borderBottomRightRadius: 8,
     backgroundColor: '#fff',
+  },
+  styleCustomRow: {
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    backgroundColor: '#FFF8F5',
+  },
+  styleCustomText: {
+    fontSize: 11,
+    color: Colors.light.tint,
+    fontWeight: '600',
+    fontStyle: 'italic',
   },
   styleDropdownRow: {
     flexDirection: 'row',
@@ -1349,6 +1416,17 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   artworkEmptyText: { fontSize: 11, color: Colors.light.textSecondary, textAlign: 'center', lineHeight: 16 },
+  artworkMaxReached: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#FFF8F5',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFD9C5',
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  artworkMaxText: { fontSize: 11, color: Colors.light.tint, fontWeight: '600', textAlign: 'center' },
   artworkItemDragging: { opacity: 0.4 },
   artworkSizeBanner: {
     backgroundColor: '#EFF6FF',
