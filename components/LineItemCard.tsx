@@ -80,34 +80,41 @@ function getColorOptionsForStyle(apparelProvider: string, productValue: string):
 }
 
 const ALL_GARMENT_TYPES: GarmentType[] = ['tshirt', 'hoodie', 'crewneck', 'longsleeve', 'hat'];
+const ALL_CATALOG_STYLES = Array.from(
+  new Map(VENDOR_CATALOG.flatMap((v) => v.styles).map((s) => [s.styleNumber, s])).values()
+);
 
 function getStyleObjectForProduct(apparelProvider: string, productValue: string) {
-  const vendor = getVendorForProvider(apparelProvider);
-  if (!vendor || !productValue) return null;
+  if (!productValue) return null;
   const styleNumber = productValue.split(' — ')[0].trim();
-  return vendor.styles.find((s) => s.styleNumber === styleNumber) ?? null;
+  const vendor = getVendorForProvider(apparelProvider);
+  const styles = vendor ? vendor.styles : ALL_CATALOG_STYLES;
+  return styles.find((s) => s.styleNumber === styleNumber) ?? null;
 }
 
 function getGarmentTypesForProvider(apparelProvider: string): GarmentType[] {
   const vendor = getVendorForProvider(apparelProvider);
-  if (!vendor) return ALL_GARMENT_TYPES;
-  const available = new Set(vendor.styles.map((s) => s.garmentType));
+  const styles = vendor ? vendor.styles : ALL_CATALOG_STYLES;
+  const available = new Set(styles.map((s) => s.garmentType));
   return ALL_GARMENT_TYPES.filter((t) => available.has(t));
 }
 
 function getStylesForTypeAndProvider(apparelProvider: string, garmentType: GarmentType) {
   const vendor = getVendorForProvider(apparelProvider);
-  if (!vendor) return [];
-  return vendor.styles.filter((s) => s.garmentType === garmentType);
+  const styles = vendor ? vendor.styles : ALL_CATALOG_STYLES;
+  return styles.filter((s) => s.garmentType === garmentType);
 }
 
 function getColorObjectsForStyle(apparelProvider: string, productValue: string): ProductColor[] {
   const style = getStyleObjectForProduct(apparelProvider, productValue);
-  if (!style) {
-    const vendor = getVendorForProvider(apparelProvider);
-    return vendor?.styles[0]?.colors ?? [];
-  }
+  if (!style) return [];
   return style.colors;
+}
+
+function getStyleObjectForProductFallback(productValue: string) {
+  if (!productValue) return null;
+  const styleNumber = productValue.split(' — ')[0].trim();
+  return ALL_CATALOG_STYLES.find((s) => s.styleNumber === styleNumber) ?? null;
 }
 
 function getGarmentTypeFromProduct(apparelProvider: string, productValue: string): GarmentType | null {
