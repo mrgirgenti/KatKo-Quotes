@@ -188,11 +188,64 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
         const updatedItems = q.lineItems.map(item =>
           item.id === lineItemId ? { ...item, completedAt: undefined } : item
         );
+        const revertStatus: QuoteStatus = q.status === 'completed' ? 'production_started' : q.status;
         return {
           ...q,
           lineItems: updatedItems,
-          status: 'active' as QuoteStatus,
+          status: revertStatus,
           salesData: q.salesData ? { ...q.salesData, completedDate: '' } : q.salesData,
+        };
+      });
+      return saveQuotes(updated);
+    },
+    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
+  });
+
+  const startProductionMutation = useMutation({
+    mutationFn: async (quoteId: string) => {
+      const current = quotesQuery.data || [];
+      const dateStr = nowDateStr();
+      const updated = current.map(q => {
+        if (q.id !== quoteId) return q;
+        if (q.salesData) {
+          return { ...q, status: 'production_started' as QuoteStatus };
+        }
+        const lineItemCosts: LineItemActualCosts[] = q.lineItems.map(item => {
+          const itemQty = Object.values(item.sizes).reduce((sum, qty) => sum + qty, 0);
+          return {
+            lineItemId: item.id,
+            actualProductCost: item.productCostEach * itemQty,
+            productVendor: item.apparelProvider,
+            actualServiceCost: item.serviceCostEach * itemQty,
+            applicator: item.applicator || 'Katalyst Ko Printshop',
+            actualServiceFeesCost: item.serviceFeeEach,
+            actualServiceFeesProfit: 0,
+            actualOtherCosts: 0,
+            otherCostsDescription: '',
+          };
+        });
+        return {
+          ...q,
+          status: 'production_started' as QuoteStatus,
+          activeDate: dateStr,
+          salesData: {
+            convertedDate: dateStr,
+            completedDate: '',
+            actualProductCost: q.calculations.productCostTotal,
+            productVendors: [...new Set(q.lineItems.map(item => item.apparelProvider))],
+            actualServiceCost: q.calculations.serviceCostTotal,
+            applicator: q.lineItems[0]?.applicator || 'Katalyst Ko Printshop',
+            actualServiceFeesCost: q.calculations.serviceFeeTotal,
+            actualServiceFeesProfit: 0,
+            actualOtherCosts: 0,
+            otherCostsDescription: '',
+            actualOnlineFee: q.hasOnlineFee ? q.calculations.onlineFee : 0,
+            actualSalesTax: q.hasSalesTax ? q.calculations.salesTax : 0,
+            actualCardFee: q.hasCardFee ? q.calculations.cardFee : 0,
+            amountCollected: q.calculations.total,
+            notes: '',
+            lineItemCosts,
+          },
         };
       });
       return saveQuotes(updated);
@@ -280,7 +333,7 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
 
   const projects = userQuotes.filter(q => q.status !== 'draft');
   const quotes = userQuotes.filter(q => q.status !== 'draft');
-  const sales = userQuotes.filter(q => q.status === 'active' || q.status === 'completed');
+  const sales = userQuotes.filter(q => q.status === 'active' || q.status === 'production_started' || q.status === 'completed');
 
   return {
     quotes,
@@ -294,6 +347,7 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
     convertToSale: convertToActiveMutation.mutate,
     convertToActive: convertToActiveMutation.mutate,
     convertToQuote: revertToQuotedMutation.mutate,
+    startProduction: startProductionMutation.mutate,
     markProjectComplete: markProjectCompleteMutation.mutate,
     markLineItemComplete: markLineItemCompleteMutation.mutate,
     unmarkLineItemComplete: unmarkLineItemCompleteMutation.mutate,

@@ -12,12 +12,23 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 - Reports generation (PDF, CSV, Google Sheets export)
 - User profiles with avatar support
 
-## Project Status Flow
+## Project Status Flow (hierarchy: quoted < active < production_started < completed)
 - `draft` — quote being built (New Quote tab only)
 - `quoted` — submitted to client (appears in Projects tab)
-- `active` — client accepted, in production
-- `completed` — all line items marked done in Production View
+- `active` — client accepted/converted to active
+- `production_started` — "Start Production" pressed in Quote Details; shows as "In Production" purple badge
+- `completed` — all line items done, project completed
 - `expired` — auto-computed: quoted + orderDate > 30 days ago (no action needed)
+
+## Production Mode (app/quote/production/[id].tsx)
+- Navigated to when "Start Production" button pressed in Quote Details
+- Status changes to `production_started` on navigate
+- Screen goes directly to item detail view (no intermediate list screen)
+- Auto-starts at first incomplete item (or item 0 if all done)
+- Shows: mockup, design name, service style, applicator, product, locations, notes, size quantities
+- Bottom bar: Exit Production | Mark Done/Unmark (or Complete Project when all done)
+- Prev/Next navigation between items
+- Title: "Production Mode"
 
 ## Tech Stack
 - **Framework**: React Native with Expo (~54.0.27)
@@ -72,8 +83,11 @@ Quote statuses:
 - **Draft** = grey bg `#F3F4F6`, grey text `#6B7280`
 - **Quoted** = blue bg `#EFF6FF`, blue text `#2563EB`
 - **Active** = solid orange bg `#FF5A00`, white text `#FFFFFF`
+- **In Production** = solid purple bg `#7C3AED`, white text `#FFFFFF` (status key: `production_started`)
 - **Completed** = solid green bg `#16A34A`, white text `#FFFFFF`
 - **Expired** = light grey bg `#F9FAFB`, grey text `#9CA3AF`
+
+Also exported: `STATUS_HIERARCHY` mapping status keys to numeric level (0–4) for bulk action conflict detection.
 
 Client statuses (defined in `clients.tsx` and `clients/[id].tsx` → `STATUS_STYLE`):
 - **Active** = solid orange bg `#FF5A00`, white text (matches quote Active)

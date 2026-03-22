@@ -52,7 +52,7 @@ import { exportSingleSaleToSheets } from '@/utils/googleSheetsExport';
 export default function QuoteDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { quotes, sales, convertToSale, convertToQuote, deleteQuote, isConverting, markExportedToSheets, lockSale, projects } = useQuotes();
+  const { quotes, sales, convertToSale, convertToQuote, deleteQuote, isConverting, markExportedToSheets, lockSale, projects, startProduction } = useQuotes();
   const { currentUser } = useUser();
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -153,6 +153,12 @@ export default function QuoteDetailScreen() {
       params: { id: quote.id },
     });
   }, [quote, router]);
+
+  const handleStartProduction = useCallback(() => {
+    if (!quote) return;
+    startProduction(quote.id);
+    router.push(`/quote/production/${quote.id}`);
+  }, [quote, startProduction, router]);
 
   const handleRevertToQuote = useCallback(() => {
     if (!quote) return;
@@ -840,40 +846,60 @@ export default function QuoteDetailScreen() {
       </View>
 
       <View style={styles.actionBar}>
-        <TouchableOpacity style={styles.iconButton} onPress={() => setMenuVisible(true)}>
-          <MoreVertical size={20} color={Colors.light.tint} />
-        </TouchableOpacity>
+        <View style={styles.actionBarInner}>
+          <TouchableOpacity style={styles.iconButton} onPress={() => setMenuVisible(true)}>
+            <MoreVertical size={20} color={Colors.light.tint} />
+          </TouchableOpacity>
 
-        {(quote.status === 'active' || quote.status === 'completed') ? (
-          <>
-            {quote.isLocked ? (
-              <View style={[styles.actionBtn, styles.actionBtnSolid, { backgroundColor: '#6b7280', flex: 1 }]}>
-                <Lock size={17} color="#fff" />
-                <Text style={styles.actionBtnSolidText}>Locked</Text>
-              </View>
-            ) : (
-              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnOutline, { flex: 1 }]} onPress={handleTrackSales}>
-                <ClipboardList size={17} color={Colors.light.tint} />
-                <Text style={styles.actionBtnOutlineText}>Track Costs</Text>
+          {quote.status === 'production_started' ? (
+            <>
+              {quote.isLocked ? (
+                <View style={[styles.actionBtn, styles.actionBtnSolid, { backgroundColor: '#6b7280', flex: 1 }]}>
+                  <Lock size={17} color="#fff" />
+                  <Text style={styles.actionBtnSolidText}>Locked</Text>
+                </View>
+              ) : (
+                <TouchableOpacity style={[styles.actionBtn, styles.actionBtnOutline, { flex: 1 }]} onPress={handleTrackSales}>
+                  <ClipboardList size={17} color={Colors.light.tint} />
+                  <Text style={styles.actionBtnOutlineText}>Track Costs</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1 }]} onPress={handleStartProduction}>
+                <Flame size={17} color="#fff" />
+                <Text style={styles.actionBtnSolidText}>Production Mode</Text>
               </TouchableOpacity>
-            )}
-            <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1 }]} onPress={() => router.push(`/quote/production/${id}`)}>
-              <Flame size={17} color="#fff" />
-              <Text style={styles.actionBtnSolidText}>Start Production</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <>
-            <TouchableOpacity style={[styles.actionBtn, styles.actionBtnOutline, { flex: 1 }]} onPress={handleConvertToSale} disabled={isConverting}>
-              <CheckCircle size={17} color={Colors.light.tint} />
-              <Text style={styles.actionBtnOutlineText}>{isConverting ? 'Converting...' : 'Mark as Active'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1 }]} onPress={() => router.push(`/quote/production/${id}`)}>
-              <Flame size={17} color="#fff" />
-              <Text style={styles.actionBtnSolidText}>Start Production</Text>
-            </TouchableOpacity>
-          </>
-        )}
+            </>
+          ) : (quote.status === 'active' || quote.status === 'completed') ? (
+            <>
+              {quote.isLocked ? (
+                <View style={[styles.actionBtn, styles.actionBtnSolid, { backgroundColor: '#6b7280', flex: 1 }]}>
+                  <Lock size={17} color="#fff" />
+                  <Text style={styles.actionBtnSolidText}>Locked</Text>
+                </View>
+              ) : (
+                <TouchableOpacity style={[styles.actionBtn, styles.actionBtnOutline, { flex: 1 }]} onPress={handleTrackSales}>
+                  <ClipboardList size={17} color={Colors.light.tint} />
+                  <Text style={styles.actionBtnOutlineText}>Track Costs</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1 }]} onPress={handleStartProduction}>
+                <Flame size={17} color="#fff" />
+                <Text style={styles.actionBtnSolidText}>Start Production</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnOutline, { flex: 1 }]} onPress={handleConvertToSale} disabled={isConverting}>
+                <CheckCircle size={17} color={Colors.light.tint} />
+                <Text style={styles.actionBtnOutlineText}>{isConverting ? 'Converting...' : 'Mark as Active'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1 }]} onPress={handleStartProduction}>
+                <Flame size={17} color="#fff" />
+                <Text style={styles.actionBtnSolidText}>Start Production</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
       </View>
 
       {menuVisible && (
@@ -887,7 +913,7 @@ export default function QuoteDetailScreen() {
                 </TouchableOpacity>
               </View>
 
-              {(quote.status === 'active' || quote.status === 'completed') ? (
+              {(quote.status === 'active' || quote.status === 'production_started' || quote.status === 'completed') ? (
                 <>
                   {!quote.isLocked ? (
                     <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleEdit(); }}>
@@ -1453,12 +1479,17 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    gap: 12,
     padding: 16,
     backgroundColor: Colors.light.surface,
     borderTopWidth: 1,
     borderTopColor: Colors.light.border,
+    alignItems: 'center',
+  },
+  actionBarInner: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+    maxWidth: 480,
   },
   iconButton: {
     width: 48,
