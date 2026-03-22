@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -70,12 +70,21 @@ interface ProjectRowProps {
 
 function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRevert, isDesktop }: ProjectRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+  const menuBtnRef = useRef<View>(null);
   const itemCount = quote.lineItems.length;
   const completedCount = quote.lineItems.filter(i => !!i.completedAt).length;
   const serviceStyles = [...new Set(quote.lineItems.map(i => i.serviceStyle))];
   const total = quote.calculations?.total ?? 0;
   const isActive = effectiveStatus === 'active';
   const isCompleted = effectiveStatus === 'completed';
+
+  const openMenu = () => {
+    menuBtnRef.current?.measure((_fx, _fy, width, height, px, py) => {
+      setMenuPos({ top: py + height + 4, right: Math.max(0, (typeof window !== 'undefined' ? window.innerWidth : 400) - px - width) });
+      setMenuOpen(true);
+    });
+  };
 
   if (isDesktop) {
     return (
@@ -116,32 +125,44 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
           <TouchableOpacity style={styles.viewBtn} onPress={onPress}>
             <Text style={styles.viewBtnText}>View</Text>
           </TouchableOpacity>
-          <View style={{ position: 'relative' }}>
-            <TouchableOpacity style={styles.menuBtn} onPress={() => setMenuOpen(o => !o)}>
+          <View ref={menuBtnRef} collapsable={false}>
+            <TouchableOpacity style={styles.menuBtn} onPress={openMenu}>
               <ChevronDown size={14} color={Colors.light.textSecondary} />
             </TouchableOpacity>
-            {menuOpen && (
-              <View style={styles.dropdownMenu}>
-                {effectiveStatus === 'quoted' || effectiveStatus === 'expired' ? (
-                  <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onConvert(); }}>
-                    <CheckCircle size={14} color={Colors.light.tint} />
-                    <Text style={styles.dropdownItemText}>Convert to Active</Text>
-                  </TouchableOpacity>
-                ) : null}
-                {(isActive || isCompleted) ? (
-                  <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onRevert(); }}>
-                    <RotateCcw size={14} color={Colors.light.textSecondary} />
-                    <Text style={styles.dropdownItemText}>Revert to Quoted</Text>
-                  </TouchableOpacity>
-                ) : null}
-                <TouchableOpacity style={[styles.dropdownItem, styles.dropdownItemDanger]} onPress={() => { setMenuOpen(false); onDelete(); }}>
-                  <Trash2 size={14} color="#EF4444" />
-                  <Text style={[styles.dropdownItemText, { color: '#EF4444' }]}>Delete</Text>
-                </TouchableOpacity>
-              </View>
-            )}
           </View>
         </View>
+
+        <Modal
+          visible={menuOpen}
+          transparent
+          animationType="none"
+          onRequestClose={() => setMenuOpen(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setMenuOpen(false)}
+          >
+            <View style={[styles.dropdownMenu, { position: 'absolute', top: menuPos.top, right: menuPos.right }]}>
+              {effectiveStatus === 'quoted' || effectiveStatus === 'expired' ? (
+                <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onConvert(); }}>
+                  <CheckCircle size={14} color={Colors.light.tint} />
+                  <Text style={styles.dropdownItemText}>Convert to Active</Text>
+                </TouchableOpacity>
+              ) : null}
+              {(isActive || isCompleted) ? (
+                <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onRevert(); }}>
+                  <RotateCcw size={14} color={Colors.light.textSecondary} />
+                  <Text style={styles.dropdownItemText}>Revert to Quoted</Text>
+                </TouchableOpacity>
+              ) : null}
+              <TouchableOpacity style={[styles.dropdownItem, styles.dropdownItemDanger]} onPress={() => { setMenuOpen(false); onDelete(); }}>
+                <Trash2 size={14} color="#EF4444" />
+                <Text style={[styles.dropdownItemText, { color: '#EF4444' }]}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </TouchableOpacity>
     );
   }
@@ -739,21 +760,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  modalBackdrop: {
+    flex: 1,
+  },
   dropdownMenu: {
-    position: 'absolute',
-    top: 30,
-    right: 0,
-    zIndex: 999,
     backgroundColor: Colors.light.surface,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: Colors.light.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 8,
-    minWidth: 170,
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 12,
+    minWidth: 180,
     overflow: 'hidden',
   },
   dropdownItem: {
