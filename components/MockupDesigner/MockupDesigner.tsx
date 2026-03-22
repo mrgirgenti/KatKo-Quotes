@@ -838,61 +838,70 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
               ]}
             >
               <Text style={styles.sectionLabel}>ARTWORK</Text>
-              {uploadedArtworks.length < MAX_ARTWORKS ? (
-                <TouchableOpacity style={styles.uploadArtworkBtn} onPress={handleUploadArtwork}>
-                  <Upload size={16} color={Colors.light.tint} />
-                  <Text style={styles.uploadArtworkText}>Upload or Drop Image</Text>
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.artworkMaxReached}>
-                  <Text style={styles.artworkMaxText}>Max 5 artworks — delete one to add more</Text>
-                </View>
-              )}
 
               {uploadedArtworks.length === 0 ? (
-                <View style={styles.artworkEmptyState}>
-                  <ImageIcon size={32} color={artworkDragOver ? Colors.light.tint : Colors.light.borderDark} />
-                  <Text style={styles.artworkEmptyText}>
-                    {artworkDragOver ? 'Drop to add artwork' : 'Drop images here'}
+                /* Empty state — single unified upload zone */
+                <TouchableOpacity
+                  style={[styles.artworkUploadZone, artworkDragOver && styles.artworkUploadZoneDragOver]}
+                  onPress={handleUploadArtwork}
+                  activeOpacity={0.75}
+                >
+                  <Upload size={22} color={artworkDragOver ? Colors.light.tint : Colors.light.borderDark} />
+                  <Text style={[styles.artworkUploadZoneText, artworkDragOver && styles.artworkUploadZoneTextActive]}>
+                    {artworkDragOver ? 'Drop to add artwork' : 'Upload or Drop Image'}
                   </Text>
-                </View>
+                  <Text style={styles.artworkUploadZoneSub}>Up to 5 artworks</Text>
+                </TouchableOpacity>
               ) : (
-                <ScrollView style={styles.artworkList} showsVerticalScrollIndicator={false}>
-                  {uploadedArtworks.map(artwork => (
-                    <TouchableOpacity
-                      key={artwork.id}
-                      style={[
-                        styles.artworkItem,
-                        selectedArtworkId === artwork.id && styles.artworkItemSelected,
-                        draggedArtworkId === artwork.id && styles.artworkItemDragging,
-                      ]}
-                      onPress={() => setSelectedArtworkId(prev => prev === artwork.id ? null : artwork.id)}
-                      {...(Platform.OS === 'web' ? {
-                        draggable: true,
-                        onDragStart: (e: any) => {
-                          setDraggedArtworkId(artwork.id);
-                          setSelectedArtworkId(artwork.id);
-                          e.dataTransfer?.setData('text/artwork-id', artwork.id);
-                        },
-                        onDragEnd: () => setDraggedArtworkId(null),
-                      } : {})}
-                    >
-                      <Image source={{ uri: artwork.uri }} style={styles.artworkThumbnail} resizeMode="contain" />
-                      <Text style={styles.artworkName} numberOfLines={1}>{artwork.name}</Text>
-                      {selectedArtworkId === artwork.id && (
-                        <View style={styles.artworkSelectedBadge}>
-                          <Text style={styles.artworkSelectedText}>Selected</Text>
-                        </View>
-                      )}
-                      <TouchableOpacity
-                        style={styles.artworkDeleteBtn}
-                        onPress={() => handleRemoveArtwork(artwork.id)}
-                      >
-                        <Trash2 size={11} color={Colors.light.error} />
-                      </TouchableOpacity>
+                /* Has artworks — compact button + list */
+                <>
+                  {uploadedArtworks.length < MAX_ARTWORKS ? (
+                    <TouchableOpacity style={styles.uploadArtworkBtn} onPress={handleUploadArtwork}>
+                      <Upload size={14} color={Colors.light.tint} />
+                      <Text style={styles.uploadArtworkText}>Upload or Drop Image</Text>
                     </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                  ) : (
+                    <View style={styles.artworkMaxReached}>
+                      <Text style={styles.artworkMaxText}>Max 5 reached — delete one to add more</Text>
+                    </View>
+                  )}
+                  <ScrollView style={styles.artworkList} showsVerticalScrollIndicator={false}>
+                    {uploadedArtworks.map(artwork => (
+                      <TouchableOpacity
+                        key={artwork.id}
+                        style={[
+                          styles.artworkItem,
+                          selectedArtworkId === artwork.id && styles.artworkItemSelected,
+                          draggedArtworkId === artwork.id && styles.artworkItemDragging,
+                        ]}
+                        onPress={() => setSelectedArtworkId(prev => prev === artwork.id ? null : artwork.id)}
+                        {...(Platform.OS === 'web' ? {
+                          draggable: true,
+                          onDragStart: (e: any) => {
+                            setDraggedArtworkId(artwork.id);
+                            setSelectedArtworkId(artwork.id);
+                            e.dataTransfer?.setData('text/artwork-id', artwork.id);
+                          },
+                          onDragEnd: () => setDraggedArtworkId(null),
+                        } : {})}
+                      >
+                        <Image source={{ uri: artwork.uri }} style={styles.artworkThumbnail} resizeMode="contain" />
+                        <Text style={styles.artworkName} numberOfLines={1}>{artwork.name}</Text>
+                        {selectedArtworkId === artwork.id && (
+                          <View style={styles.artworkSelectedBadge}>
+                            <Text style={styles.artworkSelectedText}>Selected</Text>
+                          </View>
+                        )}
+                        <TouchableOpacity
+                          style={styles.artworkDeleteBtn}
+                          onPress={() => handleRemoveArtwork(artwork.id)}
+                        >
+                          <Trash2 size={11} color={Colors.light.error} />
+                        </TouchableOpacity>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </>
               )}
 
               {selectedArtworkId && (
@@ -1422,12 +1431,35 @@ const styles = StyleSheet.create({
     borderLeftColor: Colors.light.tint,
     borderLeftWidth: 2,
   },
-  artworkEmptyState: {
+  artworkUploadZone: {
+    borderWidth: 1.5,
+    borderColor: Colors.light.borderDark,
+    borderStyle: 'dashed',
+    borderRadius: 10,
+    paddingVertical: 28,
     alignItems: 'center',
-    paddingVertical: 24,
     gap: 8,
+    backgroundColor: '#FAFAFA',
+    marginBottom: 8,
   },
-  artworkEmptyText: { fontSize: 11, color: Colors.light.textSecondary, textAlign: 'center', lineHeight: 16 },
+  artworkUploadZoneDragOver: {
+    borderColor: Colors.light.tint,
+    backgroundColor: '#FFF8F5',
+  },
+  artworkUploadZoneText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.light.textSecondary,
+    textAlign: 'center',
+  },
+  artworkUploadZoneTextActive: {
+    color: Colors.light.tint,
+  },
+  artworkUploadZoneSub: {
+    fontSize: 10,
+    color: Colors.light.textSecondary,
+    textAlign: 'center',
+  },
   artworkMaxReached: {
     paddingVertical: 10,
     paddingHorizontal: 12,
