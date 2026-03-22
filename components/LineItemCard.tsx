@@ -385,7 +385,23 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                 </View>
               </View>
             ) : (
-              <View style={styles.mockupPlaceholderContainer}>
+              <View
+                style={styles.mockupPlaceholderContainer}
+                {...(Platform.OS === 'web' ? {
+                  onDragOver: (e: any) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; },
+                  onDrop: (e: any) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer?.files?.[0];
+                    if (file && file.type.startsWith('image/')) {
+                      const reader = new FileReader();
+                      reader.onload = (ev: any) => {
+                        if (ev.target?.result) onChange({ ...item, mockupUri: ev.target.result as string });
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  },
+                } : {})}
+              >
                 <TouchableOpacity style={styles.mockupDesignBtnLarge} onPress={() => setShowDesigner(true)}>
                   <Brush size={22} color={Colors.light.tint} />
                   <Text style={styles.mockupDesignBtnTitle}>Design Mockup</Text>
@@ -398,7 +414,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                 </View>
                 <TouchableOpacity style={styles.mockupUploadBtn} onPress={handlePickImage}>
                   <Upload size={15} color={Colors.light.textSecondary} />
-                  <Text style={styles.mockupUploadBtnText}>Upload Image</Text>
+                  <Text style={styles.mockupUploadBtnText}>Upload or Drop Image</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -1166,7 +1182,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   mockupPanelWeb: {
-    width: 220,
+    width: 280,
     flexShrink: 0,
     marginBottom: 0,
   },
@@ -1701,8 +1717,8 @@ const styles = StyleSheet.create({
   dtfCalcSection: {
     backgroundColor: Colors.light.highlightBg,
     borderRadius: 10,
-    padding: 12,
-    marginBottom: 12,
+    padding: 8,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: Colors.light.tint,
   },
@@ -1710,7 +1726,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700' as const,
     color: Colors.light.tint,
-    marginBottom: 10,
+    marginBottom: 6,
     textTransform: 'uppercase' as const,
     letterSpacing: 0.5,
   },
@@ -1718,8 +1734,8 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600' as const,
     color: Colors.light.text,
-    marginBottom: 6,
-    marginTop: 4,
+    marginBottom: 4,
+    marginTop: 2,
   },
   dtfLocationDivider: {
     height: 1,
@@ -1764,7 +1780,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.border,
     borderRadius: 6,
     paddingHorizontal: 6,
-    height: 38,
+    height: 32,
   },
   dtfInput: {
     flex: 1,
@@ -1803,8 +1819,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row' as const,
     justifyContent: 'space-between' as const,
     alignItems: 'center' as const,
-    marginTop: 10,
-    paddingTop: 10,
+    marginTop: 6,
+    paddingTop: 6,
     borderTopWidth: 1,
     borderTopColor: Colors.light.border,
   },

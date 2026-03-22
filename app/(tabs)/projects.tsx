@@ -87,6 +87,7 @@ interface ProjectRowProps {
   onDelete: () => void;
   onConvert: () => void;
   onRevert: () => void;
+  onComplete: () => void;
   onEdit: () => void;
   onExportPDF: () => void;
   onExportSheets: () => void;
@@ -97,7 +98,7 @@ interface ProjectRowProps {
   selectionMode: boolean;
 }
 
-function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRevert, onEdit, onExportPDF, onExportSheets, onPrint, isDesktop, isSelected, onToggleSelect, selectionMode }: ProjectRowProps) {
+function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRevert, onComplete, onEdit, onExportPDF, onExportSheets, onPrint, isDesktop, isSelected, onToggleSelect, selectionMode }: ProjectRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const menuBtnRef = useRef<View>(null);
@@ -201,6 +202,12 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
                 <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onConvert(); }}>
                   <CheckCircle size={14} color={Colors.light.tint} />
                   <Text style={styles.dropdownItemText}>Convert to Active</Text>
+                </TouchableOpacity>
+              ) : null}
+              {effectiveStatus !== 'completed' ? (
+                <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onComplete(); }}>
+                  <Trophy size={14} color={Colors.light.success} />
+                  <Text style={[styles.dropdownItemText, { color: Colors.light.success }]}>Complete Project</Text>
                 </TouchableOpacity>
               ) : null}
               <View style={styles.dropdownSeparator} />
@@ -548,6 +555,17 @@ export default function ProjectsScreen() {
     convertToQuote(quote.id);
   }, [convertToQuote]);
 
+  const handleComplete = useCallback((quote: Quote) => {
+    Alert.alert(
+      'Complete Project',
+      `Mark "${quote.projectName}" as Completed? All line items will be auto-completed.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Complete Project', onPress: () => markProjectComplete(quote.id) },
+      ]
+    );
+  }, [markProjectComplete]);
+
   const handleEdit = useCallback((quote: Quote) => {
     router.push({ pathname: '/quote/edit', params: { id: quote.id } });
   }, [router]);
@@ -789,6 +807,7 @@ export default function ProjectsScreen() {
               onDelete={() => handleDelete(quote)}
               onConvert={() => handleConvert(quote)}
               onRevert={() => handleRevert(quote)}
+              onComplete={() => handleComplete(quote)}
               onEdit={() => handleEdit(quote)}
               onExportPDF={() => handleExportPDF(quote)}
               onExportSheets={() => handleExportSheets(quote)}

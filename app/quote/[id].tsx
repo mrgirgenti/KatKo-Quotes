@@ -1127,8 +1127,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#111111',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    padding: 14,
     gap: 10,
   },
   lineItemHeaderLeft: {
@@ -1565,8 +1564,7 @@ const styles = StyleSheet.create({
   lineItemMockupCol: {
     flex: 1,
     flexShrink: 0,
-    alignSelf: 'stretch',
-    minHeight: 220,
+    alignSelf: 'flex-start',
   },
   lineItemRightCol: {
     flex: 2,
@@ -1579,14 +1577,12 @@ const styles = StyleSheet.create({
   },
   mockupImage: {
     width: '100%',
-    flex: 1,
-    minHeight: 160,
+    height: 220,
     borderRadius: 8,
     backgroundColor: Colors.light.background,
   },
   mockupPlaceholder: {
-    flex: 1,
-    minHeight: 160,
+    height: 220,
     width: '100%',
     borderRadius: 8,
     backgroundColor: Colors.light.background,
