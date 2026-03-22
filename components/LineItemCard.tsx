@@ -177,6 +177,12 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   const [variantSearchTerms, setVariantSearchTerms] = useState<string[]>(() =>
     getInitialVariants().map(() => '')
   );
+  const [variantStyleFocused, setVariantStyleFocused] = useState<boolean[]>(() =>
+    getInitialVariants().map(() => false)
+  );
+  const [variantColorOpen, setVariantColorOpen] = useState<boolean[]>(() =>
+    getInitialVariants().map(() => false)
+  );
 
   const handleVariantsChange = (newVariants: GarmentVariant[]) => {
     setVariants(newVariants);
@@ -199,9 +205,11 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
 
   const addVariant = () => {
     if (variants.length >= 10) return;
-    handleVariantsChange([...variants, { product: '', color: '', sizes: { ...EMPTY_SIZES } }]);
+    handleVariantsChange([...variants, { product: 'NL6210 — Next Level Tri-Blend Tee', color: 'Black', sizes: { ...EMPTY_SIZES } }]);
     setVariantGarmentTypes((prev) => [...prev, 'tshirt']);
     setVariantSearchTerms((prev) => [...prev, '']);
+    setVariantStyleFocused((prev) => [...prev, false]);
+    setVariantColorOpen((prev) => [...prev, false]);
   };
 
   const removeVariant = (idx: number) => {
@@ -209,6 +217,8 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
     handleVariantsChange(variants.filter((_, i) => i !== idx));
     setVariantGarmentTypes((prev) => prev.filter((_, i) => i !== idx));
     setVariantSearchTerms((prev) => prev.filter((_, i) => i !== idx));
+    setVariantStyleFocused((prev) => prev.filter((_, i) => i !== idx));
+    setVariantColorOpen((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const updateVariant = (idx: number, partial: Partial<GarmentVariant>) => {
@@ -559,131 +569,154 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                       const colorObjects = getColorObjectsForStyle(item.apparelProvider, variant.product);
                       return (
                         <View key={vIdx} style={[styles.variantRow, vIdx % 2 === 1 && styles.variantRowAlt]}>
-                          {/* 3-column picker */}
+                          {/* Compact single-line 3-column picker */}
                           {(() => {
                             const searchTerm = (variantSearchTerms[vIdx] ?? '').toLowerCase();
-                            const filteredStyles = stylesForType.filter(
-                              (s) =>
-                                !searchTerm ||
-                                s.styleNumber.toLowerCase().includes(searchTerm) ||
-                                s.name.toLowerCase().includes(searchTerm)
-                            );
-                            const selectedStyleObj = getStyleObjectForProduct(item.apparelProvider, variant.product);
-                            const colorLabel = selectedStyleObj
-                              ? `COLOR — ${selectedStyleObj.styleNumber} (${colorObjects.length})`
-                              : 'COLOR';
+                            const filteredStyles = searchTerm
+                              ? stylesForType.filter(
+                                  (s) =>
+                                    s.styleNumber.toLowerCase().includes(searchTerm) ||
+                                    s.name.toLowerCase().includes(searchTerm)
+                                )
+                              : stylesForType;
+                            const selectedColorObj = colorObjects.find((c) => c.name === variant.color);
                             return (
                               <View style={styles.variantPickerSection}>
-                                {/* Delete row */}
-                                <View style={styles.variantDeleteRow}>
+                                {/* Single-line row: Type | Style search | Color | Delete */}
+                                <View style={styles.variantPickerRow}>
+                                  {/* Type dropdown */}
+                                  {Platform.OS === 'web' ? (
+                                    <select
+                                      value={activeGarmentType}
+                                      onChange={(e: any) => setVariantGarmentType(vIdx, e.target.value as GarmentType)}
+                                      style={{ height: 34, borderRadius: 6, border: `1px solid ${Colors.light.border}`, paddingLeft: 8, paddingRight: 4, fontSize: 12, color: Colors.light.text, backgroundColor: '#fff', minWidth: 90, maxWidth: 110, cursor: 'pointer', outline: 'none' } as any}
+                                    >
+                                      {availableTypes.map((type) => (
+                                        <option key={type} value={type}>{GARMENTS[type].label}</option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <TouchableOpacity style={styles.variantTypeSelectBtn}>
+                                      <Text style={styles.variantTypeBtnText} numberOfLines={1}>{GARMENTS[activeGarmentType].label}</Text>
+                                      <ChevronDown size={12} color={Colors.light.textSecondary} />
+                                    </TouchableOpacity>
+                                  )}
+
+                                  {/* Style search input */}
+                                  <TextInput
+                                    style={styles.variantStyleInput}
+                                    value={variantSearchTerms[vIdx] ?? ''}
+                                    onChangeText={(v) =>
+                                      setVariantSearchTerms((prev) => prev.map((t, i) => (i === vIdx ? v : t)))
+                                    }
+                                    placeholder="Search style..."
+                                    placeholderTextColor={Colors.light.textSecondary}
+                                    onFocus={() =>
+                                      setVariantStyleFocused((prev) => prev.map((f, i) => (i === vIdx ? true : f)))
+                                    }
+                                    onBlur={() =>
+                                      setTimeout(
+                                        () => setVariantStyleFocused((prev) => prev.map((f, i) => (i === vIdx ? false : f))),
+                                        180
+                                      )
+                                    }
+                                  />
+
+                                  {/* Color button */}
+                                  <TouchableOpacity
+                                    style={styles.variantColorBtn}
+                                    onPress={() =>
+                                      setVariantColorOpen((prev) => prev.map((o, i) => (i === vIdx ? !o : o)))
+                                    }
+                                  >
+                                    <View
+                                      style={[
+                                        styles.variantColorDot,
+                                        { backgroundColor: selectedColorObj?.hex ?? '#ccc' },
+                                        !selectedColorObj && styles.variantColorDotEmpty,
+                                        selectedColorObj?.hex === '#FFFFFF' && styles.variantColorSwatchWhite,
+                                      ]}
+                                    />
+                                    <Text style={styles.variantColorBtnText} numberOfLines={1}>
+                                      {variant.color || 'Color'}
+                                    </Text>
+                                    <ChevronDown size={12} color={Colors.light.textSecondary} />
+                                  </TouchableOpacity>
+
+                                  {/* Delete */}
                                   <TouchableOpacity
                                     style={[styles.variantDeleteBtn, variants.length <= 1 && { opacity: 0.2 }]}
                                     onPress={() => removeVariant(vIdx)}
                                     disabled={variants.length <= 1}
                                   >
-                                    <X size={14} color={Colors.light.error} />
+                                    <X size={13} color={Colors.light.error} />
                                   </TouchableOpacity>
                                 </View>
 
-                                <View style={styles.variantPickerColumns}>
-                                  {/* COL 1: Product type */}
-                                  <View style={styles.variantPickerTypeCol}>
-                                    <Text style={styles.variantSectionLabel}>TYPE</Text>
-                                    <View style={styles.variantTypeList}>
-                                      {availableTypes.map((type) => (
+                                {/* Style dropdown (shows when focused) */}
+                                {variantStyleFocused[vIdx] && (
+                                  <View style={styles.variantStyleDropdown}>
+                                    <ScrollView style={{ maxHeight: 180 }} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                                      {filteredStyles.length === 0 ? (
+                                        <Text style={styles.variantDropdownEmpty}>No matching styles.</Text>
+                                      ) : (
+                                        filteredStyles.map((style, sIdx) => {
+                                          const styleValue = `${style.styleNumber} — ${style.name}`;
+                                          const isSelected = variant.product === styleValue;
+                                          return (
+                                            <TouchableOpacity
+                                              key={style.styleNumber}
+                                              style={[
+                                                styles.variantDropdownItem,
+                                                isSelected && styles.variantDropdownItemActive,
+                                                sIdx < filteredStyles.length - 1 && styles.variantDropdownItemBorder,
+                                              ]}
+                                              onPress={() => {
+                                                updateVariant(vIdx, { product: styleValue, color: '' });
+                                                setVariantSearchTerms((prev) => prev.map((t, i) => (i === vIdx ? '' : t)));
+                                                setVariantStyleFocused((prev) => prev.map((f, i) => (i === vIdx ? false : f)));
+                                              }}
+                                            >
+                                              <Text style={[styles.variantDropdownNum, isSelected && styles.variantDropdownNumActive]}>
+                                                {style.styleNumber}{style.isYouth ? ' (Y)' : ''}
+                                              </Text>
+                                              <Text style={[styles.variantDropdownName, isSelected && styles.variantDropdownNameActive]} numberOfLines={1}>
+                                                {style.name}
+                                              </Text>
+                                            </TouchableOpacity>
+                                          );
+                                        })
+                                      )}
+                                    </ScrollView>
+                                  </View>
+                                )}
+
+                                {/* Color swatches (shows when color button tapped) */}
+                                {variantColorOpen[vIdx] && colorObjects.length > 0 && (
+                                  <ScrollView style={styles.variantColorDropdown} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                                    <View style={styles.variantColorGrid}>
+                                      {colorObjects.map((color) => (
                                         <TouchableOpacity
-                                          key={type}
-                                          style={[styles.variantTypeBtn, activeGarmentType === type && styles.variantTypeBtnActive]}
-                                          onPress={() => setVariantGarmentType(vIdx, type)}
+                                          key={color.hex + color.name}
+                                          style={[
+                                            styles.variantColorSwatch,
+                                            { backgroundColor: color.hex },
+                                            variant.color === color.name && styles.variantColorSwatchSelected,
+                                            color.hex === '#FFFFFF' && styles.variantColorSwatchWhite,
+                                          ]}
+                                          onPress={() => {
+                                            updateVariant(vIdx, { color: color.name });
+                                            setVariantColorOpen((prev) => prev.map((o, i) => (i === vIdx ? false : o)));
+                                          }}
                                         >
-                                          <Text style={[styles.variantTypeBtnText, activeGarmentType === type && styles.variantTypeBtnTextActive]} numberOfLines={1}>
-                                            {GARMENTS[type].label}
-                                          </Text>
+                                          {variant.color === color.name && (
+                                            <CheckCircle size={12} color={color.dark ? '#fff' : '#333'} />
+                                          )}
                                         </TouchableOpacity>
                                       ))}
                                     </View>
-                                  </View>
-
-                                  {/* COL 2: Product style */}
-                                  <View style={styles.variantPickerLeft}>
-                                    <Text style={styles.variantSectionLabel}>
-                                      PRODUCT STYLE{filteredStyles.length > 0 ? ` (${filteredStyles.length})` : ''}
-                                    </Text>
-                                    <TextInput
-                                      style={styles.variantSearchInput}
-                                      value={variantSearchTerms[vIdx] ?? ''}
-                                      onChangeText={(v) =>
-                                        setVariantSearchTerms((prev) =>
-                                          prev.map((t, i) => (i === vIdx ? v : t))
-                                        )
-                                      }
-                                      placeholder="Search..."
-                                      placeholderTextColor={Colors.light.textSecondary}
-                                    />
-                                    <ScrollView style={styles.variantStyleScroll} nestedScrollEnabled showsVerticalScrollIndicator>
-                                      <View style={styles.variantStyleList}>
-                                        {filteredStyles.length === 0 ? (
-                                          <Text style={styles.variantStyleName}>No matching styles.</Text>
-                                        ) : (
-                                          filteredStyles.map((style) => {
-                                            const styleValue = `${style.styleNumber} — ${style.name}`;
-                                            const isSelected = variant.product === styleValue;
-                                            return (
-                                              <TouchableOpacity
-                                                key={style.styleNumber}
-                                                style={[styles.variantStyleBtn, isSelected && styles.variantStyleBtnActive]}
-                                                onPress={() => updateVariant(vIdx, { product: styleValue, color: '' })}
-                                              >
-                                                <Text style={[styles.variantStyleNumber, isSelected && styles.variantStyleNumberActive]}>
-                                                  {style.styleNumber}{style.isYouth ? ' (Youth)' : ''}
-                                                </Text>
-                                                <Text style={[styles.variantStyleName, isSelected && styles.variantStyleNameActive]} numberOfLines={2}>
-                                                  {style.name}
-                                                </Text>
-                                              </TouchableOpacity>
-                                            );
-                                          })
-                                        )}
-                                      </View>
-                                    </ScrollView>
-                                  </View>
-
-                                  {/* COL 3: Color swatches */}
-                                  <View style={styles.variantPickerRight}>
-                                    <Text style={styles.variantSectionLabel}>{colorLabel}</Text>
-                                    {colorObjects.length > 0 ? (
-                                      <>
-                                        <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false} style={styles.variantColorScroll}>
-                                          <View style={styles.variantColorGrid}>
-                                            {colorObjects.map((color) => (
-                                              <TouchableOpacity
-                                                key={color.hex + color.name}
-                                                style={[
-                                                  styles.variantColorSwatch,
-                                                  { backgroundColor: color.hex },
-                                                  variant.color === color.name && styles.variantColorSwatchSelected,
-                                                  color.hex === '#FFFFFF' && styles.variantColorSwatchWhite,
-                                                ]}
-                                                onPress={() => updateVariant(vIdx, { color: color.name })}
-                                              >
-                                                {variant.color === color.name && (
-                                                  <CheckCircle size={14} color={color.dark ? '#fff' : '#333'} />
-                                                )}
-                                              </TouchableOpacity>
-                                            ))}
-                                          </View>
-                                        </ScrollView>
-                                        <Text style={[styles.variantColorLabel, !variant.color && { color: Colors.light.textSecondary }]}>
-                                          {variant.color || 'Tap a swatch'}
-                                        </Text>
-                                      </>
-                                    ) : (
-                                      <Text style={[styles.variantStyleName, { marginTop: 6 }]}>
-                                        {variant.product ? 'No colors.' : 'Select a style first.'}
-                                      </Text>
-                                    )}
-                                  </View>
-                                </View>
+                                  </ScrollView>
+                                )}
                               </View>
                             );
                           })()}
@@ -1346,80 +1379,121 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 4,
   },
-  variantDeleteRow: {
+  variantPickerSection: {
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  variantPickerRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingBottom: 4,
+    alignItems: 'center',
+    gap: 6,
   },
-  variantPickerTypeCol: {
-    width: 90,
-    flexShrink: 0,
-  },
-  variantTypeList: {
-    gap: 4,
-  },
-  variantTypeBtn: {
-    paddingVertical: 7,
-    paddingHorizontal: 8,
+  variantTypeSelectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 34,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: Colors.light.border,
     backgroundColor: '#fff',
-  },
-  variantTypeBtnActive: {
-    backgroundColor: Colors.light.tint,
-    borderColor: Colors.light.tint,
+    paddingHorizontal: 8,
+    gap: 4,
+    minWidth: 90,
   },
   variantTypeBtnText: {
-    fontSize: 11,
+    fontSize: 12,
     color: Colors.light.text,
     fontWeight: '500' as const,
-  },
-  variantTypeBtnTextActive: {
-    color: '#fff',
-    fontWeight: '700' as const,
-  },
-  variantPickerSection: {
-    paddingHorizontal: 10,
-    paddingBottom: 10,
-  },
-  variantPickerColumns: {
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'flex-start',
-  },
-  variantPickerLeft: {
     flex: 1,
-    minWidth: 0,
   },
-  variantPickerRight: {
+  variantStyleInput: {
     flex: 1,
-    minWidth: 0,
-  },
-  variantSearchInput: {
     height: 34,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: Colors.light.border,
     paddingHorizontal: 10,
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.light.text,
     backgroundColor: '#fff',
-    marginBottom: 5,
+    minWidth: 0,
   },
-  variantStyleScroll: {
-    maxHeight: 240,
+  variantColorBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 34,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: '#fff',
+    paddingHorizontal: 8,
+    gap: 5,
+    minWidth: 90,
+    maxWidth: 130,
   },
-  variantColorScroll: {
-    maxHeight: 240,
+  variantColorDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    flexShrink: 0,
   },
-  variantSectionLabel: {
-    fontSize: 10,
+  variantColorDotEmpty: {
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
+  variantColorBtnText: {
+    flex: 1,
+    fontSize: 12,
+    color: Colors.light.text,
+  },
+  variantStyleDropdown: {
+    marginTop: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: '#fff',
+    overflow: 'hidden' as const,
+  },
+  variantDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    gap: 8,
+  },
+  variantDropdownItemActive: {
+    backgroundColor: '#FFF0E8',
+  },
+  variantDropdownItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+  },
+  variantDropdownNum: {
+    fontSize: 11,
     fontWeight: '700' as const,
+    color: Colors.light.tint,
+    minWidth: 48,
+  },
+  variantDropdownNumActive: {
+    color: Colors.light.tint,
+  },
+  variantDropdownName: {
+    flex: 1,
+    fontSize: 11,
     color: Colors.light.textSecondary,
-    letterSpacing: 0.8,
-    marginBottom: 6,
-    marginTop: 10,
+  },
+  variantDropdownNameActive: {
+    color: Colors.light.text,
+  },
+  variantDropdownEmpty: {
+    padding: 10,
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+  },
+  variantColorDropdown: {
+    marginTop: 6,
+    maxHeight: 120,
   },
   variantStyleList: {
     gap: 4,
@@ -1456,8 +1530,8 @@ const styles = StyleSheet.create({
   variantColorGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 4,
+    gap: 7,
+    padding: 8,
   },
   variantColorSwatch: {
     width: 26,
