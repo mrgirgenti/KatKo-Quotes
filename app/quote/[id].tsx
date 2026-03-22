@@ -353,7 +353,7 @@ export default function QuoteDetailScreen() {
                     <View style={styles.lineItemDetailsCol}>
                       {item.applicator ? (
                         <View style={styles.detailRow}>
-                          <User size={13} color={Colors.light.tint} style={{ flexShrink: 0 }} />
+                          <User size={13} color={Colors.light.text} style={{ flexShrink: 0 }} />
                           <Text style={styles.detailLabel}>Applicator</Text>
                           <Text style={[styles.detailValue, styles.applicatorValue]} numberOfLines={1}>{item.applicator}</Text>
                         </View>
