@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -183,6 +183,10 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   const [variantColorOpen, setVariantColorOpen] = useState<boolean[]>(() =>
     getInitialVariants().map(() => false)
   );
+  const [variantHoveredColors, setVariantHoveredColors] = useState<(string | null)[]>(() =>
+    getInitialVariants().map(() => null)
+  );
+  const dropZoneRef = useRef<any>(null);
 
   const handleVariantsChange = (newVariants: GarmentVariant[]) => {
     setVariants(newVariants);
@@ -310,6 +314,41 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
     }
   };
 
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const prevent = (e: Event) => { e.preventDefault(); };
+    document.addEventListener('dragover', prevent);
+    document.addEventListener('drop', prevent);
+    return () => {
+      document.removeEventListener('dragover', prevent);
+      document.removeEventListener('drop', prevent);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !dropZoneRef.current) return;
+    const node = dropZoneRef.current;
+    const handleDragOver = (e: DragEvent) => { e.preventDefault(); e.stopPropagation(); };
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const file = (e as any).dataTransfer?.files?.[0];
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (ev: any) => {
+          if (ev.target?.result) onChange({ ...item, mockupUri: ev.target.result as string });
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    node.addEventListener('dragover', handleDragOver);
+    node.addEventListener('drop', handleDrop);
+    return () => {
+      node.removeEventListener('dragover', handleDragOver);
+      node.removeEventListener('drop', handleDrop);
+    };
+  }, [dropZoneRef.current, onChange, item.mockupUri]);
+
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -386,21 +425,8 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
               </View>
             ) : (
               <View
+                ref={dropZoneRef}
                 style={styles.mockupPlaceholderContainer}
-                {...(Platform.OS === 'web' ? {
-                  onDragOver: (e: any) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; },
-                  onDrop: (e: any) => {
-                    e.preventDefault();
-                    const file = e.dataTransfer?.files?.[0];
-                    if (file && file.type.startsWith('image/')) {
-                      const reader = new FileReader();
-                      reader.onload = (ev: any) => {
-                        if (ev.target?.result) onChange({ ...item, mockupUri: ev.target.result as string });
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  },
-                } : {})}
               >
                 <TouchableOpacity style={styles.mockupDesignBtnLarge} onPress={() => setShowDesigner(true)}>
                   <Brush size={22} color={Colors.light.tint} />
@@ -728,6 +754,10 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                                             updateVariant(vIdx, { color: color.name });
                                             setVariantColorOpen((prev) => prev.map((o, i) => (i === vIdx ? false : o)));
                                           }}
+                                          {...(Platform.OS === 'web' ? {
+                                            onMouseEnter: () => setVariantHoveredColors(prev => prev.map((c, i) => i === vIdx ? color.name : c)),
+                                            onMouseLeave: () => setVariantHoveredColors(prev => prev.map((c, i) => i === vIdx ? null : c)),
+                                          } : {})}
                                         >
                                           {variant.color === color.name && (
                                             <CheckCircle size={12} color={color.dark ? '#fff' : '#333'} />
@@ -735,6 +765,9 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                                         </TouchableOpacity>
                                       ))}
                                     </View>
+                                    {variantHoveredColors[vIdx] && (
+                                      <Text style={styles.variantHoveredColorLabel}>{variantHoveredColors[vIdx]}</Text>
+                                    )}
                                   </ScrollView>
                                 )}
                               </View>
@@ -1572,6 +1605,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.light.textSecondary,
     marginTop: 4,
+  },
+  variantHoveredColorLabel: {
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+    marginTop: 6,
+    textAlign: 'right',
+    paddingHorizontal: 4,
   },
   variantDeleteBtn: {
     width: 28,

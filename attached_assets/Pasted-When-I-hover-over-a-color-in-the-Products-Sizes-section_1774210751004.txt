@@ -1,0 +1,11 @@
+When I hover over a color in the Products + Sizes section, as well as in the Mockup Designer, it should show the name of respective color. For example, in the Products + Sizes section, it would show in the right corner where the color lives. In the Mockup Designer, it should show at the bottom of the Garment Color section.
+
+The "Drop Image" feature in the Mockup section does not work. It wont allow an image to upload and stay put - it opens up a new internet tab instead. 
+
+For Garment Template and Vendor in the Mockup Designer, lets make these two columns 
+
+In the action toolbar of the Projects tab, when projects are selected with the checkbox, the Convert to Active button should convert a project into "Active" status. Complete Project button should convert a project into "Completed" status. And the Revert to Quoted button should convert a project into "Quoted" status. 
+
+I want to add to the Projects page, a new column to the right of Service(s). It should say "# PCS" and should correlate with the respective line item's number of pieces. For example, if a single line item is Direct to Film, 100 pcs then the Services column would say Direct to Film and the new # PCS column would show "100 pcs". 
+
+If there are multiple line items (even if they are all the same) Service type, we need to have a new line for each in the Services column and # PCS column. For example, Project A has two line items. One line item is Direct to Film for 50 pcs and another line Item is promotional for 1000 pcs. The Services column would show Direct to Film and right below it, Promotional as is listed in the order of the line items. The # PCS column would show 50 pcs and right below it, 1000 pcs all on the same Order line. As way of another example, if Project B has has two line items. One line item is Direct to Film for 50 pcs and another line Item is Direct to Film for 12 pcs. The Services column would show Direct to Film and right below it, Direct to Film as is listed in the order of the line items.

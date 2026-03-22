@@ -105,6 +105,10 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
   const itemCount = quote.lineItems.length;
   const completedCount = quote.lineItems.filter(i => !!i.completedAt).length;
   const serviceStyles = [...new Set(quote.lineItems.map(i => i.serviceStyle))];
+  const lineItemServices = quote.lineItems.map(i => i.serviceStyle);
+  const lineItemPcs = quote.lineItems.map(i =>
+    Object.values(i.sizes || {}).reduce((s: number, v: any) => s + (Number(v) || 0), 0)
+  );
   const total = quote.calculations?.total ?? 0;
   const isActive = effectiveStatus === 'active' || effectiveStatus === 'production_started';
   const isCompleted = effectiveStatus === 'completed';
@@ -154,8 +158,13 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
           </Text>
         </View>
         <View style={styles.colServices}>
-          <Text style={styles.tableServices} numberOfLines={2}>
-            {serviceStyles.length > 0 ? serviceStyles.join('\n') : '—'}
+          <Text style={styles.tableServices}>
+            {lineItemServices.length > 0 ? lineItemServices.join('\n') : '—'}
+          </Text>
+        </View>
+        <View style={styles.colPcs}>
+          <Text style={styles.tablePcs}>
+            {lineItemPcs.map(n => n > 0 ? `${n} pcs` : '—').join('\n')}
           </Text>
         </View>
         <View style={styles.colTotal}>
@@ -740,6 +749,7 @@ export default function ProjectsScreen() {
             <View style={styles.colInvoice}><Text style={styles.thText}>Invoice #</Text></View>
             <View style={styles.colApplicator}><Text style={styles.thText}>Applicator(s)</Text></View>
             <View style={styles.colServices}><Text style={styles.thText}>Service(s)</Text></View>
+            <View style={styles.colPcs}><Text style={styles.thText}># PCS</Text></View>
             <View style={styles.colTotal}>
               <SortBtn field="total" label="Total" />
             </View>
@@ -1059,6 +1069,7 @@ const styles = StyleSheet.create({
   colInvoice:   { width: 90 },
   colApplicator:{ flex: 1.2 },
   colServices:  { flex: 1.0 },
+  colPcs:       { width: 72 },
   colTotal:     { width: 85, alignItems: 'flex-end' },
   colMarkup:    { width: 85, alignItems: 'flex-end' },
   colActions:   { width: 100, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
@@ -1070,6 +1081,7 @@ const styles = StyleSheet.create({
   tableInvoice:    { fontSize: 13, color: Colors.light.textSecondary },
   tableApplicator: { fontSize: 12, color: Colors.light.text, lineHeight: 17 },
   tableServices:   { fontSize: 12, color: Colors.light.tint, fontWeight: '600', lineHeight: 17 },
+  tablePcs:        { fontSize: 12, color: Colors.light.text, lineHeight: 17 },
   tableTotal:      { fontSize: 14, fontWeight: '700', color: Colors.light.text },
   tableMarkup:     { fontSize: 13, fontWeight: '700', color: '#16A34A' },
   tableMarkupPct:  { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },

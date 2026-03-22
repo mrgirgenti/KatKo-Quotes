@@ -73,6 +73,7 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
   const { isMobile } = useBreakpoint();
   const [garmentType, setGarmentType] = useState<GarmentType>('tshirt');
   const [garmentColor, setGarmentColor] = useState('#FFFFFF');
+  const [hoveredSwatchColor, setHoveredSwatchColor] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<GarmentView>('front');
   const [uploadedArtworks, setUploadedArtworks] = useState<UploadedArtwork[]>([]);
   const [placements, setPlacements] = useState<Placement[]>([]);
@@ -346,36 +347,41 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
             {/* ── Left Panel: Controls ── */}
             <ScrollView style={[styles.leftPanel, isMobile && mobileTab !== 'controls' && { display: 'none' }, isMobile && { width: '100%' }]} showsVerticalScrollIndicator={false}>
 
-              {/* 1. Garment Template — always first */}
-              <Text style={styles.sectionLabel}>GARMENT TEMPLATE</Text>
-              <View style={styles.garmentTypes}>
-                {(Object.keys(GARMENTS) as GarmentType[]).map(type => (
-                  <TouchableOpacity
-                    key={type}
-                    style={[styles.typeBtn, garmentType === type && styles.typeBtnActive]}
-                    onPress={() => handleGarmentTypeChange(type)}
-                  >
-                    <Text style={[styles.typeBtnText, garmentType === type && styles.typeBtnTextActive]}>
-                      {GARMENTS[type].label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              {/* 1 + 2. Garment Template & Vendor — side by side */}
+              <View style={styles.templateVendorRow}>
+                <View style={styles.templateVendorCol}>
+                  <Text style={styles.sectionLabel}>GARMENT TEMPLATE</Text>
+                  <View style={styles.garmentTypes}>
+                    {(Object.keys(GARMENTS) as GarmentType[]).map(type => (
+                      <TouchableOpacity
+                        key={type}
+                        style={[styles.typeBtn, garmentType === type && styles.typeBtnActive]}
+                        onPress={() => handleGarmentTypeChange(type)}
+                      >
+                        <Text style={[styles.typeBtnText, garmentType === type && styles.typeBtnTextActive]}>
+                          {GARMENTS[type].label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
 
-              {/* 2. Vendor — filtered to those carrying the selected template */}
-              <Text style={styles.sectionLabel}>VENDOR</Text>
-              <View style={styles.garmentTypes}>
-                {vendorsByTemplate.map(vendor => (
-                  <TouchableOpacity
-                    key={vendor.id}
-                    style={[styles.typeBtn, selectedVendorId === vendor.id && styles.typeBtnActive]}
-                    onPress={() => handleVendorSelect(vendor.id)}
-                  >
-                    <Text style={[styles.typeBtnText, selectedVendorId === vendor.id && styles.typeBtnTextActive]} numberOfLines={1}>
-                      {vendor.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                <View style={styles.templateVendorCol}>
+                  <Text style={styles.sectionLabel}>VENDOR</Text>
+                  <View style={styles.garmentTypes}>
+                    {vendorsByTemplate.map(vendor => (
+                      <TouchableOpacity
+                        key={vendor.id}
+                        style={[styles.typeBtn, selectedVendorId === vendor.id && styles.typeBtnActive]}
+                        onPress={() => handleVendorSelect(vendor.id)}
+                      >
+                        <Text style={[styles.typeBtnText, selectedVendorId === vendor.id && styles.typeBtnTextActive]} numberOfLines={1}>
+                          {vendor.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
               </View>
 
               {/* 3. Product Style — filtered by selected template */}
@@ -422,6 +428,10 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                       color.hex === '#FFFFFF' && styles.colorSwatchWhite,
                     ]}
                     onPress={() => setGarmentColor(color.hex)}
+                    {...(Platform.OS === 'web' ? {
+                      onMouseEnter: () => setHoveredSwatchColor(color.name),
+                      onMouseLeave: () => setHoveredSwatchColor(null),
+                    } : {})}
                   >
                     {garmentColor === color.hex && (
                       <CheckCircle size={14} color={color.dark ? '#fff' : '#333'} />
@@ -429,7 +439,7 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                   </TouchableOpacity>
                 ))}
               </View>
-              <Text style={styles.colorLabel}>{activeColorName}</Text>
+              <Text style={styles.colorLabel}>{hoveredSwatchColor ?? activeColorName}</Text>
 
               {/* View toggle */}
               {garmentType !== 'hat' && (
@@ -803,6 +813,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     marginBottom: 8,
     marginTop: 14,
+  },
+  templateVendorRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 0,
+  },
+  templateVendorCol: {
+    flex: 1,
   },
   garmentTypes: { gap: 4 },
   typeBtn: {
