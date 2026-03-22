@@ -86,14 +86,15 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
     });
   };
 
+  const applicators = [...new Set(quote.lineItems.map(i => i.applicator).filter(Boolean))];
+  const markup = quote.calculations?.markupAmount ?? 0;
+  const markupPct = quote.calculations?.markupPercentage ?? 0;
+
   if (isDesktop) {
     return (
       <TouchableOpacity style={styles.tableRow} onPress={onPress} activeOpacity={0.7}>
         <View style={styles.colStatus}>
           <StatusBadge status={effectiveStatus} />
-        </View>
-        <View style={styles.colInvoice}>
-          <Text style={styles.tableInvoice} numberOfLines={1}>{quote.invoiceNumber || '—'}</Text>
         </View>
         <View style={styles.colDate}>
           <Text style={styles.tableDate}>{formatDate(quote.orderDate)}</Text>
@@ -106,20 +107,23 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
         </View>
         <View style={styles.colProject}>
           <Text style={styles.tableProject} numberOfLines={1}>{quote.projectName}</Text>
-          <Text style={styles.tableProjectSub} numberOfLines={1}>
-            {serviceStyles.join(' · ')}
+        </View>
+        <View style={styles.colApplicator}>
+          <Text style={styles.tableApplicator} numberOfLines={2}>
+            {applicators.length > 0 ? applicators.join('\n') : '—'}
           </Text>
         </View>
-        <View style={styles.colItems}>
-          <Text style={styles.tableItems}>
-            {isActive || isCompleted ? `${completedCount}/${itemCount}` : itemCount}
+        <View style={styles.colServices}>
+          <Text style={styles.tableServices} numberOfLines={2}>
+            {serviceStyles.length > 0 ? serviceStyles.join('\n') : '—'}
           </Text>
-          {(isActive || isCompleted) && itemCount > 0 ? (
-            <Text style={styles.tableItemsSub}>done</Text>
-          ) : null}
         </View>
         <View style={styles.colTotal}>
           <Text style={styles.tableTotal}>{formatCurrency(total)}</Text>
+        </View>
+        <View style={styles.colMarkup}>
+          <Text style={styles.tableMarkup}>{formatCurrency(markup)}</Text>
+          <Text style={styles.tableMarkupPct}>{markupPct.toFixed(1)}%</Text>
         </View>
         <View style={styles.colActions}>
           <TouchableOpacity style={styles.viewBtn} onPress={onPress}>
@@ -452,7 +456,6 @@ export default function ProjectsScreen() {
         {isDesktop && (
           <View style={styles.tableHeader}>
             <View style={styles.colStatus}><Text style={styles.thText}>Status</Text></View>
-            <View style={styles.colInvoice}><Text style={styles.thText}>Invoice</Text></View>
             <View style={styles.colDate}>
               <SortBtn field="date" label="Date" />
             </View>
@@ -460,10 +463,12 @@ export default function ProjectsScreen() {
               <SortBtn field="client" label="Client" />
             </View>
             <View style={styles.colProject}><Text style={styles.thText}>Project</Text></View>
-            <View style={styles.colItems}><Text style={styles.thText}>Items</Text></View>
+            <View style={styles.colApplicator}><Text style={styles.thText}>Applicator(s)</Text></View>
+            <View style={styles.colServices}><Text style={styles.thText}>Service(s)</Text></View>
             <View style={styles.colTotal}>
               <SortBtn field="total" label="Total" />
             </View>
+            <View style={styles.colMarkup}><Text style={styles.thText}>Markup</Text></View>
             <View style={styles.colActions}><Text style={styles.thText}>Actions</Text></View>
           </View>
         )}
@@ -697,14 +702,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.border,
-    backgroundColor: Colors.light.background,
+    paddingVertical: 10,
+    backgroundColor: '#111111',
   },
-  thText: { fontSize: 11, fontWeight: '700', color: Colors.light.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  thText: { fontSize: 11, fontWeight: '700', color: '#ffffff', textTransform: 'uppercase', letterSpacing: 0.5 },
   sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  sortBtnText: { fontSize: 11, fontWeight: '700', color: Colors.light.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  sortBtnText: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: 0.5 },
   sortBtnTextActive: { color: Colors.light.tint },
 
   mobileSortScroll: { maxHeight: 38, backgroundColor: Colors.light.surface, borderBottomWidth: 1, borderBottomColor: Colors.light.border },
@@ -725,24 +728,25 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: Colors.light.surface,
   },
-  colStatus:  { width: 90 },
-  colInvoice: { width: 70 },
-  colDate:    { width: 100 },
-  colClient:  { flex: 1.2 },
-  colProject: { flex: 1.5 },
-  colItems:   { width: 60, alignItems: 'center' },
-  colTotal:   { width: 90, alignItems: 'flex-end' },
-  colActions: { width: 100, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
+  colStatus:    { width: 90 },
+  colDate:      { width: 95 },
+  colClient:    { flex: 1.2 },
+  colProject:   { flex: 1.2 },
+  colApplicator:{ flex: 1.2 },
+  colServices:  { flex: 1.0 },
+  colTotal:     { width: 85, alignItems: 'flex-end' },
+  colMarkup:    { width: 85, alignItems: 'flex-end' },
+  colActions:   { width: 100, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
 
-  tableInvoice: { fontSize: 13, color: Colors.light.textSecondary },
-  tableDate:    { fontSize: 13, color: Colors.light.text },
-  tableDateSub: { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
-  tableClient:  { fontSize: 13, fontWeight: '700', color: Colors.light.text },
-  tableProject: { fontSize: 13, color: Colors.light.text },
-  tableProjectSub: { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
-  tableItems:   { fontSize: 13, fontWeight: '700', color: Colors.light.text },
-  tableItemsSub:{ fontSize: 10, color: Colors.light.textSecondary },
-  tableTotal:   { fontSize: 14, fontWeight: '700', color: Colors.light.text },
+  tableDate:       { fontSize: 13, color: Colors.light.text },
+  tableDateSub:    { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
+  tableClient:     { fontSize: 13, fontWeight: '700', color: Colors.light.text },
+  tableProject:    { fontSize: 13, color: Colors.light.text },
+  tableApplicator: { fontSize: 12, color: Colors.light.text, lineHeight: 17 },
+  tableServices:   { fontSize: 12, color: Colors.light.tint, fontWeight: '600', lineHeight: 17 },
+  tableTotal:      { fontSize: 14, fontWeight: '700', color: Colors.light.text },
+  tableMarkup:     { fontSize: 13, fontWeight: '700', color: '#16A34A' },
+  tableMarkupPct:  { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
 
   viewBtn: {
     paddingHorizontal: 12,
