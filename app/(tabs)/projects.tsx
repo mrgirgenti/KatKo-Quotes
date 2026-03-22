@@ -789,7 +789,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: Colors.light.surface,
   },
-  colStatus:    { width: 75 },
+  colStatus:    { width: 100 },
   colOrderDate: { width: 110 },
   colDueDate:   { width: 110 },
   colClient:    { flex: 1.2 },
