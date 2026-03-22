@@ -351,24 +351,25 @@ export default function QuoteDetailScreen() {
 
               {isExpanded && (
                 <View style={styles.lineItemBody}>
-                  {/* Top row: mockup left (1/3), details right (2/3) */}
-                  <View style={styles.lineItemTopRow}>
-                    {/* Mockup on the left */}
-                    <View style={styles.lineItemMockupCol}>
-                      {item.mockupUri ? (
-                        <Image
-                          source={{ uri: item.mockupUri }}
-                          style={styles.mockupImage}
-                          resizeMode="contain"
-                        />
-                      ) : (
-                        <View style={styles.mockupPlaceholder}>
-                          <Package size={28} color={Colors.light.border} />
-                          <Text style={styles.mockupPlaceholderText}>No mockup</Text>
-                        </View>
-                      )}
-                    </View>
+                  {/* Mockup — left 1/3 */}
+                  <View style={styles.lineItemMockupCol}>
+                    {item.mockupUri ? (
+                      <Image
+                        source={{ uri: item.mockupUri }}
+                        style={styles.mockupImage}
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <View style={styles.mockupPlaceholder}>
+                        <Package size={28} color={Colors.light.border} />
+                        <Text style={styles.mockupPlaceholderText}>No mockup</Text>
+                      </View>
+                    )}
+                  </View>
 
+                  {/* Right panel — all details + sizes + costs + subtotal (2/3) */}
+                  <View style={styles.lineItemRightCol}>
+                    {/* Detail rows */}
                     <View style={styles.lineItemDetailsCol}>
                       {/* Service Style */}
                       <View style={styles.detailRow}>
@@ -393,7 +394,7 @@ export default function QuoteDetailScreen() {
                         <Text style={styles.detailValue} numberOfLines={1}>{item.apparelProvider}</Text>
                       </View>
 
-                      {/* Product per variant — single: "Gildan 64000 — Blue", multiple: "Product #1: ..." */}
+                      {/* Product per variant */}
                       {variants.length === 1 ? (
                         <View style={styles.detailRow}>
                           <Package size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
@@ -432,86 +433,88 @@ export default function QuoteDetailScreen() {
                         </Text>
                       </View>
                     </View>
-                  </View>
 
-                  {/* Sizes grid — one per variant */}
-                  {variants.map((v, vi) => (
-                    <View key={vi} style={styles.sizesGridSection}>
-                      {variants.length > 1 && (
-                        <Text style={styles.variantSizeHeading}>
-                          {v.product}{v.color ? ` — ${v.color}` : ''}
-                        </Text>
-                      )}
-                      <Text style={styles.sizesGridLabel}>Sizes + Quantities</Text>
-                      {isPromotional ? (
-                        <View style={styles.sizesGridRow}>
-                          <View style={styles.sizeGridCell}>
-                            <Text style={styles.sizeGridCellLabel}>Qty</Text>
-                            <View style={styles.sizeGridCellBox}>
-                              <Text style={styles.sizeGridCellValue}>{v.sizes.flat || 0}</Text>
+                    {/* Sizes grid — one per variant */}
+                    {variants.map((v, vi) => (
+                      <View key={vi} style={styles.sizesGridSection}>
+                        {variants.length > 1 && (
+                          <Text style={styles.variantSizeHeading}>
+                            {v.product}{v.color ? ` — ${v.color}` : ''}
+                          </Text>
+                        )}
+                        <Text style={styles.sizesGridLabel}>Sizes + Quantities</Text>
+                        {isPromotional ? (
+                          <View style={styles.sizesGridRow}>
+                            <View style={styles.sizeGridCell}>
+                              <Text style={styles.sizeGridCellLabel}>Qty</Text>
+                              <View style={styles.sizeGridCellBox}>
+                                <Text style={styles.sizeGridCellValue}>{v.sizes.flat || 0}</Text>
+                              </View>
                             </View>
                           </View>
-                        </View>
-                      ) : (
-                        <>
-                          <View style={styles.sizesGridRow}>
-                            {(['xs','s','m','l'] as const).map(k => {
-                              const entry = SIZE_LABELS.find(sl => sl.key === k)!;
-                              return (
-                                <View key={k} style={styles.sizeGridCell}>
-                                  <Text style={styles.sizeGridCellLabel}>{entry.label}</Text>
-                                  <View style={[styles.sizeGridCellBox, !v.sizes[k] && styles.sizeGridCellBoxEmpty]}>
-                                    <Text style={[styles.sizeGridCellValue, !v.sizes[k] && styles.sizeGridCellValueEmpty]}>{v.sizes[k] || 0}</Text>
+                        ) : (
+                          <>
+                            <View style={styles.sizesGridRow}>
+                              {(['xs','s','m','l'] as const).map(k => {
+                                const entry = SIZE_LABELS.find(sl => sl.key === k)!;
+                                return (
+                                  <View key={k} style={styles.sizeGridCell}>
+                                    <Text style={styles.sizeGridCellLabel}>{entry.label}</Text>
+                                    <View style={[styles.sizeGridCellBox, !v.sizes[k] && styles.sizeGridCellBoxEmpty]}>
+                                      <Text style={[styles.sizeGridCellValue, !v.sizes[k] && styles.sizeGridCellValueEmpty]}>{v.sizes[k] || 0}</Text>
+                                    </View>
                                   </View>
-                                </View>
-                              );
-                            })}
-                          </View>
-                          <View style={[styles.sizesGridRow, { marginTop: 6 }]}>
-                            {(['xl','xxl','xxxl','xxxxl'] as const).map(k => {
-                              const entry = SIZE_LABELS.find(sl => sl.key === k)!;
-                              return (
-                                <View key={k} style={styles.sizeGridCell}>
-                                  <Text style={styles.sizeGridCellLabel}>{entry.label}</Text>
-                                  <View style={[styles.sizeGridCellBox, !v.sizes[k] && styles.sizeGridCellBoxEmpty]}>
-                                    <Text style={[styles.sizeGridCellValue, !v.sizes[k] && styles.sizeGridCellValueEmpty]}>{v.sizes[k] || 0}</Text>
+                                );
+                              })}
+                            </View>
+                            <View style={[styles.sizesGridRow, { marginTop: 6 }]}>
+                              {(['xl','xxl','xxxl','xxxxl'] as const).map(k => {
+                                const entry = SIZE_LABELS.find(sl => sl.key === k)!;
+                                return (
+                                  <View key={k} style={styles.sizeGridCell}>
+                                    <Text style={styles.sizeGridCellLabel}>{entry.label}</Text>
+                                    <View style={[styles.sizeGridCellBox, !v.sizes[k] && styles.sizeGridCellBoxEmpty]}>
+                                      <Text style={[styles.sizeGridCellValue, !v.sizes[k] && styles.sizeGridCellValueEmpty]}>{v.sizes[k] || 0}</Text>
+                                    </View>
                                   </View>
-                                </View>
-                              );
-                            })}
-                          </View>
-                        </>
-                      )}
-                      <Text style={styles.sizesGridTotal}>
-                        Total: {getTotalQuantity(v.sizes, isPromotional)} pcs
-                      </Text>
-                    </View>
-                  ))}
+                                );
+                              })}
+                            </View>
+                          </>
+                        )}
+                        <Text style={styles.sizesGridTotal}>
+                          Total: {getTotalQuantity(v.sizes, isPromotional)} pcs
+                        </Text>
+                      </View>
+                    ))}
 
-                  <View style={styles.costsBox}>
-                    <View style={styles.costItem}>
-                      <Text style={styles.costLabel}>Product</Text>
-                      <Text style={styles.costValue}>{formatCurrency(item.productCostEach)}/ea</Text>
+                    {/* Product / Service / Fees / Markup */}
+                    <View style={styles.costsBox}>
+                      <View style={styles.costItem}>
+                        <Text style={styles.costLabel}>Product</Text>
+                        <Text style={styles.costValue}>{formatCurrency(item.productCostEach)}/ea</Text>
+                      </View>
+                      <View style={styles.costItem}>
+                        <Text style={styles.costLabel}>Service</Text>
+                        <Text style={styles.costValue}>{formatCurrency(item.serviceCostEach)}/ea</Text>
+                      </View>
+                      <View style={styles.costItem}>
+                        <Text style={styles.costLabel}>Fees</Text>
+                        <Text style={styles.costValue}>{formatCurrency(item.serviceFeeEach)}/ea</Text>
+                      </View>
+                      <View style={styles.costItem}>
+                        <Text style={styles.costLabel}>Markup</Text>
+                        <Text style={styles.costValue}>{formatCurrency(item.markupEach || 0)}/ea</Text>
+                      </View>
                     </View>
-                    <View style={styles.costItem}>
-                      <Text style={styles.costLabel}>Service</Text>
-                      <Text style={styles.costValue}>{formatCurrency(item.serviceCostEach)}/ea</Text>
-                    </View>
-                    <View style={styles.costItem}>
-                      <Text style={styles.costLabel}>Fees</Text>
-                      <Text style={styles.costValue}>{formatCurrency(item.serviceFeeEach)}/ea</Text>
-                    </View>
-                    <View style={styles.costItem}>
-                      <Text style={styles.costLabel}>Markup</Text>
-                      <Text style={styles.costValue}>{formatCurrency(item.markupEach || 0)}/ea</Text>
-                    </View>
-                  </View>
 
-                  <View style={styles.lineItemSubtotalBox}>
-                    <Text style={styles.lineItemSubtotalLabel}>Subtotal</Text>
-                    <View style={styles.lineItemSubtotalRight}>
-                      <Text style={styles.lineItemSubtotalPer}>{calcs.quantity} pcs @ {formatCurrency(calcs.perPiece)}/ea</Text>
-                      <Text style={styles.lineItemSubtotalValue}>{formatCurrency(calcs.subtotal)}</Text>
+                    {/* Subtotal */}
+                    <View style={styles.lineItemSubtotalBox}>
+                      <Text style={styles.lineItemSubtotalLabel}>Subtotal</Text>
+                      <View style={styles.lineItemSubtotalRight}>
+                        <Text style={styles.lineItemSubtotalPer}>{calcs.quantity} pcs @ {formatCurrency(calcs.perPiece)}/ea</Text>
+                        <Text style={styles.lineItemSubtotalValue}>{formatCurrency(calcs.subtotal)}</Text>
+                      </View>
                     </View>
                   </View>
                 </View>
@@ -1147,6 +1150,9 @@ const styles = StyleSheet.create({
   },
   lineItemBody: {
     padding: 12,
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'flex-start',
   },
   lineItemDetails: {
     gap: 8,
@@ -1529,12 +1535,16 @@ const styles = StyleSheet.create({
     flex: 1,
     flexShrink: 0,
     alignSelf: 'stretch',
-    minHeight: 200,
+    minHeight: 220,
   },
-  lineItemDetailsCol: {
+  lineItemRightCol: {
     flex: 2,
     minWidth: 0,
+  },
+  lineItemDetailsCol: {
+    minWidth: 0,
     gap: 8,
+    marginBottom: 10,
   },
   mockupImage: {
     width: '100%',
