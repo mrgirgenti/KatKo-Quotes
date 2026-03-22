@@ -26,6 +26,7 @@ import {
   Image as ImageIcon,
   Brush,
   RotateCcw,
+  Link2,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -252,15 +253,6 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
   const zoneLabelColor = isDark ? 'rgba(255,255,255,0.88)' : 'rgba(40,40,40,0.75)';
 
   const selectedArtwork = uploadedArtworks.find(a => a.id === selectedArtworkId) ?? null;
-  const artworkSizeIn = selectedArtwork?.naturalW && selectedArtwork?.naturalH
-    ? { w: Math.min(14, selectedArtwork.naturalW / 96), h: Math.min(14, selectedArtwork.naturalH / 96) }
-    : null;
-  const artworkSizeSuggest = artworkSizeIn
-    ? artworkSizeIn.w > 8 ? 'Best fit: Full Front'
-      : artworkSizeIn.w > 5 ? 'Best fit: Center Chest or Full Front'
-      : artworkSizeIn.w > 3 ? 'Best fit: Left/Right Chest'
-      : 'Best fit: small locations (Chest / Neck Tag)'
-    : '';
 
   const MAX_ARTWORKS = 5;
 
@@ -911,24 +903,39 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                 </View>
               )}
 
-              {/* Artwork size detection */}
-              {artworkSizeIn && (
-                <>
-                  <Text style={[styles.sectionLabel, { marginTop: 12 }]}>ARTWORK SIZE</Text>
-                  <View style={styles.artworkSizeBanner}>
-                    <Text style={styles.artworkSizeVal}>{artworkSizeIn.w.toFixed(1)}&quot; × {artworkSizeIn.h.toFixed(1)}&quot;</Text>
-                    <Text style={styles.artworkSizeSuggest}>{artworkSizeSuggest}</Text>
-                  </View>
-                </>
-              )}
-
-              {/* Zone reference + art size inputs */}
-              <Text style={[styles.sectionLabel, { marginTop: 16 }]}>PRINT LOCATIONS</Text>
+              {/* Zone reference + proportional art size inputs */}
+              <Text style={[styles.sectionLabel, { marginTop: 12 }]}>PRINT LOCATIONS</Text>
               <ScrollView style={styles.zoneRef} showsVerticalScrollIndicator={false}>
                 {currentZones.map(zone => {
                   const placement = placementForZone(zone.id);
-                  const zoneMaxW = (zone.w / 25).toFixed(1);
-                  const zoneMaxH = (zone.h / 25).toFixed(1);
+                  const zoneMaxW = zone.w / 25;
+                  const zoneMaxH = zone.h / 25;
+                  const placedArtwork = placement ? uploadedArtworks.find(a => a.id === placement.artworkId) : null;
+                  const hasNaturalDims = !!(placedArtwork?.naturalW && placedArtwork?.naturalH);
+                  const aspectRatio = hasNaturalDims ? placedArtwork!.naturalH! / placedArtwork!.naturalW! : null;
+                  const origW = hasNaturalDims ? Math.min(14, placedArtwork!.naturalW! / 96) : null;
+                  const origH = hasNaturalDims ? Math.min(14, placedArtwork!.naturalH! / 96) : null;
+
+                  const handleWChange = (val: string) => {
+                    const num = parseFloat(val);
+                    const linkedH = (aspectRatio && !isNaN(num) && val.trim() !== '' && val !== '.')
+                      ? (num * aspectRatio).toFixed(2)
+                      : placement?.artHeightIn;
+                    setPlacements(prev => prev.map(p =>
+                      p.zoneId === zone.id ? { ...p, artWidthIn: val, artHeightIn: linkedH } : p
+                    ));
+                  };
+
+                  const handleHChange = (val: string) => {
+                    const num = parseFloat(val);
+                    const linkedW = (aspectRatio && !isNaN(num) && val.trim() !== '' && val !== '.')
+                      ? (num / aspectRatio).toFixed(2)
+                      : placement?.artWidthIn;
+                    setPlacements(prev => prev.map(p =>
+                      p.zoneId === zone.id ? { ...p, artWidthIn: linkedW, artHeightIn: val } : p
+                    ));
+                  };
+
                   return (
                     <View key={zone.id} style={styles.zoneRefItem}>
                       <View style={[styles.zoneRefDot, placement && styles.zoneRefDotFilled]} />
@@ -937,38 +944,43 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                           {zone.id}
                         </Text>
                         {placement ? (
-                          <View style={styles.artSizeRow}>
-                            <View style={styles.artSizeField}>
-                              <Text style={styles.artSizeLabel}>W&quot;</Text>
-                              <TextInput
-                                style={styles.artSizeInput}
-                                placeholder={zoneMaxW}
-                                placeholderTextColor="#aaa"
-                                keyboardType="decimal-pad"
-                                value={placement.artWidthIn ?? ''}
-                                onChangeText={val => setPlacements(prev =>
-                                  prev.map(p => p.zoneId === zone.id ? { ...p, artWidthIn: val } : p)
-                                )}
-                              />
+                          <View>
+                            {origW !== null && origH !== null && (
+                              <Text style={styles.artOriginalSize}>
+                                Original: {origW.toFixed(1)}&quot; × {origH.toFixed(1)}&quot;
+                              </Text>
+                            )}
+                            <View style={styles.artSizeRow}>
+                              <View style={styles.artSizeField}>
+                                <Text style={styles.artSizeLabel}>W&quot;</Text>
+                                <TextInput
+                                  style={styles.artSizeInput}
+                                  placeholder={zoneMaxW.toFixed(1)}
+                                  placeholderTextColor="#aaa"
+                                  keyboardType="decimal-pad"
+                                  value={placement.artWidthIn ?? ''}
+                                  onChangeText={handleWChange}
+                                />
+                              </View>
+                              <View style={styles.artSizeChain}>
+                                <Link2 size={11} color={hasNaturalDims ? Colors.light.tint : Colors.light.borderDark} />
+                              </View>
+                              <View style={styles.artSizeField}>
+                                <Text style={styles.artSizeLabel}>H&quot;</Text>
+                                <TextInput
+                                  style={styles.artSizeInput}
+                                  placeholder={zoneMaxH.toFixed(1)}
+                                  placeholderTextColor="#aaa"
+                                  keyboardType="decimal-pad"
+                                  value={placement.artHeightIn ?? ''}
+                                  onChangeText={handleHChange}
+                                />
+                              </View>
                             </View>
-                            <Text style={styles.artSizeSep}>×</Text>
-                            <View style={styles.artSizeField}>
-                              <Text style={styles.artSizeLabel}>H&quot;</Text>
-                              <TextInput
-                                style={styles.artSizeInput}
-                                placeholder={zoneMaxH}
-                                placeholderTextColor="#aaa"
-                                keyboardType="decimal-pad"
-                                value={placement.artHeightIn ?? ''}
-                                onChangeText={val => setPlacements(prev =>
-                                  prev.map(p => p.zoneId === zone.id ? { ...p, artHeightIn: val } : p)
-                                )}
-                              />
-                            </View>
-                            <Text style={styles.artSizeMax}>(max {zoneMaxW}×{zoneMaxH}&quot;)</Text>
+                            <Text style={styles.artSizeMax}>Max {zoneMaxW.toFixed(1)}&quot; × {zoneMaxH.toFixed(1)}&quot;</Text>
                           </View>
                         ) : (
-                          <Text style={styles.artSizeMax}>Max {zoneMaxW}&quot; × {zoneMaxH}&quot;</Text>
+                          <Text style={styles.artSizeMax}>Max {zoneMaxW.toFixed(1)}&quot; × {zoneMaxH.toFixed(1)}&quot;</Text>
                         )}
                       </View>
                     </View>
@@ -1488,7 +1500,15 @@ const styles = StyleSheet.create({
   zoneRefText: { fontSize: 11, color: Colors.light.textSecondary },
   zoneRefTextFilled: { color: '#15803D', fontWeight: '600' },
 
-  artSizeRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4, flexWrap: 'wrap' },
+  artOriginalSize: {
+    fontSize: 9,
+    color: Colors.light.textSecondary,
+    marginTop: 2,
+    marginBottom: 3,
+    fontStyle: 'italic',
+  },
+  artSizeRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  artSizeChain: { justifyContent: 'center', alignItems: 'center', width: 18 },
   artSizeField: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   artSizeLabel: { fontSize: 10, color: Colors.light.textSecondary, fontWeight: '600' },
   artSizeInput: {
