@@ -61,8 +61,27 @@ Breakpoints are detected via `useWindowDimensions` so they respond to live brows
 ## UI Conventions
 - **Brand colors**: Primary/tint `#FF5A00`, sidebar/header `#000000`
 - **Line Item Card header**: `#000000` (black) with white text
+- **Quote Details line item header**: `#111111` (black), collapsible, shows design name + service·applicator + qty pcs + chevron
 - **ToggleButton**: Selected state (Yes or No) is always orange (`#FF5A00`); unselected is grey
 - **ComboBox popup**: `maxWidth: 340`, compact paddings/fonts, capped list height `240`
+- **Projects table header**: `#111111` black with white text; columns: Status, Date, Client, Project, Applicator(s), Service(s), Total, Markup, Actions
+- **Clients table header**: `#111111` black with white text; columns: Avatar, Name, Organization, Email, Phone, Status, Actions
+
+## Quote Details Page
+- **Action bar** (quoted status): ⋮ menu | Mark as Active | Start Production (Flame icon)
+- **Action bar** (active/completed): ⋮ menu | Track Costs | Start Production (Flame icon)
+- **Menu items**: Edit Quote | Revert to Quoted (active only) | Export to Sheets (active only) | Export PDF | Print | Delete
+- **Mark as Active**: stays on page, no navigation (toast confirmation only)
+- **Revert to Quoted**: stays on page, no navigation (toast + Alert confirmation)
+- **Desktop layout**: two-column (left: Order Info + Line Items, right: Pricing Summary + Sales Tracking)
+- **PDF/Print**: Opens new browser window with HTML, triggers print dialog after 800ms
+
+## PDF/Print (web)
+Both `generateAndSharePDF` and `printQuote` on web:
+1. Generate HTML string from quote data
+2. Open new window (`window.open('', '_blank')`)
+3. Write HTML to new window
+4. Call `window.print()` after 800ms delay
 
 ## LineItem Card Layout (field order)
 1. Design Name

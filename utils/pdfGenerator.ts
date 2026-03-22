@@ -27,16 +27,17 @@ function generateQuoteHTML(quote: Quote, user?: UserProfile | null): string {
     <div class="line-item">
       <div class="line-item-header">
         <span class="line-number">#${index + 1}</span>
-        <span class="design-name">${item.designName || 'Untitled Design'}</span>
+        <div class="line-header-info">
+          <span class="design-name">${item.designName || 'Untitled Design'}</span>
+          <span class="line-service">${item.serviceStyle}${item.applicator ? ` · ${item.applicator}` : ''}</span>
+        </div>
+        <span class="line-qty">${getItemQuantity(item)} pcs</span>
       </div>
       <table class="details-table">
-        <tr><td class="label">Product:</td><td>${item.product}</td></tr>
-        <tr><td class="label">Color:</td><td>${item.productColor}</td></tr>
+        <tr><td class="label">Product:</td><td>${item.product} — ${item.productColor}</td></tr>
         <tr><td class="label">Source:</td><td>${item.apparelProvider}</td></tr>
-        <tr><td class="label">Service:</td><td>${item.serviceStyle}</td></tr>
-        <tr><td class="label">Location:</td><td>${[item.location1, item.location2].filter(Boolean).join(', ') || 'N/A'}${item.locationDetails ? ` - ${item.locationDetails}` : ''}</td></tr>
+        <tr><td class="label">Location:</td><td>${[item.location1, item.location2].filter(Boolean).join(', ') || 'N/A'}${item.locationDetails ? ` — ${item.locationDetails}` : ''}</td></tr>
         <tr><td class="label">Sizes:</td><td>${getTotalSizeQuantities(item)}</td></tr>
-        <tr><td class="label">Quantity:</td><td>${getItemQuantity(item)} pcs</td></tr>
       </table>
       <div class="costs-row">
         <div class="cost-item">
@@ -51,9 +52,16 @@ function generateQuoteHTML(quote: Quote, user?: UserProfile | null): string {
           <span class="cost-label">Service Fees</span>
           <span class="cost-value">${formatCurrency(item.serviceFeeEach)}/ea</span>
         </div>
+        <div class="cost-item">
+          <span class="cost-label">Markup</span>
+          <span class="cost-value">${formatCurrency(item.markupEach || 0)}/ea</span>
+        </div>
       </div>
     </div>
   `).join('');
+
+  const statusLabel = quote.status === 'active' ? 'ACTIVE' : quote.status === 'completed' ? 'COMPLETED' : 'QUOTE';
+  const statusClass = quote.status === 'active' || quote.status === 'completed' ? 'sale-badge' : '';
 
   return `
     <!DOCTYPE html>
@@ -61,68 +69,71 @@ function generateQuoteHTML(quote: Quote, user?: UserProfile | null): string {
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>${quote.personOrganization} — ${quote.projectName}</title>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; color: #1a1a1a; font-size: 12px; }
-        .header { border-bottom: 2px solid #FF5A00; padding-bottom: 20px; margin-bottom: 24px; }
-        .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-        .company-info { }
-        .company-name { font-size: 20px; font-weight: 700; color: #FF5A00; }
-        .company-details { font-size: 11px; color: #666; margin-top: 4px; }
-        .quote-badge { background: #FF5A00; color: white; padding: 6px 12px; border-radius: 4px; font-weight: 600; font-size: 11px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 36px; color: #1a1a1a; font-size: 12px; }
+        .header { border-bottom: 3px solid #FF5A00; padding-bottom: 18px; margin-bottom: 20px; }
+        .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+        .company-name { font-size: 22px; font-weight: 700; color: #FF5A00; }
+        .company-details { font-size: 11px; color: #666; margin-top: 3px; }
+        .quote-badge { background: #FF5A00; color: white; padding: 6px 14px; border-radius: 4px; font-weight: 700; font-size: 12px; letter-spacing: 1px; }
         .sale-badge { background: #059669; }
-        .client-info { margin-top: 16px; }
-        .client-name { font-size: 18px; font-weight: 700; }
-        .project-name { font-size: 14px; color: #666; margin-top: 2px; }
-        .invoice-number { font-size: 12px; color: #FF5A00; font-weight: 600; margin-top: 8px; }
+        .client-info { margin-top: 14px; }
+        .client-name { font-size: 20px; font-weight: 700; }
+        .project-name { font-size: 14px; color: #444; margin-top: 3px; }
+        .invoice-number { font-size: 12px; color: #FF5A00; font-weight: 600; margin-top: 6px; }
         .section { margin-bottom: 20px; }
-        .section-title { font-size: 14px; font-weight: 700; margin-bottom: 12px; color: #1a1a1a; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .info-item { }
-        .info-label { font-size: 10px; color: #666; text-transform: uppercase; }
+        .section-title { font-size: 11px; font-weight: 700; margin-bottom: 10px; color: #fff; background: #111; padding: 6px 10px; border-radius: 4px; text-transform: uppercase; letter-spacing: 1px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .info-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
         .info-value { font-size: 13px; font-weight: 600; margin-top: 2px; }
-        .line-item { background: #f8f8f8; border-radius: 8px; padding: 14px; margin-bottom: 12px; }
-        .line-item-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #e0e0e0; }
-        .line-number { background: #FF5A00; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
-        .design-name { font-weight: 600; font-size: 13px; }
-        .details-table { width: 100%; font-size: 11px; }
+        .line-item { border: 1px solid #e5e5e5; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+        .line-item-header { display: flex; align-items: center; gap: 10px; background: #111; padding: 10px 14px; }
+        .line-number { background: #FF5A00; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+        .line-header-info { flex: 1; }
+        .design-name { font-weight: 600; font-size: 13px; color: #fff; display: block; }
+        .line-service { font-size: 11px; color: rgba(255,255,255,0.6); display: block; margin-top: 1px; }
+        .line-qty { font-size: 12px; font-weight: 700; color: #FF5A00; flex-shrink: 0; }
+        .details-table { width: 100%; font-size: 11px; padding: 10px 14px; }
         .details-table td { padding: 3px 0; }
-        .details-table .label { color: #666; width: 80px; }
-        .costs-row { display: flex; gap: 10px; margin-top: 12px; }
-        .cost-item { flex: 1; background: white; padding: 8px; border-radius: 6px; text-align: center; }
-        .cost-label { display: block; font-size: 10px; color: #666; }
+        .details-table .label { color: #888; width: 70px; font-weight: 600; }
+        .costs-row { display: flex; gap: 8px; padding: 10px 14px; background: #f9f9f9; border-top: 1px solid #eee; }
+        .cost-item { flex: 1; text-align: center; }
+        .cost-label { display: block; font-size: 10px; color: #888; text-transform: uppercase; }
         .cost-value { display: block; font-size: 12px; font-weight: 600; margin-top: 2px; }
-        .summary-card { background: #f8f8f8; border-radius: 8px; padding: 16px; }
-        .summary-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 12px; }
-        .summary-row.bold { font-weight: 700; }
-        .summary-divider { height: 1px; background: #e0e0e0; margin: 8px 0; }
-        .total-box { background: #FF5A00; color: white; border-radius: 8px; padding: 14px; margin-top: 12px; }
-        .total-row { display: flex; justify-content: space-between; align-items: center; }
-        .total-label { font-size: 14px; font-weight: 700; }
-        .total-value { font-size: 22px; font-weight: 700; }
-        .per-piece-row { display: flex; justify-content: space-between; margin-top: 6px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.3); font-size: 12px; }
+        .summary-table { width: 100%; border-collapse: collapse; }
+        .summary-table td { padding: 5px 0; font-size: 12px; }
+        .summary-table .label-col { color: #555; }
+        .summary-table .val-col { text-align: right; font-weight: 500; }
+        .summary-table .bold td { font-weight: 700; color: #111; }
+        .summary-table .divider td { border-top: 1px solid #e5e5e5; padding-top: 8px; margin-top: 4px; }
+        .total-box { background: #FF5A00; color: white; border-radius: 8px; padding: 14px 16px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .total-label { font-size: 14px; font-weight: 700; letter-spacing: 1px; }
+        .total-values { text-align: right; }
+        .total-main { font-size: 24px; font-weight: 800; }
+        .total-per-piece { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+        .markup-highlight { color: #16A34A; font-weight: 700; }
         .sales-section { margin-top: 20px; }
-        .profit-box { background: #059669; color: white; border-radius: 8px; padding: 14px; margin-top: 12px; }
-        .profit-box.negative { background: #dc2626; }
-        .profit-label { font-size: 12px; font-weight: 700; }
-        .profit-value { font-size: 20px; font-weight: 700; text-align: right; }
-        .profit-margin { font-size: 11px; opacity: 0.8; text-align: right; margin-top: 4px; }
-        .comparison-box { background: #FFF0E6; border-radius: 8px; padding: 12px; margin-top: 12px; }
-        .comparison-title { font-size: 11px; font-weight: 600; color: #FF5A00; margin-bottom: 8px; }
-        .comparison-row { display: flex; justify-content: space-between; font-size: 11px; padding: 3px 0; }
-        .positive { color: #059669; }
-        .negative { color: #dc2626; }
-        .footer { margin-top: 30px; text-align: center; font-size: 10px; color: #999; border-top: 1px solid #e0e0e0; padding-top: 16px; }
+        .profit-box { color: white; border-radius: 8px; padding: 14px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .profit-positive { background: #059669; }
+        .profit-negative { background: #dc2626; }
+        .profit-label { font-size: 12px; font-weight: 700; letter-spacing: 0.5px; }
+        .profit-values { text-align: right; }
+        .profit-amount { font-size: 22px; font-weight: 800; }
+        .profit-margin { font-size: 11px; opacity: 0.8; }
+        .footer { margin-top: 28px; text-align: center; font-size: 10px; color: #aaa; border-top: 1px solid #eee; padding-top: 14px; }
+        @media print { body { padding: 20px; } }
       </style>
     </head>
     <body>
       <div class="header">
         <div class="header-top">
-          <div class="company-info">
-            <div class="company-name">${user?.businessName || 'Print Shop Quote'}</div>
-            ${user?.email || user?.phone ? `<div class="company-details">${[user.email, user.phone].filter(Boolean).join(' • ')}</div>` : ''}
+          <div>
+            <div class="company-name">${user?.businessName || 'Katalyst Ko Printshop'}</div>
+            ${user?.email || user?.phone ? `<div class="company-details">${[user.email, user.phone].filter(Boolean).join(' · ')}</div>` : ''}
           </div>
-          <div class="quote-badge ${quote.status === 'sale' ? 'sale-badge' : ''}">${quote.status === 'sale' ? 'SALE' : 'QUOTE'}</div>
+          <div class="quote-badge ${statusClass}">${statusLabel}</div>
         </div>
         <div class="client-info">
           <div class="client-name">${quote.personOrganization}</div>
@@ -134,19 +145,19 @@ function generateQuoteHTML(quote: Quote, user?: UserProfile | null): string {
       <div class="section">
         <div class="section-title">Order Information</div>
         <div class="info-grid">
-          <div class="info-item">
+          <div>
             <div class="info-label">Order Date</div>
             <div class="info-value">${quote.orderDate || 'N/A'}</div>
           </div>
-          <div class="info-item">
+          <div>
             <div class="info-label">In-Hands Date</div>
             <div class="info-value">${quote.inHandsDate || 'N/A'}</div>
           </div>
-          <div class="info-item">
+          <div>
             <div class="info-label">Order Type</div>
             <div class="info-value">${quote.orderType}</div>
           </div>
-          <div class="info-item">
+          <div>
             <div class="info-label">Total Quantity</div>
             <div class="info-value">${quote.calculations.totalQuantity} pcs</div>
           </div>
@@ -160,53 +171,30 @@ function generateQuoteHTML(quote: Quote, user?: UserProfile | null): string {
 
       <div class="section">
         <div class="section-title">Pricing Summary</div>
-        <div class="summary-card">
-          <div class="summary-row">
-            <span>Product Cost</span>
-            <span>${formatCurrency(quote.calculations.productCostTotal)}</span>
-          </div>
-          <div class="summary-row">
-            <span>Service Cost</span>
-            <span>${formatCurrency(quote.calculations.serviceCostTotal)}</span>
-          </div>
-          <div class="summary-row">
-            <span>Service Fees</span>
-            <span>${formatCurrency(quote.calculations.serviceFeeTotal)}</span>
-          </div>
-          <div class="summary-divider"></div>
-          <div class="summary-row bold">
-            <span>Cost of Goods</span>
-            <span>${formatCurrency(quote.calculations.cogTotal)}</span>
-          </div>
-          <div class="summary-row">
-            <span>Markup (${quote.calculations.markupPercentage.toFixed(1)}%)</span>
-            <span>${formatCurrency(quote.calculations.markupAmount)}</span>
-          </div>
-          <div class="summary-divider"></div>
-          <div class="summary-row">
-            <span>Subtotal</span>
-            <span>${formatCurrency(quote.calculations.subtotal)}</span>
-          </div>
-          ${quote.hasOnlineFee ? `<div class="summary-row"><span>Online Fee (2.9% + $0.60)</span><span>${formatCurrency(quote.calculations.onlineFee)}</span></div>` : ''}
-          ${quote.hasSalesTax ? `<div class="summary-row"><span>Sales Tax (8.3%)</span><span>${formatCurrency(quote.calculations.salesTax)}</span></div>` : ''}
-          ${quote.hasCardFee ? `<div class="summary-row"><span>Card Fee (3.75%)</span><span>${formatCurrency(quote.calculations.cardFee)}</span></div>` : ''}
-          <div class="total-box">
-            <div class="total-row">
-              <span class="total-label">TOTAL</span>
-              <span class="total-value">${formatCurrency(quote.calculations.total)}</span>
-            </div>
-            <div class="per-piece-row">
-              <span>Per Piece</span>
-              <span>${formatCurrency(quote.calculations.totalPerPiece)}</span>
-            </div>
+        <table class="summary-table">
+          <tr><td class="label-col">Product Cost</td><td class="val-col">${formatCurrency(quote.calculations.productCostEach)}/ea</td><td class="val-col">${formatCurrency(quote.calculations.productCostTotal)}</td></tr>
+          <tr><td class="label-col">Service Cost</td><td class="val-col">${formatCurrency(quote.calculations.serviceCostEach)}/ea</td><td class="val-col">${formatCurrency(quote.calculations.serviceCostTotal)}</td></tr>
+          <tr><td class="label-col">Service Fees</td><td class="val-col">${formatCurrency(quote.calculations.serviceFeeEach)}/ea</td><td class="val-col">${formatCurrency(quote.calculations.serviceFeeTotal)}</td></tr>
+          <tr class="divider bold"><td class="label-col">Cost of Goods</td><td class="val-col">${formatCurrency(quote.calculations.cogEach)}/ea</td><td class="val-col">${formatCurrency(quote.calculations.cogTotal)}</td></tr>
+          <tr><td class="label-col markup-highlight">Markup (${quote.calculations.markupPercentage.toFixed(1)}%)</td><td class="val-col markup-highlight">${formatCurrency(quote.calculations.totalQuantity > 0 ? quote.calculations.markupAmount / quote.calculations.totalQuantity : 0)}/ea</td><td class="val-col markup-highlight">${formatCurrency(quote.calculations.markupAmount)}</td></tr>
+          <tr class="divider bold"><td class="label-col">Subtotal</td><td class="val-col">${formatCurrency(quote.calculations.totalQuantity > 0 ? quote.calculations.subtotal / quote.calculations.totalQuantity : 0)}/ea</td><td class="val-col">${formatCurrency(quote.calculations.subtotal)}</td></tr>
+          ${quote.hasOnlineFee ? `<tr><td class="label-col">Online Fee (2.9% + $0.60)</td><td></td><td class="val-col">${formatCurrency(quote.calculations.onlineFee)}</td></tr>` : ''}
+          ${quote.hasSalesTax ? `<tr><td class="label-col">Sales Tax (8.3%)</td><td></td><td class="val-col">${formatCurrency(quote.calculations.salesTax)}</td></tr>` : ''}
+          ${quote.hasCardFee ? `<tr><td class="label-col">Card Fee (3.75%)</td><td></td><td class="val-col">${formatCurrency(quote.calculations.cardFee)}</td></tr>` : ''}
+        </table>
+        <div class="total-box">
+          <span class="total-label">TOTAL</span>
+          <div class="total-values">
+            <div class="total-main">${formatCurrency(quote.calculations.total)}</div>
+            <div class="total-per-piece">${formatCurrency(quote.calculations.totalPerPiece)}/ea · ${quote.calculations.totalQuantity} pcs</div>
           </div>
         </div>
       </div>
 
-      ${quote.status === 'sale' && quote.salesData ? generateSalesHTML(quote) : ''}
+      ${(quote.status === 'active' || quote.status === 'completed') && quote.salesData ? generateSalesHTML(quote) : ''}
 
       <div class="footer">
-        Generated on ${new Date().toLocaleDateString()} • ${user?.businessName || 'Print Shop Quote System'}
+        Generated ${new Date().toLocaleDateString()} · ${user?.businessName || 'Katalyst Ko Printshop'}
       </div>
     </body>
     </html>
@@ -223,8 +211,9 @@ function generateSalesHTML(quote: Quote): string {
   const cardFee = quote.salesData.actualCardFee ?? 0;
 
   const actualCOG = quote.salesData.actualProductCost + quote.salesData.actualServiceCost +
-    serviceFeesCost + quote.salesData.actualOtherCosts + onlineFee + salesTax + cardFee;
-  const actualProfit = quote.salesData.amountCollected - actualCOG + serviceFeesProfit;
+    serviceFeesCost + quote.salesData.actualOtherCosts;
+  const actualTotalWithFees = actualCOG + onlineFee + salesTax + cardFee;
+  const actualProfit = quote.salesData.amountCollected - actualTotalWithFees + serviceFeesProfit;
   const actualProfitMargin = quote.salesData.amountCollected > 0
     ? ((actualProfit / quote.salesData.amountCollected) * 100)
     : 0;
@@ -234,61 +223,36 @@ function generateSalesHTML(quote: Quote): string {
   return `
     <div class="section sales-section">
       <div class="section-title">Sales Tracking</div>
-      <div class="summary-card">
-        <div class="summary-row">
-          <span>Converted Date</span>
-          <span>${quote.salesData.convertedDate}</span>
-        </div>
-        ${quote.salesData.completedDate ? `<div class="summary-row"><span>Completed Date</span><span>${quote.salesData.completedDate}</span></div>` : ''}
-        <div class="summary-divider"></div>
-        <div class="summary-row">
-          <span>Actual Product Cost</span>
-          <span>${formatCurrency(quote.salesData.actualProductCost)}</span>
-        </div>
-        ${quote.salesData.productVendors?.length ? `<div class="summary-row"><span>Vendor(s)</span><span>${quote.salesData.productVendors.join(', ')}</span></div>` : ''}
-        <div class="summary-row">
-          <span>Actual Service Cost</span>
-          <span>${formatCurrency(quote.salesData.actualServiceCost)}</span>
-        </div>
-        ${quote.salesData.applicator ? `<div class="summary-row"><span>Applicator</span><span>${quote.salesData.applicator}</span></div>` : ''}
-        <div class="summary-row">
-          <span>Service Fees (Cost)</span>
-          <span>${formatCurrency(serviceFeesCost)}</span>
-        </div>
-        ${serviceFeesProfit > 0 ? `<div class="summary-row"><span>Service Fees (Profit)</span><span class="positive">+${formatCurrency(serviceFeesProfit)}</span></div>` : ''}
-        ${quote.salesData.actualOtherCosts > 0 ? `<div class="summary-row"><span>Other Costs</span><span>${formatCurrency(quote.salesData.actualOtherCosts)}</span></div>` : ''}
-        ${onlineFee > 0 ? `<div class="summary-row"><span>Online Fee</span><span>${formatCurrency(onlineFee)}</span></div>` : ''}
-        ${salesTax > 0 ? `<div class="summary-row"><span>Sales Tax</span><span>${formatCurrency(salesTax)}</span></div>` : ''}
-        ${cardFee > 0 ? `<div class="summary-row"><span>Card Fee</span><span>${formatCurrency(cardFee)}</span></div>` : ''}
-        <div class="summary-divider"></div>
-        <div class="summary-row bold">
-          <span>Actual COG</span>
-          <span>${formatCurrency(actualCOG)}</span>
-        </div>
-        <div class="summary-row">
-          <span>Amount Collected</span>
-          <span>${formatCurrency(quote.salesData.amountCollected)}</span>
-        </div>
-        <div class="profit-box ${actualProfit < 0 ? 'negative' : ''}">
-          <div class="profit-label">ACTUAL PROFIT</div>
-          <div class="profit-value">${formatCurrency(actualProfit)}</div>
+      <table class="summary-table">
+        <tr><td class="label-col">Product Cost</td><td class="val-col" style="color:#888">Quoted: ${formatCurrency(quote.calculations.productCostTotal)}</td><td class="val-col">Actual: ${formatCurrency(quote.salesData.actualProductCost)}</td></tr>
+        <tr><td class="label-col">Service Cost</td><td class="val-col" style="color:#888">Quoted: ${formatCurrency(quote.calculations.serviceCostTotal)}</td><td class="val-col">Actual: ${formatCurrency(quote.salesData.actualServiceCost)}</td></tr>
+        <tr><td class="label-col">Service Fees</td><td class="val-col" style="color:#888">Quoted: ${formatCurrency(quote.calculations.serviceFeeTotal)}</td><td class="val-col">Actual: ${formatCurrency(serviceFeesCost)}</td></tr>
+        ${quote.salesData.actualOtherCosts > 0 ? `<tr><td class="label-col">Other Costs</td><td></td><td class="val-col">${formatCurrency(quote.salesData.actualOtherCosts)}</td></tr>` : ''}
+        <tr class="divider bold"><td class="label-col">Cost of Goods</td><td class="val-col" style="color:#888">${formatCurrency(quote.calculations.cogTotal)}</td><td class="val-col">${formatCurrency(actualCOG)}</td></tr>
+        ${onlineFee > 0 ? `<tr><td class="label-col">Online Fee</td><td></td><td class="val-col">${formatCurrency(onlineFee)}</td></tr>` : ''}
+        ${salesTax > 0 ? `<tr><td class="label-col">Sales Tax</td><td></td><td class="val-col">${formatCurrency(salesTax)}</td></tr>` : ''}
+        ${cardFee > 0 ? `<tr><td class="label-col">Card Fee</td><td></td><td class="val-col">${formatCurrency(cardFee)}</td></tr>` : ''}
+        <tr class="divider"><td class="label-col" style="font-weight:600">Amount Collected</td><td></td><td class="val-col" style="font-weight:700;font-size:14px">${formatCurrency(quote.salesData.amountCollected)}</td></tr>
+      </table>
+      <div class="profit-box ${actualProfit >= 0 ? 'profit-positive' : 'profit-negative'}">
+        <span class="profit-label">ACTUAL PROFIT</span>
+        <div class="profit-values">
+          <div class="profit-amount">${formatCurrency(actualProfit)}</div>
           <div class="profit-margin">${actualProfitMargin.toFixed(1)}% margin</div>
         </div>
-        <div class="comparison-box">
-          <div class="comparison-title">Quoted vs Actual</div>
-          <div class="comparison-row">
-            <span>COG Difference</span>
-            <span class="${quotedVsActualCOGDiff >= 0 ? 'positive' : 'negative'}">${quotedVsActualCOGDiff >= 0 ? '+' : ''}${formatCurrency(quotedVsActualCOGDiff)}</span>
-          </div>
-          <div class="comparison-row">
-            <span>Profit Difference</span>
-            <span class="${quotedVsActualProfitDiff >= 0 ? 'positive' : 'negative'}">${quotedVsActualProfitDiff >= 0 ? '+' : ''}${formatCurrency(quotedVsActualProfitDiff)}</span>
-          </div>
-        </div>
-        ${quote.salesData.notes ? `<div class="summary-divider"></div><div class="summary-row"><span>Notes:</span><span>${quote.salesData.notes}</span></div>` : ''}
       </div>
+      ${quote.salesData.notes ? `<p style="margin-top:12px;font-size:12px;color:#666;font-style:italic">${quote.salesData.notes}</p>` : ''}
     </div>
   `;
+}
+
+function openHtmlInNewWindow(html: string): Window | null {
+  const win = window.open('', '_blank');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+  }
+  return win;
 }
 
 export async function generateAndSharePDF(quote: Quote, user?: UserProfile | null): Promise<void> {
@@ -296,30 +260,27 @@ export async function generateAndSharePDF(quote: Quote, user?: UserProfile | nul
     console.log('Generating PDF for quote:', quote.id);
     const html = generateQuoteHTML(quote, user);
 
-    const { uri } = await Print.printToFileAsync({
-      html,
-      base64: false,
-    });
-
-    console.log('PDF generated at:', uri);
-
     if (Platform.OS === 'web') {
-      const link = document.createElement('a');
-      link.href = uri;
-      link.download = `${quote.status === 'sale' ? 'Sale' : 'Quote'}_${quote.projectName.replace(/\s+/g, '_')}.pdf`;
-      link.click();
-    } else {
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: `Share ${quote.status === 'sale' ? 'Sale' : 'Quote'} PDF`,
-          UTI: 'com.adobe.pdf',
-        });
-      } else {
-        console.log('Sharing is not available on this device');
-        throw new Error('Sharing is not available on this device');
+      const win = openHtmlInNewWindow(html);
+      if (!win) {
+        throw new Error('Popup blocked. Please allow popups for this site.');
       }
+      setTimeout(() => {
+        try { win.print(); } catch (_) {}
+      }, 800);
+      return;
+    }
+
+    const { uri } = await Print.printToFileAsync({ html, base64: false });
+    const isAvailable = await Sharing.isAvailableAsync();
+    if (isAvailable) {
+      await Sharing.shareAsync(uri, {
+        mimeType: 'application/pdf',
+        dialogTitle: `Share Quote PDF`,
+        UTI: 'com.adobe.pdf',
+      });
+    } else {
+      throw new Error('Sharing is not available on this device');
     }
   } catch (error) {
     console.error('Error generating PDF:', error);
@@ -331,6 +292,18 @@ export async function printQuote(quote: Quote, user?: UserProfile | null): Promi
   try {
     console.log('Printing quote:', quote.id);
     const html = generateQuoteHTML(quote, user);
+
+    if (Platform.OS === 'web') {
+      const win = openHtmlInNewWindow(html);
+      if (!win) {
+        throw new Error('Popup blocked. Please allow popups for this site.');
+      }
+      setTimeout(() => {
+        try { win.print(); } catch (_) {}
+      }, 800);
+      return;
+    }
+
     await Print.printAsync({ html });
   } catch (error) {
     console.error('Error printing:', error);

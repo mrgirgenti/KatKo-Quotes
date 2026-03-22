@@ -30,6 +30,9 @@ import {
   Trash2,
   Sheet,
   Lock,
+  ChevronDown,
+  ChevronUp,
+  Flame,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -51,6 +54,11 @@ export default function QuoteDetailScreen() {
   const [toastMessage, setToastMessage] = useState('');
   const [menuVisible, setMenuVisible] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+
+  const toggleItem = useCallback((itemId: string) => {
+    setExpandedItems(prev => ({ ...prev, [itemId]: prev[itemId] === false ? true : false }));
+  }, []);
   const { isDesktop } = useBreakpoint();
 
   const quote = useMemo(() => {
@@ -107,13 +115,11 @@ export default function QuoteDetailScreen() {
 
   const handleConvertToSale = useCallback(() => {
     if (!quote) return;
+    setMenuVisible(false);
     convertToSale(quote.id);
     setToastMessage('Project marked as Active!');
     setToastVisible(true);
-    setTimeout(() => {
-      router.replace('/(tabs)/projects');
-    }, 500);
-  }, [quote, convertToSale, router]);
+  }, [quote, convertToSale]);
 
   const handleTrackSales = useCallback(() => {
     if (!quote) return;
@@ -126,29 +132,26 @@ export default function QuoteDetailScreen() {
   const handleRevertToQuote = useCallback(() => {
     if (!quote) return;
     if (quote.isLocked) {
-      Alert.alert('Sale Locked', 'This sale is locked. Unlock it first to revert.');
+      Alert.alert('Locked', 'Unlock this project first before reverting.');
       return;
     }
     setMenuVisible(false);
     Alert.alert(
-      'Revert to Quote',
-      `Are you sure you want to revert "${quote.projectName}" back to a pending quote?`,
+      'Revert to Quoted',
+      `Move "${quote.projectName}" back to Quoted status?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Revert',
           onPress: () => {
             convertToQuote(quote.id);
-            setToastMessage('Sale reverted to quote!');
+            setToastMessage('Reverted to Quoted status.');
             setToastVisible(true);
-            setTimeout(() => {
-              router.replace('/(tabs)/projects');
-            }, 500);
           },
         },
       ]
     );
-  }, [quote, convertToQuote, router]);
+  }, [quote, convertToQuote]);
 
   const handleSaveAndLock = useCallback(() => {
     if (!quote) return;
@@ -277,6 +280,365 @@ export default function QuoteDetailScreen() {
     );
   }
 
+  const renderOrderInfo = () => (
+    <View style={styles.section}>
+      <View style={styles.card}>
+        <View style={styles.orderHeaderRow}>
+          <View style={styles.orderHeaderLeft}>
+            {(quote.status === 'active' || quote.status === 'completed') && (
+              <View style={[styles.saleBadge, quote.status === 'completed' && { backgroundColor: '#16A34A' }]}>
+                <CheckCircle size={12} color="#fff" />
+                <Text style={styles.saleBadgeText}>{quote.status === 'completed' ? 'COMPLETED' : 'ACTIVE'}</Text>
+              </View>
+            )}
+            <View style={styles.orderTypeBadge}>
+              <Text style={styles.orderTypeBadgeText}>{quote.orderType}</Text>
+            </View>
+          </View>
+          {quote.invoiceNumber ? (
+            <View style={styles.invoiceBadge}>
+              <FileText size={12} color={Colors.light.tint} />
+              <Text style={styles.invoiceText}>#{quote.invoiceNumber}</Text>
+            </View>
+          ) : null}
+        </View>
+        <Text style={styles.orderClientName}>{quote.personOrganization}</Text>
+        <Text style={styles.orderProjectName}>{quote.projectName}</Text>
+        <View style={styles.orderDivider} />
+        <View style={styles.infoRow}>
+          <Calendar size={15} color={Colors.light.textSecondary} />
+          <Text style={styles.infoLabel}>Order Date:</Text>
+          <Text style={styles.infoValue}>{formatDate(quote.orderDate)}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Calendar size={15} color={Colors.light.textSecondary} />
+          <Text style={styles.infoLabel}>In-Hands:</Text>
+          <Text style={styles.infoValue}>{formatDate(quote.inHandsDate) || 'N/A'}</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderLineItems = () => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionTitle}>Line Items ({quote.lineItems.length})</Text>
+      </View>
+      {quote.lineItems.map((item, index) => {
+        const isExpanded = expandedItems[item.id] !== false;
+        const qty = getItemQuantity(item);
+        const calcs = calculateLineItemSubtotal(item);
+        return (
+          <View key={item.id} style={styles.lineItemCard}>
+            <TouchableOpacity style={styles.lineItemHeader} onPress={() => toggleItem(item.id)} activeOpacity={0.8}>
+              <View style={styles.lineItemHeaderLeft}>
+                <Text style={styles.lineItemNumber}>#{index + 1}</Text>
+                <View style={styles.lineItemHeaderInfo}>
+                  <Text style={styles.lineItemHeaderName} numberOfLines={1}>{item.designName || 'Untitled Design'}</Text>
+                  <Text style={styles.lineItemHeaderSub}>{item.serviceStyle}{item.applicator ? ` · ${item.applicator}` : ''}</Text>
+                </View>
+              </View>
+              <View style={styles.lineItemHeaderRight}>
+                <Text style={styles.lineItemHeaderQty}>{qty} pcs</Text>
+                {isExpanded ? <ChevronUp size={16} color="rgba(255,255,255,0.7)" /> : <ChevronDown size={16} color="rgba(255,255,255,0.7)" />}
+              </View>
+            </TouchableOpacity>
+
+            {isExpanded && (
+              <View style={styles.lineItemBody}>
+                <View style={styles.lineItemDetails}>
+                  {item.applicator ? (
+                    <View style={styles.detailRow}>
+                      <User size={13} color={Colors.light.tint} style={{ flexShrink: 0 }} />
+                      <Text style={styles.detailLabel}>Applicator</Text>
+                      <Text style={[styles.detailValue, styles.applicatorValue]} numberOfLines={1}>{item.applicator}</Text>
+                    </View>
+                  ) : null}
+                  <View style={styles.detailRow}>
+                    <Truck size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
+                    <Text style={styles.detailLabel}>Source</Text>
+                    <Text style={styles.detailValue} numberOfLines={1}>{item.apparelProvider}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Package size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
+                    <Text style={styles.detailLabel}>Product</Text>
+                    <Text style={styles.detailValue} numberOfLines={2}>{item.product} — {item.productColor}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <MapPin size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
+                    <Text style={styles.detailLabel}>Location</Text>
+                    <Text style={styles.detailValue} numberOfLines={2}>
+                      {[item.location1, item.location2].filter(Boolean).join(', ') || 'N/A'}
+                      {item.locationDetails ? ` — ${item.locationDetails}` : ''}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.sizesBox}>
+                  <Text style={styles.sizesLabel}>Sizes & Quantities</Text>
+                  <Text style={styles.sizesValue}>{getTotalSizeQuantities(item)}</Text>
+                  <Text style={styles.totalQty}>Total: {qty} pcs</Text>
+                </View>
+
+                <View style={styles.costsBox}>
+                  <View style={styles.costItem}>
+                    <Text style={styles.costLabel}>Product</Text>
+                    <Text style={styles.costValue}>{formatCurrency(item.productCostEach)}/ea</Text>
+                  </View>
+                  <View style={styles.costItem}>
+                    <Text style={styles.costLabel}>Service</Text>
+                    <Text style={styles.costValue}>{formatCurrency(item.serviceCostEach)}/ea</Text>
+                  </View>
+                  <View style={styles.costItem}>
+                    <Text style={styles.costLabel}>Fees</Text>
+                    <Text style={styles.costValue}>{formatCurrency(item.serviceFeeEach)}/ea</Text>
+                  </View>
+                  <View style={styles.costItem}>
+                    <Text style={styles.costLabel}>Markup</Text>
+                    <Text style={styles.costValue}>{formatCurrency(item.markupEach || 0)}/ea</Text>
+                  </View>
+                </View>
+
+                <View style={styles.lineItemSubtotalBox}>
+                  <Text style={styles.lineItemSubtotalLabel}>Subtotal</Text>
+                  <View style={styles.lineItemSubtotalRight}>
+                    <Text style={styles.lineItemSubtotalPer}>{calcs.quantity} pcs @ {formatCurrency(calcs.perPiece)}/ea</Text>
+                    <Text style={styles.lineItemSubtotalValue}>{formatCurrency(calcs.subtotal)}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+          </View>
+        );
+      })}
+    </View>
+  );
+
+  const renderPricingSummary = () => {
+    const q = quote.calculations;
+    const perPc = (val: number) => q.totalQuantity > 0 ? val / q.totalQuantity : 0;
+    return (
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Pricing Summary</Text>
+        <View style={styles.summaryCard}>
+          <View style={styles.pricingTable}>
+            <View style={styles.pricingTableHeader}>
+              <Text style={styles.pricingTHLabel}></Text>
+              <Text style={styles.pricingTHValue}>EACH</Text>
+              <Text style={styles.pricingTHValue}>TOTAL</Text>
+            </View>
+
+            <View style={styles.pricingRow}>
+              <Text style={styles.pricingRowLabel}>Product Cost</Text>
+              <Text style={styles.pricingRowValue}>{formatCurrency(perPc(q.productCostTotal))}</Text>
+              <Text style={styles.pricingRowValue}>{formatCurrency(q.productCostTotal)}</Text>
+            </View>
+            <View style={styles.pricingRow}>
+              <Text style={styles.pricingRowLabel}>Service Cost</Text>
+              <Text style={styles.pricingRowValue}>{formatCurrency(perPc(q.serviceCostTotal))}</Text>
+              <Text style={styles.pricingRowValue}>{formatCurrency(q.serviceCostTotal)}</Text>
+            </View>
+            <View style={styles.pricingRow}>
+              <Text style={styles.pricingRowLabel}>Service Fees</Text>
+              <Text style={styles.pricingRowValue}>{formatCurrency(perPc(q.serviceFeeTotal))}</Text>
+              <Text style={styles.pricingRowValue}>{formatCurrency(q.serviceFeeTotal)}</Text>
+            </View>
+
+            <View style={[styles.pricingRow, styles.pricingRowCOG]}>
+              <Text style={styles.pricingRowLabelCOG}>Cost of Goods</Text>
+              <Text style={styles.pricingRowValueCOG}>{formatCurrency(perPc(q.cogTotal))}</Text>
+              <Text style={styles.pricingRowValueCOG}>{formatCurrency(q.cogTotal)}</Text>
+            </View>
+
+            <View style={[styles.pricingRow, styles.pricingRowMarkup]}>
+              <Text style={styles.pricingRowLabelMarkup}>Markup ({q.markupPercentage.toFixed(1)}%)</Text>
+              <Text style={styles.pricingRowValueMarkup}>{formatCurrency(perPc(q.markupAmount))}</Text>
+              <Text style={styles.pricingRowValueMarkup}>{formatCurrency(q.markupAmount)}</Text>
+            </View>
+
+            <View style={styles.pricingDivider} />
+
+            <View style={[styles.pricingRow, styles.pricingRowBold]}>
+              <Text style={styles.pricingRowLabelBold}>Subtotal</Text>
+              <Text style={styles.pricingRowValueBold}>{formatCurrency(perPc(q.subtotal))}</Text>
+              <Text style={styles.pricingRowValueBold}>{formatCurrency(q.subtotal)}</Text>
+            </View>
+
+            {q.onlineFee > 0 && (
+              <View style={styles.pricingRow}>
+                <Text style={styles.pricingRowLabel}>Online Fee (2.9% + $0.60)</Text>
+                <Text style={styles.pricingRowValue}>{formatCurrency(perPc(q.onlineFee))}</Text>
+                <Text style={styles.pricingRowValue}>{formatCurrency(q.onlineFee)}</Text>
+              </View>
+            )}
+            {q.cardFee > 0 && (
+              <View style={styles.pricingRow}>
+                <Text style={styles.pricingRowLabel}>Card Fee (3.75%)</Text>
+                <Text style={styles.pricingRowValue}>{formatCurrency(perPc(q.cardFee))}</Text>
+                <Text style={styles.pricingRowValue}>{formatCurrency(q.cardFee)}</Text>
+              </View>
+            )}
+            {q.salesTax > 0 && (
+              <View style={styles.pricingRow}>
+                <Text style={styles.pricingRowLabel}>Sales Tax (8.3%)</Text>
+                <Text style={styles.pricingRowValue}>{formatCurrency(perPc(q.salesTax))}</Text>
+                <Text style={styles.pricingRowValue}>{formatCurrency(q.salesTax)}</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.totalBox}>
+            <Text style={styles.totalLabel}>TOTAL</Text>
+            <View style={styles.totalDoubleValue}>
+              <Text style={styles.totalValueSmall}>{formatCurrency(q.totalPerPiece)}/ea</Text>
+              <Text style={styles.totalValue}>{formatCurrency(q.total)}</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  const renderSalesTracking = () => {
+    if ((quote.status !== 'active' && quote.status !== 'completed') || !quote.salesData) return null;
+    const calc = getSalesCalculations();
+    const uniqueVendors = quote.salesData.lineItemCosts
+      ? [...new Set(quote.salesData.lineItemCosts.map(c => c.productVendor))]
+      : quote.salesData.productVendors || [];
+    const uniqueApplicators = quote.salesData.lineItemCosts
+      ? [...new Set(quote.salesData.lineItemCosts.map(c => c.applicator))]
+      : quote.salesData.applicator ? [quote.salesData.applicator] : [];
+    return (
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Sales Tracking</Text>
+        <View style={styles.salesTrackingCard}>
+          <View style={styles.vendorApplicatorRow}>
+            <View style={styles.vendorApplicatorItem}>
+              <Text style={styles.vendorApplicatorLabel}>Applicator(s)</Text>
+              <Text style={styles.vendorApplicatorValue}>{uniqueApplicators.join(', ') || 'N/A'}</Text>
+            </View>
+            <View style={styles.vendorApplicatorItem}>
+              <Text style={styles.vendorApplicatorLabel}>Source(s)</Text>
+              <Text style={styles.vendorApplicatorValue}>{uniqueVendors.join(', ') || 'N/A'}</Text>
+            </View>
+          </View>
+
+          <View style={styles.salesDatesRow}>
+            <View style={styles.salesDateItem}>
+              <Text style={styles.salesDateLabel}>Converted</Text>
+              <Text style={styles.salesDateValue}>{formatDate(quote.salesData.convertedDate)}</Text>
+            </View>
+            {quote.salesData.completedDate && (
+              <View style={styles.salesDateItem}>
+                <Text style={styles.salesDateLabel}>Completed</Text>
+                <Text style={styles.salesDateValue}>{formatDate(quote.salesData.completedDate)}</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.salesDivider} />
+
+          {calc && (
+            <View style={styles.salesTableContainer}>
+              <View style={styles.salesTableHeader}>
+                <Text style={styles.salesTableHeaderLabel}></Text>
+                <Text style={styles.salesTableHeaderValue}>QUOTED</Text>
+                <Text style={styles.salesTableHeaderValue}>ACTUAL</Text>
+              </View>
+              <View style={styles.salesTableRow}>
+                <Text style={styles.salesTableRowLabel}>Product Cost</Text>
+                <Text style={styles.salesTableRowValue}>{formatCurrency(quote.calculations.productCostTotal)}</Text>
+                <Text style={styles.salesTableRowValue}>{formatCurrency(quote.salesData.actualProductCost)}</Text>
+              </View>
+              <View style={styles.salesTableRow}>
+                <Text style={styles.salesTableRowLabel}>Service Cost</Text>
+                <Text style={styles.salesTableRowValue}>{formatCurrency(quote.calculations.serviceCostTotal)}</Text>
+                <Text style={styles.salesTableRowValue}>{formatCurrency(quote.salesData.actualServiceCost)}</Text>
+              </View>
+              <View style={styles.salesTableRow}>
+                <Text style={styles.salesTableRowLabel}>Service Fees</Text>
+                <Text style={styles.salesTableRowValue}>{formatCurrency(quote.calculations.serviceFeeTotal)}</Text>
+                <Text style={styles.salesTableRowValue}>{formatCurrency(quote.salesData.actualServiceFeesCost ?? 0)}</Text>
+              </View>
+              {quote.salesData.actualOtherCosts > 0 && (
+                <View style={styles.salesTableRow}>
+                  <Text style={styles.salesTableRowLabel}>Other Costs</Text>
+                  <Text style={styles.salesTableRowValue}>{formatCurrency(0)}</Text>
+                  <Text style={styles.salesTableRowValue}>{formatCurrency(quote.salesData.actualOtherCosts)}</Text>
+                </View>
+              )}
+              <View style={styles.salesTableDivider} />
+              <View style={styles.salesTableRowBold}>
+                <Text style={styles.salesTableRowLabelBold}>Cost of Goods</Text>
+                <Text style={styles.salesTableRowValueBold}>{formatCurrency(quote.calculations.cogTotal)}</Text>
+                <Text style={styles.salesTableRowValueBold}>{formatCurrency(calc.actualCOG)}</Text>
+              </View>
+              <View style={styles.salesTableRow}>
+                <Text style={styles.salesTableRowLabel}>Markup ({quote.calculations.markupPercentage.toFixed(1)}%)</Text>
+                <Text style={styles.salesTableRowValue}>{formatCurrency(quote.calculations.markupAmount)}</Text>
+                <Text style={[styles.salesTableRowValue, calc.actualProfit < quote.calculations.markupAmount ? styles.negativeText : styles.positiveText]}>
+                  {formatCurrency(calc.actualProfit)}
+                </Text>
+              </View>
+              <View style={styles.salesTableDivider} />
+              <View style={styles.salesTableRowBold}>
+                <Text style={styles.salesTableRowLabelBold}>Subtotal</Text>
+                <Text style={styles.salesTableRowValueBold}>{formatCurrency(quote.calculations.subtotal)}</Text>
+                <Text style={styles.salesTableRowValueBold}>{formatCurrency(calc.actualCOG + calc.actualProfit)}</Text>
+              </View>
+              {calc.onlineFee > 0 && (
+                <View style={styles.salesTableRow}>
+                  <Text style={styles.salesTableRowLabel}>Online Fee</Text>
+                  <Text style={styles.salesTableRowValue}>{formatCurrency(quote.calculations.onlineFee)}</Text>
+                  <Text style={styles.salesTableRowValue}>{formatCurrency(calc.onlineFee)}</Text>
+                </View>
+              )}
+              {calc.cardFee > 0 && (
+                <View style={styles.salesTableRow}>
+                  <Text style={styles.salesTableRowLabel}>Card Fee</Text>
+                  <Text style={styles.salesTableRowValue}>{formatCurrency(quote.calculations.cardFee)}</Text>
+                  <Text style={styles.salesTableRowValue}>{formatCurrency(calc.cardFee)}</Text>
+                </View>
+              )}
+              {calc.salesTax > 0 && (
+                <View style={styles.salesTableRow}>
+                  <Text style={styles.salesTableRowLabel}>Sales Tax</Text>
+                  <Text style={styles.salesTableRowValue}>{formatCurrency(quote.calculations.salesTax)}</Text>
+                  <Text style={styles.salesTableRowValue}>{formatCurrency(calc.salesTax)}</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {calc && (
+            <View style={styles.amountProfitRow}>
+              <View style={styles.amountCollectedBoxSide}>
+                <Text style={styles.amountCollectedLabelSide}>Amount Collected</Text>
+                <Text style={styles.amountCollectedValueSide}>{formatCurrency(quote.salesData.amountCollected)}</Text>
+                <Text style={styles.quotedTotalHintSide}>Quoted: {formatCurrency(quote.calculations.total)}</Text>
+              </View>
+              <View style={[styles.profitBoxSide, calc.actualProfit < 0 && styles.profitBoxNegative]}>
+                <Text style={styles.profitLabelSide}>ACTUAL PROFIT</Text>
+                <View style={styles.profitValueRowSide}>
+                  {calc.actualProfit >= 0 ? <TrendingUp size={16} color="#fff" /> : <TrendingDown size={16} color="#fff" />}
+                  <Text style={styles.profitValueSide}>{formatCurrency(calc.actualProfit)}</Text>
+                </View>
+                <Text style={styles.profitMarginSide}>{calc.actualProfitMargin.toFixed(1)}% margin</Text>
+              </View>
+            </View>
+          )}
+
+          {quote.salesData.notes ? (
+            <View style={styles.notesBox}>
+              <Text style={styles.notesLabel}>Notes</Text>
+              <Text style={styles.notesText}>{quote.salesData.notes}</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <Toast
@@ -292,464 +654,69 @@ export default function QuoteDetailScreen() {
           headerTintColor: '#fff',
         }}
       />
-      
-      <ScrollView style={styles.scrollView} contentContainerStyle={[styles.content, isDesktop && { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start' }]}>
-        <View style={[styles.section, isDesktop && { width: '100%' }]}>
-          <Text style={styles.sectionTitle}>Order Information</Text>
-          <View style={styles.card}>
-            <View style={styles.orderHeaderRow}>
-              <View style={styles.orderHeaderLeft}>
-                {(quote.status === 'active' || quote.status === 'completed') && (
-                  <View style={[styles.saleBadge, quote.status === 'completed' && { backgroundColor: '#16A34A' }]}>
-                    <CheckCircle size={12} color="#fff" />
-                    <Text style={styles.saleBadgeText}>{quote.status === 'completed' ? 'COMPLETED' : 'ACTIVE'}</Text>
-                  </View>
-                )}
-                <View style={styles.orderTypeBadge}>
-                  <Text style={styles.orderTypeBadgeText}>{quote.orderType}</Text>
-                </View>
-              </View>
-              {quote.invoiceNumber && (
-                <View style={styles.invoiceBadge}>
-                  <FileText size={12} color={Colors.light.tint} />
-                  <Text style={styles.invoiceText}>#{quote.invoiceNumber}</Text>
-                </View>
-              )}
+
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+        {isDesktop ? (
+          <View style={styles.desktopLayout}>
+            <View style={styles.desktopLeft}>
+              {renderOrderInfo()}
+              {renderLineItems()}
             </View>
-            <Text style={styles.orderClientName}>{quote.personOrganization}</Text>
-            <Text style={styles.orderProjectName}>{quote.projectName}</Text>
-            <View style={styles.orderDivider} />
-            <View style={styles.infoRow}>
-              <Calendar size={16} color={Colors.light.textSecondary} />
-              <Text style={styles.infoLabel}>Order Date:</Text>
-              <Text style={styles.infoValue}>{formatDate(quote.orderDate)}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Calendar size={16} color={Colors.light.textSecondary} />
-              <Text style={styles.infoLabel}>In-Hands Date:</Text>
-              <Text style={styles.infoValue}>{formatDate(quote.inHandsDate) || 'N/A'}</Text>
+            <View style={styles.desktopRight}>
+              {renderPricingSummary()}
+              {renderSalesTracking()}
             </View>
           </View>
-        </View>
-
-        <View style={[styles.section, isDesktop && { flex: 1, minWidth: 0, marginRight: 12 }]}>
-          <Text style={styles.sectionTitle}>
-            Line Items ({quote.lineItems.length})
-          </Text>
-          {quote.lineItems.map((item, index) => (
-            <View key={item.id} style={styles.lineItemCard}>
-              <View style={styles.lineItemHeader}>
-                <Text style={styles.lineItemNumber}>#{index + 1}</Text>
-                <Text style={styles.lineItemName}>
-                  {item.designName || 'Untitled Design'}
-                </Text>
-              </View>
-              
-              <View style={styles.lineItemDetails}>
-                {item.applicator && (
-                  <View style={styles.detailRow}>
-                    <User size={14} color={Colors.light.tint} />
-                    <Text style={styles.detailLabel}>Applicator:</Text>
-                    <Text style={[styles.detailValue, styles.applicatorValue]}>{item.applicator}</Text>
-                  </View>
-                )}
-                <View style={styles.detailRow}>
-                  <Truck size={14} color={Colors.light.textSecondary} />
-                  <Text style={styles.detailLabel}>Source:</Text>
-                  <Text style={styles.detailValue}>{item.apparelProvider}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Package size={14} color={Colors.light.textSecondary} />
-                  <Text style={styles.detailLabel}>Product:</Text>
-                  <Text style={styles.detailValue}>{item.product}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Palette size={14} color={Colors.light.textSecondary} />
-                  <Text style={styles.detailLabel}>Color:</Text>
-                  <Text style={styles.detailValue}>{item.productColor}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Layers size={14} color={Colors.light.textSecondary} />
-                  <Text style={styles.detailLabel}>Service:</Text>
-                  <Text style={styles.detailValue}>{item.serviceStyle}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <MapPin size={14} color={Colors.light.textSecondary} />
-                  <Text style={styles.detailLabel}>Location:</Text>
-                  <Text style={styles.detailValue}>
-                    {[item.location1, item.location2].filter(Boolean).join(', ') || 'N/A'}
-                    {item.locationDetails ? ` - ${item.locationDetails}` : ''}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.sizesBox}>
-                <Text style={styles.sizesLabel}>Sizes & Quantities</Text>
-                <Text style={styles.sizesValue}>{getTotalSizeQuantities(item)}</Text>
-                <Text style={styles.totalQty}>Total: {getItemQuantity(item)} pcs</Text>
-              </View>
-
-              <View style={styles.costsBox}>
-                <View style={styles.costItem}>
-                  <Text style={styles.costLabel}>Product</Text>
-                  <Text style={styles.costValue}>{formatCurrency(item.productCostEach)}/ea</Text>
-                </View>
-                <View style={styles.costItem}>
-                  <Text style={styles.costLabel}>Service</Text>
-                  <Text style={styles.costValue}>{formatCurrency(item.serviceCostEach)}/ea</Text>
-                </View>
-                <View style={styles.costItem}>
-                  <Text style={styles.costLabel}>Fees</Text>
-                  <Text style={styles.costValue}>{formatCurrency(item.serviceFeeEach)}</Text>
-                </View>
-                <View style={styles.costItem}>
-                  <Text style={styles.costLabel}>Markup</Text>
-                  <Text style={styles.costValue}>{formatCurrency(item.markupEach || 0)}/ea</Text>
-                </View>
-              </View>
-
-              {(() => {
-                const calcs = calculateLineItemSubtotal(item);
-                return (
-                  <View style={styles.lineItemSubtotalBox}>
-                    <View style={styles.lineItemSubtotalRow}>
-                      <Text style={styles.lineItemSubtotalLabel}>Line Item Subtotal</Text>
-                      <Text style={styles.lineItemSubtotalValue}>{formatCurrency(calcs.subtotal)}</Text>
-                    </View>
-                    <View style={styles.lineItemPerPieceRow}>
-                      <Text style={styles.lineItemPerPieceLabel}>{calcs.quantity} pcs @ {formatCurrency(calcs.perPiece)}/ea</Text>
-                    </View>
-                  </View>
-                );
-              })()}
-            </View>
-          ))}
-        </View>
-
-        <View style={[styles.section, isDesktop && { width: 380 }]}>
-          <Text style={styles.sectionTitle}>Pricing Summary</Text>
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabelBold}>Total Quantity</Text>
-              <Text style={styles.summaryValueBold}>{quote.calculations.totalQuantity} pcs</Text>
-            </View>
-            <View style={styles.divider} />
-            
-            <View style={styles.pricingTableContainer}>
-              <View style={styles.pricingTableHeader}>
-                <Text style={styles.pricingTableHeaderLabel}></Text>
-                <Text style={styles.pricingTableHeaderValue}>EACH</Text>
-                <Text style={styles.pricingTableHeaderValue}>TOTAL</Text>
-              </View>
-
-              <View style={styles.pricingTableRow}>
-                <Text style={styles.pricingTableRowLabel}>Product Cost</Text>
-                <Text style={styles.pricingTableRowValue}>
-                  {formatCurrency(quote.calculations.totalQuantity > 0 ? quote.calculations.productCostTotal / quote.calculations.totalQuantity : 0)}
-                </Text>
-                <Text style={styles.pricingTableRowValue}>{formatCurrency(quote.calculations.productCostTotal)}</Text>
-              </View>
-
-              <View style={styles.pricingTableRow}>
-                <Text style={styles.pricingTableRowLabel}>Service Cost</Text>
-                <Text style={styles.pricingTableRowValue}>
-                  {formatCurrency(quote.calculations.totalQuantity > 0 ? quote.calculations.serviceCostTotal / quote.calculations.totalQuantity : 0)}
-                </Text>
-                <Text style={styles.pricingTableRowValue}>{formatCurrency(quote.calculations.serviceCostTotal)}</Text>
-              </View>
-
-              <View style={styles.pricingTableRow}>
-                <Text style={styles.pricingTableRowLabel}>Service Fees</Text>
-                <Text style={styles.pricingTableRowValue}>
-                  {formatCurrency(quote.calculations.totalQuantity > 0 ? quote.calculations.serviceFeeTotal / quote.calculations.totalQuantity : 0)}
-                </Text>
-                <Text style={styles.pricingTableRowValue}>{formatCurrency(quote.calculations.serviceFeeTotal)}</Text>
-              </View>
-
-              <View style={styles.pricingTableDivider} />
-
-              <View style={styles.pricingTableRowBold}>
-                <Text style={styles.pricingTableRowLabelBold}>Cost of Goods</Text>
-                <Text style={styles.pricingTableRowValueBold}>
-                  {formatCurrency(quote.calculations.totalQuantity > 0 ? quote.calculations.cogTotal / quote.calculations.totalQuantity : 0)}
-                </Text>
-                <Text style={styles.pricingTableRowValueBold}>{formatCurrency(quote.calculations.cogTotal)}</Text>
-              </View>
-
-              <View style={styles.pricingTableRow}>
-                <Text style={styles.pricingTableRowLabel}>Markup ({quote.calculations.markupPercentage.toFixed(1)}%)</Text>
-                <Text style={styles.pricingTableRowValue}>
-                  {formatCurrency(quote.calculations.totalQuantity > 0 ? quote.calculations.markupAmount / quote.calculations.totalQuantity : 0)}
-                </Text>
-                <Text style={styles.pricingTableRowValue}>{formatCurrency(quote.calculations.markupAmount)}</Text>
-              </View>
-
-              <View style={styles.pricingTableDivider} />
-
-              <View style={styles.pricingTableRowBold}>
-                <Text style={styles.pricingTableRowLabelBold}>Subtotal</Text>
-                <Text style={styles.pricingTableRowValueBold}>
-                  {formatCurrency(quote.calculations.totalQuantity > 0 ? quote.calculations.subtotal / quote.calculations.totalQuantity : 0)}
-                </Text>
-                <Text style={styles.pricingTableRowValueBold}>{formatCurrency(quote.calculations.subtotal)}</Text>
-              </View>
-
-              <View style={styles.pricingTableRow}>
-                <Text style={styles.pricingTableRowLabel}>Online Fee (2.9% + $0.60)</Text>
-                <Text style={styles.pricingTableRowValue}>
-                  {formatCurrency(quote.calculations.totalQuantity > 0 ? quote.calculations.onlineFee / quote.calculations.totalQuantity : 0)}
-                </Text>
-                <Text style={styles.pricingTableRowValue}>{formatCurrency(quote.calculations.onlineFee)}</Text>
-              </View>
-
-              <View style={styles.pricingTableRow}>
-                <Text style={styles.pricingTableRowLabel}>Card Fee (3.75%)</Text>
-                <Text style={styles.pricingTableRowValue}>
-                  {formatCurrency(quote.calculations.totalQuantity > 0 ? quote.calculations.cardFee / quote.calculations.totalQuantity : 0)}
-                </Text>
-                <Text style={styles.pricingTableRowValue}>{formatCurrency(quote.calculations.cardFee)}</Text>
-              </View>
-
-              <View style={styles.pricingTableRow}>
-                <Text style={styles.pricingTableRowLabel}>Sales Tax (8.3%)</Text>
-                <Text style={styles.pricingTableRowValue}>
-                  {formatCurrency(quote.calculations.totalQuantity > 0 ? quote.calculations.salesTax / quote.calculations.totalQuantity : 0)}
-                </Text>
-                <Text style={styles.pricingTableRowValue}>{formatCurrency(quote.calculations.salesTax)}</Text>
-              </View>
-            </View>
-            
-            <View style={styles.totalBox}>
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>TOTAL</Text>
-                <View style={styles.totalDoubleValue}>
-                  <Text style={styles.totalValueSmall}>{formatCurrency(quote.calculations.totalPerPiece)}</Text>
-                  <Text style={styles.totalValue}>{formatCurrency(quote.calculations.total)}</Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {isDesktop && (quote.status === 'active' || quote.status === 'completed') && quote.salesData && (
-          <View style={{ flex: 1, minWidth: 0, marginRight: 12 }} />
-        )}
-        {(quote.status === 'active' || quote.status === 'completed') && quote.salesData && (
-          <View style={[styles.section, isDesktop && { width: 380 }]}>
-            <Text style={styles.sectionTitle}>Sales Tracking</Text>
-            <View style={styles.salesTrackingCard}>
-              {(() => {
-                const uniqueVendors = quote.salesData?.lineItemCosts 
-                  ? [...new Set(quote.salesData.lineItemCosts.map(c => c.productVendor))]
-                  : quote.salesData?.productVendors || [];
-                const uniqueApplicators = quote.salesData?.lineItemCosts 
-                  ? [...new Set(quote.salesData.lineItemCosts.map(c => c.applicator))]
-                  : quote.salesData?.applicator ? [quote.salesData.applicator] : [];
-                return (
-                  <View style={styles.vendorApplicatorRow}>
-                    <View style={styles.vendorApplicatorItem}>
-                      <Text style={styles.vendorApplicatorLabel}>Applicator(s)</Text>
-                      <Text style={styles.vendorApplicatorValue}>{uniqueApplicators.join(', ') || 'N/A'}</Text>
-                    </View>
-                    <View style={styles.vendorApplicatorItem}>
-                      <Text style={styles.vendorApplicatorLabel}>Source(s)</Text>
-                      <Text style={styles.vendorApplicatorValue}>{uniqueVendors.join(', ') || 'N/A'}</Text>
-                    </View>
-                  </View>
-                );
-              })()}
-
-              <View style={styles.salesDatesRow}>
-                <View style={styles.salesDateItem}>
-                  <Text style={styles.salesDateLabel}>Converted</Text>
-                  <Text style={styles.salesDateValue}>{formatDate(quote.salesData.convertedDate)}</Text>
-                </View>
-                {quote.salesData.completedDate && (
-                  <View style={styles.salesDateItem}>
-                    <Text style={styles.salesDateLabel}>Completed</Text>
-                    <Text style={styles.salesDateValue}>{formatDate(quote.salesData.completedDate)}</Text>
-                  </View>
-                )}
-              </View>
-
-              <View style={styles.salesDivider} />
-
-              {(() => {
-                const calc = getSalesCalculations();
-                if (!calc) return null;
-                return (
-                  <View style={styles.salesTableContainer}>
-                    <View style={styles.salesTableHeader}>
-                      <Text style={styles.salesTableHeaderLabel}></Text>
-                      <Text style={styles.salesTableHeaderValue}>QUOTED</Text>
-                      <Text style={styles.salesTableHeaderValue}>ACTUAL</Text>
-                    </View>
-
-                    <View style={styles.salesTableRow}>
-                      <Text style={styles.salesTableRowLabel}>Product Cost</Text>
-                      <Text style={styles.salesTableRowValue}>{formatCurrency(quote.calculations.productCostTotal)}</Text>
-                      <Text style={styles.salesTableRowValue}>{formatCurrency(quote.salesData!.actualProductCost)}</Text>
-                    </View>
-
-                    <View style={styles.salesTableRow}>
-                      <Text style={styles.salesTableRowLabel}>Service Cost</Text>
-                      <Text style={styles.salesTableRowValue}>{formatCurrency(quote.calculations.serviceCostTotal)}</Text>
-                      <Text style={styles.salesTableRowValue}>{formatCurrency(quote.salesData!.actualServiceCost)}</Text>
-                    </View>
-
-                    <View style={styles.salesTableRow}>
-                      <Text style={styles.salesTableRowLabel}>Service Fees</Text>
-                      <Text style={styles.salesTableRowValue}>{formatCurrency(quote.calculations.serviceFeeTotal)}</Text>
-                      <Text style={styles.salesTableRowValue}>{formatCurrency(quote.salesData!.actualServiceFeesCost ?? 0)}</Text>
-                    </View>
-
-                    <View style={styles.salesTableRow}>
-                      <Text style={styles.salesTableRowLabel}>Other Costs</Text>
-                      <Text style={styles.salesTableRowValue}>{formatCurrency(0)}</Text>
-                      <Text style={styles.salesTableRowValue}>{formatCurrency(quote.salesData!.actualOtherCosts)}</Text>
-                    </View>
-
-                    <View style={styles.salesTableDivider} />
-
-                    <View style={styles.salesTableRowBold}>
-                      <Text style={styles.salesTableRowLabelBold}>Cost of Goods</Text>
-                      <Text style={styles.salesTableRowValueBold}>{formatCurrency(quote.calculations.cogTotal)}</Text>
-                      <Text style={styles.salesTableRowValueBold}>{formatCurrency(calc.actualCOG)}</Text>
-                    </View>
-
-                    <View style={styles.salesTableRow}>
-                      <Text style={styles.salesTableRowLabel}>Markup ({quote.calculations.markupPercentage.toFixed(1)}%)</Text>
-                      <Text style={styles.salesTableRowValue}>{formatCurrency(quote.calculations.markupAmount)}</Text>
-                      <Text style={[styles.salesTableRowValue, calc.actualProfit < quote.calculations.markupAmount ? styles.negativeText : styles.positiveText]}>
-                        {formatCurrency(calc.actualProfit)}
-                      </Text>
-                    </View>
-
-                    <View style={styles.salesTableDivider} />
-
-                    <View style={styles.salesTableRowBold}>
-                      <Text style={styles.salesTableRowLabelBold}>Subtotal</Text>
-                      <Text style={styles.salesTableRowValueBold}>{formatCurrency(quote.calculations.subtotal)}</Text>
-                      <Text style={styles.salesTableRowValueBold}>{formatCurrency(calc.actualCOG + calc.actualProfit)}</Text>
-                    </View>
-
-                    <View style={styles.salesTableRow}>
-                      <Text style={styles.salesTableRowLabel}>Online Fee (2.9% + $0.60)</Text>
-                      <Text style={styles.salesTableRowValue}>{formatCurrency(quote.calculations.onlineFee)}</Text>
-                      <Text style={styles.salesTableRowValue}>{formatCurrency(calc.onlineFee)}</Text>
-                    </View>
-
-                    <View style={styles.salesTableRow}>
-                      <Text style={styles.salesTableRowLabel}>Card Fee (3.75%)</Text>
-                      <Text style={styles.salesTableRowValue}>{formatCurrency(quote.calculations.cardFee)}</Text>
-                      <Text style={styles.salesTableRowValue}>{formatCurrency(calc.cardFee)}</Text>
-                    </View>
-
-                    <View style={styles.salesTableRow}>
-                      <Text style={styles.salesTableRowLabel}>Sales Tax (8.3%)</Text>
-                      <Text style={styles.salesTableRowValue}>{formatCurrency(quote.calculations.salesTax)}</Text>
-                      <Text style={styles.salesTableRowValue}>{formatCurrency(calc.salesTax)}</Text>
-                    </View>
-                  </View>
-                );
-              })()}
-
-              {(() => {
-                const calc = getSalesCalculations();
-                if (!calc) return null;
-                const isPositive = calc.actualProfit >= 0;
-                return (
-                  <View style={styles.amountProfitRow}>
-                    <View style={styles.amountCollectedBoxSide}>
-                      <Text style={styles.amountCollectedLabelSide}>Amount Collected</Text>
-                      <Text style={styles.amountCollectedValueSide}>{formatCurrency(quote.salesData.amountCollected)}</Text>
-                      <Text style={styles.quotedTotalHintSide}>Quoted: {formatCurrency(quote.calculations.total)}</Text>
-                    </View>
-                    <View style={[styles.profitBoxSide, !isPositive && styles.profitBoxNegative]}>
-                      <Text style={styles.profitLabelSide}>ACTUAL PROFIT</Text>
-                      <View style={styles.profitValueRowSide}>
-                        {isPositive ? (
-                          <TrendingUp size={16} color="#fff" />
-                        ) : (
-                          <TrendingDown size={16} color="#fff" />
-                        )}
-                        <Text style={styles.profitValueSide}>{formatCurrency(calc.actualProfit)}</Text>
-                      </View>
-                      <Text style={styles.profitMarginSide}>{calc.actualProfitMargin.toFixed(1)}% margin</Text>
-                    </View>
-                  </View>
-                );
-              })()}
-              
-              {quote.salesData.notes && (
-                <View style={styles.notesBox}>
-                  <Text style={styles.notesLabel}>Notes</Text>
-                  <Text style={styles.notesText}>{quote.salesData.notes}</Text>
-                </View>
-              )}
-            </View>
+        ) : (
+          <View>
+            {renderOrderInfo()}
+            {renderLineItems()}
+            {renderPricingSummary()}
+            {renderSalesTracking()}
           </View>
         )}
-
-        {isDesktop && <View style={{ width: '100%' }} />}
         <View style={styles.bottomPadding} />
       </ScrollView>
 
       <View style={styles.actionBar}>
+        <TouchableOpacity style={styles.iconButton} onPress={() => setMenuVisible(true)}>
+          <MoreVertical size={20} color={Colors.light.tint} />
+        </TouchableOpacity>
+
         {(quote.status === 'active' || quote.status === 'completed') ? (
           <>
-            <TouchableOpacity style={styles.iconButton} onPress={() => setMenuVisible(true)}>
-              <MoreVertical size={20} color={Colors.light.tint} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.productionViewButton}
-              onPress={() => router.push(`/quote/production/${id}`)}
-            >
-              <Printer size={18} color={Colors.light.tint} />
-              <Text style={styles.productionViewButtonText}>Production</Text>
-            </TouchableOpacity>
             {quote.isLocked ? (
               <View style={styles.lockedButton}>
-                <Lock size={18} color="#fff" />
+                <Lock size={17} color="#fff" />
                 <Text style={styles.lockedButtonText}>Locked</Text>
               </View>
             ) : (
               <TouchableOpacity style={styles.trackButton} onPress={handleTrackSales}>
-                <ClipboardList size={18} color="#fff" />
+                <ClipboardList size={17} color="#fff" />
                 <Text style={styles.trackButtonText}>Track Costs</Text>
               </TouchableOpacity>
             )}
+            <TouchableOpacity style={styles.productionViewButton} onPress={() => router.push(`/quote/production/${id}`)}>
+              <Flame size={17} color={Colors.light.tint} />
+              <Text style={styles.productionViewButtonText}>Start Production</Text>
+            </TouchableOpacity>
           </>
         ) : (
           <>
-            <TouchableOpacity style={styles.iconButton} onPress={() => setMenuVisible(true)}>
-              <MoreVertical size={20} color={Colors.light.tint} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.productionViewButton}
-              onPress={() => router.push(`/quote/production/${id}`)}
-            >
-              <Printer size={18} color={Colors.light.tint} />
-              <Text style={styles.productionViewButtonText}>Production</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.convertButton} 
-              onPress={handleConvertToSale}
-              disabled={isConverting}
-            >
-              <CheckCircle size={18} color="#fff" />
+            <TouchableOpacity style={styles.convertButton} onPress={handleConvertToSale} disabled={isConverting}>
+              <CheckCircle size={17} color="#fff" />
               <Text style={styles.convertButtonText}>{isConverting ? 'Converting...' : 'Mark as Active'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.productionViewButton} onPress={() => router.push(`/quote/production/${id}`)}>
+              <Flame size={17} color={Colors.light.tint} />
+              <Text style={styles.productionViewButtonText}>Start Production</Text>
             </TouchableOpacity>
           </>
         )}
       </View>
 
       {menuVisible && (
-        <TouchableOpacity 
-          style={styles.menuOverlay} 
-          activeOpacity={1} 
-          onPress={() => setMenuVisible(false)}
-        >
+        <TouchableOpacity style={styles.menuOverlay} activeOpacity={1} onPress={() => setMenuVisible(false)}>
           <View style={styles.menuContainer}>
             <View style={styles.menuHeader}>
               <Text style={styles.menuTitle}>Options</Text>
@@ -757,90 +724,45 @@ export default function QuoteDetailScreen() {
                 <X size={20} color={Colors.light.text} />
               </TouchableOpacity>
             </View>
-            {(quote.status === 'active' || quote.status === 'completed') && quote.isLocked ? (
-              <TouchableOpacity 
-                style={styles.menuItem} 
-                onPress={() => setMenuVisible(false)}
-              >
+
+            {quote.isLocked ? (
+              <TouchableOpacity style={styles.menuItem} onPress={() => setMenuVisible(false)}>
                 <Lock size={18} color={Colors.light.textSecondary} />
                 <Text style={[styles.menuItemText, { color: Colors.light.textSecondary }]}>Project is Locked</Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity 
-                style={styles.menuItem} 
-                onPress={() => {
-                  setMenuVisible(false);
-                  handleEdit();
-                }}
-              >
+              <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleEdit(); }}>
                 <Edit3 size={18} color={Colors.light.text} />
                 <Text style={styles.menuItemText}>Edit Quote</Text>
               </TouchableOpacity>
             )}
+
             {(quote.status === 'active' || quote.status === 'completed') && !quote.isLocked && (
-              <TouchableOpacity 
-                style={styles.menuItem} 
-                onPress={handleSaveAndLock}
-              >
-                <Lock size={18} color={Colors.light.tint} />
-                <Text style={[styles.menuItemText, { color: Colors.light.tint }]}>Save & Lock</Text>
-              </TouchableOpacity>
-            )}
-            {quote.status !== 'active' && quote.status !== 'completed' && (
-              <TouchableOpacity 
-                style={styles.menuItem} 
-                onPress={() => {
-                  setMenuVisible(false);
-                  handleConvertToSale();
-                }}
-              >
-                <CheckCircle size={18} color={Colors.light.success} />
-                <Text style={[styles.menuItemText, { color: Colors.light.success }]}>Mark as Active</Text>
-              </TouchableOpacity>
-            )}
-            {(quote.status === 'active' || quote.status === 'completed') && !quote.isLocked && (
-              <TouchableOpacity 
-                style={styles.menuItem} 
-                onPress={handleRevertToQuote}
-              >
+              <TouchableOpacity style={styles.menuItem} onPress={handleRevertToQuote}>
                 <RotateCcw size={18} color={Colors.light.textSecondary} />
                 <Text style={[styles.menuItemText, { color: Colors.light.textSecondary }]}>Revert to Quoted</Text>
               </TouchableOpacity>
             )}
+
             {(quote.status === 'active' || quote.status === 'completed') && (
-              <TouchableOpacity 
-                style={styles.menuItem} 
-                onPress={handleExportToSheets}
-              >
+              <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleExportToSheets(); }}>
                 <Sheet size={18} color={Colors.light.success} />
                 <Text style={[styles.menuItemText, { color: Colors.light.success }]}>Export to Sheets</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity 
-              style={styles.menuItem} 
-              onPress={() => {
-                setMenuVisible(false);
-                handleExportPDF();
-              }}
-            >
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleExportPDF(); }}>
               <Download size={18} color={Colors.light.text} />
               <Text style={styles.menuItemText}>Export PDF</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.menuItem} 
-              onPress={() => {
-                setMenuVisible(false);
-                handlePrint();
-              }}
-            >
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handlePrint(); }}>
               <Printer size={18} color={Colors.light.text} />
               <Text style={styles.menuItemText}>Print</Text>
             </TouchableOpacity>
-            {(!quote.isLocked || (quote.status !== 'active' && quote.status !== 'completed')) && (
-              <TouchableOpacity 
-                style={[styles.menuItem, styles.menuItemLast]} 
-                onPress={handleDelete}
-              >
+
+            {!quote.isLocked && (
+              <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]} onPress={handleDelete}>
                 <Trash2 size={18} color={Colors.light.error} />
                 <Text style={[styles.menuItemText, { color: Colors.light.error }]}>Delete</Text>
               </TouchableOpacity>
@@ -965,51 +887,97 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     color: Colors.light.text,
   },
+  sectionHeaderRow: {
+    marginBottom: 10,
+  },
+  desktopLayout: {
+    flexDirection: 'row',
+    gap: 16,
+    alignItems: 'flex-start',
+  },
+  desktopLeft: {
+    flex: 1,
+    minWidth: 0,
+  },
+  desktopRight: {
+    width: 380,
+  },
   lineItemCard: {
     backgroundColor: Colors.light.surface,
     borderRadius: 12,
-    padding: 14,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: Colors.light.border,
+    overflow: 'hidden',
   },
   lineItemHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#111111',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 10,
+  },
+  lineItemHeaderLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minWidth: 0,
+  },
+  lineItemHeaderInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  lineItemHeaderName: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: '#fff',
+  },
+  lineItemHeaderSub: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.55)',
+    marginTop: 1,
+  },
+  lineItemHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
-    marginBottom: 12,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
+    flexShrink: 0,
+  },
+  lineItemHeaderQty: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.light.tint,
   },
   lineItemNumber: {
     backgroundColor: Colors.light.tint,
     color: '#fff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700' as const,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
     borderRadius: 4,
     overflow: 'hidden',
+    flexShrink: 0,
   },
-  lineItemName: {
-    fontSize: 15,
-    fontWeight: '600' as const,
-    color: Colors.light.text,
-    flex: 1,
+  lineItemBody: {
+    padding: 12,
   },
   lineItemDetails: {
-    gap: 6,
+    gap: 8,
   },
   detailRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    alignItems: 'flex-start',
+    gap: 7,
   },
   detailLabel: {
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.light.textSecondary,
     width: 60,
+    flexShrink: 0,
+    marginTop: 1,
   },
   detailValue: {
     fontSize: 13,
@@ -1019,6 +987,32 @@ const styles = StyleSheet.create({
   applicatorValue: {
     color: Colors.light.tint,
     fontWeight: '600' as const,
+  },
+  lineItemSubtotalBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+  },
+  lineItemSubtotalLabel: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: Colors.light.textSecondary,
+  },
+  lineItemSubtotalRight: {
+    alignItems: 'flex-end',
+  },
+  lineItemSubtotalPer: {
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+  },
+  lineItemSubtotalValue: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: Colors.light.tint,
   },
   sizesBox: {
     backgroundColor: Colors.light.highlightBg,
@@ -1098,7 +1092,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 24,
   },
-  pricingTableContainer: {
+  pricingTable: {
     backgroundColor: Colors.light.background,
     borderRadius: 8,
     padding: 12,
@@ -1111,14 +1105,14 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.light.border,
     marginBottom: 4,
   },
-  pricingTableHeaderLabel: {
+  pricingTHLabel: {
     flex: 1.5,
     fontSize: 10,
     fontWeight: '700' as const,
     color: Colors.light.textSecondary,
     textTransform: 'uppercase' as const,
   },
-  pricingTableHeaderValue: {
+  pricingTHValue: {
     flex: 1,
     fontSize: 10,
     fontWeight: '700' as const,
@@ -1126,45 +1120,75 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase' as const,
     textAlign: 'right' as const,
   },
-  pricingTableRow: {
+  pricingRow: {
     flexDirection: 'row',
     paddingVertical: 5,
   },
-  pricingTableRowMuted: {},
-  pricingTableRowLabel: {
+  pricingRowLabel: {
     flex: 1.5,
     fontSize: 13,
     color: Colors.light.textSecondary,
   },
-  pricingTableRowLabelMuted: {
-    color: Colors.light.border,
-  },
-  pricingTableRowValue: {
+  pricingRowValue: {
     flex: 1,
     fontSize: 13,
-    fontWeight: '500' as const,
     color: Colors.light.text,
     textAlign: 'right' as const,
   },
-  pricingTableRowValueMuted: {
-    color: Colors.light.border,
+  pricingRowCOG: {
+    backgroundColor: Colors.light.highlightBg,
+    marginHorizontal: -12,
+    paddingHorizontal: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.tint,
+    marginTop: 4,
   },
-  pricingTableDivider: {
+  pricingRowLabelCOG: {
+    flex: 1.5,
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.light.tint,
+  },
+  pricingRowValueCOG: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.light.tint,
+    textAlign: 'right' as const,
+  },
+  pricingRowMarkup: {
+    backgroundColor: Colors.light.highlightBg,
+    marginHorizontal: -12,
+    paddingHorizontal: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.tint,
+  },
+  pricingRowLabelMarkup: {
+    flex: 1.5,
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.light.tint,
+  },
+  pricingRowValueMarkup: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.light.tint,
+    textAlign: 'right' as const,
+  },
+  pricingDivider: {
     height: 1,
     backgroundColor: Colors.light.border,
     marginVertical: 8,
   },
-  pricingTableRowBold: {
-    flexDirection: 'row',
-    paddingVertical: 5,
-  },
-  pricingTableRowLabelBold: {
+  pricingRowBold: {},
+  pricingRowLabelBold: {
     flex: 1.5,
     fontSize: 13,
     fontWeight: '700' as const,
     color: Colors.light.text,
   },
-  pricingTableRowValueBold: {
+  pricingRowValueBold: {
     flex: 1,
     fontSize: 13,
     fontWeight: '700' as const,
@@ -1191,6 +1215,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 14,
     marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   totalRow: {
     flexDirection: 'row',
@@ -1679,33 +1706,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.light.text,
     lineHeight: 20,
-  },
-  lineItemSubtotalBox: {
-    backgroundColor: Colors.light.tint,
-    borderRadius: 8,
-    padding: 10,
-    marginTop: 12,
-  },
-  lineItemSubtotalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  lineItemSubtotalLabel: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    color: '#fff',
-  },
-  lineItemSubtotalValue: {
-    fontSize: 16,
-    fontWeight: '700' as const,
-    color: '#fff',
-  },
-  lineItemPerPieceRow: {
-    marginTop: 4,
-  },
-  lineItemPerPieceLabel: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.8)',
   },
 });
