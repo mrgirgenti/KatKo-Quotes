@@ -1,0 +1,14 @@
+The adjustments you made to the action toolbar still do not work. here's what I sent you: "In the action toolbar you just created for Projects that are selected, the Activate Complete, Revert to Quoted functions do not work. Activate should be "Convert to Active" and have same functionality as the Convert to Active function in the drop down of the actions column. Complete should auto complete all line items in a project and follow the same protocols as a completed project. Revert to Quoted should follow the same functionality as the Revert to Quoted function in the drop down of the actions column. Additionally, if multiple Projects are selected that have various statuses (example: 1 Completed and 2 Active are selected; the function selected should apply to all Projects selected. So if i hit "Completed" all projects selected should Complete)."
+
+
+In the Quote Details section, I like the mockup size. I just want it to default to be at the top of the respective Line Item with the top of it in line with the Service line. 
+
+Similarly, I want to mimic the size of the mockup column to be the same size as the mockup column in the Quote Detials section - this way both areas look similar and uniform. I still want the Deisgn Mockup and Upload Image feature as is, just need the column wider. 
+
+Also, I want to be sure I can drag and drop a mockup in that mockup area as well, not just design or upload. Part of upload should be drop an image (or similar language). 
+
+Note the height of the black headers of the Line Items in the new Quote page. I want to have the same size black header boxes for the line items in Quote Details section - again, so both areas look similar and uniform. 
+
+on the Products + Sizes section of a new quote line item, the default tshirt is the Next Level 6210. If I click on it, I want the list to open up at Next level 6210 on the dropdown list. I also want the colors to be able to be selected even though the default is black - right now when next level 6210 is the default, if i click the colors area, no colors show. Please correct this. 
+
+Is there any way to shrink the size of the DTF calculator with out truncating it? I think this modal should be a little shorter. 

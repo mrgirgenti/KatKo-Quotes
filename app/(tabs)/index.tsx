@@ -40,7 +40,7 @@ const createEmptyLineItem = (): LineItem => ({
   id: generateId(),
   designName: '',
   applicator: 'Katalyst Ko Printshop',
-  product: 'Next Level 6210',
+  product: 'NL6210 — Next Level CVC Crew',
   productColor: 'Black',
   apparelProvider: "McCreary's",
   serviceStyle: 'Direct to Film',

@@ -310,7 +310,7 @@ function BulkActionBar({
         </TouchableOpacity>
         <TouchableOpacity style={styles.bulkAction} onPress={onComplete}>
           <Trophy size={14} color={Colors.light.success} />
-          <Text style={[styles.bulkActionText, { color: Colors.light.success }]}>Complete</Text>
+          <Text style={[styles.bulkActionText, { color: Colors.light.success }]}>Complete Project</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.bulkAction} onPress={onRevert}>
           <RotateCcw size={14} color={Colors.light.textSecondary} />
@@ -451,92 +451,37 @@ export default function ProjectsScreen() {
   }, [filtered, selectedIds, clearSelection]);
 
   const handleBulkConvertToActive = useCallback(() => {
-    const targets = selectedQuotes.filter(q => {
-      const es = getEffectiveStatus(q);
-      return es === 'quoted' || es === 'expired';
-    });
-    const higherTier = selectedQuotes.filter(q => {
-      const es = getEffectiveStatus(q);
-      return es === 'active' || es === 'production_started' || es === 'completed';
-    });
-    if (targets.length === 0) {
-      Alert.alert('No eligible projects', 'All selected projects are already Active or higher. No changes will be made.');
-      return;
-    }
-    const warningNote = higherTier.length > 0
-      ? `\n\n⚠️ ${higherTier.length} project${higherTier.length !== 1 ? 's' : ''} at Active, In Production, or Completed status will be skipped to protect their data.`
-      : '';
+    const n = selectedQuotes.length;
     Alert.alert(
       'Convert to Active',
-      `Convert ${targets.length} project${targets.length !== 1 ? 's' : ''} to Active?${warningNote}`,
+      `Convert ${n} project${n !== 1 ? 's' : ''} to Active status?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Convert', onPress: () => { targets.forEach(q => convertToSale(q.id)); clearSelection(); } },
+        { text: 'Convert', onPress: () => { selectedQuotes.forEach(q => convertToSale(q.id)); clearSelection(); } },
       ]
     );
   }, [selectedQuotes, convertToSale, clearSelection]);
 
   const handleBulkComplete = useCallback(() => {
-    const targets = selectedQuotes.filter(q => {
-      const es = getEffectiveStatus(q);
-      return es === 'active' || es === 'production_started';
-    });
-    const alreadyDone = selectedQuotes.filter(q => getEffectiveStatus(q) === 'completed');
-    const lowerTier = selectedQuotes.filter(q => {
-      const es = getEffectiveStatus(q);
-      return es === 'quoted' || es === 'expired';
-    });
-    if (targets.length === 0) {
-      if (alreadyDone.length > 0) {
-        Alert.alert('Already Completed', 'All selected projects are already marked Completed.');
-      } else {
-        Alert.alert('No eligible projects', 'Only Active or In Production projects can be marked complete.');
-      }
-      return;
-    }
-    const notes: string[] = [];
-    if (alreadyDone.length > 0) notes.push(`${alreadyDone.length} already-completed project${alreadyDone.length !== 1 ? 's' : ''} will be skipped`);
-    if (lowerTier.length > 0) notes.push(`${lowerTier.length} quoted/expired project${lowerTier.length !== 1 ? 's' : ''} will be skipped`);
-    const warningNote = notes.length > 0 ? `\n\n⚠️ ${notes.join(' and ')}.` : '';
+    const n = selectedQuotes.length;
     Alert.alert(
       'Complete Projects',
-      `Mark ${targets.length} project${targets.length !== 1 ? 's' : ''} as Completed? All line items will be auto-completed.${warningNote}`,
+      `Mark ${n} project${n !== 1 ? 's' : ''} as Completed? All line items will be auto-completed.`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Complete', onPress: () => { targets.forEach(q => markProjectComplete(q.id)); clearSelection(); } },
+        { text: 'Complete Project', onPress: () => { selectedQuotes.forEach(q => markProjectComplete(q.id)); clearSelection(); } },
       ]
     );
   }, [selectedQuotes, markProjectComplete, clearSelection]);
 
   const handleBulkRevert = useCallback(() => {
-    const targets = selectedQuotes.filter(q => {
-      const es = getEffectiveStatus(q);
-      return es === 'active' || es === 'production_started' || es === 'completed';
-    });
-    const alreadyQuoted = selectedQuotes.filter(q => {
-      const es = getEffectiveStatus(q);
-      return es === 'quoted' || es === 'expired';
-    });
-    if (targets.length === 0) {
-      Alert.alert('No eligible projects', 'Selected projects are already at Quoted status.');
-      return;
-    }
-    const hasHighTier = targets.some(q => {
-      const es = getEffectiveStatus(q);
-      return es === 'production_started' || es === 'completed';
-    });
-    const skipNote = alreadyQuoted.length > 0
-      ? `\n\n${alreadyQuoted.length} project${alreadyQuoted.length !== 1 ? 's' : ''} already at Quoted status will be skipped.`
-      : '';
-    const warningNote = hasHighTier
-      ? `\n\n⚠️ Some selected projects are In Production or Completed. Reverting will clear their sales data and production progress. This cannot be undone.`
-      : '';
+    const n = selectedQuotes.length;
     Alert.alert(
       'Revert to Quoted',
-      `Revert ${targets.length} project${targets.length !== 1 ? 's' : ''} back to Quoted status?${skipNote}${warningNote}`,
+      `Revert ${n} project${n !== 1 ? 's' : ''} back to Quoted status? This will clear any sales data and production progress.`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Revert', style: hasHighTier ? 'destructive' : 'default', onPress: () => { targets.forEach(q => convertToQuote(q.id)); clearSelection(); } },
+        { text: 'Revert', style: 'destructive', onPress: () => { selectedQuotes.forEach(q => convertToQuote(q.id)); clearSelection(); } },
       ]
     );
   }, [selectedQuotes, convertToQuote, clearSelection]);

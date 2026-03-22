@@ -127,7 +127,7 @@ export default function ProductionViewScreen() {
             text: 'Complete Anyway',
             onPress: () => {
               markProjectComplete(quote.id);
-              router.replace(`/quote/${id}`);
+              router.replace('/(tabs)/projects');
             },
           },
         ]
@@ -135,7 +135,7 @@ export default function ProductionViewScreen() {
       return;
     }
     markProjectComplete(quote.id);
-    router.replace(`/quote/${id}`);
+    router.replace('/(tabs)/projects');
   }, [quote, allDone, items, markProjectComplete, id, router]);
 
   const handleExit = useCallback(() => {
