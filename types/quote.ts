@@ -212,10 +212,12 @@ export const PRODUCT_COLORS = [
 
 export const APPAREL_PROVIDERS = [
   "McCreary's",
-  'SS Activewear',
-  'San Mar',
-  'Independent',
+  'S&S Activewear',
+  'SanMar',
+  'Shaka Wear',
+  'Otto Caps',
   'LA Apparel',
+  'Independent',
   'Amazon',
   '** Client Provided',
 ] as const;

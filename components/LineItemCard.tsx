@@ -13,6 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { ChevronDown, ChevronUp, Trash2, Upload, RefreshCw, X, Brush, Plus } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { MockupDesigner } from './MockupDesigner/MockupDesigner';
+import { VENDOR_CATALOG } from './MockupDesigner/vendorCatalog';
 import {
   LineItem,
   GarmentVariant,
@@ -41,6 +42,41 @@ interface LineItemCardProps {
 }
 
 const APPAREL_SIZES = SIZE_LABELS.filter((s) => s.key !== 'flat');
+
+function normalizeVendorName(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function getVendorForProvider(apparelProvider: string) {
+  if (!apparelProvider) return undefined;
+  const norm = normalizeVendorName(apparelProvider);
+  return VENDOR_CATALOG.find((v) => normalizeVendorName(v.name) === norm);
+}
+
+function getStyleOptionsForProvider(apparelProvider: string): string[] {
+  const vendor = getVendorForProvider(apparelProvider);
+  if (vendor) {
+    return vendor.styles.map((s) => `${s.styleNumber} — ${s.name}`);
+  }
+  const seen = new Set<string>();
+  const all: string[] = [];
+  for (const v of VENDOR_CATALOG) {
+    for (const s of v.styles) {
+      const label = `${s.styleNumber} — ${s.name}`;
+      if (!seen.has(label)) { seen.add(label); all.push(label); }
+    }
+  }
+  return all;
+}
+
+function getColorOptionsForStyle(apparelProvider: string, productValue: string): string[] {
+  const vendor = getVendorForProvider(apparelProvider);
+  if (!vendor) return [...(PRODUCT_COLORS as unknown as string[])];
+  const styleNumber = productValue.split(' — ')[0].trim();
+  const style = vendor.styles.find((s) => s.styleNumber === styleNumber);
+  if (!style) return vendor.styles[0]?.colors.map((c) => c.name) ?? [...(PRODUCT_COLORS as unknown as string[])];
+  return style.colors.map((c) => c.name);
+}
 
 function getVariantQty(variant: GarmentVariant): number {
   return APPAREL_SIZES.reduce((sum, { key }) => sum + (variant.sizes[key] || 0), 0);
@@ -465,20 +501,18 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                               <ComboBox
                                 label=""
                                 value={variant.product}
-                                options={PRODUCTS}
-                                onChange={(v) => updateVariant(vIdx, { product: v })}
+                                options={getStyleOptionsForProvider(item.apparelProvider)}
+                                onChange={(v) => updateVariant(vIdx, { product: v, color: '' })}
                                 placeholder="Style / Product..."
-                                autoTitleCase
                               />
                             </View>
                             <View style={{ flex: 2 }}>
                               <ComboBox
                                 label=""
                                 value={variant.color}
-                                options={PRODUCT_COLORS}
+                                options={getColorOptionsForStyle(item.apparelProvider, variant.product)}
                                 onChange={(v) => updateVariant(vIdx, { color: v })}
                                 placeholder="Color..."
-                                autoTitleCase
                               />
                             </View>
                             <TouchableOpacity
