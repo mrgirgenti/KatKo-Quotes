@@ -10,10 +10,11 @@ import {
   ScrollView,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { ChevronDown, ChevronUp, Trash2, Upload, RefreshCw, X, Brush, Plus } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, Trash2, Upload, RefreshCw, X, Brush, Plus, CheckCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { MockupDesigner } from './MockupDesigner/MockupDesigner';
-import { VENDOR_CATALOG } from './MockupDesigner/vendorCatalog';
+import { VENDOR_CATALOG, ProductColor } from './MockupDesigner/vendorCatalog';
+import { GARMENTS, GarmentType } from './MockupDesigner/garmentData';
 import {
   LineItem,
   GarmentVariant,
@@ -78,6 +79,42 @@ function getColorOptionsForStyle(apparelProvider: string, productValue: string):
   return style.colors.map((c) => c.name);
 }
 
+const ALL_GARMENT_TYPES: GarmentType[] = ['tshirt', 'hoodie', 'crewneck', 'longsleeve', 'hat'];
+
+function getStyleObjectForProduct(apparelProvider: string, productValue: string) {
+  const vendor = getVendorForProvider(apparelProvider);
+  if (!vendor || !productValue) return null;
+  const styleNumber = productValue.split(' — ')[0].trim();
+  return vendor.styles.find((s) => s.styleNumber === styleNumber) ?? null;
+}
+
+function getGarmentTypesForProvider(apparelProvider: string): GarmentType[] {
+  const vendor = getVendorForProvider(apparelProvider);
+  if (!vendor) return ALL_GARMENT_TYPES;
+  const available = new Set(vendor.styles.map((s) => s.garmentType));
+  return ALL_GARMENT_TYPES.filter((t) => available.has(t));
+}
+
+function getStylesForTypeAndProvider(apparelProvider: string, garmentType: GarmentType) {
+  const vendor = getVendorForProvider(apparelProvider);
+  if (!vendor) return [];
+  return vendor.styles.filter((s) => s.garmentType === garmentType);
+}
+
+function getColorObjectsForStyle(apparelProvider: string, productValue: string): ProductColor[] {
+  const style = getStyleObjectForProduct(apparelProvider, productValue);
+  if (!style) {
+    const vendor = getVendorForProvider(apparelProvider);
+    return vendor?.styles[0]?.colors ?? [];
+  }
+  return style.colors;
+}
+
+function getGarmentTypeFromProduct(apparelProvider: string, productValue: string): GarmentType | null {
+  const style = getStyleObjectForProduct(apparelProvider, productValue);
+  return style ? style.garmentType : null;
+}
+
 function getVariantQty(variant: GarmentVariant): number {
   return APPAREL_SIZES.reduce((sum, { key }) => sum + (variant.sizes[key] || 0), 0);
 }
@@ -125,6 +162,12 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   };
   const [variants, setVariants] = useState<GarmentVariant[]>(getInitialVariants);
 
+  const getInitialGarmentTypes = (): GarmentType[] => {
+    const vts = getInitialVariants();
+    return vts.map((v) => getGarmentTypeFromProduct(item.apparelProvider, v.product) ?? 'tshirt');
+  };
+  const [variantGarmentTypes, setVariantGarmentTypes] = useState<GarmentType[]>(getInitialGarmentTypes);
+
   const handleVariantsChange = (newVariants: GarmentVariant[]) => {
     setVariants(newVariants);
     if (isPromotional) return;
@@ -138,17 +181,21 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
     });
   };
 
+  const setVariantGarmentType = (vIdx: number, type: GarmentType) => {
+    setVariantGarmentTypes((prev) => prev.map((t, i) => (i === vIdx ? type : t)));
+    updateVariant(vIdx, { product: '', color: '' });
+  };
+
   const addVariant = () => {
     if (variants.length >= 10) return;
-    handleVariantsChange([
-      ...variants,
-      { product: variants[0]?.product || 'Next Level 6210', color: '', sizes: { ...EMPTY_SIZES } },
-    ]);
+    handleVariantsChange([...variants, { product: '', color: '', sizes: { ...EMPTY_SIZES } }]);
+    setVariantGarmentTypes((prev) => [...prev, 'tshirt']);
   };
 
   const removeVariant = (idx: number) => {
     if (variants.length <= 1) return;
     handleVariantsChange(variants.filter((_, i) => i !== idx));
+    setVariantGarmentTypes((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const updateVariant = (idx: number, partial: Partial<GarmentVariant>) => {
@@ -463,10 +510,10 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
               autoTitleCase
             />
 
-            {/* ── 7. Garment / Size Variants ── */}
+            {/* ── 7. Product / Size Variants ── */}
             <View style={styles.variantSection}>
               <View style={styles.variantHeader}>
-                <Text style={styles.variantHeaderTitle}>GARMENT & SIZES</Text>
+                <Text style={styles.variantHeaderTitle}>Products + Sizes</Text>
                 {!isPromotional && variants.length < 10 && (
                   <TouchableOpacity style={styles.addVariantBtn} onPress={addVariant}>
                     <Plus size={13} color="#fff" />
@@ -490,30 +537,29 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
               ) : (
                 <View style={styles.variantTableWrap}>
                   <View style={styles.variantTable}>
-                    {/* Variant rows — two sub-rows each */}
+                    {/* Variant rows */}
                     {variants.map((variant, vIdx) => {
                       const rowQty = getVariantQty(variant);
+                      const activeGarmentType = variantGarmentTypes[vIdx] ?? 'tshirt';
+                      const availableTypes = getGarmentTypesForProvider(item.apparelProvider);
+                      const stylesForType = getStylesForTypeAndProvider(item.apparelProvider, activeGarmentType);
+                      const colorObjects = getColorObjectsForStyle(item.apparelProvider, variant.product);
                       return (
                         <View key={vIdx} style={[styles.variantRow, vIdx % 2 === 1 && styles.variantRowAlt]}>
-                          {/* Sub-row 1: Style | Color | Delete */}
-                          <View style={styles.variantTopRow}>
-                            <View style={{ flex: 3 }}>
-                              <ComboBox
-                                label=""
-                                value={variant.product}
-                                options={getStyleOptionsForProvider(item.apparelProvider)}
-                                onChange={(v) => updateVariant(vIdx, { product: v, color: '' })}
-                                placeholder="Style / Product..."
-                              />
-                            </View>
-                            <View style={{ flex: 2 }}>
-                              <ComboBox
-                                label=""
-                                value={variant.color}
-                                options={getColorOptionsForStyle(item.apparelProvider, variant.product)}
-                                onChange={(v) => updateVariant(vIdx, { color: v })}
-                                placeholder="Color..."
-                              />
+                          {/* Row A: Garment type tabs + delete */}
+                          <View style={styles.variantGarmentTypesRow}>
+                            <View style={styles.variantGarmentTypesBtns}>
+                              {availableTypes.map((type) => (
+                                <TouchableOpacity
+                                  key={type}
+                                  style={[styles.variantTypeBtn, activeGarmentType === type && styles.variantTypeBtnActive]}
+                                  onPress={() => setVariantGarmentType(vIdx, type)}
+                                >
+                                  <Text style={[styles.variantTypeBtnText, activeGarmentType === type && styles.variantTypeBtnTextActive]}>
+                                    {GARMENTS[type].label}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
                             </View>
                             <TouchableOpacity
                               style={[styles.variantDeleteBtn, variants.length <= 1 && { opacity: 0.2 }]}
@@ -523,7 +569,59 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                               <X size={14} color={Colors.light.error} />
                             </TouchableOpacity>
                           </View>
-                          {/* Sub-row 2: Size inputs with labels */}
+
+                          {/* Row B: Style cards (filtered by garment type) */}
+                          {stylesForType.length > 0 && (
+                            <View style={styles.variantStyleGrid}>
+                              {stylesForType.map((style) => {
+                                const styleValue = `${style.styleNumber} — ${style.name}`;
+                                const isSelected = variant.product === styleValue;
+                                return (
+                                  <TouchableOpacity
+                                    key={style.styleNumber}
+                                    style={[styles.variantStyleBtn, isSelected && styles.variantStyleBtnActive]}
+                                    onPress={() => updateVariant(vIdx, { product: styleValue, color: '' })}
+                                  >
+                                    <Text style={[styles.variantStyleNumber, isSelected && styles.variantStyleNumberActive]}>
+                                      {style.styleNumber}{style.isYouth ? ' (Youth)' : ''}
+                                    </Text>
+                                    <Text style={[styles.variantStyleName, isSelected && styles.variantStyleNameActive]} numberOfLines={2}>
+                                      {style.name}
+                                    </Text>
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </View>
+                          )}
+
+                          {/* Row C: Color swatches */}
+                          {colorObjects.length > 0 && (
+                            <View style={styles.variantColorSection}>
+                              <View style={styles.variantColorGrid}>
+                                {colorObjects.map((color) => (
+                                  <TouchableOpacity
+                                    key={color.hex + color.name}
+                                    style={[
+                                      styles.variantColorSwatch,
+                                      { backgroundColor: color.hex },
+                                      variant.color === color.name && styles.variantColorSwatchSelected,
+                                      color.hex === '#FFFFFF' && styles.variantColorSwatchWhite,
+                                    ]}
+                                    onPress={() => updateVariant(vIdx, { color: color.name })}
+                                  >
+                                    {variant.color === color.name && (
+                                      <CheckCircle size={12} color={color.dark ? '#fff' : '#333'} />
+                                    )}
+                                  </TouchableOpacity>
+                                ))}
+                              </View>
+                              <Text style={[styles.variantColorLabel, !variant.color && { color: Colors.light.textSecondary }]}>
+                                {variant.color || 'Tap a swatch to select color'}
+                              </Text>
+                            </View>
+                          )}
+
+                          {/* Row D: Size inputs */}
                           <View style={styles.variantSizeSubRow}>
                             {APPAREL_SIZES.map(({ key, label }) => (
                               <View key={key} style={styles.variantSizeLabelCell}>
@@ -1180,6 +1278,108 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingTop: 8,
     paddingBottom: 4,
+  },
+  variantGarmentTypesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingTop: 10,
+    paddingBottom: 6,
+    gap: 6,
+  },
+  variantGarmentTypesBtns: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  variantTypeBtn: {
+    paddingVertical: 5,
+    paddingHorizontal: 9,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: '#fff',
+  },
+  variantTypeBtnActive: {
+    backgroundColor: Colors.light.tint,
+    borderColor: Colors.light.tint,
+  },
+  variantTypeBtnText: {
+    fontSize: 11,
+    color: Colors.light.text,
+    fontWeight: '500' as const,
+  },
+  variantTypeBtnTextActive: {
+    color: '#fff',
+    fontWeight: '700' as const,
+  },
+  variantStyleGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingBottom: 8,
+  },
+  variantStyleBtn: {
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: '#fff',
+    minWidth: 64,
+  },
+  variantStyleBtnActive: {
+    backgroundColor: '#FFF0E8',
+    borderColor: Colors.light.tint,
+  },
+  variantStyleNumber: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: Colors.light.tint,
+  },
+  variantStyleNumberActive: {
+    color: Colors.light.tint,
+  },
+  variantStyleName: {
+    fontSize: 10,
+    color: Colors.light.textSecondary,
+    lineHeight: 13,
+    marginTop: 1,
+  },
+  variantStyleNameActive: {
+    color: Colors.light.text,
+  },
+  variantColorSection: {
+    paddingHorizontal: 10,
+    paddingBottom: 8,
+  },
+  variantColorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 5,
+  },
+  variantColorSwatch: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  variantColorSwatchWhite: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  variantColorSwatchSelected: {
+    borderWidth: 2.5,
+    borderColor: Colors.light.tint,
+  },
+  variantColorLabel: {
+    fontSize: 11,
+    color: Colors.light.text,
+    fontWeight: '500' as const,
   },
   variantDeleteBtn: {
     width: 28,
