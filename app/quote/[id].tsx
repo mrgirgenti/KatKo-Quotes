@@ -43,7 +43,7 @@ import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { formatCurrency, calculateLineItemSubtotal, getTotalQuantity } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
-import { LineItem, SIZE_LABELS } from '@/types/quote';
+import { LineItem, SIZE_LABELS, GarmentVariant } from '@/types/quote';
 import { useUser } from '@/contexts/UserContext';
 import { generateAndSharePDF, printQuote } from '@/utils/pdfGenerator';
 import { Toast } from '@/components/Toast';
@@ -337,7 +337,6 @@ export default function QuoteDetailScreen() {
                   <Text style={styles.lineItemNumber}>#{index + 1}</Text>
                   <View style={styles.lineItemHeaderInfo}>
                     <Text style={styles.lineItemHeaderName} numberOfLines={1}>{item.designName || 'Untitled Design'}</Text>
-                    <Text style={styles.lineItemHeaderSub}>{item.serviceStyle}{item.applicator ? ` · ${item.applicator}` : ''}</Text>
                   </View>
                 </View>
                 <View style={styles.lineItemHeaderRight}>
@@ -346,11 +345,25 @@ export default function QuoteDetailScreen() {
                 </View>
               </TouchableOpacity>
 
-              {isExpanded && (
+              {isExpanded && (() => {
+                const variants: GarmentVariant[] = item.garmentVariants && item.garmentVariants.length > 0
+                  ? item.garmentVariants
+                  : [{ product: item.product, color: item.productColor, sizes: item.sizes }];
+                const locations = [item.location1, item.location2, item.location3, item.location4].filter(Boolean) as string[];
+                const isPromotional = item.serviceStyle === 'Promotional';
+                return (
                 <View style={styles.lineItemBody}>
                   {/* Top row: details left, mockup right */}
                   <View style={styles.lineItemTopRow}>
                     <View style={styles.lineItemDetailsCol}>
+                      {/* Service Style */}
+                      <View style={styles.detailRow}>
+                        <Layers size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
+                        <Text style={styles.detailLabel}>Service</Text>
+                        <Text style={styles.detailValue}>{item.serviceStyle}</Text>
+                      </View>
+
+                      {/* Applicator */}
                       {item.applicator ? (
                         <View style={styles.detailRow}>
                           <User size={13} color={Colors.light.text} style={{ flexShrink: 0 }} />
@@ -358,24 +371,47 @@ export default function QuoteDetailScreen() {
                           <Text style={[styles.detailValue, styles.applicatorValue]} numberOfLines={1}>{item.applicator}</Text>
                         </View>
                       ) : null}
+
+                      {/* Source */}
                       <View style={styles.detailRow}>
                         <Truck size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
                         <Text style={styles.detailLabel}>Source</Text>
                         <Text style={styles.detailValue} numberOfLines={1}>{item.apparelProvider}</Text>
                       </View>
-                      <View style={styles.detailRow}>
-                        <Package size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
-                        <Text style={styles.detailLabel}>Product</Text>
-                        <Text style={styles.detailValue} numberOfLines={2}>{item.product} — {item.productColor}</Text>
-                      </View>
-                      <View style={styles.detailRow}>
-                        <MapPin size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
-                        <Text style={styles.detailLabel}>Location</Text>
-                        <Text style={styles.detailValue} numberOfLines={2}>
-                          {[item.location1, item.location2].filter(Boolean).join(', ') || 'N/A'}
-                          {item.locationDetails ? ` — ${item.locationDetails}` : ''}
-                        </Text>
-                      </View>
+
+                      {/* Product & Color per variant */}
+                      {variants.map((v, vi) => (
+                        <View key={vi}>
+                          <View style={styles.detailRow}>
+                            <Package size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
+                            <Text style={styles.detailLabel}>{variants.length > 1 ? `Style ${vi + 1}` : 'Product'}</Text>
+                            <Text style={styles.detailValue} numberOfLines={2}>{v.product || '—'}</Text>
+                          </View>
+                          <View style={styles.detailRow}>
+                            <Palette size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
+                            <Text style={styles.detailLabel}>{variants.length > 1 ? `Color ${vi + 1}` : 'Color'}</Text>
+                            <Text style={styles.detailValue} numberOfLines={1}>{v.color || '—'}</Text>
+                          </View>
+                        </View>
+                      ))}
+
+                      {/* Locations */}
+                      {locations.length > 0 && (
+                        <View style={styles.detailRow}>
+                          <MapPin size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
+                          <Text style={styles.detailLabel}>Location</Text>
+                          <Text style={styles.detailValue}>{locations.join(', ')}</Text>
+                        </View>
+                      )}
+
+                      {/* Project Notes */}
+                      {item.locationDetails ? (
+                        <View style={styles.detailRow}>
+                          <FileText size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
+                          <Text style={styles.detailLabel}>Notes</Text>
+                          <Text style={styles.detailValue}>{item.locationDetails}</Text>
+                        </View>
+                      ) : null}
                     </View>
 
                     {/* Mockup on the right */}
@@ -395,50 +431,59 @@ export default function QuoteDetailScreen() {
                     </View>
                   </View>
 
-                  {/* Sizes grid */}
-                  <View style={styles.sizesGridSection}>
-                    <Text style={styles.sizesGridLabel}>SIZE QUANTITIES</Text>
-                    {item.serviceStyle === 'Promotional' ? (
-                      <View style={styles.sizesGridRow}>
-                        <View style={styles.sizeGridCell}>
-                          <Text style={styles.sizeGridCellLabel}>Qty</Text>
-                          <View style={styles.sizeGridCellBox}>
-                            <Text style={styles.sizeGridCellValue}>{item.sizes.flat || 0}</Text>
+                  {/* Sizes grid — one per variant */}
+                  {variants.map((v, vi) => (
+                    <View key={vi} style={styles.sizesGridSection}>
+                      {variants.length > 1 && (
+                        <Text style={styles.variantSizeHeading}>
+                          {v.product}{v.color ? ` — ${v.color}` : ''}
+                        </Text>
+                      )}
+                      <Text style={styles.sizesGridLabel}>SIZE QUANTITIES</Text>
+                      {isPromotional ? (
+                        <View style={styles.sizesGridRow}>
+                          <View style={styles.sizeGridCell}>
+                            <Text style={styles.sizeGridCellLabel}>Qty</Text>
+                            <View style={styles.sizeGridCellBox}>
+                              <Text style={styles.sizeGridCellValue}>{v.sizes.flat || 0}</Text>
+                            </View>
                           </View>
                         </View>
-                      </View>
-                    ) : (
-                      <>
-                        <View style={styles.sizesGridRow}>
-                          {(['xs','s','m','l'] as const).map(k => {
-                            const entry = SIZE_LABELS.find(sl => sl.key === k)!;
-                            return (
-                              <View key={k} style={styles.sizeGridCell}>
-                                <Text style={styles.sizeGridCellLabel}>{entry.label}</Text>
-                                <View style={[styles.sizeGridCellBox, !item.sizes[k] && styles.sizeGridCellBoxEmpty]}>
-                                  <Text style={[styles.sizeGridCellValue, !item.sizes[k] && styles.sizeGridCellValueEmpty]}>{item.sizes[k] || 0}</Text>
+                      ) : (
+                        <>
+                          <View style={styles.sizesGridRow}>
+                            {(['xs','s','m','l'] as const).map(k => {
+                              const entry = SIZE_LABELS.find(sl => sl.key === k)!;
+                              return (
+                                <View key={k} style={styles.sizeGridCell}>
+                                  <Text style={styles.sizeGridCellLabel}>{entry.label}</Text>
+                                  <View style={[styles.sizeGridCellBox, !v.sizes[k] && styles.sizeGridCellBoxEmpty]}>
+                                    <Text style={[styles.sizeGridCellValue, !v.sizes[k] && styles.sizeGridCellValueEmpty]}>{v.sizes[k] || 0}</Text>
+                                  </View>
                                 </View>
-                              </View>
-                            );
-                          })}
-                        </View>
-                        <View style={[styles.sizesGridRow, { marginTop: 6 }]}>
-                          {(['xl','xxl','xxxl','xxxxl'] as const).map(k => {
-                            const entry = SIZE_LABELS.find(sl => sl.key === k)!;
-                            return (
-                              <View key={k} style={styles.sizeGridCell}>
-                                <Text style={styles.sizeGridCellLabel}>{entry.label}</Text>
-                                <View style={[styles.sizeGridCellBox, !item.sizes[k] && styles.sizeGridCellBoxEmpty]}>
-                                  <Text style={[styles.sizeGridCellValue, !item.sizes[k] && styles.sizeGridCellValueEmpty]}>{item.sizes[k] || 0}</Text>
+                              );
+                            })}
+                          </View>
+                          <View style={[styles.sizesGridRow, { marginTop: 6 }]}>
+                            {(['xl','xxl','xxxl','xxxxl'] as const).map(k => {
+                              const entry = SIZE_LABELS.find(sl => sl.key === k)!;
+                              return (
+                                <View key={k} style={styles.sizeGridCell}>
+                                  <Text style={styles.sizeGridCellLabel}>{entry.label}</Text>
+                                  <View style={[styles.sizeGridCellBox, !v.sizes[k] && styles.sizeGridCellBoxEmpty]}>
+                                    <Text style={[styles.sizeGridCellValue, !v.sizes[k] && styles.sizeGridCellValueEmpty]}>{v.sizes[k] || 0}</Text>
+                                  </View>
                                 </View>
-                              </View>
-                            );
-                          })}
-                        </View>
-                      </>
-                    )}
-                    <Text style={styles.sizesGridTotal}>Total: {qty} pcs</Text>
-                  </View>
+                              );
+                            })}
+                          </View>
+                        </>
+                      )}
+                      <Text style={styles.sizesGridTotal}>
+                        Total: {getTotalQuantity(v.sizes, isPromotional)} pcs
+                      </Text>
+                    </View>
+                  ))}
 
                   <View style={styles.costsBox}>
                     <View style={styles.costItem}>
@@ -467,7 +512,8 @@ export default function QuoteDetailScreen() {
                     </View>
                   </View>
                 </View>
-              )}
+                );
+              })()}
             </View>
           );
         })}
@@ -1507,6 +1553,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.light.textSecondary,
     textAlign: 'center',
+  },
+  variantSizeHeading: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.light.text,
+    marginBottom: 4,
   },
   sizesGridSection: {
     backgroundColor: Colors.light.background,

@@ -6,194 +6,297 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Modal,
+  Image,
+  Dimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import {
   CheckCircle,
   Circle,
   Package,
-  Palette,
   MapPin,
   Layers,
   User,
-  Hash,
+  Truck,
   ArrowLeft,
   CheckSquare,
-  ChevronDown,
-  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  FileText,
+  Palette,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { formatDate } from '@/utils/textFormatting';
 import { getTotalQuantity } from '@/utils/quoteCalculations';
-import { LineItem, SIZE_LABELS, SizeQuantities } from '@/types/quote';
+import { LineItem, SIZE_LABELS, GarmentVariant, SizeQuantities } from '@/types/quote';
 
-function SizeGrid({ sizes }: { sizes: SizeQuantities }) {
-  const entries = SIZE_LABELS.filter(({ key }) => sizes[key] > 0);
-  if (entries.length === 0 && !sizes.flat) return <Text style={styles.noData}>No size data</Text>;
-  const all = [
-    ...entries.map(({ key, label }) => ({ label, qty: sizes[key] })),
-    ...(sizes.flat > 0 ? [{ label: 'Flat', qty: sizes.flat }] : []),
-  ];
-  return (
-    <View style={styles.sizeGrid}>
-      {all.map(({ label, qty }) => (
-        <View key={label} style={styles.sizeCell}>
-          <Text style={styles.sizeCellLabel}>{label}</Text>
-          <Text style={styles.sizeCellQty}>{qty}</Text>
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+function SizeGridDisplay({ sizes, isPromotional }: { sizes: SizeQuantities; isPromotional: boolean }) {
+  if (isPromotional) {
+    return (
+      <View style={styles.sizeGridRow}>
+        <View style={styles.sizeCell}>
+          <Text style={styles.sizeCellLabel}>QTY</Text>
+          <Text style={styles.sizeCellQty}>{sizes.flat || 0}</Text>
         </View>
-      ))}
-    </View>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
+      </View>
+    );
+  }
   return (
-    <View style={styles.infoRow}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value || '—'}</Text>
-    </View>
+    <>
+      <View style={styles.sizeGridRow}>
+        {(['xs','s','m','l'] as const).map(k => {
+          const entry = SIZE_LABELS.find(sl => sl.key === k)!;
+          return (
+            <View key={k} style={[styles.sizeCell, !sizes[k] && styles.sizeCellEmpty]}>
+              <Text style={styles.sizeCellLabel}>{entry.label}</Text>
+              <Text style={[styles.sizeCellQty, !sizes[k] && styles.sizeCellQtyEmpty]}>{sizes[k] || 0}</Text>
+            </View>
+          );
+        })}
+      </View>
+      <View style={[styles.sizeGridRow, { marginTop: 6 }]}>
+        {(['xl','xxl','xxxl','xxxxl'] as const).map(k => {
+          const entry = SIZE_LABELS.find(sl => sl.key === k)!;
+          return (
+            <View key={k} style={[styles.sizeCell, !sizes[k] && styles.sizeCellEmpty]}>
+              <Text style={styles.sizeCellLabel}>{entry.label}</Text>
+              <Text style={[styles.sizeCellQty, !sizes[k] && styles.sizeCellQtyEmpty]}>{sizes[k] || 0}</Text>
+            </View>
+          );
+        })}
+      </View>
+    </>
   );
 }
 
-interface LineItemCardProps {
-  item: LineItem;
-  index: number;
-  total: number;
-  onMarkDone: () => void;
-  onUnmarkDone: () => void;
+interface DetailModalProps {
+  items: LineItem[];
+  initialIndex: number;
+  onClose: () => void;
+  onMarkDone: (id: string) => void;
+  onUnmarkDone: (id: string) => void;
 }
 
-function LineItemCard({ item, index, total, onMarkDone, onUnmarkDone }: LineItemCardProps) {
-  const [expanded, setExpanded] = useState(true);
-  const qty = getTotalQuantity(item.sizes);
-  const locations = [item.location1, item.location2, item.location3, item.location4].filter(Boolean) as string[];
+function DetailModal({ items, initialIndex, onClose, onMarkDone, onUnmarkDone }: DetailModalProps) {
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const item = items[currentIndex];
   const isDone = !!item.completedAt;
+  const isPromotional = item.serviceStyle === 'Promotional';
+
+  const variants: GarmentVariant[] = item.garmentVariants && item.garmentVariants.length > 0
+    ? item.garmentVariants
+    : [{ product: item.product, color: item.productColor, sizes: item.sizes }];
+  const locations = [item.location1, item.location2, item.location3, item.location4].filter(Boolean) as string[];
+  const totalQty = getTotalQuantity(item.sizes, isPromotional);
+
+  const goTo = (idx: number) => {
+    if (idx >= 0 && idx < items.length) setCurrentIndex(idx);
+  };
 
   return (
-    <View style={[styles.itemCard, isDone && styles.itemCardDone]}>
-      {/* Card header - always visible */}
-      <TouchableOpacity
-        style={styles.itemCardHeader}
-        onPress={() => setExpanded(e => !e)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.itemCardHeaderLeft}>
-          <View style={[styles.itemNumBadge, isDone && styles.itemNumBadgeDone]}>
-            <Text style={styles.itemNumText}>#{index + 1}</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.itemDesignName} numberOfLines={1}>
+    <Modal visible animationType="slide" onRequestClose={onClose}>
+      <View style={styles.modalContainer}>
+        {/* Modal header */}
+        <View style={styles.modalHeader}>
+          <TouchableOpacity style={styles.modalCloseBtn} onPress={onClose}>
+            <X size={20} color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.modalHeaderCenter}>
+            <Text style={styles.modalItemCounter}>Item {currentIndex + 1} of {items.length}</Text>
+            <Text style={styles.modalDesignName} numberOfLines={1}>
               {item.designName || 'Untitled Design'}
             </Text>
-            <Text style={styles.itemServiceStyle} numberOfLines={1}>
-              {item.serviceStyle}{item.applicator ? ` · ${item.applicator}` : ''}
-            </Text>
+          </View>
+          <View style={[styles.modalStatusPill, isDone && styles.modalStatusPillDone]}>
+            {isDone ? <CheckCircle size={12} color="#fff" /> : <Circle size={12} color="rgba(255,255,255,0.7)" />}
+            <Text style={styles.modalStatusText}>{isDone ? 'Done' : 'Pending'}</Text>
           </View>
         </View>
-        <View style={styles.itemCardHeaderRight}>
-          <View style={[styles.itemStatusPill, isDone && styles.itemStatusPillDone]}>
-            {isDone
-              ? <CheckCircle size={12} color="#fff" />
-              : <Circle size={12} color={Colors.light.textSecondary} />}
-            <Text style={[styles.itemStatusText, isDone && styles.itemStatusTextDone]}>
-              {isDone ? 'Done' : 'Pending'}
-            </Text>
-          </View>
-          {expanded
-            ? <ChevronUp size={16} color={Colors.light.textSecondary} />
-            : <ChevronDown size={16} color={Colors.light.textSecondary} />}
-        </View>
-      </TouchableOpacity>
 
-      {expanded && (
-        <View style={styles.itemCardBody}>
+        <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
+          {/* Mockup */}
+          <View style={styles.modalMockupContainer}>
+            {item.mockupUri ? (
+              <Image source={{ uri: item.mockupUri }} style={styles.modalMockup} resizeMode="contain" />
+            ) : (
+              <View style={styles.modalMockupPlaceholder}>
+                <Package size={48} color={Colors.light.border} />
+                <Text style={styles.modalMockupPlaceholderText}>No mockup attached</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Service style badge + total */}
+          <View style={styles.modalBadgeRow}>
+            <View style={styles.serviceStyleBadge}>
+              <Layers size={12} color={Colors.light.tint} />
+              <Text style={styles.serviceStyleBadgeText}>{item.serviceStyle}</Text>
+            </View>
+            <Text style={styles.modalTotalQty}>{totalQty} pcs total</Text>
+          </View>
+
+          {/* Details */}
+          <View style={styles.modalSection}>
+            <Text style={styles.modalSectionTitle}>DETAILS</Text>
+            {item.applicator ? (
+              <View style={styles.modalDetailRow}>
+                <User size={14} color={Colors.light.text} />
+                <Text style={styles.modalDetailLabel}>Applicator</Text>
+                <Text style={styles.modalDetailValue}>{item.applicator}</Text>
+              </View>
+            ) : null}
+            <View style={styles.modalDetailRow}>
+              <Truck size={14} color={Colors.light.textSecondary} />
+              <Text style={styles.modalDetailLabel}>Source</Text>
+              <Text style={styles.modalDetailValue}>{item.apparelProvider || '—'}</Text>
+            </View>
+            {variants.map((v, vi) => (
+              <View key={vi}>
+                <View style={styles.modalDetailRow}>
+                  <Package size={14} color={Colors.light.textSecondary} />
+                  <Text style={styles.modalDetailLabel}>{variants.length > 1 ? `Style ${vi + 1}` : 'Product'}</Text>
+                  <Text style={styles.modalDetailValue}>{v.product || '—'}</Text>
+                </View>
+                <View style={styles.modalDetailRow}>
+                  <Palette size={14} color={Colors.light.textSecondary} />
+                  <Text style={styles.modalDetailLabel}>{variants.length > 1 ? `Color ${vi + 1}` : 'Color'}</Text>
+                  <Text style={styles.modalDetailValue}>{v.color || '—'}</Text>
+                </View>
+              </View>
+            ))}
+            {locations.length > 0 && (
+              <View style={styles.modalDetailRow}>
+                <MapPin size={14} color={Colors.light.textSecondary} />
+                <Text style={styles.modalDetailLabel}>Locations</Text>
+                <Text style={styles.modalDetailValue}>{locations.join(', ')}</Text>
+              </View>
+            )}
+            {item.locationDetails ? (
+              <View style={styles.modalDetailRow}>
+                <FileText size={14} color={Colors.light.textSecondary} />
+                <Text style={styles.modalDetailLabel}>Notes</Text>
+                <Text style={styles.modalDetailValue}>{item.locationDetails}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          {/* Sizes — one per variant */}
+          {variants.map((v, vi) => (
+            <View key={vi} style={styles.modalSection}>
+              {variants.length > 1 && (
+                <Text style={styles.modalVariantHeading}>{v.product}{v.color ? ` — ${v.color}` : ''}</Text>
+              )}
+              <Text style={styles.modalSectionTitle}>SIZE QUANTITIES</Text>
+              <SizeGridDisplay sizes={v.sizes} isPromotional={isPromotional} />
+              <Text style={styles.modalVariantTotal}>
+                Total: {getTotalQuantity(v.sizes, isPromotional)} pcs
+              </Text>
+            </View>
+          ))}
+
+          {/* Completed banner */}
           {isDone && item.completedAt && (
             <View style={styles.completedBanner}>
-              <CheckCircle size={13} color="#16A34A" />
+              <CheckCircle size={14} color="#16A34A" />
               <Text style={styles.completedBannerText}>Completed {formatDate(item.completedAt)}</Text>
             </View>
           )}
 
-          {/* Garment */}
-          <View style={styles.detailSection}>
-            <View style={styles.detailSectionHeader}>
-              <Package size={13} color={Colors.light.tint} />
-              <Text style={styles.detailSectionTitle}>Garment</Text>
-            </View>
-            <InfoRow label="Product" value={item.product} />
-            <InfoRow label="Color" value={item.productColor} />
-            <InfoRow label="Vendor" value={item.apparelProvider} />
-            <InfoRow label="Total Qty" value={`${qty} pcs`} />
-          </View>
-
-          {/* Sizes */}
-          <View style={styles.detailSection}>
-            <View style={styles.detailSectionHeader}>
-              <Hash size={13} color={Colors.light.tint} />
-              <Text style={styles.detailSectionTitle}>Sizes & Quantities</Text>
-            </View>
-            <SizeGrid sizes={item.sizes} />
-            {item.garmentVariants && item.garmentVariants.length > 0 && (
-              <>
-                <Text style={styles.variantsLabel}>Variants</Text>
-                {item.garmentVariants.map((v, vi) => (
-                  <View key={vi} style={styles.variantRow}>
-                    <Text style={styles.variantName}>{v.product} — {v.color}</Text>
-                    <SizeGrid sizes={v.sizes} />
-                  </View>
-                ))}
-              </>
-            )}
-          </View>
-
-          {/* Print locations */}
-          {locations.length > 0 && (
-            <View style={styles.detailSection}>
-              <View style={styles.detailSectionHeader}>
-                <Layers size={13} color={Colors.light.tint} />
-                <Text style={styles.detailSectionTitle}>Print Locations</Text>
-              </View>
-              <View style={styles.locationBadges}>
-                {locations.map((loc, li) => (
-                  <View key={li} style={styles.locationBadge}>
-                    <MapPin size={11} color={Colors.light.tint} />
-                    <Text style={styles.locationBadgeText}>{loc}</Text>
-                  </View>
-                ))}
-              </View>
-              {item.locationDetails ? (
-                <Text style={styles.locationDetails}>{item.locationDetails}</Text>
-              ) : null}
-            </View>
-          )}
-
-          {/* Applicator */}
-          {item.applicator ? (
-            <View style={styles.detailSection}>
-              <View style={styles.detailSectionHeader}>
-                <User size={13} color={Colors.light.tint} />
-                <Text style={styles.detailSectionTitle}>Applicator</Text>
-              </View>
-              <Text style={styles.infoValue}>{item.applicator}</Text>
-            </View>
-          ) : null}
-
-          {/* Mark Done / Unmark */}
+          {/* Mark Done button */}
           <TouchableOpacity
             style={[styles.markDoneBtn, isDone && styles.markDoneBtnDone]}
-            onPress={isDone ? onUnmarkDone : onMarkDone}
+            onPress={() => isDone ? onUnmarkDone(item.id) : onMarkDone(item.id)}
           >
-            {isDone
-              ? <CheckSquare size={17} color="#fff" />
-              : <Circle size={17} color="#fff" />}
-            <Text style={styles.markDoneBtnText}>
-              {isDone ? 'Unmark as Done' : 'Mark as Done'}
-            </Text>
+            {isDone ? <CheckSquare size={18} color="#fff" /> : <Circle size={18} color="#fff" />}
+            <Text style={styles.markDoneBtnText}>{isDone ? 'Unmark as Done' : 'Mark as Done'}</Text>
           </TouchableOpacity>
+
+          <View style={{ height: 20 }} />
+        </ScrollView>
+
+        {/* Prev / Next navigation */}
+        {items.length > 1 && (
+          <View style={styles.modalNav}>
+            <TouchableOpacity
+              style={[styles.modalNavBtn, currentIndex === 0 && styles.modalNavBtnDisabled]}
+              onPress={() => goTo(currentIndex - 1)}
+              disabled={currentIndex === 0}
+            >
+              <ChevronLeft size={18} color={currentIndex === 0 ? Colors.light.border : Colors.light.tint} />
+              <Text style={[styles.modalNavBtnText, currentIndex === 0 && styles.modalNavBtnTextDisabled]}>
+                {currentIndex > 0 ? (items[currentIndex - 1].designName || `Item ${currentIndex}`) : 'Previous'}
+              </Text>
+            </TouchableOpacity>
+            <Text style={styles.modalNavCount}>{currentIndex + 1} / {items.length}</Text>
+            <TouchableOpacity
+              style={[styles.modalNavBtn, currentIndex === items.length - 1 && styles.modalNavBtnDisabled]}
+              onPress={() => goTo(currentIndex + 1)}
+              disabled={currentIndex === items.length - 1}
+            >
+              <Text style={[styles.modalNavBtnText, currentIndex === items.length - 1 && styles.modalNavBtnTextDisabled]}>
+                {currentIndex < items.length - 1 ? (items[currentIndex + 1].designName || `Item ${currentIndex + 2}`) : 'Next'}
+              </Text>
+              <ChevronRight size={18} color={currentIndex === items.length - 1 ? Colors.light.border : Colors.light.tint} />
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </Modal>
+  );
+}
+
+interface CompactCardProps {
+  item: LineItem;
+  index: number;
+  onPress: () => void;
+}
+
+function CompactCard({ item, index, onPress }: CompactCardProps) {
+  const isDone = !!item.completedAt;
+  const isPromotional = item.serviceStyle === 'Promotional';
+  const qty = getTotalQuantity(item.sizes, isPromotional);
+  const variants: GarmentVariant[] = item.garmentVariants && item.garmentVariants.length > 0
+    ? item.garmentVariants
+    : [{ product: item.product, color: item.productColor, sizes: item.sizes }];
+
+  return (
+    <TouchableOpacity style={[styles.compactCard, isDone && styles.compactCardDone]} onPress={onPress} activeOpacity={0.75}>
+      <View style={styles.compactCardLeft}>
+        <View style={[styles.itemNumBadge, isDone && styles.itemNumBadgeDone]}>
+          <Text style={styles.itemNumText}>#{index + 1}</Text>
         </View>
-      )}
-    </View>
+        <View style={styles.compactCardInfo}>
+          <Text style={styles.compactDesignName} numberOfLines={1}>
+            {item.designName || 'Untitled Design'}
+          </Text>
+          <View style={styles.compactMeta}>
+            <View style={styles.compactServiceBadge}>
+              <Text style={styles.compactServiceText}>{item.serviceStyle}</Text>
+            </View>
+            {item.applicator ? (
+              <Text style={styles.compactApplicator} numberOfLines={1}>· {item.applicator}</Text>
+            ) : null}
+          </View>
+          <Text style={styles.compactVariants} numberOfLines={1}>
+            {variants.map(v => `${v.product}${v.color ? ` / ${v.color}` : ''}`).join(' · ')}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.compactCardRight}>
+        <Text style={styles.compactQty}>{qty}</Text>
+        <Text style={styles.compactQtyLabel}>pcs</Text>
+        <View style={[styles.compactStatus, isDone && styles.compactStatusDone]}>
+          {isDone
+            ? <CheckCircle size={14} color="#fff" />
+            : <Circle size={14} color={Colors.light.textSecondary} />}
+        </View>
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -202,8 +305,9 @@ export default function ProductionViewScreen() {
   const router = useRouter();
   const { projects, quotes, sales, markProjectComplete, markLineItemComplete, unmarkLineItemComplete, isCompletingProject } = useQuotes();
 
-  const quote = (projects || [...quotes, ...sales]).find(q => q.id === id);
+  const [modalIndex, setModalIndex] = useState<number | null>(null);
 
+  const quote = (projects || [...quotes, ...sales]).find(q => q.id === id);
   const items = quote?.lineItems ?? [];
   const total = items.length;
   const completedCount = items.filter(i => !!i.completedAt).length;
@@ -224,11 +328,11 @@ export default function ProductionViewScreen() {
     if (!allDone) {
       const incompleteItems = items
         .filter(i => !i.completedAt)
-        .map((i, idx) => `  • ${i.designName || `Item ${items.indexOf(i) + 1}`}`)
+        .map(i => `  • ${i.designName || `Item ${items.indexOf(i) + 1}`}`)
         .join('\n');
       Alert.alert(
         'Items Not Completed',
-        `The following line items still need to be marked done before completing the project:\n\n${incompleteItems}`,
+        `The following items still need to be marked done:\n\n${incompleteItems}`,
         [
           { text: 'Go Back', style: 'cancel' },
           {
@@ -275,26 +379,23 @@ export default function ProductionViewScreen() {
             <Text style={styles.bannerProject} numberOfLines={1}>{quote.projectName}</Text>
           </View>
           <View style={[styles.progressPill, allDone && styles.progressPillDone]}>
-            <Text style={[styles.progressPillText, allDone && styles.progressPillTextDone]}>
-              {completedCount}/{total} done
-            </Text>
+            <Text style={styles.progressPillText}>{completedCount}/{total} done</Text>
           </View>
         </View>
 
-        {/* All line items */}
+        {/* Compact card list */}
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={true}
+          showsVerticalScrollIndicator
         >
+          <Text style={styles.tapHint}>Tap a line item to view details and sizes</Text>
           {items.map((item, index) => (
-            <LineItemCard
+            <CompactCard
               key={item.id}
               item={item}
               index={index}
-              total={total}
-              onMarkDone={() => handleMarkItemDone(item.id)}
-              onUnmarkDone={() => handleUnmarkItemDone(item.id)}
+              onPress={() => setModalIndex(index)}
             />
           ))}
           <View style={{ height: 20 }} />
@@ -302,12 +403,9 @@ export default function ProductionViewScreen() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <TouchableOpacity
-            style={styles.saveBtn}
-            onPress={() => router.back()}
-          >
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
             <ArrowLeft size={17} color={Colors.light.tint} />
-            <Text style={styles.saveBtnText}>Back to Project</Text>
+            <Text style={styles.backBtnText}>Back to Project</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.completeBtn, allDone && styles.completeBtnAllDone, !!isCompletingProject && styles.completeBtnDisabled]}
@@ -321,6 +419,17 @@ export default function ProductionViewScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Detail Modal */}
+      {modalIndex !== null && (
+        <DetailModal
+          items={items}
+          initialIndex={modalIndex}
+          onClose={() => setModalIndex(null)}
+          onMarkDone={handleMarkItemDone}
+          onUnmarkDone={handleUnmarkItemDone}
+        />
+      )}
     </>
   );
 }
@@ -352,31 +461,57 @@ const styles = StyleSheet.create({
   },
   progressPillDone: { backgroundColor: '#16A34A' },
   progressPillText: { fontSize: 12, fontWeight: '700', color: '#fff' },
-  progressPillTextDone: { color: '#fff' },
 
   scrollView: { flex: 1 },
-  scrollContent: { padding: 16, gap: 12 },
+  scrollContent: { padding: 16, gap: 10 },
 
-  itemCard: {
+  tapHint: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+
+  compactCard: {
     backgroundColor: Colors.light.surface,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.light.border,
-    overflow: 'hidden',
-  },
-  itemCardDone: { borderColor: '#86EFAC' },
-
-  itemCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#111111',
     paddingHorizontal: 14,
     paddingVertical: 12,
-    gap: 10,
+    gap: 12,
   },
-  itemCardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  itemCardHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  compactCardDone: { borderColor: '#86EFAC', backgroundColor: '#F0FDF4' },
+  compactCardLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, minWidth: 0 },
+  compactCardInfo: { flex: 1, minWidth: 0, gap: 3 },
+  compactDesignName: { fontSize: 15, fontWeight: '700', color: Colors.light.text },
+  compactMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  compactServiceBadge: {
+    backgroundColor: 'rgba(255,90,0,0.1)',
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  compactServiceText: { fontSize: 11, fontWeight: '700', color: Colors.light.tint },
+  compactApplicator: { fontSize: 12, color: Colors.light.textSecondary, flexShrink: 1 },
+  compactVariants: { fontSize: 12, color: Colors.light.textSecondary },
+  compactCardRight: { alignItems: 'center', gap: 4, flexShrink: 0 },
+  compactQty: { fontSize: 22, fontWeight: '800', color: Colors.light.text, lineHeight: 26 },
+  compactQtyLabel: { fontSize: 11, color: Colors.light.textSecondary, marginTop: -4 },
+  compactStatus: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.light.background,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  compactStatusDone: { backgroundColor: '#16A34A', borderColor: '#16A34A' },
 
   itemNumBadge: {
     backgroundColor: Colors.light.tint,
@@ -384,115 +519,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     flexShrink: 0,
+    alignSelf: 'flex-start',
   },
   itemNumBadgeDone: { backgroundColor: '#16A34A' },
   itemNumText: { fontSize: 12, fontWeight: '700', color: '#fff' },
-
-  itemDesignName: { fontSize: 15, fontWeight: '700', color: '#fff' },
-  itemServiceStyle: { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 1 },
-
-  itemStatusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  itemStatusPillDone: { backgroundColor: '#16A34A' },
-  itemStatusText: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.7)' },
-  itemStatusTextDone: { color: '#fff' },
-
-  itemCardBody: { padding: 14, gap: 10 },
-
-  completedBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#F0FDF4',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-  },
-  completedBannerText: { fontSize: 12, color: '#16A34A', fontWeight: '600' },
-
-  detailSection: {
-    backgroundColor: Colors.light.background,
-    borderRadius: 8,
-    padding: 12,
-    gap: 6,
-  },
-  detailSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  detailSectionTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.light.tint,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 8,
-    paddingVertical: 2,
-  },
-  infoLabel: { fontSize: 13, color: Colors.light.textSecondary, flex: 1 },
-  infoValue: { fontSize: 13, color: Colors.light.text, fontWeight: '500', textAlign: 'right', flex: 1 },
-  noData: { fontSize: 12, color: Colors.light.textSecondary, fontStyle: 'italic' },
-
-  sizeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  sizeCell: {
-    minWidth: 48,
-    backgroundColor: Colors.light.surface,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    alignItems: 'center',
-  },
-  sizeCellLabel: { fontSize: 10, fontWeight: '700', color: Colors.light.textSecondary, textTransform: 'uppercase' },
-  sizeCellQty: { fontSize: 18, fontWeight: '800', color: Colors.light.text, marginTop: 1 },
-
-  variantsLabel: {
-    fontSize: 11, fontWeight: '600', color: Colors.light.textSecondary,
-    marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.3,
-  },
-  variantRow: { gap: 6, paddingTop: 8, borderTopWidth: 1, borderTopColor: Colors.light.border },
-  variantName: { fontSize: 12, fontWeight: '600', color: Colors.light.text },
-
-  locationBadges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  locationBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(255,90,0,0.08)',
-    borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
-    borderWidth: 1, borderColor: 'rgba(255,90,0,0.2)',
-  },
-  locationBadgeText: { fontSize: 12, color: Colors.light.tint, fontWeight: '600' },
-  locationDetails: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 4, lineHeight: 17 },
-
-  markDoneBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: Colors.light.textSecondary,
-    borderRadius: 10,
-    paddingVertical: 13,
-    marginTop: 4,
-  },
-  markDoneBtnDone: { backgroundColor: '#16A34A' },
-  markDoneBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 
   footer: {
     flexDirection: 'row',
@@ -503,7 +533,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.light.border,
   },
-  saveBtn: {
+  backBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -514,8 +544,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: Colors.light.tint,
   },
-  saveBtnText: { fontSize: 14, fontWeight: '600', color: Colors.light.tint },
-
+  backBtnText: { fontSize: 14, fontWeight: '600', color: Colors.light.tint },
   completeBtn: {
     flex: 1,
     flexDirection: 'row',
@@ -529,4 +558,229 @@ const styles = StyleSheet.create({
   completeBtnAllDone: { backgroundColor: '#16A34A' },
   completeBtnDisabled: { opacity: 0.6 },
   completeBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+
+  /* ── Detail Modal ── */
+  modalContainer: { flex: 1, backgroundColor: Colors.light.background },
+
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#111111',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    paddingTop: 16,
+    gap: 10,
+  },
+  modalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  modalHeaderCenter: { flex: 1, alignItems: 'center' },
+  modalItemCounter: { fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '600', letterSpacing: 0.5 },
+  modalDesignName: { fontSize: 16, fontWeight: '700', color: '#fff', textAlign: 'center', marginTop: 2 },
+  modalStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    flexShrink: 0,
+  },
+  modalStatusPillDone: { backgroundColor: '#16A34A' },
+  modalStatusText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+
+  modalScroll: { flex: 1 },
+  modalContent: { padding: 16, gap: 12 },
+
+  modalMockupContainer: {
+    width: '100%',
+    height: SCREEN_HEIGHT * 0.38,
+    backgroundColor: Colors.light.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    overflow: 'hidden',
+  },
+  modalMockup: {
+    width: '100%',
+    height: '100%',
+  },
+  modalMockupPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  modalMockupPlaceholderText: {
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+  },
+
+  modalBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+  },
+  serviceStyleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255,90,0,0.1)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  serviceStyleBadgeText: { fontSize: 12, fontWeight: '700', color: Colors.light.tint },
+  modalTotalQty: { fontSize: 13, fontWeight: '600', color: Colors.light.textSecondary },
+
+  modalSection: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 12,
+    padding: 14,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
+  modalSectionTitle: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  modalVariantHeading: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: Colors.light.text,
+    marginBottom: 2,
+  },
+  modalVariantTotal: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: Colors.light.textSecondary,
+    textAlign: 'right',
+    marginTop: 6,
+  },
+
+  modalDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  modalDetailLabel: {
+    fontSize: 14,
+    color: Colors.light.textSecondary,
+    width: 80,
+    flexShrink: 0,
+    marginTop: 1,
+  },
+  modalDetailValue: {
+    fontSize: 14,
+    color: Colors.light.text,
+    fontWeight: '500' as const,
+    flex: 1,
+    lineHeight: 20,
+  },
+
+  sizeGridRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  sizeCell: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: Colors.light.background,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: Colors.light.tint,
+    paddingVertical: 8,
+    minWidth: 0,
+  },
+  sizeCellEmpty: {
+    borderColor: Colors.light.border,
+  },
+  sizeCellLabel: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  sizeCellQty: {
+    fontSize: 20,
+    fontWeight: '800' as const,
+    color: Colors.light.text,
+    lineHeight: 24,
+  },
+  sizeCellQtyEmpty: {
+    color: Colors.light.border,
+    fontWeight: '400' as const,
+  },
+
+  completedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  completedBannerText: { fontSize: 13, color: '#16A34A', fontWeight: '600' },
+
+  markDoneBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.light.textSecondary,
+    borderRadius: 12,
+    paddingVertical: 15,
+  },
+  markDoneBtnDone: { backgroundColor: '#16A34A' },
+  markDoneBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+
+  modalNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingBottom: 24,
+    backgroundColor: Colors.light.surface,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    gap: 8,
+  },
+  modalNavBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    maxWidth: '38%',
+  },
+  modalNavBtnDisabled: { opacity: 0.35 },
+  modalNavBtnText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: Colors.light.tint,
+    flexShrink: 1,
+  },
+  modalNavBtnTextDisabled: { color: Colors.light.border },
+  modalNavCount: {
+    fontSize: 13,
+    fontWeight: '500' as const,
+    color: Colors.light.textSecondary,
+  },
 });
