@@ -41,7 +41,7 @@ const STATUS_OPTIONS: ClientStatus[] = ['Active', 'Prospect', 'Inactive'];
 const STATUS_STYLE: Record<ClientStatus, { bg: string; text: string }> = {
   Active:   { bg: '#FF5A00', text: '#FFFFFF' },
   Prospect: { bg: '#FEF9C3', text: '#854D0E' },
-  Inactive: { bg: '#F3F4F6', text: '#6B7280' },
+  Inactive: { bg: '#6B7280', text: '#FFFFFF' },
 };
 
 const EMPTY_FORM = {

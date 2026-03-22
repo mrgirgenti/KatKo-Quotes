@@ -136,21 +136,9 @@ export default function QuoteDetailScreen() {
       return;
     }
     setMenuVisible(false);
-    Alert.alert(
-      'Revert to Quoted',
-      `Move "${quote.projectName}" back to Quoted status?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Revert',
-          onPress: () => {
-            convertToQuote(quote.id);
-            setToastMessage('Reverted to Quoted status.');
-            setToastVisible(true);
-          },
-        },
-      ]
-    );
+    convertToQuote(quote.id);
+    setToastMessage('Reverted to Quoted status.');
+    setToastVisible(true);
   }, [quote, convertToQuote]);
 
   const handleSaveAndLock = useCallback(() => {
@@ -692,7 +680,7 @@ export default function QuoteDetailScreen() {
               </View>
             ) : (
               <TouchableOpacity style={styles.trackButton} onPress={handleTrackSales}>
-                <ClipboardList size={17} color="#fff" />
+                <ClipboardList size={17} color={Colors.light.tint} />
                 <Text style={styles.trackButtonText}>Track Costs</Text>
               </TouchableOpacity>
             )}
@@ -1000,7 +988,7 @@ const styles = StyleSheet.create({
   lineItemSubtotalLabel: {
     fontSize: 13,
     fontWeight: '600' as const,
-    color: Colors.light.textSecondary,
+    color: Colors.light.tint,
   },
   lineItemSubtotalRight: {
     alignItems: 'flex-end',
@@ -1322,19 +1310,20 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   trackButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
+    paddingHorizontal: 14,
     borderRadius: 10,
-    backgroundColor: Colors.light.tint,
-    gap: 8,
+    borderWidth: 1.5,
+    borderColor: Colors.light.tint,
+    gap: 6,
   },
   trackButtonText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600' as const,
-    color: '#fff',
+    color: Colors.light.tint,
   },
   lockedButton: {
     flex: 1,
@@ -1401,7 +1390,7 @@ const styles = StyleSheet.create({
   },
   amountCollectedBoxSide: {
     flex: 1,
-    backgroundColor: Colors.light.highlightBg,
+    backgroundColor: '#111111',
     borderRadius: 8,
     padding: 12,
   },
@@ -1414,11 +1403,11 @@ const styles = StyleSheet.create({
   amountCollectedValueSide: {
     fontSize: 18,
     fontWeight: '700' as const,
-    color: Colors.light.text,
+    color: '#FFFFFF',
   },
   quotedTotalHintSide: {
     fontSize: 11,
-    color: Colors.light.textSecondary,
+    color: 'rgba(255,255,255,0.65)',
     marginTop: 4,
   },
   profitBoxSide: {

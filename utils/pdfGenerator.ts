@@ -71,7 +71,7 @@ function generateQuoteHTML(quote: Quote, user?: UserProfile | null): string {
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <title>${quote.personOrganization} — ${quote.projectName}</title>
       <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 36px; color: #1a1a1a; font-size: 12px; }
         .header { border-bottom: 3px solid #FF5A00; padding-bottom: 18px; margin-bottom: 20px; }
         .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
@@ -246,6 +246,22 @@ function generateSalesHTML(quote: Quote): string {
   `;
 }
 
+function sanitizeFilename(s: string): string {
+  return s.replace(/[^a-zA-Z0-9 _\-]/g, '').trim().replace(/\s+/g, '_').slice(0, 40);
+}
+
+function downloadHtmlAsFile(html: string, filename: string): void {
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function openHtmlInNewWindow(html: string): Window | null {
   const win = window.open('', '_blank');
   if (win) {
@@ -257,17 +273,12 @@ function openHtmlInNewWindow(html: string): Window | null {
 
 export async function generateAndSharePDF(quote: Quote, user?: UserProfile | null): Promise<void> {
   try {
-    console.log('Generating PDF for quote:', quote.id);
     const html = generateQuoteHTML(quote, user);
 
     if (Platform.OS === 'web') {
-      const win = openHtmlInNewWindow(html);
-      if (!win) {
-        throw new Error('Popup blocked. Please allow popups for this site.');
-      }
-      setTimeout(() => {
-        try { win.print(); } catch (_) {}
-      }, 800);
+      const client = sanitizeFilename(quote.personOrganization || 'Client');
+      const project = sanitizeFilename(quote.projectName || 'Quote');
+      downloadHtmlAsFile(html, `${client}_${project}.html`);
       return;
     }
 
@@ -290,7 +301,6 @@ export async function generateAndSharePDF(quote: Quote, user?: UserProfile | nul
 
 export async function printQuote(quote: Quote, user?: UserProfile | null): Promise<void> {
   try {
-    console.log('Printing quote:', quote.id);
     const html = generateQuoteHTML(quote, user);
 
     if (Platform.OS === 'web') {

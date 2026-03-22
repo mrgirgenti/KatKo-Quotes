@@ -27,7 +27,7 @@ const STATUS_OPTIONS: ClientStatus[] = ['Active', 'Prospect', 'Inactive'];
 const STATUS_STYLE: Record<ClientStatus, { bg: string; text: string; border: string }> = {
   Active:   { bg: '#FF5A00', text: '#FFFFFF', border: '#FF5A00' },
   Prospect: { bg: '#FEF9C3', text: '#854D0E', border: '#FDE68A' },
-  Inactive: { bg: '#F3F4F6', text: '#6B7280', border: '#D1D5DB' },
+  Inactive: { bg: '#6B7280', text: '#FFFFFF', border: '#4B5563' },
 };
 
 const FILTER_TABS: (ClientStatus | 'All')[] = ['All', 'Active', 'Prospect', 'Inactive'];

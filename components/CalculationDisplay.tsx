@@ -32,8 +32,6 @@ export function CalculationDisplay({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Cost Breakdown</Text>
-      
       <View style={styles.table}>
         <View style={styles.tableHeader}>
           <Text style={styles.headerCell}></Text>
@@ -379,12 +377,12 @@ const styles = StyleSheet.create({
   clientQuoteLabel: {
     flex: 1,
     fontSize: 13,
-    color: '#c24600',
+    color: Colors.light.text,
   },
   clientQuoteValue: {
     width: 70,
     fontSize: 13,
-    color: '#c24600',
+    color: Colors.light.text,
     textAlign: 'right' as const,
   },
   clientQuoteTotalRow: {

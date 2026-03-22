@@ -96,11 +96,11 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
         <View style={styles.colStatus}>
           <StatusBadge status={effectiveStatus} />
         </View>
-        <View style={styles.colDate}>
+        <View style={styles.colOrderDate}>
           <Text style={styles.tableDate}>{formatDate(quote.orderDate)}</Text>
-          {quote.inHandsDate ? (
-            <Text style={styles.tableDateSub}>Due {formatDate(quote.inHandsDate)}</Text>
-          ) : null}
+        </View>
+        <View style={styles.colDueDate}>
+          <Text style={styles.tableDate}>{quote.inHandsDate ? formatDate(quote.inHandsDate) : '—'}</Text>
         </View>
         <View style={styles.colClient}>
           <Text style={styles.tableClient} numberOfLines={1}>{quote.personOrganization}</Text>
@@ -316,14 +316,7 @@ export default function ProjectsScreen() {
   }, [convertToSale]);
 
   const handleRevert = useCallback((quote: Quote) => {
-    Alert.alert(
-      'Revert to Quoted',
-      `Move "${quote.projectName}" back to Quoted status?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Revert', onPress: () => convertToQuote(quote.id) },
-      ]
-    );
+    convertToQuote(quote.id);
   }, [convertToQuote]);
 
   const activeFilterCount = [
@@ -456,8 +449,11 @@ export default function ProjectsScreen() {
         {isDesktop && (
           <View style={styles.tableHeader}>
             <View style={styles.colStatus}><Text style={styles.thText}>Status</Text></View>
-            <View style={styles.colDate}>
-              <SortBtn field="date" label="Date" />
+            <View style={styles.colOrderDate}>
+              <SortBtn field="date" label="Order Date" />
+            </View>
+            <View style={styles.colDueDate}>
+              <SortBtn field="inHands" label="Due Date" />
             </View>
             <View style={styles.colClient}>
               <SortBtn field="client" label="Client" />
@@ -729,7 +725,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.surface,
   },
   colStatus:    { width: 90 },
-  colDate:      { width: 95 },
+  colOrderDate: { width: 95 },
+  colDueDate:   { width: 95 },
   colClient:    { flex: 1.2 },
   colProject:   { flex: 1.2 },
   colApplicator:{ flex: 1.2 },
