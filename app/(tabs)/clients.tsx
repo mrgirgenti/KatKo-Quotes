@@ -25,8 +25,8 @@ import { useBreakpoint } from '@/hooks/useBreakpoint';
 const STATUS_OPTIONS: ClientStatus[] = ['Active', 'Prospect', 'Inactive'];
 
 const STATUS_STYLE: Record<ClientStatus, { bg: string; text: string; border: string }> = {
-  Active:   { bg: '#ECFDF5', text: '#059669', border: '#6EE7B7' },
-  Prospect: { bg: Colors.light.highlightBg, text: Colors.light.tint, border: '#FFB784' },
+  Active:   { bg: '#FF5A00', text: '#FFFFFF', border: '#FF5A00' },
+  Prospect: { bg: '#FEF9C3', text: '#854D0E', border: '#FDE68A' },
   Inactive: { bg: '#F3F4F6', text: '#6B7280', border: '#D1D5DB' },
 };
 

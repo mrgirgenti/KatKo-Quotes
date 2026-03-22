@@ -67,6 +67,19 @@ Breakpoints are detected via `useWindowDimensions` so they respond to live brows
 - **Projects table header**: `#111111` black with white text; columns: Status, Date, Client, Project, Applicator(s), Service(s), Total, Markup, Actions
 - **Clients table header**: `#111111` black with white text; columns: Avatar, Name, Organization, Email, Phone, Status, Actions
 
+## System-Wide Status Colors (single source of truth in `types/quote.ts` → `STATUS_CONFIG`)
+Quote statuses:
+- **Draft** = grey bg `#F3F4F6`, grey text `#6B7280`
+- **Quoted** = blue bg `#EFF6FF`, blue text `#2563EB`
+- **Active** = solid orange bg `#FF5A00`, white text `#FFFFFF`
+- **Completed** = solid green bg `#16A34A`, white text `#FFFFFF`
+- **Expired** = light grey bg `#F9FAFB`, grey text `#9CA3AF`
+
+Client statuses (defined in `clients.tsx` and `clients/[id].tsx` → `STATUS_STYLE`):
+- **Active** = solid orange bg `#FF5A00`, white text (matches quote Active)
+- **Prospect** = yellow bg `#FEF9C3`, dark amber text `#854D0E`
+- **Inactive** = light grey bg `#F3F4F6`, grey text `#6B7280`
+
 ## Quote Details Page
 - **Action bar** (quoted status): ⋮ menu | Mark as Active | Start Production (Flame icon)
 - **Action bar** (active/completed): ⋮ menu | Track Costs | Start Production (Flame icon)

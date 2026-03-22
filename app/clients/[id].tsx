@@ -39,8 +39,8 @@ import { formatCurrency } from '@/utils/quoteCalculations';
 const STATUS_OPTIONS: ClientStatus[] = ['Active', 'Prospect', 'Inactive'];
 
 const STATUS_STYLE: Record<ClientStatus, { bg: string; text: string }> = {
-  Active: { bg: '#ECFDF5', text: '#059669' },
-  Prospect: { bg: Colors.light.highlightBg, text: Colors.light.tint },
+  Active:   { bg: '#FF5A00', text: '#FFFFFF' },
+  Prospect: { bg: '#FEF9C3', text: '#854D0E' },
   Inactive: { bg: '#F3F4F6', text: '#6B7280' },
 };
 

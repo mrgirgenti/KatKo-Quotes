@@ -286,7 +286,7 @@ export default function QuoteDetailScreen() {
         <View style={styles.orderHeaderRow}>
           <View style={styles.orderHeaderLeft}>
             {(quote.status === 'active' || quote.status === 'completed') && (
-              <View style={[styles.saleBadge, quote.status === 'completed' && { backgroundColor: '#16A34A' }]}>
+              <View style={[styles.saleBadge, { backgroundColor: quote.status === 'completed' ? '#16A34A' : '#FF5A00' }]}>
                 <CheckCircle size={12} color="#fff" />
                 <Text style={styles.saleBadgeText}>{quote.status === 'completed' ? 'COMPLETED' : 'ACTIVE'}</Text>
               </View>

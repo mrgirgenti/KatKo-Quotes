@@ -13,12 +13,17 @@ import {
   TrendingUp,
   Clock,
   FilePlus,
+  Layers,
+  Shirt,
+  Scissors,
+  Gift,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { useClients } from '@/contexts/ClientsContext';
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { ServiceStyle, STATUS_CONFIG, getEffectiveStatus } from '@/types/quote';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -59,6 +64,23 @@ export default function DashboardScreen() {
       prospects: clients.filter((c) => c.status === 'Prospect').length,
     };
   }, [quotes, clients]);
+
+  const serviceBreakdown = useMemo(() => {
+    const completedProjects = quotes.filter((q) => q.status === 'completed');
+    const services: { label: ServiceStyle; count: number }[] = [
+      { label: 'Direct to Film',  count: 0 },
+      { label: 'Screen Printing', count: 0 },
+      { label: 'Embroidery',      count: 0 },
+      { label: 'Promotional',     count: 0 },
+    ];
+    completedProjects.forEach((q) => {
+      const usedServices = new Set(q.lineItems.map((i) => i.serviceStyle));
+      services.forEach((s) => {
+        if (usedServices.has(s.label)) s.count += 1;
+      });
+    });
+    return services;
+  }, [quotes]);
 
   const recentQuotes = useMemo(
     () =>
@@ -150,11 +172,35 @@ export default function DashboardScreen() {
         })}
       </View>
 
+      {/* Completed Projects by Service */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Completed by Service</Text>
+          <Text style={styles.sectionSub}>Completed projects only</Text>
+        </View>
+        <View style={[styles.serviceGrid, isMobile && styles.serviceGridMobile]}>
+          {serviceBreakdown.map(({ label, count }) => {
+            const cfg = SERVICE_ICON_CONFIG[label];
+            const IconComponent = cfg.icon;
+            return (
+              <View key={label} style={[styles.serviceCard, isMobile && styles.serviceCardMobile]}>
+                <View style={[styles.serviceIconWrap, { backgroundColor: cfg.bg }]}>
+                  <IconComponent size={20} color={cfg.color} />
+                </View>
+                <Text style={styles.serviceCount}>{count}</Text>
+                <Text style={styles.serviceLabel}>{label}</Text>
+                <Text style={styles.serviceSub}>{count === 1 ? 'project' : 'projects'}</Text>
+              </View>
+            );
+          })}
+        </View>
+      </View>
+
       {/* Recent activity */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent Quotes</Text>
-          <TouchableOpacity onPress={() => router.push('/history')}>
+          <TouchableOpacity onPress={() => router.push('/projects')}>
             <Text style={styles.seeAll}>See all</Text>
           </TouchableOpacity>
         </View>
@@ -171,81 +217,52 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          recentQuotes.map((quote) => (
-            <TouchableOpacity
-              key={quote.id}
-              style={styles.quoteRow}
-              onPress={() => router.push(`/quote/${quote.id}` as any)}
-            >
-              <View style={styles.quoteRowLeft}>
-                <View
-                  style={[
-                    styles.statusDot,
-                    {
-                      backgroundColor:
-                        quote.status === 'sale'
-                          ? '#059669'
-                          : quote.status === 'submitted'
-                          ? Colors.light.tint
-                          : Colors.light.border,
-                    },
-                  ]}
-                />
-                <View style={styles.quoteRowText}>
-                  <Text style={styles.quoteName} numberOfLines={1}>
-                    {quote.personOrganization}
-                  </Text>
-                  <Text style={styles.quoteProject} numberOfLines={1}>
-                    {quote.projectName}
-                    {quote.invoiceNumber ? ` · #${quote.invoiceNumber}` : ''}
-                  </Text>
+          recentQuotes.map((quote) => {
+            const effectiveStatus = getEffectiveStatus(quote);
+            const cfg = STATUS_CONFIG[effectiveStatus];
+            return (
+              <TouchableOpacity
+                key={quote.id}
+                style={styles.quoteRow}
+                onPress={() => router.push(`/quote/${quote.id}` as any)}
+              >
+                <View style={styles.quoteRowLeft}>
+                  <View style={[styles.statusDot, { backgroundColor: cfg.bg }]} />
+                  <View style={styles.quoteRowText}>
+                    <Text style={styles.quoteName} numberOfLines={1}>
+                      {quote.personOrganization}
+                    </Text>
+                    <Text style={styles.quoteProject} numberOfLines={1}>
+                      {quote.projectName}
+                      {quote.invoiceNumber ? ` · #${quote.invoiceNumber}` : ''}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-              <View style={styles.quoteRowRight}>
-                <Text style={styles.quoteTotal}>
-                  {formatCurrency(quote.calculations?.total ?? 0)}
-                </Text>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    {
-                      backgroundColor:
-                        quote.status === 'sale'
-                          ? '#ECFDF5'
-                          : quote.status === 'submitted'
-                          ? Colors.light.highlightBg
-                          : '#F3F4F6',
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.statusBadgeText,
-                      {
-                        color:
-                          quote.status === 'sale'
-                            ? '#059669'
-                            : quote.status === 'submitted'
-                            ? Colors.light.tint
-                            : Colors.light.textSecondary,
-                      },
-                    ]}
-                  >
-                    {quote.status === 'sale'
-                      ? 'Sale'
-                      : quote.status === 'submitted'
-                      ? 'Quote'
-                      : 'Draft'}
+                <View style={styles.quoteRowRight}>
+                  <Text style={styles.quoteTotal}>
+                    {formatCurrency(quote.calculations?.total ?? 0)}
                   </Text>
+                  <View style={[styles.statusBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor, borderWidth: 1 }]}>
+                    <Text style={[styles.statusBadgeText, { color: cfg.color }]}>
+                      {cfg.label}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))
+              </TouchableOpacity>
+            );
+          })
         )}
       </View>
     </ScrollView>
   );
 }
+
+const SERVICE_ICON_CONFIG: Record<ServiceStyle, { icon: any; color: string; bg: string }> = {
+  'Direct to Film':  { icon: Layers,   color: '#2563EB', bg: '#EFF6FF' },
+  'Screen Printing': { icon: Shirt,    color: '#FF5A00', bg: '#FFF4EE' },
+  'Embroidery':      { icon: Scissors, color: '#7C3AED', bg: '#F5F3FF' },
+  'Promotional':     { icon: Gift,     color: '#059669', bg: '#ECFDF5' },
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -362,6 +379,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.light.tint,
     fontWeight: '600' as const,
+  },
+  sectionSub: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+  },
+  serviceGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  serviceGridMobile: {
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  serviceCard: {
+    flex: 1,
+    minWidth: 120,
+    backgroundColor: Colors.light.surface,
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    alignItems: 'center',
+  },
+  serviceCardMobile: {
+    minWidth: '44%' as any,
+    padding: 12,
+  },
+  serviceIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  serviceCount: {
+    fontSize: 28,
+    fontWeight: '800' as const,
+    color: Colors.light.text,
+    marginBottom: 2,
+  },
+  serviceLabel: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.light.text,
+    textAlign: 'center' as const,
+    marginBottom: 2,
+  },
+  serviceSub: {
+    fontSize: 11,
+    color: Colors.light.textSecondary,
   },
   emptyState: {
     alignItems: 'center',
