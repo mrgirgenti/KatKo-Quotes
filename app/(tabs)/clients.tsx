@@ -15,12 +15,32 @@ import {
   FlatList,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Plus, Search, Edit3, Trash2, X, Users, ChevronRight, ChevronDown, MoreVertical } from 'lucide-react-native';
+import { Plus, Search, Edit3, Trash2, X, Users, ChevronRight, ChevronDown, Upload } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useClients } from '@/contexts/ClientsContext';
 import { Client, ClientStatus } from '@/types/client';
-import { generateId } from '@/utils/quoteCalculations';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+
+function parseCSV(text: string): Record<string, string>[] {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z]/g, ''));
+  return lines.slice(1).map(line => {
+    const cols: string[] = [];
+    let cur = '';
+    let inQuote = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { inQuote = !inQuote; }
+      else if (ch === ',' && !inQuote) { cols.push(cur.trim()); cur = ''; }
+      else { cur += ch; }
+    }
+    cols.push(cur.trim());
+    const row: Record<string, string> = {};
+    headers.forEach((h, i) => { row[h] = cols[i] ?? ''; });
+    return row;
+  });
+}
 
 const STATUS_OPTIONS: ClientStatus[] = ['Active', 'Prospect', 'Inactive'];
 
@@ -220,6 +240,45 @@ export default function ClientsScreen() {
     Inactive: clients.filter((c) => c.status === 'Inactive').length,
   }), [clients]);
 
+  const handleImportCSV = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv,text/csv';
+    input.onchange = async (e: any) => {
+      const file = e.target?.files?.[0];
+      if (!file) return;
+      const text = await file.text();
+      const rows = parseCSV(text);
+      if (rows.length === 0) {
+        Alert.alert('Import Failed', 'No valid rows found. Make sure your CSV has a header row with columns like: name, organization, email, phone, status');
+        return;
+      }
+      let imported = 0;
+      let skipped = 0;
+      rows.forEach(row => {
+        const name = row['name'] || row['fullname'] || row['clientname'] || '';
+        if (!name.trim()) { skipped++; return; }
+        const rawStatus = (row['status'] || '').trim();
+        const status: ClientStatus = (['Active', 'Prospect', 'Inactive'] as ClientStatus[]).includes(rawStatus as ClientStatus)
+          ? rawStatus as ClientStatus
+          : 'Prospect';
+        addClient({
+          name: name.trim(),
+          organization: (row['organization'] || row['org'] || row['company'] || '').trim() || undefined,
+          email: (row['email'] || '').trim() || undefined,
+          phone: (row['phone'] || row['phonenumber'] || '').trim() || undefined,
+          status,
+          totalOrders: 0,
+          totalSpent: 0,
+        });
+        imported++;
+      });
+      Alert.alert('Import Complete', `Imported ${imported} client${imported !== 1 ? 's' : ''}${skipped > 0 ? `. ${skipped} row${skipped !== 1 ? 's' : ''} skipped (missing name).` : '.'}`);
+    };
+    input.click();
+  }, [addClient]);
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -268,6 +327,10 @@ export default function ClientsScreen() {
               </TouchableOpacity>
             ) : null}
           </View>
+          <TouchableOpacity style={styles.importBtn} onPress={handleImportCSV}>
+            <Upload size={15} color={Colors.light.tint} />
+            <Text style={styles.importBtnText}>Import CSV</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
             <Plus size={16} color="#fff" />
             <Text style={styles.addBtnText}>Add Client</Text>
@@ -522,6 +585,18 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   addBtnText: { fontSize: 14, fontWeight: '600' as const, color: '#fff' },
+  importBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: Colors.light.tint,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+  },
+  importBtnText: { fontSize: 14, fontWeight: '600' as const, color: Colors.light.tint },
 
   tableHeader: {
     flexDirection: 'row',

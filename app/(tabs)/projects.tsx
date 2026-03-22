@@ -21,9 +21,12 @@ import {
   FileText,
   CheckCircle,
   RotateCcw,
-  Clapperboard,
   ArrowUpDown,
   ChevronDown,
+  Edit3,
+  Download,
+  Printer,
+  Sheet,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useQuotes } from '@/contexts/QuotesContext';
@@ -31,6 +34,7 @@ import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { Quote, QuoteStatus, getEffectiveStatus, STATUS_CONFIG } from '@/types/quote';
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
+import { generateAndSharePDF, printQuote } from '@/utils/pdfGenerator';
 
 type SortField = 'date' | 'client' | 'total' | 'status' | 'inHands';
 type SortDir = 'asc' | 'desc';
@@ -65,10 +69,14 @@ interface ProjectRowProps {
   onDelete: () => void;
   onConvert: () => void;
   onRevert: () => void;
+  onEdit: () => void;
+  onExportPDF: () => void;
+  onExportSheets: () => void;
+  onPrint: () => void;
   isDesktop: boolean;
 }
 
-function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRevert, isDesktop }: ProjectRowProps) {
+function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRevert, onEdit, onExportPDF, onExportSheets, onPrint, isDesktop }: ProjectRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const menuBtnRef = useRef<View>(null);
@@ -148,19 +156,39 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
             onPress={() => setMenuOpen(false)}
           >
             <View style={[styles.dropdownMenu, { position: 'absolute', top: menuPos.top, right: menuPos.right }]}>
-              {effectiveStatus === 'quoted' || effectiveStatus === 'expired' ? (
-                <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onConvert(); }}>
-                  <CheckCircle size={14} color={Colors.light.tint} />
-                  <Text style={styles.dropdownItemText}>Convert to Active</Text>
-                </TouchableOpacity>
-              ) : null}
+              <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onEdit(); }}>
+                <Edit3 size={14} color={Colors.light.text} />
+                <Text style={styles.dropdownItemText}>Edit Quote</Text>
+              </TouchableOpacity>
               {(isActive || isCompleted) ? (
                 <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onRevert(); }}>
                   <RotateCcw size={14} color={Colors.light.textSecondary} />
                   <Text style={styles.dropdownItemText}>Revert to Quoted</Text>
                 </TouchableOpacity>
               ) : null}
-              <TouchableOpacity style={[styles.dropdownItem, styles.dropdownItemDanger]} onPress={() => { setMenuOpen(false); onDelete(); }}>
+              {(effectiveStatus === 'quoted' || effectiveStatus === 'expired') ? (
+                <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onConvert(); }}>
+                  <CheckCircle size={14} color={Colors.light.tint} />
+                  <Text style={styles.dropdownItemText}>Convert to Active</Text>
+                </TouchableOpacity>
+              ) : null}
+              <View style={styles.dropdownSeparator} />
+              <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onExportPDF(); }}>
+                <Download size={14} color={Colors.light.text} />
+                <Text style={styles.dropdownItemText}>Export to PDF</Text>
+              </TouchableOpacity>
+              {(isActive || isCompleted) ? (
+                <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onExportSheets(); }}>
+                  <Sheet size={14} color={Colors.light.success} />
+                  <Text style={[styles.dropdownItemText, { color: Colors.light.success }]}>Export to Sheets</Text>
+                </TouchableOpacity>
+              ) : null}
+              <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onPrint(); }}>
+                <Printer size={14} color={Colors.light.text} />
+                <Text style={styles.dropdownItemText}>Print</Text>
+              </TouchableOpacity>
+              <View style={styles.dropdownSeparator} />
+              <TouchableOpacity style={[styles.dropdownItem, styles.dropdownItemLast]} onPress={() => { setMenuOpen(false); onDelete(); }}>
                 <Trash2 size={14} color="#EF4444" />
                 <Text style={[styles.dropdownItemText, { color: '#EF4444' }]}>Delete</Text>
               </TouchableOpacity>
@@ -318,6 +346,30 @@ export default function ProjectsScreen() {
   const handleRevert = useCallback((quote: Quote) => {
     convertToQuote(quote.id);
   }, [convertToQuote]);
+
+  const handleEdit = useCallback((quote: Quote) => {
+    router.push({ pathname: '/quote/edit', params: { id: quote.id } });
+  }, [router]);
+
+  const handleExportPDF = useCallback(async (quote: Quote) => {
+    try {
+      await generateAndSharePDF(quote, null);
+    } catch (e) {
+      Alert.alert('Error', 'Could not export PDF.');
+    }
+  }, []);
+
+  const handlePrint = useCallback(async (quote: Quote) => {
+    try {
+      await printQuote(quote, null);
+    } catch (e) {
+      Alert.alert('Error', 'Could not print.');
+    }
+  }, []);
+
+  const handleExportSheets = useCallback((quote: Quote) => {
+    router.push(`/quote/${quote.id}`);
+  }, [router]);
 
   const activeFilterCount = [
     minTotal,
@@ -513,6 +565,10 @@ export default function ProjectsScreen() {
               onDelete={() => handleDelete(quote)}
               onConvert={() => handleConvert(quote)}
               onRevert={() => handleRevert(quote)}
+              onEdit={() => handleEdit(quote)}
+              onExportPDF={() => handleExportPDF(quote)}
+              onExportSheets={() => handleExportSheets(quote)}
+              onPrint={() => handlePrint(quote)}
               isDesktop={isDesktop}
             />
           )}
@@ -724,9 +780,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: Colors.light.surface,
   },
-  colStatus:    { width: 90 },
-  colOrderDate: { width: 95 },
-  colDueDate:   { width: 95 },
+  colStatus:    { width: 75 },
+  colOrderDate: { width: 110 },
+  colDueDate:   { width: 110 },
   colClient:    { flex: 1.2 },
   colProject:   { flex: 1.2 },
   colApplicator:{ flex: 1.2 },
@@ -787,6 +843,12 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.light.border,
   },
   dropdownItemDanger: { borderBottomWidth: 0 },
+  dropdownItemLast: { borderBottomWidth: 0 },
+  dropdownSeparator: {
+    height: 1,
+    backgroundColor: Colors.light.border,
+    marginVertical: 2,
+  },
   dropdownItemText: { fontSize: 13, color: Colors.light.text, fontWeight: '500' },
 
   cardList: { padding: 16, gap: 10, paddingBottom: 40 },
