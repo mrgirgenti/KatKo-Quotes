@@ -59,6 +59,7 @@ import {
   CampaignStepStatus,
 } from '@/types/crm';
 import { formatCurrency } from '@/utils/quoteCalculations';
+import { STATUS_CONFIG, getEffectiveStatus } from '@/types/quote';
 
 function formatDate(iso?: string, withTime = false): string {
   if (!iso) return 'N/A';
@@ -175,6 +176,7 @@ export default function OrgProfileScreen() {
   const relatedQuotes = useMemo(() => {
     if (!org) return [];
     return quotes.filter((q) => {
+      if (q.orgId === org.id) return true;
       const qName = q.personOrganization.toLowerCase();
       return (
         qName === org.name.toLowerCase() ||
@@ -182,6 +184,10 @@ export default function OrgProfileScreen() {
       );
     }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [quotes, org]);
+
+  const activeQuotes = useMemo(() => {
+    return relatedQuotes.filter((q) => q.status === 'active' || q.status === 'production_started');
+  }, [relatedQuotes]);
 
   const totalSpent = useMemo(() => {
     return relatedQuotes
@@ -373,6 +379,33 @@ export default function OrgProfileScreen() {
         </View>
       )}
 
+      {/* Active quotes/projects tracker */}
+      {activeQuotes.length > 0 && (
+        <View style={styles.activeProjectsBanner}>
+          <View style={styles.activeProjectsHeader}>
+            <ShoppingBag size={14} color="#7C3AED" />
+            <Text style={styles.activeProjectsTitle}>Active Projects</Text>
+            <Text style={styles.activeProjectsCount}>{activeQuotes.length}</Text>
+          </View>
+          {activeQuotes.map((q) => {
+            const eff = getEffectiveStatus(q);
+            const cfg = STATUS_CONFIG[eff];
+            return (
+              <TouchableOpacity key={q.id} style={styles.activeProjectRow} onPress={() => router.push(`/quote/${q.id}` as any)}>
+                <View style={styles.activeProjectLeft}>
+                  <Text style={styles.activeProjectName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
+                  {q.invoiceNumber ? <Text style={styles.activeProjectNum}>#{q.invoiceNumber}</Text> : null}
+                </View>
+                <View style={[styles.activeProjectStatusBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+                  <Text style={[styles.activeProjectStatusText, { color: cfg.color }]}>{cfg.label}</Text>
+                </View>
+                <ChevronRight size={12} color={Colors.light.textSecondary} />
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+
       {/* Org info */}
       <View style={styles.orgInfoCard}>
         <View style={styles.orgAvatarLarge}>
@@ -429,14 +462,23 @@ export default function OrgProfileScreen() {
 
         <View style={styles.divider} />
 
-        <TouchableOpacity style={styles.editOrgBtn} onPress={openEditOrg}>
-          <Edit3 size={14} color="#fff" />
-          <Text style={styles.editOrgBtnText}>Edit Profile</Text>
+        <TouchableOpacity
+          style={styles.newQuoteBtn}
+          onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
+        >
+          <Plus size={14} color="#fff" />
+          <Text style={styles.newQuoteBtnText}>New Quote</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.deleteOrgBtn} onPress={handleDeleteOrg}>
-          <Trash2 size={14} color={Colors.light.error} />
-          <Text style={styles.deleteOrgBtnText}>Delete</Text>
-        </TouchableOpacity>
+        <View style={styles.editDeleteRow}>
+          <TouchableOpacity style={styles.editOrgBtn} onPress={openEditOrg}>
+            <Edit3 size={14} color="#fff" />
+            <Text style={styles.editOrgBtnText}>Edit Profile</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.deleteOrgBtn} onPress={handleDeleteOrg}>
+            <Trash2 size={14} color={Colors.light.error} />
+            <Text style={styles.deleteOrgBtnText}>Delete</Text>
+          </TouchableOpacity>
+        </View>
 
         <Text style={styles.memberSince}>Added {formatDate(org.createdAt)}</Text>
       </View>
@@ -627,7 +669,7 @@ export default function OrgProfileScreen() {
         <View style={styles.tabContent}>
           <View style={styles.tabContentHeader}>
             <Text style={styles.tabContentTitle}>Quotes & Invoices</Text>
-            <TouchableOpacity style={styles.addItemBtn} onPress={() => router.push('/(tabs)' as any)}>
+            <TouchableOpacity style={styles.addItemBtn} onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}>
               <Plus size={14} color="#fff" />
               <Text style={styles.addItemBtnText}>New Quote</Text>
             </TouchableOpacity>
@@ -1129,20 +1171,21 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 10, color: Colors.light.textSecondary, fontWeight: '500' as const },
 
   editOrgBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: Colors.light.tint, paddingHorizontal: 16,
-    paddingVertical: 9, borderRadius: 9, width: '100%',
-    justifyContent: 'center', marginTop: 4,
-  },
-  editOrgBtnText: { fontSize: 14, fontWeight: '700' as const, color: '#fff' },
-  deleteOrgBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: Colors.light.background, paddingHorizontal: 16,
-    paddingVertical: 9, borderRadius: 9, width: '100%',
-    justifyContent: 'center', marginTop: 8,
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: Colors.light.surface, paddingHorizontal: 12,
+    paddingVertical: 9, borderRadius: 9,
+    justifyContent: 'center',
     borderWidth: 1, borderColor: Colors.light.border,
   },
-  deleteOrgBtnText: { fontSize: 14, fontWeight: '600' as const, color: Colors.light.error },
+  editOrgBtnText: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.text },
+  deleteOrgBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: Colors.light.background, paddingHorizontal: 12,
+    paddingVertical: 9, borderRadius: 9,
+    justifyContent: 'center',
+    borderWidth: 1, borderColor: Colors.light.border,
+  },
+  deleteOrgBtnText: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.error },
   memberSince: { fontSize: 11, color: Colors.light.textSecondary, marginTop: 10 },
 
   badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, borderWidth: 1, marginTop: 8 },
@@ -1338,6 +1381,32 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: Colors.light.tint,
   },
   addItemBtnSecondaryText: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.tint },
+
+  activeProjectsBanner: {
+    backgroundColor: '#F5F3FF', borderRadius: 12,
+    borderWidth: 1, borderColor: '#DDD6FE',
+    padding: 12, marginBottom: 12,
+  },
+  activeProjectsHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  activeProjectsTitle: { fontSize: 12, fontWeight: '700', color: '#7C3AED', flex: 1 },
+  activeProjectsCount: {
+    fontSize: 11, fontWeight: '700', color: '#7C3AED',
+    backgroundColor: '#EDE9FE', paddingHorizontal: 7, paddingVertical: 1, borderRadius: 10,
+  },
+  activeProjectRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, borderTopWidth: 1, borderTopColor: '#EDE9FE' },
+  activeProjectLeft: { flex: 1 },
+  activeProjectName: { fontSize: 13, fontWeight: '600', color: Colors.light.text },
+  activeProjectNum: { fontSize: 11, color: Colors.light.textSecondary },
+  activeProjectStatusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1 },
+  activeProjectStatusText: { fontSize: 11, fontWeight: '700' },
+
+  newQuoteBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: Colors.light.tint, borderRadius: 10,
+    paddingVertical: 11, marginBottom: 8,
+  },
+  newQuoteBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  editDeleteRow: { flexDirection: 'row', gap: 8, marginBottom: 0 },
 
   deptSection: { marginBottom: 4 },
   deptHeader: {

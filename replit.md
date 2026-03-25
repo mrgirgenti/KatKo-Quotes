@@ -8,9 +8,19 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 - Project lifecycle: Draft → Quoted → Active → Completed (auto-Expired after 30 days)
 - Per-line-item completion tracking in Production View
 - Rich filter bar: status pills, search, total range, sort
-- Client management with profile pages (linked quotes, stats, edit, delete)
 - Reports generation (PDF, CSV, Google Sheets export)
 - User profiles with avatar support
+
+## CRM / Contact System
+- Full CRM pipeline: Cold → Working → Active Client → Past Client
+- Org profile: Lead Tracking banner (Cold/Working only), Activity Log, Contacts tab, Quotes tab, Campaigns tab
+- **Departments**: Contacts grouped by department within each org; department CRUD; contacts assignable to departments
+- **Contact Import**: 3-step import wizard (paste text or CSV → column auto-mapping → preview → confirm bulk import)
+- **Active Projects Tracker**: Purple banner on org profile showing any active/in-production quotes; disappears when none
+- **New Quote button** on each org profile (left panel) → navigates to New Quote form pre-filled with org name
+- **CRM Autocomplete in New Quote**: Person/Organization field searches CRM orgs live; click to link quote to org (stores orgId)
+- **Quote-contact linking**: Quotes with orgId appear in that org's Quotes tab; fallback to name-matching for legacy quotes
+- Campaign templates (3 pre-built): Standard 4-Week, Church/Ministry, School/Youth outreach
 
 ## Project Status Flow (hierarchy: quoted < active < production_started < completed)
 - `draft` — quote being built (New Quote tab only)

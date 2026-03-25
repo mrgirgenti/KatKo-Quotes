@@ -98,6 +98,7 @@ export interface QuoteCalculations {
 export interface Quote {
   id: string;
   userId?: string;
+  orgId?: string;
   personOrganization: string;
   projectName: string;
   orderType: OrderType;

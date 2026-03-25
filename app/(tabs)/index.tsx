@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Image,
 } from 'react-native';
 import { Plus, Send, RotateCcw } from 'lucide-react-native';
+import { useLocalSearchParams } from 'expo-router';
 import Colors from '@/constants/colors';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { useClients } from '@/contexts/ClientsContext';
@@ -21,6 +22,7 @@ import { ToggleButton } from '@/components/ToggleButton';
 import { LineItemCard } from '@/components/LineItemCard';
 import { CalculationDisplay } from '@/components/CalculationDisplay';
 import { Toast } from '@/components/Toast';
+import { OrgAutocomplete } from '@/components/OrgAutocomplete';
 import {
   Quote,
   LineItem,
@@ -28,6 +30,7 @@ import {
   OrderType,
   EMPTY_SIZES,
 } from '@/types/quote';
+import { Organization } from '@/types/crm';
 import {
   calculateQuote,
   generateId,
@@ -69,8 +72,10 @@ export default function NewQuoteScreen() {
   const { clients, addClient } = useClients();
   const { isMobile, isTablet, isDesktop } = useBreakpoint();
   const isNative = Platform.OS !== 'web';
+  const params = useLocalSearchParams<{ orgName?: string; orgId?: string }>();
 
   const [personOrganization, setPersonOrganization] = useState('');
+  const [linkedOrg, setLinkedOrg] = useState<Organization | null>(null);
   const [projectName, setProjectName] = useState('');
   const [orderType, setOrderType] = useState<OrderType>('New');
   const [orderDate, setOrderDate] = useState(getTodayDate());
@@ -82,6 +87,12 @@ export default function NewQuoteScreen() {
   const [hasCardFee, setHasCardFee] = useState(true);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+
+  useEffect(() => {
+    if (params.orgName) {
+      setPersonOrganization(params.orgName as string);
+    }
+  }, [params.orgName]);
 
   const calculations = useMemo(
     () => calculateQuote(lineItems, hasOnlineFee, hasSalesTax, hasCardFee),
@@ -110,6 +121,7 @@ export default function NewQuoteScreen() {
 
   const resetForm = useCallback(() => {
     setPersonOrganization('');
+    setLinkedOrg(null);
     setProjectName('');
     setOrderType('New');
     setOrderDate(getTodayDate());
@@ -150,6 +162,7 @@ export default function NewQuoteScreen() {
 
     const quote: Quote = {
       id: generateId(),
+      orgId: linkedOrg?.id,
       personOrganization: personOrganization.trim(),
       projectName: projectName.trim(),
       orderType,
@@ -280,17 +293,16 @@ export default function NewQuoteScreen() {
   );
 
   const orderForm = (
-    <View style={styles.card}>
+    <View style={[styles.card, { zIndex: 10 }]}>
       {/* Person/Org + Project Name + Invoice on one row for tablet/desktop */}
       {!isMobile && !isNative ? (
-        <View style={styles.threeColRow}>
-          <View style={styles.thirdField}>
-            <FormInput
-              label="Person / Organization"
+        <View style={[styles.threeColRow, { alignItems: 'flex-start', zIndex: 10 }]}>
+          <View style={[styles.thirdField, { zIndex: 10 }]}>
+            <OrgAutocomplete
               value={personOrganization}
               onChangeText={setPersonOrganization}
-              placeholder="Client name or company"
-              autoTitleCase
+              onSelectOrg={setLinkedOrg}
+              linkedOrg={linkedOrg}
             />
           </View>
           <View style={styles.thirdField}>
@@ -314,12 +326,11 @@ export default function NewQuoteScreen() {
         </View>
       ) : (
         <>
-          <FormInput
-            label="Person / Organization"
+          <OrgAutocomplete
             value={personOrganization}
             onChangeText={setPersonOrganization}
-            placeholder="Client name or company"
-            autoTitleCase
+            onSelectOrg={setLinkedOrg}
+            linkedOrg={linkedOrg}
           />
           <FormInput
             label="Project Name"

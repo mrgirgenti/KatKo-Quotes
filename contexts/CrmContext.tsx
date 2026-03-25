@@ -280,11 +280,20 @@ export const [CrmProvider, useCrm] = createContextHook(() => {
     onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
   });
 
+  const bulkImportOrgsMutation = useMutation({
+    mutationFn: async (importedOrgs: Organization[]) => {
+      const existing = orgsQuery.data || [];
+      return saveOrgs([...importedOrgs, ...existing]);
+    },
+    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+  });
+
   return {
     orgs,
     templates,
     isLoading: orgsQuery.isLoading,
     addOrg: addOrgMutation.mutate,
+    bulkImportOrgs: bulkImportOrgsMutation.mutate,
     updateOrg: updateOrgMutation.mutate,
     deleteOrg: deleteOrgMutation.mutate,
     addContact: addContactMutation.mutate,

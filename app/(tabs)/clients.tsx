@@ -25,11 +25,13 @@ import {
   Thermometer,
   Star,
   Archive,
+  Upload,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
 import { Organization, CrmStatus, CRM_STATUS_CONFIG, ORG_TYPES } from '@/types/crm';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { ContactImportModal } from '@/components/ContactImportModal';
 
 const FILTER_TABS: (CrmStatus | 'All')[] = ['All', 'Cold', 'Working', 'Active Client', 'Past Client'];
 
@@ -178,6 +180,7 @@ export default function ClientsScreen() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<CrmStatus | 'All'>('All');
   const [modalVisible, setModalVisible] = useState(false);
+  const [importModalVisible, setImportModalVisible] = useState(false);
   const [form, setForm] = useState<OrgForm>(EMPTY_ORG_FORM);
   const [step, setStep] = useState<'type-select' | 'details'>('type-select');
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
@@ -327,6 +330,10 @@ export default function ClientsScreen() {
               </TouchableOpacity>
             ) : null}
           </View>
+          <TouchableOpacity style={styles.importBtn} onPress={() => setImportModalVisible(true)}>
+            <Upload size={14} color={Colors.light.tint} />
+            <Text style={styles.importBtnText}>Import</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
             <Plus size={16} color="#fff" />
             <Text style={styles.addBtnText}>Add</Text>
@@ -542,6 +549,8 @@ export default function ClientsScreen() {
           </KeyboardAvoidingView>
         </Pressable>
       </Modal>
+
+      <ContactImportModal visible={importModalVisible} onClose={() => setImportModalVisible(false)} />
     </View>
   );
 }
@@ -609,6 +618,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 9,
   },
   searchInput: { flex: 1, fontSize: 14, color: Colors.light.text, outlineStyle: 'none' as any },
+  importBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderWidth: 1.5, borderColor: Colors.light.tint,
+    paddingHorizontal: 12, paddingVertical: 9, borderRadius: 10,
+  },
+  importBtnText: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.tint },
   addBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: Colors.light.tint, paddingHorizontal: 14,
