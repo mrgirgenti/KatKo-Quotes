@@ -42,9 +42,16 @@ export interface CampaignAssignment {
   steps: CampaignStep[];
 }
 
+export interface Department {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 export interface Contact {
   id: string;
   organizationId?: string;
+  departmentId?: string;
   firstName: string;
   lastName: string;
   role?: ContactRole;
@@ -66,6 +73,7 @@ export interface Organization {
   website?: string;
   status: CrmStatus;
   notes?: string;
+  departments: Department[];
   contacts: Contact[];
   activityLog: ActivityEntry[];
   campaigns: CampaignAssignment[];

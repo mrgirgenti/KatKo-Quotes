@@ -45,6 +45,7 @@ import { useBreakpoint } from '@/hooks/useBreakpoint';
 import {
   Organization,
   Contact,
+  Department,
   ActivityEntry,
   ActivityType,
   CrmStatus,
@@ -89,6 +90,50 @@ const STEP_STATUS_CONFIG: Record<CampaignStepStatus, { label: string; color: str
 
 const STEP_STATUSES: CampaignStepStatus[] = ['pending', 'sent', 'received', 'responded', 'skipped'];
 
+function ContactCard({ contact: c, onEdit, onDelete }: { contact: Contact; onEdit: () => void; onDelete: () => void }) {
+  return (
+    <View style={styles.contactCard}>
+      <View style={styles.contactAvatar}>
+        <Text style={styles.contactAvatarText}>{c.firstName.charAt(0).toUpperCase()}</Text>
+      </View>
+      <View style={styles.contactInfo}>
+        <View style={styles.contactNameRow}>
+          <Text style={styles.contactName}>{c.firstName} {c.lastName}</Text>
+          {c.isPrimary && (
+            <View style={styles.primaryBadge}>
+              <Text style={styles.primaryBadgeText}>Primary</Text>
+            </View>
+          )}
+        </View>
+        {c.role && <Text style={styles.contactRole}>{c.role}</Text>}
+        <View style={styles.contactDetails}>
+          {c.phone && (
+            <View style={styles.contactDetailRow}>
+              <Phone size={11} color={Colors.light.textSecondary} />
+              <Text style={styles.contactDetailText}>{c.phone}</Text>
+            </View>
+          )}
+          {c.email && (
+            <View style={styles.contactDetailRow}>
+              <Mail size={11} color={Colors.light.textSecondary} />
+              <Text style={styles.contactDetailText}>{c.email}</Text>
+            </View>
+          )}
+        </View>
+        {c.notes && <Text style={styles.contactNotes}>{c.notes}</Text>}
+      </View>
+      <View style={styles.contactActions}>
+        <TouchableOpacity style={styles.contactActionBtn} onPress={onEdit}>
+          <Edit3 size={14} color={Colors.light.textSecondary} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.contactActionBtn} onPress={onDelete}>
+          <Trash2 size={14} color={Colors.light.error} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 export default function OrgProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -99,6 +144,7 @@ export default function OrgProfileScreen() {
     addActivity, deleteActivity,
     assignCampaign, updateCampaignStep, deleteCampaign,
     updateOrgStatus,
+    addDepartment, updateDepartment, deleteDepartment,
   } = useCrm();
   const { quotes } = useQuotes();
   const { isDesktop } = useBreakpoint();
@@ -112,7 +158,7 @@ export default function OrgProfileScreen() {
 
   const [contactModal, setContactModal] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
-  const [contactForm, setContactForm] = useState({ firstName: '', lastName: '', role: 'Primary Contact' as ContactRole, email: '', phone: '', notes: '', isPrimary: false });
+  const [contactForm, setContactForm] = useState({ firstName: '', lastName: '', role: 'Primary Contact' as ContactRole, email: '', phone: '', notes: '', isPrimary: false, departmentId: '' });
 
   const [activityModal, setActivityModal] = useState(false);
   const [activityForm, setActivityForm] = useState({ type: 'call' as ActivityType, date: new Date().toISOString().slice(0, 10), subject: '', body: '', contactId: '' });
@@ -121,6 +167,10 @@ export default function OrgProfileScreen() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>(undefined);
 
   const [statusDropdown, setStatusDropdown] = useState(false);
+
+  const [deptModal, setDeptModal] = useState(false);
+  const [editingDept, setEditingDept] = useState<Department | null>(null);
+  const [deptForm, setDeptForm] = useState({ name: '', description: '' });
 
   const relatedQuotes = useMemo(() => {
     if (!org) return [];
@@ -186,22 +236,23 @@ export default function OrgProfileScreen() {
 
   const openAddContact = useCallback(() => {
     setEditingContact(null);
-    setContactForm({ firstName: '', lastName: '', role: 'Primary Contact', email: '', phone: '', notes: '', isPrimary: org?.contacts.length === 0 });
+    setContactForm({ firstName: '', lastName: '', role: 'Primary Contact', email: '', phone: '', notes: '', isPrimary: org?.contacts.length === 0, departmentId: '' });
     setContactModal(true);
   }, [org]);
 
   const openEditContact = useCallback((c: Contact) => {
     setEditingContact(c);
-    setContactForm({ firstName: c.firstName, lastName: c.lastName, role: c.role || 'Primary Contact', email: c.email || '', phone: c.phone || '', notes: c.notes || '', isPrimary: !!c.isPrimary });
+    setContactForm({ firstName: c.firstName, lastName: c.lastName, role: c.role || 'Primary Contact', email: c.email || '', phone: c.phone || '', notes: c.notes || '', isPrimary: !!c.isPrimary, departmentId: c.departmentId || '' });
     setContactModal(true);
   }, []);
 
   const handleSaveContact = useCallback(() => {
     if (!org || !contactForm.firstName.trim()) return;
+    const payload = { ...contactForm, firstName: contactForm.firstName.trim(), lastName: contactForm.lastName.trim(), departmentId: contactForm.departmentId || undefined };
     if (editingContact) {
-      updateContact({ orgId: org.id, contact: { ...editingContact, ...contactForm, firstName: contactForm.firstName.trim(), lastName: contactForm.lastName.trim() } });
+      updateContact({ orgId: org.id, contact: { ...editingContact, ...payload } });
     } else {
-      addContact({ orgId: org.id, contact: { ...contactForm, firstName: contactForm.firstName.trim(), lastName: contactForm.lastName.trim() } });
+      addContact({ orgId: org.id, contact: payload });
     }
     setContactModal(false);
   }, [org, contactForm, editingContact, addContact, updateContact]);
@@ -213,6 +264,28 @@ export default function OrgProfileScreen() {
       { text: 'Remove', style: 'destructive', onPress: () => deleteContact({ orgId: org.id, contactId: c.id }) },
     ]);
   }, [org, deleteContact]);
+
+  const openAddDept = useCallback(() => {
+    setEditingDept(null);
+    setDeptForm({ name: '', description: '' });
+    setDeptModal(true);
+  }, []);
+
+  const openEditDept = useCallback((dept: Department) => {
+    setEditingDept(dept);
+    setDeptForm({ name: dept.name, description: dept.description || '' });
+    setDeptModal(true);
+  }, []);
+
+  const handleSaveDept = useCallback(() => {
+    if (!org || !deptForm.name.trim()) return;
+    if (editingDept) {
+      updateDepartment({ orgId: org.id, dept: { ...editingDept, name: deptForm.name.trim(), description: deptForm.description || undefined } });
+    } else {
+      addDepartment({ orgId: org.id, name: deptForm.name.trim(), description: deptForm.description || undefined });
+    }
+    setDeptModal(false);
+  }, [org, deptForm, editingDept, addDepartment, updateDepartment]);
 
   const handleSaveActivity = useCallback(() => {
     if (!org || !activityForm.body.trim()) return;
@@ -457,60 +530,92 @@ export default function OrgProfileScreen() {
         <View style={styles.tabContent}>
           <View style={styles.tabContentHeader}>
             <Text style={styles.tabContentTitle}>Contacts</Text>
-            <TouchableOpacity style={styles.addItemBtn} onPress={openAddContact}>
-              <Plus size={14} color="#fff" />
-              <Text style={styles.addItemBtnText}>Add Contact</Text>
-            </TouchableOpacity>
+            <View style={styles.tabHeaderBtns}>
+              <TouchableOpacity style={styles.addItemBtnSecondary} onPress={openAddDept}>
+                <Plus size={13} color={Colors.light.tint} />
+                <Text style={styles.addItemBtnSecondaryText}>Department</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.addItemBtn} onPress={openAddContact}>
+                <Plus size={14} color="#fff" />
+                <Text style={styles.addItemBtnText}>Add Contact</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          {org.contacts.length === 0 ? (
+
+          {/* Departments + contacts grouped */}
+          {org.contacts.length === 0 && (org.departments || []).length === 0 ? (
             <View style={styles.emptyTab}>
               <User size={32} color={Colors.light.border} />
               <Text style={styles.emptyTabText}>No contacts yet.</Text>
-              <Text style={styles.emptyTabSub}>Add people associated with this organization.</Text>
+              <Text style={styles.emptyTabSub}>Add departments to organize people by team, then add contacts under each department.</Text>
             </View>
           ) : (
             <ScrollView showsVerticalScrollIndicator={false}>
-              {org.contacts.map((c) => (
-                <View key={c.id} style={styles.contactCard}>
-                  <View style={styles.contactAvatar}>
-                    <Text style={styles.contactAvatarText}>{c.firstName.charAt(0).toUpperCase()}</Text>
-                  </View>
-                  <View style={styles.contactInfo}>
-                    <View style={styles.contactNameRow}>
-                      <Text style={styles.contactName}>{c.firstName} {c.lastName}</Text>
-                      {c.isPrimary && (
-                        <View style={styles.primaryBadge}>
-                          <Text style={styles.primaryBadgeText}>Primary</Text>
-                        </View>
-                      )}
+              {/* Departments with their contacts */}
+              {(org.departments || []).map((dept) => {
+                const deptContacts = org.contacts.filter((c) => c.departmentId === dept.id);
+                return (
+                  <View key={dept.id} style={styles.deptSection}>
+                    <View style={styles.deptHeader}>
+                      <View style={styles.deptHeaderLeft}>
+                        <Users size={13} color={Colors.light.tint} />
+                        <Text style={styles.deptName}>{dept.name}</Text>
+                        <Text style={styles.deptCount}>{deptContacts.length} contact{deptContacts.length !== 1 ? 's' : ''}</Text>
+                      </View>
+                      <View style={styles.deptHeaderActions}>
+                        <TouchableOpacity
+                          style={styles.deptAddBtn}
+                          onPress={() => {
+                            setEditingContact(null);
+                            setContactForm({ firstName: '', lastName: '', role: 'Primary Contact', email: '', phone: '', notes: '', isPrimary: false, departmentId: dept.id });
+                            setContactModal(true);
+                          }}
+                        >
+                          <Plus size={12} color={Colors.light.tint} />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.deptActionBtn} onPress={() => openEditDept(dept)}>
+                          <Edit3 size={12} color={Colors.light.textSecondary} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.deptActionBtn}
+                          onPress={() => Alert.alert('Delete Department', `Remove "${dept.name}"? Contacts in this department will become unassigned.`, [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Delete', style: 'destructive', onPress: () => deleteDepartment({ orgId: org.id, deptId: dept.id }) },
+                          ])}
+                        >
+                          <Trash2 size={12} color={Colors.light.error} />
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                    {c.role && <Text style={styles.contactRole}>{c.role}</Text>}
-                    <View style={styles.contactDetails}>
-                      {c.phone && (
-                        <View style={styles.contactDetailRow}>
-                          <Phone size={11} color={Colors.light.textSecondary} />
-                          <Text style={styles.contactDetailText}>{c.phone}</Text>
-                        </View>
-                      )}
-                      {c.email && (
-                        <View style={styles.contactDetailRow}>
-                          <Mail size={11} color={Colors.light.textSecondary} />
-                          <Text style={styles.contactDetailText}>{c.email}</Text>
-                        </View>
-                      )}
+                    {deptContacts.length === 0 ? (
+                      <Text style={styles.deptEmpty}>No contacts in this department yet.</Text>
+                    ) : (
+                      deptContacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} />)
+                    )}
+                  </View>
+                );
+              })}
+
+              {/* Unassigned contacts */}
+              {(() => {
+                const unassigned = org.contacts.filter((c) => !c.departmentId || !(org.departments || []).find((d) => d.id === c.departmentId));
+                if ((org.departments || []).length === 0) {
+                  return org.contacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} />);
+                }
+                if (unassigned.length === 0) return null;
+                return (
+                  <View style={styles.deptSection}>
+                    <View style={styles.deptHeader}>
+                      <View style={styles.deptHeaderLeft}>
+                        <User size={13} color={Colors.light.textSecondary} />
+                        <Text style={[styles.deptName, { color: Colors.light.textSecondary }]}>Unassigned</Text>
+                        <Text style={styles.deptCount}>{unassigned.length}</Text>
+                      </View>
                     </View>
-                    {c.notes && <Text style={styles.contactNotes}>{c.notes}</Text>}
+                    {unassigned.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} />)}
                   </View>
-                  <View style={styles.contactActions}>
-                    <TouchableOpacity style={styles.contactActionBtn} onPress={() => openEditContact(c)}>
-                      <Edit3 size={14} color={Colors.light.textSecondary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.contactActionBtn} onPress={() => handleDeleteContact(c)}>
-                      <Trash2 size={14} color={Colors.light.error} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
+                );
+              })()}
               <View style={{ height: 40 }} />
             </ScrollView>
           )}
@@ -776,6 +881,28 @@ export default function OrgProfileScreen() {
                 <TextInput style={styles.textInput} value={contactForm.phone} onChangeText={(v) => setContactForm((f) => ({ ...f, phone: v }))} placeholder="(555) 000-0000" placeholderTextColor={Colors.light.textSecondary} keyboardType="phone-pad" />
                 <Text style={styles.fieldLabel}>Notes</Text>
                 <TextInput style={[styles.textInput, styles.notesInput]} value={contactForm.notes} onChangeText={(v) => setContactForm((f) => ({ ...f, notes: v }))} placeholder="Notes about this contact…" placeholderTextColor={Colors.light.textSecondary} multiline numberOfLines={3} />
+                {(org.departments || []).length > 0 && (
+                  <>
+                    <Text style={styles.fieldLabel}>Department</Text>
+                    <View style={styles.statusRow}>
+                      <TouchableOpacity
+                        style={[styles.statusChip, !contactForm.departmentId && styles.statusChipActive]}
+                        onPress={() => setContactForm((f) => ({ ...f, departmentId: '' }))}
+                      >
+                        <Text style={[styles.statusChipText, !contactForm.departmentId && styles.statusChipTextActive]}>None</Text>
+                      </TouchableOpacity>
+                      {(org.departments || []).map((d) => (
+                        <TouchableOpacity
+                          key={d.id}
+                          style={[styles.statusChip, contactForm.departmentId === d.id && styles.statusChipActive]}
+                          onPress={() => setContactForm((f) => ({ ...f, departmentId: d.id }))}
+                        >
+                          <Text style={[styles.statusChipText, contactForm.departmentId === d.id && styles.statusChipTextActive]}>{d.name}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </>
+                )}
                 <TouchableOpacity style={styles.primaryToggle} onPress={() => setContactForm((f) => ({ ...f, isPrimary: !f.isPrimary }))}>
                   {contactForm.isPrimary ? <CheckCircle size={18} color={Colors.light.tint} /> : <Circle size={18} color={Colors.light.textSecondary} />}
                   <Text style={styles.primaryToggleText}>Set as primary contact</Text>
@@ -840,6 +967,45 @@ export default function OrgProfileScreen() {
                 <TouchableOpacity style={styles.cancelBtn} onPress={() => setActivityModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
                 <TouchableOpacity style={[styles.saveBtn, !activityForm.body.trim() && styles.saveBtnDisabled]} onPress={handleSaveActivity} disabled={!activityForm.body.trim()}>
                   <Text style={styles.saveBtnText}>Log Activity</Text>
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
+
+      {/* Department Modal */}
+      <Modal visible={deptModal} transparent animationType="fade" onRequestClose={() => setDeptModal(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setDeptModal(false)}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
+            <Pressable style={styles.modalCard} onPress={() => {}}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{editingDept ? 'Edit Department' : 'Add Department'}</Text>
+                <TouchableOpacity onPress={() => setDeptModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
+              </View>
+              <Text style={styles.fieldLabel}>Department Name *</Text>
+              <TextInput
+                style={styles.textInput}
+                value={deptForm.name}
+                onChangeText={(v) => setDeptForm((f) => ({ ...f, name: v }))}
+                placeholder="e.g., Youth, Communications, Admin…"
+                placeholderTextColor={Colors.light.textSecondary}
+                autoFocus
+              />
+              <Text style={styles.fieldLabel}>Description (optional)</Text>
+              <TextInput
+                style={[styles.textInput, styles.notesInput]}
+                value={deptForm.description}
+                onChangeText={(v) => setDeptForm((f) => ({ ...f, description: v }))}
+                placeholder="Brief description of this department…"
+                placeholderTextColor={Colors.light.textSecondary}
+                multiline
+                numberOfLines={2}
+              />
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setDeptModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.saveBtn, !deptForm.name.trim() && styles.saveBtnDisabled]} onPress={handleSaveDept} disabled={!deptForm.name.trim()}>
+                  <Text style={styles.saveBtnText}>{editingDept ? 'Save' : 'Add Department'}</Text>
                 </TouchableOpacity>
               </View>
             </Pressable>
@@ -1164,4 +1330,26 @@ const styles = StyleSheet.create({
   saveBtn: { flex: 2, backgroundColor: Colors.light.tint, paddingVertical: 13, borderRadius: 10, alignItems: 'center' },
   saveBtnDisabled: { opacity: 0.5 },
   saveBtnText: { fontSize: 15, fontWeight: '700' as const, color: '#fff' },
+
+  tabHeaderBtns: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  addItemBtnSecondary: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8,
+    borderWidth: 1.5, borderColor: Colors.light.tint,
+  },
+  addItemBtnSecondaryText: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.tint },
+
+  deptSection: { marginBottom: 4 },
+  deptHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 4, paddingVertical: 8, marginBottom: 2,
+    borderBottomWidth: 1, borderBottomColor: Colors.light.border,
+  },
+  deptHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  deptName: { fontSize: 13, fontWeight: '700' as const, color: Colors.light.text, letterSpacing: 0.3 },
+  deptCount: { fontSize: 12, color: Colors.light.textSecondary, backgroundColor: Colors.light.border, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 10 },
+  deptHeaderActions: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  deptAddBtn: { padding: 6, borderRadius: 6, backgroundColor: `${Colors.light.tint}15` },
+  deptActionBtn: { padding: 6, borderRadius: 6 },
+  deptEmpty: { fontSize: 12, color: Colors.light.textSecondary, fontStyle: 'italic', paddingHorizontal: 8, paddingVertical: 10 },
 });

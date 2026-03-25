@@ -339,7 +339,7 @@ export default function ClientsScreen() {
             <View style={styles.colAvatar} />
             <View style={styles.colName}><Text style={styles.thText}>Organization</Text></View>
             <View style={styles.colContact}><Text style={styles.thText}>Primary Contact</Text></View>
-            <View style={styles.colCount}><Text style={styles.thText}>Contacts</Text></View>
+            <View style={styles.colCount}><Text style={styles.thText}>#</Text></View>
             <View style={styles.colCampaign}><Text style={styles.thText}>Campaign</Text></View>
             <View style={styles.colActivity}><Text style={styles.thText}>Last Activity</Text></View>
             <View style={styles.colStatus}><Text style={styles.thText}>Status</Text></View>

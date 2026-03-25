@@ -29,7 +29,7 @@ const NAV_ITEMS = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
   { label: 'New Quote', icon: FilePlus, href: '/' },
   { label: 'Projects', icon: FolderKanban, href: '/projects' },
-  { label: 'Clients', icon: Users, href: '/clients' },
+  { label: 'Contacts', icon: Users, href: '/clients' },
   { label: 'Catalogs', icon: BookOpen, href: '/catalogs' },
 ];
 

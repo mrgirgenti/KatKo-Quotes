@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
-import { Organization, Contact, ActivityEntry, CampaignAssignment, CampaignTemplate, CrmStatus } from '@/types/crm';
+import { Organization, Contact, ActivityEntry, CampaignAssignment, CampaignTemplate, CrmStatus, Department } from '@/types/crm';
 import { generateId } from '@/utils/quoteCalculations';
 
 const ORGS_KEY = 'crm_organizations';
@@ -87,10 +87,11 @@ export const [CrmProvider, useCrm] = createContextHook(() => {
     saveOrgs(fn(orgsQuery.data || []));
 
   const addOrgMutation = useMutation({
-    mutationFn: async (data: Omit<Organization, 'id' | 'createdAt' | 'contacts' | 'activityLog' | 'campaigns'>) => {
+    mutationFn: async (data: Omit<Organization, 'id' | 'createdAt' | 'contacts' | 'activityLog' | 'campaigns' | 'departments'>) => {
       const org: Organization = {
         ...data,
         id: generateId(),
+        departments: [],
         contacts: [],
         activityLog: [],
         campaigns: [],
@@ -247,6 +248,38 @@ export const [CrmProvider, useCrm] = createContextHook(() => {
     onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
   });
 
+  const addDepartmentMutation = useMutation({
+    mutationFn: async ({ orgId, name, description }: { orgId: string; name: string; description?: string }) =>
+      mutate((all) => all.map((o) => {
+        if (o.id !== orgId) return o;
+        const dept: Department = { id: generateId(), name, description };
+        return { ...o, departments: [...(o.departments || []), dept] };
+      })),
+    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+  });
+
+  const updateDepartmentMutation = useMutation({
+    mutationFn: async ({ orgId, dept }: { orgId: string; dept: Department }) =>
+      mutate((all) => all.map((o) => {
+        if (o.id !== orgId) return o;
+        return { ...o, departments: (o.departments || []).map((d) => (d.id === dept.id ? dept : d)) };
+      })),
+    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+  });
+
+  const deleteDepartmentMutation = useMutation({
+    mutationFn: async ({ orgId, deptId }: { orgId: string; deptId: string }) =>
+      mutate((all) => all.map((o) => {
+        if (o.id !== orgId) return o;
+        return {
+          ...o,
+          departments: (o.departments || []).filter((d) => d.id !== deptId),
+          contacts: o.contacts.map((c) => c.departmentId === deptId ? { ...c, departmentId: undefined } : c),
+        };
+      })),
+    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+  });
+
   return {
     orgs,
     templates,
@@ -265,5 +298,8 @@ export const [CrmProvider, useCrm] = createContextHook(() => {
     deleteCampaign: deleteCampaignMutation.mutate,
     addTemplate: addTemplateMutation.mutate,
     updateOrgStatus: updateOrgStatusMutation.mutate,
+    addDepartment: addDepartmentMutation.mutate,
+    updateDepartment: updateDepartmentMutation.mutate,
+    deleteDepartment: deleteDepartmentMutation.mutate,
   };
 });
