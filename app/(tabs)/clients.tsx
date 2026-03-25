@@ -6,317 +6,317 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  Alert,
   Modal,
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  Image,
   FlatList,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Plus, Search, Edit3, Trash2, X, Users, ChevronRight, ChevronDown, Upload } from 'lucide-react-native';
+import {
+  Plus,
+  Search,
+  X,
+  Users,
+  Building2,
+  User,
+  ChevronRight,
+  TrendingUp,
+  Thermometer,
+  Star,
+  Archive,
+} from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { useClients } from '@/contexts/ClientsContext';
-import { Client, ClientStatus } from '@/types/client';
+import { useCrm } from '@/contexts/CrmContext';
+import { Organization, CrmStatus, CRM_STATUS_CONFIG, ORG_TYPES } from '@/types/crm';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 
-function parseCSV(text: string): Record<string, string>[] {
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
-  if (lines.length < 2) return [];
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z]/g, ''));
-  return lines.slice(1).map(line => {
-    const cols: string[] = [];
-    let cur = '';
-    let inQuote = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') { inQuote = !inQuote; }
-      else if (ch === ',' && !inQuote) { cols.push(cur.trim()); cur = ''; }
-      else { cur += ch; }
-    }
-    cols.push(cur.trim());
-    const row: Record<string, string> = {};
-    headers.forEach((h, i) => { row[h] = cols[i] ?? ''; });
-    return row;
-  });
-}
+const FILTER_TABS: (CrmStatus | 'All')[] = ['All', 'Cold', 'Working', 'Active Client', 'Past Client'];
 
-const STATUS_OPTIONS: ClientStatus[] = ['Active', 'Prospect', 'Inactive'];
-
-const STATUS_STYLE: Record<ClientStatus, { bg: string; text: string; border: string }> = {
-  Active:   { bg: '#FF5A00', text: '#FFFFFF', border: '#FF5A00' },
-  Prospect: { bg: '#FEF9C3', text: '#854D0E', border: '#FDE68A' },
-  Inactive: { bg: '#6B7280', text: '#FFFFFF', border: '#4B5563' },
-};
-
-const FILTER_TABS: (ClientStatus | 'All')[] = ['All', 'Active', 'Prospect', 'Inactive'];
-
-const EMPTY_FORM = {
+const EMPTY_ORG_FORM = {
   name: '',
-  organization: '',
-  email: '',
-  phone: '',
-  status: 'Prospect' as ClientStatus,
+  type: '',
+  address: '',
+  city: '',
+  state: '',
+  website: '',
   notes: '',
+  status: 'Cold' as CrmStatus,
+  isNewLead: true,
 };
 
-function AvatarCircle({ client, size = 40 }: { client: Client; size?: number }) {
-  const initial = client.name.charAt(0).toUpperCase();
+type OrgForm = typeof EMPTY_ORG_FORM;
+
+function StatusBadge({ status }: { status: CrmStatus }) {
+  const cfg = CRM_STATUS_CONFIG[status];
   return (
-    <View style={[styles.avatarCircle, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Text style={[styles.avatarInitial, { fontSize: size * 0.4 }]}>{initial}</Text>
+    <View style={[styles.badge, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
+      <View style={[styles.badgeDot, { backgroundColor: cfg.dot }]} />
+      <Text style={[styles.badgeText, { color: cfg.color }]}>{cfg.label}</Text>
     </View>
   );
 }
 
-function StatusBadge({ status }: { status: ClientStatus }) {
-  const st = STATUS_STYLE[status];
+function OrgAvatar({ org, size = 40 }: { org: Organization; size?: number }) {
+  const initial = org.name.charAt(0).toUpperCase();
+  const isActive = org.status === 'Active Client';
   return (
-    <View style={[styles.statusTag, { backgroundColor: st.bg, borderColor: st.border, borderWidth: 1 }]}>
-      <Text style={[styles.statusTagText, { color: st.text }]}>{status}</Text>
+    <View style={[
+      styles.avatar,
+      { width: size, height: size, borderRadius: size / 2 },
+      isActive && styles.avatarActive,
+    ]}>
+      <Text style={[styles.avatarText, { fontSize: size * 0.38 }, isActive && styles.avatarTextActive]}>
+        {initial}
+      </Text>
     </View>
   );
 }
 
-interface ClientRowProps {
-  client: Client;
+interface OrgRowProps {
+  org: Organization;
   onPress: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
 }
 
-function ClientRow({ client, onPress, onEdit, onDelete }: ClientRowProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
-  const menuBtnRef = useRef<View>(null);
-
-  const openMenu = () => {
-    menuBtnRef.current?.measure((_fx, _fy, width, height, px, py) => {
-      setMenuPos({ top: py + height + 4, right: Math.max(0, (typeof window !== 'undefined' ? window.innerWidth : 400) - px - width) });
-      setMenuOpen(true);
-    });
-  };
+function OrgRow({ org, onPress }: OrgRowProps) {
+  const primaryContact = org.contacts.find((c) => c.isPrimary) || org.contacts[0];
+  const lastActivity = org.activityLog[0];
+  const activeCampaign = org.campaigns.find((c) => c.steps.some((s) => s.status === 'pending'));
 
   return (
     <TouchableOpacity style={styles.tableRow} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.colAvatar}>
-        <AvatarCircle client={client} size={36} />
+        <OrgAvatar org={org} size={36} />
       </View>
       <View style={styles.colName}>
-        <Text style={styles.tableClientName} numberOfLines={1}>{client.name}</Text>
+        <Text style={styles.tableOrgName} numberOfLines={1}>{org.name}</Text>
+        {org.type ? <Text style={styles.tableOrgType} numberOfLines={1}>{org.type}</Text> : null}
       </View>
-      <View style={styles.colOrg}>
-        <Text style={styles.tableClientOrg} numberOfLines={1}>{client.organization || '—'}</Text>
+      <View style={styles.colContact}>
+        {primaryContact ? (
+          <Text style={styles.tableSecondary} numberOfLines={1}>
+            {primaryContact.firstName} {primaryContact.lastName}
+          </Text>
+        ) : (
+          <Text style={styles.tableSecondaryDim}>No contacts</Text>
+        )}
       </View>
-      <View style={styles.colEmail}>
-        <Text style={styles.tableClientContact} numberOfLines={1}>{client.email || '—'}</Text>
+      <View style={styles.colCount}>
+        <Text style={styles.tableSecondary}>{org.contacts.length}</Text>
       </View>
-      <View style={styles.colPhone}>
-        <Text style={styles.tableClientContact} numberOfLines={1}>{client.phone || '—'}</Text>
+      <View style={styles.colCampaign}>
+        {activeCampaign ? (
+          <Text style={styles.tableCampaignActive} numberOfLines={1}>{activeCampaign.templateName}</Text>
+        ) : (
+          <Text style={styles.tableSecondaryDim}>—</Text>
+        )}
+      </View>
+      <View style={styles.colActivity}>
+        {lastActivity ? (
+          <Text style={styles.tableSecondary} numberOfLines={1}>
+            {new Date(lastActivity.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </Text>
+        ) : (
+          <Text style={styles.tableSecondaryDim}>No activity</Text>
+        )}
       </View>
       <View style={styles.colStatus}>
-        <StatusBadge status={client.status} />
+        <StatusBadge status={org.status} />
       </View>
-      <View style={styles.colActions}>
-        <TouchableOpacity style={styles.viewBtn} onPress={onPress}>
-          <Text style={styles.viewBtnText}>View</Text>
-        </TouchableOpacity>
-        <View ref={menuBtnRef} collapsable={false}>
-          <TouchableOpacity style={styles.menuBtn} onPress={openMenu}>
-            <ChevronDown size={14} color={Colors.light.textSecondary} />
-          </TouchableOpacity>
+      <View style={styles.colArrow}>
+        <ChevronRight size={16} color={Colors.light.border} />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function OrgCard({ org, onPress }: OrgRowProps) {
+  const primaryContact = org.contacts.find((c) => c.isPrimary) || org.contacts[0];
+  const activeCampaign = org.campaigns.find((c) => c.steps.some((s) => s.status === 'pending'));
+  const isLead = org.status === 'Cold' || org.status === 'Working';
+
+  return (
+    <TouchableOpacity
+      style={[styles.orgCard, isLead && styles.orgCardLead]}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
+      <View style={styles.orgCardLeft}>
+        <OrgAvatar org={org} size={46} />
+        <View style={styles.orgCardInfo}>
+          <View style={styles.orgCardNameRow}>
+            <Text style={styles.orgCardName} numberOfLines={1}>{org.name}</Text>
+            <StatusBadge status={org.status} />
+          </View>
+          {org.type ? <Text style={styles.orgCardType}>{org.type}</Text> : null}
+          {primaryContact ? (
+            <Text style={styles.orgCardContact}>
+              {primaryContact.firstName} {primaryContact.lastName}
+              {primaryContact.phone ? ` · ${primaryContact.phone}` : ''}
+            </Text>
+          ) : null}
+          {activeCampaign ? (
+            <View style={styles.orgCardCampaignRow}>
+              <TrendingUp size={11} color={Colors.light.tint} />
+              <Text style={styles.orgCardCampaignText} numberOfLines={1}>{activeCampaign.templateName}</Text>
+            </View>
+          ) : null}
         </View>
       </View>
-
-      <Modal visible={menuOpen} transparent animationType="none" onRequestClose={() => setMenuOpen(false)}>
-        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setMenuOpen(false)}>
-          <View style={[styles.dropdownMenu, { position: 'absolute', top: menuPos.top, right: menuPos.right }]}>
-            <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onEdit(); }}>
-              <Edit3 size={14} color={Colors.light.text} />
-              <Text style={styles.dropdownItemText}>Edit</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.dropdownItem, styles.dropdownItemDanger]} onPress={() => { setMenuOpen(false); onDelete(); }}>
-              <Trash2 size={14} color="#EF4444" />
-              <Text style={[styles.dropdownItemText, { color: '#EF4444' }]}>Delete</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      <View style={styles.orgCardMeta}>
+        <Text style={styles.orgCardContactCount}>{org.contacts.length} contact{org.contacts.length !== 1 ? 's' : ''}</Text>
+        <ChevronRight size={16} color={Colors.light.border} />
+      </View>
     </TouchableOpacity>
   );
 }
 
 export default function ClientsScreen() {
   const router = useRouter();
-  const { clients, addClient, updateClient, deleteClient } = useClients();
+  const { orgs, addOrg } = useCrm();
   const { isDesktop } = useBreakpoint();
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<ClientStatus | 'All'>('All');
+  const [filter, setFilter] = useState<CrmStatus | 'All'>('All');
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState<OrgForm>(EMPTY_ORG_FORM);
+  const [step, setStep] = useState<'type-select' | 'details'>('type-select');
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
 
   const filtered = useMemo(() => {
-    return clients.filter((c) => {
-      const matchesFilter = filter === 'All' || c.status === filter;
+    return orgs.filter((o) => {
+      const matchesFilter = filter === 'All' || o.status === filter;
       const q = search.toLowerCase();
       const matchesSearch =
         !q ||
-        c.name.toLowerCase().includes(q) ||
-        (c.organization || '').toLowerCase().includes(q) ||
-        (c.email || '').toLowerCase().includes(q);
+        o.name.toLowerCase().includes(q) ||
+        (o.type || '').toLowerCase().includes(q) ||
+        o.contacts.some(
+          (c) =>
+            `${c.firstName} ${c.lastName}`.toLowerCase().includes(q) ||
+            (c.email || '').toLowerCase().includes(q)
+        );
       return matchesFilter && matchesSearch;
     });
-  }, [clients, filter, search]);
+  }, [orgs, filter, search]);
+
+  const counts = useMemo(() => ({
+    All: orgs.length,
+    Cold: orgs.filter((o) => o.status === 'Cold').length,
+    Working: orgs.filter((o) => o.status === 'Working').length,
+    'Active Client': orgs.filter((o) => o.status === 'Active Client').length,
+    'Past Client': orgs.filter((o) => o.status === 'Past Client').length,
+  }), [orgs]);
+
+  const stats = useMemo(() => ({
+    total: orgs.length,
+    active: orgs.filter((o) => o.status === 'Active Client').length,
+    working: orgs.filter((o) => o.status === 'Working').length,
+    cold: orgs.filter((o) => o.status === 'Cold').length,
+  }), [orgs]);
 
   const openAddModal = useCallback(() => {
-    setEditingClient(null);
-    setForm(EMPTY_FORM);
-    setModalVisible(true);
-  }, []);
-
-  const openEditModal = useCallback((client: Client) => {
-    setEditingClient(client);
-    setForm({
-      name: client.name,
-      organization: client.organization || '',
-      email: client.email || '',
-      phone: client.phone || '',
-      status: client.status,
-      notes: client.notes || '',
-    });
+    setForm(EMPTY_ORG_FORM);
+    setStep('type-select');
     setModalVisible(true);
   }, []);
 
   const handleSave = useCallback(() => {
-    if (!form.name.trim()) {
-      Alert.alert('Required', 'Please enter a client name.');
-      return;
-    }
-    if (editingClient) {
-      updateClient({
-        ...editingClient,
-        name: form.name.trim(),
-        organization: form.organization.trim() || undefined,
-        email: form.email.trim() || undefined,
-        phone: form.phone.trim() || undefined,
-        status: form.status,
-        notes: form.notes.trim() || undefined,
-      });
-    } else {
-      addClient({
-        name: form.name.trim(),
-        organization: form.organization.trim() || undefined,
-        email: form.email.trim() || undefined,
-        phone: form.phone.trim() || undefined,
-        status: form.status,
-        notes: form.notes.trim() || undefined,
-        totalOrders: 0,
-        totalSpent: 0,
-      });
-    }
+    if (!form.name.trim()) return;
+    addOrg({
+      name: form.name.trim(),
+      type: form.type || undefined,
+      address: form.address || undefined,
+      city: form.city || undefined,
+      state: form.state || undefined,
+      website: form.website || undefined,
+      notes: form.notes || undefined,
+      status: form.status,
+    });
     setModalVisible(false);
-  }, [form, editingClient, addClient, updateClient]);
+  }, [form, addOrg]);
 
-  const handleDelete = useCallback(
-    (client: Client) => {
-      Alert.alert(
-        'Delete Client',
-        `Remove ${client.name} from your client list?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Delete', style: 'destructive', onPress: () => deleteClient(client.id) },
-        ]
-      );
-    },
-    [deleteClient]
-  );
-
-  const counts = useMemo(() => ({
-    All: clients.length,
-    Active: clients.filter((c) => c.status === 'Active').length,
-    Prospect: clients.filter((c) => c.status === 'Prospect').length,
-    Inactive: clients.filter((c) => c.status === 'Inactive').length,
-  }), [clients]);
-
-  const handleImportCSV = useCallback(() => {
-    if (typeof document === 'undefined') return;
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.csv,text/csv';
-    input.onchange = async (e: any) => {
-      const file = e.target?.files?.[0];
-      if (!file) return;
-      const text = await file.text();
-      const rows = parseCSV(text);
-      if (rows.length === 0) {
-        Alert.alert('Import Failed', 'No valid rows found. Make sure your CSV has a header row with columns like: name, organization, email, phone, status');
-        return;
-      }
-      let imported = 0;
-      let skipped = 0;
-      rows.forEach(row => {
-        const name = row['name'] || row['fullname'] || row['clientname'] || '';
-        if (!name.trim()) { skipped++; return; }
-        const rawStatus = (row['status'] || '').trim();
-        const status: ClientStatus = (['Active', 'Prospect', 'Inactive'] as ClientStatus[]).includes(rawStatus as ClientStatus)
-          ? rawStatus as ClientStatus
-          : 'Prospect';
-        addClient({
-          name: name.trim(),
-          organization: (row['organization'] || row['org'] || row['company'] || '').trim() || undefined,
-          email: (row['email'] || '').trim() || undefined,
-          phone: (row['phone'] || row['phonenumber'] || '').trim() || undefined,
-          status,
-          totalOrders: 0,
-          totalSpent: 0,
-        });
-        imported++;
-      });
-      Alert.alert('Import Complete', `Imported ${imported} client${imported !== 1 ? 's' : ''}${skipped > 0 ? `. ${skipped} row${skipped !== 1 ? 's' : ''} skipped (missing name).` : '.'}`);
-    };
-    input.click();
-  }, [addClient]);
+  const filterIcon = (tab: CrmStatus | 'All') => {
+    if (tab === 'All') return <Users size={12} color={filter === tab ? Colors.light.tint : Colors.light.textSecondary} />;
+    if (tab === 'Cold') return <Thermometer size={12} color={filter === tab ? CRM_STATUS_CONFIG['Cold'].color : Colors.light.textSecondary} />;
+    if (tab === 'Working') return <TrendingUp size={12} color={filter === tab ? CRM_STATUS_CONFIG['Working'].color : Colors.light.textSecondary} />;
+    if (tab === 'Active Client') return <Star size={12} color={filter === tab ? '#FF5A00' : Colors.light.textSecondary} />;
+    if (tab === 'Past Client') return <Archive size={12} color={filter === tab ? CRM_STATUS_CONFIG['Past Client'].color : Colors.light.textSecondary} />;
+    return null;
+  };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.pageHeader}>
         <View style={styles.headerTop}>
-          <Text style={styles.pageTitle}>Clients</Text>
-          <Text style={styles.pageSubtitle}>{clients.length} client{clients.length !== 1 ? 's' : ''}</Text>
+          <Text style={styles.pageTitle}>Contacts</Text>
+          <Text style={styles.pageSubtitle}>{orgs.length} organization{orgs.length !== 1 ? 's' : ''}</Text>
+        </View>
+
+        {/* Stats bar */}
+        <View style={styles.statsBar}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{stats.total}</Text>
+            <Text style={styles.statLabel}>Total</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: '#FF5A00' }]}>{stats.active}</Text>
+            <Text style={styles.statLabel}>Active</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: '#2563EB' }]}>{stats.working}</Text>
+            <Text style={styles.statLabel}>Working</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: '#6B7280' }]}>{stats.cold}</Text>
+            <Text style={styles.statLabel}>Cold</Text>
+          </View>
         </View>
 
         {/* Filter pills */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillsScroll} contentContainerStyle={styles.pillsRow}>
           {FILTER_TABS.map((tab) => {
             const active = filter === tab;
-            const st = tab !== 'All' ? STATUS_STYLE[tab as ClientStatus] : null;
+            const cfg = tab !== 'All' ? CRM_STATUS_CONFIG[tab as CrmStatus] : null;
             return (
               <TouchableOpacity
                 key={tab}
-                style={[styles.pill, active && styles.pillActive, active && st ? { backgroundColor: st.bg, borderColor: st.border } : null]}
+                style={[
+                  styles.pill,
+                  active && styles.pillActive,
+                  active && cfg ? { backgroundColor: cfg.bg, borderColor: cfg.border } : null,
+                  active && tab === 'All' ? { backgroundColor: '#FFF4EE', borderColor: Colors.light.tint } : null,
+                ]}
                 onPress={() => setFilter(tab)}
               >
-                <Text style={[styles.pillText, active && styles.pillTextActive, active && st ? { color: st.text } : null]}>
+                {filterIcon(tab)}
+                <Text style={[
+                  styles.pillText,
+                  active && styles.pillTextActive,
+                  active && cfg ? { color: cfg.color } : null,
+                  active && tab === 'All' ? { color: Colors.light.tint } : null,
+                ]}>
                   {tab}
                 </Text>
-                <View style={[styles.pillCount, active && st ? { backgroundColor: st.border } : null]}>
-                  <Text style={[styles.pillCountText, active && st ? { color: st.text } : null]}>{counts[tab]}</Text>
+                <View style={[styles.pillCount, active && cfg ? { backgroundColor: cfg.border } : null]}>
+                  <Text style={[styles.pillCountText, active && cfg ? { color: cfg.color } : null]}>
+                    {counts[tab]}
+                  </Text>
                 </View>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
 
-        {/* Search + Add row */}
+        {/* Search + Add */}
         <View style={styles.searchRow}>
           <View style={styles.searchBox}>
             <Search size={15} color={Colors.light.textSecondary} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search name, org, email…"
+              placeholder="Search org, contact, type…"
               placeholderTextColor={Colors.light.textSecondary}
               value={search}
               onChangeText={setSearch}
@@ -327,13 +327,9 @@ export default function ClientsScreen() {
               </TouchableOpacity>
             ) : null}
           </View>
-          <TouchableOpacity style={styles.importBtn} onPress={handleImportCSV}>
-            <Upload size={15} color={Colors.light.tint} />
-            <Text style={styles.importBtnText}>Import CSV</Text>
-          </TouchableOpacity>
           <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
             <Plus size={16} color="#fff" />
-            <Text style={styles.addBtnText}>Add Client</Text>
+            <Text style={styles.addBtnText}>Add</Text>
           </TouchableOpacity>
         </View>
 
@@ -341,145 +337,207 @@ export default function ClientsScreen() {
         {isDesktop && (
           <View style={styles.tableHeader}>
             <View style={styles.colAvatar} />
-            <View style={styles.colName}><Text style={styles.thText}>Name</Text></View>
-            <View style={styles.colOrg}><Text style={styles.thText}>Organization</Text></View>
-            <View style={styles.colEmail}><Text style={styles.thText}>Email</Text></View>
-            <View style={styles.colPhone}><Text style={styles.thText}>Phone</Text></View>
+            <View style={styles.colName}><Text style={styles.thText}>Organization</Text></View>
+            <View style={styles.colContact}><Text style={styles.thText}>Primary Contact</Text></View>
+            <View style={styles.colCount}><Text style={styles.thText}>Contacts</Text></View>
+            <View style={styles.colCampaign}><Text style={styles.thText}>Campaign</Text></View>
+            <View style={styles.colActivity}><Text style={styles.thText}>Last Activity</Text></View>
             <View style={styles.colStatus}><Text style={styles.thText}>Status</Text></View>
-            <View style={styles.colActions}><Text style={[styles.thText, { textAlign: 'right' }]}>Actions</Text></View>
+            <View style={styles.colArrow} />
           </View>
         )}
       </View>
 
-      {/* Content */}
+      {/* List */}
       {filtered.length === 0 ? (
         <View style={styles.emptyState}>
-          <Users size={36} color={Colors.light.border} />
-          <Text style={styles.emptyTitle}>No clients found</Text>
+          <Building2 size={40} color={Colors.light.border} />
+          <Text style={styles.emptyTitle}>
+            {search ? 'No results found' : filter !== 'All' ? `No ${filter} contacts` : 'No contacts yet'}
+          </Text>
           <Text style={styles.emptyText}>
-            {search ? 'Try a different search term.' : 'Add your first client to get started.'}
+            {search
+              ? 'Try a different search term.'
+              : filter !== 'All'
+              ? `Add a new contact and set their status to ${filter}.`
+              : 'Add your first organization or contact to get started.'}
           </Text>
           {!search && (
             <TouchableOpacity style={styles.emptyAddBtn} onPress={openAddModal}>
-              <Text style={styles.emptyAddBtnText}>Add Client</Text>
+              <Plus size={15} color="#fff" />
+              <Text style={styles.emptyAddBtnText}>Add Contact</Text>
             </TouchableOpacity>
           )}
         </View>
       ) : isDesktop ? (
         <FlatList
           data={filtered}
-          keyExtractor={(c) => c.id}
+          keyExtractor={(o) => o.id}
           contentContainerStyle={styles.tableBody}
           ItemSeparatorComponent={() => <View style={styles.tableDivider} />}
-          renderItem={({ item: client }) => (
-            <ClientRow
-              client={client}
-              onPress={() => router.push(`/clients/${client.id}` as any)}
-              onEdit={() => openEditModal(client)}
-              onDelete={() => handleDelete(client)}
-            />
+          renderItem={({ item: org }) => (
+            <OrgRow org={org} onPress={() => router.push(`/crm/${org.id}` as any)} />
           )}
         />
       ) : (
         <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-          {filtered.map((client) => {
-            const st = STATUS_STYLE[client.status];
-            return (
-              <TouchableOpacity
-                key={client.id}
-                style={styles.clientCard}
-                onPress={() => router.push(`/clients/${client.id}` as any)}
-                activeOpacity={0.85}
-              >
-                <View style={styles.clientCardLeft}>
-                  <AvatarCircle client={client} size={44} />
-                  <View style={styles.clientInfo}>
-                    <View style={styles.clientNameRow}>
-                      <Text style={styles.clientName}>{client.name}</Text>
-                      <StatusBadge status={client.status} />
-                    </View>
-                    {client.organization ? (
-                      <Text style={styles.clientOrg}>{client.organization}</Text>
-                    ) : null}
-                    <View style={styles.clientContacts}>
-                      {client.email ? <Text style={styles.clientContact}>{client.email}</Text> : null}
-                      {client.phone ? <Text style={styles.clientContact}>{client.phone}</Text> : null}
-                    </View>
-                    {client.notes ? (
-                      <Text style={styles.clientNotes} numberOfLines={2}>{client.notes}</Text>
-                    ) : null}
-                  </View>
-                </View>
-                <View style={styles.clientCardRight}>
-                  <TouchableOpacity style={styles.actionBtn} onPress={(e) => { e.stopPropagation?.(); openEditModal(client); }}>
-                    <Edit3 size={16} color={Colors.light.textSecondary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.actionBtn} onPress={(e) => { e.stopPropagation?.(); handleDelete(client); }}>
-                    <Trash2 size={16} color={Colors.light.error} />
-                  </TouchableOpacity>
-                  <ChevronRight size={16} color={Colors.light.border} />
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+          {filtered.map((org) => (
+            <OrgCard key={org.id} org={org} onPress={() => router.push(`/crm/${org.id}` as any)} />
+          ))}
           <View style={{ height: 40 }} />
         </ScrollView>
       )}
 
-      {/* Add/Edit Modal */}
+      {/* Add Modal */}
       <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
             <Pressable style={styles.modalCard} onPress={() => {}}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{editingClient ? 'Edit Client' : 'Add Client'}</Text>
+                <Text style={styles.modalTitle}>
+                  {step === 'type-select' ? 'New Contact' : 'Add Details'}
+                </Text>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
                   <X size={22} color={Colors.light.textSecondary} />
                 </TouchableOpacity>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <Text style={styles.fieldLabel}>Status</Text>
-                <View style={styles.statusRow}>
-                  {STATUS_OPTIONS.map((s) => {
-                    const st = STATUS_STYLE[s];
-                    const selected = form.status === s;
-                    return (
-                      <TouchableOpacity
-                        key={s}
-                        style={[styles.statusOption, selected && { backgroundColor: st.bg, borderColor: st.text }]}
-                        onPress={() => setForm((f) => ({ ...f, status: s }))}
-                      >
-                        <Text style={[styles.statusOptionText, selected && { color: st.text, fontWeight: '700' as const }]}>{s}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+              {step === 'type-select' ? (
+                <View style={styles.typeSelectStep}>
+                  <Text style={styles.typeSelectLabel}>What kind of contact is this?</Text>
+                  <TouchableOpacity
+                    style={[styles.typeSelectOption, !form.isNewLead && styles.typeSelectOptionActive]}
+                    onPress={() => setForm((f) => ({ ...f, isNewLead: false, status: 'Active Client' }))}
+                  >
+                    <View style={styles.typeSelectIcon}>
+                      <Star size={22} color={form.isNewLead ? Colors.light.textSecondary : '#FF5A00'} />
+                    </View>
+                    <View style={styles.typeSelectText}>
+                      <Text style={styles.typeSelectOptionTitle}>Active Client</Text>
+                      <Text style={styles.typeSelectOptionSub}>Someone I already do business with</Text>
+                    </View>
+                    <View style={[styles.typeSelectRadio, !form.isNewLead && styles.typeSelectRadioActive]} />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.typeSelectOption, form.isNewLead && styles.typeSelectOptionActive]}
+                    onPress={() => setForm((f) => ({ ...f, isNewLead: true, status: 'Cold' }))}
+                  >
+                    <View style={styles.typeSelectIcon}>
+                      <Thermometer size={22} color={form.isNewLead ? Colors.light.tint : Colors.light.textSecondary} />
+                    </View>
+                    <View style={styles.typeSelectText}>
+                      <Text style={styles.typeSelectOptionTitle}>New Lead</Text>
+                      <Text style={styles.typeSelectOptionSub}>Someone I'm prospecting or working</Text>
+                    </View>
+                    <View style={[styles.typeSelectRadio, form.isNewLead && styles.typeSelectRadioActive]} />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.typeSelectNextBtn}
+                    onPress={() => setStep('details')}
+                  >
+                    <Text style={styles.typeSelectNextBtnText}>Continue</Text>
+                  </TouchableOpacity>
                 </View>
+              ) : (
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {/* Status selector */}
+                  <Text style={styles.fieldLabel}>Status</Text>
+                  <View style={styles.statusRow}>
+                    {(['Cold', 'Working', 'Active Client', 'Past Client'] as CrmStatus[]).map((s) => {
+                      const cfg = CRM_STATUS_CONFIG[s];
+                      const selected = form.status === s;
+                      return (
+                        <TouchableOpacity
+                          key={s}
+                          style={[styles.statusOption, selected && { backgroundColor: cfg.bg, borderColor: cfg.border }]}
+                          onPress={() => setForm((f) => ({ ...f, status: s }))}
+                        >
+                          <Text style={[styles.statusOptionText, selected && { color: cfg.color, fontWeight: '700' as const }]}>{s}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
 
-                <Text style={styles.fieldLabel}>Name *</Text>
-                <TextInput style={styles.textInput} value={form.name} onChangeText={(v) => setForm((f) => ({ ...f, name: v }))} placeholder="Full name" placeholderTextColor={Colors.light.textSecondary} />
+                  <Text style={styles.fieldLabel}>Organization / Name *</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={form.name}
+                    onChangeText={(v) => setForm((f) => ({ ...f, name: v }))}
+                    placeholder="Church name, school, company…"
+                    placeholderTextColor={Colors.light.textSecondary}
+                    autoFocus
+                  />
 
-                <Text style={styles.fieldLabel}>Organization</Text>
-                <TextInput style={styles.textInput} value={form.organization} onChangeText={(v) => setForm((f) => ({ ...f, organization: v }))} placeholder="Company or school name" placeholderTextColor={Colors.light.textSecondary} />
+                  <Text style={styles.fieldLabel}>Type</Text>
+                  <TouchableOpacity
+                    style={styles.typePickerBtn}
+                    onPress={() => setShowTypeDropdown((v) => !v)}
+                  >
+                    <Text style={form.type ? styles.typePickerBtnText : styles.typePickerBtnPlaceholder}>
+                      {form.type || 'Select type…'}
+                    </Text>
+                  </TouchableOpacity>
+                  {showTypeDropdown && (
+                    <View style={styles.typeDropdown}>
+                      {ORG_TYPES.map((t) => (
+                        <TouchableOpacity
+                          key={t}
+                          style={styles.typeDropdownItem}
+                          onPress={() => { setForm((f) => ({ ...f, type: t })); setShowTypeDropdown(false); }}
+                        >
+                          <Text style={[styles.typeDropdownText, form.type === t && styles.typeDropdownTextActive]}>{t}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
 
-                <Text style={styles.fieldLabel}>Email</Text>
-                <TextInput style={styles.textInput} value={form.email} onChangeText={(v) => setForm((f) => ({ ...f, email: v }))} placeholder="email@example.com" placeholderTextColor={Colors.light.textSecondary} keyboardType="email-address" autoCapitalize="none" />
+                  <Text style={styles.fieldLabel}>City / State</Text>
+                  <View style={styles.rowInputs}>
+                    <TextInput
+                      style={[styles.textInput, { flex: 2 }]}
+                      value={form.city}
+                      onChangeText={(v) => setForm((f) => ({ ...f, city: v }))}
+                      placeholder="City"
+                      placeholderTextColor={Colors.light.textSecondary}
+                    />
+                    <TextInput
+                      style={[styles.textInput, { flex: 1 }]}
+                      value={form.state}
+                      onChangeText={(v) => setForm((f) => ({ ...f, state: v }))}
+                      placeholder="State"
+                      placeholderTextColor={Colors.light.textSecondary}
+                    />
+                  </View>
 
-                <Text style={styles.fieldLabel}>Phone</Text>
-                <TextInput style={styles.textInput} value={form.phone} onChangeText={(v) => setForm((f) => ({ ...f, phone: v }))} placeholder="(555) 000-0000" placeholderTextColor={Colors.light.textSecondary} keyboardType="phone-pad" />
+                  <Text style={styles.fieldLabel}>Notes</Text>
+                  <TextInput
+                    style={[styles.textInput, styles.notesInput]}
+                    value={form.notes}
+                    onChangeText={(v) => setForm((f) => ({ ...f, notes: v }))}
+                    placeholder="Any initial notes…"
+                    placeholderTextColor={Colors.light.textSecondary}
+                    multiline
+                    numberOfLines={3}
+                  />
+                </ScrollView>
+              )}
 
-                <Text style={styles.fieldLabel}>Notes</Text>
-                <TextInput style={[styles.textInput, styles.notesInput]} value={form.notes} onChangeText={(v) => setForm((f) => ({ ...f, notes: v }))} placeholder="Any additional notes..." placeholderTextColor={Colors.light.textSecondary} multiline numberOfLines={3} />
-              </ScrollView>
-
-              <View style={styles.modalActions}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
-                  <Text style={styles.cancelBtnText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-                  <Text style={styles.saveBtnText}>{editingClient ? 'Save Changes' : 'Add Client'}</Text>
-                </TouchableOpacity>
-              </View>
+              {step === 'details' && (
+                <View style={styles.modalActions}>
+                  <TouchableOpacity style={styles.backBtn} onPress={() => setStep('type-select')}>
+                    <Text style={styles.backBtnText}>Back</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.saveBtn, !form.name.trim() && styles.saveBtnDisabled]}
+                    onPress={handleSave}
+                    disabled={!form.name.trim()}
+                  >
+                    <Text style={styles.saveBtnText}>Add Contact</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </Pressable>
           </KeyboardAvoidingView>
         </Pressable>
@@ -489,10 +547,7 @@ export default function ClientsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-  },
+  container: { flex: 1, backgroundColor: Colors.light.background },
 
   pageHeader: {
     backgroundColor: Colors.light.surface,
@@ -506,288 +561,223 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 14,
+    paddingBottom: 10,
   },
-  pageTitle: {
-    fontSize: 24,
-    fontWeight: '800' as const,
-    color: Colors.light.text,
+  pageTitle: { fontSize: 24, fontWeight: '800' as const, color: Colors.light.text },
+  pageSubtitle: { fontSize: 14, color: Colors.light.textSecondary },
+
+  statsBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 12,
+    backgroundColor: Colors.light.background,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
   },
-  pageSubtitle: {
-    fontSize: 14,
-    color: Colors.light.textSecondary,
-  },
+  statItem: { flex: 1, alignItems: 'center' },
+  statValue: { fontSize: 18, fontWeight: '800' as const, color: Colors.light.text },
+  statLabel: { fontSize: 10, color: Colors.light.textSecondary, fontWeight: '500' as const, marginTop: 1 },
+  statDivider: { width: 1, height: 32, backgroundColor: Colors.light.border },
 
   pillsScroll: { maxHeight: 46 },
-  pillsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
+  pillsRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingBottom: 12 },
   pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: Colors.light.border,
-    backgroundColor: Colors.light.background,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 20, borderWidth: 1.5,
+    borderColor: Colors.light.border, backgroundColor: Colors.light.background,
   },
   pillActive: { borderColor: Colors.light.tint, backgroundColor: '#FFF4EE' },
-  pillText: { fontSize: 13, fontWeight: '500', color: Colors.light.textSecondary },
-  pillTextActive: { color: Colors.light.tint, fontWeight: '700' },
+  pillText: { fontSize: 12, fontWeight: '500' as const, color: Colors.light.textSecondary },
+  pillTextActive: { color: Colors.light.tint, fontWeight: '700' as const },
   pillCount: {
-    backgroundColor: Colors.light.border,
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
+    backgroundColor: Colors.light.border, borderRadius: 10,
+    minWidth: 17, height: 17, justifyContent: 'center',
+    alignItems: 'center', paddingHorizontal: 3,
   },
-  pillCountText: { fontSize: 10, fontWeight: '700', color: Colors.light.textSecondary },
+  pillCountText: { fontSize: 10, fontWeight: '700' as const, color: Colors.light.textSecondary },
 
-  searchRow: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-    alignItems: 'center',
-  },
+  searchRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, paddingBottom: 12, alignItems: 'center' },
   searchBox: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: Colors.light.background,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.light.background, borderRadius: 10,
+    borderWidth: 1, borderColor: Colors.light.border,
+    paddingHorizontal: 12, paddingVertical: 9,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: Colors.light.text,
-    outlineStyle: 'none' as any,
-  },
+  searchInput: { flex: 1, fontSize: 14, color: Colors.light.text, outlineStyle: 'none' as any },
   addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: Colors.light.tint,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.light.tint, paddingHorizontal: 14,
+    paddingVertical: 9, borderRadius: 10,
   },
-  addBtnText: { fontSize: 14, fontWeight: '600' as const, color: '#fff' },
-  importBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: 1.5,
-    borderColor: Colors.light.tint,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 8,
-    backgroundColor: 'transparent',
-  },
-  importBtnText: { fontSize: 14, fontWeight: '600' as const, color: Colors.light.tint },
+  addBtnText: { fontSize: 14, fontWeight: '700' as const, color: '#fff' },
 
   tableHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#111111',
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 8,
+    backgroundColor: Colors.light.background,
+    borderTopWidth: 1, borderTopColor: Colors.light.border,
   },
-  thText: { fontSize: 11, fontWeight: '700', color: '#ffffff', textTransform: 'uppercase', letterSpacing: 0.5 },
-
+  thText: { fontSize: 11, fontWeight: '700' as const, color: Colors.light.textSecondary, textTransform: 'uppercase' as const, letterSpacing: 0.4 },
   tableBody: { paddingBottom: 40 },
-  tableDivider: { height: 1, backgroundColor: Colors.light.border },
-  tableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: Colors.light.surface,
-  },
+  tableRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: Colors.light.surface },
+  tableDivider: { height: 1, backgroundColor: Colors.light.border, marginLeft: 16 },
+  colAvatar: { width: 44 },
+  colName: { flex: 2.5 },
+  colContact: { flex: 2 },
+  colCount: { width: 60, alignItems: 'center' },
+  colCampaign: { flex: 2 },
+  colActivity: { width: 90 },
+  colStatus: { width: 110 },
+  colArrow: { width: 28, alignItems: 'center' },
 
-  colAvatar:  { width: 52 },
-  colName:    { flex: 1.4 },
-  colOrg:     { flex: 1.2 },
-  colEmail:   { flex: 1.5 },
-  colPhone:   { width: 130 },
-  colStatus:  { width: 100 },
-  colActions: { width: 100, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
+  tableOrgName: { fontSize: 14, fontWeight: '600' as const, color: Colors.light.text },
+  tableOrgType: { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
+  tableSecondary: { fontSize: 13, color: Colors.light.textSecondary },
+  tableSecondaryDim: { fontSize: 13, color: Colors.light.border },
+  tableCampaignActive: { fontSize: 12, color: Colors.light.tint, fontWeight: '500' as const },
 
-  tableClientName:    { fontSize: 13, fontWeight: '700', color: Colors.light.text },
-  tableClientOrg:     { fontSize: 13, color: Colors.light.textSecondary },
-  tableClientContact: { fontSize: 13, color: Colors.light.text },
+  badge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 12, borderWidth: 1,
+  },
+  badgeDot: { width: 6, height: 6, borderRadius: 3 },
+  badgeText: { fontSize: 11, fontWeight: '700' as const },
 
-  viewBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 7,
-    backgroundColor: Colors.light.tint,
+  avatar: {
+    backgroundColor: Colors.light.border,
+    justifyContent: 'center', alignItems: 'center',
   },
-  viewBtnText: { fontSize: 12, fontWeight: '700', color: '#fff' },
-  menuBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalBackdrop: { flex: 1 },
-  dropdownMenu: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 12,
-    minWidth: 160,
-    overflow: 'hidden',
-  },
-  dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-  },
-  dropdownItemDanger: { borderBottomWidth: 0 },
-  dropdownItemText: { fontSize: 13, color: Colors.light.text, fontWeight: '500' },
+  avatarActive: { backgroundColor: Colors.light.tint },
+  avatarText: { fontWeight: '800' as const, color: Colors.light.textSecondary },
+  avatarTextActive: { color: '#fff' },
 
   list: { flex: 1 },
-  listContent: { gap: 10, padding: 16, paddingBottom: 40 },
+  listContent: { padding: 16, gap: 10 },
 
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 60,
-    gap: 10,
-  },
-  emptyTitle: { fontSize: 17, fontWeight: '600' as const, color: Colors.light.text },
-  emptyText: { fontSize: 14, color: Colors.light.textSecondary, textAlign: 'center' },
-  emptyAddBtn: {
-    marginTop: 8,
-    backgroundColor: Colors.light.tint,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  emptyAddBtnText: { fontSize: 14, fontWeight: '600' as const, color: '#fff' },
-
-  clientCard: {
+  orgCard: {
     backgroundColor: Colors.light.surface,
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
+    borderRadius: 14, borderWidth: 1,
     borderColor: Colors.light.border,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    padding: 14,
+    flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between',
   },
-  clientCardLeft: { flexDirection: 'row', gap: 12, flex: 1 },
-  clientCardRight: { flexDirection: 'row', gap: 4, marginLeft: 8 },
-  avatarCircle: {
-    backgroundColor: Colors.light.tint,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexShrink: 0,
+  orgCardLead: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#BFDBFE',
   },
-  avatarInitial: { fontWeight: '700' as const, color: '#fff' },
-  clientInfo: { flex: 1, gap: 3 },
-  clientNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  clientName: { fontSize: 15, fontWeight: '700' as const, color: Colors.light.text },
-  statusTag: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
-  statusTagText: { fontSize: 11, fontWeight: '700' as const },
-  clientOrg: { fontSize: 13, color: Colors.light.textSecondary, fontWeight: '500' as const },
-  clientContacts: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2 },
-  clientContact: { fontSize: 12, color: Colors.light.textSecondary },
-  clientNotes: { fontSize: 12, color: Colors.light.textSecondary, fontStyle: 'italic', marginTop: 4 },
-  actionBtn: { padding: 8, borderRadius: 8, backgroundColor: Colors.light.background },
+  orgCardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  orgCardInfo: { flex: 1 },
+  orgCardNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  orgCardName: { fontSize: 15, fontWeight: '700' as const, color: Colors.light.text },
+  orgCardType: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 2 },
+  orgCardContact: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 3 },
+  orgCardCampaignRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  orgCardCampaignText: { fontSize: 11, color: Colors.light.tint, fontWeight: '500' as const },
+  orgCardMeta: { alignItems: 'flex-end', gap: 6 },
+  orgCardContactCount: { fontSize: 11, color: Colors.light.textSecondary },
 
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10, padding: 40 },
+  emptyTitle: { fontSize: 18, fontWeight: '700' as const, color: Colors.light.text },
+  emptyText: { fontSize: 14, color: Colors.light.textSecondary, textAlign: 'center' },
+  emptyAddBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginTop: 8, backgroundColor: Colors.light.tint,
+    paddingHorizontal: 18, paddingVertical: 10, borderRadius: 10,
   },
-  modalKAV: { width: '100%', maxWidth: 480 },
+  emptyAddBtnText: { color: '#fff', fontWeight: '700' as const, fontSize: 14 },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  modalKAV: { width: '100%', maxWidth: 520, paddingHorizontal: 16 },
   modalCard: {
     backgroundColor: Colors.light.surface,
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: 18, padding: 20,
     maxHeight: '90%' as any,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginBottom: 18,
   },
-  modalTitle: { fontSize: 20, fontWeight: '700' as const, color: Colors.light.text },
+  modalTitle: { fontSize: 18, fontWeight: '800' as const, color: Colors.light.text },
+
+  typeSelectStep: { gap: 12, marginBottom: 8 },
+  typeSelectLabel: { fontSize: 15, color: Colors.light.textSecondary, marginBottom: 4 },
+  typeSelectOption: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    padding: 14, borderRadius: 12, borderWidth: 2,
+    borderColor: Colors.light.border, backgroundColor: Colors.light.background,
+  },
+  typeSelectOptionActive: { borderColor: Colors.light.tint, backgroundColor: '#FFF4EE' },
+  typeSelectIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.light.surface, justifyContent: 'center', alignItems: 'center' },
+  typeSelectText: { flex: 1 },
+  typeSelectOptionTitle: { fontSize: 15, fontWeight: '700' as const, color: Colors.light.text },
+  typeSelectOptionSub: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 2 },
+  typeSelectRadio: {
+    width: 20, height: 20, borderRadius: 10,
+    borderWidth: 2, borderColor: Colors.light.border, backgroundColor: 'transparent',
+  },
+  typeSelectRadioActive: { borderColor: Colors.light.tint, backgroundColor: Colors.light.tint },
+  typeSelectNextBtn: {
+    backgroundColor: Colors.light.tint, borderRadius: 10,
+    paddingVertical: 13, alignItems: 'center', marginTop: 4,
+  },
+  typeSelectNextBtnText: { color: '#fff', fontWeight: '700' as const, fontSize: 15 },
+
   fieldLabel: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    color: Colors.light.textSecondary,
-    marginBottom: 6,
-    marginTop: 12,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.5,
+    fontSize: 12, fontWeight: '700' as const, color: Colors.light.textSecondary,
+    textTransform: 'uppercase' as const, letterSpacing: 0.4,
+    marginTop: 14, marginBottom: 6,
   },
-  statusRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
-  statusOption: {
-    flex: 1,
-    paddingVertical: 9,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    alignItems: 'center',
-    backgroundColor: Colors.light.background,
-  },
-  statusOptionText: { fontSize: 13, fontWeight: '500' as const, color: Colors.light.textSecondary },
   textInput: {
+    backgroundColor: Colors.light.background, borderRadius: 10,
+    borderWidth: 1, borderColor: Colors.light.border,
+    paddingHorizontal: 13, paddingVertical: 10,
+    fontSize: 15, color: Colors.light.text,
+  },
+  notesInput: { minHeight: 80, textAlignVertical: 'top' as const },
+  rowInputs: { flexDirection: 'row', gap: 10 },
+
+  typePickerBtn: {
+    backgroundColor: Colors.light.background, borderRadius: 10,
+    borderWidth: 1, borderColor: Colors.light.border,
+    paddingHorizontal: 13, paddingVertical: 10,
+  },
+  typePickerBtnText: { fontSize: 15, color: Colors.light.text },
+  typePickerBtnPlaceholder: { fontSize: 15, color: Colors.light.textSecondary },
+  typeDropdown: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 10, borderWidth: 1, borderColor: Colors.light.border,
+    marginTop: 4, overflow: 'hidden',
+  },
+  typeDropdownItem: { paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.light.border },
+  typeDropdownText: { fontSize: 14, color: Colors.light.text },
+  typeDropdownTextActive: { color: Colors.light.tint, fontWeight: '700' as const },
+
+  statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+  statusOption: {
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 8, borderWidth: 1.5, borderColor: Colors.light.border,
     backgroundColor: Colors.light.background,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: Colors.light.text,
   },
-  notesInput: { height: 80, textAlignVertical: 'top', paddingTop: 10 },
-  modalActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: 13,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
+  statusOptionText: { fontSize: 13, color: Colors.light.textSecondary, fontWeight: '500' as const },
+
+  modalActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  backBtn: {
+    flex: 1, paddingVertical: 13, borderRadius: 10,
+    borderWidth: 1.5, borderColor: Colors.light.border,
     alignItems: 'center',
   },
-  cancelBtnText: { fontSize: 15, fontWeight: '600' as const, color: Colors.light.textSecondary },
+  backBtnText: { fontSize: 15, fontWeight: '600' as const, color: Colors.light.textSecondary },
   saveBtn: {
-    flex: 1,
-    paddingVertical: 13,
-    borderRadius: 10,
-    backgroundColor: Colors.light.tint,
-    alignItems: 'center',
+    flex: 2, backgroundColor: Colors.light.tint,
+    paddingVertical: 13, borderRadius: 10, alignItems: 'center',
   },
+  saveBtnDisabled: { opacity: 0.5 },
   saveBtnText: { fontSize: 15, fontWeight: '700' as const, color: '#fff' },
 });

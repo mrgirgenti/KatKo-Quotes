@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QuotesProvider } from '@/contexts/QuotesContext';
 import { UserProvider } from '@/contexts/UserContext';
 import { ClientsProvider } from '@/contexts/ClientsContext';
+import { CrmProvider } from '@/contexts/CrmContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -22,6 +23,7 @@ function RootLayoutNav() {
       <Stack.Screen name="profile" options={{ title: 'Profile', presentation: 'modal' }} />
       <Stack.Screen name="reports" options={{ title: 'Reports' }} />
       <Stack.Screen name="clients/[id]" options={{ title: 'Client Profile', headerStyle: { backgroundColor: '#000000' }, headerTintColor: '#fff' }} />
+      <Stack.Screen name="crm/[id]" options={{ title: 'Contact', headerStyle: { backgroundColor: '#000000' }, headerTintColor: '#fff' }} />
     </Stack>
   );
 }
@@ -37,7 +39,9 @@ export default function RootLayout() {
         <UserProvider>
           <QuotesProvider>
             <ClientsProvider>
-              <RootLayoutNav />
+              <CrmProvider>
+                <RootLayoutNav />
+              </CrmProvider>
             </ClientsProvider>
           </QuotesProvider>
         </UserProvider>
