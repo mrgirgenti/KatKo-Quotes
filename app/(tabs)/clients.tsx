@@ -81,7 +81,8 @@ interface OrgRowProps {
 }
 
 function OrgRow({ org, onPress }: OrgRowProps) {
-  const primaryContact = org.contacts.find((c) => c.isPrimary) || org.contacts[0];
+  const primaries = org.contacts.filter((c) => c.isPrimary);
+  const primaryContact = primaries[0] || org.contacts[0];
   const lastActivity = org.activityLog[0];
   const activeCampaign = org.campaigns.find((c) => c.steps.some((s) => s.status === 'pending'));
 
@@ -96,9 +97,24 @@ function OrgRow({ org, onPress }: OrgRowProps) {
       </View>
       <View style={styles.colContact}>
         {primaryContact ? (
-          <Text style={styles.tableSecondary} numberOfLines={1}>
-            {primaryContact.firstName} {primaryContact.lastName}
-          </Text>
+          <View>
+            <View style={styles.colContactNameRow}>
+              <Text style={styles.tableSecondary} numberOfLines={1}>
+                {primaryContact.firstName} {primaryContact.lastName}
+              </Text>
+              {primaries.length > 1 && (
+                <View style={styles.extraPrimariesBadge}>
+                  <Text style={styles.extraPrimariesText}>+{primaries.length - 1}</Text>
+                </View>
+              )}
+            </View>
+            {primaryContact.phone ? (
+              <Text style={styles.tableContactSub} numberOfLines={1}>{primaryContact.phone}</Text>
+            ) : null}
+            {primaryContact.email ? (
+              <Text style={styles.tableContactSub} numberOfLines={1}>{primaryContact.email}</Text>
+            ) : null}
+          </View>
         ) : (
           <Text style={styles.tableSecondaryDim}>No contacts</Text>
         )}
@@ -130,7 +146,8 @@ function OrgRow({ org, onPress }: OrgRowProps) {
 }
 
 function OrgCard({ org, onPress }: OrgRowProps) {
-  const primaryContact = org.contacts.find((c) => c.isPrimary) || org.contacts[0];
+  const primaries = org.contacts.filter((c) => c.isPrimary);
+  const primaryContact = primaries[0] || org.contacts[0];
   const activeCampaign = org.campaigns.find((c) => c.steps.some((s) => s.status === 'pending'));
   const isLead = org.status === 'Cold' || org.status === 'Working';
 
@@ -149,10 +166,20 @@ function OrgCard({ org, onPress }: OrgRowProps) {
           </View>
           {org.type ? <Text style={styles.orgCardType}>{org.type}</Text> : null}
           {primaryContact ? (
-            <Text style={styles.orgCardContact}>
-              {primaryContact.firstName} {primaryContact.lastName}
-              {primaryContact.phone ? ` · ${primaryContact.phone}` : ''}
-            </Text>
+            <View>
+              <View style={styles.orgCardContactRow}>
+                <Text style={styles.orgCardContact} numberOfLines={1}>
+                  {primaryContact.firstName} {primaryContact.lastName}
+                  {primaries.length > 1 ? ` +${primaries.length - 1}` : ''}
+                </Text>
+              </View>
+              {primaryContact.phone ? (
+                <Text style={styles.orgCardContactSub} numberOfLines={1}>{primaryContact.phone}</Text>
+              ) : null}
+              {primaryContact.email ? (
+                <Text style={styles.orgCardContactSub} numberOfLines={1}>{primaryContact.email}</Text>
+              ) : null}
+            </View>
           ) : null}
           {activeCampaign ? (
             <View style={styles.orgCardCampaignRow}>
@@ -214,6 +241,7 @@ export default function ClientsScreen() {
     active: orgs.filter((o) => o.status === 'Active Client').length,
     working: orgs.filter((o) => o.status === 'Working').length,
     cold: orgs.filter((o) => o.status === 'Cold').length,
+    totalPeople: orgs.reduce((sum, o) => sum + o.contacts.length, 0),
   }), [orgs]);
 
   const openAddModal = useCallback(() => {
@@ -251,7 +279,7 @@ export default function ClientsScreen() {
       <View style={styles.pageHeader}>
         <View style={styles.headerTop}>
           <Text style={styles.pageTitle}>Contacts</Text>
-          <Text style={styles.pageSubtitle}>{orgs.length} organization{orgs.length !== 1 ? 's' : ''}</Text>
+          <Text style={styles.pageSubtitle}>{orgs.length} org{orgs.length !== 1 ? 's' : ''} · {stats.totalPeople} people</Text>
         </View>
 
         {/* Stats bar */}
@@ -641,7 +669,7 @@ const styles = StyleSheet.create({
   tableDivider: { height: 1, backgroundColor: Colors.light.border, marginLeft: 16 },
   colAvatar: { width: 44 },
   colName: { flex: 2.5 },
-  colContact: { flex: 2 },
+  colContact: { flex: 2.5 },
   colCampaign: { flex: 2 },
   colActivity: { width: 90 },
   colStatus: { width: 110 },
@@ -650,6 +678,13 @@ const styles = StyleSheet.create({
   tableOrgName: { fontSize: 14, fontWeight: '600' as const, color: Colors.light.text },
   tableOrgType: { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
   tableSecondary: { fontSize: 13, color: Colors.light.textSecondary },
+  tableContactSub: { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
+  colContactNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  extraPrimariesBadge: {
+    backgroundColor: Colors.light.highlightBg, borderRadius: 8,
+    paddingHorizontal: 5, paddingVertical: 1,
+  },
+  extraPrimariesText: { fontSize: 10, fontWeight: '700' as const, color: Colors.light.tint },
   tableSecondaryDim: { fontSize: 13, color: Colors.light.border },
   tableCampaignActive: { fontSize: 12, color: Colors.light.tint, fontWeight: '500' as const },
 
@@ -689,7 +724,9 @@ const styles = StyleSheet.create({
   orgCardNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   orgCardName: { fontSize: 15, fontWeight: '700' as const, color: Colors.light.text },
   orgCardType: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 2 },
-  orgCardContact: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 3 },
+  orgCardContactRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 },
+  orgCardContact: { fontSize: 12, color: Colors.light.textSecondary },
+  orgCardContactSub: { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
   orgCardCampaignRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   orgCardCampaignText: { fontSize: 11, color: Colors.light.tint, fontWeight: '500' as const },
   orgCardMeta: { alignItems: 'flex-end', gap: 6 },

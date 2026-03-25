@@ -91,11 +91,11 @@ const STEP_STATUS_CONFIG: Record<CampaignStepStatus, { label: string; color: str
 
 const STEP_STATUSES: CampaignStepStatus[] = ['pending', 'sent', 'received', 'responded', 'skipped'];
 
-function ContactCard({ contact: c, onEdit, onDelete }: { contact: Contact; onEdit: () => void; onDelete: () => void }) {
+function ContactCard({ contact: c, onEdit, onDelete, onSetPrimary }: { contact: Contact; onEdit: () => void; onDelete: () => void; onSetPrimary: () => void }) {
   return (
     <View style={styles.contactCard}>
-      <View style={styles.contactAvatar}>
-        <Text style={styles.contactAvatarText}>{c.firstName.charAt(0).toUpperCase()}</Text>
+      <View style={[styles.contactAvatar, c.isPrimary && styles.contactAvatarPrimary]}>
+        <Text style={[styles.contactAvatarText, c.isPrimary && styles.contactAvatarTextPrimary]}>{c.firstName.charAt(0).toUpperCase()}</Text>
       </View>
       <View style={styles.contactInfo}>
         <View style={styles.contactNameRow}>
@@ -124,6 +124,12 @@ function ContactCard({ contact: c, onEdit, onDelete }: { contact: Contact; onEdi
         {c.notes && <Text style={styles.contactNotes}>{c.notes}</Text>}
       </View>
       <View style={styles.contactActions}>
+        <TouchableOpacity
+          style={[styles.contactActionBtn, c.isPrimary && styles.contactActionBtnPrimary]}
+          onPress={onSetPrimary}
+        >
+          <User size={14} color={c.isPrimary ? Colors.light.tint : Colors.light.textSecondary} />
+        </TouchableOpacity>
         <TouchableOpacity style={styles.contactActionBtn} onPress={onEdit}>
           <Edit3 size={14} color={Colors.light.textSecondary} />
         </TouchableOpacity>
@@ -672,7 +678,7 @@ export default function OrgProfileScreen() {
                     {deptContacts.length === 0 ? (
                       <Text style={styles.deptEmpty}>No contacts in this department yet.</Text>
                     ) : (
-                      deptContacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} />)
+                      deptContacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} onSetPrimary={() => updateContact({ orgId: org.id, contact: { ...c, isPrimary: !c.isPrimary } })} />)
                     )}
                   </View>
                 );
@@ -682,7 +688,7 @@ export default function OrgProfileScreen() {
               {(() => {
                 const unassigned = org.contacts.filter((c) => !c.departmentId || !(org.departments || []).find((d) => d.id === c.departmentId));
                 if ((org.departments || []).length === 0) {
-                  return org.contacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} />);
+                  return org.contacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} onSetPrimary={() => updateContact({ orgId: org.id, contact: { ...c, isPrimary: !c.isPrimary } })} />);
                 }
                 if (unassigned.length === 0) return null;
                 return (
@@ -694,7 +700,7 @@ export default function OrgProfileScreen() {
                         <Text style={styles.deptCount}>{unassigned.length}</Text>
                       </View>
                     </View>
-                    {unassigned.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} />)}
+                    {unassigned.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} onSetPrimary={() => updateContact({ orgId: org.id, contact: { ...c, isPrimary: !c.isPrimary } })} />)}
                   </View>
                 );
               })()}
@@ -1283,6 +1289,8 @@ const styles = StyleSheet.create({
   },
   contactAvatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.light.tint, justifyContent: 'center', alignItems: 'center' },
   contactAvatarText: { fontSize: 16, fontWeight: '700' as const, color: '#fff' },
+  contactAvatarPrimary: { backgroundColor: Colors.light.tint, borderWidth: 2, borderColor: '#FF8C40' },
+  contactAvatarTextPrimary: { color: '#fff' },
   contactInfo: { flex: 1 },
   contactNameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   contactName: { fontSize: 14, fontWeight: '700' as const, color: Colors.light.text },
@@ -1295,6 +1303,7 @@ const styles = StyleSheet.create({
   contactNotes: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 5, fontStyle: 'italic' },
   contactActions: { flexDirection: 'row', gap: 4 },
   contactActionBtn: { padding: 6 },
+  contactActionBtnPrimary: { backgroundColor: '#FFF4EE', borderRadius: 6 },
 
   quoteRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
