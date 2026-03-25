@@ -406,6 +406,46 @@ export default function OrgProfileScreen() {
         </View>
       )}
 
+      {/* Contacts mini-section */}
+      {org.contacts.length > 0 && (
+        <View style={styles.contactsMiniPanel}>
+          <View style={styles.contactsMiniHeader}>
+            <Users size={13} color={Colors.light.tint} />
+            <Text style={styles.contactsMiniTitle}>Contacts</Text>
+            <Text style={styles.contactsMiniCount}>{org.contacts.length}</Text>
+          </View>
+          {org.contacts.map((c) => (
+            <View key={c.id} style={styles.contactsMiniRow}>
+              <View style={styles.contactsMiniAvatar}>
+                <Text style={styles.contactsMiniAvatarText}>{c.firstName.charAt(0).toUpperCase()}</Text>
+              </View>
+              <View style={styles.contactsMiniInfo}>
+                <Text style={styles.contactsMiniName}>
+                  {c.firstName} {c.lastName}
+                  {c.isPrimary ? ' ★' : ''}
+                </Text>
+                {c.role ? <Text style={styles.contactsMiniRole}>{c.role}</Text> : null}
+                {c.phone ? (
+                  <View style={styles.contactsMiniDetail}>
+                    <Phone size={10} color={Colors.light.textSecondary} />
+                    <Text style={styles.contactsMiniDetailText}>{c.phone}</Text>
+                  </View>
+                ) : null}
+                {c.email ? (
+                  <View style={styles.contactsMiniDetail}>
+                    <Mail size={10} color={Colors.light.textSecondary} />
+                    <Text style={styles.contactsMiniDetailText}>{c.email}</Text>
+                  </View>
+                ) : null}
+              </View>
+            </View>
+          ))}
+          <TouchableOpacity style={styles.contactsMiniViewAll} onPress={() => setActiveTab('contacts')}>
+            <Text style={styles.contactsMiniViewAllText}>Manage Contacts →</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Org info */}
       <View style={styles.orgInfoCard}>
         <View style={styles.orgAvatarLarge}>
@@ -1399,6 +1439,35 @@ const styles = StyleSheet.create({
   activeProjectNum: { fontSize: 11, color: Colors.light.textSecondary },
   activeProjectStatusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1 },
   activeProjectStatusText: { fontSize: 11, fontWeight: '700' },
+
+  contactsMiniPanel: {
+    backgroundColor: Colors.light.surface, borderRadius: 12,
+    borderWidth: 1, borderColor: Colors.light.border,
+    padding: 12, marginBottom: 12,
+  },
+  contactsMiniHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  contactsMiniTitle: { fontSize: 12, fontWeight: '700', color: Colors.light.tint, flex: 1 },
+  contactsMiniCount: {
+    fontSize: 11, fontWeight: '700', color: Colors.light.tint,
+    backgroundColor: Colors.light.highlightBg, paddingHorizontal: 7, paddingVertical: 1, borderRadius: 10,
+  },
+  contactsMiniRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    paddingVertical: 7, borderTopWidth: 1, borderTopColor: Colors.light.border,
+  },
+  contactsMiniAvatar: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: Colors.light.highlightBg,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  contactsMiniAvatarText: { fontSize: 12, fontWeight: '700', color: Colors.light.tint },
+  contactsMiniInfo: { flex: 1 },
+  contactsMiniName: { fontSize: 12, fontWeight: '600', color: Colors.light.text },
+  contactsMiniRole: { fontSize: 11, color: Colors.light.textSecondary, marginBottom: 2 },
+  contactsMiniDetail: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  contactsMiniDetailText: { fontSize: 11, color: Colors.light.textSecondary, flex: 1 },
+  contactsMiniViewAll: { paddingTop: 8, alignItems: 'flex-end' },
+  contactsMiniViewAllText: { fontSize: 11, color: Colors.light.tint, fontWeight: '600' },
 
   newQuoteBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,

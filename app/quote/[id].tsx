@@ -15,6 +15,8 @@ import {
   FileText,
   Calendar,
   MapPin,
+  Phone,
+  Mail,
   Package,
   Truck,
   Layers,
@@ -44,6 +46,7 @@ import { formatCurrency, calculateLineItemSubtotal, getTotalQuantity } from '@/u
 import { formatDate } from '@/utils/textFormatting';
 import { LineItem, SIZE_LABELS, GarmentVariant } from '@/types/quote';
 import { useUser } from '@/contexts/UserContext';
+import { useCrm } from '@/contexts/CrmContext';
 import { generateAndSharePDF, printQuote } from '@/utils/pdfGenerator';
 import { Toast } from '@/components/Toast';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -54,6 +57,7 @@ export default function QuoteDetailScreen() {
   const router = useRouter();
   const { quotes, sales, convertToSale, convertToQuote, deleteQuote, isConverting, markExportedToSheets, lockSale, projects, startProduction } = useQuotes();
   const { currentUser } = useUser();
+  const { orgs } = useCrm();
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [menuVisible, setMenuVisible] = useState(false);
@@ -77,6 +81,18 @@ export default function QuoteDetailScreen() {
   const quote = useMemo(() => {
     return allProjects.find((q) => q.id === id);
   }, [allProjects, id]);
+
+  const linkedOrg = useMemo(() => {
+    if (!quote) return undefined;
+    if (quote.orgId) return orgs.find(o => o.id === quote.orgId);
+    if (quote.personOrganization) return orgs.find(o => o.name.toLowerCase() === quote.personOrganization.toLowerCase());
+    return undefined;
+  }, [quote, orgs]);
+
+  const linkedContact = useMemo(() => {
+    if (!linkedOrg) return undefined;
+    return linkedOrg.contacts.find(c => c.isPrimary) || linkedOrg.contacts[0];
+  }, [linkedOrg]);
 
   const currentIndex = useMemo(() => allProjects.findIndex(q => q.id === id), [allProjects, id]);
   const prevQuote = currentIndex > 0 ? allProjects[currentIndex - 1] : null;
@@ -288,6 +304,7 @@ export default function QuoteDetailScreen() {
   const renderOrderInfo = () => (
     <View style={styles.section}>
       <View style={styles.card}>
+        {/* Badges row */}
         <View style={styles.orderHeaderRow}>
           <View style={styles.orderHeaderLeft}>
             {(quote.status === 'active' || quote.status === 'completed') && (
@@ -307,18 +324,63 @@ export default function QuoteDetailScreen() {
             </View>
           ) : null}
         </View>
-        <Text style={styles.orderClientName}>{quote.personOrganization}</Text>
-        <Text style={styles.orderProjectName}>{quote.projectName}</Text>
-        <View style={styles.orderDivider} />
-        <View style={styles.infoRow}>
-          <Calendar size={15} color={Colors.light.textSecondary} />
-          <Text style={styles.infoLabel}>Order Date:</Text>
-          <Text style={styles.infoValue}>{formatDate(quote.orderDate)}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Calendar size={15} color={Colors.light.textSecondary} />
-          <Text style={styles.infoLabel}>In-Hands:</Text>
-          <Text style={styles.infoValue}>{formatDate(quote.inHandsDate) || 'N/A'}</Text>
+
+        {/* Body: left info + optional right CRM panel */}
+        <View style={[styles.orderBodyRow, linkedOrg ? styles.orderBodySplit : null]}>
+          {/* Left column */}
+          <View style={linkedOrg ? styles.orderBodyLeft : null}>
+            <Text style={styles.orderClientName}>{quote.personOrganization}</Text>
+            <Text style={styles.orderProjectName}>{quote.projectName}</Text>
+            <View style={styles.orderDivider} />
+            <View style={styles.infoRow}>
+              <Calendar size={15} color={Colors.light.textSecondary} />
+              <Text style={styles.infoLabel}>Order Date:</Text>
+              <Text style={styles.infoValue}>{formatDate(quote.orderDate)}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Calendar size={15} color={Colors.light.textSecondary} />
+              <Text style={styles.infoLabel}>In-Hands:</Text>
+              <Text style={styles.infoValue}>{formatDate(quote.inHandsDate) || 'N/A'}</Text>
+            </View>
+          </View>
+
+          {/* Right column — CRM contact card */}
+          {linkedOrg && (
+            <View style={styles.orderContactPanel}>
+              <Text style={styles.orderContactOrgName}>{linkedOrg.name}</Text>
+              {linkedContact && (
+                <>
+                  <Text style={styles.orderContactName}>
+                    {linkedContact.firstName} {linkedContact.lastName}
+                    {linkedContact.role ? ` · ${linkedContact.role}` : ''}
+                  </Text>
+                  {linkedContact.phone ? (
+                    <View style={styles.orderContactRow}>
+                      <Phone size={12} color={Colors.light.textSecondary} />
+                      <Text style={styles.orderContactInfo}>{linkedContact.phone}</Text>
+                    </View>
+                  ) : null}
+                  {linkedContact.email ? (
+                    <View style={styles.orderContactRow}>
+                      <Mail size={12} color={Colors.light.textSecondary} />
+                      <Text style={styles.orderContactInfo}>{linkedContact.email}</Text>
+                    </View>
+                  ) : null}
+                </>
+              )}
+              {(linkedOrg.address || linkedOrg.city || linkedOrg.state) ? (
+                <>
+                  <View style={styles.orderContactDivider} />
+                  <View style={styles.orderContactRow}>
+                    <MapPin size={12} color={Colors.light.textSecondary} />
+                    <Text style={styles.orderContactInfo}>
+                      {[linkedOrg.address, [linkedOrg.city, linkedOrg.state].filter(Boolean).join(', ')].filter(Boolean).join('\n')}
+                    </Text>
+                  </View>
+                </>
+              ) : null}
+            </View>
+          )}
         </View>
       </View>
     </View>
@@ -1028,6 +1090,54 @@ const styles = StyleSheet.create({
   orderHeaderLeft: {
     flexDirection: 'row',
     gap: 8,
+  },
+  orderBodyRow: {
+    flexDirection: 'column' as const,
+  },
+  orderBodySplit: {
+    flexDirection: 'row' as const,
+    gap: 16,
+  },
+  orderBodyLeft: {
+    flex: 1,
+  },
+  orderContactPanel: {
+    flex: 1,
+    backgroundColor: Colors.light.background,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    padding: 12,
+    alignSelf: 'flex-start' as const,
+    minWidth: 180,
+  },
+  orderContactOrgName: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.light.text,
+    marginBottom: 2,
+  },
+  orderContactName: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    marginBottom: 6,
+  },
+  orderContactRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    gap: 6,
+    marginTop: 3,
+  },
+  orderContactInfo: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    flex: 1,
+    lineHeight: 17,
+  },
+  orderContactDivider: {
+    height: 1,
+    backgroundColor: Colors.light.border,
+    marginVertical: 8,
   },
   orderTypeBadge: {
     backgroundColor: Colors.light.highlightBg,

@@ -196,7 +196,9 @@ export default function ClientsScreen() {
         o.contacts.some(
           (c) =>
             `${c.firstName} ${c.lastName}`.toLowerCase().includes(q) ||
-            (c.email || '').toLowerCase().includes(q)
+            (c.email || '').toLowerCase().includes(q) ||
+            (c.phone || '').toLowerCase().includes(q) ||
+            (c.role || '').toLowerCase().includes(q)
         );
       return matchesFilter && matchesSearch;
     });
