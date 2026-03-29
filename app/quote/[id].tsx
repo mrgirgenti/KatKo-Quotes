@@ -476,54 +476,39 @@ export default function QuoteDetailScreen() {
                         <Text style={styles.detailValue} numberOfLines={1}>{item.apparelProvider}</Text>
                       </View>
 
-                      {/* Product per variant */}
-                      {variants.length === 1 ? (
-                        <View style={styles.detailRow}>
-                          <Package size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
-                          <Text style={styles.detailLabel}>Product</Text>
-                          <Text style={styles.detailValue} numberOfLines={2}>
-                            {variants[0].product || '—'}{variants[0].color ? ` — ${variants[0].color}` : ''}
-                          </Text>
-                        </View>
-                      ) : (
-                        variants.map((v, vi) => (
-                          <View key={vi} style={styles.detailRow}>
-                            <Package size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
-                            <Text style={styles.detailLabel}>Product #{vi + 1}</Text>
-                            <Text style={styles.detailValue} numberOfLines={2}>
-                              {v.product || '—'}{v.color ? ` — ${v.color}` : ''}
-                            </Text>
-                          </View>
-                        ))
-                      )}
-
-                      {/* Locations */}
-                      {locations.length > 0 && (
-                        <View style={styles.detailRow}>
-                          <MapPin size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
-                          <Text style={styles.detailLabel}>Location</Text>
-                          <Text style={styles.detailValue}>{locations.join(', ')}</Text>
-                        </View>
-                      )}
-
-                      {/* Project Notes — always shown */}
-                      <View style={styles.detailRow}>
-                        <FileText size={13} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
-                        <Text style={styles.detailLabel}>Project Notes</Text>
-                        <Text style={[styles.detailValue, !item.locationDetails && styles.detailValueMuted]}>
-                          {item.locationDetails || 'N/A'}
-                        </Text>
-                      </View>
                     </View>
 
-                    {/* Sizes grid — one per variant */}
+                    {/* Sizes grid — one per variant, each with its own header + location + notes */}
                     {variants.map((v, vi) => (
                       <View key={vi} style={styles.sizesGridSection}>
-                        {variants.length > 1 && (
-                          <Text style={styles.variantSizeHeading}>
-                            {v.product}{v.color ? ` — ${v.color}` : ''}
+                        {/* Variant header — always shown */}
+                        <View style={styles.variantSectionHeader}>
+                          <Package size={13} color="rgba(255,255,255,0.7)" style={{ flexShrink: 0 }} />
+                          <Text style={styles.variantSectionHeaderText} numberOfLines={2}>
+                            {v.product || '—'}{v.color ? ` — ${v.color}` : ''}
                           </Text>
+                        </View>
+
+                        {/* Content area below the header */}
+                        <View style={styles.variantSectionContent}>
+                        {/* Location — shown once (same for all variants) */}
+                        {locations.length > 0 && (
+                          <View style={styles.variantMetaRow}>
+                            <MapPin size={12} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
+                            <Text style={styles.variantMetaLabel}>Location</Text>
+                            <Text style={styles.variantMetaValue}>{locations.join(', ')}</Text>
+                          </View>
                         )}
+
+                        {/* Project Notes */}
+                        <View style={[styles.variantMetaRow, { marginBottom: 10 }]}>
+                          <FileText size={12} color={Colors.light.textSecondary} style={{ flexShrink: 0 }} />
+                          <Text style={styles.variantMetaLabel}>Project Notes</Text>
+                          <Text style={[styles.variantMetaValue, !item.locationDetails && styles.detailValueMuted]}>
+                            {item.locationDetails || 'N/A'}
+                          </Text>
+                        </View>
+
                         <Text style={styles.sizesGridLabel}>Sizes + Quantities</Text>
                         {isPromotional ? (
                           <View style={styles.sizesGridRow}>
@@ -567,6 +552,7 @@ export default function QuoteDetailScreen() {
                         <Text style={styles.sizesGridTotal}>
                           Total: {getTotalQuantity(v.sizes, isPromotional)} pcs
                         </Text>
+                        </View>{/* end variantSectionContent */}
                       </View>
                     ))}
 
@@ -1738,8 +1724,44 @@ const styles = StyleSheet.create({
   sizesGridSection: {
     backgroundColor: Colors.light.background,
     borderRadius: 10,
-    padding: 12,
     marginBottom: 10,
+    overflow: 'hidden' as const,
+  },
+  variantSectionHeader: {
+    backgroundColor: '#111',
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  variantSectionHeaderText: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: '#fff',
+    flex: 1,
+  },
+  variantSectionContent: {
+    padding: 12,
+  },
+  variantMetaRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    gap: 6,
+    marginBottom: 6,
+  },
+  variantMetaLabel: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: Colors.light.textSecondary,
+    width: 90,
+    flexShrink: 0,
+  },
+  variantMetaValue: {
+    fontSize: 11,
+    color: Colors.light.text,
+    flex: 1,
+    flexWrap: 'wrap' as const,
   },
   sizesGridLabel: {
     fontSize: 11,
