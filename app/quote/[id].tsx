@@ -47,7 +47,7 @@ import { formatDate } from '@/utils/textFormatting';
 import { LineItem, SIZE_LABELS, GarmentVariant } from '@/types/quote';
 import { useUser } from '@/contexts/UserContext';
 import { useCrm } from '@/contexts/CrmContext';
-import { generateAndSharePDF, printQuote } from '@/utils/pdfGenerator';
+import { generateAndSharePDF, printQuote, generateWorkOrderPDFs } from '@/utils/pdfGenerator';
 import { Toast } from '@/components/Toast';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { exportSingleSaleToSheets } from '@/utils/googleSheetsExport';
@@ -133,6 +133,20 @@ export default function QuoteDetailScreen() {
     } catch (error) {
       console.log('Error exporting PDF:', error);
       Alert.alert('Error', 'Failed to export PDF');
+    }
+  }, [quote, currentUser]);
+
+  const handleDownloadWorkOrder = useCallback(async () => {
+    if (!quote) return;
+    if (!quote.lineItems || quote.lineItems.length === 0) {
+      Alert.alert('No Line Items', 'This project has no line items to export.');
+      return;
+    }
+    try {
+      await generateWorkOrderPDFs(quote, currentUser);
+    } catch (error) {
+      console.log('Error generating work order:', error);
+      Alert.alert('Error', 'Failed to generate work order');
     }
   }, [quote, currentUser]);
 
@@ -999,6 +1013,10 @@ export default function QuoteDetailScreen() {
                     <Download size={18} color={Colors.light.text} />
                     <Text style={styles.menuItemText}>Export to PDF</Text>
                   </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleDownloadWorkOrder(); }}>
+                    <FileText size={18} color={Colors.light.tint} />
+                    <Text style={[styles.menuItemText, { color: Colors.light.tint }]}>Download Work Order</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleExportToSheets(); }}>
                     <Sheet size={18} color={Colors.light.success} />
                     <Text style={[styles.menuItemText, { color: Colors.light.success }]}>Export to Sheets</Text>
@@ -1029,6 +1047,10 @@ export default function QuoteDetailScreen() {
                   <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleExportPDF(); }}>
                     <Download size={18} color={Colors.light.text} />
                     <Text style={styles.menuItemText}>Export to PDF</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleDownloadWorkOrder(); }}>
+                    <FileText size={18} color={Colors.light.tint} />
+                    <Text style={[styles.menuItemText, { color: Colors.light.tint }]}>Download Work Order</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handlePrint(); }}>
                     <Printer size={18} color={Colors.light.text} />

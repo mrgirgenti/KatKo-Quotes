@@ -250,6 +250,231 @@ function sanitizeFilename(s: string): string {
   return s.replace(/[^a-zA-Z0-9 _\-]/g, '').trim().replace(/\s+/g, '_').slice(0, 40);
 }
 
+// ─── Work Order ───────────────────────────────────────────────────────────────
+
+function groupLineItemsByApplicator(lineItems: LineItem[]): Map<string, LineItem[]> {
+  const map = new Map<string, LineItem[]>();
+  lineItems.forEach((item) => {
+    const key = (item.applicator || 'Unassigned').trim() || 'Unassigned';
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(item);
+  });
+  return map;
+}
+
+function generateSizeGrid(item: LineItem): string {
+  const sizeRows = SIZE_LABELS
+    .filter(({ key }) => item.sizes[key] > 0)
+    .map(({ key, label }) => `<td class="sz-cell">${item.sizes[key]}</td>`)
+    .join('');
+  const sizeHeaders = SIZE_LABELS
+    .filter(({ key }) => item.sizes[key] > 0)
+    .map(({ label }) => `<th class="sz-cell">${label}</th>`)
+    .join('');
+  const hasFlat = item.sizes.flat > 0;
+  if (!sizeHeaders && !hasFlat) return '<p style="color:#888;font-size:11px">No quantities set</p>';
+  return `
+    <table class="sz-table">
+      <thead><tr>${sizeHeaders}${hasFlat ? '<th class="sz-cell">Flat</th>' : ''}</tr></thead>
+      <tbody><tr>${sizeRows}${hasFlat ? `<td class="sz-cell">${item.sizes.flat}</td>` : ''}</tr></tbody>
+    </table>`;
+}
+
+function generateWorkOrderHTML(
+  quote: Quote,
+  applicator: string,
+  items: LineItem[],
+  user?: UserProfile | null,
+): string {
+  const totalQty = items.reduce((sum, i) => sum + getItemQuantity(i), 0);
+
+  const lineItemsHTML = items.map((item, index) => {
+    const qty = getItemQuantity(item);
+    const locations = [item.location1, item.location2, item.location3, item.location4].filter(Boolean).join(', ') || 'N/A';
+    const variantsHTML = item.garmentVariants && item.garmentVariants.length > 1
+      ? item.garmentVariants.map(v => `
+          <div class="variant-row">
+            <span class="variant-label">${v.product} / ${v.color}</span>
+            <span class="variant-qty">${getItemQuantity({ ...item, sizes: v.sizes })} pcs</span>
+          </div>`).join('')
+      : '';
+
+    return `
+    <div class="line-item">
+      <div class="line-item-header">
+        <span class="line-number">#${index + 1}</span>
+        <div class="line-header-info">
+          <span class="design-name">${item.designName || 'Untitled Design'}</span>
+          <span class="line-service">${item.serviceStyle}</span>
+        </div>
+        <span class="line-qty">${qty} pcs</span>
+      </div>
+      <div class="line-body">
+        ${item.mockupUri ? `<div class="mockup-wrap"><img src="${item.mockupUri}" class="mockup-img" alt="Mockup" /></div>` : ''}
+        <div class="line-details">
+          <table class="details-table">
+            <tr><td class="label">Product:</td><td>${item.product || 'N/A'}${item.productColor ? ` — ${item.productColor}` : ''}</td></tr>
+            <tr><td class="label">Source:</td><td>${item.apparelProvider || 'N/A'}</td></tr>
+            <tr><td class="label">Service:</td><td>${item.serviceStyle}</td></tr>
+            <tr><td class="label">Location(s):</td><td>${locations}${item.locationDetails ? ` — ${item.locationDetails}` : ''}</td></tr>
+          </table>
+          ${variantsHTML ? `<div class="variants-block">${variantsHTML}</div>` : ''}
+          <div class="sizes-block">
+            <div class="sizes-label">Sizes &amp; Quantities</div>
+            ${generateSizeGrid(item)}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const companyName = user?.businessName || 'Katalyst Ko Printshop';
+  const companyDetails = [user?.email, user?.phone].filter(Boolean).join(' · ');
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Work Order — ${applicator} — ${quote.projectName}</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 36px; color: #1a1a1a; font-size: 12px; }
+        .header { border-bottom: 3px solid #FF5A00; padding-bottom: 18px; margin-bottom: 24px; }
+        .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+        .company-name { font-size: 22px; font-weight: 700; color: #FF5A00; }
+        .company-details { font-size: 11px; color: #666; margin-top: 3px; }
+        .wo-badge { background: #111; color: white; padding: 6px 14px; border-radius: 4px; font-weight: 700; font-size: 12px; letter-spacing: 1px; }
+        .client-block { margin-top: 14px; }
+        .client-name { font-size: 20px; font-weight: 700; }
+        .project-name { font-size: 14px; color: #444; margin-top: 3px; }
+        .applicator-banner { background: #FF5A00; color: white; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .applicator-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.8; }
+        .applicator-name { font-size: 18px; font-weight: 800; margin-top: 2px; }
+        .applicator-qty { font-size: 14px; font-weight: 700; text-align: right; }
+        .applicator-qty-label { font-size: 10px; opacity: 0.8; margin-top: 2px; text-align: right; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; background: #f9f9f9; border-radius: 8px; padding: 14px; border: 1px solid #eee; }
+        .info-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+        .info-value { font-size: 13px; font-weight: 600; margin-top: 2px; }
+        .section-title { font-size: 11px; font-weight: 700; margin-bottom: 10px; color: #fff; background: #111; padding: 6px 10px; border-radius: 4px; text-transform: uppercase; letter-spacing: 1px; }
+        .line-item { border: 1px solid #e5e5e5; border-radius: 8px; margin-bottom: 14px; overflow: hidden; }
+        .line-item-header { display: flex; align-items: center; gap: 10px; background: #111; padding: 10px 14px; }
+        .line-number { background: #FF5A00; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+        .line-header-info { flex: 1; }
+        .design-name { font-weight: 600; font-size: 14px; color: #fff; display: block; }
+        .line-service { font-size: 11px; color: rgba(255,255,255,0.6); display: block; margin-top: 1px; }
+        .line-qty { font-size: 13px; font-weight: 700; color: #FF5A00; flex-shrink: 0; }
+        .line-body { display: flex; gap: 14px; padding: 14px; }
+        .mockup-wrap { width: 130px; flex-shrink: 0; }
+        .mockup-img { width: 130px; height: 130px; object-fit: contain; border: 1px solid #eee; border-radius: 6px; }
+        .line-details { flex: 1; }
+        .details-table { width: 100%; font-size: 11px; margin-bottom: 10px; }
+        .details-table td { padding: 3px 0; }
+        .details-table .label { color: #888; width: 80px; font-weight: 600; vertical-align: top; }
+        .variants-block { margin-bottom: 10px; }
+        .variant-row { display: flex; justify-content: space-between; font-size: 11px; padding: 3px 0; border-bottom: 1px solid #f0f0f0; }
+        .variant-label { color: #444; }
+        .variant-qty { font-weight: 600; }
+        .sizes-block { margin-top: 6px; }
+        .sizes-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; font-weight: 600; }
+        .sz-table { border-collapse: collapse; font-size: 11px; }
+        .sz-cell { border: 1px solid #ddd; padding: 4px 8px; text-align: center; min-width: 36px; }
+        thead .sz-cell { background: #f5f5f5; font-weight: 700; color: #444; }
+        tbody .sz-cell { font-weight: 600; color: #111; }
+        .footer { margin-top: 28px; text-align: center; font-size: 10px; color: #aaa; border-top: 1px solid #eee; padding-top: 14px; }
+        .note-block { background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 10px 14px; margin-top: 16px; }
+        .note-label { font-size: 10px; font-weight: 700; color: #92400e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .note-text { font-size: 12px; color: #78350f; }
+        @media print { body { padding: 20px; } }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="header-top">
+          <div>
+            <div class="company-name">${companyName}</div>
+            ${companyDetails ? `<div class="company-details">${companyDetails}</div>` : ''}
+          </div>
+          <div class="wo-badge">WORK ORDER</div>
+        </div>
+        <div class="client-block">
+          <div class="client-name">${quote.personOrganization || 'N/A'}</div>
+          <div class="project-name">${quote.projectName || 'N/A'}</div>
+        </div>
+      </div>
+
+      <div class="applicator-banner">
+        <div>
+          <div class="applicator-label">Applicator</div>
+          <div class="applicator-name">${applicator}</div>
+        </div>
+        <div>
+          <div class="applicator-qty">${totalQty} pcs</div>
+          <div class="applicator-qty-label">${items.length} item${items.length !== 1 ? 's' : ''}</div>
+        </div>
+      </div>
+
+      <div class="info-grid">
+        <div>
+          <div class="info-label">Order Date</div>
+          <div class="info-value">${quote.orderDate || 'N/A'}</div>
+        </div>
+        <div>
+          <div class="info-label">In-Hands Date</div>
+          <div class="info-value">${quote.inHandsDate || 'N/A'}</div>
+        </div>
+        <div>
+          <div class="info-label">Order Type</div>
+          <div class="info-value">${quote.orderType}</div>
+        </div>
+        <div>
+          <div class="info-label">Total for Applicator</div>
+          <div class="info-value">${totalQty} pcs</div>
+        </div>
+      </div>
+
+      <div class="section-title">Line Items (${items.length})</div>
+      ${lineItemsHTML}
+
+      <div class="footer">
+        Work Order · ${applicator} · Generated ${new Date().toLocaleDateString()} · ${companyName}
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+export async function generateWorkOrderPDFs(quote: Quote, user?: UserProfile | null): Promise<void> {
+  const groups = groupLineItemsByApplicator(quote.lineItems);
+  const project = sanitizeFilename(quote.projectName || 'Project');
+
+  for (const [applicator, items] of groups.entries()) {
+    const html = generateWorkOrderHTML(quote, applicator, items, user);
+    const applicatorSafe = sanitizeFilename(applicator);
+
+    if (Platform.OS === 'web') {
+      downloadHtmlAsFile(html, `Work_Order_${applicatorSafe}_${project}.html`);
+      await new Promise((r) => setTimeout(r, 400));
+    } else {
+      try {
+        const { uri } = await Print.printToFileAsync({ html, base64: false });
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: `Work Order — ${applicator}`,
+            UTI: 'com.adobe.pdf',
+          });
+        }
+      } catch (err) {
+        console.error('Work order PDF error:', err);
+        throw err;
+      }
+    }
+  }
+}
+
 function downloadHtmlAsFile(html: string, filename: string): void {
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);

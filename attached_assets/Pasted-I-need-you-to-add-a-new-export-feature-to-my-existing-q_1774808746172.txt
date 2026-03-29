@@ -1,0 +1,112 @@
+I need you to add a new export feature to my existing quote/project system without changing or breaking the current “Download to PDF” button.
+
+Important:
+- The current “Download to PDF” button must stay exactly as it is.
+- Do not modify its output, fields, behavior, or pricing visibility.
+- I need a brand-new button called “Download Work Order”.
+
+Purpose:
+This new Work Order export is for subcontractors/applicators. It should use the same existing project, quote, and line item data already stored in the app. Do not create a new structure or new data-entry flow. Just pull and replicate the same details and layout style we already use in the quote/project view, but remove all pricing/cost information.
+
+Core behavior:
+- Add a new button labeled “Download Work Order”.
+- When clicked, automatically group all line items by Applicator.
+- Generate a separate PDF for each Applicator.
+- If multiple line items belong to the same Applicator, include them in one PDF for that Applicator.
+- If different line items belong to different Applicators, create separate PDFs for each one.
+- Example: if 2 line items belong to ABC Embroidery and 1 belongs to XYZ Printing, generate 2 PDFs total: one for ABC Embroidery and one for XYZ Printing.
+
+Data source:
+Use the existing quote/project/order data already in the app. Do not recreate fields. Do not introduce new manual entry requirements. Pull from the details already saved in the project.
+
+Layout/design requirements:
+- Match the existing quote/project layout and branding as closely as possible.
+- Preserve the current visual structure already used in the app.
+- Use existing company branding, logo, company name, colors, spacing, and styling.
+- Include Katalyst Ko Printshop branding and logo.
+- Do not redesign from scratch if the existing PDF/UI layout can be reused.
+
+Fields to include in each Work Order PDF:
+- Katalyst Ko Printshop logo
+- Katalyst Ko Printshop company name
+- client / organization name
+- project name
+- order date
+- in-hands date
+- Applicator name
+- each line item assigned to that Applicator only
+- line item title/name
+- service type
+- source/vendor
+- product style
+- product color
+- project notes
+- mockup image if available
+- sizes and quantities
+- total quantity per line item
+- any other existing production details already shown in the current quote/project layout
+
+Field mapping based on current system:
+- Client/Organization = existing customer/client name field
+- Project Name = existing project name field
+- Applicator = existing Applicator field in each line item
+- Project Notes = existing Project Notes field already in the quote system
+
+Critical exclusion rules:
+The Work Order PDF must not show any financial information at all. Completely exclude:
+- prices
+- client pricing
+- internal cost
+- supplier cost
+- subcontractor cost
+- labor cost
+- setup fees
+- decoration charges
+- shipping cost
+- tax
+- discounts
+- payment info
+- margin
+- profit
+- invoice/accounting details
+- any currency values
+- any money totals
+- any finance/internal accounting notes
+
+Implementation requirement:
+Do not simply hide financial values visually in the template. Instead, create a separate sanitized data object for the Work Order export that does not include any cost/pricing fields at all. The Work Order PDF renderer should never receive money-related data.
+
+Technical expectations:
+- Inspect the current PDF generation flow first
+- Identify where the current “Download to PDF” button is rendered
+- Identify the current PDF generation function and the PDF library being used
+- Reuse existing data mappings, layout components, and styles where possible
+- Add a separate export path for Work Orders
+- Add separate logic to group line items by Applicator
+- Generate one PDF per Applicator group
+- Name files clearly, such as:
+  - Work Order - ABC Embroidery - Project Name.pdf
+  - Work Order - XYZ Printing - Project Name.pdf
+
+Recommended structure:
+- keep existing full export untouched
+- create a new handler such as handleDownloadWorkOrder()
+- create a grouping function such as groupLineItemsByApplicator(order.lineItems)
+- create a sanitized mapping function such as buildWorkOrderPdfData(order, applicatorGroup)
+- create a dedicated generator such as generateWorkOrderPdf(workOrderData)
+- trigger one PDF download per Applicator group
+
+Rendering requirements:
+- Each Work Order PDF should only contain the line items for that Applicator
+- Show mockups, size grid, quantities, style, color, service, source, and project notes
+- Follow the existing layout structure already visible in the current quote/project screen
+- Render N/A safely where fields are missing
+- Handle multiple line items and multi-page PDFs cleanly
+
+Success criteria:
+- Existing full PDF still works exactly as before
+- New “Download Work Order” button appears in the appropriate project/order screen
+- Clicking it generates one separate PDF per Applicator
+- Each PDF includes only the line items for that Applicator
+- No financial information appears anywhere in the Work Order PDFs
+- Branding and layout closely match the current app design
