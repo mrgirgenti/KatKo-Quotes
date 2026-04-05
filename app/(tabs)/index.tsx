@@ -89,7 +89,7 @@ const EMPTY_CRM_CONTACT = {
 
 export default function NewQuoteScreen() {
   const { addQuote, isAdding } = useQuotes();
-  const { orgs, addOrgWithContact } = useCrm();
+  const { orgs, addOrgWithContact, updateOrg, addContact, updateContact } = useCrm();
   const router = useRouter();
   const { isMobile, isDesktop } = useBreakpoint();
   const isNative = Platform.OS !== 'web';
@@ -110,7 +110,7 @@ export default function NewQuoteScreen() {
   const [toastMessage, setToastMessage] = useState('');
 
   const [crmModalVisible, setCrmModalVisible] = useState(false);
-  const [pendingQuoteId, setPendingQuoteId] = useState<string | null>(null);
+  const [editingOrgId, setEditingOrgId] = useState<string | null>(null);
   const [crmOrgForm, setCrmOrgForm] = useState(EMPTY_CRM_ORG);
   const [crmContactForm, setCrmContactForm] = useState(EMPTY_CRM_CONTACT);
   const [showOrgTypeDropdown, setShowOrgTypeDropdown] = useState(false);
@@ -210,23 +210,8 @@ export default function NewQuoteScreen() {
     addQuote(quote);
     setToastMessage(`Quote ${invoiceNumber ? '#' + invoiceNumber + ' ' : ''}submitted!`);
     setToastVisible(true);
-
-    const clientName = personOrganization.trim();
-    const alreadyInCrm =
-      linkedOrg != null ||
-      orgs.some((o) => o.name.toLowerCase() === clientName.toLowerCase());
-
     resetForm();
-
-    if (alreadyInCrm) {
-      setTimeout(() => router.push(`/quote/${newId}`), 400);
-    } else {
-      setPendingQuoteId(newId);
-      setCrmOrgForm({ ...EMPTY_CRM_ORG, name: clientName });
-      setCrmContactForm(EMPTY_CRM_CONTACT);
-      setShowOrgTypeDropdown(false);
-      setTimeout(() => setCrmModalVisible(true), 400);
-    }
+    setTimeout(() => router.push(`/quote/${newId}`), 400);
   }, [
     personOrganization,
     projectName,
@@ -241,14 +226,103 @@ export default function NewQuoteScreen() {
     calculations,
     addQuote,
     linkedOrg,
-    orgs,
     router,
     resetForm,
   ]);
 
+  const handleOpenCrmModal = useCallback((typedText: string, existingOrg: Organization | null) => {
+    if (existingOrg) {
+      const primaryContact = existingOrg.contacts.find((c) => c.isPrimary) || existingOrg.contacts[0];
+      setEditingOrgId(existingOrg.id);
+      setCrmOrgForm({
+        name: existingOrg.name,
+        type: existingOrg.type || '',
+        city: existingOrg.city || '',
+        state: existingOrg.state || '',
+        notes: existingOrg.notes || '',
+        status: existingOrg.status,
+      });
+      setCrmContactForm(
+        primaryContact
+          ? {
+              firstName: primaryContact.firstName,
+              lastName: primaryContact.lastName,
+              role: primaryContact.role || 'Primary Contact',
+              email: primaryContact.email || '',
+              phone: primaryContact.phone || '',
+            }
+          : EMPTY_CRM_CONTACT
+      );
+    } else {
+      setEditingOrgId(null);
+      setCrmOrgForm({ ...EMPTY_CRM_ORG, name: typedText });
+      setCrmContactForm(EMPTY_CRM_CONTACT);
+    }
+    setShowOrgTypeDropdown(false);
+    setCrmModalVisible(true);
+  }, []);
+
   const handleCrmModalSave = useCallback(() => {
-    if (crmOrgForm.name.trim()) {
-      const hasContact = crmContactForm.firstName.trim() || crmContactForm.lastName.trim();
+    if (!crmOrgForm.name.trim()) {
+      setCrmModalVisible(false);
+      setEditingOrgId(null);
+      return;
+    }
+    const hasContact = crmContactForm.firstName.trim() || crmContactForm.lastName.trim();
+
+    if (editingOrgId) {
+      const existingOrg = orgs.find((o) => o.id === editingOrgId);
+      if (existingOrg) {
+        updateOrg({
+          ...existingOrg,
+          name: crmOrgForm.name.trim(),
+          type: crmOrgForm.type || undefined,
+          city: crmOrgForm.city || undefined,
+          state: crmOrgForm.state || undefined,
+          notes: crmOrgForm.notes || undefined,
+          status: crmOrgForm.status,
+        });
+        if (hasContact) {
+          const primaryContact = existingOrg.contacts.find((c) => c.isPrimary) || existingOrg.contacts[0];
+          if (primaryContact) {
+            updateContact({
+              orgId: editingOrgId,
+              contact: {
+                ...primaryContact,
+                firstName: crmContactForm.firstName.trim(),
+                lastName: crmContactForm.lastName.trim(),
+                role: crmContactForm.role || undefined,
+                email: crmContactForm.email.trim() || undefined,
+                phone: crmContactForm.phone.trim() || undefined,
+              },
+            });
+          } else {
+            addContact({
+              orgId: editingOrgId,
+              contact: {
+                firstName: crmContactForm.firstName.trim(),
+                lastName: crmContactForm.lastName.trim(),
+                role: crmContactForm.role || undefined,
+                email: crmContactForm.email.trim() || undefined,
+                phone: crmContactForm.phone.trim() || undefined,
+                isPrimary: true,
+              },
+            });
+          }
+        }
+        setPersonOrganization(crmOrgForm.name.trim());
+        const updatedOrg: Organization = {
+          ...existingOrg,
+          name: crmOrgForm.name.trim(),
+          type: crmOrgForm.type || undefined,
+          city: crmOrgForm.city || undefined,
+          state: crmOrgForm.state || undefined,
+          notes: crmOrgForm.notes || undefined,
+          status: crmOrgForm.status,
+        };
+        setLinkedOrg(updatedOrg);
+      }
+    } else {
       addOrgWithContact({
         orgData: {
           name: crmOrgForm.name.trim(),
@@ -269,19 +343,16 @@ export default function NewQuoteScreen() {
             }
           : undefined,
       });
+      setPersonOrganization(crmOrgForm.name.trim());
     }
-    const qid = pendingQuoteId;
     setCrmModalVisible(false);
-    setPendingQuoteId(null);
-    if (qid) router.push(`/quote/${qid}`);
-  }, [crmOrgForm, crmContactForm, addOrgWithContact, pendingQuoteId, router]);
+    setEditingOrgId(null);
+  }, [crmOrgForm, crmContactForm, editingOrgId, orgs, addOrgWithContact, updateOrg, addContact, updateContact]);
 
-  const handleCrmModalSkip = useCallback(() => {
-    const qid = pendingQuoteId;
+  const handleCrmModalClose = useCallback(() => {
     setCrmModalVisible(false);
-    setPendingQuoteId(null);
-    if (qid) router.push(`/quote/${qid}`);
-  }, [pendingQuoteId, router]);
+    setEditingOrgId(null);
+  }, []);
 
   const feesCard = (
     <View style={styles.card}>
@@ -357,6 +428,7 @@ export default function NewQuoteScreen() {
               onChangeText={setPersonOrganization}
               onSelectOrg={setLinkedOrg}
               linkedOrg={linkedOrg}
+              onAddEditClient={handleOpenCrmModal}
             />
           </View>
           <View style={styles.thirdField}>
@@ -385,6 +457,7 @@ export default function NewQuoteScreen() {
             onChangeText={setPersonOrganization}
             onSelectOrg={setLinkedOrg}
             linkedOrg={linkedOrg}
+            onAddEditClient={handleOpenCrmModal}
           />
           <FormInput
             label="Project Name"
@@ -532,16 +605,16 @@ export default function NewQuoteScreen() {
         visible={crmModalVisible}
         transparent
         animationType="slide"
-        onRequestClose={handleCrmModalSkip}
+        onRequestClose={handleCrmModalClose}
       >
-        <Pressable style={crmStyles.backdrop} onPress={handleCrmModalSkip}>
+        <Pressable style={crmStyles.backdrop} onPress={handleCrmModalClose}>
           <Pressable style={crmStyles.sheet} onPress={() => setShowOrgTypeDropdown(false)}>
             <View style={crmStyles.header}>
               <View>
-                <Text style={crmStyles.title}>Add to Contacts?</Text>
-                <Text style={crmStyles.subtitle}>Save this client to your CRM</Text>
+                <Text style={crmStyles.title}>{editingOrgId ? 'Edit Client Info' : 'Add to Contacts'}</Text>
+                <Text style={crmStyles.subtitle}>{editingOrgId ? 'Update this client in your CRM' : 'Save this client to your CRM'}</Text>
               </View>
-              <TouchableOpacity onPress={handleCrmModalSkip} hitSlop={8}>
+              <TouchableOpacity onPress={handleCrmModalClose} hitSlop={8}>
                 <X size={22} color={Colors.light.textSecondary} />
               </TouchableOpacity>
             </View>
@@ -703,15 +776,15 @@ export default function NewQuoteScreen() {
             </ScrollView>
 
             <View style={crmStyles.footer}>
-              <TouchableOpacity style={crmStyles.skipBtn} onPress={handleCrmModalSkip}>
-                <Text style={crmStyles.skipBtnText}>Skip</Text>
+              <TouchableOpacity style={crmStyles.skipBtn} onPress={handleCrmModalClose}>
+                <Text style={crmStyles.skipBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[crmStyles.saveBtn, !crmOrgForm.name.trim() && crmStyles.saveBtnDisabled]}
                 onPress={handleCrmModalSave}
                 disabled={!crmOrgForm.name.trim()}
               >
-                <Text style={crmStyles.saveBtnText}>Add to CRM</Text>
+                <Text style={crmStyles.saveBtnText}>{editingOrgId ? 'Save Changes' : 'Add to CRM'}</Text>
               </TouchableOpacity>
             </View>
           </Pressable>

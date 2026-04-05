@@ -8,7 +8,7 @@ import {
   ScrollView,
   Pressable,
 } from 'react-native';
-import { Building2, User, X } from 'lucide-react-native';
+import { Building2, User, X, UserPlus, Edit3 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
 import { Organization } from '@/types/crm';
@@ -20,9 +20,10 @@ interface Props {
   onSelectOrg: (org: Organization | null) => void;
   linkedOrg: Organization | null;
   placeholder?: string;
+  onAddEditClient?: (text: string, existingOrg: Organization | null) => void;
 }
 
-export function OrgAutocomplete({ label = 'Person / Organization', value, onChangeText, onSelectOrg, linkedOrg, placeholder = 'Client name or company' }: Props) {
+export function OrgAutocomplete({ label = 'Person / Organization', value, onChangeText, onSelectOrg, linkedOrg, placeholder = 'Client name or company', onAddEditClient }: Props) {
   const { orgs } = useCrm();
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
@@ -38,6 +39,8 @@ export function OrgAutocomplete({ label = 'Person / Organization', value, onChan
       .slice(0, 8);
   }, [orgs, value, focused]);
 
+  const showDropdown = focused && value.trim().length >= 1;
+
   const handleSelect = useCallback((org: Organization) => {
     onChangeText(org.name);
     onSelectOrg(org);
@@ -51,6 +54,12 @@ export function OrgAutocomplete({ label = 'Person / Organization', value, onChan
     setFocused(false);
     setTimeout(() => { inputRef.current?.focus(); setFocused(true); }, 50);
   }, [onChangeText, onSelectOrg]);
+
+  const handleAddEdit = useCallback(() => {
+    setFocused(false);
+    inputRef.current?.blur();
+    onAddEditClient?.(value.trim(), linkedOrg ?? null);
+  }, [onAddEditClient, value, linkedOrg]);
 
   const primaryContact = linkedOrg?.contacts.find((c) => c.isPrimary) || linkedOrg?.contacts[0];
 
@@ -86,16 +95,22 @@ export function OrgAutocomplete({ label = 'Person / Organization', value, onChan
       </View>
 
       {linkedOrg && (
-        <View style={styles.linkedInfo}>
+        <View style={styles.linkedRow}>
           <Text style={styles.linkedInfoText}>
             Linked to CRM org
             {primaryContact ? ` · ${primaryContact.firstName} ${primaryContact.lastName}` : ''}
             {primaryContact?.email ? ` · ${primaryContact.email}` : ''}
           </Text>
+          {onAddEditClient && (
+            <TouchableOpacity style={styles.editChip} onPress={() => onAddEditClient(value.trim(), linkedOrg)}>
+              <Edit3 size={10} color={Colors.light.tint} />
+              <Text style={styles.editChipText}>Edit</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
-      {focused && suggestions.length > 0 && (
+      {showDropdown && (
         <View style={styles.dropdown}>
           <ScrollView keyboardShouldPersistTaps="always" showsVerticalScrollIndicator={false} style={{ maxHeight: 240 }}>
             {suggestions.map((org) => {
@@ -118,16 +133,28 @@ export function OrgAutocomplete({ label = 'Person / Organization', value, onChan
                 </Pressable>
               );
             })}
-          </ScrollView>
-        </View>
-      )}
 
-      {focused && value.trim().length >= 1 && suggestions.length === 0 && (
-        <View style={styles.dropdown}>
-          <View style={styles.noResults}>
-            <Text style={styles.noResultsText}>No contacts found for "{value}"</Text>
-            <Text style={styles.noResultsSub}>You can still type a name manually.</Text>
-          </View>
+            {onAddEditClient && (
+              <Pressable
+                style={({ pressed }) => [styles.addEditRow, pressed && styles.suggestionPressed]}
+                onPress={handleAddEdit}
+              >
+                <View style={styles.addEditIcon}>
+                  <UserPlus size={15} color={Colors.light.tint} />
+                </View>
+                <View style={styles.suggestionInfo}>
+                  <Text style={styles.addEditLabel}>
+                    {suggestions.length > 0
+                      ? `Add / Edit Client Information`
+                      : `Add "${value.trim()}" as new client`}
+                  </Text>
+                  {suggestions.length === 0 && (
+                    <Text style={styles.suggestionSub}>Save contact info to CRM</Text>
+                  )}
+                </View>
+              </Pressable>
+            )}
+          </ScrollView>
         </View>
       )}
     </View>
@@ -150,8 +177,14 @@ const styles = StyleSheet.create({
   linkedBadge: { marginRight: 6 },
   input: { flex: 1, fontSize: 15, color: Colors.light.text, paddingVertical: 10 },
   clearBtn: { padding: 4, marginLeft: 4 },
-  linkedInfo: { marginTop: 4, paddingHorizontal: 2 },
-  linkedInfoText: { fontSize: 11, color: Colors.light.tint, fontWeight: '500' },
+  linkedRow: { marginTop: 4, paddingHorizontal: 2, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  linkedInfoText: { fontSize: 11, color: Colors.light.tint, fontWeight: '500', flex: 1 },
+  editChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: `${Colors.light.tint}15`,
+    borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3,
+  },
+  editChipText: { fontSize: 11, fontWeight: '600', color: Colors.light.tint },
   dropdown: {
     position: 'absolute', top: '100%', left: 0, right: 0,
     backgroundColor: Colors.light.surface,
@@ -175,7 +208,15 @@ const styles = StyleSheet.create({
   suggestionName: { fontSize: 14, fontWeight: '600', color: Colors.light.text },
   suggestionSub: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 1 },
   statusDot: { width: 7, height: 7, borderRadius: 4 },
-  noResults: { padding: 16 },
-  noResultsText: { fontSize: 13, color: Colors.light.textSecondary, fontWeight: '500' },
-  noResultsSub: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 2 },
+  addEditRow: {
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 11, gap: 10,
+    borderTopWidth: 1, borderTopColor: Colors.light.border,
+    backgroundColor: `${Colors.light.tint}06`,
+  },
+  addEditIcon: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: `${Colors.light.tint}20`,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  addEditLabel: { fontSize: 14, fontWeight: '600', color: Colors.light.tint },
 });
