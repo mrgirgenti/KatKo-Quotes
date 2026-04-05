@@ -186,6 +186,9 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   const [variantHoveredColors, setVariantHoveredColors] = useState<(string | null)[]>(() =>
     getInitialVariants().map(() => null)
   );
+  const [variantCustomColorText, setVariantCustomColorText] = useState<string[]>(() =>
+    getInitialVariants().map(() => '')
+  );
   const dropZoneRef = useRef<any>(null);
 
   const handleVariantsChange = (newVariants: GarmentVariant[]) => {
@@ -215,6 +218,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
     setVariantSearchTerms((prev) => [...prev, defaultStyle]);
     setVariantStyleFocused((prev) => [...prev, false]);
     setVariantColorOpen((prev) => [...prev, false]);
+    setVariantCustomColorText((prev) => [...prev, '']);
   };
 
   const removeVariant = (idx: number) => {
@@ -224,6 +228,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
     setVariantSearchTerms((prev) => prev.filter((_, i) => i !== idx));
     setVariantStyleFocused((prev) => prev.filter((_, i) => i !== idx));
     setVariantColorOpen((prev) => prev.filter((_, i) => i !== idx));
+    setVariantCustomColorText((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const updateVariant = (idx: number, partial: Partial<GarmentVariant>) => {
@@ -792,6 +797,44 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                                     {variantHoveredColors[vIdx] && (
                                       <Text style={styles.variantHoveredColorLabel}>{variantHoveredColors[vIdx]}</Text>
                                     )}
+                                    {/* Custom colorway free-text entry */}
+                                    <View style={styles.variantCustomColorRow}>
+                                      <TextInput
+                                        style={styles.variantCustomColorInput}
+                                        value={variantCustomColorText[vIdx] ?? ''}
+                                        onChangeText={(v) =>
+                                          setVariantCustomColorText((prev) => prev.map((t, i) => (i === vIdx ? v : t)))
+                                        }
+                                        placeholder="Custom colorway…"
+                                        placeholderTextColor={Colors.light.textSecondary}
+                                        onSubmitEditing={() => {
+                                          const val = (variantCustomColorText[vIdx] ?? '').trim();
+                                          if (val) {
+                                            updateVariant(vIdx, { color: val });
+                                            setVariantCustomColorText((prev) => prev.map((t, i) => (i === vIdx ? '' : t)));
+                                            setVariantColorOpen((prev) => prev.map((o, i) => (i === vIdx ? false : o)));
+                                          }
+                                        }}
+                                        returnKeyType="done"
+                                      />
+                                      <TouchableOpacity
+                                        style={[
+                                          styles.variantCustomColorConfirm,
+                                          !(variantCustomColorText[vIdx] ?? '').trim() && styles.variantCustomColorConfirmDisabled,
+                                        ]}
+                                        onPress={() => {
+                                          const val = (variantCustomColorText[vIdx] ?? '').trim();
+                                          if (val) {
+                                            updateVariant(vIdx, { color: val });
+                                            setVariantCustomColorText((prev) => prev.map((t, i) => (i === vIdx ? '' : t)));
+                                            setVariantColorOpen((prev) => prev.map((o, i) => (i === vIdx ? false : o)));
+                                          }
+                                        }}
+                                        disabled={!(variantCustomColorText[vIdx] ?? '').trim()}
+                                      >
+                                        <Text style={styles.variantCustomColorConfirmText}>Use</Text>
+                                      </TouchableOpacity>
+                                    </View>
                                   </ScrollView>
                                 )}
                               </View>
@@ -1661,6 +1704,44 @@ const styles = StyleSheet.create({
     marginTop: 6,
     textAlign: 'right',
     paddingHorizontal: 4,
+  },
+  variantCustomColorRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    marginTop: 8,
+    paddingHorizontal: 4,
+    paddingBottom: 4,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    paddingTop: 8,
+  },
+  variantCustomColorInput: {
+    flex: 1,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    fontSize: 12,
+    color: Colors.light.text,
+  },
+  variantCustomColorConfirm: {
+    backgroundColor: Colors.light.tint,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  variantCustomColorConfirmDisabled: {
+    backgroundColor: Colors.light.border,
+  },
+  variantCustomColorConfirmText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#fff',
   },
   variantDeleteBtn: {
     width: 28,
