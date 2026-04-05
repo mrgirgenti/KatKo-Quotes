@@ -204,7 +204,7 @@ export default function NewQuoteScreen() {
       hasCardFee,
       calculations,
       createdAt: new Date().toISOString(),
-      status: 'submitted',
+      status: 'quoted',
     };
 
     addQuote(quote);
