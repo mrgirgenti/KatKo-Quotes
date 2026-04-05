@@ -9,12 +9,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Modal,
+  TextInput,
+  Pressable,
 } from 'react-native';
-import { Plus, Send, RotateCcw } from 'lucide-react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { Plus, Send, RotateCcw, X, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import Colors from '@/constants/colors';
 import { useQuotes } from '@/contexts/QuotesContext';
-import { useClients } from '@/contexts/ClientsContext';
+import { useCrm } from '@/contexts/CrmContext';
 import { FormInput } from '@/components/FormInput';
 import { DateInput } from '@/components/DateInput';
 import { SegmentedControl } from '@/components/SegmentedControl';
@@ -30,7 +33,7 @@ import {
   OrderType,
   EMPTY_SIZES,
 } from '@/types/quote';
-import { Organization } from '@/types/crm';
+import { Organization, CrmStatus, ContactRole, ORG_TYPES, CONTACT_ROLES } from '@/types/crm';
 import {
   calculateQuote,
   generateId,
@@ -67,10 +70,28 @@ const getTodayDate = () => {
   return `${month} ${day}, ${year}`;
 };
 
+const EMPTY_CRM_ORG = {
+  name: '',
+  type: '',
+  city: '',
+  state: '',
+  notes: '',
+  status: 'Active Client' as CrmStatus,
+};
+
+const EMPTY_CRM_CONTACT = {
+  firstName: '',
+  lastName: '',
+  role: 'Primary Contact' as ContactRole,
+  email: '',
+  phone: '',
+};
+
 export default function NewQuoteScreen() {
   const { addQuote, isAdding } = useQuotes();
-  const { clients, addClient } = useClients();
-  const { isMobile, isTablet, isDesktop } = useBreakpoint();
+  const { orgs, addOrgWithContact } = useCrm();
+  const router = useRouter();
+  const { isMobile, isDesktop } = useBreakpoint();
   const isNative = Platform.OS !== 'web';
   const params = useLocalSearchParams<{ orgName?: string; orgId?: string }>();
 
@@ -87,6 +108,12 @@ export default function NewQuoteScreen() {
   const [hasCardFee, setHasCardFee] = useState(true);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+
+  const [crmModalVisible, setCrmModalVisible] = useState(false);
+  const [pendingQuoteId, setPendingQuoteId] = useState<string | null>(null);
+  const [crmOrgForm, setCrmOrgForm] = useState(EMPTY_CRM_ORG);
+  const [crmContactForm, setCrmContactForm] = useState(EMPTY_CRM_CONTACT);
+  const [showOrgTypeDropdown, setShowOrgTypeDropdown] = useState(false);
 
   useEffect(() => {
     if (params.orgName) {
@@ -160,8 +187,9 @@ export default function NewQuoteScreen() {
       return;
     }
 
+    const newId = generateId();
     const quote: Quote = {
-      id: generateId(),
+      id: newId,
       orgId: linkedOrg?.id,
       personOrganization: personOrganization.trim(),
       projectName: projectName.trim(),
@@ -180,37 +208,25 @@ export default function NewQuoteScreen() {
     };
 
     addQuote(quote);
-    setToastMessage(`Quote ${invoiceNumber ? '#' + invoiceNumber : ''} has been submitted!`);
+    setToastMessage(`Quote ${invoiceNumber ? '#' + invoiceNumber + ' ' : ''}submitted!`);
     setToastVisible(true);
 
     const clientName = personOrganization.trim();
-    const existingClient = clients.find(
-      (c) =>
-        c.name.toLowerCase() === clientName.toLowerCase() ||
-        (c.organization || '').toLowerCase() === clientName.toLowerCase()
-    );
-    if (!existingClient) {
-      Alert.alert(
-        'Save Client?',
-        `Would you like to add "${clientName}" to your client list?`,
-        [
-          { text: 'Not Now', style: 'cancel' },
-          {
-            text: 'Add Client',
-            onPress: () => {
-              addClient({
-                name: clientName,
-                status: 'Prospect',
-                totalOrders: 1,
-                totalSpent: calculations?.total ?? 0,
-              });
-            },
-          },
-        ]
-      );
-    }
+    const alreadyInCrm =
+      linkedOrg != null ||
+      orgs.some((o) => o.name.toLowerCase() === clientName.toLowerCase());
 
     resetForm();
+
+    if (alreadyInCrm) {
+      setTimeout(() => router.push(`/quote/${newId}`), 400);
+    } else {
+      setPendingQuoteId(newId);
+      setCrmOrgForm({ ...EMPTY_CRM_ORG, name: clientName });
+      setCrmContactForm(EMPTY_CRM_CONTACT);
+      setShowOrgTypeDropdown(false);
+      setTimeout(() => setCrmModalVisible(true), 400);
+    }
   }, [
     personOrganization,
     projectName,
@@ -224,10 +240,48 @@ export default function NewQuoteScreen() {
     hasCardFee,
     calculations,
     addQuote,
-    clients,
-    addClient,
+    linkedOrg,
+    orgs,
+    router,
     resetForm,
   ]);
+
+  const handleCrmModalSave = useCallback(() => {
+    if (crmOrgForm.name.trim()) {
+      const hasContact = crmContactForm.firstName.trim() || crmContactForm.lastName.trim();
+      addOrgWithContact({
+        orgData: {
+          name: crmOrgForm.name.trim(),
+          type: crmOrgForm.type || undefined,
+          city: crmOrgForm.city || undefined,
+          state: crmOrgForm.state || undefined,
+          notes: crmOrgForm.notes || undefined,
+          status: crmOrgForm.status,
+        },
+        contactData: hasContact
+          ? {
+              firstName: crmContactForm.firstName.trim(),
+              lastName: crmContactForm.lastName.trim(),
+              role: crmContactForm.role || undefined,
+              email: crmContactForm.email.trim() || undefined,
+              phone: crmContactForm.phone.trim() || undefined,
+              isPrimary: true,
+            }
+          : undefined,
+      });
+    }
+    const qid = pendingQuoteId;
+    setCrmModalVisible(false);
+    setPendingQuoteId(null);
+    if (qid) router.push(`/quote/${qid}`);
+  }, [crmOrgForm, crmContactForm, addOrgWithContact, pendingQuoteId, router]);
+
+  const handleCrmModalSkip = useCallback(() => {
+    const qid = pendingQuoteId;
+    setCrmModalVisible(false);
+    setPendingQuoteId(null);
+    if (qid) router.push(`/quote/${qid}`);
+  }, [pendingQuoteId, router]);
 
   const feesCard = (
     <View style={styles.card}>
@@ -472,6 +526,197 @@ export default function NewQuoteScreen() {
 
         <View style={styles.bottomPadding} />
       </ScrollView>
+
+      {/* Combined Add-to-CRM modal */}
+      <Modal
+        visible={crmModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={handleCrmModalSkip}
+      >
+        <Pressable style={crmStyles.backdrop} onPress={handleCrmModalSkip}>
+          <Pressable style={crmStyles.sheet} onPress={() => setShowOrgTypeDropdown(false)}>
+            <View style={crmStyles.header}>
+              <View>
+                <Text style={crmStyles.title}>Add to Contacts?</Text>
+                <Text style={crmStyles.subtitle}>Save this client to your CRM</Text>
+              </View>
+              <TouchableOpacity onPress={handleCrmModalSkip} hitSlop={8}>
+                <X size={22} color={Colors.light.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              style={crmStyles.body}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* — Organization — */}
+              <Text style={crmStyles.sectionLabel}>ORGANIZATION</Text>
+
+              <Text style={crmStyles.fieldLabel}>Status</Text>
+              <View style={crmStyles.statusRow}>
+                {(['Cold', 'Working', 'Active Client', 'Past Client'] as CrmStatus[]).map((s) => (
+                  <TouchableOpacity
+                    key={s}
+                    style={[crmStyles.statusChip, crmOrgForm.status === s && crmStyles.statusChipActive]}
+                    onPress={() => setCrmOrgForm((f) => ({ ...f, status: s }))}
+                  >
+                    <Text style={[crmStyles.statusChipText, crmOrgForm.status === s && crmStyles.statusChipTextActive]}>
+                      {s}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={crmStyles.fieldLabel}>Organization / Name *</Text>
+              <TextInput
+                style={crmStyles.input}
+                value={crmOrgForm.name}
+                onChangeText={(v) => setCrmOrgForm((f) => ({ ...f, name: v }))}
+                placeholder="Church name, school, company…"
+                placeholderTextColor={Colors.light.textSecondary}
+              />
+
+              <Text style={crmStyles.fieldLabel}>Type</Text>
+              <TouchableOpacity
+                style={crmStyles.dropdownBtn}
+                onPress={() => setShowOrgTypeDropdown((v) => !v)}
+              >
+                <Text style={crmOrgForm.type ? crmStyles.dropdownBtnText : crmStyles.dropdownBtnPlaceholder}>
+                  {crmOrgForm.type || 'Select type…'}
+                </Text>
+                {showOrgTypeDropdown
+                  ? <ChevronUp size={16} color={Colors.light.textSecondary} />
+                  : <ChevronDown size={16} color={Colors.light.textSecondary} />
+                }
+              </TouchableOpacity>
+              {showOrgTypeDropdown && (
+                <View style={crmStyles.dropdown}>
+                  {ORG_TYPES.map((t) => (
+                    <TouchableOpacity
+                      key={t}
+                      style={crmStyles.dropdownItem}
+                      onPress={() => { setCrmOrgForm((f) => ({ ...f, type: t })); setShowOrgTypeDropdown(false); }}
+                    >
+                      <Text style={[crmStyles.dropdownItemText, crmOrgForm.type === t && crmStyles.dropdownItemActive]}>
+                        {t}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              <Text style={crmStyles.fieldLabel}>City / State</Text>
+              <View style={crmStyles.row}>
+                <TextInput
+                  style={[crmStyles.input, { flex: 2 }]}
+                  value={crmOrgForm.city}
+                  onChangeText={(v) => setCrmOrgForm((f) => ({ ...f, city: v }))}
+                  placeholder="City"
+                  placeholderTextColor={Colors.light.textSecondary}
+                />
+                <TextInput
+                  style={[crmStyles.input, { flex: 1 }]}
+                  value={crmOrgForm.state}
+                  onChangeText={(v) => setCrmOrgForm((f) => ({ ...f, state: v }))}
+                  placeholder="State"
+                  placeholderTextColor={Colors.light.textSecondary}
+                />
+              </View>
+
+              <Text style={crmStyles.fieldLabel}>Org Notes</Text>
+              <TextInput
+                style={[crmStyles.input, crmStyles.multilineInput]}
+                value={crmOrgForm.notes}
+                onChangeText={(v) => setCrmOrgForm((f) => ({ ...f, notes: v }))}
+                placeholder="Any initial notes…"
+                placeholderTextColor={Colors.light.textSecondary}
+                multiline
+                numberOfLines={2}
+              />
+
+              {/* — Primary Contact — */}
+              <View style={crmStyles.divider} />
+              <Text style={crmStyles.sectionLabel}>PRIMARY CONTACT (optional)</Text>
+
+              <View style={crmStyles.row}>
+                <View style={{ flex: 1 }}>
+                  <Text style={crmStyles.fieldLabel}>First Name</Text>
+                  <TextInput
+                    style={crmStyles.input}
+                    value={crmContactForm.firstName}
+                    onChangeText={(v) => setCrmContactForm((f) => ({ ...f, firstName: v }))}
+                    placeholder="First"
+                    placeholderTextColor={Colors.light.textSecondary}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={crmStyles.fieldLabel}>Last Name</Text>
+                  <TextInput
+                    style={crmStyles.input}
+                    value={crmContactForm.lastName}
+                    onChangeText={(v) => setCrmContactForm((f) => ({ ...f, lastName: v }))}
+                    placeholder="Last"
+                    placeholderTextColor={Colors.light.textSecondary}
+                  />
+                </View>
+              </View>
+
+              <Text style={crmStyles.fieldLabel}>Role</Text>
+              <View style={crmStyles.roleRow}>
+                {CONTACT_ROLES.map((r) => (
+                  <TouchableOpacity
+                    key={r}
+                    style={[crmStyles.roleChip, crmContactForm.role === r && crmStyles.roleChipActive]}
+                    onPress={() => setCrmContactForm((f) => ({ ...f, role: r }))}
+                  >
+                    <Text style={[crmStyles.roleChipText, crmContactForm.role === r && crmStyles.roleChipTextActive]}>
+                      {r}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={crmStyles.fieldLabel}>Email</Text>
+              <TextInput
+                style={crmStyles.input}
+                value={crmContactForm.email}
+                onChangeText={(v) => setCrmContactForm((f) => ({ ...f, email: v }))}
+                placeholder="email@example.com"
+                placeholderTextColor={Colors.light.textSecondary}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+
+              <Text style={crmStyles.fieldLabel}>Phone</Text>
+              <TextInput
+                style={crmStyles.input}
+                value={crmContactForm.phone}
+                onChangeText={(v) => setCrmContactForm((f) => ({ ...f, phone: v }))}
+                placeholder="(555) 000-0000"
+                placeholderTextColor={Colors.light.textSecondary}
+                keyboardType="phone-pad"
+              />
+
+              <View style={{ height: 16 }} />
+            </ScrollView>
+
+            <View style={crmStyles.footer}>
+              <TouchableOpacity style={crmStyles.skipBtn} onPress={handleCrmModalSkip}>
+                <Text style={crmStyles.skipBtnText}>Skip</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[crmStyles.saveBtn, !crmOrgForm.name.trim() && crmStyles.saveBtnDisabled]}
+                onPress={handleCrmModalSave}
+                disabled={!crmOrgForm.name.trim()}
+              >
+                <Text style={crmStyles.saveBtnText}>Add to CRM</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -606,5 +851,220 @@ const styles = StyleSheet.create({
   logo: {
     width: 220,
     height: 80,
+  },
+});
+
+const crmStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: Colors.light.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '90%',
+    paddingTop: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: Colors.light.text,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+    marginTop: 2,
+  },
+  body: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    letterSpacing: 0.8,
+    marginBottom: 10,
+    marginTop: 4,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.light.textSecondary,
+    marginBottom: 4,
+    marginTop: 10,
+  },
+  input: {
+    backgroundColor: Colors.light.background,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: Colors.light.text,
+  },
+  multilineInput: {
+    minHeight: 60,
+    textAlignVertical: 'top',
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  statusChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: Colors.light.border,
+    backgroundColor: Colors.light.background,
+  },
+  statusChipActive: {
+    borderColor: Colors.light.tint,
+    backgroundColor: '#FFF4EE',
+  },
+  statusChipText: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    color: Colors.light.textSecondary,
+  },
+  statusChipTextActive: {
+    color: Colors.light.tint,
+    fontWeight: '700' as const,
+  },
+  dropdownBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.light.background,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  dropdownBtnText: {
+    fontSize: 15,
+    color: Colors.light.text,
+  },
+  dropdownBtnPlaceholder: {
+    fontSize: 15,
+    color: Colors.light.textSecondary,
+  },
+  dropdown: {
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 8,
+    marginTop: 4,
+    overflow: 'hidden',
+  },
+  dropdownItem: {
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: Colors.light.text,
+  },
+  dropdownItemActive: {
+    color: Colors.light.tint,
+    fontWeight: '600' as const,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: Colors.light.border,
+    marginVertical: 18,
+  },
+  roleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  roleChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: Colors.light.border,
+    backgroundColor: Colors.light.background,
+  },
+  roleChipActive: {
+    borderColor: Colors.light.tint,
+    backgroundColor: '#FFF4EE',
+  },
+  roleChipText: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    color: Colors.light.textSecondary,
+  },
+  roleChipTextActive: {
+    color: Colors.light.tint,
+    fontWeight: '700' as const,
+  },
+  footer: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    paddingBottom: Platform.OS === 'ios' ? 32 : 16,
+  },
+  skipBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 13,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: Colors.light.background,
+  },
+  skipBtnText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: Colors.light.textSecondary,
+  },
+  saveBtn: {
+    flex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 13,
+    borderRadius: 10,
+    backgroundColor: Colors.light.tint,
+  },
+  saveBtnDisabled: {
+    backgroundColor: Colors.light.border,
+  },
+  saveBtnText: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: '#fff',
   },
 });
