@@ -660,10 +660,10 @@ const styles = StyleSheet.create({
   tableHeader: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 8,
-    backgroundColor: Colors.light.background,
-    borderTopWidth: 1, borderTopColor: Colors.light.border,
+    backgroundColor: '#000000',
+    borderTopWidth: 0,
   },
-  thText: { fontSize: 11, fontWeight: '700' as const, color: Colors.light.textSecondary, textTransform: 'uppercase' as const, letterSpacing: 0.4 },
+  thText: { fontSize: 11, fontWeight: '700' as const, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: 0.4 },
   tableBody: { paddingBottom: 40 },
   tableRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: Colors.light.surface },
   tableDivider: { height: 1, backgroundColor: Colors.light.border, marginLeft: 16 },
