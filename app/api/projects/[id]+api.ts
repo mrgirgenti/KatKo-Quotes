@@ -40,6 +40,47 @@ function frontendStatusToDbStatus(s: string) {
   }
 }
 
+function sumSizes(sizes: Record<string, number>): number {
+  return Object.values(sizes || {}).reduce((s, v) => s + (Number(v) || 0), 0);
+}
+
+async function upsertProjectItems(projectId: string, lineItems: any[]): Promise<void> {
+  await pool.query(`DELETE FROM "ProjectItem" WHERE "projectId" = $1`, [projectId]);
+  for (const item of lineItems) {
+    const locations = [item.location1, item.location2, item.location3, item.location4].filter(Boolean);
+    const qty = item.garmentVariants?.length
+      ? item.garmentVariants.reduce((s: number, v: any) => s + sumSizes(v.sizes || {}), 0)
+      : sumSizes(item.sizes || {});
+    await pool.query(
+      `INSERT INTO "ProjectItem" (
+        id, "projectId", "itemName", "productCategory",
+        vendor, "catalogStyle", color, "printMethod", quantity,
+        "sizeBreakdown", "printLocations", "artworkNotes", "rawLineItemData",
+        "createdAt", "updatedAt"
+      ) VALUES (
+        gen_random_uuid(), $1, $2, $3,
+        $4, $5, $6, $7, $8,
+        $9::jsonb, $10::jsonb, $11, $12::jsonb,
+        NOW(), NOW()
+      )`,
+      [
+        projectId,
+        item.designName || 'Untitled',
+        item.serviceStyle || null,
+        item.apparelProvider || null,
+        item.product || null,
+        item.productColor || null,
+        item.serviceStyle || null,
+        Math.max(qty, 0),
+        JSON.stringify(item.sizes || {}),
+        JSON.stringify(locations),
+        item.locationDetails || null,
+        JSON.stringify(item),
+      ],
+    );
+  }
+}
+
 export async function GET(_req: Request, { id }: { id: string }) {
   try {
     const result = await pool.query(`SELECT * FROM "Project" WHERE id = $1`, [id]);
@@ -88,6 +129,14 @@ export async function PUT(request: Request, { id }: { id: string }) {
         id,
       ],
     );
+    if (!result.rows[0]) return Response.json({ error: 'Not found' }, { status: 404 });
+
+    if (body.lineItems?.length) {
+      await upsertProjectItems(id, body.lineItems).catch((err) =>
+        console.error('[PUT /api/projects/:id] ProjectItem upsert failed (non-fatal):', err),
+      );
+    }
+
     return Response.json(toFrontendQuote(result.rows[0]));
   } catch (err) {
     console.error('[PUT /api/projects/:id]', err);

@@ -26,6 +26,8 @@ import {
   Star,
   Archive,
   Upload,
+  ChevronDown,
+  Check,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
@@ -35,19 +37,25 @@ import { ContactImportModal } from '@/components/ContactImportModal';
 
 const FILTER_TABS: (CrmStatus | 'All')[] = ['All', 'Cold', 'Working', 'Active Client', 'Past Client'];
 
+type AddMode = 'org' | 'person';
+type AddStep = 'choose' | 'details';
+
 const EMPTY_ORG_FORM = {
   name: '',
   type: '',
-  address: '',
   city: '',
   state: '',
-  website: '',
   notes: '',
   status: 'Cold' as CrmStatus,
-  isNewLead: true,
 };
 
-type OrgForm = typeof EMPTY_ORG_FORM;
+const EMPTY_CONTACT_FORM = {
+  firstName: '',
+  lastName: '',
+  phone: '',
+  email: '',
+  role: '',
+};
 
 function StatusBadge({ status }: { status: CrmStatus }) {
   const cfg = CRM_STATUS_CONFIG[status];
@@ -199,15 +207,22 @@ function OrgCard({ org, onPress }: OrgRowProps) {
 
 export default function ClientsScreen() {
   const router = useRouter();
-  const { orgs, addOrg } = useCrm();
+  const { orgs, addOrg, addOrgWithContact, addContact } = useCrm();
   const { isDesktop } = useBreakpoint();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<CrmStatus | 'All'>('All');
   const [modalVisible, setModalVisible] = useState(false);
   const [importModalVisible, setImportModalVisible] = useState(false);
-  const [form, setForm] = useState<OrgForm>(EMPTY_ORG_FORM);
-  const [step, setStep] = useState<'type-select' | 'details'>('type-select');
+
+  const [addStep, setAddStep] = useState<AddStep>('choose');
+  const [addMode, setAddMode] = useState<AddMode>('org');
+  const [orgForm, setOrgForm] = useState(EMPTY_ORG_FORM);
+  const [contactForm, setContactForm] = useState(EMPTY_CONTACT_FORM);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [orgSearch, setOrgSearch] = useState('');
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+  const [personOrgStatus, setPersonOrgStatus] = useState<CrmStatus>('Active Client');
+  const [showOrgDropdown, setShowOrgDropdown] = useState(false);
 
   const filtered = useMemo(() => {
     return orgs.filter((o) => {
@@ -244,26 +259,79 @@ export default function ClientsScreen() {
     totalPeople: orgs.reduce((sum, o) => sum + o.contacts.length, 0),
   }), [orgs]);
 
+  const orgSearchResults = useMemo(() => {
+    if (!orgSearch.trim()) return orgs.slice(0, 6);
+    const q = orgSearch.toLowerCase();
+    return orgs.filter((o) => o.name.toLowerCase().includes(q)).slice(0, 6);
+  }, [orgs, orgSearch]);
+
   const openAddModal = useCallback(() => {
-    setForm(EMPTY_ORG_FORM);
-    setStep('type-select');
+    setOrgForm(EMPTY_ORG_FORM);
+    setContactForm(EMPTY_CONTACT_FORM);
+    setAddStep('choose');
+    setAddMode('org');
+    setShowTypeDropdown(false);
+    setOrgSearch('');
+    setSelectedOrgId(null);
+    setPersonOrgStatus('Active Client');
+    setShowOrgDropdown(false);
     setModalVisible(true);
   }, []);
 
+  const hasContactInfo = contactForm.firstName.trim() || contactForm.lastName.trim() || contactForm.phone.trim() || contactForm.email.trim();
+
   const handleSave = useCallback(() => {
-    if (!form.name.trim()) return;
-    addOrg({
-      name: form.name.trim(),
-      type: form.type || undefined,
-      address: form.address || undefined,
-      city: form.city || undefined,
-      state: form.state || undefined,
-      website: form.website || undefined,
-      notes: form.notes || undefined,
-      status: form.status,
-    });
+    if (addMode === 'org') {
+      if (!orgForm.name.trim()) return;
+      const orgData = {
+        name: orgForm.name.trim(),
+        type: orgForm.type || undefined,
+        city: orgForm.city || undefined,
+        state: orgForm.state || undefined,
+        notes: orgForm.notes || undefined,
+        status: orgForm.status,
+      };
+      if (hasContactInfo) {
+        addOrgWithContact({
+          orgData,
+          contactData: {
+            firstName: contactForm.firstName.trim(),
+            lastName: contactForm.lastName.trim(),
+            phone: contactForm.phone.trim() || undefined,
+            email: contactForm.email.trim() || undefined,
+            role: contactForm.role.trim() || undefined,
+            isPrimary: true,
+          } as any,
+        });
+      } else {
+        addOrg(orgData as any);
+      }
+    } else {
+      if (!contactForm.firstName.trim() && !contactForm.lastName.trim()) return;
+      const contactData = {
+        firstName: contactForm.firstName.trim(),
+        lastName: contactForm.lastName.trim(),
+        phone: contactForm.phone.trim() || undefined,
+        email: contactForm.email.trim() || undefined,
+        role: contactForm.role.trim() || undefined,
+        isPrimary: true,
+      } as any;
+      if (selectedOrgId) {
+        addContact({ orgId: selectedOrgId, contact: contactData });
+      } else {
+        const orgName = orgSearch.trim() || `${contactForm.firstName} ${contactForm.lastName}`.trim();
+        addOrgWithContact({
+          orgData: { name: orgName, status: personOrgStatus } as any,
+          contactData,
+        });
+      }
+    }
     setModalVisible(false);
-  }, [form, addOrg]);
+  }, [addMode, orgForm, contactForm, hasContactInfo, orgSearch, selectedOrgId, personOrgStatus, addOrg, addOrgWithContact, addContact]);
+
+  const canSave = addMode === 'org'
+    ? !!orgForm.name.trim()
+    : !!(contactForm.firstName.trim() || contactForm.lastName.trim());
 
   const filterIcon = (tab: CrmStatus | 'All') => {
     if (tab === 'All') return <Users size={12} color={filter === tab ? Colors.light.tint : Colors.light.textSecondary} />;
@@ -274,6 +342,8 @@ export default function ClientsScreen() {
     return null;
   };
 
+  const selectedOrg = selectedOrgId ? orgs.find((o) => o.id === selectedOrgId) : null;
+
   return (
     <View style={styles.container}>
       <View style={styles.pageHeader}>
@@ -282,7 +352,6 @@ export default function ClientsScreen() {
           <Text style={styles.pageSubtitle}>{orgs.length} org{orgs.length !== 1 ? 's' : ''} · {stats.totalPeople} people</Text>
         </View>
 
-        {/* Stats bar */}
         <View style={styles.statsBar}>
           <View style={styles.statItem}>
             <Text style={styles.statValue}>{stats.total}</Text>
@@ -305,7 +374,6 @@ export default function ClientsScreen() {
           </View>
         </View>
 
-        {/* Filter pills */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillsScroll} contentContainerStyle={styles.pillsRow}>
           {FILTER_TABS.map((tab) => {
             const active = filter === tab;
@@ -340,7 +408,6 @@ export default function ClientsScreen() {
           })}
         </ScrollView>
 
-        {/* Search + Add */}
         <View style={styles.searchRow}>
           <View style={styles.searchBox}>
             <Search size={15} color={Colors.light.textSecondary} />
@@ -367,7 +434,6 @@ export default function ClientsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Desktop table header */}
         {isDesktop && (
           <View style={styles.tableHeader}>
             <View style={styles.colAvatar} />
@@ -381,7 +447,6 @@ export default function ClientsScreen() {
         )}
       </View>
 
-      {/* List */}
       {filtered.length === 0 ? (
         <View style={styles.emptyState}>
           <Building2 size={40} color={Colors.light.border} />
@@ -425,67 +490,86 @@ export default function ClientsScreen() {
       <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
-            <Pressable style={styles.modalCard} onPress={() => {}}>
+            <Pressable style={styles.modalCard} onPress={() => { setShowTypeDropdown(false); setShowOrgDropdown(false); }}>
+
+              {/* Header */}
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>
-                  {step === 'type-select' ? 'New Contact' : 'Add Details'}
-                </Text>
+                <View style={styles.modalHeaderLeft}>
+                  {addStep === 'details' && (
+                    <TouchableOpacity onPress={() => setAddStep('choose')} style={styles.backIconBtn}>
+                      <ChevronRight size={18} color={Colors.light.textSecondary} style={{ transform: [{ rotate: '180deg' }] }} />
+                    </TouchableOpacity>
+                  )}
+                  <Text style={styles.modalTitle}>
+                    {addStep === 'choose' ? 'Add Contact' : addMode === 'org' ? 'New Organization' : 'New Contact Person'}
+                  </Text>
+                </View>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
                   <X size={22} color={Colors.light.textSecondary} />
                 </TouchableOpacity>
               </View>
 
-              {step === 'type-select' ? (
-                <View style={styles.typeSelectStep}>
-                  <Text style={styles.typeSelectLabel}>What kind of contact is this?</Text>
+              {/* Step 1: Choose type */}
+              {addStep === 'choose' && (
+                <View style={styles.chooseStep}>
+                  <Text style={styles.chooseLabel}>What are you adding?</Text>
+
                   <TouchableOpacity
-                    style={[styles.typeSelectOption, !form.isNewLead && styles.typeSelectOptionActive]}
-                    onPress={() => setForm((f) => ({ ...f, isNewLead: false, status: 'Active Client' }))}
+                    style={[styles.chooseOption, addMode === 'org' && styles.chooseOptionActive]}
+                    onPress={() => setAddMode('org')}
                   >
-                    <View style={styles.typeSelectIcon}>
-                      <Star size={22} color={form.isNewLead ? Colors.light.textSecondary : '#FF5A00'} />
+                    <View style={[styles.chooseIcon, addMode === 'org' && styles.chooseIconActive]}>
+                      <Building2 size={22} color={addMode === 'org' ? '#fff' : Colors.light.textSecondary} />
                     </View>
-                    <View style={styles.typeSelectText}>
-                      <Text style={styles.typeSelectOptionTitle}>Active Client</Text>
-                      <Text style={styles.typeSelectOptionSub}>Someone I already do business with</Text>
+                    <View style={styles.chooseText}>
+                      <Text style={styles.chooseOptionTitle}>Organization</Text>
+                      <Text style={styles.chooseOptionSub}>A company, school, church, or business</Text>
                     </View>
-                    <View style={[styles.typeSelectRadio, !form.isNewLead && styles.typeSelectRadioActive]} />
+                    <View style={[styles.chooseRadio, addMode === 'org' && styles.chooseRadioActive]}>
+                      {addMode === 'org' && <Check size={12} color="#fff" />}
+                    </View>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[styles.typeSelectOption, form.isNewLead && styles.typeSelectOptionActive]}
-                    onPress={() => setForm((f) => ({ ...f, isNewLead: true, status: 'Cold' }))}
+                    style={[styles.chooseOption, addMode === 'person' && styles.chooseOptionActive]}
+                    onPress={() => setAddMode('person')}
                   >
-                    <View style={styles.typeSelectIcon}>
-                      <Thermometer size={22} color={form.isNewLead ? Colors.light.tint : Colors.light.textSecondary} />
+                    <View style={[styles.chooseIcon, addMode === 'person' && styles.chooseIconActivePerson]}>
+                      <User size={22} color={addMode === 'person' ? '#fff' : Colors.light.textSecondary} />
                     </View>
-                    <View style={styles.typeSelectText}>
-                      <Text style={styles.typeSelectOptionTitle}>New Lead</Text>
-                      <Text style={styles.typeSelectOptionSub}>Someone I'm prospecting or working</Text>
+                    <View style={styles.chooseText}>
+                      <Text style={styles.chooseOptionTitle}>Contact Person</Text>
+                      <Text style={styles.chooseOptionSub}>An individual linked to an organization</Text>
                     </View>
-                    <View style={[styles.typeSelectRadio, form.isNewLead && styles.typeSelectRadioActive]} />
+                    <View style={[styles.chooseRadio, addMode === 'person' && styles.chooseRadioActive]}>
+                      {addMode === 'person' && <Check size={12} color="#fff" />}
+                    </View>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={styles.typeSelectNextBtn}
-                    onPress={() => setStep('details')}
+                    style={styles.continueBtn}
+                    onPress={() => setAddStep('details')}
                   >
-                    <Text style={styles.typeSelectNextBtnText}>Continue</Text>
+                    <Text style={styles.continueBtnText}>Continue</Text>
+                    <ChevronRight size={16} color="#fff" />
                   </TouchableOpacity>
                 </View>
-              ) : (
-                <ScrollView showsVerticalScrollIndicator={false}>
-                  {/* Status selector */}
+              )}
+
+              {/* Step 2a: Organization details */}
+              {addStep === 'details' && addMode === 'org' && (
+                <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                  {/* Status */}
                   <Text style={styles.fieldLabel}>Status</Text>
                   <View style={styles.statusRow}>
                     {(['Cold', 'Working', 'Active Client', 'Past Client'] as CrmStatus[]).map((s) => {
                       const cfg = CRM_STATUS_CONFIG[s];
-                      const selected = form.status === s;
+                      const selected = orgForm.status === s;
                       return (
                         <TouchableOpacity
                           key={s}
                           style={[styles.statusOption, selected && { backgroundColor: cfg.bg, borderColor: cfg.border }]}
-                          onPress={() => setForm((f) => ({ ...f, status: s }))}
+                          onPress={() => setOrgForm((f) => ({ ...f, status: s }))}
                         >
                           <Text style={[styles.statusOptionText, selected && { color: cfg.color, fontWeight: '700' as const }]}>{s}</Text>
                         </TouchableOpacity>
@@ -493,11 +577,11 @@ export default function ClientsScreen() {
                     })}
                   </View>
 
-                  <Text style={styles.fieldLabel}>Organization / Name *</Text>
+                  <Text style={styles.fieldLabel}>Organization Name *</Text>
                   <TextInput
                     style={styles.textInput}
-                    value={form.name}
-                    onChangeText={(v) => setForm((f) => ({ ...f, name: v }))}
+                    value={orgForm.name}
+                    onChangeText={(v) => setOrgForm((f) => ({ ...f, name: v }))}
                     placeholder="Church name, school, company…"
                     placeholderTextColor={Colors.light.textSecondary}
                     autoFocus
@@ -508,9 +592,10 @@ export default function ClientsScreen() {
                     style={styles.typePickerBtn}
                     onPress={() => setShowTypeDropdown((v) => !v)}
                   >
-                    <Text style={form.type ? styles.typePickerBtnText : styles.typePickerBtnPlaceholder}>
-                      {form.type || 'Select type…'}
+                    <Text style={orgForm.type ? styles.typePickerBtnText : styles.typePickerBtnPlaceholder}>
+                      {orgForm.type || 'Select type…'}
                     </Text>
+                    <ChevronDown size={15} color={Colors.light.textSecondary} />
                   </TouchableOpacity>
                   {showTypeDropdown && (
                     <View style={styles.typeDropdown}>
@@ -518,9 +603,10 @@ export default function ClientsScreen() {
                         <TouchableOpacity
                           key={t}
                           style={styles.typeDropdownItem}
-                          onPress={() => { setForm((f) => ({ ...f, type: t })); setShowTypeDropdown(false); }}
+                          onPress={() => { setOrgForm((f) => ({ ...f, type: t })); setShowTypeDropdown(false); }}
                         >
-                          <Text style={[styles.typeDropdownText, form.type === t && styles.typeDropdownTextActive]}>{t}</Text>
+                          <Text style={[styles.typeDropdownText, orgForm.type === t && styles.typeDropdownTextActive]}>{t}</Text>
+                          {orgForm.type === t && <Check size={13} color={Colors.light.tint} />}
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -530,15 +616,15 @@ export default function ClientsScreen() {
                   <View style={styles.rowInputs}>
                     <TextInput
                       style={[styles.textInput, { flex: 2 }]}
-                      value={form.city}
-                      onChangeText={(v) => setForm((f) => ({ ...f, city: v }))}
+                      value={orgForm.city}
+                      onChangeText={(v) => setOrgForm((f) => ({ ...f, city: v }))}
                       placeholder="City"
                       placeholderTextColor={Colors.light.textSecondary}
                     />
                     <TextInput
                       style={[styles.textInput, { flex: 1 }]}
-                      value={form.state}
-                      onChangeText={(v) => setForm((f) => ({ ...f, state: v }))}
+                      value={orgForm.state}
+                      onChangeText={(v) => setOrgForm((f) => ({ ...f, state: v }))}
                       placeholder="State"
                       placeholderTextColor={Colors.light.textSecondary}
                     />
@@ -547,29 +633,207 @@ export default function ClientsScreen() {
                   <Text style={styles.fieldLabel}>Notes</Text>
                   <TextInput
                     style={[styles.textInput, styles.notesInput]}
-                    value={form.notes}
-                    onChangeText={(v) => setForm((f) => ({ ...f, notes: v }))}
-                    placeholder="Any initial notes…"
+                    value={orgForm.notes}
+                    onChangeText={(v) => setOrgForm((f) => ({ ...f, notes: v }))}
+                    placeholder="Initial notes…"
                     placeholderTextColor={Colors.light.textSecondary}
                     multiline
-                    numberOfLines={3}
+                    numberOfLines={2}
                   />
+
+                  {/* Primary contact section */}
+                  <View style={styles.sectionDivider}>
+                    <View style={styles.sectionDividerLine} />
+                    <Text style={styles.sectionDividerLabel}>Primary Contact (optional)</Text>
+                    <View style={styles.sectionDividerLine} />
+                  </View>
+
+                  <View style={styles.rowInputs}>
+                    <TextInput
+                      style={[styles.textInput, { flex: 1 }]}
+                      value={contactForm.firstName}
+                      onChangeText={(v) => setContactForm((f) => ({ ...f, firstName: v }))}
+                      placeholder="First name"
+                      placeholderTextColor={Colors.light.textSecondary}
+                    />
+                    <TextInput
+                      style={[styles.textInput, { flex: 1 }]}
+                      value={contactForm.lastName}
+                      onChangeText={(v) => setContactForm((f) => ({ ...f, lastName: v }))}
+                      placeholder="Last name"
+                      placeholderTextColor={Colors.light.textSecondary}
+                    />
+                  </View>
+                  <View style={[styles.rowInputs, { marginTop: 8 }]}>
+                    <TextInput
+                      style={[styles.textInput, { flex: 1 }]}
+                      value={contactForm.phone}
+                      onChangeText={(v) => setContactForm((f) => ({ ...f, phone: v }))}
+                      placeholder="Phone"
+                      placeholderTextColor={Colors.light.textSecondary}
+                      keyboardType="phone-pad"
+                    />
+                    <TextInput
+                      style={[styles.textInput, { flex: 1 }]}
+                      value={contactForm.email}
+                      onChangeText={(v) => setContactForm((f) => ({ ...f, email: v }))}
+                      placeholder="Email"
+                      placeholderTextColor={Colors.light.textSecondary}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+                  </View>
+
+                  <View style={{ height: 16 }} />
                 </ScrollView>
               )}
 
-              {step === 'details' && (
-                <View style={styles.modalActions}>
-                  <TouchableOpacity style={styles.backBtn} onPress={() => setStep('type-select')}>
-                    <Text style={styles.backBtnText}>Back</Text>
-                  </TouchableOpacity>
+              {/* Step 2b: Person details */}
+              {addStep === 'details' && addMode === 'person' && (
+                <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                  <Text style={styles.fieldLabel}>Name *</Text>
+                  <View style={styles.rowInputs}>
+                    <TextInput
+                      style={[styles.textInput, { flex: 1 }]}
+                      value={contactForm.firstName}
+                      onChangeText={(v) => setContactForm((f) => ({ ...f, firstName: v }))}
+                      placeholder="First name"
+                      placeholderTextColor={Colors.light.textSecondary}
+                      autoFocus
+                    />
+                    <TextInput
+                      style={[styles.textInput, { flex: 1 }]}
+                      value={contactForm.lastName}
+                      onChangeText={(v) => setContactForm((f) => ({ ...f, lastName: v }))}
+                      placeholder="Last name"
+                      placeholderTextColor={Colors.light.textSecondary}
+                    />
+                  </View>
+
+                  <Text style={styles.fieldLabel}>Phone / Email</Text>
+                  <View style={styles.rowInputs}>
+                    <TextInput
+                      style={[styles.textInput, { flex: 1 }]}
+                      value={contactForm.phone}
+                      onChangeText={(v) => setContactForm((f) => ({ ...f, phone: v }))}
+                      placeholder="Phone"
+                      placeholderTextColor={Colors.light.textSecondary}
+                      keyboardType="phone-pad"
+                    />
+                    <TextInput
+                      style={[styles.textInput, { flex: 1 }]}
+                      value={contactForm.email}
+                      onChangeText={(v) => setContactForm((f) => ({ ...f, email: v }))}
+                      placeholder="Email"
+                      placeholderTextColor={Colors.light.textSecondary}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+                  </View>
+
+                  <Text style={styles.fieldLabel}>Role / Title</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={contactForm.role}
+                    onChangeText={(v) => setContactForm((f) => ({ ...f, role: v }))}
+                    placeholder="e.g. Purchasing Manager, Coach…"
+                    placeholderTextColor={Colors.light.textSecondary}
+                  />
+
+                  <View style={styles.sectionDivider}>
+                    <View style={styles.sectionDividerLine} />
+                    <Text style={styles.sectionDividerLabel}>Organization</Text>
+                    <View style={styles.sectionDividerLine} />
+                  </View>
+
+                  {/* Org search / select */}
                   <TouchableOpacity
-                    style={[styles.saveBtn, !form.name.trim() && styles.saveBtnDisabled]}
-                    onPress={handleSave}
-                    disabled={!form.name.trim()}
+                    style={[styles.typePickerBtn, selectedOrg && { borderColor: Colors.light.tint }]}
+                    onPress={() => { setShowOrgDropdown((v) => !v); }}
                   >
-                    <Text style={styles.saveBtnText}>Add Contact</Text>
+                    <Text style={selectedOrg ? styles.typePickerBtnText : styles.typePickerBtnPlaceholder} numberOfLines={1}>
+                      {selectedOrg ? selectedOrg.name : orgSearch || 'Search or type org name…'}
+                    </Text>
+                    {selectedOrg ? (
+                      <TouchableOpacity onPress={() => { setSelectedOrgId(null); setOrgSearch(''); }}>
+                        <X size={15} color={Colors.light.textSecondary} />
+                      </TouchableOpacity>
+                    ) : (
+                      <ChevronDown size={15} color={Colors.light.textSecondary} />
+                    )}
                   </TouchableOpacity>
-                </View>
+
+                  {showOrgDropdown && !selectedOrg && (
+                    <View style={styles.typeDropdown}>
+                      <View style={styles.orgSearchRow}>
+                        <Search size={13} color={Colors.light.textSecondary} />
+                        <TextInput
+                          style={styles.orgSearchInput}
+                          value={orgSearch}
+                          onChangeText={setOrgSearch}
+                          placeholder="Search existing orgs…"
+                          placeholderTextColor={Colors.light.textSecondary}
+                          autoFocus
+                        />
+                      </View>
+                      {orgSearchResults.map((o) => (
+                        <TouchableOpacity
+                          key={o.id}
+                          style={styles.typeDropdownItem}
+                          onPress={() => { setSelectedOrgId(o.id); setOrgSearch(o.name); setShowOrgDropdown(false); }}
+                        >
+                          <Text style={styles.typeDropdownText}>{o.name}</Text>
+                          {o.type ? <Text style={styles.orgDropdownType}>{o.type}</Text> : null}
+                        </TouchableOpacity>
+                      ))}
+                      {orgSearch.trim() && !orgSearchResults.find((o) => o.name.toLowerCase() === orgSearch.toLowerCase()) && (
+                        <TouchableOpacity
+                          style={[styles.typeDropdownItem, styles.orgCreateNewItem]}
+                          onPress={() => { setSelectedOrgId(null); setShowOrgDropdown(false); }}
+                        >
+                          <Plus size={13} color={Colors.light.tint} />
+                          <Text style={styles.orgCreateNewText}>Create "{orgSearch.trim()}"</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+
+                  {!selectedOrgId && (
+                    <>
+                      <Text style={styles.fieldLabel}>New Org Status</Text>
+                      <View style={styles.statusRow}>
+                        {(['Cold', 'Working', 'Active Client'] as CrmStatus[]).map((s) => {
+                          const cfg = CRM_STATUS_CONFIG[s];
+                          const selected = personOrgStatus === s;
+                          return (
+                            <TouchableOpacity
+                              key={s}
+                              style={[styles.statusOption, selected && { backgroundColor: cfg.bg, borderColor: cfg.border }]}
+                              onPress={() => setPersonOrgStatus(s)}
+                            >
+                              <Text style={[styles.statusOptionText, selected && { color: cfg.color, fontWeight: '700' as const }]}>{s}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </>
+                  )}
+
+                  <View style={{ height: 16 }} />
+                </ScrollView>
+              )}
+
+              {/* Save button */}
+              {addStep === 'details' && (
+                <TouchableOpacity
+                  style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
+                  onPress={handleSave}
+                  disabled={!canSave}
+                >
+                  <Text style={styles.saveBtnText}>
+                    {addMode === 'org' ? (hasContactInfo ? 'Save Org + Contact' : 'Save Organization') : (selectedOrgId ? 'Add to Organization' : 'Save Contact + Org')}
+                  </Text>
+                </TouchableOpacity>
               )}
             </Pressable>
           </KeyboardAvoidingView>
@@ -753,30 +1017,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     marginBottom: 18,
   },
+  modalHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  backIconBtn: { padding: 2 },
   modalTitle: { fontSize: 18, fontWeight: '800' as const, color: Colors.light.text },
 
-  typeSelectStep: { gap: 12, marginBottom: 8 },
-  typeSelectLabel: { fontSize: 15, color: Colors.light.textSecondary, marginBottom: 4 },
-  typeSelectOption: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    padding: 14, borderRadius: 12, borderWidth: 2,
+  chooseStep: { gap: 12, marginBottom: 8 },
+  chooseLabel: { fontSize: 14, color: Colors.light.textSecondary, marginBottom: 4 },
+  chooseOption: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    padding: 14, borderRadius: 14, borderWidth: 2,
     borderColor: Colors.light.border, backgroundColor: Colors.light.background,
   },
-  typeSelectOptionActive: { borderColor: Colors.light.tint, backgroundColor: '#FFF4EE' },
-  typeSelectIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.light.surface, justifyContent: 'center', alignItems: 'center' },
-  typeSelectText: { flex: 1 },
-  typeSelectOptionTitle: { fontSize: 15, fontWeight: '700' as const, color: Colors.light.text },
-  typeSelectOptionSub: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 2 },
-  typeSelectRadio: {
-    width: 20, height: 20, borderRadius: 10,
-    borderWidth: 2, borderColor: Colors.light.border, backgroundColor: 'transparent',
+  chooseOptionActive: { borderColor: Colors.light.tint, backgroundColor: '#FFF4EE' },
+  chooseIcon: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: Colors.light.border,
+    justifyContent: 'center', alignItems: 'center',
   },
-  typeSelectRadioActive: { borderColor: Colors.light.tint, backgroundColor: Colors.light.tint },
-  typeSelectNextBtn: {
-    backgroundColor: Colors.light.tint, borderRadius: 10,
-    paddingVertical: 13, alignItems: 'center', marginTop: 4,
+  chooseIconActive: { backgroundColor: Colors.light.tint },
+  chooseIconActivePerson: { backgroundColor: '#7C3AED' },
+  chooseText: { flex: 1 },
+  chooseOptionTitle: { fontSize: 15, fontWeight: '700' as const, color: Colors.light.text },
+  chooseOptionSub: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 2 },
+  chooseRadio: {
+    width: 22, height: 22, borderRadius: 11,
+    borderWidth: 2, borderColor: Colors.light.border,
+    justifyContent: 'center', alignItems: 'center',
   },
-  typeSelectNextBtnText: { color: '#fff', fontWeight: '700' as const, fontSize: 15 },
+  chooseRadioActive: { borderColor: Colors.light.tint, backgroundColor: Colors.light.tint },
+  continueBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: Colors.light.tint, borderRadius: 12,
+    paddingVertical: 14, marginTop: 4,
+  },
+  continueBtnText: { color: '#fff', fontWeight: '700' as const, fontSize: 15 },
 
   fieldLabel: {
     fontSize: 12, fontWeight: '700' as const, color: Colors.light.textSecondary,
@@ -789,24 +1063,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13, paddingVertical: 10,
     fontSize: 15, color: Colors.light.text,
   },
-  notesInput: { minHeight: 80, textAlignVertical: 'top' as const },
+  notesInput: { minHeight: 60, textAlignVertical: 'top' as const },
   rowInputs: { flexDirection: 'row', gap: 10 },
 
   typePickerBtn: {
     backgroundColor: Colors.light.background, borderRadius: 10,
     borderWidth: 1, borderColor: Colors.light.border,
     paddingHorizontal: 13, paddingVertical: 10,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
-  typePickerBtnText: { fontSize: 15, color: Colors.light.text },
-  typePickerBtnPlaceholder: { fontSize: 15, color: Colors.light.textSecondary },
+  typePickerBtnText: { fontSize: 15, color: Colors.light.text, flex: 1 },
+  typePickerBtnPlaceholder: { fontSize: 15, color: Colors.light.textSecondary, flex: 1 },
   typeDropdown: {
     backgroundColor: Colors.light.surface,
     borderRadius: 10, borderWidth: 1, borderColor: Colors.light.border,
-    marginTop: 4, overflow: 'hidden',
+    marginTop: 4, overflow: 'hidden', maxHeight: 240,
   },
-  typeDropdownItem: { paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.light.border },
+  typeDropdownItem: {
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: Colors.light.border,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  },
   typeDropdownText: { fontSize: 14, color: Colors.light.text },
   typeDropdownTextActive: { color: Colors.light.tint, fontWeight: '700' as const },
+
+  orgSearchRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: Colors.light.border,
+  },
+  orgSearchInput: { flex: 1, fontSize: 14, color: Colors.light.text, outlineStyle: 'none' as any },
+  orgDropdownType: { fontSize: 11, color: Colors.light.textSecondary },
+  orgCreateNewItem: { backgroundColor: '#FFF4EE', borderBottomWidth: 0 },
+  orgCreateNewText: { fontSize: 14, color: Colors.light.tint, fontWeight: '600' as const },
 
   statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
   statusOption: {
@@ -816,17 +1105,18 @@ const styles = StyleSheet.create({
   },
   statusOptionText: { fontSize: 13, color: Colors.light.textSecondary, fontWeight: '500' as const },
 
-  modalActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
-  backBtn: {
-    flex: 1, paddingVertical: 13, borderRadius: 10,
-    borderWidth: 1.5, borderColor: Colors.light.border,
-    alignItems: 'center',
+  sectionDivider: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginTop: 18, marginBottom: 4,
   },
-  backBtnText: { fontSize: 15, fontWeight: '600' as const, color: Colors.light.textSecondary },
+  sectionDividerLine: { flex: 1, height: 1, backgroundColor: Colors.light.border },
+  sectionDividerLabel: { fontSize: 11, fontWeight: '700' as const, color: Colors.light.textSecondary, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
+
   saveBtn: {
-    flex: 2, backgroundColor: Colors.light.tint,
-    paddingVertical: 13, borderRadius: 10, alignItems: 'center',
+    backgroundColor: Colors.light.tint,
+    paddingVertical: 14, borderRadius: 12,
+    alignItems: 'center', marginTop: 16,
   },
-  saveBtnDisabled: { opacity: 0.5 },
+  saveBtnDisabled: { opacity: 0.45 },
   saveBtnText: { fontSize: 15, fontWeight: '700' as const, color: '#fff' },
 });

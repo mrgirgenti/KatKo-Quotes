@@ -35,7 +35,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
-import { useClients } from '@/contexts/ClientsContext';
+import { useCrm } from '@/contexts/CrmContext';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { SalesData, VENDORS, APPLICATORS, LineItemActualCosts, SIZE_LABELS, LineItem } from '@/types/quote';
@@ -50,7 +50,7 @@ export default function SalesTrackingScreen() {
   const router = useRouter();
   const { quotes, sales, updateSalesData, lockSale } = useQuotes();
   const { currentUser } = useUser();
-  const { clients, addClient } = useClients();
+  const { orgs, addOrg } = useCrm();
   const { isDesktop } = useBreakpoint();
 
   const quote = useMemo(() => {
@@ -250,21 +250,15 @@ export default function SalesTrackingScreen() {
     return { salesData, updatedLineItems };
   }, [quote, completedDate, lineItemCosts, actualOnlineFee, actualSalesTax, actualCardFee, amountCollected, notes, calculations]);
 
-  const autoAddClientIfNew = useCallback((clientName: string, amountCollected: number) => {
-    const existing = clients.find(
-      (c) =>
-        c.name.toLowerCase() === clientName.toLowerCase() ||
-        (c.organization || '').toLowerCase() === clientName.toLowerCase()
+  const autoAddClientIfNew = useCallback((clientName: string, _amountCollected: number) => {
+    if (!clientName.trim()) return;
+    const existing = orgs.find(
+      (o) => o.name.toLowerCase() === clientName.trim().toLowerCase(),
     );
     if (!existing) {
-      addClient({
-        name: clientName,
-        status: 'Active',
-        totalOrders: 1,
-        totalSpent: amountCollected,
-      });
+      addOrg({ name: clientName.trim(), status: 'Active Client' } as any);
     }
-  }, [clients, addClient]);
+  }, [orgs, addOrg]);
 
   const handleSaveOnly = useCallback(() => {
     const data = buildSalesData();

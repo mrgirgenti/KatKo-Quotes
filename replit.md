@@ -20,6 +20,12 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 - Sidebar reads dynamic company logo from `orgAdmin.companyLogo` (falls back to hardcoded CDN URI)
 - `UserContext` exposes: `isOrgAdmin()`, `orgAdmin` (first user with role=org_admin), `createUser(name, email?, role?)`
 
+## Context Layer
+- **QuotesContext**: All quote/project CRUD via `/api/projects` — fully migrated from AsyncStorage
+- **CrmContext**: All org/contact/activity CRUD via `/api/orgs` — fully migrated from AsyncStorage
+- **UserContext**: User profiles still in AsyncStorage (migration deferred — `User` DB table exists but unused at runtime)
+- **ClientsContext**: DELETED. The legacy `Client` type is fully replaced by `Organization` + `Contact`. Dashboard client counts now derive from `useCrm().orgs`. `autoAddClientIfNew` in sales-tracking now calls `addOrg` via `useCrm`. `contexts/ClientsContext.tsx` and `types/client.ts` deleted.
+
 ## CRM / Contact System
 - Full CRM pipeline: Cold → Working → Active Client → Past Client
 - Org profile: Lead Tracking banner (Cold/Working only), Activity Log, Contacts tab, Quotes tab, Campaigns tab
@@ -67,7 +73,10 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
   - `PUT/DELETE /api/orgs/[id]/contacts/[contactId]` — update/delete contact
   - `POST/PUT/DELETE /api/orgs/[id]/activity` — activity log CRUD
   - `GET/POST /api/projects` — list all quotes, create quote
-  - `GET/PUT/DELETE /api/projects/[id]` — single quote CRUD
+  - `GET/PUT/DELETE /api/projects/[id]` — single quote CRUD; PUT also upserts `ProjectItem` rows alongside the blob
+  - `POST /api/projects/[id]/quote` — populate the `Quote` relational table from current Project state (idempotent)
+  - `POST /api/projects/[id]/invoice` — populate the `Invoice` relational table from Project/salesData (idempotent)
+  - `POST /api/projects/[id]/backfill` — bulk-insert `ProjectItem` rows from `lineItemsData` blob (safe to re-run)
   - `POST /api/migrate` — one-time AsyncStorage→DB migration (called on first load if server is empty)
 - **Route param convention**: Expo Router passes params as the second argument directly `{ id }`, NOT `{ params: { id } }`
 - **DB Table casing**: PascalCase table names (`"Organization"`, `"Contact"`, `"ActivityLog"`, `"Project"`), camelCase columns (quoted)

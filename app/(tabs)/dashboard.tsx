@@ -20,7 +20,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useQuotes } from '@/contexts/QuotesContext';
-import { useClients } from '@/contexts/ClientsContext';
+import { useCrm } from '@/contexts/CrmContext';
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { ServiceStyle, STATUS_CONFIG, getEffectiveStatus } from '@/types/quote';
@@ -28,7 +28,7 @@ import { ServiceStyle, STATUS_CONFIG, getEffectiveStatus } from '@/types/quote';
 export default function DashboardScreen() {
   const router = useRouter();
   const { quotes } = useQuotes();
-  const { clients } = useClients();
+  const { orgs } = useCrm();
   const { isMobile } = useBreakpoint();
 
   const stats = useMemo(() => {
@@ -60,10 +60,10 @@ export default function DashboardScreen() {
       totalQuotesCount: quotes.length,
       revenueThisMonth,
       salesThisMonth: salesThisMonth.length,
-      activeClients: clients.filter((c) => c.status === 'Active').length,
-      prospects: clients.filter((c) => c.status === 'Prospect').length,
+      activeClients: orgs.filter((o) => o.status === 'Active Client').length,
+      prospects: orgs.filter((o) => o.status === 'Cold' || o.status === 'Working').length,
     };
-  }, [quotes, clients]);
+  }, [quotes, orgs]);
 
   const serviceBreakdown = useMemo(() => {
     const completedProjects = quotes.filter((q) => q.status === 'completed');
