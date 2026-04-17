@@ -18,11 +18,12 @@ import {
   User,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { useUser } from '@/contexts/UserContext';
 
 const EXPANDED_WIDTH = 240;
 const COLLAPSED_WIDTH = 64;
 
-const LOGO_URI =
+const FALLBACK_LOGO_URI =
   'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/4xwcbfcj6r2usqk7tds89';
 
 const NAV_ITEMS = [
@@ -58,6 +59,9 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const widthAnim = useRef(new Animated.Value(defaultCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH)).current;
+
+  const { orgAdmin } = useUser();
+  const logoUri = orgAdmin?.companyLogo || FALLBACK_LOGO_URI;
 
   useEffect(() => {
     setCollapsed(defaultCollapsed);
@@ -97,7 +101,7 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
 
       {!collapsed && (
         <View style={styles.logoContainer}>
-          <Image source={{ uri: LOGO_URI }} style={styles.logo} resizeMode="contain" />
+          <Image source={{ uri: logoUri }} style={styles.logo} resizeMode="contain" />
         </View>
       )}
 

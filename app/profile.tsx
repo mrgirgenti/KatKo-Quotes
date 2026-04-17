@@ -19,7 +19,6 @@ import {
   Phone,
   Check,
   Plus,
-  ChevronRight,
   Trash2,
   BarChart3,
   Lock,
@@ -31,6 +30,12 @@ import {
   HelpCircle,
   Copy,
   ExternalLink,
+  Image as ImageIcon,
+  Globe,
+  Link,
+  Shield,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { GOOGLE_SCRIPT_TEMPLATE } from '@/utils/googleSheetsExport';
@@ -41,29 +46,36 @@ import { AVATAR_COLORS, UserProfile } from '@/types/user';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { currentUser, users, updateUser, createUser, switchUser, deleteUser, isUpdating } = useUser();
+  const { currentUser, users, updateUser, createUser, deleteUser, isUpdating, isOrgAdmin } = useUser();
 
   const [name, setName] = useState(currentUser?.name || '');
   const [businessName, setBusinessName] = useState(currentUser?.businessName || '');
   const [email, setEmail] = useState(currentUser?.email || '');
   const [phone, setPhone] = useState(currentUser?.phone || '');
   const [selectedColor, setSelectedColor] = useState(currentUser?.avatarColor || AVATAR_COLORS[0]);
-  const [showUserList, setShowUserList] = useState(false);
-  const [newUserName, setNewUserName] = useState('');
-  const [showNewUserInput, setShowNewUserInput] = useState(false);
+  const [profilePicture, setProfilePicture] = useState(currentUser?.profilePicture || '');
+
+  const [companyLogo, setCompanyLogo] = useState(currentUser?.companyLogo || '');
   const [adminPassword, setAdminPassword] = useState(currentUser?.adminPassword || '');
   const [showPassword, setShowPassword] = useState(false);
   const [isEditingPassword, setIsEditingPassword] = useState(false);
-  const [isEditingSheets, setIsEditingSheets] = useState(false);
   const [googleSheetsUrl, setGoogleSheetsUrl] = useState(currentUser?.googleSheetsUrl || '');
-  const [profilePicture, setProfilePicture] = useState(currentUser?.profilePicture || '');
+  const [waveAccountingUrl, setWaveAccountingUrl] = useState(currentUser?.waveAccountingUrl || '');
+  const [waveApiKey, setWaveApiKey] = useState(currentUser?.waveApiKey || '');
+  const [vendorCatalogUrls, setVendorCatalogUrls] = useState(currentUser?.vendorCatalogUrls || '');
+
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserRole, setNewUserRole] = useState<'org_admin' | 'user'>('user');
+  const [showNewUserForm, setShowNewUserForm] = useState(false);
+
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
-  const [pendingAction, setPendingAction] = useState<'editPassword' | 'editSheets' | null>(null);
   const [showScriptHelp, setShowScriptHelp] = useState(false);
+  const [showApiSection, setShowApiSection] = useState(false);
+  const [showUserMgmt, setShowUserMgmt] = useState(true);
 
   const isPasswordLocked = currentUser?.adminPasswordLocked && currentUser?.adminPassword;
-  const isSheetsLocked = currentUser?.googleSheetsUrl && currentUser?.adminPassword;
 
   React.useEffect(() => {
     if (currentUser) {
@@ -72,11 +84,23 @@ export default function ProfileScreen() {
       setEmail(currentUser.email);
       setPhone(currentUser.phone);
       setSelectedColor(currentUser.avatarColor);
+      setProfilePicture(currentUser.profilePicture || '');
+      setCompanyLogo(currentUser.companyLogo || '');
       setAdminPassword(currentUser.adminPassword || '');
       setGoogleSheetsUrl(currentUser.googleSheetsUrl || '');
-      setProfilePicture(currentUser.profilePicture || '');
+      setWaveAccountingUrl(currentUser.waveAccountingUrl || '');
+      setWaveApiKey(currentUser.waveApiKey || '');
+      setVendorCatalogUrls(currentUser.vendorCatalogUrls || '');
     }
   }, [currentUser]);
+
+  const getInitials = (userName: string) =>
+    userName
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
 
   const pickProfilePicture = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -85,84 +109,36 @@ export default function ProfileScreen() {
       aspect: [1, 1],
       quality: 0.8,
     });
-
     if (!result.canceled && result.assets[0]) {
       setProfilePicture(result.assets[0].uri);
     }
   }, []);
 
   const removeProfilePicture = useCallback(() => {
-    Alert.alert('Remove Photo', 'Are you sure you want to remove your profile photo?', [
+    Alert.alert('Remove Photo', 'Remove your profile photo?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: () => setProfilePicture('') },
     ]);
   }, []);
 
-  const verifyAdminPassword = useCallback((action: 'editPassword' | 'editSheets') => {
-    if (!currentUser?.adminPassword) {
-      return true;
+  const pickCompanyLogo = useCallback(async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [4, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setCompanyLogo(result.assets[0].uri);
     }
-    setPendingAction(action);
-    setPasswordInput('');
-    setShowPasswordPrompt(true);
-    return false;
-  }, [currentUser?.adminPassword]);
+  }, []);
 
-  const handlePasswordVerification = useCallback(() => {
-    if (passwordInput === currentUser?.adminPassword) {
-      setShowPasswordPrompt(false);
-      setPasswordInput('');
-      if (pendingAction === 'editPassword') {
-        setIsEditingPassword(true);
-        setAdminPassword('');
-        Alert.alert(
-          'Edit Admin Password',
-          'You can now enter a new admin password below.',
-          [{ text: 'OK' }]
-        );
-      } else if (pendingAction === 'editSheets') {
-        setIsEditingSheets(true);
-        Alert.alert(
-          'Edit Google Sheets URL',
-          'You can now edit the Google Sheets URL below.',
-          [{ text: 'OK' }]
-        );
-      }
-      setPendingAction(null);
-    } else {
-      Alert.alert('Incorrect Password', 'The admin password you entered is incorrect.');
-    }
-  }, [passwordInput, currentUser?.adminPassword, pendingAction]);
-
-  const handleResetPasswordByEmail = useCallback(() => {
-    if (!currentUser?.email) {
-      Alert.alert('No Email', 'Please add an email address to your profile first.');
-      return;
-    }
-    Alert.alert(
-      'Reset Admin Password',
-      `A password reset link will be sent to ${currentUser.email}. For now, we'll clear your admin password so you can set a new one.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset Password',
-          onPress: () => {
-            if (currentUser) {
-              const updatedUser: UserProfile = {
-                ...currentUser,
-                adminPassword: '',
-                adminPasswordLocked: false,
-              };
-              updateUser(updatedUser);
-              setAdminPassword('');
-              setShowPasswordPrompt(false);
-              Alert.alert('Password Reset', 'Your admin password has been cleared. Please set a new password.');
-            }
-          },
-        },
-      ]
-    );
-  }, [currentUser, updateUser]);
+  const removeCompanyLogo = useCallback(() => {
+    Alert.alert('Remove Logo', 'Remove your company logo?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => setCompanyLogo('') },
+    ]);
+  }, []);
 
   const handleSave = useCallback(() => {
     if (!currentUser) return;
@@ -171,7 +147,8 @@ export default function ProfileScreen() {
       return;
     }
 
-    const isSettingNewPassword = adminPassword.trim() && (!currentUser.adminPasswordLocked || isEditingPassword);
+    const isSettingNewPassword =
+      adminPassword.trim() && (!currentUser.adminPasswordLocked || isEditingPassword);
 
     const updatedUser: UserProfile = {
       ...currentUser,
@@ -180,95 +157,124 @@ export default function ProfileScreen() {
       email: email.trim(),
       phone: phone.trim(),
       avatarColor: selectedColor,
-      isAdmin: true,
-      adminPassword: isEditingPassword ? adminPassword.trim() : (adminPassword.trim() || currentUser.adminPassword || ''),
-      adminPasswordLocked: isSettingNewPassword ? true : currentUser.adminPasswordLocked,
-      googleSheetsUrl: googleSheetsUrl.trim(),
       profilePicture,
+      ...(isOrgAdmin() && {
+        companyLogo,
+        adminPassword: isEditingPassword
+          ? adminPassword.trim()
+          : adminPassword.trim() || currentUser.adminPassword || '',
+        adminPasswordLocked: isSettingNewPassword ? true : currentUser.adminPasswordLocked,
+        googleSheetsUrl: googleSheetsUrl.trim(),
+        waveAccountingUrl: waveAccountingUrl.trim(),
+        waveApiKey: waveApiKey.trim(),
+        vendorCatalogUrls: vendorCatalogUrls.trim(),
+      }),
     };
 
     updateUser(updatedUser);
     setIsEditingPassword(false);
-    setIsEditingSheets(false);
     setShowPassword(false);
-    
+
     if (isSettingNewPassword) {
-      Alert.alert('Success', 'Profile updated and admin password is now locked. You will need to enter it to make changes.');
+      Alert.alert(
+        'Saved',
+        'Profile updated. Admin password is now locked — you will need it to make changes.'
+      );
     } else {
-      Alert.alert('Success', 'Profile updated successfully');
+      Alert.alert('Saved', 'Profile updated successfully.');
     }
-  }, [currentUser, name, businessName, email, phone, selectedColor, updateUser, adminPassword, googleSheetsUrl, profilePicture, isEditingPassword]);
+  }, [
+    currentUser,
+    name,
+    businessName,
+    email,
+    phone,
+    selectedColor,
+    profilePicture,
+    companyLogo,
+    adminPassword,
+    googleSheetsUrl,
+    waveAccountingUrl,
+    waveApiKey,
+    vendorCatalogUrls,
+    updateUser,
+    isEditingPassword,
+    isOrgAdmin,
+  ]);
+
+  const handlePasswordVerification = useCallback(() => {
+    if (passwordInput === currentUser?.adminPassword) {
+      setShowPasswordPrompt(false);
+      setPasswordInput('');
+      setIsEditingPassword(true);
+      setAdminPassword('');
+    } else {
+      Alert.alert('Incorrect Password', 'The admin password you entered is incorrect.');
+    }
+  }, [passwordInput, currentUser?.adminPassword]);
+
+  const handleResetPasswordByEmail = useCallback(() => {
+    if (!currentUser?.email) {
+      Alert.alert('No Email', 'Please add an email address to your profile first.');
+      return;
+    }
+    Alert.alert(
+      'Reset Admin Password',
+      `A password reset link will be sent to ${currentUser.email}. This will clear your current admin password.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          onPress: () => {
+            if (currentUser) {
+              updateUser({ ...currentUser, adminPassword: '', adminPasswordLocked: false });
+              setAdminPassword('');
+              setShowPasswordPrompt(false);
+              Alert.alert('Password Reset', 'Admin password cleared. Please set a new one.');
+            }
+          },
+        },
+      ]
+    );
+  }, [currentUser, updateUser]);
 
   const handleCreateUser = useCallback(async () => {
     if (!newUserName.trim()) {
       Alert.alert('Error', 'Please enter a name');
       return;
     }
-    await createUser(newUserName.trim());
+    await createUser(newUserName.trim(), newUserEmail.trim(), newUserRole);
     setNewUserName('');
-    setShowNewUserInput(false);
-    setShowUserList(false);
-  }, [newUserName, createUser]);
+    setNewUserEmail('');
+    setNewUserRole('user');
+    setShowNewUserForm(false);
+  }, [newUserName, newUserEmail, newUserRole, createUser]);
 
-  const handleSwitchUser = useCallback(async (userId: string) => {
-    await switchUser(userId);
-    setShowUserList(false);
-  }, [switchUser]);
-
-  const handleDeleteUser = useCallback((user: UserProfile) => {
-    if (users.length <= 1) {
-      Alert.alert('Error', 'You must have at least one user');
-      return;
-    }
-    
-    Alert.alert(
-      'Delete User',
-      `Are you sure you want to delete "${user.name}"? This will also delete all their quotes and sales data.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            if (currentUser?.id === user.id) {
-              const otherUser = users.find((u) => u.id !== user.id);
-              if (otherUser) {
-                switchUser(otherUser.id);
-              }
-            }
-            deleteUser(user.id);
+  const handleDeleteUser = useCallback(
+    (user: UserProfile) => {
+      if (user.role === 'org_admin') {
+        Alert.alert('Cannot Delete', 'You cannot delete the Organization Admin.');
+        return;
+      }
+      if (users.length <= 1) {
+        Alert.alert('Error', 'You must have at least one user.');
+        return;
+      }
+      Alert.alert(
+        'Delete User',
+        `Delete "${user.name}"? This will also delete their quotes and sales data.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => deleteUser(user.id),
           },
-        },
-      ]
-    );
-  }, [users, currentUser, switchUser, deleteUser]);
-
-  const getInitials = (userName: string) => {
-    return userName
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const handleAdminPasswordFocus = useCallback(() => {
-    if (isPasswordLocked && !isEditingPassword) {
-      verifyAdminPassword('editPassword');
-    }
-  }, [isPasswordLocked, isEditingPassword, verifyAdminPassword]);
-
-  const handleGoogleSheetsFocus = useCallback(() => {
-    if (isSheetsLocked && !isEditingSheets) {
-      verifyAdminPassword('editSheets');
-    }
-  }, [isSheetsLocked, isEditingSheets, verifyAdminPassword]);
-
-  const handleGoogleSheetsPress = useCallback(() => {
-    if (isSheetsLocked && !isEditingSheets) {
-      verifyAdminPassword('editSheets');
-    }
-  }, [isSheetsLocked, isEditingSheets, verifyAdminPassword]);
+        ]
+      );
+    },
+    [users, deleteUser]
+  );
 
   if (!currentUser) {
     return (
@@ -280,6 +286,8 @@ export default function ProfileScreen() {
       </View>
     );
   }
+
+  const orgAdmin = isOrgAdmin();
 
   return (
     <KeyboardAvoidingView
@@ -295,113 +303,62 @@ export default function ProfileScreen() {
         }}
       />
 
-      <ScrollView 
-        style={styles.scrollView} 
+      <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <TouchableOpacity
-          style={styles.userSwitchCard}
-          onPress={() => setShowUserList(!showUserList)}
-        >
-          {profilePicture ? (
-            <Image source={{ uri: profilePicture }} style={styles.avatarLargeImage} />
-          ) : (
-            <View style={[styles.avatarLarge, { backgroundColor: currentUser.avatarColor }]}>
-              <Text style={styles.avatarTextLarge}>{getInitials(currentUser.name)}</Text>
-            </View>
-          )}
-          <View style={styles.userSwitchInfo}>
-            <Text style={styles.currentUserName}>{currentUser.name}</Text>
-            <Text style={styles.switchLabel}>Tap to switch users</Text>
-          </View>
-          <ChevronRight size={20} color={Colors.light.textSecondary} />
-        </TouchableOpacity>
-
-        {showUserList && (
-          <View style={styles.userListCard}>
-            <Text style={styles.userListTitle}>Switch User</Text>
-            {users.map((user) => (
-              <View key={user.id} style={styles.userListItemContainer}>
-                <TouchableOpacity
-                  style={styles.userListItem}
-                  onPress={() => handleSwitchUser(user.id)}
-                >
-                  {user.profilePicture ? (
-                    <Image source={{ uri: user.profilePicture }} style={styles.avatarSmallImage} />
-                  ) : (
-                    <View style={[styles.avatarSmall, { backgroundColor: user.avatarColor }]}>
-                      <Text style={styles.avatarTextSmall}>{getInitials(user.name)}</Text>
-                    </View>
-                  )}
-                  <Text style={styles.userListName}>{user.name}</Text>
-                  {user.id === currentUser.id && (
-                    <Check size={18} color={Colors.light.success} />
-                  )}
-                </TouchableOpacity>
-                {user.id !== currentUser.id && (
-                  <TouchableOpacity
-                    style={styles.deleteUserBtn}
-                    onPress={() => handleDeleteUser(user)}
-                  >
-                    <Trash2 size={16} color={Colors.light.error} />
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))}
-
-            {showNewUserInput ? (
-              <View style={styles.newUserRow}>
-                <TextInput
-                  style={styles.newUserInput}
-                  placeholder="Enter name"
-                  placeholderTextColor={Colors.light.textSecondary}
-                  value={newUserName}
-                  onChangeText={setNewUserName}
-                  autoFocus
-                />
-                <TouchableOpacity style={styles.addUserBtn} onPress={handleCreateUser}>
-                  <Check size={18} color="#fff" />
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.addNewUserBtn}
-                onPress={() => setShowNewUserInput(true)}
-              >
-                <Plus size={18} color={Colors.light.tint} />
-                <Text style={styles.addNewUserText}>Add New User</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Profile Picture</Text>
+          <Text style={styles.sectionTitle}>Profile Photo</Text>
           <View style={styles.card}>
-            <View style={styles.profilePictureContainer}>
-              {profilePicture ? (
-                <Image source={{ uri: profilePicture }} style={styles.profilePicturePreview} />
-              ) : (
-                <View style={[styles.profilePicturePlaceholder, { backgroundColor: selectedColor }]}>
-                  <Camera size={32} color="#fff" />
+            <View style={styles.photoRow}>
+              <TouchableOpacity onPress={pickProfilePicture}>
+                {profilePicture ? (
+                  <Image source={{ uri: profilePicture }} style={styles.photoPreview} />
+                ) : (
+                  <View style={[styles.photoPicturePlaceholder, { backgroundColor: selectedColor }]}>
+                    <Text style={styles.photoInitials}>{getInitials(currentUser.name)}</Text>
+                  </View>
+                )}
+                <View style={styles.cameraOverlay}>
+                  <Camera size={14} color="#fff" />
                 </View>
-              )}
-              <View style={styles.profilePictureActions}>
-                <TouchableOpacity style={styles.profilePictureBtn} onPress={pickProfilePicture}>
-                  <Camera size={18} color={Colors.light.tint} />
-                  <Text style={styles.profilePictureBtnText}>
+              </TouchableOpacity>
+
+              <View style={styles.photoActions}>
+                <TouchableOpacity style={styles.photoBtn} onPress={pickProfilePicture}>
+                  <Camera size={15} color={Colors.light.tint} />
+                  <Text style={styles.photoBtnText}>
                     {profilePicture ? 'Change Photo' : 'Add Photo'}
                   </Text>
                 </TouchableOpacity>
                 {profilePicture && (
-                  <TouchableOpacity style={styles.profilePictureRemoveBtn} onPress={removeProfilePicture}>
-                    <Trash2 size={18} color={Colors.light.error} />
-                    <Text style={styles.profilePictureRemoveBtnText}>Remove</Text>
+                  <TouchableOpacity style={styles.photoRemoveBtn} onPress={removeProfilePicture}>
+                    <Trash2 size={15} color={Colors.light.error} />
+                    <Text style={styles.photoRemoveBtnText}>Remove</Text>
                   </TouchableOpacity>
                 )}
               </View>
+            </View>
+
+            <View style={styles.colorDivider} />
+            <Text style={styles.colorLabel}>Avatar Color</Text>
+            <Text style={styles.inputHint}>Used when no photo is set</Text>
+            <View style={styles.colorGrid}>
+              {AVATAR_COLORS.map((color) => (
+                <TouchableOpacity
+                  key={color}
+                  style={[
+                    styles.colorOption,
+                    { backgroundColor: color },
+                    selectedColor === color && styles.colorOptionSelected,
+                  ]}
+                  onPress={() => setSelectedColor(color)}
+                >
+                  {selectedColor === color && <Check size={18} color="#fff" />}
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
         </View>
@@ -411,7 +368,7 @@ export default function ProfileScreen() {
           <View style={styles.card}>
             <View style={styles.inputGroup}>
               <View style={styles.inputLabel}>
-                <User size={16} color={Colors.light.textSecondary} />
+                <User size={15} color={Colors.light.textSecondary} />
                 <Text style={styles.inputLabelText}>Name</Text>
               </View>
               <TextInput
@@ -425,7 +382,7 @@ export default function ProfileScreen() {
 
             <View style={styles.inputGroup}>
               <View style={styles.inputLabel}>
-                <Building2 size={16} color={Colors.light.textSecondary} />
+                <Building2 size={15} color={Colors.light.textSecondary} />
                 <Text style={styles.inputLabelText}>Business Name</Text>
               </View>
               <TextInput
@@ -439,7 +396,7 @@ export default function ProfileScreen() {
 
             <View style={styles.inputGroup}>
               <View style={styles.inputLabel}>
-                <Mail size={16} color={Colors.light.textSecondary} />
+                <Mail size={15} color={Colors.light.textSecondary} />
                 <Text style={styles.inputLabelText}>Email</Text>
               </View>
               <TextInput
@@ -453,9 +410,9 @@ export default function ProfileScreen() {
               />
             </View>
 
-            <View style={styles.inputGroup}>
+            <View style={[styles.inputGroup, { marginBottom: 0 }]}>
               <View style={styles.inputLabel}>
-                <Phone size={16} color={Colors.light.textSecondary} />
+                <Phone size={15} color={Colors.light.textSecondary} />
                 <Text style={styles.inputLabelText}>Phone</Text>
               </View>
               <TextInput
@@ -470,160 +427,361 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Avatar Color</Text>
-          <View style={styles.card}>
-            <Text style={styles.inputHint}>Used when no profile picture is set</Text>
-            <View style={styles.colorGrid}>
-              {AVATAR_COLORS.map((color) => (
-                <TouchableOpacity
-                  key={color}
-                  style={[
-                    styles.colorOption,
-                    { backgroundColor: color },
-                    selectedColor === color && styles.colorOptionSelected,
-                  ]}
-                  onPress={() => setSelectedColor(color)}
-                >
-                  {selectedColor === color && <Check size={20} color="#fff" />}
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Admin Settings</Text>
-          <View style={styles.card}>
-            <View style={styles.inputGroup}>
-              <View style={styles.inputLabel}>
-                <Lock size={16} color={Colors.light.textSecondary} />
-                <Text style={styles.inputLabelText}>Admin Password</Text>
-                {isPasswordLocked && (
-                  <View style={styles.lockedBadge}>
-                    <Lock size={12} color={Colors.light.warning} />
-                    <Text style={styles.lockedBadgeText}>Locked</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={styles.inputHint}>
-                {isPasswordLocked 
-                  ? 'Password is locked. Tap the field to unlock with current password.' 
-                  : 'Used to unlock locked sales and protect settings. Once set, it will be locked.'}
-              </Text>
-              <View style={styles.passwordInputContainer}>
-                <TextInput
-                  style={styles.passwordInput}
-                  placeholder={isPasswordLocked && !isEditingPassword ? '••••••••' : 'Set admin password'}
-                  placeholderTextColor={Colors.light.textSecondary}
-                  value={isPasswordLocked && !isEditingPassword ? '' : adminPassword}
-                  onChangeText={setAdminPassword}
-                  secureTextEntry={isPasswordLocked && !isEditingPassword ? true : !showPassword}
-                  editable={!isPasswordLocked || isEditingPassword}
-                  onFocus={handleAdminPasswordFocus}
-                />
-                {(!isPasswordLocked || isEditingPassword) && (
-                  <TouchableOpacity
-                    style={styles.passwordToggle}
-                    onPress={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff size={20} color={Colors.light.textSecondary} />
-                    ) : (
-                      <Eye size={20} color={Colors.light.textSecondary} />
-                    )}
-                  </TouchableOpacity>
-                )}
-                {isPasswordLocked && !isEditingPassword && (
-                  <View style={styles.passwordToggle}>
-                    <Lock size={20} color={Colors.light.textSecondary} />
-                  </View>
-                )}
-              </View>
-              {isPasswordLocked && (
-                <TouchableOpacity 
-                  style={styles.resetPasswordLink}
-                  onPress={handleResetPasswordByEmail}
-                >
-                  <RefreshCw size={14} color={Colors.light.tint} />
-                  <Text style={styles.resetPasswordLinkText}>Forgot password? Reset via email</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <View style={styles.inputGroup}>
-              <View style={styles.inputLabel}>
-                <Sheet size={16} color={Colors.light.textSecondary} />
-                <Text style={styles.inputLabelText}>Google Sheets Web App URL</Text>
-                {isSheetsLocked && (
-                  <View style={styles.lockedBadge}>
-                    <Lock size={12} color={Colors.light.warning} />
-                    <Text style={styles.lockedBadgeText}>Protected</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={styles.inputHint}>
-                {isSheetsLocked 
-                  ? 'Protected by admin password. Tap to edit.' 
-                  : 'Paste your Google Apps Script web app URL to export sales directly'}
-              </Text>
-              <TouchableOpacity
-                activeOpacity={1}
-                onPress={handleGoogleSheetsPress}
-                style={styles.urlInputWrapper}
-              >
-                <TextInput
-                  style={[styles.input, styles.urlInput]}
-                  placeholder="https://script.google.com/macros/s/..."
-                  placeholderTextColor={Colors.light.textSecondary}
-                  value={googleSheetsUrl}
-                  onChangeText={setGoogleSheetsUrl}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="url"
-                  editable={!isSheetsLocked || isEditingSheets}
-                  onFocus={handleGoogleSheetsFocus}
-                  multiline={false}
-                  returnKeyType="done"
-                  textContentType="URL"
-                  pointerEvents={isSheetsLocked && !isEditingSheets ? 'none' : 'auto'}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.setupHelpBtn}
-                onPress={() => setShowScriptHelp(true)}
-              >
-                <HelpCircle size={14} color={Colors.light.tint} />
-                <Text style={styles.setupHelpBtnText}>How to set up Google Sheets integration</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
         <TouchableOpacity
           style={[styles.saveButton, isUpdating && styles.saveButtonDisabled]}
           onPress={handleSave}
           disabled={isUpdating}
         >
-          <Text style={styles.saveButtonText}>{isUpdating ? 'Saving...' : 'Save Changes'}</Text>
+          <Text style={styles.saveButtonText}>{isUpdating ? 'Saving…' : 'Save Changes'}</Text>
         </TouchableOpacity>
+
+        {orgAdmin && (
+          <>
+            <View style={styles.orgHeader}>
+              <Shield size={18} color={Colors.light.tint} />
+              <Text style={styles.orgHeaderText}>Organization Settings</Text>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Company Logo</Text>
+              <View style={styles.card}>
+                <View style={styles.logoRow}>
+                  {companyLogo ? (
+                    <Image source={{ uri: companyLogo }} style={styles.logoPreview} resizeMode="contain" />
+                  ) : (
+                    <View style={styles.logoPlaceholder}>
+                      <ImageIcon size={28} color={Colors.light.textSecondary} />
+                      <Text style={styles.logoPlaceholderText}>No logo</Text>
+                    </View>
+                  )}
+                  <View style={styles.logoActions}>
+                    <TouchableOpacity style={styles.photoBtn} onPress={pickCompanyLogo}>
+                      <Camera size={15} color={Colors.light.tint} />
+                      <Text style={styles.photoBtnText}>{companyLogo ? 'Change' : 'Upload Logo'}</Text>
+                    </TouchableOpacity>
+                    {companyLogo && (
+                      <TouchableOpacity style={styles.photoRemoveBtn} onPress={removeCompanyLogo}>
+                        <Trash2 size={15} color={Colors.light.error} />
+                        <Text style={styles.photoRemoveBtnText}>Remove</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+                <Text style={styles.inputHint}>Displayed in the sidebar. Recommended 4:1 ratio.</Text>
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <TouchableOpacity
+                style={styles.collapsibleHeader}
+                onPress={() => setShowApiSection(!showApiSection)}
+              >
+                <Text style={styles.sectionTitle}>API Integrations</Text>
+                {showApiSection ? (
+                  <ChevronUp size={18} color={Colors.light.textSecondary} />
+                ) : (
+                  <ChevronDown size={18} color={Colors.light.textSecondary} />
+                )}
+              </TouchableOpacity>
+
+              {showApiSection && (
+                <View style={styles.card}>
+                  <View style={styles.inputGroup}>
+                    <View style={styles.inputLabel}>
+                      <Globe size={15} color={Colors.light.textSecondary} />
+                      <Text style={styles.inputLabelText}>Wave Accounting URL</Text>
+                    </View>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="https://..."
+                      placeholderTextColor={Colors.light.textSecondary}
+                      value={waveAccountingUrl}
+                      onChangeText={setWaveAccountingUrl}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      keyboardType="url"
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <View style={styles.inputLabel}>
+                      <Lock size={15} color={Colors.light.textSecondary} />
+                      <Text style={styles.inputLabelText}>Wave API Key</Text>
+                    </View>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Wave API key"
+                      placeholderTextColor={Colors.light.textSecondary}
+                      value={waveApiKey}
+                      onChangeText={setWaveApiKey}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      secureTextEntry
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <View style={styles.inputLabel}>
+                      <Link size={15} color={Colors.light.textSecondary} />
+                      <Text style={styles.inputLabelText}>Vendor Catalog URLs</Text>
+                    </View>
+                    <Text style={styles.inputHint}>One URL per line</Text>
+                    <TextInput
+                      style={[styles.input, styles.multilineInput]}
+                      placeholder="https://vendor1.com/catalog&#10;https://vendor2.com/catalog"
+                      placeholderTextColor={Colors.light.textSecondary}
+                      value={vendorCatalogUrls}
+                      onChangeText={setVendorCatalogUrls}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      multiline
+                      numberOfLines={3}
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <View style={styles.inputLabel}>
+                      <Sheet size={15} color={Colors.light.textSecondary} />
+                      <Text style={styles.inputLabelText}>Google Sheets Web App URL</Text>
+                    </View>
+                    <Text style={styles.inputHint}>
+                      Paste your Google Apps Script web app URL to export sales directly
+                    </Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="https://script.google.com/macros/s/..."
+                      placeholderTextColor={Colors.light.textSecondary}
+                      value={googleSheetsUrl}
+                      onChangeText={setGoogleSheetsUrl}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      keyboardType="url"
+                    />
+                    <TouchableOpacity
+                      style={styles.helpBtn}
+                      onPress={() => setShowScriptHelp(true)}
+                    >
+                      <HelpCircle size={13} color={Colors.light.tint} />
+                      <Text style={styles.helpBtnText}>How to set up Google Sheets integration</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={[styles.inputGroup, { marginBottom: 0 }]}>
+                    <View style={styles.inputLabel}>
+                      <Lock size={15} color={Colors.light.textSecondary} />
+                      <Text style={styles.inputLabelText}>Admin Password</Text>
+                      {isPasswordLocked && (
+                        <View style={styles.lockedBadge}>
+                          <Lock size={11} color={Colors.light.warning} />
+                          <Text style={styles.lockedBadgeText}>Locked</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.inputHint}>
+                      {isPasswordLocked
+                        ? 'Password is locked. Tap to change.'
+                        : 'Used to unlock locked sales. Once set, it will be locked.'}
+                    </Text>
+                    <View style={styles.passwordInputContainer}>
+                      <TextInput
+                        style={styles.passwordInput}
+                        placeholder={isPasswordLocked && !isEditingPassword ? '••••••••' : 'Set admin password'}
+                        placeholderTextColor={Colors.light.textSecondary}
+                        value={isPasswordLocked && !isEditingPassword ? '' : adminPassword}
+                        onChangeText={setAdminPassword}
+                        secureTextEntry={isPasswordLocked && !isEditingPassword ? true : !showPassword}
+                        editable={!isPasswordLocked || isEditingPassword}
+                        onFocus={() => {
+                          if (isPasswordLocked && !isEditingPassword) {
+                            setPasswordInput('');
+                            setShowPasswordPrompt(true);
+                          }
+                        }}
+                      />
+                      {(!isPasswordLocked || isEditingPassword) && (
+                        <TouchableOpacity
+                          style={styles.passwordToggle}
+                          onPress={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? (
+                            <EyeOff size={18} color={Colors.light.textSecondary} />
+                          ) : (
+                            <Eye size={18} color={Colors.light.textSecondary} />
+                          )}
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    {isPasswordLocked && (
+                      <TouchableOpacity style={styles.helpBtn} onPress={handleResetPasswordByEmail}>
+                        <RefreshCw size={13} color={Colors.light.tint} />
+                        <Text style={styles.helpBtnText}>Forgot password? Reset via email</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              )}
+            </View>
+
+            <View style={styles.section}>
+              <TouchableOpacity
+                style={styles.collapsibleHeader}
+                onPress={() => setShowUserMgmt(!showUserMgmt)}
+              >
+                <Text style={styles.sectionTitle}>User Management</Text>
+                {showUserMgmt ? (
+                  <ChevronUp size={18} color={Colors.light.textSecondary} />
+                ) : (
+                  <ChevronDown size={18} color={Colors.light.textSecondary} />
+                )}
+              </TouchableOpacity>
+
+              {showUserMgmt && (
+                <View style={styles.card}>
+                  {users.map((user) => (
+                    <View key={user.id} style={styles.userRow}>
+                      <View style={[styles.userAvatar, { backgroundColor: user.avatarColor }]}>
+                        {user.profilePicture ? (
+                          <Image source={{ uri: user.profilePicture }} style={styles.userAvatarImage} />
+                        ) : (
+                          <Text style={styles.userAvatarText}>{getInitials(user.name)}</Text>
+                        )}
+                      </View>
+                      <View style={styles.userInfo}>
+                        <Text style={styles.userName}>{user.name}</Text>
+                        {user.email ? (
+                          <Text style={styles.userEmail}>{user.email}</Text>
+                        ) : null}
+                      </View>
+                      <View
+                        style={[
+                          styles.roleBadge,
+                          user.role === 'org_admin' ? styles.roleBadgeAdmin : styles.roleBadgeUser,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.roleBadgeText,
+                            user.role === 'org_admin'
+                              ? styles.roleBadgeTextAdmin
+                              : styles.roleBadgeTextUser,
+                          ]}
+                        >
+                          {user.role === 'org_admin' ? 'Admin' : 'User'}
+                        </Text>
+                      </View>
+                      {user.role !== 'org_admin' && (
+                        <TouchableOpacity
+                          style={styles.deleteUserBtn}
+                          onPress={() => handleDeleteUser(user)}
+                        >
+                          <Trash2 size={16} color={Colors.light.error} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ))}
+
+                  {showNewUserForm ? (
+                    <View style={styles.newUserForm}>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Name *"
+                        placeholderTextColor={Colors.light.textSecondary}
+                        value={newUserName}
+                        onChangeText={setNewUserName}
+                        autoFocus
+                      />
+                      <TextInput
+                        style={[styles.input, { marginTop: 8 }]}
+                        placeholder="Email (optional)"
+                        placeholderTextColor={Colors.light.textSecondary}
+                        value={newUserEmail}
+                        onChangeText={setNewUserEmail}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                      />
+                      <View style={styles.rolePickerRow}>
+                        <Text style={styles.rolePickerLabel}>Role:</Text>
+                        <TouchableOpacity
+                          style={[
+                            styles.rolePickerBtn,
+                            newUserRole === 'user' && styles.rolePickerBtnActive,
+                          ]}
+                          onPress={() => setNewUserRole('user')}
+                        >
+                          <Text
+                            style={[
+                              styles.rolePickerBtnText,
+                              newUserRole === 'user' && styles.rolePickerBtnTextActive,
+                            ]}
+                          >
+                            User
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[
+                            styles.rolePickerBtn,
+                            newUserRole === 'org_admin' && styles.rolePickerBtnActive,
+                          ]}
+                          onPress={() => setNewUserRole('org_admin')}
+                        >
+                          <Text
+                            style={[
+                              styles.rolePickerBtnText,
+                              newUserRole === 'org_admin' && styles.rolePickerBtnTextActive,
+                            ]}
+                          >
+                            Admin
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                      <View style={styles.newUserFormActions}>
+                        <TouchableOpacity
+                          style={styles.newUserCancelBtn}
+                          onPress={() => {
+                            setShowNewUserForm(false);
+                            setNewUserName('');
+                            setNewUserEmail('');
+                            setNewUserRole('user');
+                          }}
+                        >
+                          <Text style={styles.newUserCancelText}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.newUserConfirmBtn} onPress={handleCreateUser}>
+                          <Check size={16} color="#fff" />
+                          <Text style={styles.newUserConfirmText}>Add User</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.addUserBtn}
+                      onPress={() => setShowNewUserForm(true)}
+                    >
+                      <Plus size={16} color={Colors.light.tint} />
+                      <Text style={styles.addUserBtnText}>Add New User</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </View>
+          </>
+        )}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Reports & Export</Text>
-          <TouchableOpacity
-            style={styles.reportCard}
-            onPress={() => router.push('/reports')}
-          >
+          <TouchableOpacity style={styles.reportCard} onPress={() => router.push('/reports')}>
             <View style={styles.reportCardLeft}>
               <View style={styles.reportIcon}>
-                <BarChart3 size={22} color={Colors.light.tint} />
+                <BarChart3 size={20} color={Colors.light.tint} />
               </View>
               <View>
                 <Text style={styles.reportTitle}>View Reports</Text>
                 <Text style={styles.reportDesc}>Filter and export quotes & sales data</Text>
               </View>
             </View>
-            <ChevronRight size={20} color={Colors.light.textSecondary} />
+            <View style={styles.reportChevron}>
+              <Text style={styles.reportChevronText}>›</Text>
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -631,7 +789,7 @@ export default function ProfileScreen() {
       </ScrollView>
 
       {showScriptHelp && (
-        <View style={styles.passwordPromptOverlay}>
+        <View style={styles.overlay}>
           <View style={styles.scriptHelpCard}>
             <View style={styles.scriptHelpHeader}>
               <Text style={styles.scriptHelpTitle}>Google Sheets Setup</Text>
@@ -641,46 +799,53 @@ export default function ProfileScreen() {
             </View>
             <ScrollView style={styles.scriptHelpContent} showsVerticalScrollIndicator={false}>
               <Text style={styles.scriptHelpStep}>Step 1: Create a new Google Sheet</Text>
-              <Text style={styles.scriptHelpText}>Open Google Sheets and create a new blank spreadsheet for your sales data.</Text>
-              
+              <Text style={styles.scriptHelpText}>
+                Open Google Sheets and create a new blank spreadsheet.
+              </Text>
+
               <Text style={styles.scriptHelpStep}>Step 2: Open Apps Script</Text>
               <Text style={styles.scriptHelpText}>Go to Extensions → Apps Script</Text>
-              
+
               <Text style={styles.scriptHelpStep}>Step 3: Paste the script</Text>
-              <Text style={styles.scriptHelpText}>Delete any existing code and paste the script below. Then click the copy button.</Text>
-              
+              <Text style={styles.scriptHelpText}>
+                Delete any existing code and paste the script below.
+              </Text>
+
               <View style={styles.scriptCodeBox}>
                 <Text style={styles.scriptCodeText} numberOfLines={8}>
                   {GOOGLE_SCRIPT_TEMPLATE.trim().substring(0, 500)}...
                 </Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.copyScriptBtn}
                   onPress={async () => {
                     await Clipboard.setStringAsync(GOOGLE_SCRIPT_TEMPLATE.trim());
                     Alert.alert('Copied!', 'Script copied to clipboard. Paste it in Google Apps Script.');
                   }}
                 >
-                  <Copy size={16} color="#fff" />
+                  <Copy size={15} color="#fff" />
                   <Text style={styles.copyScriptBtnText}>Copy Full Script</Text>
                 </TouchableOpacity>
               </View>
-              
+
               <Text style={styles.scriptHelpStep}>Step 4: Deploy as Web App</Text>
               <Text style={styles.scriptHelpText}>
-                {"1. Click \"Deploy\" → \"New deployment\"\n2. Select \"Web app\" as type\n3. Set \"Execute as\" to \"Me\"\n4. Set \"Who has access\" to \"Anyone\"\n5. Click \"Deploy\" and authorize"}
+                {
+                  '1. Click "Deploy" → "New deployment"\n2. Select "Web app" as type\n3. Set "Execute as" to "Me"\n4. Set "Who has access" to "Anyone"\n5. Click "Deploy" and authorize'
+                }
               </Text>
-              
+
               <Text style={styles.scriptHelpStep}>Step 5: Copy the Web App URL</Text>
-              <Text style={styles.scriptHelpText}>Copy the URL that starts with https://script.google.com/macros/s/... and paste it above.</Text>
-              
+              <Text style={styles.scriptHelpText}>
+                Copy the URL that starts with https://script.google.com/macros/s/... and paste it above.
+              </Text>
+
               <View style={styles.scriptHelpNote}>
-                <Text style={styles.scriptHelpNoteText}>Note: The URL must be the Web App URL, not the regular Google Sheets URL.</Text>
+                <Text style={styles.scriptHelpNoteText}>
+                  Note: Use the Web App URL, not the regular Google Sheets URL.
+                </Text>
               </View>
             </ScrollView>
-            <TouchableOpacity 
-              style={styles.scriptHelpCloseBtn}
-              onPress={() => setShowScriptHelp(false)}
-            >
+            <TouchableOpacity style={styles.scriptHelpCloseBtn} onPress={() => setShowScriptHelp(false)}>
               <Text style={styles.scriptHelpCloseBtnText}>Got it</Text>
             </TouchableOpacity>
           </View>
@@ -688,47 +853,34 @@ export default function ProfileScreen() {
       )}
 
       {showPasswordPrompt && (
-        <View style={styles.passwordPromptOverlay}>
-          <View style={styles.passwordPromptCard}>
-            <Text style={styles.passwordPromptTitle}>Enter Admin Password</Text>
-            <Text style={styles.passwordPromptDesc}>
-              {pendingAction === 'editPassword' 
-                ? 'Enter your current password to change it' 
-                : 'Enter your admin password to edit the Google Sheets URL'}
-            </Text>
-            <View style={styles.passwordPromptInputContainer}>
-              <TextInput
-                style={styles.passwordPromptInput}
-                placeholder="Admin password"
-                placeholderTextColor={Colors.light.textSecondary}
-                value={passwordInput}
-                onChangeText={setPasswordInput}
-                secureTextEntry
-                autoFocus
-              />
-            </View>
-            <View style={styles.passwordPromptActions}>
-              <TouchableOpacity 
-                style={styles.passwordPromptCancelBtn}
+        <View style={styles.overlay}>
+          <View style={styles.promptCard}>
+            <Text style={styles.promptTitle}>Enter Admin Password</Text>
+            <Text style={styles.promptDesc}>Enter your current password to change it</Text>
+            <TextInput
+              style={styles.promptInput}
+              placeholder="Admin password"
+              placeholderTextColor={Colors.light.textSecondary}
+              value={passwordInput}
+              onChangeText={setPasswordInput}
+              secureTextEntry
+              autoFocus
+            />
+            <View style={styles.promptActions}>
+              <TouchableOpacity
+                style={styles.promptCancelBtn}
                 onPress={() => {
                   setShowPasswordPrompt(false);
                   setPasswordInput('');
-                  setPendingAction(null);
                 }}
               >
-                <Text style={styles.passwordPromptCancelText}>Cancel</Text>
+                <Text style={styles.promptCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.passwordPromptConfirmBtn}
-                onPress={handlePasswordVerification}
-              >
-                <Text style={styles.passwordPromptConfirmText}>Verify</Text>
+              <TouchableOpacity style={styles.promptConfirmBtn} onPress={handlePasswordVerification}>
+                <Text style={styles.promptConfirmText}>Verify</Text>
               </TouchableOpacity>
             </View>
-            <TouchableOpacity 
-              style={styles.forgotPasswordBtn}
-              onPress={handleResetPasswordByEmail}
-            >
+            <TouchableOpacity style={styles.forgotPasswordBtn} onPress={handleResetPasswordByEmail}>
               <Text style={styles.forgotPasswordText}>Forgot password?</Text>
             </TouchableOpacity>
           </View>
@@ -759,142 +911,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.light.textSecondary,
   },
-  userSwitchCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.light.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-  },
-  avatarLarge: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarLargeImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-  },
-  avatarTextLarge: {
-    fontSize: 20,
-    fontWeight: '700' as const,
-    color: '#fff',
-  },
-  userSwitchInfo: {
-    flex: 1,
-    marginLeft: 14,
-  },
-  currentUserName: {
-    fontSize: 18,
-    fontWeight: '700' as const,
-    color: Colors.light.text,
-  },
-  switchLabel: {
-    fontSize: 13,
-    color: Colors.light.textSecondary,
-    marginTop: 2,
-  },
-  userListCard: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-  },
-  userListTitle: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.light.textSecondary,
-    marginBottom: 10,
-  },
-  userListItemContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  userListItem: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-  },
-  avatarSmall: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarSmallImage: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-  },
-  avatarTextSmall: {
-    fontSize: 14,
-    fontWeight: '700' as const,
-    color: '#fff',
-  },
-  userListName: {
-    flex: 1,
-    fontSize: 15,
-    color: Colors.light.text,
-    marginLeft: 12,
-  },
-  deleteUserBtn: {
-    padding: 10,
-    marginLeft: 8,
-  },
-  newUserRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 10,
-    gap: 10,
-  },
-  newUserInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: Colors.light.text,
-  },
-  addUserBtn: {
-    backgroundColor: Colors.light.tint,
-    padding: 10,
-    borderRadius: 8,
-  },
-  addNewUserBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    marginTop: 8,
-    gap: 6,
-  },
-  addNewUserText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.light.tint,
-  },
   section: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700' as const,
     color: Colors.light.text,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   card: {
     backgroundColor: Colors.light.surface,
@@ -903,46 +927,87 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.light.border,
   },
-  inputGroup: {
-    marginBottom: 16,
+  photoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
   },
-  inputLabel: {
+  photoPreview: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+  },
+  photoPicturePlaceholder: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoInitials: {
+    fontSize: 22,
+    fontWeight: '700' as const,
+    color: '#fff',
+  },
+  cameraOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: Colors.light.tint,
+    borderRadius: 10,
+    padding: 4,
+  },
+  photoActions: {
+    flex: 1,
+    gap: 6,
+  },
+  photoBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 6,
-  },
-  inputLabelText: {
-    fontSize: 13,
-    color: Colors.light.textSecondary,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: 8,
+    paddingVertical: 8,
     paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 15,
+    backgroundColor: Colors.light.highlightBg,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  photoBtnText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: Colors.light.tint,
+  },
+  photoRemoveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    alignSelf: 'flex-start',
+  },
+  photoRemoveBtnText: {
+    fontSize: 13,
+    color: Colors.light.error,
+  },
+  colorDivider: {
+    height: 1,
+    backgroundColor: Colors.light.border,
+    marginVertical: 12,
+  },
+  colorLabel: {
+    fontSize: 13,
+    fontWeight: '600' as const,
     color: Colors.light.text,
-    backgroundColor: Colors.light.background,
-  },
-  urlInput: {
-    minHeight: 48,
-  },
-  urlInputWrapper: {
-    width: '100%',
+    marginBottom: 2,
   },
   colorGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    justifyContent: 'center',
+    gap: 10,
     marginTop: 8,
   },
   colorOption: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -955,29 +1020,104 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
+  inputGroup: {
+    marginBottom: 14,
+  },
+  inputLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 5,
+  },
+  inputLabelText: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: Colors.light.text,
+    backgroundColor: Colors.light.background,
+  },
+  multilineInput: {
+    minHeight: 72,
+    textAlignVertical: 'top',
+  },
+  inputHint: {
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+    marginBottom: 6,
+  },
   saveButton: {
     backgroundColor: Colors.light.tint,
     borderRadius: 10,
-    paddingVertical: 16,
+    paddingVertical: 14,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   saveButtonDisabled: {
     opacity: 0.6,
   },
   saveButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700' as const,
     color: '#fff',
   },
-  bottomPadding: {
-    height: 60,
+  orgHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
   },
-  inputHint: {
-    fontSize: 12,
-    color: Colors.light.textSecondary,
+  orgHeaderText: {
+    fontSize: 17,
+    fontWeight: '700' as const,
+    color: Colors.light.tint,
+  },
+  collapsibleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 8,
-    marginTop: -2,
+  },
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 8,
+  },
+  logoPreview: {
+    width: 120,
+    height: 44,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
+  logoPlaceholder: {
+    width: 120,
+    height: 44,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 2,
+  },
+  logoPlaceholderText: {
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+  },
+  logoActions: {
+    flex: 1,
+    gap: 6,
   },
   passwordInputContainer: {
     flexDirection: 'row',
@@ -990,12 +1130,180 @@ const styles = StyleSheet.create({
   passwordInput: {
     flex: 1,
     paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 15,
+    paddingVertical: 10,
+    fontSize: 14,
     color: Colors.light.text,
   },
   passwordToggle: {
-    padding: 12,
+    padding: 10,
+  },
+  lockedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: Colors.light.warningBg,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginLeft: 6,
+  },
+  lockedBadgeText: {
+    fontSize: 10,
+    fontWeight: '600' as const,
+    color: Colors.light.warning,
+  },
+  helpBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 8,
+  },
+  helpBtnText: {
+    fontSize: 12,
+    color: Colors.light.tint,
+  },
+  userRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+    gap: 10,
+  },
+  userAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  userAvatarImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  userAvatarText: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: '#fff',
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.light.text,
+  },
+  userEmail: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    marginTop: 1,
+  },
+  roleBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  roleBadgeAdmin: {
+    backgroundColor: Colors.light.highlightBg,
+  },
+  roleBadgeUser: {
+    backgroundColor: Colors.light.border,
+  },
+  roleBadgeText: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+  },
+  roleBadgeTextAdmin: {
+    color: Colors.light.tint,
+  },
+  roleBadgeTextUser: {
+    color: Colors.light.textSecondary,
+  },
+  deleteUserBtn: {
+    padding: 8,
+  },
+  newUserForm: {
+    marginTop: 12,
+    gap: 0,
+  },
+  rolePickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+  },
+  rolePickerLabel: {
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+  },
+  rolePickerBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
+  rolePickerBtnActive: {
+    backgroundColor: Colors.light.tint,
+    borderColor: Colors.light.tint,
+  },
+  rolePickerBtnText: {
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+    fontWeight: '500' as const,
+  },
+  rolePickerBtnTextActive: {
+    color: '#fff',
+    fontWeight: '600' as const,
+  },
+  newUserFormActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  newUserCancelBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    alignItems: 'center',
+  },
+  newUserCancelText: {
+    fontSize: 14,
+    color: Colors.light.textSecondary,
+    fontWeight: '500' as const,
+  },
+  newUserConfirmBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: Colors.light.tint,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  newUserConfirmText: {
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: '600' as const,
+  },
+  addUserBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    marginTop: 4,
+  },
+  addUserBtnText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.light.tint,
   },
   reportCard: {
     flexDirection: 'row',
@@ -1003,106 +1311,44 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: Colors.light.surface,
     borderRadius: 12,
-    padding: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: Colors.light.border,
   },
   reportCardLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
   },
   reportIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
     backgroundColor: Colors.light.highlightBg,
     justifyContent: 'center',
     alignItems: 'center',
   },
   reportTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600' as const,
     color: Colors.light.text,
   },
   reportDesc: {
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.light.textSecondary,
     marginTop: 2,
   },
-  profilePictureContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  profilePicturePreview: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-  },
-  profilePicturePlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  reportChevron: {
     justifyContent: 'center',
-    alignItems: 'center',
   },
-  profilePictureActions: {
-    flex: 1,
-    gap: 8,
+  reportChevronText: {
+    fontSize: 22,
+    color: Colors.light.textSecondary,
   },
-  profilePictureBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    backgroundColor: Colors.light.highlightBg,
-    borderRadius: 8,
+  bottomPadding: {
+    height: 40,
   },
-  profilePictureBtnText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.light.tint,
-  },
-  profilePictureRemoveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-  },
-  profilePictureRemoveBtnText: {
-    fontSize: 14,
-    fontWeight: '500' as const,
-    color: Colors.light.error,
-  },
-  lockedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.light.warningBg,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginLeft: 8,
-  },
-  lockedBadgeText: {
-    fontSize: 11,
-    fontWeight: '600' as const,
-    color: Colors.light.warning,
-  },
-  resetPasswordLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 10,
-  },
-  resetPasswordLinkText: {
-    fontSize: 13,
-    color: Colors.light.tint,
-  },
-  passwordPromptOverlay: {
+  overlay: {
     position: 'absolute',
     top: 0,
     left: 0,
@@ -1113,83 +1359,71 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-  passwordPromptCard: {
+  promptCard: {
     backgroundColor: Colors.light.surface,
     borderRadius: 16,
-    padding: 24,
+    padding: 22,
     width: '100%',
     maxWidth: 340,
   },
-  passwordPromptTitle: {
-    fontSize: 18,
+  promptTitle: {
+    fontSize: 17,
     fontWeight: '700' as const,
     color: Colors.light.text,
-    marginBottom: 8,
+    marginBottom: 6,
     textAlign: 'center',
   },
-  passwordPromptDesc: {
-    fontSize: 14,
+  promptDesc: {
+    fontSize: 13,
     color: Colors.light.textSecondary,
-    marginBottom: 20,
+    marginBottom: 16,
     textAlign: 'center',
   },
-  passwordPromptInputContainer: {
-    marginBottom: 20,
-  },
-  passwordPromptInput: {
+  promptInput: {
     borderWidth: 1,
     borderColor: Colors.light.border,
     borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
     color: Colors.light.text,
     backgroundColor: Colors.light.background,
+    marginBottom: 16,
   },
-  passwordPromptActions: {
+  promptActions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
-  passwordPromptCancelBtn: {
+  promptCancelBtn: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 11,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: Colors.light.border,
     alignItems: 'center',
   },
-  passwordPromptCancelText: {
-    fontSize: 15,
+  promptCancelText: {
+    fontSize: 14,
     fontWeight: '600' as const,
     color: Colors.light.textSecondary,
   },
-  passwordPromptConfirmBtn: {
+  promptConfirmBtn: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 11,
     borderRadius: 8,
     backgroundColor: Colors.light.tint,
     alignItems: 'center',
   },
-  passwordPromptConfirmText: {
-    fontSize: 15,
+  promptConfirmText: {
+    fontSize: 14,
     fontWeight: '600' as const,
     color: '#fff',
   },
   forgotPasswordBtn: {
-    marginTop: 16,
+    marginTop: 14,
     alignItems: 'center',
   },
   forgotPasswordText: {
-    fontSize: 14,
-    color: Colors.light.tint,
-  },
-  setupHelpBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 10,
-  },
-  setupHelpBtnText: {
     fontSize: 13,
     color: Colors.light.tint,
   },
@@ -1204,10 +1438,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   scriptHelpTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700' as const,
     color: Colors.light.text,
   },
@@ -1215,14 +1449,14 @@ const styles = StyleSheet.create({
     maxHeight: 400,
   },
   scriptHelpStep: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700' as const,
     color: Colors.light.tint,
-    marginTop: 16,
-    marginBottom: 6,
+    marginTop: 14,
+    marginBottom: 4,
   },
   scriptHelpText: {
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.light.text,
     lineHeight: 20,
   },
@@ -1230,13 +1464,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#1e1e1e',
     borderRadius: 8,
     padding: 12,
-    marginTop: 10,
+    marginTop: 8,
   },
   scriptCodeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     color: '#d4d4d4',
-    lineHeight: 16,
+    lineHeight: 15,
   },
   copyScriptBtn: {
     flexDirection: 'row',
@@ -1244,35 +1478,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     backgroundColor: Colors.light.tint,
-    paddingVertical: 10,
+    paddingVertical: 9,
     borderRadius: 6,
-    marginTop: 10,
+    marginTop: 8,
   },
   copyScriptBtnText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600' as const,
     color: '#fff',
   },
   scriptHelpNote: {
     backgroundColor: Colors.light.warningBg,
     borderRadius: 8,
-    padding: 12,
-    marginTop: 16,
+    padding: 10,
+    marginTop: 14,
   },
   scriptHelpNoteText: {
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.light.warning,
     fontWeight: '500' as const,
   },
   scriptHelpCloseBtn: {
     backgroundColor: Colors.light.tint,
     borderRadius: 10,
-    paddingVertical: 14,
+    paddingVertical: 13,
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 14,
   },
   scriptHelpCloseBtnText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600' as const,
     color: '#fff',
   },

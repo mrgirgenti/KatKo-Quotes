@@ -6,11 +6,16 @@ export interface UserProfile {
   phone: string;
   avatarColor: string;
   createdAt: string;
+  role: 'org_admin' | 'user';
   isAdmin?: boolean;
   adminPassword?: string;
   adminPasswordLocked?: boolean;
   googleSheetsUrl?: string;
   profilePicture?: string;
+  companyLogo?: string;
+  waveAccountingUrl?: string;
+  waveApiKey?: string;
+  vendorCatalogUrls?: string;
 }
 
 export const AVATAR_COLORS = [
@@ -32,4 +37,5 @@ export const DEFAULT_USER: UserProfile = {
   phone: '',
   avatarColor: '#FF5A00',
   createdAt: new Date().toISOString(),
+  role: 'org_admin',
 };

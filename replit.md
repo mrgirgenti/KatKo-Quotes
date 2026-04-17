@@ -9,7 +9,16 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 - Per-line-item completion tracking in Production View
 - Rich filter bar: status pills, search, total range, sort
 - Reports generation (PDF, CSV, Google Sheets export)
-- User profiles with avatar support
+- User profiles with avatar support and role-based access control
+
+## Role Hierarchy & Profile System
+- **Two roles**: `org_admin` and `user` (stored in `UserProfile.role`)
+- First/default user is always `org_admin`; newly created users default to `user`
+- Backward migration: if stored users lack a role, first user becomes `org_admin`, rest become `user`
+- **Org Admin Profile extras**: Company logo upload (replaces static sidebar logo), API Integrations (Wave Accounting URL/key, vendor catalog URLs, Google Sheets export URL, admin password), and User Management (add/delete users with role picker, view all users with role badges)
+- **Standard User Profile**: Photo, avatar color, name, contact info only — no Organization Settings
+- Sidebar reads dynamic company logo from `orgAdmin.companyLogo` (falls back to hardcoded CDN URI)
+- `UserContext` exposes: `isOrgAdmin()`, `orgAdmin` (first user with role=org_admin), `createUser(name, email?, role?)`
 
 ## CRM / Contact System
 - Full CRM pipeline: Cold → Working → Active Client → Past Client

@@ -7,10 +7,40 @@ import { UserProfile, DEFAULT_USER, AVATAR_COLORS } from '@/types/user';
 const USERS_STORAGE_KEY = 'printshop_users';
 const CURRENT_USER_KEY = 'printshop_current_user';
 
+type StoredUser = Omit<UserProfile, 'role'> & {
+  role?: 'org_admin' | 'user';
+  isAdmin?: boolean;
+};
+
+function migrateUsers(stored: StoredUser[]): UserProfile[] {
+  const anyHasLegacyAdmin = stored.some((u) => u.isAdmin === true);
+  return stored.map((u, index): UserProfile => {
+    if (u.role === 'org_admin' || u.role === 'user') {
+      return { ...u, role: u.role };
+    }
+    let role: 'org_admin' | 'user';
+    if (u.isAdmin === true) {
+      role = 'org_admin';
+    } else if (!anyHasLegacyAdmin && index === 0) {
+      role = 'org_admin';
+    } else {
+      role = 'user';
+    }
+    return { ...u, role };
+  });
+}
+
 async function loadUsers(): Promise<UserProfile[]> {
   try {
     const stored = await AsyncStorage.getItem(USERS_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
+    if (!stored) return [];
+    const parsed: StoredUser[] = JSON.parse(stored);
+    const migrated = migrateUsers(parsed);
+    const needsMigration = parsed.some((u) => !u.role);
+    if (needsMigration) {
+      await AsyncStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(migrated));
+    }
+    return migrated;
   } catch (error) {
     console.log('Error loading users:', error);
     return [];
@@ -70,6 +100,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
       const defaultUser: UserProfile = {
         ...DEFAULT_USER,
         id: generateUserId(),
+        role: 'org_admin',
         createdAt: new Date().toISOString(),
       };
       addUserMutation.mutate(defaultUser);
@@ -82,6 +113,10 @@ export const [UserProvider, useUser] = createContextHook(() => {
   }, [isInitialized, usersQuery.data]);
 
   const currentUser = usersQuery.data?.find((u) => u.id === currentUserId) || null;
+
+  const orgAdmin = usersQuery.data?.find((u) => u.role === 'org_admin') || null;
+
+  const isOrgAdmin = () => currentUser?.role === 'org_admin';
 
   const addUserMutation = useMutation({
     mutationFn: async (newUser: UserProfile) => {
@@ -121,18 +156,22 @@ export const [UserProvider, useUser] = createContextHook(() => {
     await saveCurrentUserId(userId);
   };
 
-  const createUser = async (name: string) => {
+  const createUser = async (
+    name: string,
+    email?: string,
+    role: 'org_admin' | 'user' = 'user'
+  ) => {
     const newUser: UserProfile = {
       id: generateUserId(),
       name,
       businessName: '',
-      email: '',
+      email: email || '',
       phone: '',
       avatarColor: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
       createdAt: new Date().toISOString(),
+      role,
     };
     addUserMutation.mutate(newUser);
-    await switchUser(newUser.id);
     return newUser;
   };
 
@@ -140,7 +179,9 @@ export const [UserProvider, useUser] = createContextHook(() => {
     users: usersQuery.data || [],
     currentUser,
     currentUserId,
+    orgAdmin,
     isLoading: usersQuery.isLoading || !isInitialized,
+    isOrgAdmin,
     switchUser,
     createUser,
     updateUser: updateUserMutation.mutate,
