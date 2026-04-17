@@ -1,35 +1,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
-import { Organization, Contact, ActivityEntry, CampaignAssignment, CampaignTemplate, CrmStatus, Department } from '@/types/crm';
+import {
+  Organization,
+  Contact,
+  ActivityEntry,
+  CampaignAssignment,
+  CampaignTemplate,
+  CampaignStep,
+  CrmStatus,
+  Department,
+} from '@/types/crm';
 import { generateId } from '@/utils/quoteCalculations';
 
 const ORGS_KEY = 'crm_organizations';
 const TEMPLATES_KEY = 'crm_campaign_templates';
-
-async function loadOrgs(): Promise<Organization[]> {
-  try {
-    const stored = await AsyncStorage.getItem(ORGS_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch { return []; }
-}
-
-async function saveOrgs(orgs: Organization[]): Promise<Organization[]> {
-  await AsyncStorage.setItem(ORGS_KEY, JSON.stringify(orgs));
-  return orgs;
-}
-
-async function loadTemplates(): Promise<CampaignTemplate[]> {
-  try {
-    const stored = await AsyncStorage.getItem(TEMPLATES_KEY);
-    return stored ? JSON.parse(stored) : DEFAULT_TEMPLATES;
-  } catch { return DEFAULT_TEMPLATES; }
-}
-
-async function saveTemplates(templates: CampaignTemplate[]): Promise<CampaignTemplate[]> {
-  await AsyncStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
-  return templates;
-}
 
 const DEFAULT_TEMPLATES: CampaignTemplate[] = [
   {
@@ -37,11 +22,11 @@ const DEFAULT_TEMPLATES: CampaignTemplate[] = [
     name: 'Standard 4-Week Outreach',
     description: '2 calls + 3 emails over 4 weeks',
     steps: [
-      { stepNumber: 1, type: 'call',  label: 'Initial Cold Call',    dayOffset: 0  },
-      { stepNumber: 2, type: 'email', label: 'Follow-Up Email #1',   dayOffset: 3  },
-      { stepNumber: 3, type: 'call',  label: 'Second Call Attempt',  dayOffset: 10 },
-      { stepNumber: 4, type: 'email', label: 'Follow-Up Email #2',   dayOffset: 14 },
-      { stepNumber: 5, type: 'email', label: 'Final Follow-Up Email',dayOffset: 28 },
+      { stepNumber: 1, type: 'call',  label: 'Initial Cold Call',     dayOffset: 0  },
+      { stepNumber: 2, type: 'email', label: 'Follow-Up Email #1',    dayOffset: 3  },
+      { stepNumber: 3, type: 'call',  label: 'Second Call Attempt',   dayOffset: 10 },
+      { stepNumber: 4, type: 'email', label: 'Follow-Up Email #2',    dayOffset: 14 },
+      { stepNumber: 5, type: 'email', label: 'Final Follow-Up Email', dayOffset: 28 },
     ],
     createdAt: new Date().toISOString(),
   },
@@ -50,12 +35,12 @@ const DEFAULT_TEMPLATES: CampaignTemplate[] = [
     name: 'Church / Ministry Outreach',
     description: 'Relationship-focused, 6-week gentle approach',
     steps: [
-      { stepNumber: 1, type: 'call',  label: 'Introduction Call',       dayOffset: 0  },
-      { stepNumber: 2, type: 'email', label: 'Welcome + Portfolio Email',dayOffset: 5  },
-      { stepNumber: 3, type: 'call',  label: 'Check-In Call',           dayOffset: 14 },
-      { stepNumber: 4, type: 'email', label: 'Ministry Discount Offer', dayOffset: 21 },
-      { stepNumber: 5, type: 'call',  label: 'Final Touch Base Call',   dayOffset: 35 },
-      { stepNumber: 6, type: 'email', label: 'Closing Email',           dayOffset: 42 },
+      { stepNumber: 1, type: 'call',  label: 'Introduction Call',        dayOffset: 0  },
+      { stepNumber: 2, type: 'email', label: 'Welcome + Portfolio Email', dayOffset: 5  },
+      { stepNumber: 3, type: 'call',  label: 'Check-In Call',            dayOffset: 14 },
+      { stepNumber: 4, type: 'email', label: 'Ministry Discount Offer',  dayOffset: 21 },
+      { stepNumber: 5, type: 'call',  label: 'Final Touch Base Call',    dayOffset: 35 },
+      { stepNumber: 6, type: 'email', label: 'Closing Email',            dayOffset: 42 },
     ],
     createdAt: new Date().toISOString(),
   },
@@ -74,32 +59,75 @@ const DEFAULT_TEMPLATES: CampaignTemplate[] = [
   },
 ];
 
+async function apiFetch(path: string, opts?: RequestInit) {
+  const res = await fetch(path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', ...(opts?.headers ?? {}) },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `API error ${res.status}`);
+  }
+  return res.json();
+}
+
+async function loadTemplates(): Promise<CampaignTemplate[]> {
+  try {
+    const stored = await AsyncStorage.getItem(TEMPLATES_KEY);
+    return stored ? JSON.parse(stored) : DEFAULT_TEMPLATES;
+  } catch { return DEFAULT_TEMPLATES; }
+}
+
+async function saveTemplates(templates: CampaignTemplate[]): Promise<CampaignTemplate[]> {
+  await AsyncStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
+  return templates;
+}
+
 export const [CrmProvider, useCrm] = createContextHook(() => {
   const queryClient = useQueryClient();
 
-  const orgsQuery = useQuery({ queryKey: ['crm_orgs'], queryFn: loadOrgs });
-  const templatesQuery = useQuery({ queryKey: ['crm_templates'], queryFn: loadTemplates });
+  const orgsQuery = useQuery<Organization[]>({
+    queryKey: ['crm_orgs'],
+    queryFn: async () => {
+      try {
+        const serverOrgs: Organization[] = await apiFetch('/api/orgs');
+        if (serverOrgs.length === 0) {
+          const localData = await AsyncStorage.getItem(ORGS_KEY).catch(() => null);
+          if (localData) {
+            const localOrgs: Organization[] = JSON.parse(localData);
+            if (localOrgs.length > 0) {
+              await apiFetch('/api/migrate', {
+                method: 'POST',
+                body: JSON.stringify({ orgs: localOrgs }),
+              }).catch(() => null);
+              return apiFetch('/api/orgs');
+            }
+          }
+        }
+        return serverOrgs;
+      } catch (err) {
+        console.error('[CrmContext] loadOrgs failed', err);
+        return [];
+      }
+    },
+    staleTime: 1000 * 30,
+  });
+
+  const templatesQuery = useQuery({
+    queryKey: ['crm_templates'],
+    queryFn: loadTemplates,
+  });
 
   const orgs = orgsQuery.data || [];
   const templates = templatesQuery.data || DEFAULT_TEMPLATES;
 
-  const mutate = (fn: (orgs: Organization[]) => Organization[]) =>
-    saveOrgs(fn(orgsQuery.data || []));
+  const invalidateOrgs = () => queryClient.invalidateQueries({ queryKey: ['crm_orgs'] });
 
   const addOrgMutation = useMutation({
     mutationFn: async (data: Omit<Organization, 'id' | 'createdAt' | 'contacts' | 'activityLog' | 'campaigns' | 'departments'>) => {
-      const org: Organization = {
-        ...data,
-        id: generateId(),
-        departments: [],
-        contacts: [],
-        activityLog: [],
-        campaigns: [],
-        createdAt: new Date().toISOString(),
-      };
-      return saveOrgs([org, ...(orgsQuery.data || [])]);
+      return apiFetch('/api/orgs', { method: 'POST', body: JSON.stringify(data) });
     },
-    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+    onSuccess: invalidateOrgs,
   });
 
   const addOrgWithContactMutation = useMutation({
@@ -110,95 +138,89 @@ export const [CrmProvider, useCrm] = createContextHook(() => {
       orgData: Omit<Organization, 'id' | 'createdAt' | 'contacts' | 'activityLog' | 'campaigns' | 'departments'>;
       contactData?: Omit<Contact, 'id' | 'createdAt' | 'organizationId'>;
     }) => {
-      const orgId = generateId();
-      const contacts: Contact[] = contactData
-        ? [{
-            ...contactData,
-            id: generateId(),
-            organizationId: orgId,
-            createdAt: new Date().toISOString(),
-          }]
-        : [];
-      const org: Organization = {
-        ...orgData,
-        id: orgId,
-        departments: [],
-        contacts,
-        activityLog: [],
-        campaigns: [],
-        createdAt: new Date().toISOString(),
-      };
-      return saveOrgs([org, ...(orgsQuery.data || [])]);
+      return apiFetch('/api/orgs', {
+        method: 'POST',
+        body: JSON.stringify({ ...orgData, contact: contactData }),
+      });
     },
-    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+    onSuccess: invalidateOrgs,
   });
 
   const updateOrgMutation = useMutation({
-    mutationFn: async (org: Organization) =>
-      mutate((all) => all.map((o) => (o.id === org.id ? org : o))),
-    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+    mutationFn: async (org: Organization) => {
+      return apiFetch(`/api/orgs/${org.id}`, { method: 'PUT', body: JSON.stringify(org) });
+    },
+    onSuccess: invalidateOrgs,
   });
 
   const deleteOrgMutation = useMutation({
-    mutationFn: async (orgId: string) =>
-      mutate((all) => all.filter((o) => o.id !== orgId)),
-    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+    mutationFn: async (orgId: string) => {
+      return apiFetch(`/api/orgs/${orgId}`, { method: 'DELETE' });
+    },
+    onSuccess: invalidateOrgs,
   });
 
   const addContactMutation = useMutation({
-    mutationFn: async ({ orgId, contact }: { orgId: string; contact: Omit<Contact, 'id' | 'createdAt' | 'organizationId'> }) =>
-      mutate((all) => all.map((o) => {
-        if (o.id !== orgId) return o;
-        const newContact: Contact = { ...contact, id: generateId(), organizationId: orgId, createdAt: new Date().toISOString() };
-        return { ...o, contacts: [...o.contacts, newContact] };
-      })),
-    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+    mutationFn: async ({
+      orgId,
+      contact,
+    }: { orgId: string; contact: Omit<Contact, 'id' | 'createdAt' | 'organizationId'> }) => {
+      return apiFetch(`/api/orgs/${orgId}/contacts`, {
+        method: 'POST',
+        body: JSON.stringify(contact),
+      });
+    },
+    onSuccess: invalidateOrgs,
   });
 
   const updateContactMutation = useMutation({
-    mutationFn: async ({ orgId, contact }: { orgId: string; contact: Contact }) =>
-      mutate((all) => all.map((o) => {
-        if (o.id !== orgId) return o;
-        return { ...o, contacts: o.contacts.map((c) => (c.id === contact.id ? contact : c)) };
-      })),
-    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+    mutationFn: async ({ orgId, contact }: { orgId: string; contact: Contact }) => {
+      return apiFetch(`/api/orgs/${orgId}/contacts/${contact.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(contact),
+      });
+    },
+    onSuccess: invalidateOrgs,
   });
 
   const deleteContactMutation = useMutation({
-    mutationFn: async ({ orgId, contactId }: { orgId: string; contactId: string }) =>
-      mutate((all) => all.map((o) => {
-        if (o.id !== orgId) return o;
-        return { ...o, contacts: o.contacts.filter((c) => c.id !== contactId) };
-      })),
-    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+    mutationFn: async ({ orgId, contactId }: { orgId: string; contactId: string }) => {
+      return apiFetch(`/api/orgs/${orgId}/contacts/${contactId}`, { method: 'DELETE' });
+    },
+    onSuccess: invalidateOrgs,
   });
 
   const addActivityMutation = useMutation({
-    mutationFn: async ({ orgId, entry }: { orgId: string; entry: Omit<ActivityEntry, 'id' | 'createdAt'> }) =>
-      mutate((all) => all.map((o) => {
-        if (o.id !== orgId) return o;
-        const newEntry: ActivityEntry = { ...entry, id: generateId(), createdAt: new Date().toISOString() };
-        return { ...o, activityLog: [newEntry, ...o.activityLog] };
-      })),
-    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+    mutationFn: async ({
+      orgId,
+      entry,
+    }: { orgId: string; entry: Omit<ActivityEntry, 'id' | 'createdAt'> }) => {
+      return apiFetch(`/api/orgs/${orgId}/activity`, {
+        method: 'POST',
+        body: JSON.stringify(entry),
+      });
+    },
+    onSuccess: invalidateOrgs,
   });
 
   const updateActivityMutation = useMutation({
-    mutationFn: async ({ orgId, entry }: { orgId: string; entry: ActivityEntry }) =>
-      mutate((all) => all.map((o) => {
-        if (o.id !== orgId) return o;
-        return { ...o, activityLog: o.activityLog.map((a) => (a.id === entry.id ? entry : a)) };
-      })),
-    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+    mutationFn: async ({ orgId, entry }: { orgId: string; entry: ActivityEntry }) => {
+      return apiFetch(`/api/orgs/${orgId}/activity`, {
+        method: 'PUT',
+        body: JSON.stringify(entry),
+      });
+    },
+    onSuccess: invalidateOrgs,
   });
 
   const deleteActivityMutation = useMutation({
-    mutationFn: async ({ orgId, entryId }: { orgId: string; entryId: string }) =>
-      mutate((all) => all.map((o) => {
-        if (o.id !== orgId) return o;
-        return { ...o, activityLog: o.activityLog.filter((a) => a.id !== entryId) };
-      })),
-    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+    mutationFn: async ({ orgId, entryId }: { orgId: string; entryId: string }) => {
+      return apiFetch(`/api/orgs/${orgId}/activity`, {
+        method: 'DELETE',
+        body: JSON.stringify({ entryId }),
+      });
+    },
+    onSuccess: invalidateOrgs,
   });
 
   const assignCampaignMutation = useMutation({
@@ -226,36 +248,44 @@ export const [CrmProvider, useCrm] = createContextHook(() => {
         startedDate: now.toISOString(),
         steps,
       };
-      return mutate((all) => all.map((o) => {
-        if (o.id !== orgId) return o;
-        return { ...o, campaigns: [...o.campaigns, assignment] };
-      }));
+      const org = orgs.find((o) => o.id === orgId);
+      if (!org) throw new Error('Org not found');
+      const updatedCampaigns = [...(org.campaigns || []), assignment];
+      return apiFetch(`/api/orgs/${orgId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ campaigns: updatedCampaigns }),
+      });
     },
-    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+    onSuccess: invalidateOrgs,
   });
 
   const updateCampaignStepMutation = useMutation({
-    mutationFn: async ({ orgId, campaignId, step }: { orgId: string; campaignId: string; step: import('@/types/crm').CampaignStep }) =>
-      mutate((all) => all.map((o) => {
-        if (o.id !== orgId) return o;
-        return {
-          ...o,
-          campaigns: o.campaigns.map((c) => {
-            if (c.id !== campaignId) return c;
-            return { ...c, steps: c.steps.map((s) => (s.id === step.id ? step : s)) };
-          }),
-        };
-      })),
-    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+    mutationFn: async ({ orgId, campaignId, step }: { orgId: string; campaignId: string; step: CampaignStep }) => {
+      const org = orgs.find((o) => o.id === orgId);
+      if (!org) throw new Error('Org not found');
+      const updatedCampaigns = (org.campaigns || []).map((c) => {
+        if (c.id !== campaignId) return c;
+        return { ...c, steps: c.steps.map((s) => (s.id === step.id ? step : s)) };
+      });
+      return apiFetch(`/api/orgs/${orgId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ campaigns: updatedCampaigns }),
+      });
+    },
+    onSuccess: invalidateOrgs,
   });
 
   const deleteCampaignMutation = useMutation({
-    mutationFn: async ({ orgId, campaignId }: { orgId: string; campaignId: string }) =>
-      mutate((all) => all.map((o) => {
-        if (o.id !== orgId) return o;
-        return { ...o, campaigns: o.campaigns.filter((c) => c.id !== campaignId) };
-      })),
-    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+    mutationFn: async ({ orgId, campaignId }: { orgId: string; campaignId: string }) => {
+      const org = orgs.find((o) => o.id === orgId);
+      if (!org) throw new Error('Org not found');
+      const updatedCampaigns = (org.campaigns || []).filter((c) => c.id !== campaignId);
+      return apiFetch(`/api/orgs/${orgId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ campaigns: updatedCampaigns }),
+      });
+    },
+    onSuccess: invalidateOrgs,
   });
 
   const addTemplateMutation = useMutation({
@@ -267,56 +297,76 @@ export const [CrmProvider, useCrm] = createContextHook(() => {
   });
 
   const updateOrgStatusMutation = useMutation({
-    mutationFn: async ({ orgId, status }: { orgId: string; status: CrmStatus }) =>
-      mutate((all) => all.map((o) => {
-        if (o.id !== orgId) return o;
-        const updates: Partial<Organization> = { status };
-        if (status === 'Active Client' && !o.convertedToActiveDate) {
-          updates.convertedToActiveDate = new Date().toISOString();
-        }
-        return { ...o, ...updates };
-      })),
-    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+    mutationFn: async ({ orgId, status }: { orgId: string; status: CrmStatus }) => {
+      return apiFetch(`/api/orgs/${orgId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status }),
+      });
+    },
+    onSuccess: invalidateOrgs,
   });
 
   const addDepartmentMutation = useMutation({
-    mutationFn: async ({ orgId, name, description }: { orgId: string; name: string; description?: string }) =>
-      mutate((all) => all.map((o) => {
-        if (o.id !== orgId) return o;
-        const dept: Department = { id: generateId(), name, description };
-        return { ...o, departments: [...(o.departments || []), dept] };
-      })),
-    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+    mutationFn: async ({ orgId, name, description }: { orgId: string; name: string; description?: string }) => {
+      const org = orgs.find((o) => o.id === orgId);
+      if (!org) throw new Error('Org not found');
+      const dept: Department = { id: generateId(), name, description };
+      const updatedDepts = [...(org.departments || []), dept];
+      return apiFetch(`/api/orgs/${orgId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ departments: updatedDepts }),
+      });
+    },
+    onSuccess: invalidateOrgs,
   });
 
   const updateDepartmentMutation = useMutation({
-    mutationFn: async ({ orgId, dept }: { orgId: string; dept: Department }) =>
-      mutate((all) => all.map((o) => {
-        if (o.id !== orgId) return o;
-        return { ...o, departments: (o.departments || []).map((d) => (d.id === dept.id ? dept : d)) };
-      })),
-    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+    mutationFn: async ({ orgId, dept }: { orgId: string; dept: Department }) => {
+      const org = orgs.find((o) => o.id === orgId);
+      if (!org) throw new Error('Org not found');
+      const updatedDepts = (org.departments || []).map((d) => (d.id === dept.id ? dept : d));
+      return apiFetch(`/api/orgs/${orgId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ departments: updatedDepts }),
+      });
+    },
+    onSuccess: invalidateOrgs,
   });
 
   const deleteDepartmentMutation = useMutation({
-    mutationFn: async ({ orgId, deptId }: { orgId: string; deptId: string }) =>
-      mutate((all) => all.map((o) => {
-        if (o.id !== orgId) return o;
-        return {
-          ...o,
-          departments: (o.departments || []).filter((d) => d.id !== deptId),
-          contacts: o.contacts.map((c) => c.departmentId === deptId ? { ...c, departmentId: undefined } : c),
-        };
-      })),
-    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+    mutationFn: async ({ orgId, deptId }: { orgId: string; deptId: string }) => {
+      const org = orgs.find((o) => o.id === orgId);
+      if (!org) throw new Error('Org not found');
+      const updatedDepts = (org.departments || []).filter((d) => d.id !== deptId);
+      const updatedContacts = org.contacts.map((c) =>
+        c.departmentId === deptId ? { ...c, departmentId: undefined } : c,
+      );
+      return Promise.all([
+        apiFetch(`/api/orgs/${orgId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ departments: updatedDepts }),
+        }),
+        ...updatedContacts
+          .filter((c) => !c.departmentId)
+          .map((c) =>
+            apiFetch(`/api/orgs/${orgId}/contacts/${c.id}`, {
+              method: 'PUT',
+              body: JSON.stringify(c),
+            }),
+          ),
+      ]);
+    },
+    onSuccess: invalidateOrgs,
   });
 
   const bulkImportOrgsMutation = useMutation({
     mutationFn: async (importedOrgs: Organization[]) => {
-      const existing = orgsQuery.data || [];
-      return saveOrgs([...importedOrgs, ...existing]);
+      await apiFetch('/api/migrate', {
+        method: 'POST',
+        body: JSON.stringify({ orgs: importedOrgs }),
+      });
     },
-    onSuccess: (data) => queryClient.setQueryData(['crm_orgs'], data),
+    onSuccess: invalidateOrgs,
   });
 
   return {

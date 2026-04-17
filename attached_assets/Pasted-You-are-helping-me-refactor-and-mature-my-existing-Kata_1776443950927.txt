@@ -1,0 +1,138 @@
+You are helping me refactor and mature my existing Katalyst Ko OS app into a real backend-backed system while preserving the current UI and workflow as much as possible.
+
+PROJECT GOAL:
+Katalyst Ko OS must remain the PRIMARY system. It should become the source of truth for organizations, contacts, users, projects, quotes, invoices, files, and workflow statuses. A future Client Hub will sit on top of the same data model, but for now the priority is strengthening Ko OS underneath the existing layout.
+
+CRITICAL INSTRUCTIONS:
+1. PRESERVE THE CURRENT LAYOUT AND NAVIGATION as much as possible.
+2. DO NOT redesign the quoting system, projects screens, contacts/clients section, or sidebar unless absolutely necessary.
+3. REFACTOR THE BACKEND / DATA MODEL UNDERNEATH the existing screens.
+4. MAKE ONLY MINIMAL UI CHANGES where necessary to support the new database-backed structure and workflow.
+5. Existing screens/components should be reused whenever possible.
+6. Context state should no longer be the source of truth for persistent business data. Contexts may remain as UI state helpers only.
+7. Avoid unnecessary visual changes. Prioritize architecture, persistence, relationships, and workflow integrity.
+
+CURRENT APP CONTEXT:
+The existing app has screens and layout already built for:
+- Dashboard
+- Clients / Contacts
+- Projects
+- New Quote form
+- Quote details
+- Sales / history / reports
+
+The app currently behaves more like a prototype with frontend/local state, and needs to be converted into a production-style app with persistence and a clean data model.
+
+TARGET DATA MODEL:
+Implement Prisma with PostgreSQL using this business structure:
+- Organization
+- User
+- OrganizationMembership
+- Contact
+- Project
+- ProjectItem
+- Quote
+- QuoteLineItem
+- Invoice
+- InvoiceLineItem
+- File
+- ActivityLog
+- EmailNotification
+
+BUSINESS RULES:
+1. Katalyst Ko OS is the internal operating system and master source of truth.
+2. A Project is the anchor object for the workflow.
+3. Quotes belong to Projects.
+4. Invoices belong to Projects and may optionally reference Quotes.
+5. Contacts are not the same as Users.
+6. Client portal support will come later through OrganizationMemberships and role-based access.
+7. Client submissions later should become Projects with status NEEDS_REVIEW.
+8. Add minimal support now for a future “Client Hubs” admin section, but do not build the full client-facing portal yet.
+
+REQUIRED ENUM / STATUS CONCEPTS:
+Project statuses:
+- DRAFT
+- NEEDS_REVIEW
+- AWAITING_CLIENT_INFO
+- QUOTING
+- QUOTE_SENT
+- INVOICE_SENT
+- PAID
+- IN_PRODUCTION
+- COMPLETED
+- CANCELLED
+
+Quote statuses:
+- DRAFT
+- SENT
+- APPROVED
+- REJECTED
+- EXPIRED
+
+Invoice statuses:
+- DRAFT
+- SENT
+- PARTIALLY_PAID
+- PAID
+- OVERDUE
+- VOID
+
+Internal roles:
+- SUPER_ADMIN
+- SALES
+- DESIGNER
+- FINANCE
+- PRODUCTION
+
+Client membership roles:
+- ORG_ADMIN
+- MEMBER
+- BILLING_CONTACT
+- APPROVER
+
+PRIORITY IMPLEMENTATION ORDER:
+PHASE 1
+- Add Prisma
+- Add PostgreSQL connection
+- Create schema and migrations
+- Create seed-safe initial structure if helpful
+- Build persistent models for organizations, users, contacts, projects, project items, quotes, quote line items, invoices, invoice line items
+
+PHASE 2
+- Refactor existing quote flow so quotes are saved to the database instead of only local/context state
+- Refactor projects screen to load and persist real Project records
+- Refactor clients/contacts area to load and persist Organizations + Contacts cleanly
+- Preserve the current visual layout as much as possible
+
+PHASE 3
+- Add ActivityLog support for major actions
+- Add File metadata model support
+- Add EmailNotification tracking structure
+- Add project status handling, especially NEEDS_REVIEW for future client intake
+
+PHASE 4
+- Add role-ready structure for future client access using OrganizationMembership
+- Add minimal internal admin support for “Client Hubs” enablement on organizations if easy, but do not build the full client portal yet
+
+IMPLEMENTATION RULES:
+- Reuse current pages/components wherever practical
+- Do not do a full UI rewrite
+- Minimize changes to visual structure
+- If a screen currently exists, keep it and wire it to the new backend data model
+- Keep quote calculation logic intact where possible, but make saved quotes persistent
+- Use server-side persistence as the source of truth
+- Contexts can manage loading/cached UI state, but not permanent business records
+- Keep the naming and UX intuitive for the current app owner
+
+DELIVERABLES I WANT:
+1. Prisma schema integrated into the project
+2. Database client setup
+3. Initial migrations
+4. Refactored data access layer
+5. Existing core screens wired to persistent data with minimal layout changes
+6. A short summary of what was changed structurally vs what was preserved visually
+
+IMPORTANT:
+Preserve the existing Katalyst Ko OS user experience wherever possible.
+This is a backend/data-model refactor first, not a redesign project.
+If any UI restructuring is necessary, keep it small, targeted, and clearly justified by the new data model.

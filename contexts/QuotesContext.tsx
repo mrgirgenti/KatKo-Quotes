@@ -15,202 +15,199 @@ function migrateQuote(q: any): Quote {
   return { ...q, status };
 }
 
-async function loadQuotes(): Promise<Quote[]> {
-  try {
-    const stored = await AsyncStorage.getItem(QUOTES_STORAGE_KEY);
-    if (!stored) return [];
-    const raw: any[] = JSON.parse(stored);
-    return raw.map(migrateQuote);
-  } catch (error) {
-    console.log('Error loading quotes:', error);
-    return [];
-  }
-}
-
-async function saveQuotes(quotes: Quote[]): Promise<Quote[]> {
-  try {
-    await AsyncStorage.setItem(QUOTES_STORAGE_KEY, JSON.stringify(quotes));
-    return quotes;
-  } catch (error) {
-    console.log('Error saving quotes:', error);
-    throw error;
-  }
-}
-
 function nowDateStr(): string {
   const now = new Date();
   return `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${now.getFullYear()}`;
+}
+
+async function apiFetch(path: string, opts?: RequestInit) {
+  const res = await fetch(path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', ...(opts?.headers ?? {}) },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `API error ${res.status}`);
+  }
+  return res.json();
 }
 
 export const [QuotesProvider, useQuotes] = createContextHook(() => {
   const queryClient = useQueryClient();
   const { currentUserId } = useUser();
 
-  const quotesQuery = useQuery({
+  const quotesQuery = useQuery<Quote[]>({
     queryKey: ['quotes'],
-    queryFn: loadQuotes,
+    queryFn: async () => {
+      try {
+        const serverQuotes: Quote[] = await apiFetch('/api/projects');
+        if (serverQuotes.length === 0) {
+          const localData = await AsyncStorage.getItem(QUOTES_STORAGE_KEY).catch(() => null);
+          if (localData) {
+            const raw: any[] = JSON.parse(localData);
+            const localQuotes = raw.map(migrateQuote);
+            if (localQuotes.length > 0) {
+              await apiFetch('/api/migrate', {
+                method: 'POST',
+                body: JSON.stringify({ quotes: localQuotes }),
+              }).catch(() => null);
+              return apiFetch('/api/projects');
+            }
+          }
+        }
+        return serverQuotes;
+      } catch (err) {
+        console.error('[QuotesContext] loadQuotes failed', err);
+        return [];
+      }
+    },
+    staleTime: 1000 * 30,
   });
+
+  const invalidateQuotes = () => queryClient.invalidateQueries({ queryKey: ['quotes'] });
 
   const addQuoteMutation = useMutation({
     mutationFn: async (newQuote: Quote) => {
-      const current = quotesQuery.data || [];
       const quoteWithUser = { ...newQuote, userId: currentUserId || 'default' };
-      const updated = [quoteWithUser, ...current];
-      return saveQuotes(updated);
+      return apiFetch('/api/projects', { method: 'POST', body: JSON.stringify(quoteWithUser) });
     },
-    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
+    onSuccess: invalidateQuotes,
   });
 
   const updateQuoteMutation = useMutation({
     mutationFn: async (updatedQuote: Quote) => {
-      const current = quotesQuery.data || [];
-      const updated = current.map(q => q.id === updatedQuote.id ? updatedQuote : q);
-      return saveQuotes(updated);
+      return apiFetch(`/api/projects/${updatedQuote.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(updatedQuote),
+      });
     },
-    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
+    onSuccess: invalidateQuotes,
   });
 
   const deleteQuoteMutation = useMutation({
     mutationFn: async (quoteId: string) => {
-      const current = quotesQuery.data || [];
-      const updated = current.filter(q => q.id !== quoteId);
-      return saveQuotes(updated);
+      return apiFetch(`/api/projects/${quoteId}`, { method: 'DELETE' });
     },
-    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
+    onSuccess: invalidateQuotes,
   });
 
   const convertToActiveMutation = useMutation({
     mutationFn: async (quoteId: string) => {
       const current = quotesQuery.data || [];
       const dateStr = nowDateStr();
-      const updated = current.map(q => {
-        if (q.id === quoteId) {
-          const lineItemCosts: LineItemActualCosts[] = q.lineItems.map(item => {
-            const itemQty = Object.values(item.sizes).reduce((sum, qty) => sum + qty, 0);
-            return {
-              lineItemId: item.id,
-              actualProductCost: item.productCostEach * itemQty,
-              productVendor: item.apparelProvider,
-              actualServiceCost: item.serviceCostEach * itemQty,
-              applicator: item.applicator || 'Katalyst Ko Printshop',
-              actualServiceFeesCost: item.serviceFeeEach,
-              actualServiceFeesProfit: 0,
-              actualOtherCosts: 0,
-              otherCostsDescription: '',
-            };
-          });
-          return {
-            ...q,
-            status: 'active' as QuoteStatus,
-            activeDate: dateStr,
-            salesData: {
-              convertedDate: dateStr,
-              completedDate: '',
-              actualProductCost: q.calculations.productCostTotal,
-              productVendors: [...new Set(q.lineItems.map(item => item.apparelProvider))],
-              actualServiceCost: q.calculations.serviceCostTotal,
-              applicator: q.lineItems[0]?.applicator || 'Katalyst Ko Printshop',
-              actualServiceFeesCost: q.calculations.serviceFeeTotal,
-              actualServiceFeesProfit: 0,
-              actualOtherCosts: 0,
-              otherCostsDescription: '',
-              actualOnlineFee: q.hasOnlineFee ? q.calculations.onlineFee : 0,
-              actualSalesTax: q.hasSalesTax ? q.calculations.salesTax : 0,
-              actualCardFee: q.hasCardFee ? q.calculations.cardFee : 0,
-              amountCollected: q.calculations.total,
-              notes: '',
-              lineItemCosts,
-            },
-          };
-        }
-        return q;
+      const q = current.find((x) => x.id === quoteId);
+      if (!q) throw new Error('Quote not found');
+      const lineItemCosts: LineItemActualCosts[] = q.lineItems.map((item) => {
+        const itemQty = Object.values(item.sizes).reduce((sum, qty) => sum + qty, 0);
+        return {
+          lineItemId: item.id,
+          actualProductCost: item.productCostEach * itemQty,
+          productVendor: item.apparelProvider,
+          actualServiceCost: item.serviceCostEach * itemQty,
+          applicator: item.applicator || 'Katalyst Ko Printshop',
+          actualServiceFeesCost: item.serviceFeeEach,
+          actualServiceFeesProfit: 0,
+          actualOtherCosts: 0,
+          otherCostsDescription: '',
+        };
       });
-      return saveQuotes(updated);
+      const updated: Quote = {
+        ...q,
+        status: 'active',
+        activeDate: dateStr,
+        salesData: {
+          convertedDate: dateStr,
+          completedDate: '',
+          actualProductCost: q.calculations.productCostTotal,
+          productVendors: [...new Set(q.lineItems.map((item) => item.apparelProvider))],
+          actualServiceCost: q.calculations.serviceCostTotal,
+          applicator: q.lineItems[0]?.applicator || 'Katalyst Ko Printshop',
+          actualServiceFeesCost: q.calculations.serviceFeeTotal,
+          actualServiceFeesProfit: 0,
+          actualOtherCosts: 0,
+          otherCostsDescription: '',
+          actualOnlineFee: q.hasOnlineFee ? q.calculations.onlineFee : 0,
+          actualSalesTax: q.hasSalesTax ? q.calculations.salesTax : 0,
+          actualCardFee: q.hasCardFee ? q.calculations.cardFee : 0,
+          amountCollected: q.calculations.total,
+          notes: '',
+          lineItemCosts,
+        },
+      };
+      return apiFetch(`/api/projects/${quoteId}`, { method: 'PUT', body: JSON.stringify(updated) });
     },
-    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
+    onSuccess: invalidateQuotes,
   });
 
   const markProjectCompleteMutation = useMutation({
     mutationFn: async (quoteId: string) => {
       const current = quotesQuery.data || [];
       const dateStr = nowDateStr();
-      const updated = current.map(q => {
-        if (q.id === quoteId) {
-          const completedItems = q.lineItems.map(item => ({
-            ...item,
-            completedAt: item.completedAt || dateStr,
-          }));
-          return {
-            ...q,
-            status: 'completed' as QuoteStatus,
-            lineItems: completedItems,
-            salesData: q.salesData
-              ? { ...q.salesData, completedDate: dateStr }
-              : undefined,
-          };
-        }
-        return q;
-      });
-      return saveQuotes(updated);
+      const q = current.find((x) => x.id === quoteId);
+      if (!q) throw new Error('Quote not found');
+      const updated: Quote = {
+        ...q,
+        status: 'completed',
+        lineItems: q.lineItems.map((item) => ({ ...item, completedAt: item.completedAt || dateStr })),
+        salesData: q.salesData ? { ...q.salesData, completedDate: dateStr } : undefined,
+      };
+      return apiFetch(`/api/projects/${quoteId}`, { method: 'PUT', body: JSON.stringify(updated) });
     },
-    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
+    onSuccess: invalidateQuotes,
   });
 
   const markLineItemCompleteMutation = useMutation({
     mutationFn: async ({ quoteId, lineItemId }: { quoteId: string; lineItemId: string }) => {
       const current = quotesQuery.data || [];
       const dateStr = nowDateStr();
-      const updated = current.map(q => {
-        if (q.id !== quoteId) return q;
-        const updatedItems = q.lineItems.map(item =>
-          item.id === lineItemId ? { ...item, completedAt: dateStr } : item
-        );
-        const allDone = updatedItems.every(item => !!item.completedAt);
-        return {
-          ...q,
-          lineItems: updatedItems,
-          status: allDone ? ('completed' as QuoteStatus) : q.status,
-          salesData: allDone && q.salesData
-            ? { ...q.salesData, completedDate: dateStr }
-            : q.salesData,
-        };
-      });
-      return saveQuotes(updated);
+      const q = current.find((x) => x.id === quoteId);
+      if (!q) throw new Error('Quote not found');
+      const updatedItems = q.lineItems.map((item) =>
+        item.id === lineItemId ? { ...item, completedAt: dateStr } : item,
+      );
+      const allDone = updatedItems.every((item) => !!item.completedAt);
+      const updated: Quote = {
+        ...q,
+        lineItems: updatedItems,
+        status: allDone ? 'completed' : q.status,
+        salesData: allDone && q.salesData ? { ...q.salesData, completedDate: dateStr } : q.salesData,
+      };
+      return apiFetch(`/api/projects/${quoteId}`, { method: 'PUT', body: JSON.stringify(updated) });
     },
-    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
+    onSuccess: invalidateQuotes,
   });
 
   const unmarkLineItemCompleteMutation = useMutation({
     mutationFn: async ({ quoteId, lineItemId }: { quoteId: string; lineItemId: string }) => {
       const current = quotesQuery.data || [];
-      const updated = current.map(q => {
-        if (q.id !== quoteId) return q;
-        const updatedItems = q.lineItems.map(item =>
-          item.id === lineItemId ? { ...item, completedAt: undefined } : item
-        );
-        const revertStatus: QuoteStatus = q.status === 'completed' ? 'production_started' : q.status;
-        return {
-          ...q,
-          lineItems: updatedItems,
-          status: revertStatus,
-          salesData: q.salesData ? { ...q.salesData, completedDate: '' } : q.salesData,
-        };
-      });
-      return saveQuotes(updated);
+      const q = current.find((x) => x.id === quoteId);
+      if (!q) throw new Error('Quote not found');
+      const updatedItems = q.lineItems.map((item) =>
+        item.id === lineItemId ? { ...item, completedAt: undefined } : item,
+      );
+      const revertStatus: QuoteStatus = q.status === 'completed' ? 'production_started' : q.status;
+      const updated: Quote = {
+        ...q,
+        lineItems: updatedItems,
+        status: revertStatus,
+        salesData: q.salesData ? { ...q.salesData, completedDate: '' } : q.salesData,
+      };
+      return apiFetch(`/api/projects/${quoteId}`, { method: 'PUT', body: JSON.stringify(updated) });
     },
-    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
+    onSuccess: invalidateQuotes,
   });
 
   const startProductionMutation = useMutation({
     mutationFn: async (quoteId: string) => {
       const current = quotesQuery.data || [];
       const dateStr = nowDateStr();
-      const updated = current.map(q => {
-        if (q.id !== quoteId) return q;
-        if (q.salesData) {
-          return { ...q, status: 'production_started' as QuoteStatus };
-        }
-        const lineItemCosts: LineItemActualCosts[] = q.lineItems.map(item => {
+      const q = current.find((x) => x.id === quoteId);
+      if (!q) throw new Error('Quote not found');
+      let updated: Quote;
+      if (q.salesData) {
+        updated = { ...q, status: 'production_started' };
+      } else {
+        const lineItemCosts: LineItemActualCosts[] = q.lineItems.map((item) => {
           const itemQty = Object.values(item.sizes).reduce((sum, qty) => sum + qty, 0);
           return {
             lineItemId: item.id,
@@ -224,15 +221,15 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
             otherCostsDescription: '',
           };
         });
-        return {
+        updated = {
           ...q,
-          status: 'production_started' as QuoteStatus,
+          status: 'production_started',
           activeDate: dateStr,
           salesData: {
             convertedDate: dateStr,
             completedDate: '',
             actualProductCost: q.calculations.productCostTotal,
-            productVendors: [...new Set(q.lineItems.map(item => item.apparelProvider))],
+            productVendors: [...new Set(q.lineItems.map((item) => item.apparelProvider))],
             actualServiceCost: q.calculations.serviceCostTotal,
             applicator: q.lineItems[0]?.applicator || 'Katalyst Ko Printshop',
             actualServiceFeesCost: q.calculations.serviceFeeTotal,
@@ -247,93 +244,91 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
             lineItemCosts,
           },
         };
-      });
-      return saveQuotes(updated);
+      }
+      return apiFetch(`/api/projects/${quoteId}`, { method: 'PUT', body: JSON.stringify(updated) });
     },
-    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
+    onSuccess: invalidateQuotes,
   });
 
   const updateSalesDataMutation = useMutation({
-    mutationFn: async ({ quoteId, salesData, updatedLineItems }: { quoteId: string; salesData: SalesData; updatedLineItems?: Quote['lineItems'] }) => {
+    mutationFn: async ({
+      quoteId,
+      salesData,
+      updatedLineItems,
+    }: { quoteId: string; salesData: SalesData; updatedLineItems?: Quote['lineItems'] }) => {
       const current = quotesQuery.data || [];
-      const updated = current.map(q => {
-        if (q.id === quoteId) {
-          return {
-            ...q,
-            salesData,
-            lineItems: updatedLineItems || q.lineItems,
-          };
-        }
-        return q;
-      });
-      return saveQuotes(updated);
+      const q = current.find((x) => x.id === quoteId);
+      if (!q) throw new Error('Quote not found');
+      const updated: Quote = {
+        ...q,
+        salesData,
+        lineItems: updatedLineItems || q.lineItems,
+      };
+      return apiFetch(`/api/projects/${quoteId}`, { method: 'PUT', body: JSON.stringify(updated) });
     },
-    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
+    onSuccess: invalidateQuotes,
   });
 
   const revertToQuotedMutation = useMutation({
     mutationFn: async (quoteId: string) => {
       const current = quotesQuery.data || [];
-      const updated = current.map(q => {
-        if (q.id === quoteId) {
-          return {
-            ...q,
-            status: 'quoted' as QuoteStatus,
-            salesData: undefined,
-            activeDate: undefined,
-          };
-        }
-        return q;
-      });
-      return saveQuotes(updated);
+      const q = current.find((x) => x.id === quoteId);
+      if (!q) throw new Error('Quote not found');
+      const updated: Quote = { ...q, status: 'quoted', salesData: undefined, activeDate: undefined };
+      return apiFetch(`/api/projects/${quoteId}`, { method: 'PUT', body: JSON.stringify(updated) });
     },
-    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
+    onSuccess: invalidateQuotes,
   });
 
   const lockSaleMutation = useMutation({
     mutationFn: async (quoteId: string) => {
       const current = quotesQuery.data || [];
-      const dateStr = nowDateStr();
-      const updated = current.map(q =>
-        q.id === quoteId ? { ...q, isLocked: true, lockedDate: dateStr } : q
-      );
-      return saveQuotes(updated);
+      const q = current.find((x) => x.id === quoteId);
+      if (!q) throw new Error('Quote not found');
+      const updated: Quote = { ...q, isLocked: true, lockedDate: nowDateStr() };
+      return apiFetch(`/api/projects/${quoteId}`, { method: 'PUT', body: JSON.stringify(updated) });
     },
-    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
+    onSuccess: invalidateQuotes,
   });
 
   const unlockSaleMutation = useMutation({
     mutationFn: async (quoteId: string) => {
       const current = quotesQuery.data || [];
-      const updated = current.map(q =>
-        q.id === quoteId ? { ...q, isLocked: false, lockedDate: undefined } : q
-      );
-      return saveQuotes(updated);
+      const q = current.find((x) => x.id === quoteId);
+      if (!q) throw new Error('Quote not found');
+      const updated: Quote = { ...q, isLocked: false, lockedDate: undefined };
+      return apiFetch(`/api/projects/${quoteId}`, { method: 'PUT', body: JSON.stringify(updated) });
     },
-    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
+    onSuccess: invalidateQuotes,
   });
 
   const markExportedToSheetsMutation = useMutation({
     mutationFn: async (quoteId: string) => {
       const current = quotesQuery.data || [];
+      const q = current.find((x) => x.id === quoteId);
+      if (!q) throw new Error('Quote not found');
       const dateStr = nowDateStr();
-      const updated = current.map(q =>
-        q.id === quoteId
-          ? { ...q, exportedToSheets: true, exportedToSheetsDate: dateStr, isLocked: true, lockedDate: dateStr }
-          : q
-      );
-      return saveQuotes(updated);
+      const updated: Quote = {
+        ...q,
+        exportedToSheets: true,
+        exportedToSheetsDate: dateStr,
+        isLocked: true,
+        lockedDate: dateStr,
+      };
+      return apiFetch(`/api/projects/${quoteId}`, { method: 'PUT', body: JSON.stringify(updated) });
     },
-    onSuccess: (data) => { queryClient.setQueryData(['quotes'], data); },
+    onSuccess: invalidateQuotes,
   });
 
-  const userQuotes = (quotesQuery.data || []).filter(q =>
-    !q.userId || q.userId === currentUserId || q.userId === 'default'
+  const userQuotes = (quotesQuery.data || []).filter(
+    (q) => !q.userId || q.userId === currentUserId || q.userId === 'default',
   );
 
-  const projects = userQuotes.filter(q => q.status !== 'draft');
-  const quotes = userQuotes.filter(q => q.status !== 'draft');
-  const sales = userQuotes.filter(q => q.status === 'active' || q.status === 'production_started' || q.status === 'completed');
+  const projects = userQuotes.filter((q) => q.status !== 'draft');
+  const quotes = userQuotes.filter((q) => q.status !== 'draft');
+  const sales = userQuotes.filter(
+    (q) => q.status === 'active' || q.status === 'production_started' || q.status === 'completed',
+  );
 
   return {
     quotes,

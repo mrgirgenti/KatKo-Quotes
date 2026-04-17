@@ -51,20 +51,47 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 
 ## Tech Stack
 - **Framework**: React Native with Expo (~54.0.27)
-- **Routing**: Expo Router (file-based routing)
+- **Routing**: Expo Router (file-based routing, SSR mode via `web.output: "server"`)
 - **Package Manager**: Bun
-- **State Management**: React Context (QuotesContext, UserContext), Zustand
-- **Data Fetching**: TanStack React Query v5
+- **Database**: PostgreSQL (Replit-hosted), accessed via raw `pg` Pool (no Prisma — NixOS binary incompatibility)
+- **State Management**: React Context + TanStack React Query v5 (all mutations go through API routes)
 - **UI**: React Native StyleSheet, lucide-react-native, expo-linear-gradient
+
+## Data Layer Architecture
+- **Schema**: Prisma schema in `prisma/schema.prisma` (used only for `prisma db push` to manage schema migrations)
+- **DB Access**: Raw parameterized SQL via `lib/pool.ts` (pg Pool singleton on `globalThis`)
+- **API Routes**: `app/api/` using Expo Router `+api.ts` convention (server-only, Node environment)
+  - `GET/POST /api/orgs` — list all orgs (with contacts+activity embedded), create org
+  - `GET/PUT/DELETE /api/orgs/[id]` — single org CRUD
+  - `POST /api/orgs/[id]/contacts` — add contact
+  - `PUT/DELETE /api/orgs/[id]/contacts/[contactId]` — update/delete contact
+  - `POST/PUT/DELETE /api/orgs/[id]/activity` — activity log CRUD
+  - `GET/POST /api/projects` — list all quotes, create quote
+  - `GET/PUT/DELETE /api/projects/[id]` — single quote CRUD
+  - `POST /api/migrate` — one-time AsyncStorage→DB migration (called on first load if server is empty)
+- **Route param convention**: Expo Router passes params as the second argument directly `{ id }`, NOT `{ params: { id } }`
+- **DB Table casing**: PascalCase table names (`"Organization"`, `"Contact"`, `"ActivityLog"`, `"Project"`), camelCase columns (quoted)
+- **Enum casting**: `$n::"ProjectStatus"` required for ProjectStatus enum
+- **ActivityLog**: Has no `updatedAt` column — don't include it in INSERT/UPDATE
+- **Status mapping** (frontend → DB enum): draft→DRAFT, quoted→QUOTE_SENT, active/production_started→IN_PRODUCTION, completed→COMPLETED, expired→CANCELLED
+- **userId safety**: `userId: 'default'` must be converted to `null` before insert (FK to User table)
+
+## NixOS Workarounds
+- **Prisma native binary broken**: `libssl.so.3` path issues on NixOS. Solution: use raw `pg` via `lib/pool.ts`
+- **DO NOT set LD_LIBRARY_PATH** in workflow command — breaks NixOS bash
+- **DO NOT use Prisma client** for runtime DB access — only `prisma db push` for schema migrations
 
 ## Project Structure
 - `app/` - Expo Router pages (file-based routing)
   - `(tabs)/` - Main tab screens (New Quote, History, Sales, Clients)
   - `quote/` - Quote detail, edit, and sales tracking screens
   - `clients/[id].tsx` - Client profile page (info panel + linked quotes)
+  - `api/` - Server-side API routes (raw pg)
   - `profile.tsx`, `reports.tsx`, `modal.tsx`
 - `components/` - Reusable UI components
-- `contexts/` - React Context providers (QuotesContext, UserContext)
+- `contexts/` - React Context providers (CrmContext, QuotesContext, UserContext)
+- `lib/` - Server utilities (`pool.ts` — pg Pool singleton)
+- `prisma/` - Schema only (`schema.prisma`); run `npx prisma db push` to sync
 - `constants/` - Colors and other constants
 - `utils/` - PDF generator, CSV export, Google Sheets export
 - `types/` - TypeScript type definitions
@@ -155,4 +182,4 @@ Both `generateAndSharePDF` and `printQuote` on web:
 - `stubs/react-native-reanimated.js`: Comprehensive stub; wired via `metro.config.js` `extraNodeModules`
 
 ## Deployment
-Configured as a static site deployment using `expo export --platform web` to build the `dist/` directory.
+Runs as a server-side rendered Expo web app (`web.output: "server"` in `app.json`). The API routes require a Node/Bun server — this is NOT a static site export.

@@ -1,0 +1,463 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+  binaryTargets   = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserType {
+  INTERNAL
+  CLIENT
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  DISABLED
+}
+
+enum InternalRole {
+  SUPER_ADMIN
+  SALES
+  DESIGNER
+  FINANCE
+  PRODUCTION
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum MembershipRole {
+  ORG_ADMIN
+  MEMBER
+  BILLING_CONTACT
+  APPROVER
+}
+
+enum ProjectStatus {
+  DRAFT
+  NEEDS_REVIEW
+  AWAITING_CLIENT_INFO
+  QUOTING
+  QUOTE_SENT
+  INVOICE_SENT
+  PAID
+  IN_PRODUCTION
+  COMPLETED
+  CANCELLED
+}
+
+enum PriorityLevel {
+  LOW
+  NORMAL
+  RUSH
+}
+
+enum IntakeSource {
+  INTERNAL
+  CLIENT_HUB
+  MANUAL
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  VOID
+}
+
+enum FileType {
+  ARTWORK
+  MOCKUP
+  PROOF
+  INVOICE_PDF
+  REFERENCE
+  OTHER
+}
+
+enum FileVisibility {
+  INTERNAL
+  CLIENT_VISIBLE
+}
+
+enum EmailNotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model Organization {
+  id                   String             @id @default(uuid())
+  name                 String
+  legalName            String?
+  email                String?
+  phone                String?
+  billingAddressLine1  String?
+  billingAddressLine2  String?
+  billingCity          String?
+  billingState         String?
+  billingPostalCode    String?
+  billingCountry       String?
+  shippingAddressLine1 String?
+  shippingAddressLine2 String?
+  shippingCity         String?
+  shippingState        String?
+  shippingPostalCode   String?
+  shippingCountry      String?
+  pricingTier          String?
+  taxExempt            Boolean            @default(false)
+  taxExemptId          String?
+  notes                String?
+  status               OrganizationStatus @default(ACTIVE)
+  hubEnabled           Boolean            @default(false)
+  crmStatus            String             @default("Cold")
+  city                 String?
+  state                String?
+  type                 String?
+  convertedToActiveDate DateTime?
+  campaignsData        Json?
+  departmentsData      Json?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  memberships  OrganizationMembership[]
+  contacts     Contact[]
+  projects     Project[]
+  files        File[]
+  activityLogs ActivityLog[]
+}
+
+model User {
+  id                String       @id @default(uuid())
+  firstName         String
+  lastName          String
+  email             String       @unique
+  phone             String?
+  userType          UserType     @default(INTERNAL)
+  status            UserStatus   @default(ACTIVE)
+  authProvider      String?
+  authProviderUserId String?
+  passwordHash      String?
+  internalRole      InternalRole @default(SALES)
+  avatarColor       String?
+  avatarUri         String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  memberships      OrganizationMembership[]
+  createdProjects  Project[]               @relation("ProjectCreatedBy")
+  assignedProjects Project[]               @relation("ProjectAssignedTo")
+  salesProjects    Project[]               @relation("ProjectSalesRep")
+  createdQuotes    Quote[]
+  createdInvoices  Invoice[]
+  uploadedFiles    File[]
+  activityLogs     ActivityLog[]
+  linkedContacts   Contact[]
+}
+
+model OrganizationMembership {
+  id             String         @id @default(uuid())
+  organizationId String
+  userId         String
+  role           MembershipRole
+  isPrimaryContact Boolean      @default(false)
+  canManageUsers   Boolean      @default(false)
+  canSubmitProjects Boolean     @default(true)
+  canViewProjects  Boolean      @default(true)
+  canViewInvoices  Boolean      @default(false)
+  canPayInvoices   Boolean      @default(false)
+  canApproveQuotes Boolean      @default(false)
+  createdAt        DateTime     @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+}
+
+model Contact {
+  id             String    @id @default(uuid())
+  organizationId String?
+  firstName      String
+  lastName       String
+  email          String?
+  phone          String?
+  title          String?
+  role           String?
+  notes          String?
+  isPrimary      Boolean   @default(false)
+  linkedUserId   String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  linkedUser   User?          @relation(fields: [linkedUserId], references: [id], onDelete: SetNull)
+  projects     Project[]
+
+  @@index([organizationId])
+  @@index([linkedUserId])
+}
+
+model Project {
+  id               String        @id @default(uuid())
+  organizationId   String?
+  createdByUserId  String?
+  assignedToUserId String?
+  primaryContactId String?
+  salesRepId       String?
+  projectNumber    String?       @unique
+  title            String
+  description      String?
+  clientName       String?
+  orderType        String        @default("New")
+  orderDate        String?
+  inHandsDate      String?
+  invoiceNumber    String?
+  intakeSource     IntakeSource  @default(INTERNAL)
+  status           ProjectStatus @default(DRAFT)
+  priority         PriorityLevel @default(NORMAL)
+  dueDate          DateTime?
+  notesInternal    String?
+  notesClient      String?
+  hasOnlineFee     Boolean       @default(true)
+  hasSalesTax      Boolean       @default(false)
+  hasCardFee       Boolean       @default(true)
+  calculations     Json?
+  salesData        Json?
+  lineItemsData    Json?
+  frontendStatus   String        @default("quoted")
+  activeDate       String?
+  isLocked         Boolean       @default(false)
+  lockedDate       String?
+  exportedToSheets Boolean       @default(false)
+  exportedToSheetsDate String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  organization      Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  createdByUser     User?         @relation("ProjectCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  assignedToUser    User?         @relation("ProjectAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  salesRep          User?         @relation("ProjectSalesRep", fields: [salesRepId], references: [id], onDelete: SetNull)
+  primaryContact    Contact?      @relation(fields: [primaryContactId], references: [id], onDelete: SetNull)
+  items             ProjectItem[]
+  quotes            Quote[]
+  invoices          Invoice[]
+  files             File[]
+  activityLogs      ActivityLog[]
+  emailNotifications EmailNotification[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([intakeSource])
+  @@index([assignedToUserId])
+  @@index([createdByUserId])
+}
+
+model ProjectItem {
+  id              String   @id @default(uuid())
+  projectId       String
+  itemName        String
+  productCategory String?
+  garmentType     String?
+  vendor          String?
+  catalogStyle    String?
+  color           String?
+  printMethod     String?
+  quantity        Int      @default(1)
+  sizeBreakdown   Json?
+  printLocations  Json?
+  artworkNotes    String?
+  clientReference String?
+  rawLineItemData Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model Quote {
+  id              String      @id @default(uuid())
+  projectId       String
+  versionNumber   Int         @default(1)
+  status          QuoteStatus @default(DRAFT)
+  subtotal        Decimal     @db.Decimal(12, 2)
+  setupFees       Decimal     @default(0) @db.Decimal(12, 2)
+  designFees      Decimal     @default(0) @db.Decimal(12, 2)
+  shippingCost    Decimal     @default(0) @db.Decimal(12, 2)
+  taxAmount       Decimal     @default(0) @db.Decimal(12, 2)
+  total           Decimal     @db.Decimal(12, 2)
+  validUntil      DateTime?
+  sentAt          DateTime?
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  createdByUserId String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  project       Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdByUser User?           @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  lineItems     QuoteLineItem[]
+  invoices      Invoice[]
+  activityLogs  ActivityLog[]
+  emailNotifications EmailNotification[]
+
+  @@index([projectId])
+  @@index([status])
+  @@unique([projectId, versionNumber])
+}
+
+model QuoteLineItem {
+  id          String   @id @default(uuid())
+  quoteId     String
+  label       String
+  description String?
+  quantity    Decimal  @default(1) @db.Decimal(12, 2)
+  unitPrice   Decimal  @default(0) @db.Decimal(12, 2)
+  totalPrice  Decimal  @default(0) @db.Decimal(12, 2)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
+}
+
+model Invoice {
+  id               String        @id @default(uuid())
+  projectId        String
+  quoteId          String?
+  invoiceNumber    String?       @unique
+  status           InvoiceStatus @default(DRAFT)
+  subtotal         Decimal       @db.Decimal(12, 2)
+  taxAmount        Decimal       @default(0) @db.Decimal(12, 2)
+  total            Decimal       @db.Decimal(12, 2)
+  amountPaid       Decimal       @default(0) @db.Decimal(12, 2)
+  dueDate          DateTime?
+  sentAt           DateTime?
+  paidAt           DateTime?
+  paymentProvider  String?
+  externalPaymentId String?
+  paymentUrl       String?
+  createdByUserId  String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  project       Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  quote         Quote?            @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  createdByUser User?             @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  lineItems     InvoiceLineItem[]
+  activityLogs  ActivityLog[]
+  emailNotifications EmailNotification[]
+
+  @@index([projectId])
+  @@index([quoteId])
+  @@index([status])
+}
+
+model InvoiceLineItem {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  label       String
+  description String?
+  quantity    Decimal  @default(1) @db.Decimal(12, 2)
+  unitPrice   Decimal  @default(0) @db.Decimal(12, 2)
+  totalPrice  Decimal  @default(0) @db.Decimal(12, 2)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model File {
+  id               String         @id @default(uuid())
+  organizationId   String?
+  projectId        String?
+  uploadedByUserId String?
+  fileType         FileType
+  originalName     String
+  storageKey       String
+  mimeType         String?
+  fileSize         Int?
+  visibility       FileVisibility @default(INTERNAL)
+  createdAt        DateTime       @default(now())
+
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project        Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  uploadedByUser User?         @relation(fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([uploadedByUserId])
+}
+
+model ActivityLog {
+  id             String   @id @default(uuid())
+  organizationId String?
+  projectId      String?
+  quoteId        String?
+  invoiceId      String?
+  userId         String?
+  actionType     String
+  actionSummary  String
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  quote        Quote?        @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  invoice      Invoice?      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([quoteId])
+  @@index([invoiceId])
+  @@index([userId])
+  @@index([actionType])
+}
+
+model EmailNotification {
+  id               String                  @id @default(uuid())
+  relatedProjectId String?
+  relatedQuoteId   String?
+  relatedInvoiceId String?
+  recipientEmail   String
+  subject          String
+  templateKey      String?
+  status           EmailNotificationStatus @default(PENDING)
+  errorMessage     String?
+  sentAt           DateTime?
+  createdAt        DateTime                @default(now())
+
+  relatedProject Project? @relation(fields: [relatedProjectId], references: [id], onDelete: SetNull)
+  relatedQuote   Quote?   @relation(fields: [relatedQuoteId], references: [id], onDelete: SetNull)
+  relatedInvoice Invoice? @relation(fields: [relatedInvoiceId], references: [id], onDelete: SetNull)
+
+  @@index([relatedProjectId])
+  @@index([relatedQuoteId])
+  @@index([relatedInvoiceId])
+  @@index([status])
+}
