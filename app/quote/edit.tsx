@@ -13,6 +13,7 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Plus, Save, X } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useQuotes } from '@/contexts/QuotesContext';
+import { useUser } from '@/contexts/UserContext';
 import { FormInput } from '@/components/FormInput';
 import { DateInput } from '@/components/DateInput';
 import { SegmentedControl } from '@/components/SegmentedControl';
@@ -54,10 +55,17 @@ export default function EditQuoteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { allQuotes, updateQuote } = useQuotes();
+  const { currentUserId, isOrgAdmin } = useUser();
 
   const originalQuote = useMemo(() => {
     return allQuotes.find((q) => q.id === id);
   }, [allQuotes, id]);
+
+  useEffect(() => {
+    if (originalQuote && !isOrgAdmin() && originalQuote.userId && originalQuote.userId !== currentUserId) {
+      router.back();
+    }
+  }, [originalQuote, currentUserId]);
 
   const isSale = originalQuote?.status === 'sale';
   const itemType = isSale ? 'Sale' : 'Quote';

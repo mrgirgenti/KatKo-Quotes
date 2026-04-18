@@ -34,7 +34,7 @@ async function apiFetch(path: string, opts?: RequestInit) {
 
 export const [QuotesProvider, useQuotes] = createContextHook(() => {
   const queryClient = useQueryClient();
-  const { currentUserId } = useUser();
+  const { currentUserId, currentUser } = useUser();
 
   const quotesQuery = useQuery<Quote[]>({
     queryKey: ['quotes'],
@@ -68,7 +68,7 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
 
   const addQuoteMutation = useMutation({
     mutationFn: async (newQuote: Quote) => {
-      const quoteWithUser = { ...newQuote, userId: currentUserId || 'default' };
+      const quoteWithUser = { ...newQuote, userId: currentUserId ?? undefined };
       return apiFetch('/api/projects', { method: 'POST', body: JSON.stringify(quoteWithUser) });
     },
     onSuccess: invalidateQuotes,
@@ -320,9 +320,10 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
     onSuccess: invalidateQuotes,
   });
 
-  const userQuotes = (quotesQuery.data || []).filter(
-    (q) => !q.userId || q.userId === currentUserId || q.userId === 'default',
-  );
+  const isAdmin = currentUser?.role === 'org_admin';
+  const userQuotes = isAdmin
+    ? (quotesQuery.data || [])
+    : (quotesQuery.data || []).filter(q => q.userId === currentUserId);
 
   const projects = userQuotes.filter((q) => q.status !== 'draft');
   const quotes = userQuotes.filter((q) => q.status !== 'draft');
