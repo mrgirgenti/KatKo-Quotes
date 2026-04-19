@@ -320,10 +320,12 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
     onSuccess: invalidateQuotes,
   });
 
-  const isAdmin = currentUser?.role === 'org_admin';
+  // Treat "no user loaded yet" as admin so quotes are visible during initialization.
+  // Only enforce per-user filtering once a real non-admin user is confirmed.
+  const isAdmin = !currentUser || currentUser.role === 'org_admin';
   const userQuotes = isAdmin
     ? (quotesQuery.data || [])
-    : (quotesQuery.data || []).filter(q => q.userId === currentUserId);
+    : (quotesQuery.data || []).filter((q) => q.userId === currentUserId);
 
   const projects = userQuotes.filter((q) => q.status !== 'draft');
   const quotes = userQuotes.filter((q) => q.status !== 'draft');

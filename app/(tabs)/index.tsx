@@ -187,9 +187,8 @@ export default function NewQuoteScreen() {
       return;
     }
 
-    const newId = generateId();
     const quote: Quote = {
-      id: newId,
+      id: generateId(),
       orgId: linkedOrg?.id,
       personOrganization: personOrganization.trim(),
       projectName: projectName.trim(),
@@ -207,11 +206,15 @@ export default function NewQuoteScreen() {
       status: 'quoted',
     };
 
-    addQuote(quote);
-    setToastMessage(`Quote ${invoiceNumber ? '#' + invoiceNumber + ' ' : ''}submitted!`);
+    const label = invoiceNumber ? `#${invoiceNumber} ` : '';
+    setToastMessage(`Quote ${label}submitted!`);
     setToastVisible(true);
     resetForm();
-    setTimeout(() => router.push(`/quote/${newId}`), 400);
+    addQuote(quote, {
+      onSuccess: (saved: any) => {
+        router.push(`/quote/${saved.id}` as any);
+      },
+    });
   }, [
     personOrganization,
     projectName,

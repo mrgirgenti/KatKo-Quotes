@@ -20,6 +20,11 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 - Sidebar reads dynamic company logo from `orgAdmin.companyLogo` (falls back to hardcoded CDN URI)
 - `UserContext` exposes: `isOrgAdmin()`, `orgAdmin` (first user with role=org_admin), `createUser(name, email?, role?)`
 
+## Known Bug Fixes (Phase 3)
+- **Quote submit persistence fix (2026-04-19)**:
+  - *Bug 1*: `isAdmin` in QuotesContext evaluated `false` during async `UserContext` init (`currentUser=null`), causing the per-user filter `q.userId === null` to drop all DB quotes. Fix: `const isAdmin = !currentUser || currentUser.role === 'org_admin'` — treat no-user state as admin view so quotes are visible during initialization.
+  - *Bug 2*: POST `/api/projects` INSERT always uses `gen_random_uuid()` (server-generated UUID), ignoring the client's `generateId()` timestamp string. After submit, `router.push(/quote/${clientId})` navigated to a non-existent route. Fix: Use `onSuccess: (saved) => router.push(/quote/${saved.id})` to navigate with the server-returned UUID instead of a blind `setTimeout`.
+
 ## Context Layer
 - **QuotesContext**: All quote/project CRUD via `/api/projects` — fully migrated from AsyncStorage
 - **CrmContext**: All org/contact/activity CRUD via `/api/orgs` — fully migrated from AsyncStorage
