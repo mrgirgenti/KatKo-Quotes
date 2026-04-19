@@ -313,9 +313,11 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
 
   const applyEmbroideryCost = () => {
     if (embTotalCost > 0) {
-      const updates: Partial<LineItem> = { serviceCostEach: embTotalCost };
-      if (includeDigitization) updates.serviceFeeEach = DIGITIZATION_FEE;
-      onChange({ ...item, ...updates });
+      onChange({
+        ...item,
+        serviceCostEach: embTotalCost,
+        serviceFeeEach: includeDigitization ? DIGITIZATION_FEE : 0,
+      });
     }
   };
 
