@@ -46,7 +46,7 @@ import { exportSingleSaleToSheets } from '@/utils/googleSheetsExport';
 export default function SalesScreen() {
   const router = useRouter();
   const { sales, isLoading, deleteQuote, convertToQuote, unlockSale, lockSale, markExportedToSheets } = useQuotes();
-  const { currentUser } = useUser();
+  const { currentUser, orgAdmin } = useUser();
   const [searchQuery, setSearchQuery] = useState('');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [unlockModalVisible, setUnlockModalVisible] = useState(false);
@@ -150,7 +150,11 @@ export default function SalesScreen() {
 
   const confirmUnlock = useCallback(() => {
     if (!selectedUnlockId) return;
-    if (unlockPassword === currentUser?.adminPassword || unlockPassword === '1234') {
+    if (!orgAdmin?.adminPassword) {
+      Alert.alert('Error', 'No admin password has been set. The organization admin must set a password in their profile first.');
+      return;
+    }
+    if (unlockPassword === orgAdmin.adminPassword) {
       unlockSale(selectedUnlockId);
       setUnlockModalVisible(false);
       setUnlockPassword('');
@@ -159,7 +163,7 @@ export default function SalesScreen() {
     } else {
       Alert.alert('Error', 'Invalid admin password');
     }
-  }, [selectedUnlockId, unlockPassword, currentUser, unlockSale]);
+  }, [selectedUnlockId, unlockPassword, orgAdmin, unlockSale]);
 
   const [isExporting, setIsExporting] = useState(false);
 
@@ -769,7 +773,7 @@ export default function SalesScreen() {
             </View>
             <Text style={styles.unlockModalTitle}>Unlock Sale</Text>
             <Text style={styles.unlockModalMessage}>
-              Enter the admin password to unlock this sale.
+              Enter organization admin password to unlock this sale.
             </Text>
             <TextInput
               style={styles.unlockPasswordInput}
