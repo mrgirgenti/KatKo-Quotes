@@ -46,6 +46,7 @@ type SortDir = 'asc' | 'desc';
 
 const STATUS_PILLS: { key: 'all' | QuoteStatus; label: string }[] = [
   { key: 'all',                label: 'All'             },
+  { key: 'needs_review',       label: 'Needs Review'    },
   { key: 'quoted',             label: 'Quoted'          },
   { key: 'active',             label: 'Active'          },
   { key: 'production_started', label: 'In Production'   },
@@ -92,13 +93,14 @@ interface ProjectRowProps {
   onExportPDF: () => void;
   onExportSheets: () => void;
   onPrint: () => void;
+  onAcceptIntake: () => void;
   isDesktop: boolean;
   isSelected: boolean;
   onToggleSelect: () => void;
   selectionMode: boolean;
 }
 
-function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRevert, onComplete, onEdit, onExportPDF, onExportSheets, onPrint, isDesktop, isSelected, onToggleSelect, selectionMode }: ProjectRowProps) {
+function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRevert, onComplete, onEdit, onExportPDF, onExportSheets, onPrint, onAcceptIntake, isDesktop, isSelected, onToggleSelect, selectionMode }: ProjectRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const menuBtnRef = useRef<View>(null);
@@ -197,6 +199,12 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
             onPress={() => setMenuOpen(false)}
           >
             <View style={[styles.dropdownMenu, { position: 'absolute', top: menuPos.top, right: menuPos.right }]}>
+              {effectiveStatus === 'needs_review' ? (
+                <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onAcceptIntake(); }}>
+                  <Play size={14} color={Colors.light.tint} />
+                  <Text style={[styles.dropdownItemText, { color: Colors.light.tint, fontWeight: '700' }]}>Accept & Start Quote</Text>
+                </TouchableOpacity>
+              ) : null}
               <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onEdit(); }}>
                 <Edit3 size={14} color={Colors.light.text} />
                 <Text style={styles.dropdownItemText}>Edit Quote</Text>
@@ -213,7 +221,7 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
                   <Text style={styles.dropdownItemText}>Convert to Active</Text>
                 </TouchableOpacity>
               ) : null}
-              {effectiveStatus !== 'completed' ? (
+              {effectiveStatus !== 'completed' && effectiveStatus !== 'needs_review' ? (
                 <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onComplete(); }}>
                   <Trophy size={14} color={Colors.light.success} />
                   <Text style={[styles.dropdownItemText, { color: Colors.light.success }]}>Complete Project</Text>
@@ -551,6 +559,15 @@ export default function ProjectsScreen() {
     setDeleteTarget(quote);
   }, []);
 
+  const handleAcceptIntake = useCallback((quote: Quote) => {
+    setPendingConfirm({
+      title: 'Accept Client Intake',
+      message: `Accept "${quote.projectName}" and move it to Quoted status? You can then build the full quote.`,
+      confirmText: 'Accept & Quote',
+      onConfirm: () => convertToQuote(quote.id),
+    });
+  }, [convertToQuote]);
+
   const handleConvert = useCallback((quote: Quote) => {
     setPendingConfirm({
       title: 'Mark as Active',
@@ -818,6 +835,7 @@ export default function ProjectsScreen() {
               onExportPDF={() => handleExportPDF(quote)}
               onExportSheets={() => handleExportSheets(quote)}
               onPrint={() => handlePrint(quote)}
+              onAcceptIntake={() => handleAcceptIntake(quote)}
               isDesktop={isDesktop}
               isSelected={selectedIds.has(quote.id)}
               onToggleSelect={() => toggleSelect(quote.id)}

@@ -31,6 +31,39 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 - **UserContext**: Primary store is AsyncStorage; DB sync added in Phase 3 (fire-and-forget upsert on init and on create/update). AsyncStorage IDs used directly as PostgreSQL `User.id` (string PK). `syncUserToDB()` called on boot and on every mutation.
 - **ClientsContext**: DELETED. The legacy `Client` type is fully replaced by `Organization` + `Contact`. Dashboard client counts now derive from `useCrm().orgs`. `autoAddClientIfNew` in sales-tracking now calls `addOrg` via `useCrm`. `contexts/ClientsContext.tsx` and `types/client.ts` deleted.
 
+## Phase 6 — Client Hub Project Submission Intake (2026-04-19)
+
+### New files
+- `app/portal/[orgId].tsx`: Client-facing portal page (no Ko OS layout). Two-step flow: email verification → submission form. Registered in `_layout.tsx` with `headerShown: false`.
+- `app/api/portal/[orgId]+api.ts`: GET returns org name + verifies hubEnabled. POST validates client email against org memberships, returns session (userId, userName, userEmail, orgName).
+- `app/api/portal/submit+api.ts`: POST creates Project with `status=NEEDS_REVIEW`, `intakeSource=CLIENT_HUB`, ties to org + submitting client user, creates ActivityLog entry.
+
+### Modified files
+- `types/quote.ts`: Added `needs_review` to `QuoteStatus`, `STATUS_CONFIG` (amber/yellow), `STATUS_HIERARCHY`. Added `intakeSource?: string` to `Quote` interface.
+- `app/api/projects+api.ts` + `app/api/projects/[id]+api.ts`: Both updated with `needs_review` ↔ `NEEDS_REVIEW` mapping and `intakeSource` field in `toFrontendQuote`.
+- `app/(tabs)/projects.tsx`: Added "Needs Review" filter pill (now shows count). Added `onAcceptIntake` prop/handler to `ProjectRow`. "Accept & Start Quote" action in desktop dropdown for `needs_review` projects (moves to `quoted`).
+- `app/hub/[id].tsx`: Added "Client Portal Link" section (shows URL + copy-to-clipboard button) when hub is enabled.
+- `app/_layout.tsx`: Registered `portal/[orgId]` stack screen with no internal header.
+
+### Client submission form fields
+- Project title (required)
+- Service type (Screen Printing / Direct to Film / Embroidery / Promotional / Not Sure)
+- Estimated quantity
+- Due date
+- Project details (free text — garments, colors, design, artwork, shipping notes)
+- File upload: DEFERRED — artwork files are sent via email (clearly stated on the form)
+
+### Internal notification
+- ActivityLog entry created on submission: `actionType='client_intake'`, metadata includes serviceType + quantity
+- No email notification yet (deferred — no email infrastructure built)
+
+### Verified end-to-end
+- ✅ Portal GET/POST auth endpoints return correct org/user data
+- ✅ Submit API creates project with NEEDS_REVIEW + CLIENT_HUB intake source
+- ✅ Project appears immediately in Ko OS Projects list with amber "Needs Review" badge
+- ✅ Filter pill shows correct count
+- ✅ Activity log entry created for the submission
+
 ## Phase 5 — Full Client Hubs Admin Section (2026-04-19)
 - `app/(tabs)/client-hubs.tsx`: Redesigned to show ALL orgs split into "Hub Enabled" / "Not Enabled" sections; org search; "Not Enabled" orgs have a toggle switch to enable hub in-place (navigates to hub detail after enable); uses `useCrm()` for live data
 - `app/hub/[id].tsx`: New dedicated hub management screen — org status card with hubEnabled toggle + portal-ready indicator; Org Admin section (assign/change with internal user picker); Client Users section (invite with role selector, change role, remove); Internal Team section; all changes invalidate `client-hubs` query cache

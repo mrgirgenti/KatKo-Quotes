@@ -1,7 +1,7 @@
 export type ServiceStyle = 'Screen Printing' | 'Direct to Film' | 'Embroidery' | 'Promotional';
 export type OrderType = 'New' | 'Re-Order';
 
-export type QuoteStatus = 'draft' | 'quoted' | 'active' | 'production_started' | 'completed' | 'expired';
+export type QuoteStatus = 'draft' | 'needs_review' | 'quoted' | 'active' | 'production_started' | 'completed' | 'expired';
 
 export interface LineItemActualCosts {
   lineItemId: string;
@@ -99,6 +99,7 @@ export interface Quote {
   id: string;
   userId?: string;
   orgId?: string;
+  intakeSource?: string;
   personOrganization: string;
   projectName: string;
   orderType: OrderType;
@@ -272,6 +273,7 @@ export function getEffectiveStatus(quote: Quote): QuoteStatus {
 
 export const STATUS_CONFIG: Record<QuoteStatus, { label: string; color: string; bg: string; borderColor: string }> = {
   draft:              { label: 'Draft',         color: '#6B7280', bg: '#F3F4F6', borderColor: '#D1D5DB' },
+  needs_review:       { label: 'Needs Review',  color: '#92400E', bg: '#FEF3C7', borderColor: '#FDE68A' },
   quoted:             { label: 'Quoted',         color: '#2563EB', bg: '#EFF6FF', borderColor: '#BFDBFE' },
   active:             { label: 'Active',         color: '#FFFFFF', bg: '#FF5A00', borderColor: '#FF5A00' },
   production_started: { label: 'In Production',  color: '#FFFFFF', bg: '#7C3AED', borderColor: '#7C3AED' },
@@ -281,9 +283,10 @@ export const STATUS_CONFIG: Record<QuoteStatus, { label: string; color: string; 
 
 export const STATUS_HIERARCHY: Record<QuoteStatus, number> = {
   draft:              0,
-  expired:            1,
-  quoted:             1,
-  active:             2,
-  production_started: 3,
-  completed:          4,
+  needs_review:       1,
+  expired:            2,
+  quoted:             2,
+  active:             3,
+  production_started: 4,
+  completed:          5,
 };

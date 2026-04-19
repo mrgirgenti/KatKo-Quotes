@@ -28,6 +28,8 @@ import {
   Trash2,
   Edit3,
   User,
+  Copy,
+  ExternalLink,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
@@ -108,6 +110,20 @@ export default function HubManagementScreen() {
   });
   const [newRole, setNewRole] = useState<MembershipRole>('MEMBER');
   const [changingRole, setChangingRole] = useState(false);
+
+  const [linkCopied, setLinkCopied] = useState(false);
+  const portalUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/portal/${id}`
+    : `/portal/${id}`;
+
+  const handleCopyLink = useCallback(() => {
+    if (typeof window !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(portalUrl).then(() => {
+        setLinkCopied(true);
+        setTimeout(() => setLinkCopied(false), 2000);
+      });
+    }
+  }, [portalUrl]);
 
   const handleHubToggle = useCallback((val: boolean) => {
     if (!org) return;
@@ -313,6 +329,33 @@ export default function HubManagementScreen() {
             </View>
           )}
         </View>
+
+        {/* Portal Link Section */}
+        {org.hubEnabled && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <ExternalLink size={15} color={Colors.light.tint} />
+              <Text style={styles.sectionTitle}>Client Portal Link</Text>
+            </View>
+            <Text style={styles.portalLinkDesc}>
+              Share this link with client users so they can submit project requests directly into Ko OS.
+            </Text>
+            <View style={styles.portalLinkRow}>
+              <Text style={styles.portalLinkUrl} numberOfLines={1} ellipsizeMode="middle">
+                {portalUrl}
+              </Text>
+              <TouchableOpacity
+                style={[styles.copyBtn, linkCopied && styles.copyBtnDone]}
+                onPress={handleCopyLink}
+              >
+                <Copy size={13} color={linkCopied ? '#16A34A' : Colors.light.tint} />
+                <Text style={[styles.copyBtnText, linkCopied && styles.copyBtnTextDone]}>
+                  {linkCopied ? 'Copied!' : 'Copy'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {/* Org Admin Section */}
         <View style={styles.section}>
@@ -1054,5 +1097,50 @@ const styles = StyleSheet.create({
     height: 9,
     borderRadius: 5,
     backgroundColor: Colors.light.tint,
+  },
+  portalLinkDesc: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    marginBottom: 10,
+    lineHeight: 17,
+  },
+  portalLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.light.background,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    padding: 10,
+    gap: 8,
+  },
+  portalLinkUrl: {
+    flex: 1,
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  copyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#FFF7F0',
+    borderWidth: 1,
+    borderColor: Colors.light.tint,
+  },
+  copyBtnDone: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#16A34A',
+  },
+  copyBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.light.tint,
+  },
+  copyBtnTextDone: {
+    color: '#16A34A',
   },
 });

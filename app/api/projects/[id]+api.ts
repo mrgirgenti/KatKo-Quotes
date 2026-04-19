@@ -2,9 +2,12 @@ import { pool } from '@/lib/pool';
 import type { Quote } from '@/types/quote';
 
 function toFrontendQuote(p: any): Quote {
+  let status = (p.frontendStatus || 'quoted') as Quote['status'];
+  if (p.status === 'NEEDS_REVIEW') status = 'needs_review';
   return {
     id: p.id,
     orgId: p.organizationId ?? undefined,
+    intakeSource: p.intakeSource ?? undefined,
     personOrganization: p.clientName || '',
     projectName: p.title || '',
     orderType: (p.orderType || 'New') as Quote['orderType'],
@@ -18,7 +21,7 @@ function toFrontendQuote(p: any): Quote {
     calculations: (p.calculations as Quote['calculations'] | null) || null,
     salesData: (p.salesData as Quote['salesData'] | null) || undefined,
     createdAt: new Date(p.createdAt).toISOString(),
-    status: (p.frontendStatus || 'quoted') as Quote['status'],
+    status,
     userId: p.createdByUserId ?? undefined,
     activeDate: p.activeDate ?? undefined,
     isLocked: p.isLocked ?? false,
@@ -31,6 +34,7 @@ function toFrontendQuote(p: any): Quote {
 function frontendStatusToDbStatus(s: string) {
   switch (s) {
     case 'draft': return 'DRAFT';
+    case 'needs_review': return 'NEEDS_REVIEW';
     case 'quoted': return 'QUOTE_SENT';
     case 'active': return 'IN_PRODUCTION';
     case 'production_started': return 'IN_PRODUCTION';
