@@ -200,6 +200,10 @@ export default function OrgProfileScreen() {
   const [memberForm, setMemberForm] = useState<{ userId: string; role: MembershipRole }>({ userId: '', role: 'MEMBER' });
   const [memberRoleDropdown, setMemberRoleDropdown] = useState(false);
 
+  const [addClientUserModal, setAddClientUserModal] = useState(false);
+  const [clientUserForm, setClientUserForm] = useState({ name: '', email: '' });
+  const [clientUserSaving, setClientUserSaving] = useState(false);
+
   const { data: memberships = [], isLoading: membershipsLoading, refetch: refetchMemberships } = useQuery<OrgMembership[]>({
     queryKey: ['memberships', org?.id],
     queryFn: async () => {
@@ -235,6 +239,41 @@ export default function OrgProfileScreen() {
       Alert.alert('Error', 'Failed to add member. Make sure the user has been synced.');
     }
   }, [org, memberForm, createMembershipAsync, refetchMemberships]);
+
+  const handleAddClientUser = useCallback(async () => {
+    if (!org || !clientUserForm.name.trim() || !clientUserForm.email.trim()) return;
+    setClientUserSaving(true);
+    try {
+      const userId = `client_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const userRes = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: userId,
+          name: clientUserForm.name.trim(),
+          email: clientUserForm.email.trim(),
+          userType: 'CLIENT',
+        }),
+      });
+      if (!userRes.ok && userRes.status !== 204) {
+        const err = await userRes.json().catch(() => ({}));
+        throw new Error(err?.error || 'Failed to create user');
+      }
+      const newUser = userRes.status === 204 ? { id: userId } : await userRes.json();
+      await createMembershipAsync({
+        organizationId: org.id,
+        userId: newUser.id,
+        role: 'MEMBER',
+      });
+      setAddClientUserModal(false);
+      setClientUserForm({ name: '', email: '' });
+      refetchMemberships();
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to add client user.');
+    } finally {
+      setClientUserSaving(false);
+    }
+  }, [org, clientUserForm, createMembershipAsync, refetchMemberships]);
 
   const relatedQuotes = useMemo(() => {
     if (!org) return [];
@@ -828,38 +867,83 @@ export default function OrgProfileScreen() {
             />
           </View>
 
+          {/* Internal team members */}
           <View style={styles.tabContentHeader}>
-            <Text style={styles.tabContentTitle}>Team Members</Text>
+            <Text style={styles.tabContentTitle}>Internal Team</Text>
             <TouchableOpacity style={styles.addItemBtn} onPress={() => { setMemberForm({ userId: '', role: 'MEMBER' }); setAddMemberModal(true); }}>
               <Plus size={14} color="#fff" />
-              <Text style={styles.addItemBtnText}>Add Member</Text>
+              <Text style={styles.addItemBtnText}>Add</Text>
             </TouchableOpacity>
           </View>
 
           {membershipsLoading ? (
-            <View style={styles.emptyTab}>
-              <Text style={styles.emptyTabSub}>Loading members...</Text>
+            <View style={[styles.emptyTab, { paddingVertical: 16 }]}>
+              <Text style={styles.emptyTabSub}>Loading...</Text>
             </View>
-          ) : memberships.length === 0 ? (
-            <View style={styles.emptyTab}>
-              <Shield size={32} color={Colors.light.border} />
-              <Text style={styles.emptyTabText}>No members yet.</Text>
-              <Text style={styles.emptyTabSub}>Add team members to grant them Hub access roles.</Text>
+          ) : memberships.filter((m) => m.userType !== 'CLIENT').length === 0 ? (
+            <View style={[styles.emptyTab, { paddingVertical: 16 }]}>
+              <Text style={styles.emptyTabSub}>No internal team members assigned.</Text>
+            </View>
+          ) : (
+            memberships.filter((m) => m.userType !== 'CLIENT').map((m) => (
+              <View key={m.id} style={[styles.memberRow, m.role === 'ORG_ADMIN' && styles.memberRowAdmin]}>
+                <View style={[styles.memberAvatar, { backgroundColor: m.userAvatarColor || '#FF5A00' }]}>
+                  <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
+                </View>
+                <View style={styles.memberInfo}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.memberName}>{m.userName || 'Unknown User'}</Text>
+                    {m.role === 'ORG_ADMIN' && (
+                      <View style={styles.adminBadge}><Text style={styles.adminBadgeText}>Admin</Text></View>
+                    )}
+                  </View>
+                  <Text style={styles.memberRole}>{MEMBERSHIP_ROLE_LABELS[m.role] || m.role}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.memberDelete}
+                  onPress={() => Alert.alert('Remove Member', `Remove ${m.userName || 'this member'}?`, [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Remove', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
+                  ])}
+                >
+                  <X size={13} color={Colors.light.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
+
+          {/* Client users */}
+          <View style={[styles.tabContentHeader, { marginTop: 8 }]}>
+            <Text style={styles.tabContentTitle}>Client Users</Text>
+            <TouchableOpacity style={styles.addItemBtn} onPress={() => { setClientUserForm({ name: '', email: '' }); setAddClientUserModal(true); }}>
+              <Plus size={14} color="#fff" />
+              <Text style={styles.addItemBtnText}>Invite</Text>
+            </TouchableOpacity>
+          </View>
+
+          {membershipsLoading ? (
+            <View style={[styles.emptyTab, { paddingVertical: 16 }]}>
+              <Text style={styles.emptyTabSub}>Loading...</Text>
+            </View>
+          ) : memberships.filter((m) => m.userType === 'CLIENT').length === 0 ? (
+            <View style={[styles.emptyTab, { paddingVertical: 16 }]}>
+              <Shield size={24} color={Colors.light.border} />
+              <Text style={styles.emptyTabSub}>No client users yet. Invite a client to give them hub access.</Text>
             </View>
           ) : (
             <ScrollView showsVerticalScrollIndicator={false}>
-              {memberships.map((m) => (
+              {memberships.filter((m) => m.userType === 'CLIENT').map((m) => (
                 <View key={m.id} style={styles.memberRow}>
-                  <View style={[styles.memberAvatar, { backgroundColor: m.userAvatarColor || '#FF5A00' }]}>
+                  <View style={[styles.memberAvatar, { backgroundColor: '#6366F1' }]}>
                     <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
                   </View>
                   <View style={styles.memberInfo}>
                     <Text style={styles.memberName}>{m.userName || 'Unknown User'}</Text>
-                    <Text style={styles.memberRole}>{MEMBERSHIP_ROLE_LABELS[m.role] || m.role}</Text>
+                    <Text style={styles.memberRole}>{m.userEmail || 'No email'}</Text>
                   </View>
                   <TouchableOpacity
                     style={styles.memberDelete}
-                    onPress={() => Alert.alert('Remove Member', `Remove ${m.userName || 'this member'} from the org?`, [
+                    onPress={() => Alert.alert('Remove Client', `Remove ${m.userName || 'this client'}?`, [
                       { text: 'Cancel', style: 'cancel' },
                       { text: 'Remove', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
                     ])}
@@ -1259,6 +1343,50 @@ export default function OrgProfileScreen() {
                   }}
                 >
                   <Text style={styles.saveBtnText}>Start Campaign</Text>
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
+
+      {/* Invite Client User Modal */}
+      <Modal visible={addClientUserModal} transparent animationType="fade" onRequestClose={() => setAddClientUserModal(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setAddClientUserModal(false)}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
+            <Pressable style={styles.modalCard} onPress={() => {}}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Invite Client User</Text>
+                <TouchableOpacity onPress={() => setAddClientUserModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
+              </View>
+              <Text style={styles.fieldLabel}>Full Name</Text>
+              <TextInput
+                style={styles.fieldInput}
+                value={clientUserForm.name}
+                onChangeText={(v) => setClientUserForm((f) => ({ ...f, name: v }))}
+                placeholder="e.g. Jane Smith"
+                placeholderTextColor={Colors.light.placeholder}
+              />
+              <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Email Address</Text>
+              <TextInput
+                style={styles.fieldInput}
+                value={clientUserForm.email}
+                onChangeText={(v) => setClientUserForm((f) => ({ ...f, email: v }))}
+                placeholder="e.g. jane@client.com"
+                placeholderTextColor={Colors.light.placeholder}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setAddClientUserModal(false)}>
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.saveBtn, (!clientUserForm.name.trim() || !clientUserForm.email.trim() || clientUserSaving) && { opacity: 0.4 }]}
+                  onPress={handleAddClientUser}
+                  disabled={!clientUserForm.name.trim() || !clientUserForm.email.trim() || clientUserSaving}
+                >
+                  <Text style={styles.saveBtnText}>{clientUserSaving ? 'Adding...' : 'Add Client'}</Text>
                 </TouchableOpacity>
               </View>
             </Pressable>
@@ -1697,6 +1825,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10, paddingHorizontal: 2,
     borderBottomWidth: 1, borderBottomColor: Colors.light.border,
   },
+  memberRowAdmin: {
+    backgroundColor: '#FFF7ED',
+    borderRadius: 8,
+    borderBottomWidth: 0,
+    marginBottom: 1,
+    paddingHorizontal: 6,
+  },
   memberAvatar: {
     width: 36, height: 36, borderRadius: 18,
     justifyContent: 'center', alignItems: 'center',
@@ -1706,6 +1841,13 @@ const styles = StyleSheet.create({
   memberName: { fontSize: 14, fontWeight: '600' as const, color: Colors.light.text },
   memberRole: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 1 },
   memberDelete: { padding: 6 },
+  adminBadge: {
+    backgroundColor: '#FF5A00',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  adminBadgeText: { fontSize: 10, fontWeight: '700' as const, color: '#fff', textTransform: 'uppercase' as const },
 
   userPickerRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,

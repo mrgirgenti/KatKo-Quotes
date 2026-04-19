@@ -31,6 +31,17 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 - **UserContext**: Primary store is AsyncStorage; DB sync added in Phase 3 (fire-and-forget upsert on init and on create/update). AsyncStorage IDs used directly as PostgreSQL `User.id` (string PK). `syncUserToDB()` called on boot and on every mutation.
 - **ClientsContext**: DELETED. The legacy `Client` type is fully replaced by `Organization` + `Contact`. Dashboard client counts now derive from `useCrm().orgs`. `autoAddClientIfNew` in sales-tracking now calls `addOrg` via `useCrm`. `contexts/ClientsContext.tsx` and `types/client.ts` deleted.
 
+## Phase 4 — Client Hubs Admin Area, Client Users, Hub Tab Enhancements (2026-04-19)
+- `app/api/client-hubs+api.ts`: GET all hub-enabled orgs with aggregated stats: totalMembers, clientUsers count, orgAdminName
+- `app/(tabs)/client-hubs.tsx`: New screen listing hub-enabled orgs — org card shows name, CRM status, admin assigned status, client user count, ready/needs-setup indicator
+- `components/Sidebar.tsx`: Added "Client Hubs" (Globe icon) nav item
+- `app/(tabs)/_layout.tsx`: Registered `client-hubs` screen (hidden from mobile tab bar)
+- `app/api/users+api.ts`: GET supports `?type=client` filter; POST supports `userType: 'CLIENT'` path (requires real email, uses `#6366F1` avatar color)
+- `app/api/memberships+api.ts`: Now includes `userType` (INTERNAL/CLIENT) in both GET and POST responses
+- `types/crm.ts`: Added `userType` to `OrgMembership`
+- `app/crm/[id].tsx` Hub tab: Split into "Internal Team" + "Client Users" sections; ORG_ADMIN row highlighted with orange badge; "Invite" button creates CLIENT user + membership in one flow; separate "Add" button for internal team
+- New styles: `memberRowAdmin`, `adminBadge`, `adminBadgeText`
+
 ## Phase 3 — User DB Sync, Project Attribution, Memberships, Hub (2026-04-19)
 - `app/api/users+api.ts`: GET internal users, POST upsert-by-AsyncStorage-ID (email=`{id}@noemail.internal`; maps `org_admin→SUPER_ADMIN`, `user→SALES`; race condition handled with 204 on duplicate)
 - `app/api/memberships+api.ts` + `[id]+api.ts`: GET by `?orgId=`, POST upsert, DELETE

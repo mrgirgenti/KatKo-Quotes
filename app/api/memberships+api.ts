@@ -18,6 +18,7 @@ function toFrontendMembership(m: any) {
     userName: m.userName || undefined,
     userEmail: email.endsWith('@noemail.internal') ? '' : email,
     userAvatarColor: m.userAvatarColor || undefined,
+    userType: m.userType || 'INTERNAL',
   };
 }
 
@@ -26,7 +27,8 @@ async function fetchMembershipWithUser(membershipId: string) {
     `SELECT om.*,
        TRIM(u."firstName" || ' ' || u."lastName") AS "userName",
        u.email AS "userEmail",
-       u."avatarColor" AS "userAvatarColor"
+       u."avatarColor" AS "userAvatarColor",
+       u."userType" AS "userType"
      FROM "OrganizationMembership" om
      JOIN "User" u ON om."userId" = u.id
      WHERE om.id = $1`,
@@ -45,7 +47,8 @@ export async function GET(request: Request) {
       `SELECT om.*,
          TRIM(u."firstName" || ' ' || u."lastName") AS "userName",
          u.email AS "userEmail",
-         u."avatarColor" AS "userAvatarColor"
+         u."avatarColor" AS "userAvatarColor",
+         u."userType" AS "userType"
        FROM "OrganizationMembership" om
        JOIN "User" u ON om."userId" = u.id
        WHERE om."organizationId" = $1

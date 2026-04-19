@@ -16,6 +16,7 @@ import {
   Users,
   BookOpen,
   User,
+  Globe,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useUser } from '@/contexts/UserContext';
@@ -32,6 +33,7 @@ const NAV_ITEMS = [
   { label: 'Projects', icon: FolderKanban, href: '/projects' },
   { label: 'Contacts', icon: Users, href: '/clients' },
   { label: 'Catalogs', icon: BookOpen, href: '/catalogs' },
+  { label: 'Client Hubs', icon: Globe, href: '/client-hubs' },
 ];
 
 const SB = {

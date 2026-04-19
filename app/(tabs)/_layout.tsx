@@ -79,6 +79,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <BookOpen size={size} color={color} />,
         }}
       />
+      <Tabs.Screen name="client-hubs" options={{ href: null }} />
       <Tabs.Screen name="history" options={{ href: null }} />
       <Tabs.Screen name="sales" options={{ href: null }} />
     </Tabs>

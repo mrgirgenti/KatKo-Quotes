@@ -80,6 +80,7 @@ export interface OrgMembership {
   userName?: string;
   userEmail?: string;
   userAvatarColor?: string;
+  userType?: 'INTERNAL' | 'CLIENT';
 }
 
 export interface Organization {

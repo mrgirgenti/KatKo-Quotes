@@ -28,11 +28,18 @@ function toFrontendUser(u: any) {
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const result = await pool.query(
-      `SELECT * FROM "User" WHERE "userType" = 'INTERNAL' AND status != 'DISABLED' ORDER BY "createdAt" ASC`,
-    );
+    const url = new URL(request.url);
+    const type = url.searchParams.get('type'); // 'internal' | 'client' | null (all)
+    let query = `SELECT * FROM "User" WHERE status != 'DISABLED'`;
+    if (type === 'client') {
+      query += ` AND "userType" = 'CLIENT'`;
+    } else if (!type || type === 'internal') {
+      query += ` AND "userType" = 'INTERNAL'`;
+    }
+    query += ` ORDER BY "createdAt" ASC`;
+    const result = await pool.query(query);
     return Response.json(result.rows.map(toFrontendUser));
   } catch (err) {
     console.error('[GET /api/users]', err);
@@ -45,7 +52,36 @@ export async function POST(request: Request) {
     const body = await request.json();
     if (!body.id) return Response.json({ error: 'id required' }, { status: 400 });
 
+    const isClientUser = body.userType === 'CLIENT';
     const { firstName, lastName } = parseNameParts(body.name || '');
+
+    if (isClientUser) {
+      // Client users require a real email
+      if (!body.email) return Response.json({ error: 'email required for client users' }, { status: 400 });
+
+      const result = await pool.query(
+        `INSERT INTO "User" (
+          id, "firstName", "lastName", email, phone,
+          "userType", status, "internalRole", "avatarColor",
+          "createdAt", "updatedAt"
+        ) VALUES (
+          $1, $2, $3, $4, $5,
+          'CLIENT'::"UserType", 'ACTIVE'::"UserStatus", 'SALES'::"InternalRole", $6,
+          NOW(), NOW()
+        )
+        ON CONFLICT (id) DO UPDATE SET
+          "firstName"  = EXCLUDED."firstName",
+          "lastName"   = EXCLUDED."lastName",
+          phone        = EXCLUDED.phone,
+          "avatarColor" = EXCLUDED."avatarColor",
+          "updatedAt"  = NOW()
+        RETURNING *`,
+        [body.id, firstName, lastName, body.email, body.phone || null, body.avatarColor || '#6366F1'],
+      );
+      return Response.json(toFrontendUser(result.rows[0]), { status: 201 });
+    }
+
+    // Internal user sync (existing behaviour)
     const email = `${body.id}@noemail.internal`;
     const internalRole = mapRoleToInternal(body.role || 'user');
 
@@ -82,7 +118,7 @@ export async function POST(request: Request) {
     return Response.json(toFrontendUser(result.rows[0]), { status: 201 });
   } catch (err: any) {
     if (err?.code === '23505') {
-      // Race condition — concurrent sync already inserted this user; that's fine
+      // Race condition on email unique — concurrent sync already inserted; that's fine
       return new Response(null, { status: 204 });
     }
     console.error('[POST /api/users]', err);
