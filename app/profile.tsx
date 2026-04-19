@@ -43,6 +43,7 @@ import * as ImagePicker from 'expo-image-picker';
 import Colors from '@/constants/colors';
 import { useUser } from '@/contexts/UserContext';
 import { AVATAR_COLORS, UserProfile } from '@/types/user';
+import { CropModal } from '@/components/CropModal';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -75,6 +76,14 @@ export default function ProfileScreen() {
   const [showApiSection, setShowApiSection] = useState(false);
   const [showUserMgmt, setShowUserMgmt] = useState(true);
 
+  const [cropModal, setCropModal] = useState<{
+    visible: boolean;
+    uri: string;
+    aspect: [number, number];
+    title: string;
+    target: 'profile' | 'logo';
+  }>({ visible: false, uri: '', aspect: [1, 1], title: '', target: 'profile' });
+
   const isPasswordLocked = currentUser?.adminPasswordLocked && currentUser?.adminPassword;
 
   React.useEffect(() => {
@@ -105,12 +114,11 @@ export default function ProfileScreen() {
   const pickProfilePicture = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
+      allowsEditing: false,
+      quality: 1,
     });
     if (!result.canceled && result.assets[0]) {
-      setProfilePicture(result.assets[0].uri);
+      setCropModal({ visible: true, uri: result.assets[0].uri, aspect: [1, 1], title: 'Crop Profile Photo', target: 'profile' });
     }
   }, []);
 
@@ -124,13 +132,25 @@ export default function ProfileScreen() {
   const pickCompanyLogo = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [4, 1],
-      quality: 0.8,
+      allowsEditing: false,
+      quality: 1,
     });
     if (!result.canceled && result.assets[0]) {
-      setCompanyLogo(result.assets[0].uri);
+      setCropModal({ visible: true, uri: result.assets[0].uri, aspect: [4, 1], title: 'Crop Company Logo', target: 'logo' });
     }
+  }, []);
+
+  const handleCropConfirm = useCallback((croppedUri: string) => {
+    if (cropModal.target === 'profile') {
+      setProfilePicture(croppedUri);
+    } else {
+      setCompanyLogo(croppedUri);
+    }
+    setCropModal((m) => ({ ...m, visible: false }));
+  }, [cropModal.target]);
+
+  const handleCropCancel = useCallback(() => {
+    setCropModal((m) => ({ ...m, visible: false }));
   }, []);
 
   const removeCompanyLogo = useCallback(() => {
@@ -886,6 +906,14 @@ export default function ProfileScreen() {
           </View>
         </View>
       )}
+      <CropModal
+        visible={cropModal.visible}
+        imageUri={cropModal.uri}
+        aspect={cropModal.aspect}
+        title={cropModal.title}
+        onConfirm={handleCropConfirm}
+        onCancel={handleCropCancel}
+      />
     </KeyboardAvoidingView>
   );
 }
