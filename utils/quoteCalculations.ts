@@ -90,12 +90,12 @@ export function calculateQuote(
   };
 }
 
-export function formatCurrency(value: number): string {
-  return `$${value.toFixed(2)}`;
+export function formatCurrency(value: number | null | undefined): string {
+  return `$${(value ?? 0).toFixed(2)}`;
 }
 
-export function formatPercentage(value: number): string {
-  return `${value.toFixed(1)}%`;
+export function formatPercentage(value: number | null | undefined): string {
+  return `${(value ?? 0).toFixed(1)}%`;
 }
 
 export function generateInvoiceNumber(): string {

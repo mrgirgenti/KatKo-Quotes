@@ -261,29 +261,29 @@ export default function QuoteDetailScreen() {
   }, [quote]);
 
   const getSalesCalculations = useCallback(() => {
-    if (!quote?.salesData) return null;
+    if (!quote?.salesData || !quote?.calculations) return null;
     const serviceFeesCost = quote.salesData.actualServiceFeesCost ?? 0;
     const serviceFeesProfit = quote.salesData.actualServiceFeesProfit ?? 0;
     const onlineFee = quote.salesData.actualOnlineFee ?? 0;
     const salesTax = quote.salesData.actualSalesTax ?? 0;
     const cardFee = quote.salesData.actualCardFee ?? 0;
     
-    const actualCOG = quote.salesData.actualProductCost + quote.salesData.actualServiceCost + 
-                      serviceFeesCost + quote.salesData.actualOtherCosts;
+    const actualCOG = (quote.salesData.actualProductCost ?? 0) + (quote.salesData.actualServiceCost ?? 0) + 
+                      serviceFeesCost + (quote.salesData.actualOtherCosts ?? 0);
     const actualTotalWithFees = actualCOG + onlineFee + salesTax + cardFee;
     
-    const quotedFees = quote.calculations.serviceFeeTotal;
+    const quotedFees = quote.calculations.serviceFeeTotal ?? 0;
     const feesDifference = quotedFees - serviceFeesCost;
     
-    const actualProfit = quote.salesData.amountCollected - actualTotalWithFees + serviceFeesProfit;
-    const actualProfitMargin = quote.salesData.amountCollected > 0 
+    const actualProfit = (quote.salesData.amountCollected ?? 0) - actualTotalWithFees + serviceFeesProfit;
+    const actualProfitMargin = (quote.salesData.amountCollected ?? 0) > 0 
       ? ((actualProfit / quote.salesData.amountCollected) * 100) 
       : 0;
-    const quotedVsActualCOGDiff = quote.calculations.cogTotal - actualCOG;
-    const quotedVsActualProfitDiff = actualProfit - quote.calculations.markupAmount;
+    const quotedVsActualCOGDiff = (quote.calculations.cogTotal ?? 0) - actualCOG;
+    const quotedVsActualProfitDiff = actualProfit - (quote.calculations.markupAmount ?? 0);
     
     const actualSubtotal = actualCOG + actualProfit;
-    const quotedSubtotal = quote.calculations.subtotal;
+    const quotedSubtotal = quote.calculations.subtotal ?? 0;
     
     return { 
       actualCOG, 
@@ -606,8 +606,9 @@ export default function QuoteDetailScreen() {
   };
 
   const renderPricingSummary = () => {
+    if (!quote.calculations) return null;
     const q = quote.calculations;
-    const perPc = (val: number) => q.totalQuantity > 0 ? val / q.totalQuantity : 0;
+    const perPc = (val: number) => (q.totalQuantity ?? 0) > 0 ? val / q.totalQuantity : 0;
     return (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Pricing Summary</Text>
@@ -642,9 +643,9 @@ export default function QuoteDetailScreen() {
             </View>
 
             <View style={[styles.pricingRow, styles.pricingRowMarkup]}>
-              <Text style={styles.pricingRowLabelMarkup}>Markup ({q.markupPercentage.toFixed(1)}%)</Text>
-              <Text style={styles.pricingRowValueMarkup}>{formatCurrency(perPc(q.markupAmount))}</Text>
-              <Text style={styles.pricingRowValueMarkup}>{formatCurrency(q.markupAmount)}</Text>
+              <Text style={styles.pricingRowLabelMarkup}>Markup ({(q.markupPercentage ?? 0).toFixed(1)}%)</Text>
+              <Text style={styles.pricingRowValueMarkup}>{formatCurrency(perPc(q.markupAmount ?? 0))}</Text>
+              <Text style={styles.pricingRowValueMarkup}>{formatCurrency(q.markupAmount ?? 0)}</Text>
             </View>
 
             <View style={styles.pricingDivider} />
@@ -765,7 +766,7 @@ export default function QuoteDetailScreen() {
                 <Text style={styles.salesTableRowValueBold}>{formatCurrency(calc.actualCOG)}</Text>
               </View>
               <View style={styles.salesTableRow}>
-                <Text style={styles.salesTableRowLabel}>Markup ({quote.calculations.markupPercentage.toFixed(1)}%)</Text>
+                <Text style={styles.salesTableRowLabel}>Markup ({(quote.calculations?.markupPercentage ?? 0).toFixed(1)}%)</Text>
                 <Text style={styles.salesTableRowValue}>{formatCurrency(quote.calculations.markupAmount)}</Text>
                 <Text style={[styles.salesTableRowValue, calc.actualProfit < quote.calculations.markupAmount ? styles.negativeText : styles.positiveText]}>
                   {formatCurrency(calc.actualProfit)}

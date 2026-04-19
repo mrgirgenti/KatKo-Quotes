@@ -1,0 +1,42 @@
+The core quote/project flow is still broken and needs a focused stabilization pass.
+
+Current observed regressions:
+1. When I submit a quote, the app refreshes to a blank quote page instead of staying on the saved record detail page.
+2. The submitted quote does not reliably appear in the Projects tab.
+3. Clicking into a project/quote detail crashes with:
+   Cannot read properties of undefined (reading 'toFixed')
+   Stack points to:
+   - utils/quoteCalculations.ts
+   - formatCurrency
+   - renderPricingSummary
+   - app/quote/[id].tsx
+
+I do NOT want new features right now. I want the quote/project flow stabilized end-to-end with no UI redesign.
+
+Tasks:
+1. Trace the exact submit flow from New Quote form through context, API, database write, returned response, route navigation, Projects query, and Quote Detail lookup.
+2. Identify exactly what record is being created or updated on submit:
+   - Project row?
+   - Quote row?
+   - both?
+   - neither?
+3. Confirm the exact ID returned after submit and which route the UI navigates to afterward.
+4. Fix post-submit behavior so the app routes to the saved record detail page, not a blank new quote page.
+5. Fix the Projects tab so any successfully submitted quote/project appears immediately and after refresh.
+6. Compare the fetched project/quote detail payload against what app/quote/[id].tsx expects.
+7. Identify every numeric field that can be undefined in renderPricingSummary and fix both:
+   - the data mapping
+   - the UI safety defaults
+8. Ensure a saved record can be opened from Projects without any crash.
+
+I want a true root-cause report, not a superficial patch.
+
+Deliver back:
+- exact root cause for blank-page redirect after submit
+- exact root cause for missing Projects entry
+- exact root cause for the toFixed crash
+- exact files changed
+- what record now gets created on submit
+- what route it navigates to after submit
+- confirmation that this flow now works:
+  create quote -> submit -> stay on saved detail -> refresh -> open from Projects -> no crash

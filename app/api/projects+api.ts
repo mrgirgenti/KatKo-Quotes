@@ -81,7 +81,7 @@ export async function POST(request: Request) {
         JSON.stringify(body.lineItems ?? []),
         body.status || 'quoted',
         frontendStatusToDbStatus(body.status || 'quoted'),
-        (body.userId && body.userId !== 'default') ? body.userId : null,
+        null, // createdByUserId: User IDs live in AsyncStorage, not PostgreSQL — FK would violate
         (body as any).activeDate ?? null,
         (body as any).isLocked ?? false,
         (body as any).lockedDate ?? null,

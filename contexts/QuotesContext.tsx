@@ -71,7 +71,13 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
       const quoteWithUser = { ...newQuote, userId: currentUserId ?? undefined };
       return apiFetch('/api/projects', { method: 'POST', body: JSON.stringify(quoteWithUser) });
     },
-    onSuccess: invalidateQuotes,
+    onSuccess: (savedQuote: Quote) => {
+      // Immediately inject the server-returned quote into the cache so the detail
+      // screen can find it the instant we navigate — no "Quote not found" flash.
+      queryClient.setQueryData<Quote[]>(['quotes'], (old) => [savedQuote, ...(old || [])]);
+      // Then mark stale so a background refetch keeps everything consistent.
+      invalidateQuotes();
+    },
   });
 
   const updateQuoteMutation = useMutation({
