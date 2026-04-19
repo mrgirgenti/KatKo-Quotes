@@ -62,7 +62,7 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
   const pathname = usePathname();
   const widthAnim = useRef(new Animated.Value(defaultCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH)).current;
 
-  const { orgAdmin } = useUser();
+  const { orgAdmin, currentUser } = useUser();
   const logoUri = orgAdmin?.companyLogo || FALLBACK_LOGO_URI;
 
   useEffect(() => {
@@ -139,11 +139,31 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
       <View style={styles.divider} />
 
       <TouchableOpacity
-        style={[styles.navItem, collapsed && styles.navItemCollapsed]}
+        style={[styles.navItem, isRouteActive('/profile', pathname) && styles.navItemActive, collapsed && styles.navItemCollapsed]}
         onPress={() => navigate('/profile')}
       >
-        <User size={20} color={SB.iconColor} />
-        {!collapsed && <Text style={styles.navLabel}>Profile</Text>}
+        {isRouteActive('/profile', pathname) && !collapsed && <View style={styles.activeBar} />}
+        {currentUser?.profilePicture ? (
+          <Image
+            source={{ uri: currentUser.profilePicture }}
+            style={styles.profileAvatar}
+          />
+        ) : currentUser?.name ? (
+          <View style={[styles.profileAvatar, styles.profileAvatarFallback, { backgroundColor: currentUser.avatarColor || SB.iconColor }]}>
+            <Text style={styles.profileAvatarText}>{currentUser.name[0].toUpperCase()}</Text>
+          </View>
+        ) : (
+          <View style={[styles.profileAvatar, styles.profileAvatarFallback, { backgroundColor: SB.iconColor }]}>
+            <User size={14} color="#fff" />
+          </View>
+        )}
+        {!collapsed && (
+          <View style={styles.profileLabelGroup}>
+            <Text style={[styles.navLabel, isRouteActive('/profile', pathname) && styles.navLabelActive]} numberOfLines={1}>
+              {currentUser?.name || 'Profile'}
+            </Text>
+          </View>
+        )}
       </TouchableOpacity>
     </Animated.View>
   );
@@ -229,6 +249,24 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
   },
   spacer: {
+    flex: 1,
+  },
+  profileAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  profileAvatarFallback: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileAvatarText: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: '#fff',
+  },
+  profileLabelGroup: {
     flex: 1,
   },
 });
