@@ -10,6 +10,8 @@ import {
   CampaignStep,
   CrmStatus,
   Department,
+  OrgMembership,
+  MembershipRole,
 } from '@/types/crm';
 import { generateId } from '@/utils/quoteCalculations';
 
@@ -369,6 +371,42 @@ export const [CrmProvider, useCrm] = createContextHook(() => {
     onSuccess: invalidateOrgs,
   });
 
+  const updateOrgHubEnabledMutation = useMutation({
+    mutationFn: async ({ orgId, enabled }: { orgId: string; enabled: boolean }) => {
+      return apiFetch(`/api/orgs/${orgId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ hubEnabled: enabled }),
+      });
+    },
+    onSuccess: invalidateOrgs,
+  });
+
+  const createMembershipMutation = useMutation({
+    mutationFn: async (data: {
+      organizationId: string;
+      userId: string;
+      role: MembershipRole;
+      canManageUsers?: boolean;
+      canViewInvoices?: boolean;
+      canPayInvoices?: boolean;
+      canApproveQuotes?: boolean;
+    }): Promise<OrgMembership> => {
+      return apiFetch('/api/memberships', { method: 'POST', body: JSON.stringify(data) });
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['memberships', vars.organizationId] });
+    },
+  });
+
+  const deleteMembershipMutation = useMutation({
+    mutationFn: async ({ membershipId, orgId }: { membershipId: string; orgId: string }) => {
+      return apiFetch(`/api/memberships/${membershipId}`, { method: 'DELETE' });
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['memberships', vars.orgId] });
+    },
+  });
+
   return {
     orgs,
     templates,
@@ -392,5 +430,9 @@ export const [CrmProvider, useCrm] = createContextHook(() => {
     addDepartment: addDepartmentMutation.mutate,
     updateDepartment: updateDepartmentMutation.mutate,
     deleteDepartment: deleteDepartmentMutation.mutate,
+    updateOrgHubEnabled: updateOrgHubEnabledMutation.mutate,
+    createMembership: createMembershipMutation.mutate,
+    createMembershipAsync: createMembershipMutation.mutateAsync,
+    deleteMembership: deleteMembershipMutation.mutate,
   };
 });

@@ -1,5 +1,12 @@
 import { pool } from '@/lib/pool';
+import type { Pool } from 'pg';
 import type { Quote } from '@/types/quote';
+
+async function resolveUserId(db: Pool, userId: unknown): Promise<string | null> {
+  if (!userId || typeof userId !== 'string' || userId === 'default') return null;
+  const check = await db.query(`SELECT id FROM "User" WHERE id = $1`, [userId]);
+  return check.rows[0] ? userId : null;
+}
 
 function toFrontendQuote(p: any): Quote {
   return {
@@ -81,7 +88,7 @@ export async function POST(request: Request) {
         JSON.stringify(body.lineItems ?? []),
         body.status || 'quoted',
         frontendStatusToDbStatus(body.status || 'quoted'),
-        null, // createdByUserId: User IDs live in AsyncStorage, not PostgreSQL — FK would violate
+        await resolveUserId(pool, (body as any).userId), // createdByUserId: verified FK
         (body as any).activeDate ?? null,
         (body as any).isLocked ?? false,
         (body as any).lockedDate ?? null,

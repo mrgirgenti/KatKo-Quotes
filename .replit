@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "bun"]
+modules = ["nodejs-20", "bun", "postgresql-16"]
 [agent]
 expertMode = true
 

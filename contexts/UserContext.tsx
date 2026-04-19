@@ -1,8 +1,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { UserProfile, DEFAULT_USER, AVATAR_COLORS } from '@/types/user';
+
+async function syncUserToDB(user: UserProfile): Promise<void> {
+  try {
+    await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(user),
+    });
+  } catch {
+    // fire-and-forget — never block the UI
+  }
+}
 
 const USERS_STORAGE_KEY = 'printshop_users';
 const CURRENT_USER_KEY = 'printshop_current_user';
@@ -82,6 +94,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const queryClient = useQueryClient();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const syncedCountRef = useRef(0);
 
   const usersQuery = useQuery({
     queryKey: ['users'],
@@ -94,6 +107,15 @@ export const [UserProvider, useUser] = createContextHook(() => {
       setIsInitialized(true);
     });
   }, []);
+
+  // Sync all users to PostgreSQL on boot (fire-and-forget, keeps DB FK-ready)
+  useEffect(() => {
+    if (!isInitialized || !usersQuery.data?.length) return;
+    const currentCount = usersQuery.data.length;
+    if (syncedCountRef.current === currentCount) return;
+    syncedCountRef.current = currentCount;
+    Promise.all(usersQuery.data.map(syncUserToDB));
+  }, [isInitialized, usersQuery.data?.length]);
 
   useEffect(() => {
     if (isInitialized && usersQuery.data && usersQuery.data.length === 0) {
@@ -122,6 +144,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
     mutationFn: async (newUser: UserProfile) => {
       const current = usersQuery.data || [];
       const updated = [...current, newUser];
+      syncUserToDB(newUser);
       return saveUsers(updated);
     },
     onSuccess: (data) => {
@@ -133,6 +156,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
     mutationFn: async (updatedUser: UserProfile) => {
       const current = usersQuery.data || [];
       const updated = current.map((u) => (u.id === updatedUser.id ? updatedUser : u));
+      syncUserToDB(updatedUser);
       return saveUsers(updated);
     },
     onSuccess: (data) => {

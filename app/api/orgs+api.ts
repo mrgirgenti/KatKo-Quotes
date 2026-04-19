@@ -50,6 +50,7 @@ function toFrontendOrg(org: any, contacts: any[], activityLogs: any[]): Organiza
     activityLog: activityLogs.map(toFrontendActivity),
     campaigns: (org.campaignsData as CampaignAssignment[] | null) || [],
     departments: (org.departmentsData as Department[] | null) || [],
+    hubEnabled: org.hubEnabled ?? false,
     createdAt: new Date(org.createdAt).toISOString(),
   };
 }

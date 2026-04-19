@@ -27,13 +27,21 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 
 ## Context Layer
 - **QuotesContext**: All quote/project CRUD via `/api/projects` — fully migrated from AsyncStorage
-- **CrmContext**: All org/contact/activity CRUD via `/api/orgs` — fully migrated from AsyncStorage
-- **UserContext**: User profiles still in AsyncStorage (migration deferred — `User` DB table exists but unused at runtime)
+- **CrmContext**: All org/contact/activity CRUD via `/api/orgs` — fully migrated from AsyncStorage. Phase 3 additions: `updateOrgHubEnabled`, `createMembership`, `createMembershipAsync`, `deleteMembership`
+- **UserContext**: Primary store is AsyncStorage; DB sync added in Phase 3 (fire-and-forget upsert on init and on create/update). AsyncStorage IDs used directly as PostgreSQL `User.id` (string PK). `syncUserToDB()` called on boot and on every mutation.
 - **ClientsContext**: DELETED. The legacy `Client` type is fully replaced by `Organization` + `Contact`. Dashboard client counts now derive from `useCrm().orgs`. `autoAddClientIfNew` in sales-tracking now calls `addOrg` via `useCrm`. `contexts/ClientsContext.tsx` and `types/client.ts` deleted.
+
+## Phase 3 — User DB Sync, Project Attribution, Memberships, Hub (2026-04-19)
+- `app/api/users+api.ts`: GET internal users, POST upsert-by-AsyncStorage-ID (email=`{id}@noemail.internal`; maps `org_admin→SUPER_ADMIN`, `user→SALES`; race condition handled with 204 on duplicate)
+- `app/api/memberships+api.ts` + `[id]+api.ts`: GET by `?orgId=`, POST upsert, DELETE
+- `app/api/orgs/[id]+api.ts` PUT: now accepts `hubEnabled` and persists to DB
+- `app/api/projects+api.ts`: `createdByUserId` re-enabled via `resolveUserId()` helper (verifies FK before setting)
+- `types/crm.ts`: Added `OrgMembership`, `MembershipRole`, `hubEnabled` on `Organization`
+- **Org profile Hub tab**: Toggle `hubEnabled`, view/add/remove team members with `MembershipRole` (ORG_ADMIN/MEMBER/BILLING_CONTACT/APPROVER)
 
 ## CRM / Contact System
 - Full CRM pipeline: Cold → Working → Active Client → Past Client
-- Org profile: Lead Tracking banner (Cold/Working only), Activity Log, Contacts tab, Quotes tab, Campaigns tab
+- Org profile: Lead Tracking banner (Cold/Working only), Activity Log, Contacts tab, Quotes tab, Campaigns tab, **Hub tab** (hubEnabled toggle + team member management)
 - **Departments**: Contacts grouped by department within each org; department CRUD; contacts assignable to departments
 - **Contact Import**: 3-step import wizard (paste text or CSV → column auto-mapping → preview → confirm bulk import)
 - **Active Projects Tracker**: Purple banner on org profile showing any active/in-production quotes; disappears when none

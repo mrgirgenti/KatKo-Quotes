@@ -11,7 +11,9 @@ import {
   Platform,
   Pressable,
   Alert,
+  Switch,
 } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import {
   Edit3,
@@ -37,6 +39,7 @@ import {
   ChevronDown,
   PhoneCall,
   Users,
+  Shield,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
@@ -57,9 +60,20 @@ import {
   CampaignAssignment,
   CampaignStep,
   CampaignStepStatus,
+  OrgMembership,
+  MembershipRole,
 } from '@/types/crm';
+
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { STATUS_CONFIG, getEffectiveStatus } from '@/types/quote';
+
+const MEMBERSHIP_ROLE_LABELS: Record<string, string> = {
+  ORG_ADMIN: 'Org Admin',
+  MEMBER: 'Member',
+  BILLING_CONTACT: 'Billing Contact',
+  APPROVER: 'Approver',
+};
+const MEMBERSHIP_ROLES: MembershipRole[] = ['ORG_ADMIN', 'MEMBER', 'BILLING_CONTACT', 'APPROVER'];
 
 function formatDate(iso?: string, withTime = false): string {
   if (!iso) return 'N/A';
@@ -152,13 +166,16 @@ export default function OrgProfileScreen() {
     assignCampaign, updateCampaignStep, deleteCampaign,
     updateOrgStatus,
     addDepartment, updateDepartment, deleteDepartment,
+    updateOrgHubEnabled,
+    createMembershipAsync,
+    deleteMembership,
   } = useCrm();
   const { quotes } = useQuotes();
   const { isDesktop } = useBreakpoint();
 
   const org = useMemo(() => orgs.find((o) => o.id === id), [orgs, id]);
 
-  const [activeTab, setActiveTab] = useState<'activity' | 'contacts' | 'quotes' | 'campaigns'>('activity');
+  const [activeTab, setActiveTab] = useState<'activity' | 'contacts' | 'quotes' | 'campaigns' | 'hub'>('activity');
   const [editOrgModal, setEditOrgModal] = useState(false);
   const [orgForm, setOrgForm] = useState({ name: '', type: '', address: '', city: '', state: '', website: '', notes: '', status: 'Cold' as CrmStatus });
   const [showOrgTypeDropdown, setShowOrgTypeDropdown] = useState(false);
@@ -178,6 +195,46 @@ export default function OrgProfileScreen() {
   const [deptModal, setDeptModal] = useState(false);
   const [editingDept, setEditingDept] = useState<Department | null>(null);
   const [deptForm, setDeptForm] = useState({ name: '', description: '' });
+
+  const [addMemberModal, setAddMemberModal] = useState(false);
+  const [memberForm, setMemberForm] = useState<{ userId: string; role: MembershipRole }>({ userId: '', role: 'MEMBER' });
+  const [memberRoleDropdown, setMemberRoleDropdown] = useState(false);
+
+  const { data: memberships = [], isLoading: membershipsLoading, refetch: refetchMemberships } = useQuery<OrgMembership[]>({
+    queryKey: ['memberships', org?.id],
+    queryFn: async () => {
+      if (!org?.id) return [];
+      const res = await fetch(`/api/memberships?orgId=${org.id}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!org?.id,
+  });
+
+  const { data: availableUsers = [] } = useQuery<{ id: string; name: string; avatarColor: string }[]>({
+    queryKey: ['db_users'],
+    queryFn: async () => {
+      const res = await fetch('/api/users');
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const handleAddMember = useCallback(async () => {
+    if (!org || !memberForm.userId) return;
+    try {
+      await createMembershipAsync({
+        organizationId: org.id,
+        userId: memberForm.userId,
+        role: memberForm.role,
+      });
+      setAddMemberModal(false);
+      setMemberForm({ userId: '', role: 'MEMBER' });
+      refetchMemberships();
+    } catch (err) {
+      Alert.alert('Error', 'Failed to add member. Make sure the user has been synced.');
+    }
+  }, [org, memberForm, createMembershipAsync, refetchMemberships]);
 
   const relatedQuotes = useMemo(() => {
     if (!org) return [];
@@ -536,6 +593,7 @@ export default function OrgProfileScreen() {
     { key: 'contacts', label: 'Contacts', count: org.contacts.length },
     { key: 'quotes', label: 'Quotes', count: relatedQuotes.length },
     { key: 'campaigns', label: 'Campaigns', count: org.campaigns.length },
+    { key: 'hub', label: 'Hub', count: memberships.length },
   ] as const;
 
   const rightPanel = (
@@ -747,6 +805,68 @@ export default function OrgProfileScreen() {
                   </View>
                   <ChevronRight size={14} color={Colors.light.border} />
                 </TouchableOpacity>
+              ))}
+              <View style={{ height: 40 }} />
+            </ScrollView>
+          )}
+        </View>
+      )}
+
+      {/* Hub tab */}
+      {activeTab === 'hub' && (
+        <View style={styles.tabContent}>
+          <View style={styles.hubToggleRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.hubToggleLabel}>Client Hub Enabled</Text>
+              <Text style={styles.hubToggleSub}>Grant this org access to the Client Hub portal</Text>
+            </View>
+            <Switch
+              value={org.hubEnabled ?? false}
+              onValueChange={(val) => updateOrgHubEnabled({ orgId: org.id, enabled: val })}
+              trackColor={{ false: Colors.light.border, true: '#FF5A00' }}
+              thumbColor="#fff"
+            />
+          </View>
+
+          <View style={styles.tabContentHeader}>
+            <Text style={styles.tabContentTitle}>Team Members</Text>
+            <TouchableOpacity style={styles.addItemBtn} onPress={() => { setMemberForm({ userId: '', role: 'MEMBER' }); setAddMemberModal(true); }}>
+              <Plus size={14} color="#fff" />
+              <Text style={styles.addItemBtnText}>Add Member</Text>
+            </TouchableOpacity>
+          </View>
+
+          {membershipsLoading ? (
+            <View style={styles.emptyTab}>
+              <Text style={styles.emptyTabSub}>Loading members...</Text>
+            </View>
+          ) : memberships.length === 0 ? (
+            <View style={styles.emptyTab}>
+              <Shield size={32} color={Colors.light.border} />
+              <Text style={styles.emptyTabText}>No members yet.</Text>
+              <Text style={styles.emptyTabSub}>Add team members to grant them Hub access roles.</Text>
+            </View>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {memberships.map((m) => (
+                <View key={m.id} style={styles.memberRow}>
+                  <View style={[styles.memberAvatar, { backgroundColor: m.userAvatarColor || '#FF5A00' }]}>
+                    <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
+                  </View>
+                  <View style={styles.memberInfo}>
+                    <Text style={styles.memberName}>{m.userName || 'Unknown User'}</Text>
+                    <Text style={styles.memberRole}>{MEMBERSHIP_ROLE_LABELS[m.role] || m.role}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.memberDelete}
+                    onPress={() => Alert.alert('Remove Member', `Remove ${m.userName || 'this member'} from the org?`, [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Remove', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
+                    ])}
+                  >
+                    <X size={13} color={Colors.light.textSecondary} />
+                  </TouchableOpacity>
+                </View>
               ))}
               <View style={{ height: 40 }} />
             </ScrollView>
@@ -1145,6 +1265,69 @@ export default function OrgProfileScreen() {
           </KeyboardAvoidingView>
         </Pressable>
       </Modal>
+
+      {/* Add Member Modal */}
+      <Modal visible={addMemberModal} transparent animationType="fade" onRequestClose={() => setAddMemberModal(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setAddMemberModal(false)}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
+            <Pressable style={styles.modalCard} onPress={() => {}}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Add Member</Text>
+                <TouchableOpacity onPress={() => setAddMemberModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
+              </View>
+              <Text style={styles.fieldLabel}>Select User</Text>
+              {availableUsers.length === 0 ? (
+                <Text style={[styles.emptyTabSub, { marginBottom: 12 }]}>No users synced yet. Create a user in the app first.</Text>
+              ) : (
+                <ScrollView style={{ maxHeight: 180 }} showsVerticalScrollIndicator={false}>
+                  {availableUsers.map((u) => {
+                    const selected = memberForm.userId === u.id;
+                    return (
+                      <TouchableOpacity
+                        key={u.id}
+                        style={[styles.userPickerRow, selected && styles.userPickerRowSelected]}
+                        onPress={() => setMemberForm((f) => ({ ...f, userId: u.id }))}
+                      >
+                        <View style={[styles.memberAvatar, { backgroundColor: u.avatarColor || '#FF5A00', width: 30, height: 30, borderRadius: 15 }]}>
+                          <Text style={[styles.memberAvatarText, { fontSize: 12 }]}>{(u.name || '?')[0].toUpperCase()}</Text>
+                        </View>
+                        <Text style={[styles.userPickerName, selected && { color: '#FF5A00', fontWeight: '600' as const }]}>{u.name}</Text>
+                        {selected && <CheckCircle size={16} color="#FF5A00" />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              )}
+              <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Role</Text>
+              <TouchableOpacity style={[styles.typePickerBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]} onPress={() => setMemberRoleDropdown((v) => !v)}>
+                <Text style={styles.typePickerBtnText}>{MEMBERSHIP_ROLE_LABELS[memberForm.role] || memberForm.role}</Text>
+                <ChevronDown size={16} color={Colors.light.textSecondary} />
+              </TouchableOpacity>
+              {memberRoleDropdown && (
+                <View style={styles.typeDropdown}>
+                  {MEMBERSHIP_ROLES.map((r) => (
+                    <TouchableOpacity key={r} style={styles.typeDropdownItem} onPress={() => { setMemberForm((f) => ({ ...f, role: r })); setMemberRoleDropdown(false); }}>
+                      <Text style={[styles.typeDropdownText, memberForm.role === r && styles.typeDropdownTextActive]}>{MEMBERSHIP_ROLE_LABELS[r]}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setAddMemberModal(false)}>
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.saveBtn, !memberForm.userId && { opacity: 0.4 }]}
+                  onPress={handleAddMember}
+                  disabled={!memberForm.userId}
+                >
+                  <Text style={styles.saveBtnText}>Add Member</Text>
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -1499,4 +1682,36 @@ const styles = StyleSheet.create({
   deptAddBtn: { padding: 6, borderRadius: 6, backgroundColor: `${Colors.light.tint}15` },
   deptActionBtn: { padding: 6, borderRadius: 6 },
   deptEmpty: { fontSize: 12, color: Colors.light.textSecondary, fontStyle: 'italic', paddingHorizontal: 8, paddingVertical: 10 },
+
+  hubToggleRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.light.surface, borderRadius: 12,
+    borderWidth: 1, borderColor: Colors.light.border,
+    padding: 14, marginBottom: 16,
+  },
+  hubToggleLabel: { fontSize: 15, fontWeight: '600' as const, color: Colors.light.text },
+  hubToggleSub: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 2 },
+
+  memberRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 10, paddingHorizontal: 2,
+    borderBottomWidth: 1, borderBottomColor: Colors.light.border,
+  },
+  memberAvatar: {
+    width: 36, height: 36, borderRadius: 18,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  memberAvatarText: { fontSize: 14, fontWeight: '700' as const, color: '#fff' },
+  memberInfo: { flex: 1 },
+  memberName: { fontSize: 14, fontWeight: '600' as const, color: Colors.light.text },
+  memberRole: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 1 },
+  memberDelete: { padding: 6 },
+
+  userPickerRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 9, paddingHorizontal: 4,
+    borderRadius: 8, marginBottom: 2,
+  },
+  userPickerRowSelected: { backgroundColor: `#FF5A0012` },
+  userPickerName: { flex: 1, fontSize: 14, color: Colors.light.text },
 });

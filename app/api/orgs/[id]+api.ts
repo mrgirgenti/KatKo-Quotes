@@ -50,6 +50,7 @@ function toFrontendOrg(org: any, contacts: any[], activityLogs: any[]): Organiza
     activityLog: activityLogs.map(toFrontendActivity),
     campaigns: (org.campaignsData as CampaignAssignment[] | null) || [],
     departments: (org.departmentsData as Department[] | null) || [],
+    hubEnabled: org.hubEnabled ?? false,
     createdAt: new Date(org.createdAt).toISOString(),
   };
 }
@@ -91,8 +92,9 @@ export async function PUT(request: Request, { id }: { id: string }) {
         "convertedToActiveDate" = $7,
         "campaignsData" = $8::jsonb,
         "departmentsData" = $9::jsonb,
+        "hubEnabled" = $10,
         "updatedAt" = NOW()
-      WHERE id = $10 RETURNING *`,
+      WHERE id = $11 RETURNING *`,
       [
         body.name ?? existing.name,
         body.type !== undefined ? body.type : existing.type,
@@ -103,6 +105,7 @@ export async function PUT(request: Request, { id }: { id: string }) {
         becameActive ? new Date() : existing.convertedToActiveDate,
         JSON.stringify(body.campaigns !== undefined ? body.campaigns : (existing.campaignsData ?? [])),
         JSON.stringify(body.departments !== undefined ? body.departments : (existing.departmentsData ?? [])),
+        body.hubEnabled !== undefined ? body.hubEnabled : (existing.hubEnabled ?? false),
         id,
       ],
     );

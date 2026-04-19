@@ -62,6 +62,26 @@ export interface Contact {
   createdAt: string;
 }
 
+export type MembershipRole = 'ORG_ADMIN' | 'MEMBER' | 'BILLING_CONTACT' | 'APPROVER';
+
+export interface OrgMembership {
+  id: string;
+  organizationId: string;
+  userId: string;
+  role: MembershipRole;
+  isPrimaryContact: boolean;
+  canManageUsers: boolean;
+  canSubmitProjects: boolean;
+  canViewProjects: boolean;
+  canViewInvoices: boolean;
+  canPayInvoices: boolean;
+  canApproveQuotes: boolean;
+  createdAt: string;
+  userName?: string;
+  userEmail?: string;
+  userAvatarColor?: string;
+}
+
 export interface Organization {
   id: string;
   name: string;
@@ -73,6 +93,7 @@ export interface Organization {
   website?: string;
   status: CrmStatus;
   notes?: string;
+  hubEnabled?: boolean;
   departments: Department[];
   contacts: Contact[];
   activityLog: ActivityEntry[];
