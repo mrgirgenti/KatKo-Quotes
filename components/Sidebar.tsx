@@ -147,6 +147,7 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
           <Image
             source={{ uri: currentUser.profilePicture }}
             style={styles.profileAvatar}
+            resizeMode="cover"
           />
         ) : currentUser?.name ? (
           <View style={[styles.profileAvatar, styles.profileAvatarFallback, { backgroundColor: currentUser.avatarColor || SB.iconColor }]}>

@@ -46,10 +46,12 @@ export function CropModal({ visible, imageUri, aspect, title, onConfirm, onCance
   const imageH = naturalH * zoom;
 
   const clampOffset = useCallback((ox: number, oy: number, iw: number, ih: number) => {
+    // When image is larger than crop window: edges must cover the frame
+    // When image is smaller than crop window: image must stay inside the frame
     const minX = Math.min(0, CONTAINER_W - iw);
-    const maxX = 0;
+    const maxX = Math.max(0, CONTAINER_W - iw);
     const minY = Math.min(0, containerH - ih);
-    const maxY = 0;
+    const maxY = Math.max(0, containerH - ih);
     return {
       x: clamp(ox, minX, maxX),
       y: clamp(oy, minY, maxY),
@@ -59,7 +61,10 @@ export function CropModal({ visible, imageUri, aspect, title, onConfirm, onCance
   const initFromImage = useCallback((nw: number, nh: number) => {
     const scaleW = CONTAINER_W / nw;
     const scaleH = containerH / nh;
-    const initialZoom = Math.max(scaleW, scaleH);
+    // Start at "contain" zoom so the whole image is visible on open,
+    // rather than "cover" (fill-frame) which forces cropping immediately.
+    const containZoom = Math.min(scaleW, scaleH);
+    const initialZoom = containZoom;
     const iw = nw * initialZoom;
     const ih = nh * initialZoom;
     const ox = (CONTAINER_W - iw) / 2;
@@ -138,6 +143,8 @@ export function CropModal({ visible, imageUri, aspect, title, onConfirm, onCance
       canvas.width = Math.round(cropW);
       canvas.height = Math.round(cropH);
       const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
       const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
       onConfirm(dataUrl);
@@ -195,7 +202,7 @@ export function CropModal({ visible, imageUri, aspect, title, onConfirm, onCance
               {/* @ts-ignore */}
               <input
                 type="range"
-                min={naturalW > 0 ? Math.max(CONTAINER_W / naturalW, containerH / naturalH) : 1}
+                min={naturalW > 0 ? Math.min(CONTAINER_W / naturalW, containerH / naturalH) * 0.25 : 0.1}
                 max={4}
                 step={0.01}
                 value={zoom}
