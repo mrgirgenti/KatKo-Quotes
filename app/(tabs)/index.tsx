@@ -556,12 +556,18 @@ export default function NewQuoteScreen() {
           </View>
         )}
 
+        {/* Page header */}
+        {!isNative && (
+          <View style={styles.pageHeader}>
+            <Text style={styles.pageTitle}>New Quote</Text>
+          </View>
+        )}
+
         {/* Desktop: two-column layout */}
         {isDesktop && !isNative ? (
           <View style={styles.twoColumnLayout}>
             <View style={styles.leftColumn}>
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Order Information</Text>
                 {orderForm}
               </View>
               {lineItemsSection}
@@ -585,7 +591,6 @@ export default function NewQuoteScreen() {
           /* Tablet + Mobile: single column */
           <>
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Order Information</Text>
               {orderForm}
             </View>
 
@@ -833,6 +838,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  pageHeader: {
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+    marginBottom: 20,
+  },
+  pageTitle: {
+    fontSize: 26,
+    fontWeight: '800' as const,
+    color: Colors.light.text,
   },
   sectionTitle: {
     fontSize: 18,
