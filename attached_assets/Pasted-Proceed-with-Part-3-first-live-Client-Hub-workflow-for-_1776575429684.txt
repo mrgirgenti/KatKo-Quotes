@@ -1,0 +1,86 @@
+Proceed with Part 3: first live Client Hub workflow for client project submission intake.
+
+Preserve the current Katalyst Ko OS layout and make only minimal UI changes where necessary.
+Do not redesign the internal app.
+Do not build the full client portal yet.
+This phase is only about allowing client users to submit projects into Ko OS cleanly.
+
+OBJECTIVE:
+Build the first client-facing workflow so a client user can access their organization hub and submit a project/order request. That submission must create a real Project in Katalyst Ko OS with status NEEDS_REVIEW and tie it to the correct organization and submitting user.
+
+SCOPE FOR THIS PHASE:
+1. Client Hub entry point
+- Add a minimal client-facing route/entry point for an organization hub
+- Only allow access for valid client users tied to the correct organization
+- Keep the UI simple and functional, not over-designed
+
+2. Client authentication/access
+- Reuse the user/access foundation already built
+- Ensure only authorized client users can access their organization’s hub
+- Ensure organization scoping is enforced correctly
+
+3. Project submission form
+Build a minimal but useful intake form that allows the client to submit:
+- project title
+- project description / notes
+- due date
+- product/item details
+- quantity
+- garment/product type if applicable
+- print method if applicable
+- artwork notes
+- shipping or delivery notes if useful
+- file upload / artwork attachment if file upload support is already ready
+If file upload is not ready, create the submission structure now and clearly note that file upload is deferred.
+
+4. Submission behavior
+On submit:
+- create a Project row
+- set Project.status = NEEDS_REVIEW
+- set Project.intakeSource = CLIENT_HUB
+- tie the Project to the correct Organization
+- tie the Project to the submitting client user
+- create an ActivityLog entry for project submission
+- make the submitted project visible in the internal Ko OS Projects list immediately and after refresh
+
+5. Internal visibility
+- Ensure the submitted project appears in Ko OS Projects without redesigning the Projects page
+- If needed, minimally expose intake source and NEEDS_REVIEW status in existing filters or display
+- Keep UI changes small and consistent with the current layout
+
+6. Notifications
+- If the existing email/notification infrastructure is ready, trigger an internal notification/email when a client submission is created
+- If not fully implemented, add the hook/placeholder and explain what remains
+
+7. Keep the scope narrow
+Do NOT build in this phase:
+- full client dashboard
+- invoice center
+- quote approval flow
+- reorder history
+- messaging center
+- advanced portal settings
+- major UI redesign
+
+DELIVERABLES:
+When done, report back with:
+1. exact files changed
+2. what was preserved visually
+3. what client submission flow now works end-to-end
+4. whether file upload is live or deferred
+5. whether internal notifications are live or deferred
+6. what still remains before expanding Client Hub further
+
+SUCCESS CRITERIA:
+I should be able to:
+- enable Client Hub for an organization
+- have a valid client user access that org’s hub
+- submit a project request
+- see that project land in Ko OS Projects as NEEDS_REVIEW
+- confirm it persists after refresh
+- confirm it is tied to the correct organization and submitting user
+
+IMPORTANT:
+Keep changes additive and minimal.
+Preserve the existing Katalyst Ko OS user experience.
+This is a focused intake workflow, not a full portal build.

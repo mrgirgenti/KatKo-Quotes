@@ -24,6 +24,7 @@ function RootLayoutNav() {
       <Stack.Screen name="reports" options={{ title: 'Reports' }} />
       <Stack.Screen name="clients/[id]" options={{ title: 'Client Profile', headerStyle: { backgroundColor: '#000000' }, headerTintColor: '#fff' }} />
       <Stack.Screen name="crm/[id]" options={{ title: 'Contact', headerStyle: { backgroundColor: '#000000' }, headerTintColor: '#fff' }} />
+      <Stack.Screen name="hub/[id]" options={{ title: 'Hub Management', headerStyle: { backgroundColor: '#000000' }, headerTintColor: '#fff' }} />
     </Stack>
   );
 }

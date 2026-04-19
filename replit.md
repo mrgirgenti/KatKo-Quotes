@@ -31,6 +31,27 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 - **UserContext**: Primary store is AsyncStorage; DB sync added in Phase 3 (fire-and-forget upsert on init and on create/update). AsyncStorage IDs used directly as PostgreSQL `User.id` (string PK). `syncUserToDB()` called on boot and on every mutation.
 - **ClientsContext**: DELETED. The legacy `Client` type is fully replaced by `Organization` + `Contact`. Dashboard client counts now derive from `useCrm().orgs`. `autoAddClientIfNew` in sales-tracking now calls `addOrg` via `useCrm`. `contexts/ClientsContext.tsx` and `types/client.ts` deleted.
 
+## Phase 5 — Full Client Hubs Admin Section (2026-04-19)
+- `app/(tabs)/client-hubs.tsx`: Redesigned to show ALL orgs split into "Hub Enabled" / "Not Enabled" sections; org search; "Not Enabled" orgs have a toggle switch to enable hub in-place (navigates to hub detail after enable); uses `useCrm()` for live data
+- `app/hub/[id].tsx`: New dedicated hub management screen — org status card with hubEnabled toggle + portal-ready indicator; Org Admin section (assign/change with internal user picker); Client Users section (invite with role selector, change role, remove); Internal Team section; all changes invalidate `client-hubs` query cache
+- `app/api/memberships/[id]+api.ts`: Added PATCH endpoint to update membership role
+- `app/_layout.tsx`: Registered `hub/[id]` Stack.Screen with black Ko OS header
+
+### What works in Client Hubs:
+- View all orgs + their hub status from the Client Hubs sidebar item
+- Enable a hub for any org with a single toggle (immediately opens management screen)
+- Assign or change the org admin (picks from internal team users)
+- Invite client users with name, email, and role selection (MEMBER/ORG_ADMIN/BILLING_CONTACT/APPROVER)
+- Change any member's role inline (tapping role badge opens role picker modal)
+- Remove any member (client or internal)
+- Portal-ready indicator: green "Portal Ready" when hub is enabled AND an org admin is assigned
+
+### What remains before client project submission goes live:
+- Client-facing portal UI (external view for clients) — not built yet
+- Email invitation delivery (currently just stores the user record)
+- Project intake submission form visible to client users
+- File visibility controls (CLIENT_VISIBLE vs INTERNAL)
+
 ## Phase 4 — Client Hubs Admin Area, Client Users, Hub Tab Enhancements (2026-04-19)
 - `app/api/client-hubs+api.ts`: GET all hub-enabled orgs with aggregated stats: totalMembers, clientUsers count, orgAdminName
 - `app/(tabs)/client-hubs.tsx`: New screen listing hub-enabled orgs — org card shows name, CRM status, admin assigned status, client user count, ready/needs-setup indicator
