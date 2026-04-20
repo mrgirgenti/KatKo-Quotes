@@ -10,7 +10,6 @@ interface CurrencyInputProps {
 }
 
 const formatCurrencyDisplay = (value: number): string => {
-  if (value === 0) return '';
   return `$${value.toFixed(2)}`;
 };
 
@@ -20,7 +19,7 @@ export function CurrencyInput({ label, value, onChange, placeholder = '$0.00' }:
 
   const handleFocus = useCallback(() => {
     setIsFocused(true);
-    setInputValue(value > 0 ? value.toString() : '');
+    setInputValue(value !== 0 ? value.toString() : '');
   }, [value]);
 
   const handleBlur = useCallback(() => {

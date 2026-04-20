@@ -48,6 +48,7 @@ import {
   ArrowRight,
   Link2,
   DollarSign,
+  AlertCircle,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -113,6 +114,20 @@ export default function QuoteDetailScreen() {
   const currentIndex = useMemo(() => allProjects.findIndex(q => q.id === id), [allProjects, id]);
   const prevQuote = currentIndex > 0 ? allProjects[currentIndex - 1] : null;
   const nextQuote = currentIndex < allProjects.length - 1 ? allProjects[currentIndex + 1] : null;
+
+  const isReadyToSend = useMemo(() => {
+    if (!quote) return false;
+    const calc = quote.calculations;
+    if (!calc) return false;
+    const isValidNumber = (v: unknown) =>
+      typeof v === 'number' && !isNaN(v) && isFinite(v);
+    return (
+      isValidNumber(calc.productCostTotal) &&
+      isValidNumber(calc.serviceCostTotal) &&
+      isValidNumber(calc.markupAmount) &&
+      isValidNumber(calc.total)
+    );
+  }, [quote]);
 
   useEffect(() => {
     setWaveInvoiceLinkDraft(quote?.waveInvoiceLink || '');
@@ -222,6 +237,17 @@ export default function QuoteDetailScreen() {
 
   const handleMarkQuoteSent = useCallback(async () => {
     if (!quote || isSendingQuote) return;
+    if (!isReadyToSend) {
+      Alert.alert(
+        'Pricing Required',
+        'Please add product costs and service costs before sending the quote. Fees and markup default to $0.00 and do not need to be set.',
+        [
+          { text: 'Edit Quote', onPress: handleEdit },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+      return;
+    }
     setIsSendingQuote(true);
     try {
       const sentAt = new Date().toISOString();
@@ -240,7 +266,7 @@ export default function QuoteDetailScreen() {
     } finally {
       setIsSendingQuote(false);
     }
-  }, [quote, isSendingQuote, handleCopyQuoteLink, router]);
+  }, [quote, isSendingQuote, isReadyToSend, handleEdit, handleCopyQuoteLink, router]);
 
   const handleMarkPaid = useCallback(async () => {
     if (!quote) return;
@@ -529,6 +555,14 @@ export default function QuoteDetailScreen() {
             ? 'Share this link again or mark as paid once payment is received.'
             : 'Share this link with your client so they can review and approve the quote.'}
         </Text>
+        {!isReadyToSend && !isQuoted && (
+          <View style={styles.pricingRequiredBanner}>
+            <AlertCircle size={13} color="#B45309" />
+            <Text style={styles.pricingRequiredText}>
+              Pricing required before sending — edit the quote to add product &amp; service costs. Fees default to $0.00.
+            </Text>
+          </View>
+        )}
         <View style={styles.urlBox}>
           <Text style={styles.urlText} numberOfLines={1} ellipsizeMode="middle">{portalUrl}</Text>
         </View>
@@ -543,7 +577,7 @@ export default function QuoteDetailScreen() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.sendQuoteBtn, styles.sendQuoteBtnSolid, isSendingQuote && { opacity: 0.7 }]}
+            style={[styles.sendQuoteBtn, styles.sendQuoteBtnSolid, (isSendingQuote || (!isQuoted && !isReadyToSend)) && { opacity: 0.45 }]}
             onPress={handleMarkQuoteSent}
             disabled={isSendingQuote}
           >
@@ -1240,7 +1274,11 @@ export default function QuoteDetailScreen() {
                 <Edit3 size={17} color={Colors.light.tint} />
                 <Text style={styles.actionBtnOutlineText}>Edit Quote</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1 }]} onPress={handleMarkQuoteSent} disabled={isSendingQuote}>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1 }, (!isReadyToSend || isSendingQuote) && { opacity: 0.5 }]}
+                onPress={handleMarkQuoteSent}
+                disabled={isSendingQuote}
+              >
                 <Send size={17} color="#fff" />
                 <Text style={styles.actionBtnSolidText}>{isSendingQuote ? 'Sending…' : 'Send Quote'}</Text>
               </TouchableOpacity>
@@ -2665,6 +2703,24 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     margin: 16,
+  },
+  pricingRequiredBanner: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    gap: 7,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 10,
+  },
+  pricingRequiredText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#92400E',
+    lineHeight: 17,
   },
   sendQuotePanelHeader: {
     flexDirection: 'row' as const,
