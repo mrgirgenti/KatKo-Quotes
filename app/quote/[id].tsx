@@ -256,7 +256,31 @@ export default function QuoteDetailScreen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...quote, status: 'quoted', quoteSentAt: sentAt }),
       });
-      setToastMessage('Quote marked as sent! Link copied.');
+
+      // Send quote email via Resend if the linked contact has an email address
+      const contactEmail = linkedContact?.email;
+      if (contactEmail) {
+        const portalUrl =
+          typeof window !== 'undefined'
+            ? `${window.location.origin}/portal/quote/${quote.id}`
+            : '';
+        fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'quote',
+            clientEmail: contactEmail,
+            clientName: quote.personOrganization || 'there',
+            projectName: quote.projectName || 'Your Order',
+            total: quote.calculations?.total ?? null,
+            portalUrl,
+            waveLink: quote.waveInvoiceLink || '',
+          }),
+        }).catch((e) => console.warn('[quote email]', e));
+        setToastMessage('Quote sent by email and link copied!');
+      } else {
+        setToastMessage('Quote marked as sent! Link copied.');
+      }
       setToastVisible(true);
       await handleCopyQuoteLink();
       setTimeout(() => router.replace(`/quote/${quote.id}`), 800);
@@ -266,7 +290,7 @@ export default function QuoteDetailScreen() {
     } finally {
       setIsSendingQuote(false);
     }
-  }, [quote, isSendingQuote, isReadyToSend, handleEdit, handleCopyQuoteLink, router]);
+  }, [quote, linkedContact, isSendingQuote, isReadyToSend, handleEdit, handleCopyQuoteLink, router]);
 
   const handleMarkPaid = useCallback(async () => {
     if (!quote) return;
@@ -337,7 +361,7 @@ export default function QuoteDetailScreen() {
         `  ${waveLink}`,
         '',
       ] : []),
-      `Questions? Reply to this email or reach us at hello@katalystko.com`,
+      `Questions? Reply to this email or reach us at jobs@katalystko.com`,
       '',
       `— Katalyst Ko Printshop`,
     ];

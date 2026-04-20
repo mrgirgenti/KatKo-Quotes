@@ -234,7 +234,7 @@ export default function ClientQuoteView() {
             <Text style={styles.errorTitle}>Quote Not Available</Text>
             <Text style={styles.errorSub}>{error}</Text>
             <Text style={styles.helpText}>
-              Questions? Reach out to <Text style={{ color: BRAND }}>hello@katalystko.com</Text>
+              Questions? Reach out to <Text style={{ color: BRAND }}>jobs@katalystko.com</Text>
             </Text>
           </View>
         )}
@@ -249,7 +249,7 @@ export default function ClientQuoteView() {
                   The Katalyst Ko team has been notified. We'll be in touch shortly to confirm next steps.
                 </Text>
                 <Text style={styles.helpText}>
-                  Questions? Email <Text style={{ color: BRAND }}>hello@katalystko.com</Text>
+                  Questions? Email <Text style={{ color: BRAND }}>jobs@katalystko.com</Text>
                 </Text>
               </View>
             ) : (
@@ -378,13 +378,13 @@ export default function ClientQuoteView() {
                         )}
                     </TouchableOpacity>
                     <Text style={styles.requestChangesNote}>
-                      Need changes? Email us at <Text style={{ color: BRAND }}>hello@katalystko.com</Text>
+                      Need changes? Email us at <Text style={{ color: BRAND }}>jobs@katalystko.com</Text>
                     </Text>
                   </View>
                 )}
 
                 <Text style={styles.footerNote}>
-                  Quote prepared by Katalyst Ko Printshop · hello@katalystko.com
+                  Quote prepared by Katalyst Ko Printshop · jobs@katalystko.com
                 </Text>
               </>
             )}

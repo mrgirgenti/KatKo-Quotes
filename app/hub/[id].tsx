@@ -266,6 +266,23 @@ export default function HubManagementScreen() {
         }),
       });
 
+      // 4. Send invite email via Resend (non-blocking — don't fail invite if email fails)
+      const portalUrl =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/portal/${org.id}`
+          : '';
+      fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'client_invite',
+          clientEmail: clientForm.email.trim(),
+          clientName: clientForm.name.trim(),
+          orgName: org.name,
+          portalUrl,
+        }),
+      }).catch((e) => console.warn('[invite email]', e));
+
       await refetchMemberships();
       queryClient.invalidateQueries({ queryKey: ['client-hubs'] });
       queryClient.invalidateQueries({ queryKey: ['crm_orgs'] });

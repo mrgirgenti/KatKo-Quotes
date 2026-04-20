@@ -882,7 +882,7 @@ export default function ClientPortal() {
                 <Text style={styles.btnText}>Submit Another Request</Text>
               </TouchableOpacity>
               <Text style={styles.helpText}>
-                Questions? Email us at <Text style={{ color: BRAND }}>hello@katalystko.com</Text>
+                Questions? Email us at <Text style={{ color: BRAND }}>jobs@katalystko.com</Text>
               </Text>
             </View>
           )}
