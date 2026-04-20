@@ -1,0 +1,55 @@
+We are setting up Resend as the transactional email provider for Katalyst Ko OS and Client Hub.
+
+Objective:
+Make sure the system is ready to send operational emails from jobs@katalystko.com reliably, and clearly identify any domain/DNS setup still required.
+
+Requirements:
+
+1. Resend readiness audit
+- Review the current email implementation and Resend setup
+- Confirm what is already configured versus what is still missing
+- Assume transactional emails should come from:
+  - jobs@katalystko.com
+
+2. Sender identity / domain setup
+- Confirm what needs to be configured in Resend for:
+  - domain verification
+  - sender identity
+  - reply-to behavior
+- Ensure the intended operational sender is:
+  - From: jobs@katalystko.com
+  - Reply-To: jobs@katalystko.com
+
+3. DNS requirements
+- Identify exactly which DNS records are required for this setup to work properly
+- At minimum, specify what is needed for:
+  - SPF
+  - DKIM
+  - DMARC (if recommended)
+- If Resend provides specific DNS values after domain setup, explain clearly where those values will come from
+
+4. Deliverability / production readiness
+- Explain what is required for reliable sending in production
+- Note any constraints if the domain is not yet verified
+- Clarify whether email sending will fail, be blocked, or be limited until DNS/domain verification is complete
+
+5. Implementation alignment
+- Audit the code/templates and confirm that operational emails are intended to use:
+  - jobs@katalystko.com
+- Identify anywhere hello@katalystko.com is still being used for invites, quotes, payment emails, or client workflow notifications
+
+6. Deliver back a clear action list
+I want a very practical output that tells me:
+- what is already done
+- what still needs to be done in Resend
+- what DNS records I need to add in my domain provider
+- any environment variables or config still needed
+- whether the system is ready to send real emails yet
+
+Deliver back:
+- exact files reviewed/changed
+- whether Resend is fully wired yet
+- whether the domain is verified yet
+- the exact DNS/domain setup still required
+- any SPF/DKIM/DMARC recommendations
+- any remaining blockers before invites and quote/payment emails can send reliably
