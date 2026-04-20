@@ -336,13 +336,14 @@ export default function HubManagementScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
-        {/* Hub Status Card — single compact row */}
+        {/* Hub Status Card */}
         <View style={styles.statusCard}>
           <View style={styles.statusCardRow}>
+            {/* Org identity */}
             <View style={styles.orgAvatar}>
               <Text style={styles.orgAvatarText}>{org.name[0]?.toUpperCase()}</Text>
             </View>
-            <View style={{ flex: 1, gap: 4 }}>
+            <View style={{ flex: 1, gap: 5 }}>
               <View style={styles.orgNameRow}>
                 <Text style={styles.orgName} numberOfLines={1}>{org.name}</Text>
                 <View style={[styles.readyPill, isReady ? styles.readyPillGreen : styles.readyPillAmber]}>
@@ -350,22 +351,39 @@ export default function HubManagementScreen() {
                     ? <CheckCircle2 size={9} color="#16A34A" />
                     : <AlertCircle size={9} color="#D97706" />}
                   <Text style={[styles.readyPillText, isReady ? styles.readyPillTextGreen : styles.readyPillTextAmber]}>
-                    {isReady ? 'Ready' : 'Needs Setup'}
+                    {isReady ? 'Portal Ready' : 'Needs Setup'}
                   </Text>
                 </View>
               </View>
-              {org.hubEnabled ? (
-                <View style={styles.statsRow}>
-                  <Users size={11} color={Colors.light.textSecondary} />
-                  <Text style={styles.statText}>{allClientMembers.length} client{allClientMembers.length !== 1 ? 's' : ''}</Text>
-                  <View style={styles.statDot} />
-                  <ShieldCheck size={11} color={Colors.light.textSecondary} />
-                  <Text style={styles.statText}>{clientOrgAdmins.length > 0 ? clientOrgAdmins[0].userName : 'No admin'}</Text>
+              <View style={styles.statsRow}>
+                <Users size={11} color={Colors.light.textSecondary} />
+                <Text style={styles.statText}>{allClientMembers.length} member{allClientMembers.length !== 1 ? 's' : ''}</Text>
+                <View style={styles.statDot} />
+                <ShieldCheck size={11} color={Colors.light.textSecondary} />
+                <Text style={styles.statText}>{clientOrgAdmins.length > 0 ? clientOrgAdmins[0].userName : 'No org admin'}</Text>
+              </View>
+            </View>
+
+            {/* Account Rep — shown prominently in header */}
+            <View style={styles.headerRepBlock}>
+              <Text style={styles.headerRepLabel}>Account Rep</Text>
+              {accountReps.length > 0 ? (
+                <View style={styles.headerRepRow}>
+                  <View style={[styles.headerRepAvatar, { backgroundColor: accountReps[0].userAvatarColor || Colors.light.tint }]}>
+                    <Text style={styles.headerRepAvatarText}>{(accountReps[0].userName || '?')[0].toUpperCase()}</Text>
+                  </View>
+                  <Text style={styles.headerRepName} numberOfLines={1}>{accountReps[0].userName}</Text>
                 </View>
               ) : (
-                <Text style={styles.toggleSub}>Enable to grant client portal access</Text>
+                <TouchableOpacity
+                  onPress={() => { setSelectedRepUserId(''); setAssignRepModal(true); }}
+                >
+                  <Text style={styles.headerRepUnassigned}>Unassigned — tap to assign</Text>
+                </TouchableOpacity>
               )}
             </View>
+
+            {/* Hub toggle */}
             <View style={styles.hubToggle}>
               <Text style={styles.toggleLabel}>Hub</Text>
               <Switch
@@ -378,230 +396,192 @@ export default function HubManagementScreen() {
           </View>
         </View>
 
-        {/* Portal Link Section */}
-        {org.hubEnabled && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <ExternalLink size={15} color={Colors.light.tint} />
-              <Text style={styles.sectionTitle}>Client Portal Link</Text>
-            </View>
-            <View style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
-              <Text style={styles.portalLinkDesc}>
-                Share this link with clients to let them submit project requests directly into Ko OS.
-              </Text>
-              <View style={styles.portalLinkRow}>
-                <Text style={styles.portalLinkUrl} numberOfLines={1} ellipsizeMode="middle">
-                  {portalUrl}
-                </Text>
-                <TouchableOpacity
-                  style={[styles.copyBtn, linkCopied && styles.copyBtnDone]}
-                  onPress={handleCopyLink}
-                >
-                  <Copy size={11} color={linkCopied ? '#16A34A' : Colors.light.tint} />
-                  <Text style={[styles.copyBtnText, linkCopied && styles.copyBtnTextDone]}>
-                    {linkCopied ? 'Copied!' : 'Copy'}
+        {/* Two-column body */}
+        <View style={styles.columns}>
+
+          {/* LEFT — Org Admin + Team Members */}
+          <View style={styles.colLeft}>
+
+            {/* Org Admin */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <ShieldCheck size={13} color={Colors.light.tint} />
+                <Text style={styles.sectionTitle}>Org Admin</Text>
+                {regularClients.length > 0 && (
+                  <TouchableOpacity
+                    style={styles.sectionActionBtn}
+                    onPress={() => { setSelectedAdminMembershipId(''); setAssignAdminModal(true); }}
+                  >
+                    <Text style={styles.sectionActionBtnText}>
+                      {clientOrgAdmins.length > 0 ? 'Change' : 'Assign'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {membershipsLoading ? (
+                <View style={styles.loadingRow}><ActivityIndicator size="small" color={Colors.light.tint} /></View>
+              ) : clientOrgAdmins.length === 0 ? (
+                <View style={styles.emptySection}>
+                  <Text style={styles.emptySectionText}>No org admin assigned.</Text>
+                  <Text style={styles.emptySectionSub}>
+                    {regularClients.length === 0
+                      ? 'Invite a team member first, then promote them.'
+                      : 'Select a team member to designate as org admin.'}
                   </Text>
-                </TouchableOpacity>
-              </View>
+                </View>
+              ) : (
+                clientOrgAdmins.map((m) => (
+                  <View key={m.id} style={styles.memberRow}>
+                    <View style={[styles.memberAvatar, { backgroundColor: '#6366F1' }]}>
+                      <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
+                    </View>
+                    <View style={styles.memberInfo}>
+                      <Text style={styles.memberName}>{m.userName || 'Unknown'}</Text>
+                      {m.userEmail ? <Text style={styles.memberEmail}>{m.userEmail}</Text> : null}
+                    </View>
+                    <RoleBadge role="ORG_ADMIN" />
+                    <TouchableOpacity style={styles.rowActionBtn} onPress={() => handleRemoveMember(m)}>
+                      <X size={13} color={Colors.light.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
             </View>
-          </View>
-        )}
 
-        {/* Org Admin Section — CLIENT user with ORG_ADMIN role */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <ShieldCheck size={15} color={Colors.light.tint} />
-            <Text style={styles.sectionTitle}>Org Admin</Text>
-            {regularClients.length > 0 && (
-              <TouchableOpacity
-                style={styles.sectionActionBtn}
-                onPress={() => {
-                  setSelectedAdminMembershipId('');
-                  setAssignAdminModal(true);
-                }}
-              >
-                <Text style={styles.sectionActionBtnText}>
-                  {clientOrgAdmins.length > 0 ? 'Change' : 'Assign'}
+            {/* Team Members */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Users size={13} color="#6366F1" />
+                <Text style={styles.sectionTitle}>
+                  Team Members{regularClients.length > 0 ? ` (${regularClients.length})` : ''}
                 </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {membershipsLoading ? (
-            <View style={styles.loadingRow}>
-              <ActivityIndicator size="small" color={Colors.light.tint} />
-            </View>
-          ) : clientOrgAdmins.length === 0 ? (
-            <View style={styles.emptySection}>
-              <Text style={styles.emptySectionText}>No org admin assigned.</Text>
-              <Text style={styles.emptySectionSub}>
-                {regularClients.length === 0
-                  ? 'Invite a client user below first, then promote them to org admin.'
-                  : 'Select a client user below to designate as the primary org admin.'}
-              </Text>
-            </View>
-          ) : (
-            clientOrgAdmins.map((m) => (
-              <View key={m.id} style={styles.memberRow}>
-                <View style={[styles.memberAvatar, { backgroundColor: '#6366F1' }]}>
-                  <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
-                </View>
-                <View style={styles.memberInfo}>
-                  <Text style={styles.memberName}>{m.userName || 'Unknown'}</Text>
-                  {m.userEmail ? <Text style={styles.memberEmail}>{m.userEmail}</Text> : null}
-                </View>
-                <RoleBadge role="ORG_ADMIN" />
-                <TouchableOpacity style={styles.rowActionBtn} onPress={() => handleRemoveMember(m)}>
-                  <X size={14} color={Colors.light.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            ))
-          )}
-        </View>
-
-        {/* Client Users Section — non-admin CLIENT members */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Users size={15} color="#6366F1" />
-            <Text style={styles.sectionTitle}>
-              Client Users{regularClients.length > 0 ? ` (${regularClients.length})` : ''}
-            </Text>
-            <TouchableOpacity
-              style={styles.sectionActionBtnPrimary}
-              onPress={() => {
-                setClientForm({ name: '', email: '', role: 'MEMBER' });
-                setInviteError('');
-                setInviteClientModal(true);
-              }}
-            >
-              <Plus size={12} color="#fff" />
-              <Text style={styles.sectionActionBtnPrimaryText}>Invite</Text>
-            </TouchableOpacity>
-          </View>
-
-          {membershipsLoading ? (
-            <View style={styles.loadingRow}>
-              <ActivityIndicator size="small" color={Colors.light.tint} />
-            </View>
-          ) : regularClients.length === 0 ? (
-            <View style={styles.emptySection}>
-              <Text style={styles.emptySectionText}>No client members yet.</Text>
-              <Text style={styles.emptySectionSub}>
-                Invite clients to give them portal access. Invited users are also added to Contacts.
-              </Text>
-            </View>
-          ) : (
-            regularClients.map((m) => (
-              <View key={m.id} style={styles.memberRow}>
-                <View style={[styles.memberAvatar, { backgroundColor: '#6366F1' }]}>
-                  <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
-                </View>
-                <View style={styles.memberInfo}>
-                  <Text style={styles.memberName}>{m.userName || 'Unknown'}</Text>
-                  {m.userEmail ? <Text style={styles.memberEmail}>{m.userEmail}</Text> : null}
-                </View>
                 <TouchableOpacity
+                  style={styles.sectionActionBtnPrimary}
                   onPress={() => {
-                    setNewRole(m.role);
-                    setChangeRoleModal({ visible: true, membership: m });
+                    setClientForm({ name: '', email: '', role: 'MEMBER' });
+                    setInviteError('');
+                    setInviteClientModal(true);
                   }}
                 >
-                  <RoleBadge role={m.role} />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.rowActionBtn} onPress={() => handleRemoveMember(m)}>
-                  <Trash2 size={13} color={Colors.light.error} />
+                  <Plus size={11} color="#fff" />
+                  <Text style={styles.sectionActionBtnPrimaryText}>Invite</Text>
                 </TouchableOpacity>
               </View>
-            ))
-          )}
-        </View>
 
-        {/* Contacts Section — CRM contacts for this org */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <User size={15} color={Colors.light.textSecondary} />
-            <Text style={styles.sectionTitle}>
-              Contacts{org.contacts.length > 0 ? ` (${org.contacts.length})` : ''}
-            </Text>
-          </View>
-          {org.contacts.length === 0 ? (
-            <View style={styles.emptySection}>
-              <Text style={styles.emptySectionText}>No contacts yet.</Text>
-              <Text style={styles.emptySectionSub}>
-                Contacts are created automatically when you invite client users.
-              </Text>
-            </View>
-          ) : (
-            org.contacts.map((c) => (
-              <View key={c.id} style={styles.memberRow}>
-                <View style={[styles.memberAvatar, { backgroundColor: c.linkedUserId ? '#6366F1' : Colors.light.border }]}>
-                  <Text style={[styles.memberAvatarText, !c.linkedUserId && { color: Colors.light.textSecondary }]}>
-                    {(c.firstName || '?')[0].toUpperCase()}
+              {membershipsLoading ? (
+                <View style={styles.loadingRow}><ActivityIndicator size="small" color={Colors.light.tint} /></View>
+              ) : regularClients.length === 0 ? (
+                <View style={styles.emptySection}>
+                  <Text style={styles.emptySectionText}>No team members yet.</Text>
+                  <Text style={styles.emptySectionSub}>
+                    Invite clients to give them portal access.
                   </Text>
                 </View>
-                <View style={styles.memberInfo}>
-                  <Text style={styles.memberName}>{[c.firstName, c.lastName].filter(Boolean).join(' ')}</Text>
-                  {c.email ? <Text style={styles.memberEmail}>{c.email}</Text> : null}
-                </View>
-                {c.linkedUserId ? (
-                  <View style={styles.portalBadge}>
-                    <Globe size={10} color="#2563EB" />
-                    <Text style={styles.portalBadgeText}>Portal</Text>
+              ) : (
+                regularClients.map((m) => (
+                  <View key={m.id} style={styles.memberRow}>
+                    <View style={[styles.memberAvatar, { backgroundColor: '#6366F1' }]}>
+                      <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
+                    </View>
+                    <View style={styles.memberInfo}>
+                      <Text style={styles.memberName}>{m.userName || 'Unknown'}</Text>
+                      {m.userEmail ? <Text style={styles.memberEmail}>{m.userEmail}</Text> : null}
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => { setNewRole(m.role); setChangeRoleModal({ visible: true, membership: m }); }}
+                    >
+                      <RoleBadge role={m.role} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.rowActionBtn} onPress={() => handleRemoveMember(m)}>
+                      <Trash2 size={12} color={Colors.light.error} />
+                    </TouchableOpacity>
                   </View>
-                ) : null}
-              </View>
-            ))
-          )}
-        </View>
-
-        {/* Account Rep Section — single INTERNAL user assigned to this account */}
-        <View style={[styles.section, styles.sectionLast]}>
-          <View style={styles.sectionHeader}>
-            <ShieldCheck size={15} color={Colors.light.textSecondary} />
-            <Text style={styles.sectionTitle}>Account Rep</Text>
-            <TouchableOpacity
-              style={styles.sectionActionBtn}
-              onPress={() => {
-                setSelectedRepUserId('');
-                setAssignRepModal(true);
-              }}
-            >
-              <Text style={styles.sectionActionBtnText}>
-                {accountReps.length > 0 ? 'Change' : 'Assign'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {membershipsLoading ? (
-            <View style={styles.loadingRow}>
-              <ActivityIndicator size="small" color={Colors.light.tint} />
+                ))
+              )}
             </View>
-          ) : accountReps.length === 0 ? (
-            <View style={styles.emptySection}>
-              <Text style={styles.emptySectionText}>No account rep assigned.</Text>
-              <Text style={styles.emptySectionSub}>
-                Assign an internal team member as the owner of this client account.
-              </Text>
-            </View>
-          ) : (
-            accountReps.map((m) => (
-              <View key={m.id} style={styles.memberRow}>
-                <View style={[styles.memberAvatar, { backgroundColor: m.userAvatarColor || Colors.light.tint }]}>
-                  <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
-                </View>
-                <View style={styles.memberInfo}>
-                  <Text style={styles.memberName}>{m.userName || 'Unknown'}</Text>
-                  <Text style={[styles.memberEmail, { color: Colors.light.tint }]}>Internal</Text>
-                </View>
-                <TouchableOpacity style={styles.rowActionBtn} onPress={() => handleRemoveMember(m)}>
-                  <X size={14} color={Colors.light.textSecondary} />
+
+          </View>{/* end colLeft */}
+
+          {/* RIGHT — Account Rep + Portal Link */}
+          <View style={styles.colRight}>
+
+            {/* Account Rep */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <User size={13} color={Colors.light.textSecondary} />
+                <Text style={styles.sectionTitle}>Account Rep</Text>
+                <TouchableOpacity
+                  style={styles.sectionActionBtn}
+                  onPress={() => { setSelectedRepUserId(''); setAssignRepModal(true); }}
+                >
+                  <Text style={styles.sectionActionBtnText}>
+                    {accountReps.length > 0 ? 'Change' : 'Assign'}
+                  </Text>
                 </TouchableOpacity>
               </View>
-            ))
-          )}
-        </View>
 
-        <View style={{ height: 20 }} />
+              {membershipsLoading ? (
+                <View style={styles.loadingRow}><ActivityIndicator size="small" color={Colors.light.tint} /></View>
+              ) : accountReps.length === 0 ? (
+                <View style={styles.emptySection}>
+                  <Text style={styles.emptySectionText}>No account rep assigned.</Text>
+                  <Text style={styles.emptySectionSub}>
+                    Assign an internal team member as the account owner.
+                  </Text>
+                </View>
+              ) : (
+                accountReps.map((m) => (
+                  <View key={m.id} style={styles.memberRow}>
+                    <View style={[styles.memberAvatar, { backgroundColor: m.userAvatarColor || Colors.light.tint }]}>
+                      <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
+                    </View>
+                    <View style={styles.memberInfo}>
+                      <Text style={styles.memberName}>{m.userName || 'Unknown'}</Text>
+                      <Text style={[styles.memberEmail, { color: Colors.light.tint }]}>Internal</Text>
+                    </View>
+                    <TouchableOpacity style={styles.rowActionBtn} onPress={() => handleRemoveMember(m)}>
+                      <X size={13} color={Colors.light.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
+            </View>
+
+            {/* Portal Link */}
+            {org.hubEnabled && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <ExternalLink size={13} color={Colors.light.tint} />
+                  <Text style={styles.sectionTitle}>Portal Link</Text>
+                </View>
+                <View style={{ paddingHorizontal: 12, paddingVertical: 10 }}>
+                  <Text style={styles.portalLinkDesc}>
+                    Share with clients to let them submit project requests into Ko OS.
+                  </Text>
+                  <View style={styles.portalLinkRow}>
+                    <Text style={styles.portalLinkUrl} numberOfLines={1} ellipsizeMode="middle">
+                      {portalUrl}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.copyBtnFull, linkCopied && styles.copyBtnDone]}
+                    onPress={handleCopyLink}
+                  >
+                    <Copy size={12} color={linkCopied ? '#16A34A' : Colors.light.tint} />
+                    <Text style={[styles.copyBtnText, linkCopied && styles.copyBtnTextDone]}>
+                      {linkCopied ? 'Link Copied!' : 'Copy Portal Link'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+          </View>{/* end colRight */}
+
+        </View>{/* end columns */}
+
+        <View style={{ height: 24 }} />
       </ScrollView>
 
       {/* Assign Org Admin Modal — promotes an existing CLIENT member */}
@@ -855,8 +835,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.background,
   },
   content: {
-    padding: 12,
-    gap: 8,
+    padding: 14,
+    gap: 12,
   },
   centered: {
     flex: 1,
@@ -880,10 +860,25 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
   },
 
-  // Status Card — single compact row
+  // Two-column layout
+  columns: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  colLeft: {
+    flex: 3,
+    gap: 12,
+  },
+  colRight: {
+    flex: 2,
+    gap: 12,
+  },
+
+  // Status Card
   statusCard: {
     backgroundColor: Colors.light.surface,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: Colors.light.border,
     overflow: 'hidden',
@@ -891,31 +886,31 @@ const styles = StyleSheet.create({
   statusCardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
-    gap: 10,
+    padding: 14,
+    gap: 12,
   },
   orgNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 7,
     flexWrap: 'wrap',
   },
   orgAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: Colors.light.tint,
     justifyContent: 'center',
     alignItems: 'center',
     flexShrink: 0,
   },
   orgAvatarText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: '#fff',
   },
   orgName: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     color: Colors.light.text,
   },
@@ -923,7 +918,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    paddingHorizontal: 6,
+    paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 20,
     alignSelf: 'flex-start',
@@ -934,10 +929,57 @@ const styles = StyleSheet.create({
   readyPillTextGreen: { color: '#16A34A' },
   readyPillTextAmber: { color: '#D97706' },
 
+  // Header Account Rep block
+  headerRepBlock: {
+    borderLeftWidth: 1,
+    borderLeftColor: Colors.light.border,
+    paddingLeft: 14,
+    gap: 4,
+    flexShrink: 0,
+    minWidth: 140,
+  },
+  headerRepLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  headerRepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  headerRepAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerRepAvatarText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  headerRepName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.light.text,
+    flex: 1,
+  },
+  headerRepUnassigned: {
+    fontSize: 11,
+    color: Colors.light.tint,
+  },
+
   hubToggle: {
     alignItems: 'center',
-    gap: 2,
+    gap: 3,
     flexShrink: 0,
+    borderLeftWidth: 1,
+    borderLeftColor: Colors.light.border,
+    paddingLeft: 14,
   },
   toggleLabel: {
     fontSize: 10,
@@ -970,7 +1012,7 @@ const styles = StyleSheet.create({
   // Sections
   section: {
     backgroundColor: Colors.light.surface,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: Colors.light.border,
     overflow: 'hidden',
@@ -979,11 +1021,11 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.border,
-    gap: 6,
+    gap: 7,
   },
   sectionTitle: {
     fontSize: 11,
@@ -994,9 +1036,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   sectionActionBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 6,
     borderWidth: 1.5,
     borderColor: Colors.light.tint,
   },
@@ -1009,9 +1051,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 6,
     backgroundColor: Colors.light.tint,
   },
   sectionActionBtnPrimaryText: {
@@ -1021,12 +1063,12 @@ const styles = StyleSheet.create({
   },
 
   loadingRow: {
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: 'center',
   },
   emptySection: {
-    padding: 10,
-    gap: 2,
+    padding: 12,
+    gap: 3,
   },
   emptySectionText: {
     fontSize: 12,
@@ -1036,23 +1078,23 @@ const styles = StyleSheet.create({
   emptySectionSub: {
     fontSize: 11,
     color: Colors.light.textSecondary,
-    lineHeight: 15,
+    lineHeight: 16,
   },
 
   // Member rows
   memberRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    gap: 9,
     borderTopWidth: 1,
     borderTopColor: Colors.light.border,
   },
   memberAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
     flexShrink: 0,
@@ -1067,23 +1109,23 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   memberName: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
     color: Colors.light.text,
   },
   memberEmail: {
-    fontSize: 10,
+    fontSize: 11,
     color: Colors.light.textSecondary,
   },
   rowActionBtn: {
-    padding: 4,
+    padding: 5,
   },
 
   // Role badge
   roleBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 5,
   },
   roleBadgeText: {
     fontSize: 10,
@@ -1329,6 +1371,18 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: '#FFF7F0',
     borderWidth: 1,
+    borderColor: Colors.light.tint,
+  },
+  copyBtnFull: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingVertical: 8,
+    borderRadius: 7,
+    backgroundColor: '#FFF7F0',
+    borderWidth: 1.5,
     borderColor: Colors.light.tint,
   },
   copyBtnDone: {
