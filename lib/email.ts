@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 
-const FROM = 'Katalyst Ko <jobs@katalystko.com>';
+const FROM = 'Katalyst Ko Printshop <jobs@katalystko.com>';
 const REPLY_TO = 'jobs@katalystko.com';
 
 async function getResendClient(): Promise<Resend> {
