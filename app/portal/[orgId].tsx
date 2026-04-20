@@ -303,7 +303,8 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
   }, [item, onChange]);
 
   const delRow = useCallback((rowId: string) => {
-    onChange({ ...item, sizeRows: item.sizeRows.filter(r => r.id !== rowId) });
+    const remaining = item.sizeRows.filter(r => r.id !== rowId);
+    onChange({ ...item, sizeRows: remaining.length > 0 ? remaining : [emptyRow()] });
   }, [item, onChange]);
 
   const total = grandTotal(item.sizeRows);
@@ -319,7 +320,7 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
         </View>
         {canDelete && (
           <TouchableOpacity onPress={onDelete} style={liStyles.deleteBtn}>
-            <Trash2 size={15} color="#DC2626" />
+            <Trash2 size={16} color="#ff6b6b" />
           </TouchableOpacity>
         )}
       </View>
@@ -478,11 +479,9 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
                   <Text style={[liStyles.sizeCell, liStyles.sizeCellTotal, { fontWeight: '700', color: TEXT_MED }]}>
                     {rowTotal(row)}
                   </Text>
-                  {item.sizeRows.length > 1 ? (
-                    <TouchableOpacity style={liStyles.delRowBtn} onPress={() => delRow(row.id)}>
-                      <Trash2 size={12} color="#DC2626" />
-                    </TouchableOpacity>
-                  ) : <View style={{ width: 28 }} />}
+                  <TouchableOpacity style={liStyles.delRowBtn} onPress={() => delRow(row.id)}>
+                    <Trash2 size={12} color="#DC2626" />
+                  </TouchableOpacity>
                 </View>
               ))}
 
@@ -969,16 +968,16 @@ const liStyles = StyleSheet.create({
   },
   cardHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 11,
-    backgroundColor: '#F9FAFB', borderBottomWidth: 1, borderBottomColor: BORDER,
+    paddingHorizontal: 14, paddingVertical: 14,
+    backgroundColor: '#000000',
   },
-  cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   indexBadge: {
-    width: 22, height: 22, borderRadius: 11, backgroundColor: BRAND,
-    alignItems: 'center', justifyContent: 'center',
+    width: 28, height: 28, borderRadius: 14, backgroundColor: BRAND,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  indexText: { fontSize: 11, fontWeight: '700', color: '#fff' },
-  cardTitle: { fontSize: 13, fontWeight: '600', color: TEXT_MED },
+  indexText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  cardTitle: { fontSize: 15, fontWeight: '600', color: '#fff' },
   deleteBtn: { padding: 4 },
   cardBody: { padding: 16 },
   twoCol: { flexDirection: 'row', gap: 10 },
