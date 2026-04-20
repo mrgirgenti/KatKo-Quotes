@@ -6,7 +6,7 @@ export async function GET(_req: Request, { id }: { id: string }) {
       `SELECT id, title, "clientName", "organizationId", "orderType",
               "inHandsDate", "lineItemsData", calculations,
               "frontendStatus", status, "intakeSource", "notesClient",
-              "quoteSentAt", "createdAt"
+              "quoteSentAt", "waveInvoiceLink", "createdAt"
        FROM "Project" WHERE id = $1`,
       [id]
     );
@@ -57,6 +57,7 @@ export async function GET(_req: Request, { id }: { id: string }) {
       inHandsDate: p.inHandsDate || '',
       notesClient: p.notesClient || '',
       quoteSentAt: p.quoteSentAt || null,
+      waveInvoiceLink: p.waveInvoiceLink || null,
       status: p.frontendStatus || 'quoted',
       lineItems: clientLineItems,
       total: calculations?.total ?? null,

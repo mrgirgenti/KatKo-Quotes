@@ -19,6 +19,8 @@ import {
   ChevronUp,
   FileText,
   MessageSquare,
+  ExternalLink,
+  CreditCard,
 } from 'lucide-react-native';
 
 const BRAND = '#FF5A00';
@@ -53,6 +55,7 @@ interface ClientQuoteData {
   inHandsDate: string;
   notesClient: string;
   quoteSentAt: string | null;
+  waveInvoiceLink: string | null;
   status: string;
   lineItems: Array<{
     id: string;
@@ -332,19 +335,45 @@ export default function ClientQuoteView() {
                   <View style={styles.actionsCard}>
                     <Text style={styles.actionsTitle}>Ready to move forward?</Text>
                     <Text style={styles.actionsSub}>
-                      Approve this quote to let Katalyst Ko know you're good to go. We'll follow up to confirm details and next steps.
+                      {quote.waveInvoiceLink
+                        ? 'Pay your invoice securely through Wave. Once paid, we\'ll get to work!'
+                        : 'Approve this quote to let Katalyst Ko know you\'re good to go. We\'ll follow up to confirm details and next steps.'}
                     </Text>
+
+                    {/* Pay Now — primary CTA when Wave link exists */}
+                    {quote.waveInvoiceLink ? (
+                      <TouchableOpacity
+                        style={styles.payNowBtn}
+                        onPress={() => {
+                          if (Platform.OS === 'web') {
+                            window.open(quote.waveInvoiceLink!, '_blank', 'noopener,noreferrer');
+                          }
+                        }}
+                      >
+                        <CreditCard size={18} color="#fff" />
+                        <Text style={styles.payNowBtnText}>Pay Now</Text>
+                        <ExternalLink size={14} color="rgba(255,255,255,0.75)" />
+                      </TouchableOpacity>
+                    ) : null}
+
+                    {/* Approve quote — always available */}
                     <TouchableOpacity
-                      style={[styles.approveBtn, approving && styles.approveBtnDisabled]}
+                      style={[
+                        styles.approveBtn,
+                        approving && styles.approveBtnDisabled,
+                        quote.waveInvoiceLink ? styles.approveBtnSecondary : null,
+                      ]}
                       onPress={handleApprove}
                       disabled={approving}
                     >
                       {approving
-                        ? <ActivityIndicator size="small" color="#fff" />
+                        ? <ActivityIndicator size="small" color={quote.waveInvoiceLink ? '#374151' : '#fff'} />
                         : (
                           <>
-                            <CheckCircle size={18} color="#fff" />
-                            <Text style={styles.approveBtnText}>Approve This Quote</Text>
+                            <CheckCircle size={18} color={quote.waveInvoiceLink ? '#374151' : '#fff'} />
+                            <Text style={[styles.approveBtnText, quote.waveInvoiceLink ? styles.approveBtnTextSecondary : null]}>
+                              Approve This Quote
+                            </Text>
                           </>
                         )}
                     </TouchableOpacity>
@@ -476,13 +505,25 @@ const styles = StyleSheet.create({
   },
   actionsTitle: { fontSize: 17, fontWeight: '700', color: TEXT, marginBottom: 6, textAlign: 'center' },
   actionsSub: { fontSize: 13, color: TEXT_LIGHT, textAlign: 'center', lineHeight: 19, marginBottom: 18 },
+  payNowBtn: {
+    backgroundColor: BRAND, borderRadius: 12, paddingVertical: 15, paddingHorizontal: 32,
+    flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%', justifyContent: 'center',
+    marginBottom: 10,
+  },
+  payNowBtnText: { fontSize: 17, fontWeight: '800', color: '#fff' },
   approveBtn: {
     backgroundColor: '#16A34A', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32,
     flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%', justifyContent: 'center',
     marginBottom: 12,
   },
+  approveBtnSecondary: {
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
   approveBtnDisabled: { opacity: 0.6 },
   approveBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  approveBtnTextSecondary: { color: '#374151' },
   requestChangesNote: { fontSize: 12, color: TEXT_PLACEHOLDER, textAlign: 'center', lineHeight: 17 },
   footerNote: { fontSize: 12, color: TEXT_PLACEHOLDER, textAlign: 'center', marginBottom: 12, maxWidth: 560, width: '100%' },
   footer: { backgroundColor: '#F3F4F6', borderTopWidth: 1, borderTopColor: BORDER, paddingVertical: 12, alignItems: 'center' },

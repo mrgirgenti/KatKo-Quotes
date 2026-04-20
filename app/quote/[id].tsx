@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Modal,
   Platform,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import {
@@ -45,6 +46,8 @@ import {
   ExternalLink,
   Inbox,
   ArrowRight,
+  Link2,
+  DollarSign,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -73,6 +76,10 @@ export default function QuoteDetailScreen() {
   const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
   const [isSendingQuote, setIsSendingQuote] = useState(false);
   const [quoteLinkCopied, setQuoteLinkCopied] = useState(false);
+  const [waveInvoiceLinkDraft, setWaveInvoiceLinkDraft] = useState('');
+  const [isSavingWaveLink, setIsSavingWaveLink] = useState(false);
+  const [waveLinkCopied, setWaveLinkCopied] = useState(false);
+  const [emailCopied, setEmailCopied] = useState(false);
 
   const toggleItem = useCallback((itemId: string) => {
     setExpandedItems(prev => ({ ...prev, [itemId]: !prev[itemId] }));
@@ -106,6 +113,10 @@ export default function QuoteDetailScreen() {
   const currentIndex = useMemo(() => allProjects.findIndex(q => q.id === id), [allProjects, id]);
   const prevQuote = currentIndex > 0 ? allProjects[currentIndex - 1] : null;
   const nextQuote = currentIndex < allProjects.length - 1 ? allProjects[currentIndex + 1] : null;
+
+  useEffect(() => {
+    setWaveInvoiceLinkDraft(quote?.waveInvoiceLink || '');
+  }, [quote?.waveInvoiceLink]);
 
   const goToPrev = useCallback(() => {
     if (prevQuote) router.replace(`/quote/${prevQuote.id}`);
@@ -247,6 +258,69 @@ export default function QuoteDetailScreen() {
       setToastVisible(true);
     }
   }, [quote, router]);
+
+  const handleSaveWaveLink = useCallback(async () => {
+    if (!quote || isSavingWaveLink) return;
+    const link = waveInvoiceLinkDraft.trim();
+    setIsSavingWaveLink(true);
+    try {
+      await fetch(`/api/projects/${quote.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...quote, waveInvoiceLink: link || null }),
+      });
+      setToastMessage(link ? 'Wave invoice link saved!' : 'Wave invoice link removed.');
+      setToastVisible(true);
+      setTimeout(() => router.replace(`/quote/${quote.id}`), 600);
+    } catch {
+      setToastMessage('Error saving — please try again.');
+      setToastVisible(true);
+    } finally {
+      setIsSavingWaveLink(false);
+    }
+  }, [quote, waveInvoiceLinkDraft, isSavingWaveLink, router]);
+
+  const handleCopyWaveLink = useCallback(async () => {
+    if (!quote?.waveInvoiceLink) return;
+    try {
+      await navigator.clipboard.writeText(quote.waveInvoiceLink);
+      setWaveLinkCopied(true);
+      setTimeout(() => setWaveLinkCopied(false), 2000);
+    } catch {}
+  }, [quote?.waveInvoiceLink]);
+
+  const handleCopyEmailTemplate = useCallback(async () => {
+    if (!quote) return;
+    const clientName = quote.personOrganization || 'there';
+    const total = quote.calculations?.total;
+    const portalUrl = typeof window !== 'undefined' ? `${window.location.origin}/portal/quote/${quote.id}` : '';
+    const waveLink = quote.waveInvoiceLink || '';
+    const lines: string[] = [
+      `Hi ${clientName},`,
+      '',
+      `Your quote from Katalyst Ko is ready! Here's a quick summary:`,
+      '',
+      `  Project: ${quote.projectName || 'Your Order'}`,
+      ...(total != null ? [`  Total: ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(total)}`] : []),
+      '',
+      `Review your full quote here:`,
+      `  ${portalUrl}`,
+      '',
+      ...(waveLink ? [
+        `To pay your invoice:`,
+        `  ${waveLink}`,
+        '',
+      ] : []),
+      `Questions? Reply to this email or reach us at hello@katalystko.com`,
+      '',
+      `— Katalyst Ko Printshop`,
+    ];
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'));
+      setEmailCopied(true);
+      setTimeout(() => setEmailCopied(false), 2500);
+    } catch {}
+  }, [quote]);
 
   const handleConvertToSale = useCallback(() => {
     if (!quote) return;
@@ -470,6 +544,57 @@ export default function QuoteDetailScreen() {
               )}
           </TouchableOpacity>
         </View>
+
+        {/* Wave Invoice Link section */}
+        <View style={styles.waveSection}>
+          <View style={styles.waveSectionHeader}>
+            <DollarSign size={13} color="#7C3AED" />
+            <Text style={styles.waveSectionTitle}>Wave Invoice Link</Text>
+            {quote.waveInvoiceLink ? (
+              <View style={styles.waveSavedPill}>
+                <Text style={styles.waveSavedPillText}>Saved</Text>
+              </View>
+            ) : null}
+          </View>
+          <Text style={styles.waveSectionSub}>
+            Paste your Wave-hosted invoice URL. Clients will see a Pay Now button on their quote page.
+          </Text>
+          <View style={styles.waveLinkInputRow}>
+            <TextInput
+              style={styles.waveLinkInput}
+              value={waveInvoiceLinkDraft}
+              onChangeText={setWaveInvoiceLinkDraft}
+              placeholder="https://pay.wave.com/m/..."
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+            />
+            <TouchableOpacity
+              style={[styles.waveLinkSaveBtn, isSavingWaveLink && { opacity: 0.6 }]}
+              onPress={handleSaveWaveLink}
+              disabled={isSavingWaveLink}
+            >
+              {isSavingWaveLink
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={styles.waveLinkSaveBtnText}>Save</Text>
+              }
+            </TouchableOpacity>
+          </View>
+          {quote.waveInvoiceLink ? (
+            <View style={styles.waveActionsRow}>
+              <TouchableOpacity style={styles.waveActionBtn} onPress={handleCopyWaveLink}>
+                <Link2 size={12} color="#7C3AED" />
+                <Text style={styles.waveActionBtnText}>{waveLinkCopied ? 'Copied!' : 'Copy Wave Link'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.waveActionBtn} onPress={handleCopyEmailTemplate}>
+                <Mail size={12} color="#7C3AED" />
+                <Text style={styles.waveActionBtnText}>{emailCopied ? 'Copied!' : 'Copy Email Template'}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </View>
+
         {isQuoted && (
           <TouchableOpacity style={styles.markPaidBtn} onPress={handleMarkPaid}>
             <CheckCircle size={15} color="#fff" />
@@ -2614,5 +2739,93 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700' as const,
     color: '#fff',
+  },
+
+  // Wave invoice link styles
+  waveSection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#EDE9FE',
+    gap: 8,
+  },
+  waveSectionHeader: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+  },
+  waveSectionTitle: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: '#7C3AED',
+    flex: 1,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.4,
+  },
+  waveSavedPill: {
+    backgroundColor: '#EDE9FE',
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  waveSavedPillText: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: '#7C3AED',
+  },
+  waveSectionSub: {
+    fontSize: 11,
+    color: '#6B7280',
+    lineHeight: 16,
+  },
+  waveLinkInputRow: {
+    flexDirection: 'row' as const,
+    gap: 8,
+    alignItems: 'center' as const,
+  },
+  waveLinkInput: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: '#DDD6FE',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 12,
+    color: '#111827',
+    backgroundColor: '#FAFAFA',
+  },
+  waveLinkSaveBtn: {
+    backgroundColor: '#7C3AED',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    minWidth: 54,
+  },
+  waveLinkSaveBtnText: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: '#fff',
+  },
+  waveActionsRow: {
+    flexDirection: 'row' as const,
+    gap: 8,
+  },
+  waveActionBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    backgroundColor: '#F5F3FF',
+  },
+  waveActionBtnText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#7C3AED',
   },
 });

@@ -122,6 +122,7 @@ export interface Quote {
   exportedToSheetsDate?: string;
   quoteSentAt?: string;
   notesClient?: string;
+  waveInvoiceLink?: string;
 }
 
 export interface SalesCalculations {

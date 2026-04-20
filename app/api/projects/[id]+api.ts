@@ -33,6 +33,7 @@ function toFrontendQuote(p: any): Quote {
     exportedToSheetsDate: p.exportedToSheetsDate ?? undefined,
     quoteSentAt: p.quoteSentAt ?? undefined,
     notesClient: p.notesClient ?? undefined,
+    waveInvoiceLink: p.waveInvoiceLink ?? undefined,
   } as Quote;
 }
 
@@ -115,9 +116,9 @@ export async function PUT(request: Request, { id }: { id: string }) {
         "frontendStatus" = $14, status = $15::"ProjectStatus",
         "activeDate" = $16, "isLocked" = $17, "lockedDate" = $18,
         "exportedToSheets" = $19, "exportedToSheetsDate" = $20,
-        "quoteSentAt" = $21,
+        "quoteSentAt" = $21, "waveInvoiceLink" = $22,
         "updatedAt" = NOW()
-      WHERE id = $22 RETURNING *`,
+      WHERE id = $23 RETURNING *`,
       [
         body.projectName || 'Untitled',
         body.personOrganization || '',
@@ -140,6 +141,7 @@ export async function PUT(request: Request, { id }: { id: string }) {
         (body as any).exportedToSheets ?? false,
         (body as any).exportedToSheetsDate ?? null,
         (body as any).quoteSentAt ?? null,
+        (body as any).waveInvoiceLink ?? null,
         id,
       ],
     );

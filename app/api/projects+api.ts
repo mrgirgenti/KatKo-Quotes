@@ -40,6 +40,7 @@ function toFrontendQuote(p: any): Quote {
     exportedToSheetsDate: p.exportedToSheetsDate ?? undefined,
     quoteSentAt: p.quoteSentAt ?? undefined,
     notesClient: p.notesClient ?? undefined,
+    waveInvoiceLink: p.waveInvoiceLink ?? undefined,
   } as Quote;
 }
 
