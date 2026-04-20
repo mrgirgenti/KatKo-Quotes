@@ -336,55 +336,46 @@ export default function HubManagementScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
-        {/* Hub Status Card */}
+        {/* Hub Status Card — single compact row */}
         <View style={styles.statusCard}>
-          <View style={styles.statusCardTop}>
-            <View style={styles.statusOrgInfo}>
-              <View style={styles.orgAvatar}>
-                <Text style={styles.orgAvatarText}>{org.name[0]?.toUpperCase()}</Text>
-              </View>
-              <View>
-                <Text style={styles.orgName}>{org.name}</Text>
+          <View style={styles.statusCardRow}>
+            <View style={styles.orgAvatar}>
+              <Text style={styles.orgAvatarText}>{org.name[0]?.toUpperCase()}</Text>
+            </View>
+            <View style={{ flex: 1, gap: 4 }}>
+              <View style={styles.orgNameRow}>
+                <Text style={styles.orgName} numberOfLines={1}>{org.name}</Text>
                 <View style={[styles.readyPill, isReady ? styles.readyPillGreen : styles.readyPillAmber]}>
                   {isReady
-                    ? <CheckCircle2 size={11} color="#16A34A" />
-                    : <AlertCircle size={11} color="#D97706" />}
+                    ? <CheckCircle2 size={9} color="#16A34A" />
+                    : <AlertCircle size={9} color="#D97706" />}
                   <Text style={[styles.readyPillText, isReady ? styles.readyPillTextGreen : styles.readyPillTextAmber]}>
-                    {isReady ? 'Portal Ready' : 'Needs Setup'}
+                    {isReady ? 'Ready' : 'Needs Setup'}
                   </Text>
                 </View>
               </View>
+              {org.hubEnabled ? (
+                <View style={styles.statsRow}>
+                  <Users size={11} color={Colors.light.textSecondary} />
+                  <Text style={styles.statText}>{allClientMembers.length} client{allClientMembers.length !== 1 ? 's' : ''}</Text>
+                  <View style={styles.statDot} />
+                  <ShieldCheck size={11} color={Colors.light.textSecondary} />
+                  <Text style={styles.statText}>{clientOrgAdmins.length > 0 ? clientOrgAdmins[0].userName : 'No admin'}</Text>
+                </View>
+              ) : (
+                <Text style={styles.toggleSub}>Enable to grant client portal access</Text>
+              )}
+            </View>
+            <View style={styles.hubToggle}>
+              <Text style={styles.toggleLabel}>Hub</Text>
+              <Switch
+                value={org.hubEnabled ?? false}
+                onValueChange={handleHubToggle}
+                trackColor={{ false: Colors.light.border, true: Colors.light.tint }}
+                thumbColor="#fff"
+              />
             </View>
           </View>
-
-          <View style={styles.toggleRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.toggleLabel}>Client Hub Enabled</Text>
-              <Text style={styles.toggleSub}>
-                {org.hubEnabled ? 'Clients can access this organization\'s portal' : 'Enable to grant client portal access'}
-              </Text>
-            </View>
-            <Switch
-              value={org.hubEnabled ?? false}
-              onValueChange={handleHubToggle}
-              trackColor={{ false: Colors.light.border, true: Colors.light.tint }}
-              thumbColor="#fff"
-            />
-          </View>
-
-          {org.hubEnabled && (
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Users size={13} color={Colors.light.textSecondary} />
-                <Text style={styles.statText}>{allClientMembers.length} client{allClientMembers.length !== 1 ? 's' : ''}</Text>
-              </View>
-              <View style={styles.statDot} />
-              <View style={styles.statItem}>
-                <ShieldCheck size={13} color={Colors.light.textSecondary} />
-                <Text style={styles.statText}>{clientOrgAdmins.length > 0 ? clientOrgAdmins[0].userName : 'No org admin'}</Text>
-              </View>
-            </View>
-          )}
         </View>
 
         {/* Portal Link Section */}
@@ -394,22 +385,24 @@ export default function HubManagementScreen() {
               <ExternalLink size={15} color={Colors.light.tint} />
               <Text style={styles.sectionTitle}>Client Portal Link</Text>
             </View>
-            <Text style={styles.portalLinkDesc}>
-              Share this link with client users so they can submit project requests directly into Ko OS.
-            </Text>
-            <View style={styles.portalLinkRow}>
-              <Text style={styles.portalLinkUrl} numberOfLines={1} ellipsizeMode="middle">
-                {portalUrl}
+            <View style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
+              <Text style={styles.portalLinkDesc}>
+                Share this link with clients to let them submit project requests directly into Ko OS.
               </Text>
-              <TouchableOpacity
-                style={[styles.copyBtn, linkCopied && styles.copyBtnDone]}
-                onPress={handleCopyLink}
-              >
-                <Copy size={13} color={linkCopied ? '#16A34A' : Colors.light.tint} />
-                <Text style={[styles.copyBtnText, linkCopied && styles.copyBtnTextDone]}>
-                  {linkCopied ? 'Copied!' : 'Copy'}
+              <View style={styles.portalLinkRow}>
+                <Text style={styles.portalLinkUrl} numberOfLines={1} ellipsizeMode="middle">
+                  {portalUrl}
                 </Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.copyBtn, linkCopied && styles.copyBtnDone]}
+                  onPress={handleCopyLink}
+                >
+                  <Copy size={11} color={linkCopied ? '#16A34A' : Colors.light.tint} />
+                  <Text style={[styles.copyBtnText, linkCopied && styles.copyBtnTextDone]}>
+                    {linkCopied ? 'Copied!' : 'Copy'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         )}
@@ -471,7 +464,7 @@ export default function HubManagementScreen() {
           <View style={styles.sectionHeader}>
             <Users size={15} color="#6366F1" />
             <Text style={styles.sectionTitle}>
-              Client Users{allClientMembers.length > 0 ? ` (${allClientMembers.length})` : ''}
+              Client Users{regularClients.length > 0 ? ` (${regularClients.length})` : ''}
             </Text>
             <TouchableOpacity
               style={styles.sectionActionBtnPrimary}
@@ -608,7 +601,7 @@ export default function HubManagementScreen() {
           )}
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 20 }} />
       </ScrollView>
 
       {/* Assign Org Admin Modal — promotes an existing CLIENT member */}
@@ -862,8 +855,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.background,
   },
   content: {
-    padding: 16,
-    gap: 12,
+    padding: 12,
+    gap: 8,
   },
   centered: {
     flex: 1,
@@ -887,89 +880,84 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
   },
 
-  // Status Card
+  // Status Card — single compact row
   statusCard: {
     backgroundColor: Colors.light.surface,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: Colors.light.border,
     overflow: 'hidden',
   },
-  statusCardTop: {
-    padding: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-  },
-  statusOrgInfo: {
+  statusCardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    padding: 10,
+    gap: 10,
+  },
+  orgNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
   },
   orgAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: Colors.light.tint,
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
   orgAvatarText: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '700',
     color: '#fff',
   },
   orgName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
     color: Colors.light.text,
-    marginBottom: 4,
   },
   readyPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
+    gap: 3,
+    paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 20,
     alignSelf: 'flex-start',
   },
   readyPillGreen: { backgroundColor: '#F0FDF4' },
   readyPillAmber: { backgroundColor: '#FFFBEB' },
-  readyPillText: { fontSize: 11, fontWeight: '600' },
+  readyPillText: { fontSize: 10, fontWeight: '600' },
   readyPillTextGreen: { color: '#16A34A' },
   readyPillTextAmber: { color: '#D97706' },
 
-  toggleRow: {
-    flexDirection: 'row',
+  hubToggle: {
     alignItems: 'center',
-    padding: 14,
-    gap: 12,
+    gap: 2,
+    flexShrink: 0,
   },
   toggleLabel: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '600',
-    color: Colors.light.text,
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   toggleSub: {
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.light.textSecondary,
-    marginTop: 1,
   },
 
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingBottom: 12,
-    gap: 8,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
   statText: {
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.light.textSecondary,
   },
   statDot: {
@@ -982,7 +970,7 @@ const styles = StyleSheet.create({
   // Sections
   section: {
     backgroundColor: Colors.light.surface,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: Colors.light.border,
     overflow: 'hidden',
@@ -991,85 +979,86 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.border,
-    gap: 7,
+    gap: 6,
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700',
-    color: Colors.light.text,
+    color: Colors.light.textSecondary,
     flex: 1,
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 0.5,
   },
   sectionActionBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 5,
     borderWidth: 1.5,
     borderColor: Colors.light.tint,
   },
   sectionActionBtnText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: Colors.light.tint,
   },
   sectionActionBtnPrimary: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 5,
     backgroundColor: Colors.light.tint,
   },
   sectionActionBtnPrimaryText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: '#fff',
   },
 
   loadingRow: {
-    paddingVertical: 20,
+    paddingVertical: 14,
     alignItems: 'center',
   },
   emptySection: {
-    padding: 16,
-    gap: 4,
+    padding: 10,
+    gap: 2,
   },
   emptySectionText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
     color: Colors.light.textSecondary,
   },
   emptySectionSub: {
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.light.textSecondary,
-    lineHeight: 17,
+    lineHeight: 15,
   },
 
   // Member rows
   memberRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    gap: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    gap: 8,
     borderTopWidth: 1,
     borderTopColor: Colors.light.border,
   },
   memberAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
   memberAvatarText: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '700',
     color: '#fff',
   },
@@ -1078,26 +1067,26 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   memberName: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: Colors.light.text,
   },
   memberEmail: {
-    fontSize: 11,
+    fontSize: 10,
     color: Colors.light.textSecondary,
   },
   rowActionBtn: {
-    padding: 6,
+    padding: 4,
   },
 
   // Role badge
   roleBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   roleBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
   },
 
@@ -1310,34 +1299,34 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.tint,
   },
   portalLinkDesc: {
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.light.textSecondary,
-    marginBottom: 10,
-    lineHeight: 17,
+    marginBottom: 7,
+    lineHeight: 15,
   },
   portalLinkRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.light.background,
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: Colors.light.border,
-    padding: 10,
-    gap: 8,
+    padding: 8,
+    gap: 6,
   },
   portalLinkUrl: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.light.textSecondary,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   copyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 5,
     backgroundColor: '#FFF7F0',
     borderWidth: 1,
     borderColor: Colors.light.tint,
