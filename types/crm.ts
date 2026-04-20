@@ -59,6 +59,7 @@ export interface Contact {
   phone?: string;
   notes?: string;
   isPrimary?: boolean;
+  linkedUserId?: string;
   createdAt: string;
 }
 

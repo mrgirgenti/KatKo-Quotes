@@ -13,6 +13,7 @@ function toFrontendContact(c: any): Contact {
     phone: c.phone ?? undefined,
     notes: c.notes ?? undefined,
     isPrimary: c.isPrimary ?? false,
+    linkedUserId: c.linkedUserId ?? undefined,
     createdAt: new Date(c.createdAt).toISOString(),
   };
 }

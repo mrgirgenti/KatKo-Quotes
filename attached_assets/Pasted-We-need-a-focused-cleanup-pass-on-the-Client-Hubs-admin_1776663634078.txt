@@ -1,0 +1,48 @@
+We need a focused cleanup pass on the Client Hubs admin experience. The current runtime relationships are not correct.
+
+Observed issues:
+1. Org Admin shows many generic/placeholder "User" entries that are not actually assigned to the organization.
+2. Inviting a client user works, but invited/accepted users are not being added properly to Contacts and not being tied cleanly to the organization.
+3. The Internal Team section on this screen does not make sense in its current form and appears to show irrelevant or misleading users.
+
+I want this cleaned up without unnecessary redesign.
+
+Requirements:
+
+1. Fix Org Admin candidate logic
+- Org Admin selection must not show placeholder/global junk users
+- Only show valid assignable users
+- Define clearly whether Org Admin can be:
+  a) a client-side org member user tied to this organization
+  b) an internal user assigned as the internal account owner
+- Do not mix these concepts in one confusing list
+
+2. Fix invite acceptance / relationship creation
+When a user who is not already in the system is invited and accepts:
+- create or link a real User record
+- create or link a Contact record
+- attach the Contact to the correct Organization
+- create the correct OrganizationMembership
+- assign the expected role (member, billing_contact, approver, or org_admin if intended)
+
+3. Clean up Contacts integration
+- Ensure invited/accepted client users appear correctly in the Contacts section for that organization
+- Ensure the contact is tied directly to the organization
+- Avoid duplicate contact/user records where possible
+
+4. Clean up the Internal Team section
+- Either remove it from Client Hubs if it is not operationally necessary
+- or replace it with a clear, minimal concept such as internal account owner / assigned internal contacts
+- Do not show meaningless generic user rows
+
+5. Preserve the current overall layout
+- make only minimal UI changes needed to clarify the workflow
+- prioritize correct data relationships and filtering over visual redesign
+
+Deliver back:
+- exact root cause of the placeholder users
+- exact files changed
+- how Org Admin selection now works
+- how invite acceptance now creates/links User + Contact + OrganizationMembership
+- what changed in Contacts behavior
+- whether Internal Team was removed, renamed, or re-scoped

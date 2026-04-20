@@ -91,14 +91,28 @@ export default function HubManagementScreen() {
     },
   });
 
-  const orgAdmins = memberships.filter((m) => m.role === 'ORG_ADMIN');
-  const clientMembers = memberships.filter((m) => m.userType === 'CLIENT');
-  const internalMembers = memberships.filter((m) => m.userType !== 'CLIENT');
+  // CLIENT users with ORG_ADMIN role = the org's primary admin contacts
+  const clientOrgAdmins = memberships.filter((m) => m.userType === 'CLIENT' && m.role === 'ORG_ADMIN');
+  // CLIENT users with non-admin roles
+  const regularClients = memberships.filter((m) => m.userType === 'CLIENT' && m.role !== 'ORG_ADMIN');
+  // All client users (for counts / portal-ready check)
+  const allClientMembers = memberships.filter((m) => m.userType === 'CLIENT');
+  // INTERNAL users assigned as account reps for this org
+  const accountReps = memberships.filter((m) => m.userType === 'INTERNAL');
 
   // --- Modals ---
+  // Org Admin: promotes an existing CLIENT member to ORG_ADMIN role
   const [assignAdminModal, setAssignAdminModal] = useState(false);
-  const [selectedAdminUserId, setSelectedAdminUserId] = useState('');
+  const [selectedAdminMembershipId, setSelectedAdminMembershipId] = useState('');
   const [assigningAdmin, setAssigningAdmin] = useState(false);
+
+  // Account Rep: assigns an INTERNAL user as account owner for this org
+  const [assignRepModal, setAssignRepModal] = useState(false);
+  const [selectedRepUserId, setSelectedRepUserId] = useState('');
+  const [assigningRep, setAssigningRep] = useState(false);
+
+  // Filter out placeholder "User" entries from internal user list
+  const realInternalUsers = internalUsers.filter((u) => u.name && u.name !== 'User');
 
   const [inviteClientModal, setInviteClientModal] = useState(false);
   const [clientForm, setClientForm] = useState({ name: '', email: '', role: 'MEMBER' as MembershipRole });
@@ -130,35 +144,59 @@ export default function HubManagementScreen() {
     updateOrgHubEnabled({ orgId: org.id, enabled: val });
   }, [org, updateOrgHubEnabled]);
 
+  // Promotes an existing CLIENT member to ORG_ADMIN by patching their membership role
   const handleAssignAdmin = useCallback(async () => {
-    if (!org || !selectedAdminUserId) return;
+    if (!org || !selectedAdminMembershipId) return;
     setAssigningAdmin(true);
+    try {
+      const res = await fetch(`/api/memberships/${selectedAdminMembershipId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'ORG_ADMIN' }),
+      });
+      if (!res.ok) throw new Error('Failed to assign admin');
+      await refetchMemberships();
+      queryClient.invalidateQueries({ queryKey: ['client-hubs'] });
+      setAssignAdminModal(false);
+      setSelectedAdminMembershipId('');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to assign org admin. Try again.');
+    } finally {
+      setAssigningAdmin(false);
+    }
+  }, [org, selectedAdminMembershipId, refetchMemberships, queryClient]);
+
+  // Assigns an INTERNAL user as the account rep for this org
+  const handleAssignRep = useCallback(async () => {
+    if (!org || !selectedRepUserId) return;
+    setAssigningRep(true);
     try {
       const res = await fetch('/api/memberships', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           organizationId: org.id,
-          userId: selectedAdminUserId,
-          role: 'ORG_ADMIN',
+          userId: selectedRepUserId,
+          role: 'MEMBER',
         }),
       });
-      if (!res.ok) throw new Error('Failed to assign admin');
+      if (!res.ok) throw new Error('Failed to assign rep');
       await refetchMemberships();
       queryClient.invalidateQueries({ queryKey: ['client-hubs'] });
-      setAssignAdminModal(false);
-      setSelectedAdminUserId('');
+      setAssignRepModal(false);
+      setSelectedRepUserId('');
     } catch (err) {
-      Alert.alert('Error', 'Failed to assign org admin. Try again.');
+      Alert.alert('Error', 'Failed to assign account rep. Try again.');
     } finally {
-      setAssigningAdmin(false);
+      setAssigningRep(false);
     }
-  }, [org, selectedAdminUserId, refetchMemberships, queryClient]);
+  }, [org, selectedRepUserId, refetchMemberships, queryClient]);
 
   const handleInviteClient = useCallback(async () => {
     if (!org || !clientForm.name.trim() || !clientForm.email.trim()) return;
     setInvitingSaving(true);
     try {
+      // 1. Create or find the client User record
       const userId = `client_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       const userRes = await fetch('/api/users', {
         method: 'POST',
@@ -175,6 +213,8 @@ export default function HubManagementScreen() {
         throw new Error((err as any)?.error || 'Failed to create user');
       }
       const newUser = userRes.status === 204 ? { id: userId } : await userRes.json();
+
+      // 2. Create OrganizationMembership
       const memRes = await fetch('/api/memberships', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -185,8 +225,24 @@ export default function HubManagementScreen() {
         }),
       });
       if (!memRes.ok) throw new Error('Failed to add membership');
+
+      // 3. Create or link a Contact record for this person
+      const [firstName, ...restParts] = clientForm.name.trim().split(' ');
+      await fetch(`/api/orgs/${org.id}/contacts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: firstName || '',
+          lastName: restParts.join(' ') || '',
+          email: clientForm.email.trim(),
+          linkedUserId: newUser.id,
+          isPrimary: clientForm.role === 'ORG_ADMIN',
+        }),
+      });
+
       await refetchMemberships();
       queryClient.invalidateQueries({ queryKey: ['client-hubs'] });
+      queryClient.invalidateQueries({ queryKey: ['crm_orgs'] });
       setInviteClientModal(false);
       setClientForm({ name: '', email: '', role: 'MEMBER' });
     } catch (err: any) {
@@ -265,7 +321,7 @@ export default function HubManagementScreen() {
     );
   }
 
-  const isReady = org.hubEnabled && orgAdmins.length > 0;
+  const isReady = org.hubEnabled && allClientMembers.length > 0;
 
   return (
     <View style={styles.container}>
@@ -319,12 +375,12 @@ export default function HubManagementScreen() {
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
                 <Users size={13} color={Colors.light.textSecondary} />
-                <Text style={styles.statText}>{clientMembers.length} client{clientMembers.length !== 1 ? 's' : ''}</Text>
+                <Text style={styles.statText}>{allClientMembers.length} client{allClientMembers.length !== 1 ? 's' : ''}</Text>
               </View>
               <View style={styles.statDot} />
               <View style={styles.statItem}>
                 <ShieldCheck size={13} color={Colors.light.textSecondary} />
-                <Text style={styles.statText}>{orgAdmins.length > 0 ? orgAdmins[0].userName : 'No admin'}</Text>
+                <Text style={styles.statText}>{clientOrgAdmins.length > 0 ? clientOrgAdmins[0].userName : 'No org admin'}</Text>
               </View>
             </View>
           )}
@@ -357,39 +413,43 @@ export default function HubManagementScreen() {
           </View>
         )}
 
-        {/* Org Admin Section */}
+        {/* Org Admin Section — CLIENT user with ORG_ADMIN role */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <ShieldCheck size={15} color={Colors.light.tint} />
             <Text style={styles.sectionTitle}>Org Admin</Text>
-            <TouchableOpacity
-              style={styles.sectionActionBtn}
-              onPress={() => {
-                setSelectedAdminUserId('');
-                setAssignAdminModal(true);
-              }}
-            >
-              <Text style={styles.sectionActionBtnText}>
-                {orgAdmins.length > 0 ? 'Change' : 'Assign'}
-              </Text>
-            </TouchableOpacity>
+            {regularClients.length > 0 && (
+              <TouchableOpacity
+                style={styles.sectionActionBtn}
+                onPress={() => {
+                  setSelectedAdminMembershipId('');
+                  setAssignAdminModal(true);
+                }}
+              >
+                <Text style={styles.sectionActionBtnText}>
+                  {clientOrgAdmins.length > 0 ? 'Change' : 'Assign'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {membershipsLoading ? (
             <View style={styles.loadingRow}>
               <ActivityIndicator size="small" color={Colors.light.tint} />
             </View>
-          ) : orgAdmins.length === 0 ? (
+          ) : clientOrgAdmins.length === 0 ? (
             <View style={styles.emptySection}>
-              <Text style={styles.emptySectionText}>No org admin assigned yet.</Text>
+              <Text style={styles.emptySectionText}>No org admin assigned.</Text>
               <Text style={styles.emptySectionSub}>
-                Assign an internal team member as the org admin to mark this hub as portal-ready.
+                {regularClients.length === 0
+                  ? 'Invite a client user below first, then promote them to org admin.'
+                  : 'Select a client user below to designate as the primary org admin.'}
               </Text>
             </View>
           ) : (
-            orgAdmins.map((m) => (
+            clientOrgAdmins.map((m) => (
               <View key={m.id} style={styles.memberRow}>
-                <View style={[styles.memberAvatar, { backgroundColor: m.userAvatarColor || Colors.light.tint }]}>
+                <View style={[styles.memberAvatar, { backgroundColor: '#6366F1' }]}>
                   <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
                 </View>
                 <View style={styles.memberInfo}>
@@ -405,12 +465,12 @@ export default function HubManagementScreen() {
           )}
         </View>
 
-        {/* Client Users Section */}
+        {/* Client Users Section — non-admin CLIENT members */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Users size={15} color="#6366F1" />
             <Text style={styles.sectionTitle}>
-              Client Users{clientMembers.length > 0 ? ` (${clientMembers.length})` : ''}
+              Client Users{allClientMembers.length > 0 ? ` (${allClientMembers.length})` : ''}
             </Text>
             <TouchableOpacity
               style={styles.sectionActionBtnPrimary}
@@ -428,15 +488,15 @@ export default function HubManagementScreen() {
             <View style={styles.loadingRow}>
               <ActivityIndicator size="small" color={Colors.light.tint} />
             </View>
-          ) : clientMembers.length === 0 ? (
+          ) : regularClients.length === 0 ? (
             <View style={styles.emptySection}>
-              <Text style={styles.emptySectionText}>No client users yet.</Text>
+              <Text style={styles.emptySectionText}>No client members yet.</Text>
               <Text style={styles.emptySectionSub}>
-                Invite clients to give them access to this org's hub portal.
+                Invite clients to give them portal access. Invited users are also added to Contacts.
               </Text>
             </View>
           ) : (
-            clientMembers.map((m) => (
+            regularClients.map((m) => (
               <View key={m.id} style={styles.memberRow}>
                 <View style={[styles.memberAvatar, { backgroundColor: '#6366F1' }]}>
                   <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
@@ -461,21 +521,59 @@ export default function HubManagementScreen() {
           )}
         </View>
 
-        {/* Internal Team Section */}
-        <View style={[styles.section, styles.sectionLast]}>
+        {/* Contacts Section — CRM contacts for this org */}
+        <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <User size={15} color={Colors.light.textSecondary} />
             <Text style={styles.sectionTitle}>
-              Internal Team{internalMembers.length > 0 ? ` (${internalMembers.length})` : ''}
+              Contacts{org.contacts.length > 0 ? ` (${org.contacts.length})` : ''}
             </Text>
+          </View>
+          {org.contacts.length === 0 ? (
+            <View style={styles.emptySection}>
+              <Text style={styles.emptySectionText}>No contacts yet.</Text>
+              <Text style={styles.emptySectionSub}>
+                Contacts are created automatically when you invite client users.
+              </Text>
+            </View>
+          ) : (
+            org.contacts.map((c) => (
+              <View key={c.id} style={styles.memberRow}>
+                <View style={[styles.memberAvatar, { backgroundColor: c.linkedUserId ? '#6366F1' : Colors.light.border }]}>
+                  <Text style={[styles.memberAvatarText, !c.linkedUserId && { color: Colors.light.textSecondary }]}>
+                    {(c.firstName || '?')[0].toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.memberInfo}>
+                  <Text style={styles.memberName}>{[c.firstName, c.lastName].filter(Boolean).join(' ')}</Text>
+                  {c.email ? <Text style={styles.memberEmail}>{c.email}</Text> : null}
+                </View>
+                {c.linkedUserId ? (
+                  <View style={styles.portalBadge}>
+                    <Globe size={10} color="#2563EB" />
+                    <Text style={styles.portalBadgeText}>Portal</Text>
+                  </View>
+                ) : null}
+              </View>
+            ))
+          )}
+        </View>
+
+        {/* Account Rep Section — single INTERNAL user assigned to this account */}
+        <View style={[styles.section, styles.sectionLast]}>
+          <View style={styles.sectionHeader}>
+            <ShieldCheck size={15} color={Colors.light.textSecondary} />
+            <Text style={styles.sectionTitle}>Account Rep</Text>
             <TouchableOpacity
               style={styles.sectionActionBtn}
               onPress={() => {
-                setSelectedAdminUserId('');
-                setAssignAdminModal(true);
+                setSelectedRepUserId('');
+                setAssignRepModal(true);
               }}
             >
-              <Text style={styles.sectionActionBtnText}>Add</Text>
+              <Text style={styles.sectionActionBtnText}>
+                {accountReps.length > 0 ? 'Change' : 'Assign'}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -483,28 +581,23 @@ export default function HubManagementScreen() {
             <View style={styles.loadingRow}>
               <ActivityIndicator size="small" color={Colors.light.tint} />
             </View>
-          ) : internalMembers.length === 0 ? (
+          ) : accountReps.length === 0 ? (
             <View style={styles.emptySection}>
-              <Text style={styles.emptySectionText}>No internal members assigned.</Text>
+              <Text style={styles.emptySectionText}>No account rep assigned.</Text>
+              <Text style={styles.emptySectionSub}>
+                Assign an internal team member as the owner of this client account.
+              </Text>
             </View>
           ) : (
-            internalMembers.map((m) => (
+            accountReps.map((m) => (
               <View key={m.id} style={styles.memberRow}>
                 <View style={[styles.memberAvatar, { backgroundColor: m.userAvatarColor || Colors.light.tint }]}>
                   <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
                 </View>
                 <View style={styles.memberInfo}>
                   <Text style={styles.memberName}>{m.userName || 'Unknown'}</Text>
-                  {m.userEmail ? <Text style={styles.memberEmail}>{m.userEmail}</Text> : null}
+                  <Text style={[styles.memberEmail, { color: Colors.light.tint }]}>Internal</Text>
                 </View>
-                <TouchableOpacity
-                  onPress={() => {
-                    setNewRole(m.role);
-                    setChangeRoleModal({ visible: true, membership: m });
-                  }}
-                >
-                  <RoleBadge role={m.role} />
-                </TouchableOpacity>
                 <TouchableOpacity style={styles.rowActionBtn} onPress={() => handleRemoveMember(m)}>
                   <X size={14} color={Colors.light.textSecondary} />
                 </TouchableOpacity>
@@ -516,7 +609,7 @@ export default function HubManagementScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Assign Admin Modal */}
+      {/* Assign Org Admin Modal — promotes an existing CLIENT member */}
       <Modal visible={assignAdminModal} transparent animationType="fade" onRequestClose={() => setAssignAdminModal(false)}>
         <Pressable style={styles.overlay} onPress={() => setAssignAdminModal(false)}>
           <Pressable style={styles.modalCard} onPress={() => {}}>
@@ -526,26 +619,28 @@ export default function HubManagementScreen() {
                 <X size={20} color={Colors.light.textSecondary} />
               </TouchableOpacity>
             </View>
-            <Text style={styles.modalSub}>Select an internal team member to set as org admin for {org.name}.</Text>
+            <Text style={styles.modalSub}>
+              Select an existing client member of {org.name} to designate as the primary org admin.
+            </Text>
             <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
-              {internalUsers.length === 0 ? (
-                <Text style={styles.modalEmpty}>No internal users found.</Text>
+              {regularClients.length === 0 ? (
+                <Text style={styles.modalEmpty}>No eligible client members. Invite a client user first, then promote them here.</Text>
               ) : (
-                internalUsers.map((u) => (
+                regularClients.map((m) => (
                   <TouchableOpacity
-                    key={u.id}
-                    style={[styles.userPickerRow, selectedAdminUserId === u.id && styles.userPickerRowSelected]}
-                    onPress={() => setSelectedAdminUserId(u.id)}
+                    key={m.id}
+                    style={[styles.userPickerRow, selectedAdminMembershipId === m.id && styles.userPickerRowSelected]}
+                    onPress={() => setSelectedAdminMembershipId(m.id)}
                   >
-                    <View style={[styles.memberAvatar, { backgroundColor: u.avatarColor || Colors.light.tint, width: 32, height: 32, borderRadius: 16 }]}>
-                      <Text style={[styles.memberAvatarText, { fontSize: 12 }]}>{(u.name || '?')[0].toUpperCase()}</Text>
+                    <View style={[styles.memberAvatar, { backgroundColor: '#6366F1', width: 32, height: 32, borderRadius: 16 }]}>
+                      <Text style={[styles.memberAvatarText, { fontSize: 12 }]}>{(m.userName || '?')[0].toUpperCase()}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.userPickerName}>{u.name}</Text>
-                      {u.email ? <Text style={styles.userPickerEmail}>{u.email}</Text> : null}
+                      <Text style={styles.userPickerName}>{m.userName || 'Unknown'}</Text>
+                      {m.userEmail ? <Text style={styles.userPickerEmail}>{m.userEmail}</Text> : null}
                     </View>
-                    <View style={[styles.radioCircle, selectedAdminUserId === u.id && styles.radioCircleSelected]}>
-                      {selectedAdminUserId === u.id && <View style={styles.radioFill} />}
+                    <View style={[styles.radioCircle, selectedAdminMembershipId === m.id && styles.radioCircleSelected]}>
+                      {selectedAdminMembershipId === m.id && <View style={styles.radioFill} />}
                     </View>
                   </TouchableOpacity>
                 ))
@@ -556,14 +651,68 @@ export default function HubManagementScreen() {
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.saveBtn, (!selectedAdminUserId || assigningAdmin) && styles.saveBtnDisabled]}
+                style={[styles.saveBtn, (!selectedAdminMembershipId || assigningAdmin) && styles.saveBtnDisabled]}
                 onPress={handleAssignAdmin}
-                disabled={!selectedAdminUserId || assigningAdmin}
+                disabled={!selectedAdminMembershipId || assigningAdmin}
               >
                 {assigningAdmin ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.saveBtnText}>Assign as Admin</Text>
+                  <Text style={styles.saveBtnText}>Promote to Org Admin</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Assign Account Rep Modal — assigns an INTERNAL user as account owner */}
+      <Modal visible={assignRepModal} transparent animationType="fade" onRequestClose={() => setAssignRepModal(false)}>
+        <Pressable style={styles.overlay} onPress={() => setAssignRepModal(false)}>
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Assign Account Rep</Text>
+              <TouchableOpacity onPress={() => setAssignRepModal(false)}>
+                <X size={20} color={Colors.light.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalSub}>Select an internal team member to own this client account.</Text>
+            <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+              {realInternalUsers.length === 0 ? (
+                <Text style={styles.modalEmpty}>No internal team members found.</Text>
+              ) : (
+                realInternalUsers.map((u) => (
+                  <TouchableOpacity
+                    key={u.id}
+                    style={[styles.userPickerRow, selectedRepUserId === u.id && styles.userPickerRowSelected]}
+                    onPress={() => setSelectedRepUserId(u.id)}
+                  >
+                    <View style={[styles.memberAvatar, { backgroundColor: u.avatarColor || Colors.light.tint, width: 32, height: 32, borderRadius: 16 }]}>
+                      <Text style={[styles.memberAvatarText, { fontSize: 12 }]}>{(u.name || '?')[0].toUpperCase()}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.userPickerName}>{u.name}</Text>
+                    </View>
+                    <View style={[styles.radioCircle, selectedRepUserId === u.id && styles.radioCircleSelected]}>
+                      {selectedRepUserId === u.id && <View style={styles.radioFill} />}
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setAssignRepModal(false)}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveBtn, (!selectedRepUserId || assigningRep) && styles.saveBtnDisabled]}
+                onPress={handleAssignRep}
+                disabled={!selectedRepUserId || assigningRep}
+              >
+                {assigningRep ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.saveBtnText}>Assign as Account Rep</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -1057,6 +1206,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#fff',
+  },
+
+  portalBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  portalBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#2563EB',
   },
 
   // User picker in Assign Admin modal
