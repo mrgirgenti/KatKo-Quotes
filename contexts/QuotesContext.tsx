@@ -209,6 +209,9 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
       const dateStr = nowDateStr();
       const q = current.find((x) => x.id === quoteId);
       if (!q) throw new Error('Quote not found');
+      if (q.status !== 'paid' && q.status !== 'active' && q.status !== 'production_started') {
+        throw new Error('Project must be marked as Paid before entering production.');
+      }
       let updated: Quote;
       if (q.salesData) {
         updated = { ...q, status: 'production_started' };

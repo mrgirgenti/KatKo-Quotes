@@ -340,6 +340,14 @@ export default function QuoteDetailScreen() {
 
   const handleStartProduction = useCallback(() => {
     if (!quote) return;
+    if (quote.status !== 'paid' && quote.status !== 'active' && quote.status !== 'production_started') {
+      Alert.alert(
+        'Payment Required',
+        'This project must be marked as Paid before it can enter production. No project can go to production without pricing and confirmed payment.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
     startProduction(quote.id);
     router.push(`/quote/production/${quote.id}`);
   }, [quote, startProduction, router]);
@@ -470,20 +478,27 @@ export default function QuoteDetailScreen() {
   }
 
   const renderIntakeBanner = () => {
-    if (quote.status !== 'needs_review' || quote.intakeSource !== 'CLIENT_HUB') return null;
+    if (quote.status !== 'needs_review') return null;
+    const isClientHub = quote.intakeSource === 'CLIENT_HUB';
     return (
       <View style={styles.intakeBanner}>
         <View style={styles.intakeBannerHeader}>
           <Inbox size={18} color="#FF5A00" />
-          <Text style={styles.intakeBannerTitle}>Client Hub Submission</Text>
+          <Text style={styles.intakeBannerTitle}>
+            {isClientHub ? 'Client Hub Submission' : 'Needs Review'}
+          </Text>
         </View>
         <Text style={styles.intakeBannerText}>
-          This project came in from the client portal. Review the line items below, then start quoting to add pricing.
+          {isClientHub
+            ? 'This project came in from the client portal. Review the line items below, then start quoting to add pricing.'
+            : 'This project is awaiting review. No pricing has been set yet — start quoting to add costs and totals.'}
         </Text>
-        <TouchableOpacity style={styles.intakeBannerBtn} onPress={handleStartQuote}>
-          <Text style={styles.intakeBannerBtnText}>Start Quoting</Text>
-          <ArrowRight size={15} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.intakeBannerActions}>
+          <TouchableOpacity style={styles.intakeBannerBtn} onPress={handleStartQuote}>
+            <Text style={styles.intakeBannerBtnText}>Start Quoting</Text>
+            <ArrowRight size={15} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -1285,7 +1300,7 @@ export default function QuoteDetailScreen() {
               )}
               <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1 }]} onPress={handleStartProduction}>
                 <Flame size={17} color="#fff" />
-                <Text style={styles.actionBtnSolidText}>Start Production</Text>
+                <Text style={styles.actionBtnSolidText}>Production Mode</Text>
               </TouchableOpacity>
             </>
           ) : (
@@ -2622,6 +2637,10 @@ const styles = StyleSheet.create({
     color: '#92400E',
     lineHeight: 19,
     marginBottom: 12,
+  },
+  intakeBannerActions: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
   },
   intakeBannerBtn: {
     backgroundColor: '#FF5A00',
