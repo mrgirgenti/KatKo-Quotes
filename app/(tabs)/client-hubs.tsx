@@ -8,22 +8,28 @@ import {
   ActivityIndicator,
   RefreshControl,
   TextInput,
-  Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   Globe,
   ChevronRight,
-  ShieldCheck,
-  Users,
-  AlertCircle,
-  CheckCircle2,
   Search,
-  ToggleRight,
+  CheckCircle2,
+  Plus,
+  User,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
-import { Organization } from '@/types/crm';
+import { Organization, Contact } from '@/types/crm';
+
+function getPrimaryContact(org: Organization): Contact | undefined {
+  return org.contacts.find((c) => c.isPrimary) ?? org.contacts[0];
+}
+
+function getContactDisplay(contact: Contact | undefined): string {
+  if (!contact) return '';
+  return `${contact.firstName} ${contact.lastName}`.trim();
+}
 
 const STATUS_COLORS: Record<string, string> = {
   'Active Client': '#16A34A',
@@ -33,57 +39,60 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 function HubCard({ org, onPress }: { org: Organization; onPress: () => void }) {
+  const primaryContact = getPrimaryContact(org);
+  const contactName = getContactDisplay(primaryContact);
+  const contactInitial = primaryContact?.firstName?.[0]?.toUpperCase() || org.name[0]?.toUpperCase() || '?';
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
-      <View style={styles.cardTop}>
-        <View style={styles.cardLeft}>
-          <View style={styles.orgAvatarCircle}>
-            <Text style={styles.orgAvatarText}>{org.name[0]?.toUpperCase() || '?'}</Text>
-          </View>
-          <View style={styles.cardInfo}>
-            <Text style={styles.orgName}>{org.name}</Text>
-            <View style={styles.statusRow}>
-              <View style={[styles.statusDot, { backgroundColor: STATUS_COLORS[org.status] || '#9CA3AF' }]} />
-              <Text style={styles.statusText}>{org.status || 'Unknown'}</Text>
-            </View>
-          </View>
+      <View style={styles.cardRow}>
+        <View style={styles.contactAvatar}>
+          <Text style={styles.contactAvatarText}>{contactInitial}</Text>
         </View>
-        <ChevronRight size={16} color={Colors.light.textSecondary} />
+        <View style={styles.cardTextBlock}>
+          {contactName ? (
+            <Text style={styles.contactName}>{contactName}</Text>
+          ) : null}
+          <Text style={styles.orgName}>{org.name}</Text>
+        </View>
+        <View style={styles.cardRight}>
+          <View style={[styles.statusDot, { backgroundColor: STATUS_COLORS[org.status] || '#9CA3AF' }]} />
+          <ChevronRight size={15} color={Colors.light.textSecondary} />
+        </View>
       </View>
     </TouchableOpacity>
   );
 }
 
-function OrgEnableRow({
+function AddOrgRow({
   org,
-  onToggle,
-  toggling,
+  onEnable,
+  enabling,
 }: {
   org: Organization;
-  onToggle: (val: boolean) => void;
-  toggling: boolean;
+  onEnable: () => void;
+  enabling: boolean;
 }) {
+  const primaryContact = getPrimaryContact(org);
+  const contactName = getContactDisplay(primaryContact);
+  const initial = org.name[0]?.toUpperCase() || '?';
+
   return (
-    <View style={styles.enableRow}>
-      <View style={styles.enableRowAvatar}>
-        <Text style={styles.enableRowAvatarText}>{org.name[0]?.toUpperCase() || '?'}</Text>
+    <View style={styles.addRow}>
+      <View style={styles.addRowAvatar}>
+        <Text style={styles.addRowAvatarText}>{initial}</Text>
       </View>
-      <View style={styles.enableRowInfo}>
-        <Text style={styles.enableRowName}>{org.name}</Text>
-        <View style={styles.statusRow}>
-          <View style={[styles.statusDot, { backgroundColor: STATUS_COLORS[org.status] || '#9CA3AF' }]} />
-          <Text style={styles.statusText}>{org.status || 'Unknown'}</Text>
-        </View>
+      <View style={styles.addRowInfo}>
+        <Text style={styles.addRowName}>{org.name}</Text>
+        {contactName ? <Text style={styles.addRowSub}>{contactName}</Text> : null}
       </View>
-      {toggling ? (
+      {enabling ? (
         <ActivityIndicator size="small" color={Colors.light.tint} />
       ) : (
-        <Switch
-          value={false}
-          onValueChange={onToggle}
-          trackColor={{ false: Colors.light.border, true: Colors.light.tint }}
-          thumbColor="#fff"
-        />
+        <TouchableOpacity style={styles.enableBtn} onPress={onEnable} activeOpacity={0.75}>
+          <Plus size={12} color="#fff" />
+          <Text style={styles.enableBtnText}>Enable</Text>
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -96,20 +105,26 @@ export default function ClientHubsScreen() {
   const [search, setSearch] = useState('');
   const [togglingOrgId, setTogglingOrgId] = useState<string | null>(null);
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return orgs;
-    const q = search.toLowerCase();
-    return orgs.filter((o) => o.name.toLowerCase().includes(q));
-  }, [orgs, search]);
+  const q = search.toLowerCase().trim();
 
   const hubEnabled = useMemo(
-    () => filtered.filter((o) => o.hubEnabled).sort((a, b) => a.name.localeCompare(b.name)),
-    [filtered],
+    () =>
+      orgs
+        .filter((o) => o.hubEnabled)
+        .filter((o) => !q || o.name.toLowerCase().includes(q))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [orgs, q],
   );
 
   const notEnabled = useMemo(
-    () => filtered.filter((o) => !o.hubEnabled).sort((a, b) => a.name.localeCompare(b.name)),
-    [filtered],
+    () =>
+      q
+        ? orgs
+            .filter((o) => !o.hubEnabled)
+            .filter((o) => o.name.toLowerCase().includes(q))
+            .sort((a, b) => a.name.localeCompare(b.name))
+        : [],
+    [orgs, q],
   );
 
   const onRefresh = useCallback(async () => {
@@ -145,7 +160,7 @@ export default function ClientHubsScreen() {
           style={styles.searchInput}
           value={search}
           onChangeText={setSearch}
-          placeholder="Search organizations…"
+          placeholder="Search to find or add organizations…"
           placeholderTextColor={Colors.light.textSecondary}
           clearButtonMode="while-editing"
         />
@@ -170,44 +185,47 @@ export default function ClientHubsScreen() {
           {/* Hub-enabled section */}
           {hubEnabled.length > 0 && (
             <View style={styles.listSection}>
-              <View style={styles.listSectionHeader}>
+              <View style={styles.sectionHeader}>
                 <CheckCircle2 size={13} color="#16A34A" />
-                <Text style={styles.listSectionTitle}>Hub Enabled</Text>
-                <Text style={styles.listSectionCount}>{hubEnabled.length}</Text>
+                <Text style={styles.sectionTitle}>Hub Enabled</Text>
+                <Text style={styles.sectionCount}>{hubEnabled.length}</Text>
               </View>
-              {hubEnabled.map((org) => (
-                <HubCard
-                  key={org.id}
-                  org={org}
-                  onPress={() => router.push(`/hub/${org.id}` as any)}
-                />
-              ))}
-            </View>
-          )}
-
-          {/* Not yet enabled */}
-          {notEnabled.length > 0 && (
-            <View style={styles.listSection}>
-              <View style={styles.listSectionHeader}>
-                <ToggleRight size={13} color={Colors.light.textSecondary} />
-                <Text style={[styles.listSectionTitle, { color: Colors.light.textSecondary }]}>
-                  Not Enabled
-                </Text>
-                <Text style={styles.listSectionCount}>{notEnabled.length}</Text>
-              </View>
-              <View style={styles.enableList}>
-                {notEnabled.map((org) => (
-                  <OrgEnableRow
+              <View style={styles.cardList}>
+                {hubEnabled.map((org) => (
+                  <HubCard
                     key={org.id}
                     org={org}
-                    onToggle={() => handleEnableHub(org)}
-                    toggling={togglingOrgId === org.id}
+                    onPress={() => router.push(`/hub/${org.id}` as any)}
                   />
                 ))}
               </View>
             </View>
           )}
 
+          {/* Search results — not yet enabled */}
+          {notEnabled.length > 0 && (
+            <View style={styles.listSection}>
+              <View style={styles.sectionHeader}>
+                <User size={13} color={Colors.light.textSecondary} />
+                <Text style={[styles.sectionTitle, { color: Colors.light.textSecondary }]}>
+                  Add to Hub
+                </Text>
+                <Text style={styles.sectionCount}>{notEnabled.length}</Text>
+              </View>
+              <View style={styles.addList}>
+                {notEnabled.map((org) => (
+                  <AddOrgRow
+                    key={org.id}
+                    org={org}
+                    onEnable={() => handleEnableHub(org)}
+                    enabling={togglingOrgId === org.id}
+                  />
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Empty states */}
           {orgs.length === 0 && (
             <View style={styles.emptyContainer}>
               <Globe size={40} color={Colors.light.border} />
@@ -218,7 +236,17 @@ export default function ClientHubsScreen() {
             </View>
           )}
 
-          {orgs.length > 0 && filtered.length === 0 && (
+          {orgs.length > 0 && hubEnabled.length === 0 && !q && (
+            <View style={styles.emptyContainer}>
+              <Globe size={36} color={Colors.light.border} />
+              <Text style={styles.emptyTitle}>No hubs enabled yet</Text>
+              <Text style={styles.emptySub}>
+                Search for an organization above to enable their Client Hub.
+              </Text>
+            </View>
+          )}
+
+          {q && hubEnabled.length === 0 && notEnabled.length === 0 && (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyTitle}>No results for "{search}"</Text>
             </View>
@@ -291,19 +319,19 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
-    gap: 16,
+    gap: 20,
   },
   listSection: {
     gap: 8,
   },
-  listSectionHeader: {
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 2,
     marginBottom: 2,
   },
-  listSectionTitle: {
+  sectionTitle: {
     fontSize: 12,
     fontWeight: '700',
     color: Colors.light.text,
@@ -311,13 +339,16 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     flex: 1,
   },
-  listSectionCount: {
+  sectionCount: {
     fontSize: 12,
     color: Colors.light.textSecondary,
     fontWeight: '600',
   },
 
   // Hub-enabled cards
+  cardList: {
+    gap: 6,
+  },
   card: {
     backgroundColor: Colors.light.surface,
     borderRadius: 10,
@@ -325,64 +356,60 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.border,
     overflow: 'hidden',
   },
-  cardTop: {
+  cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     padding: 12,
-  },
-  cardLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 10,
-    flex: 1,
   },
-  orgAvatarCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+  contactAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: Colors.light.tint,
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
-  orgAvatarText: {
-    fontSize: 15,
+  contactAvatarText: {
+    fontSize: 14,
     fontWeight: '700',
     color: '#fff',
   },
-  cardInfo: {
+  cardTextBlock: {
     flex: 1,
-    gap: 3,
+    gap: 1,
   },
-  orgName: {
-    fontSize: 14,
+  contactName: {
+    fontSize: 13,
     fontWeight: '600',
     color: Colors.light.text,
   },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
+  orgName: {
     fontSize: 12,
     color: Colors.light.textSecondary,
+    fontWeight: '500',
+  },
+  cardRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
   },
 
-  // Not-enabled rows
-  enableList: {
+  // Add-to-hub rows
+  addList: {
     backgroundColor: Colors.light.surface,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: Colors.light.border,
     overflow: 'hidden',
   },
-  enableRow: {
+  addRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
@@ -391,27 +418,46 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.border,
   },
-  enableRowAvatar: {
+  addRowAvatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
     backgroundColor: Colors.light.border,
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
-  enableRowAvatarText: {
+  addRowAvatarText: {
     fontSize: 13,
     fontWeight: '700',
     color: Colors.light.textSecondary,
   },
-  enableRowInfo: {
+  addRowInfo: {
     flex: 1,
-    gap: 2,
+    gap: 1,
   },
-  enableRowName: {
+  addRowName: {
     fontSize: 13,
     fontWeight: '600',
     color: Colors.light.text,
+  },
+  addRowSub: {
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+  },
+  enableBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.light.tint,
+    borderRadius: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  enableBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
   },
 
   // Empty

@@ -143,10 +143,9 @@ export function CropModal({ visible, imageUri, aspect, title, onConfirm, onCance
       canvas.width = Math.round(cropW);
       canvas.height = Math.round(cropH);
       const ctx = canvas.getContext('2d')!;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      const dataUrl = canvas.toDataURL('image/png');
       onConfirm(dataUrl);
     } catch (e) {
       console.error('Crop failed', e);
