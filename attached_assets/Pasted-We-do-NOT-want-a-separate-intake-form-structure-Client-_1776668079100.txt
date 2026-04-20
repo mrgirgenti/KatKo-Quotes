@@ -1,0 +1,64 @@
+We do NOT want a separate intake form structure.
+
+Client Hub Project Requests must mirror the New Quote structure as closely as possible, but simplified.
+
+Requirements:
+
+1. Reuse the same underlying data structure as the New Quote system
+2. The client submission should effectively create a draft quote (without pricing)
+3. Line items must match the quote builder structure:
+   - Design Name
+   - Service Style
+   - Locations (same dropdown behavior)
+   - Products + Sizes (same structure)
+4. Use the same components where possible:
+   - date picker
+   - location selectors
+   - size breakdown inputs
+5. Remove only internal-only fields:
+   - pricing
+   - cost
+   - markup
+   - production-only logic
+6. Do NOT create a separate or parallel data model for client intake
+7. The goal is that when a request is opened in Ko OS, it already looks like a quote draft and only needs pricing added
+
+8. Request-level fields should stay simple and align with the New Quote workflow:
+   - Organization Name (auto-filled from the client’s hub/org)
+   - Submitted By (auto-filled from logged-in client user)
+   - Project Name
+   - Order Type (New Order / Reorder)
+   - Order Date (auto-generated on submit)
+   - In Hands Date (using the same calendar/date picker as New Quote)
+
+9. The client-facing experience should be simple, concise, and fast
+   - do not overload clients with unnecessary fields
+   - only ask the same core questions needed to structure the quote properly
+   - the submission should feel like a simplified version of New Quote, not a different workflow
+
+10. Submission behavior
+- On submit, create a real persisted record tied to the correct Organization and submitting user
+- status must be NEEDS_REVIEW
+- intakeSource must be CLIENT_HUB
+- the submitted request must appear in Ko OS in a way that mirrors a draft quote / project ready for pricing
+- it must be visible immediately and after refresh
+
+11. Conversion workflow inside Ko OS
+- When the request comes into Ko OS as Needs Review, I should not have to rebuild the order
+- I should be able to open it and see the same structure as New Quote, with all request fields already populated
+- The primary task at that stage should be to add pricing and internal quote numbers
+- The request should convert cleanly into the normal quote workflow without re-entry of line items, locations, products, sizes, or notes
+- After pricing is added, the quote should continue through the normal quote/invoice workflow already used in Ko OS
+
+12. Reuse and consistency
+- Reuse existing New Quote components and data mapping wherever practical
+- Do not create a duplicate version of Products + Sizes, Locations, or date handling unless absolutely necessary
+- Keep internal quoting and client request intake structurally aligned so the handoff is seamless
+
+Deliver back:
+- how the request maps directly into the quote structure
+- which New Quote components were reused
+- confirmation that no duplicate intake schema was created
+- how the submitted request appears in Ko OS for Needs Review
+- how the request converts into the normal quote workflow without re-entry
+- any fields that were intentionally excluded from the client-facing version

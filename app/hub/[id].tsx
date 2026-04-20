@@ -1404,4 +1404,55 @@ const styles = StyleSheet.create({
   copyBtnTextDone: {
     color: '#16A34A',
   },
+
+  invitedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    gap: 3,
+  },
+  invitedBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#92400E',
+  },
+
+  resendBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.light.tint,
+    backgroundColor: '#FFF7F0',
+  },
+  resendBtnDone: {
+    borderColor: '#16A34A',
+    backgroundColor: '#F0FDF4',
+  },
+  resendBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.light.tint,
+  },
+  resendBtnTextDone: {
+    color: '#16A34A',
+  },
+
+  headerRepLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  headerRepChange: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.light.tint,
+  },
 });
