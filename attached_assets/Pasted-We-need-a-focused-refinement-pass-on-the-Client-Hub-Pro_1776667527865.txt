@@ -1,0 +1,59 @@
+We need a focused refinement pass on the Client Hub Project Request area and portal access approach.
+
+Preserve the current Katalyst Ko OS layout and make only minimal UI changes where necessary.
+
+Requirements:
+
+1. Due date field
+- Update the Client Hub Project Request due date field to use the same calendar/date picker behavior as the New Quote area
+- Reuse the existing date input component/pattern where possible
+- Keep formatting and UX consistent with the OS quote flow
+
+2. Product + Sizes section
+- Update the Client Hub Project Request form to mimic the Products + Sizes section from the New Quote area
+- Reuse or mirror the same structure/components where practical
+- The intake data shape should correlate directly to what the quote system already expects
+
+3. Product details
+- Add explicit fields for:
+  - product
+  - product color
+  - quantity
+  - sizes
+  - print method if applicable
+  - item/artwork notes
+- Support the structure in a way that can handle multiple requested products/items if possible, even if the initial UI stays simple
+
+4. Artwork upload
+- Add artwork upload support directly in the Project Request section
+- Allow supported file types:
+  - AI
+  - EPS
+  - PDF
+  - PNG
+- Display guidance that PNG files should be 300 DPI or higher
+- Tie uploaded artwork files directly to the created Project and make them visible in Ko OS
+- Ensure uploads are associated with the correct organization and submitting user
+
+5. Quote correlation
+- Ensure Project Request data maps directly into the existing quote system structure as much as possible
+- Submitted request details should prefill or correlate cleanly with quote line/item data in Ko OS
+- Minimize manual re-entry after a client submission
+
+6. Client Hub access from website
+- Prepare the Client Hub so it can ultimately be accessed from the company website via a dedicated portal/client login link
+- Recommend and support a clean route structure such as a dedicated client portal path or subdomain
+- Keep the backend/data model unified with Katalyst Ko OS even if the client-facing entry point is separate
+
+7. Scope control
+- Do not redesign the full portal
+- Do not overbuild unrelated portal features yet
+- Keep this phase focused on intake quality, file upload, and clean integration with the quote workflow
+
+Deliver back:
+- exact files changed
+- what was preserved visually
+- how the new Project Request form now maps to the quote system
+- whether multi-item support is included now or deferred
+- how artwork uploads are stored and linked
+- recommended website/client portal access structure

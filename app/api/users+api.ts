@@ -66,7 +66,7 @@ export async function POST(request: Request) {
           "createdAt", "updatedAt"
         ) VALUES (
           $1, $2, $3, $4, $5,
-          'CLIENT'::"UserType", 'ACTIVE'::"UserStatus", 'SALES'::"InternalRole", $6,
+          'CLIENT'::"UserType", 'INVITED'::"UserStatus", 'SALES'::"InternalRole", $6,
           NOW(), NOW()
         )
         ON CONFLICT (id) DO UPDATE SET

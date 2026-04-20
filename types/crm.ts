@@ -82,6 +82,7 @@ export interface OrgMembership {
   userEmail?: string;
   userAvatarColor?: string;
   userType?: 'INTERNAL' | 'CLIENT';
+  userStatus?: 'INVITED' | 'ACTIVE' | 'DISABLED';
 }
 
 export interface Organization {

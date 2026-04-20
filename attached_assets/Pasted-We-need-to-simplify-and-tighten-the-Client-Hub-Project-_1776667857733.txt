@@ -1,0 +1,76 @@
+We need to simplify and tighten the Client Hub Project Request form so it matches the real intake needs of our quoting workflow.
+
+Preserve the current Katalyst Ko OS layout and make only minimal UI changes where necessary.
+
+Build the Project Request form with this simplified structure:
+
+REQUEST-LEVEL FIELDS
+- Organization Name
+  - auto-filled from the client’s organization/hub
+- Submitted By
+  - auto-filled from the logged-in client user
+- Project Name
+  - required
+- Order Type
+  - dropdown with:
+    - New Order
+    - Reorder
+- Order Date
+  - auto-generated on submit
+- In Hands Date
+  - required
+  - use the same calendar/date picker behavior as the New Quote area
+
+LINE ITEMS
+Support one or more line items per request.
+
+For each line item include:
+- Design Name
+  - required
+- Service Style
+  - dropdown with:
+    - Screen Print
+    - Direct to Film
+    - Embroidery
+    - Promotional
+    - Not Sure / Other
+- Location #1
+  - dropdown matching the New Quote area
+- Location #2
+  - dropdown matching the New Quote area
+- + Add Location #3 / #4
+  - same behavior/pattern as the New Quote area
+- Project Notes
+  - text area for notes specific to that line item
+- Products + Sizes
+  - reuse or closely mimic the existing New Quote Products + Sizes structure
+
+OPTIONAL BUT RECOMMENDED
+- Add a request-level notes field for overall instructions related to the entire request
+
+SUBMISSION BEHAVIOR
+On submit:
+- create a real Project
+- tie it to the correct Organization
+- tie it to the submitting user
+- status = NEEDS_REVIEW
+- intakeSource = CLIENT_HUB
+- store the request-level fields cleanly
+- store each line item in a structure that correlates directly to the existing quote workflow
+- make the request visible in Ko OS immediately and after refresh
+
+IMPORTANT
+- Reuse New Quote components/patterns where practical, especially:
+  - date picker
+  - location dropdown behavior
+  - Products + Sizes structure
+- Keep the client-facing UX simple and operational
+- Do not overbuild unrelated portal features yet
+- No unnecessary redesign
+
+Deliver back:
+- exact files changed
+- what was preserved visually
+- how the request-level fields are stored
+- how the line items are stored and mapped into the quote system
+- whether multiple line items are supported now

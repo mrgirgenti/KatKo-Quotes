@@ -1,0 +1,54 @@
+We need a focused cleanup pass on invite status handling and Account Rep behavior in Client Hubs / Organization management.
+
+Requirements:
+
+1. Invite lifecycle / status
+- Add a real invited-user lifecycle
+- A person who has been invited but has not yet accepted must show status = Invited
+- They should not be treated as a fully active portal user yet
+- Once they accept and create their account, status should become Active
+- Add a Resend Invite action for users in Invited status
+- Add any other minimal invite management actions needed, such as cancel/remove invite if it can be supported cleanly
+
+2. Client user display behavior
+- In Client Hubs, invited users should clearly show as Invited until acceptance
+- Active users should clearly show as Active
+- Ensure invite acceptance properly transitions status and links the final user/account record
+- Ensure invited/accepted users remain tied correctly to the Organization and Contacts data model
+
+3. Keep internal and client roles clearly separated
+- Do not confuse Client Org Admin with Internal Account Rep
+- Client Org Admin = the client-side portal admin for that organization
+- Internal Account Rep = the internal team member from our company who owns/manages that account
+- These are different roles and must remain distinct in both data and UI
+
+4. Account Rep functionality
+- Fix the Account Rep selector so it pulls only from valid internal users defined in User Management
+- The current “No internal team members found” behavior is incorrect
+- Internal users should be assignable to their respective accounts/organizations
+- Each internal user should be able to have their own assigned accounts
+
+5. Default Account Rep logic
+- The default Account Rep for an organization should be the internal OS-side organization owner/admin defined in Organization Settings
+- This default should NOT come from the client-side Client Org Admin role
+- Allow manual override if needed
+
+6. Remove redundancy
+- The separate Account Rep section in the top of the right column feels redundant
+- Keep Account Rep in the top header as the primary location
+- Add edit/change capability there
+- Remove or consolidate the redundant Account Rep panel in the right column
+
+7. Preserve layout where possible
+- Keep the current overall layout and styling
+- Make only minimal UI changes needed to support the corrected workflow
+- Prioritize clean data relationships and admin usability over redesign
+
+Deliver back:
+- exact files changed
+- how invite status lifecycle now works
+- how resend invite works
+- how Account Rep candidates are now sourced
+- how default Account Rep is determined
+- how Client Org Admin and Internal Account Rep are now kept distinct
+- whether the redundant Account Rep section was removed or consolidated

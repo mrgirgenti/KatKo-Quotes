@@ -30,6 +30,8 @@ import {
   User,
   Copy,
   ExternalLink,
+  Mail,
+  Clock,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
@@ -56,6 +58,15 @@ function RoleBadge({ role }: { role: MembershipRole }) {
   return (
     <View style={[styles.roleBadge, { backgroundColor: bg }]}>
       <Text style={[styles.roleBadgeText, { color: text }]}>{ROLE_LABELS[role] || role}</Text>
+    </View>
+  );
+}
+
+function InvitedBadge() {
+  return (
+    <View style={styles.invitedBadge}>
+      <Clock size={9} color="#D97706" />
+      <Text style={styles.invitedBadgeText}>Invited</Text>
     </View>
   );
 }
@@ -111,8 +122,12 @@ export default function HubManagementScreen() {
   const [selectedRepUserId, setSelectedRepUserId] = useState('');
   const [assigningRep, setAssigningRep] = useState(false);
 
-  // Filter out placeholder "User" entries from internal user list
-  const realInternalUsers = internalUsers.filter((u) => u.name && u.name !== 'User');
+  // Internal users for rep assignment: exclude purely placeholder records (empty name only)
+  // Show all users from User Management including those named 'User' - they may be real people
+  const realInternalUsers = internalUsers.filter((u) => !!u.name?.trim());
+
+  // Identify the default rep (first org_admin internal user) for pre-selection hint
+  const defaultRepUser = realInternalUsers.find((u) => u.role === 'org_admin') || realInternalUsers[0];
 
   const [inviteClientModal, setInviteClientModal] = useState(false);
   const [clientForm, setClientForm] = useState({ name: '', email: '', role: 'MEMBER' as MembershipRole });
@@ -127,6 +142,7 @@ export default function HubManagementScreen() {
   const [changingRole, setChangingRole] = useState(false);
 
   const [linkCopied, setLinkCopied] = useState(false);
+  const [resendCopied, setResendCopied] = useState<string | null>(null);
   const portalUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/portal/${id}`
     : `/portal/${id}`;
@@ -136,6 +152,15 @@ export default function HubManagementScreen() {
       navigator.clipboard.writeText(portalUrl).then(() => {
         setLinkCopied(true);
         setTimeout(() => setLinkCopied(false), 2000);
+      });
+    }
+  }, [portalUrl]);
+
+  const handleResendInvite = useCallback((membershipId: string) => {
+    if (typeof window !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(portalUrl).then(() => {
+        setResendCopied(membershipId);
+        setTimeout(() => setResendCopied(null), 2500);
       });
     }
   }, [portalUrl]);
@@ -366,7 +391,16 @@ export default function HubManagementScreen() {
 
             {/* Account Rep — shown prominently in header */}
             <View style={styles.headerRepBlock}>
-              <Text style={styles.headerRepLabel}>Account Rep</Text>
+              <View style={styles.headerRepLabelRow}>
+                <Text style={styles.headerRepLabel}>Account Rep</Text>
+                <TouchableOpacity
+                  onPress={() => { setSelectedRepUserId(accountReps[0]?.userId || ''); setAssignRepModal(true); }}
+                >
+                  <Text style={styles.headerRepChange}>
+                    {accountReps.length > 0 ? 'Change' : 'Assign'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
               {accountReps.length > 0 ? (
                 <View style={styles.headerRepRow}>
                   <View style={[styles.headerRepAvatar, { backgroundColor: accountReps[0].userAvatarColor || Colors.light.tint }]}>
@@ -376,7 +410,7 @@ export default function HubManagementScreen() {
                 </View>
               ) : (
                 <TouchableOpacity
-                  onPress={() => { setSelectedRepUserId(''); setAssignRepModal(true); }}
+                  onPress={() => { setSelectedRepUserId(defaultRepUser?.id || ''); setAssignRepModal(true); }}
                 >
                   <Text style={styles.headerRepUnassigned}>Unassigned — tap to assign</Text>
                 </TouchableOpacity>
@@ -481,18 +515,33 @@ export default function HubManagementScreen() {
               ) : (
                 regularClients.map((m) => (
                   <View key={m.id} style={styles.memberRow}>
-                    <View style={[styles.memberAvatar, { backgroundColor: '#6366F1' }]}>
+                    <View style={[styles.memberAvatar, { backgroundColor: m.userStatus === 'INVITED' ? '#D1D5DB' : '#6366F1' }]}>
                       <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
                     </View>
                     <View style={styles.memberInfo}>
                       <Text style={styles.memberName}>{m.userName || 'Unknown'}</Text>
                       {m.userEmail ? <Text style={styles.memberEmail}>{m.userEmail}</Text> : null}
                     </View>
-                    <TouchableOpacity
-                      onPress={() => { setNewRole(m.role); setChangeRoleModal({ visible: true, membership: m }); }}
-                    >
-                      <RoleBadge role={m.role} />
-                    </TouchableOpacity>
+                    {m.userStatus === 'INVITED' ? (
+                      <>
+                        <InvitedBadge />
+                        <TouchableOpacity
+                          style={[styles.resendBtn, resendCopied === m.id && styles.resendBtnDone]}
+                          onPress={() => handleResendInvite(m.id)}
+                        >
+                          <Mail size={11} color={resendCopied === m.id ? '#16A34A' : Colors.light.tint} />
+                          <Text style={[styles.resendBtnText, resendCopied === m.id && styles.resendBtnTextDone]}>
+                            {resendCopied === m.id ? 'Copied!' : 'Resend'}
+                          </Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : (
+                      <TouchableOpacity
+                        onPress={() => { setNewRole(m.role); setChangeRoleModal({ visible: true, membership: m }); }}
+                      >
+                        <RoleBadge role={m.role} />
+                      </TouchableOpacity>
+                    )}
                     <TouchableOpacity style={styles.rowActionBtn} onPress={() => handleRemoveMember(m)}>
                       <Trash2 size={12} color={Colors.light.error} />
                     </TouchableOpacity>
@@ -503,50 +552,8 @@ export default function HubManagementScreen() {
 
           </View>{/* end colLeft */}
 
-          {/* RIGHT — Account Rep + Portal Link */}
+          {/* RIGHT — Portal Link */}
           <View style={styles.colRight}>
-
-            {/* Account Rep */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <User size={13} color={Colors.light.textSecondary} />
-                <Text style={styles.sectionTitle}>Account Rep</Text>
-                <TouchableOpacity
-                  style={styles.sectionActionBtn}
-                  onPress={() => { setSelectedRepUserId(''); setAssignRepModal(true); }}
-                >
-                  <Text style={styles.sectionActionBtnText}>
-                    {accountReps.length > 0 ? 'Change' : 'Assign'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {membershipsLoading ? (
-                <View style={styles.loadingRow}><ActivityIndicator size="small" color={Colors.light.tint} /></View>
-              ) : accountReps.length === 0 ? (
-                <View style={styles.emptySection}>
-                  <Text style={styles.emptySectionText}>No account rep assigned.</Text>
-                  <Text style={styles.emptySectionSub}>
-                    Assign an internal team member as the account owner.
-                  </Text>
-                </View>
-              ) : (
-                accountReps.map((m) => (
-                  <View key={m.id} style={styles.memberRow}>
-                    <View style={[styles.memberAvatar, { backgroundColor: m.userAvatarColor || Colors.light.tint }]}>
-                      <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
-                    </View>
-                    <View style={styles.memberInfo}>
-                      <Text style={styles.memberName}>{m.userName || 'Unknown'}</Text>
-                      <Text style={[styles.memberEmail, { color: Colors.light.tint }]}>Internal</Text>
-                    </View>
-                    <TouchableOpacity style={styles.rowActionBtn} onPress={() => handleRemoveMember(m)}>
-                      <X size={13} color={Colors.light.textSecondary} />
-                    </TouchableOpacity>
-                  </View>
-                ))
-              )}
-            </View>
 
             {/* Portal Link */}
             {org.hubEnabled && (
