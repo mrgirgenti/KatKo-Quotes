@@ -117,6 +117,7 @@ export default function HubManagementScreen() {
   const [inviteClientModal, setInviteClientModal] = useState(false);
   const [clientForm, setClientForm] = useState({ name: '', email: '', role: 'MEMBER' as MembershipRole });
   const [invitingSaving, setInvitingSaving] = useState(false);
+  const [inviteError, setInviteError] = useState('');
 
   const [changeRoleModal, setChangeRoleModal] = useState<{ visible: boolean; membership: OrgMembership | null }>({
     visible: false,
@@ -246,7 +247,7 @@ export default function HubManagementScreen() {
       setInviteClientModal(false);
       setClientForm({ name: '', email: '', role: 'MEMBER' });
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to invite client user.');
+      setInviteError(err?.message || 'Failed to invite client user. Please try again.');
     } finally {
       setInvitingSaving(false);
     }
@@ -476,6 +477,7 @@ export default function HubManagementScreen() {
               style={styles.sectionActionBtnPrimary}
               onPress={() => {
                 setClientForm({ name: '', email: '', role: 'MEMBER' });
+                setInviteError('');
                 setInviteClientModal(true);
               }}
             >
@@ -731,20 +733,26 @@ export default function HubManagementScreen() {
                   <X size={20} color={Colors.light.textSecondary} />
                 </TouchableOpacity>
               </View>
-              <Text style={styles.fieldLabel}>Full Name</Text>
+              <View style={styles.fieldLabelRow}>
+                <Text style={[styles.fieldLabel, { marginBottom: 0 }]}>Full Name</Text>
+                <Text style={styles.fieldRequired}>*</Text>
+              </View>
               <TextInput
-                style={styles.fieldInput}
+                style={[styles.fieldInput, !clientForm.name.trim() && inviteError ? styles.fieldInputError : null]}
                 value={clientForm.name}
-                onChangeText={(v) => setClientForm((f) => ({ ...f, name: v }))}
+                onChangeText={(v) => { setClientForm((f) => ({ ...f, name: v })); setInviteError(''); }}
                 placeholder="e.g. Jane Smith"
                 placeholderTextColor={Colors.light.textSecondary}
                 autoFocus
               />
-              <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Email Address</Text>
+              <View style={[styles.fieldLabelRow, { marginTop: 12 }]}>
+                <Text style={[styles.fieldLabel, { marginBottom: 0 }]}>Email Address</Text>
+                <Text style={styles.fieldRequired}>*</Text>
+              </View>
               <TextInput
-                style={styles.fieldInput}
+                style={[styles.fieldInput, !clientForm.email.trim() && inviteError ? styles.fieldInputError : null]}
                 value={clientForm.email}
-                onChangeText={(v) => setClientForm((f) => ({ ...f, email: v }))}
+                onChangeText={(v) => { setClientForm((f) => ({ ...f, email: v })); setInviteError(''); }}
                 placeholder="e.g. jane@client.com"
                 placeholderTextColor={Colors.light.textSecondary}
                 keyboardType="email-address"
@@ -764,6 +772,12 @@ export default function HubManagementScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
+              {inviteError ? (
+                <View style={styles.inlineError}>
+                  <AlertCircle size={13} color={Colors.light.error} />
+                  <Text style={styles.inlineErrorText}>{inviteError}</Text>
+                </View>
+              ) : null}
               <View style={styles.modalActions}>
                 <TouchableOpacity style={styles.cancelBtn} onPress={() => setInviteClientModal(false)}>
                   <Text style={styles.cancelBtnText}>Cancel</Text>
@@ -1206,6 +1220,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#fff',
+  },
+
+  fieldLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginBottom: 5,
+  },
+  fieldRequired: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.light.error,
+  },
+  fieldInputError: {
+    borderColor: Colors.light.error,
+    borderWidth: 1.5,
+  },
+  inlineError: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#FEF2F2',
+  },
+  inlineErrorText: {
+    flex: 1,
+    fontSize: 12,
+    color: Colors.light.error,
   },
 
   portalBadge: {
