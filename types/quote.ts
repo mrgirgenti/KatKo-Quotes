@@ -1,7 +1,7 @@
 export type ServiceStyle = 'Screen Printing' | 'Direct to Film' | 'Embroidery' | 'Promotional';
 export type OrderType = 'New' | 'Re-Order';
 
-export type QuoteStatus = 'draft' | 'needs_review' | 'quoted' | 'active' | 'production_started' | 'completed' | 'expired';
+export type QuoteStatus = 'draft' | 'needs_review' | 'quoting' | 'quoted' | 'invoice_sent' | 'paid' | 'active' | 'production_started' | 'completed' | 'expired';
 
 export interface LineItemActualCosts {
   lineItemId: string;
@@ -120,6 +120,8 @@ export interface Quote {
   lockedDate?: string;
   exportedToSheets?: boolean;
   exportedToSheetsDate?: string;
+  quoteSentAt?: string;
+  notesClient?: string;
 }
 
 export interface SalesCalculations {
@@ -274,8 +276,11 @@ export function getEffectiveStatus(quote: Quote): QuoteStatus {
 export const STATUS_CONFIG: Record<QuoteStatus, { label: string; color: string; bg: string; borderColor: string }> = {
   draft:              { label: 'Draft',         color: '#6B7280', bg: '#F3F4F6', borderColor: '#D1D5DB' },
   needs_review:       { label: 'Needs Review',  color: '#92400E', bg: '#FEF3C7', borderColor: '#FDE68A' },
+  quoting:            { label: 'Quoting',        color: '#1D4ED8', bg: '#DBEAFE', borderColor: '#93C5FD' },
   quoted:             { label: 'Quoted',         color: '#2563EB', bg: '#EFF6FF', borderColor: '#BFDBFE' },
-  active:             { label: 'Active',         color: '#FFFFFF', bg: '#FF5A00', borderColor: '#FF5A00' },
+  invoice_sent:       { label: 'Invoice Sent',   color: '#6D28D9', bg: '#EDE9FE', borderColor: '#C4B5FD' },
+  paid:               { label: 'Paid',           color: '#FFFFFF', bg: '#16A34A', borderColor: '#16A34A' },
+  active:             { label: 'In Production',  color: '#FFFFFF', bg: '#FF5A00', borderColor: '#FF5A00' },
   production_started: { label: 'In Production',  color: '#FFFFFF', bg: '#7C3AED', borderColor: '#7C3AED' },
   completed:          { label: 'Completed',       color: '#FFFFFF', bg: '#16A34A', borderColor: '#16A34A' },
   expired:            { label: 'Expired',         color: '#9CA3AF', bg: '#F9FAFB', borderColor: '#E5E7EB' },
@@ -284,9 +289,12 @@ export const STATUS_CONFIG: Record<QuoteStatus, { label: string; color: string; 
 export const STATUS_HIERARCHY: Record<QuoteStatus, number> = {
   draft:              0,
   needs_review:       1,
+  quoting:            2,
   expired:            2,
-  quoted:             2,
-  active:             3,
-  production_started: 4,
-  completed:          5,
+  quoted:             3,
+  invoice_sent:       4,
+  paid:               5,
+  active:             6,
+  production_started: 7,
+  completed:          8,
 };

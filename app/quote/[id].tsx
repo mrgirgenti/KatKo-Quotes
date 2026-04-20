@@ -8,6 +8,8 @@ import {
   Alert,
   Image,
   Modal,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import {
@@ -38,6 +40,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Flame,
+  Send,
+  Copy,
+  ExternalLink,
+  Inbox,
+  ArrowRight,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -64,6 +71,8 @@ export default function QuoteDetailScreen() {
   const [isExporting, setIsExporting] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
+  const [isSendingQuote, setIsSendingQuote] = useState(false);
+  const [quoteLinkCopied, setQuoteLinkCopied] = useState(false);
 
   const toggleItem = useCallback((itemId: string) => {
     setExpandedItems(prev => ({ ...prev, [itemId]: !prev[itemId] }));
@@ -166,6 +175,77 @@ export default function QuoteDetailScreen() {
       pathname: '/quote/edit',
       params: { id: quote.id },
     });
+  }, [quote, router]);
+
+  const handleStartQuote = useCallback(async () => {
+    if (!quote) return;
+    try {
+      await fetch(`/api/projects/${quote.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...quote, status: 'quoting' }),
+      });
+    } catch {}
+    router.push({ pathname: '/quote/edit', params: { id: quote.id } });
+  }, [quote, router]);
+
+  const getQuotePortalUrl = useCallback(() => {
+    if (!quote) return '';
+    const base = typeof window !== 'undefined'
+      ? window.location.origin
+      : `https://${process.env.REPLIT_DEV_DOMAIN || 'localhost:5000'}`;
+    return `${base}/portal/quote/${quote.id}`;
+  }, [quote]);
+
+  const handleCopyQuoteLink = useCallback(async () => {
+    if (!quote) return;
+    const url = getQuotePortalUrl();
+    try {
+      if (Platform.OS === 'web' && navigator?.clipboard) {
+        await navigator.clipboard.writeText(url);
+      }
+      setQuoteLinkCopied(true);
+      setTimeout(() => setQuoteLinkCopied(false), 2500);
+    } catch {}
+  }, [quote, getQuotePortalUrl]);
+
+  const handleMarkQuoteSent = useCallback(async () => {
+    if (!quote || isSendingQuote) return;
+    setIsSendingQuote(true);
+    try {
+      const sentAt = new Date().toISOString();
+      await fetch(`/api/projects/${quote.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...quote, status: 'quoted', quoteSentAt: sentAt }),
+      });
+      setToastMessage('Quote marked as sent! Link copied.');
+      setToastVisible(true);
+      await handleCopyQuoteLink();
+      setTimeout(() => router.replace(`/quote/${quote.id}`), 800);
+    } catch {
+      setToastMessage('Error saving — please try again.');
+      setToastVisible(true);
+    } finally {
+      setIsSendingQuote(false);
+    }
+  }, [quote, isSendingQuote, handleCopyQuoteLink, router]);
+
+  const handleMarkPaid = useCallback(async () => {
+    if (!quote) return;
+    try {
+      await fetch(`/api/projects/${quote.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...quote, status: 'paid' }),
+      });
+      setToastMessage('Marked as Paid! Ready for production.');
+      setToastVisible(true);
+      setTimeout(() => router.replace(`/quote/${quote.id}`), 800);
+    } catch {
+      setToastMessage('Error saving — please try again.');
+      setToastVisible(true);
+    }
   }, [quote, router]);
 
   const handleConvertToSale = useCallback(() => {
@@ -314,6 +394,91 @@ export default function QuoteDetailScreen() {
       </View>
     );
   }
+
+  const renderIntakeBanner = () => {
+    if (quote.status !== 'needs_review' || quote.intakeSource !== 'CLIENT_HUB') return null;
+    return (
+      <View style={styles.intakeBanner}>
+        <View style={styles.intakeBannerHeader}>
+          <Inbox size={18} color="#FF5A00" />
+          <Text style={styles.intakeBannerTitle}>Client Hub Submission</Text>
+        </View>
+        <Text style={styles.intakeBannerText}>
+          This project came in from the client portal. Review the line items below, then start quoting to add pricing.
+        </Text>
+        <TouchableOpacity style={styles.intakeBannerBtn} onPress={handleStartQuote}>
+          <Text style={styles.intakeBannerBtnText}>Start Quoting</Text>
+          <ArrowRight size={15} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderSendQuotePanel = () => {
+    const showForStatuses: string[] = ['quoting', 'quoted', 'invoice_sent'];
+    if (!showForStatuses.includes(quote.status)) return null;
+    const portalUrl = getQuotePortalUrl();
+    const isQuoted = quote.status === 'quoted' || quote.status === 'invoice_sent';
+    return (
+      <View style={styles.sendQuotePanel}>
+        <View style={styles.sendQuotePanelHeader}>
+          <Send size={16} color="#FF5A00" />
+          <Text style={styles.sendQuotePanelTitle}>
+            {isQuoted ? 'Quote Sent' : 'Send Quote to Client'}
+          </Text>
+        </View>
+        {quote.quoteSentAt ? (
+          <View style={styles.sentStatusRow}>
+            <CheckCircle size={14} color="#16A34A" />
+            <Text style={styles.sentStatusText}>
+              Sent {new Date(quote.quoteSentAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </Text>
+          </View>
+        ) : null}
+        <Text style={styles.sendQuotePanelSub}>
+          {isQuoted
+            ? 'Share this link again or mark as paid once payment is received.'
+            : 'Share this link with your client so they can review and approve the quote.'}
+        </Text>
+        <View style={styles.urlBox}>
+          <Text style={styles.urlText} numberOfLines={1} ellipsizeMode="middle">{portalUrl}</Text>
+        </View>
+        <View style={styles.sendQuoteActions}>
+          <TouchableOpacity
+            style={[styles.sendQuoteBtn, styles.sendQuoteBtnOutline]}
+            onPress={handleCopyQuoteLink}
+          >
+            <Copy size={14} color="#FF5A00" />
+            <Text style={styles.sendQuoteBtnOutlineText}>
+              {quoteLinkCopied ? 'Copied!' : 'Copy Link'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.sendQuoteBtn, styles.sendQuoteBtnSolid, isSendingQuote && { opacity: 0.7 }]}
+            onPress={handleMarkQuoteSent}
+            disabled={isSendingQuote}
+          >
+            {isSendingQuote
+              ? <ActivityIndicator size="small" color="#fff" />
+              : (
+                <>
+                  <Send size={14} color="#fff" />
+                  <Text style={styles.sendQuoteBtnSolidText}>
+                    {isQuoted ? 'Re-Send & Copy' : 'Send & Copy Link'}
+                  </Text>
+                </>
+              )}
+          </TouchableOpacity>
+        </View>
+        {isQuoted && (
+          <TouchableOpacity style={styles.markPaidBtn} onPress={handleMarkPaid}>
+            <CheckCircle size={15} color="#fff" />
+            <Text style={styles.markPaidBtnText}>Mark as Paid → Ready for Production</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
 
   const renderOrderInfo = () => (
     <View style={styles.section}>
@@ -864,20 +1029,24 @@ export default function QuoteDetailScreen() {
         {isDesktop ? (
           <View style={styles.desktopLayout}>
             <View style={styles.desktopLeft}>
+              {renderIntakeBanner()}
               {renderOrderInfo()}
               {renderLineItems()}
             </View>
             <View style={styles.desktopRight}>
-              {renderPricingSummary()}
-              {renderSalesTracking()}
+              {renderSendQuotePanel()}
+              {quote.status !== 'needs_review' && renderPricingSummary()}
+              {(quote.status === 'active' || quote.status === 'production_started' || quote.status === 'completed') && renderSalesTracking()}
             </View>
           </View>
         ) : (
           <View>
+            {renderIntakeBanner()}
             {renderOrderInfo()}
             {renderLineItems()}
-            {renderPricingSummary()}
-            {renderSalesTracking()}
+            {renderSendQuotePanel()}
+            {quote.status !== 'needs_review' && renderPricingSummary()}
+            {(quote.status === 'active' || quote.status === 'production_started' || quote.status === 'completed') && renderSalesTracking()}
           </View>
         )}
         <View style={styles.bottomPadding} />
@@ -914,7 +1083,51 @@ export default function QuoteDetailScreen() {
             <MoreVertical size={20} color={Colors.light.tint} />
           </TouchableOpacity>
 
-          {quote.status === 'production_started' ? (
+          {quote.status === 'needs_review' ? (
+            <>
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnOutline, { flex: 1 }]} onPress={handleEdit}>
+                <Edit3 size={17} color={Colors.light.tint} />
+                <Text style={styles.actionBtnOutlineText}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1 }]} onPress={handleStartQuote}>
+                <ArrowRight size={17} color="#fff" />
+                <Text style={styles.actionBtnSolidText}>Start Quoting</Text>
+              </TouchableOpacity>
+            </>
+          ) : quote.status === 'quoting' ? (
+            <>
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnOutline, { flex: 1 }]} onPress={handleEdit}>
+                <Edit3 size={17} color={Colors.light.tint} />
+                <Text style={styles.actionBtnOutlineText}>Edit Quote</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1 }]} onPress={handleMarkQuoteSent} disabled={isSendingQuote}>
+                <Send size={17} color="#fff" />
+                <Text style={styles.actionBtnSolidText}>{isSendingQuote ? 'Sending…' : 'Send Quote'}</Text>
+              </TouchableOpacity>
+            </>
+          ) : (quote.status === 'quoted' || quote.status === 'invoice_sent') ? (
+            <>
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnOutline, { flex: 1 }]} onPress={handleCopyQuoteLink}>
+                <Copy size={17} color={Colors.light.tint} />
+                <Text style={styles.actionBtnOutlineText}>{quoteLinkCopied ? 'Copied!' : 'Copy Link'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1, backgroundColor: '#16A34A' }]} onPress={handleMarkPaid}>
+                <CheckCircle size={17} color="#fff" />
+                <Text style={styles.actionBtnSolidText}>Mark as Paid</Text>
+              </TouchableOpacity>
+            </>
+          ) : quote.status === 'paid' ? (
+            <>
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnOutline, { flex: 1 }]} onPress={handleEdit}>
+                <Edit3 size={17} color={Colors.light.tint} />
+                <Text style={styles.actionBtnOutlineText}>Edit Quote</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1 }]} onPress={handleStartProduction}>
+                <Flame size={17} color="#fff" />
+                <Text style={styles.actionBtnSolidText}>Start Production</Text>
+              </TouchableOpacity>
+            </>
+          ) : quote.status === 'production_started' ? (
             <>
               {quote.isLocked ? (
                 <View style={[styles.actionBtn, styles.actionBtnSolid, { backgroundColor: '#6b7280', flex: 1 }]}>
@@ -952,13 +1165,13 @@ export default function QuoteDetailScreen() {
             </>
           ) : (
             <>
-              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnOutline, { flex: 1 }]} onPress={handleConvertToSale} disabled={isConverting}>
-                <CheckCircle size={17} color={Colors.light.tint} />
-                <Text style={styles.actionBtnOutlineText}>{isConverting ? 'Converting...' : 'Mark as Active'}</Text>
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnOutline, { flex: 1 }]} onPress={handleEdit}>
+                <Edit3 size={17} color={Colors.light.tint} />
+                <Text style={styles.actionBtnOutlineText}>Edit Quote</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1 }]} onPress={handleStartProduction}>
-                <Flame size={17} color="#fff" />
-                <Text style={styles.actionBtnSolidText}>Start Production</Text>
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1 }]} onPress={handleMarkQuoteSent} disabled={isSendingQuote}>
+                <Send size={17} color="#fff" />
+                <Text style={styles.actionBtnSolidText}>Send Quote</Text>
               </TouchableOpacity>
             </>
           )}
@@ -976,7 +1189,79 @@ export default function QuoteDetailScreen() {
                 </TouchableOpacity>
               </View>
 
-              {(quote.status === 'active' || quote.status === 'production_started' || quote.status === 'completed') ? (
+              {quote.status === 'needs_review' ? (
+                <>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleEdit(); }}>
+                    <Edit3 size={18} color={Colors.light.text} />
+                    <Text style={styles.menuItemText}>Edit Request</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleStartQuote(); }}>
+                    <ArrowRight size={18} color={Colors.light.tint} />
+                    <Text style={[styles.menuItemText, { color: Colors.light.tint }]}>Start Quoting</Text>
+                  </TouchableOpacity>
+                  <View style={styles.menuSeparator} />
+                  <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]} onPress={handleDelete}>
+                    <Trash2 size={18} color={Colors.light.error} />
+                    <Text style={[styles.menuItemText, { color: Colors.light.error }]}>Delete</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (quote.status === 'quoting' || quote.status === 'quoted' || quote.status === 'invoice_sent') ? (
+                <>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleEdit(); }}>
+                    <Edit3 size={18} color={Colors.light.text} />
+                    <Text style={styles.menuItemText}>Edit Quote</Text>
+                  </TouchableOpacity>
+                  {(quote.status === 'quoted' || quote.status === 'invoice_sent') && (
+                    <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleMarkPaid(); }}>
+                      <CheckCircle size={18} color="#16A34A" />
+                      <Text style={[styles.menuItemText, { color: '#16A34A' }]}>Mark as Paid</Text>
+                    </TouchableOpacity>
+                  )}
+                  <View style={styles.menuSeparator} />
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleExportPDF(); }}>
+                    <Download size={18} color={Colors.light.text} />
+                    <Text style={styles.menuItemText}>Export to PDF</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handlePrint(); }}>
+                    <Printer size={18} color={Colors.light.text} />
+                    <Text style={styles.menuItemText}>Print</Text>
+                  </TouchableOpacity>
+                  <View style={styles.menuSeparator} />
+                  <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]} onPress={handleDelete}>
+                    <Trash2 size={18} color={Colors.light.error} />
+                    <Text style={[styles.menuItemText, { color: Colors.light.error }]}>Delete</Text>
+                  </TouchableOpacity>
+                </>
+              ) : quote.status === 'paid' ? (
+                <>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleEdit(); }}>
+                    <Edit3 size={18} color={Colors.light.text} />
+                    <Text style={styles.menuItemText}>Edit Quote</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleStartProduction(); }}>
+                    <Flame size={18} color={Colors.light.tint} />
+                    <Text style={[styles.menuItemText, { color: Colors.light.tint }]}>Start Production</Text>
+                  </TouchableOpacity>
+                  <View style={styles.menuSeparator} />
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleExportPDF(); }}>
+                    <Download size={18} color={Colors.light.text} />
+                    <Text style={styles.menuItemText}>Export to PDF</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleDownloadWorkOrder(); }}>
+                    <FileText size={18} color={Colors.light.tint} />
+                    <Text style={[styles.menuItemText, { color: Colors.light.tint }]}>Download Work Order</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handlePrint(); }}>
+                    <Printer size={18} color={Colors.light.text} />
+                    <Text style={styles.menuItemText}>Print</Text>
+                  </TouchableOpacity>
+                  <View style={styles.menuSeparator} />
+                  <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]} onPress={handleDelete}>
+                    <Trash2 size={18} color={Colors.light.error} />
+                    <Text style={[styles.menuItemText, { color: Colors.light.error }]}>Delete</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (quote.status === 'active' || quote.status === 'production_started' || quote.status === 'completed') ? (
                 <>
                   {!quote.isLocked ? (
                     <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleEdit(); }}>
@@ -1022,10 +1307,6 @@ export default function QuoteDetailScreen() {
                 </>
               ) : (
                 <>
-                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleConvertToSale(); }}>
-                    <CheckCircle size={18} color={Colors.light.tint} />
-                    <Text style={[styles.menuItemText, { color: Colors.light.tint }]}>Mark as Active</Text>
-                  </TouchableOpacity>
                   <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleEdit(); }}>
                     <Edit3 size={18} color={Colors.light.text} />
                     <Text style={styles.menuItemText}>Edit Quote</Text>
@@ -1034,10 +1315,6 @@ export default function QuoteDetailScreen() {
                   <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleExportPDF(); }}>
                     <Download size={18} color={Colors.light.text} />
                     <Text style={styles.menuItemText}>Export to PDF</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleDownloadWorkOrder(); }}>
-                    <FileText size={18} color={Colors.light.tint} />
-                    <Text style={[styles.menuItemText, { color: Colors.light.tint }]}>Download Work Order</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handlePrint(); }}>
                     <Printer size={18} color={Colors.light.text} />
@@ -2193,5 +2470,149 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.light.text,
     lineHeight: 20,
+  },
+  intakeBanner: {
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    borderRadius: 14,
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 4,
+  },
+  intakeBannerHeader: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    marginBottom: 8,
+  },
+  intakeBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: '#FF5A00',
+  },
+  intakeBannerText: {
+    fontSize: 13,
+    color: '#92400E',
+    lineHeight: 19,
+    marginBottom: 12,
+  },
+  intakeBannerBtn: {
+    backgroundColor: '#FF5A00',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 6,
+    alignSelf: 'flex-start' as const,
+  },
+  intakeBannerBtnText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: '#fff',
+  },
+  sendQuotePanel: {
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 14,
+    padding: 16,
+    margin: 16,
+  },
+  sendQuotePanelHeader: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    marginBottom: 10,
+  },
+  sendQuotePanelTitle: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: Colors.light.text,
+  },
+  sentStatusRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    marginBottom: 8,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignSelf: 'flex-start' as const,
+  },
+  sentStatusText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#16A34A',
+  },
+  sendQuotePanelSub: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    lineHeight: 17,
+    marginBottom: 10,
+  },
+  urlBox: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+  urlText: {
+    fontSize: 11,
+    color: '#374151',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  sendQuoteActions: {
+    flexDirection: 'row' as const,
+    gap: 8,
+  },
+  sendQuoteBtn: {
+    flex: 1,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 6,
+  },
+  sendQuoteBtnOutline: {
+    borderWidth: 1,
+    borderColor: '#FF5A00',
+    backgroundColor: '#fff',
+  },
+  sendQuoteBtnOutlineText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#FF5A00',
+  },
+  sendQuoteBtnSolid: {
+    backgroundColor: '#FF5A00',
+  },
+  sendQuoteBtnSolidText: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: '#fff',
+  },
+  markPaidBtn: {
+    backgroundColor: '#16A34A',
+    borderRadius: 10,
+    paddingVertical: 11,
+    paddingHorizontal: 16,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 7,
+    marginTop: 10,
+  },
+  markPaidBtnText: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: '#fff',
   },
 });

@@ -32,6 +32,7 @@ import {
   Minus,
   Trophy,
   Play,
+  Flame,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useQuotes } from '@/contexts/QuotesContext';
@@ -47,8 +48,11 @@ type SortDir = 'asc' | 'desc';
 const STATUS_PILLS: { key: 'all' | QuoteStatus; label: string }[] = [
   { key: 'all',                label: 'All'             },
   { key: 'needs_review',       label: 'Needs Review'    },
+  { key: 'quoting',            label: 'Quoting'         },
   { key: 'quoted',             label: 'Quoted'          },
-  { key: 'active',             label: 'Active'          },
+  { key: 'invoice_sent',       label: 'Invoice Sent'    },
+  { key: 'paid',               label: 'Paid'            },
+  { key: 'active',             label: 'In Production'   },
   { key: 'production_started', label: 'In Production'   },
   { key: 'completed',          label: 'Completed'       },
   { key: 'expired',            label: 'Expired'         },
@@ -207,7 +211,7 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
               ) : null}
               <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onEdit(); }}>
                 <Edit3 size={14} color={Colors.light.text} />
-                <Text style={styles.dropdownItemText}>Edit Quote</Text>
+                <Text style={styles.dropdownItemText}>{effectiveStatus === 'needs_review' ? 'Edit Request' : 'Edit Quote'}</Text>
               </TouchableOpacity>
               {(isActive || isCompleted) ? (
                 <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onRevert(); }}>
@@ -215,34 +219,37 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
                   <Text style={styles.dropdownItemText}>Revert to Quoted</Text>
                 </TouchableOpacity>
               ) : null}
-              {(effectiveStatus === 'quoted' || effectiveStatus === 'expired') ? (
+              {effectiveStatus === 'paid' ? (
                 <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onConvert(); }}>
-                  <CheckCircle size={14} color={Colors.light.tint} />
-                  <Text style={styles.dropdownItemText}>Convert to Active</Text>
+                  <Flame size={14} color={Colors.light.tint} />
+                  <Text style={[styles.dropdownItemText, { color: Colors.light.tint }]}>Start Production</Text>
                 </TouchableOpacity>
               ) : null}
-              {effectiveStatus !== 'completed' && effectiveStatus !== 'needs_review' ? (
+              {(isActive || isCompleted) && !isCompleted ? (
                 <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onComplete(); }}>
                   <Trophy size={14} color={Colors.light.success} />
                   <Text style={[styles.dropdownItemText, { color: Colors.light.success }]}>Complete Project</Text>
                 </TouchableOpacity>
               ) : null}
-              <View style={styles.dropdownSeparator} />
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onExportPDF(); }}>
-                <Download size={14} color={Colors.light.text} />
-                <Text style={styles.dropdownItemText}>Export to PDF</Text>
-              </TouchableOpacity>
-              {(isActive || isCompleted) ? (
-                <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onExportSheets(); }}>
-                  <Sheet size={14} color={Colors.light.success} />
-                  <Text style={[styles.dropdownItemText, { color: Colors.light.success }]}>Export to Sheets</Text>
-                </TouchableOpacity>
-              ) : null}
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onPrint(); }}>
-                <Printer size={14} color={Colors.light.text} />
-                <Text style={styles.dropdownItemText}>Print</Text>
-              </TouchableOpacity>
-              <View style={styles.dropdownSeparator} />
+              {effectiveStatus !== 'needs_review' && effectiveStatus !== 'quoting' ? (
+                <>
+                  <View style={styles.dropdownSeparator} />
+                  <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onExportPDF(); }}>
+                    <Download size={14} color={Colors.light.text} />
+                    <Text style={styles.dropdownItemText}>Export to PDF</Text>
+                  </TouchableOpacity>
+                  {(isActive || isCompleted) ? (
+                    <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onExportSheets(); }}>
+                      <Sheet size={14} color={Colors.light.success} />
+                      <Text style={[styles.dropdownItemText, { color: Colors.light.success }]}>Export to Sheets</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onPrint(); }}>
+                    <Printer size={14} color={Colors.light.text} />
+                    <Text style={styles.dropdownItemText}>Print</Text>
+                  </TouchableOpacity>
+                </>
+              ) : <View style={styles.dropdownSeparator} />}
               <TouchableOpacity style={[styles.dropdownItem, styles.dropdownItemLast]} onPress={() => { setMenuOpen(false); onDelete(); }}>
                 <Trash2 size={14} color="#EF4444" />
                 <Text style={[styles.dropdownItemText, { color: '#EF4444' }]}>Delete</Text>
@@ -562,11 +569,20 @@ export default function ProjectsScreen() {
   const handleAcceptIntake = useCallback((quote: Quote) => {
     setPendingConfirm({
       title: 'Accept Client Intake',
-      message: `Accept "${quote.projectName}" and move it to Quoted status? You can then build the full quote.`,
-      confirmText: 'Accept & Quote',
-      onConfirm: () => convertToQuote(quote.id),
+      message: `Accept "${quote.projectName}" and start building the quote?`,
+      confirmText: 'Accept & Start Quote',
+      onConfirm: async () => {
+        try {
+          await fetch(`/api/projects/${quote.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...quote, status: 'quoting' }),
+          });
+        } catch {}
+        router.push(`/quote/${quote.id}`);
+      },
     });
-  }, [convertToQuote]);
+  }, [router]);
 
   const handleConvert = useCallback((quote: Quote) => {
     setPendingConfirm({

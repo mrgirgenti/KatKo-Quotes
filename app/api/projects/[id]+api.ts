@@ -4,6 +4,9 @@ import type { Quote } from '@/types/quote';
 function toFrontendQuote(p: any): Quote {
   let status = (p.frontendStatus || 'quoted') as Quote['status'];
   if (p.status === 'NEEDS_REVIEW') status = 'needs_review';
+  if (p.status === 'QUOTING') status = 'quoting';
+  if (p.status === 'PAID') status = 'paid';
+  if (p.status === 'INVOICE_SENT') status = 'invoice_sent';
   return {
     id: p.id,
     orgId: p.organizationId ?? undefined,
@@ -28,6 +31,8 @@ function toFrontendQuote(p: any): Quote {
     lockedDate: p.lockedDate ?? undefined,
     exportedToSheets: p.exportedToSheets ?? false,
     exportedToSheetsDate: p.exportedToSheetsDate ?? undefined,
+    quoteSentAt: p.quoteSentAt ?? undefined,
+    notesClient: p.notesClient ?? undefined,
   } as Quote;
 }
 
@@ -35,7 +40,10 @@ function frontendStatusToDbStatus(s: string) {
   switch (s) {
     case 'draft': return 'DRAFT';
     case 'needs_review': return 'NEEDS_REVIEW';
+    case 'quoting': return 'QUOTING';
     case 'quoted': return 'QUOTE_SENT';
+    case 'invoice_sent': return 'INVOICE_SENT';
+    case 'paid': return 'PAID';
     case 'active': return 'IN_PRODUCTION';
     case 'production_started': return 'IN_PRODUCTION';
     case 'completed': return 'COMPLETED';
@@ -107,8 +115,9 @@ export async function PUT(request: Request, { id }: { id: string }) {
         "frontendStatus" = $14, status = $15::"ProjectStatus",
         "activeDate" = $16, "isLocked" = $17, "lockedDate" = $18,
         "exportedToSheets" = $19, "exportedToSheetsDate" = $20,
+        "quoteSentAt" = $21,
         "updatedAt" = NOW()
-      WHERE id = $21 RETURNING *`,
+      WHERE id = $22 RETURNING *`,
       [
         body.projectName || 'Untitled',
         body.personOrganization || '',
@@ -130,6 +139,7 @@ export async function PUT(request: Request, { id }: { id: string }) {
         (body as any).lockedDate ?? null,
         (body as any).exportedToSheets ?? false,
         (body as any).exportedToSheetsDate ?? null,
+        (body as any).quoteSentAt ?? null,
         id,
       ],
     );
