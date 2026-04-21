@@ -199,12 +199,12 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 12,
   },
   logo: {
-    width: 160,
-    height: 58,
+    width: 200,
+    height: 80,
   },
   divider: {
     height: 1,

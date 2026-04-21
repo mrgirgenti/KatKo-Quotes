@@ -1,0 +1,86 @@
+We need a focused media system pass across Katalyst Ko OS, Client Hubs, and Client Portal.
+
+Current issues:
+1. Uploading logos, profile images, and artwork feels clunky and inconsistent.
+2. Organization logos are not behaving like a shared system-wide asset.
+3. The same organization logo has been uploaded in multiple places, but the UI still falls back to initials/avatar instead of showing the real logo.
+4. The main Katalyst Ko logo in the upper-left/sidebar area is too small and visually weak.
+
+Objective:
+Create one unified media handling system with one source of truth for organization logos, consistent upload UX, and correct logo propagation across the app.
+
+Requirements:
+
+1. One shared media system
+- Build or refactor to one reusable shared media uploader / media handler
+- Use it for:
+  - organization logos
+  - user profile photos
+  - artwork uploads
+- Do NOT keep separate disconnected upload implementations in different parts of the app
+
+2. Upload UX
+The shared uploader must support:
+- drag and drop
+- click to upload
+- single-file mode for logos/profile photos
+- multi-file mode where appropriate for artwork
+- instant preview
+- replace
+- remove
+- clear upload states:
+  - uploading
+  - success
+  - error
+
+3. Edit / adjust after upload
+- After an image is uploaded, users should still be able to:
+  - replace it
+  - remove it
+  - edit/adjust it
+  - reposition/crop it where appropriate for logos/profile photos
+
+4. One source of truth for organization logos
+- Define one resolved organization logo field/source of truth used everywhere in the UI
+- If a logo is uploaded internally from the Organization Profile, it should update that same shared organization logo
+- If a logo is uploaded from the Client Hub / Org Admin side, it should update that same shared organization logo
+- Do NOT maintain multiple conflicting logo fields that can get out of sync
+
+5. Organization logo propagation
+When an organization logo is updated, it must display consistently across:
+- Organization / Contact profile
+- Client Hubs cards/index
+- Client Portal login/access page
+- Client Portal dashboard/header/sidebar
+- any other org-branded surface
+- fallback initials/avatar should only display if no valid resolved logo exists
+
+6. Debug current real example
+- Trace the Battlestar Coffee Co logo specifically
+- Identify:
+  - where the uploaded logo is currently stored
+  - what field/component each UI surface is reading
+  - why the real logo is not displaying today
+- Fix that root cause, not just one screen
+
+7. Main Katalyst Ko logo sizing
+- Increase the visual size of the main Katalyst Ko logo in the upper-left/sidebar area
+- It should be noticeably larger (roughly up to 2x current size if spacing allows)
+- Give it proper padding/spacing so it feels intentional and branded
+
+8. Styling consistency
+- Match Ko OS design language
+- Keep the uploader polished, modern, and consistent across the system
+- This should feel like a core capability, not an afterthought
+
+9. Deliver back
+I want:
+- exact files changed
+- how the shared media system is structured
+- what the single source of truth is for organization logos
+- how image edit/adjust/crop works
+- where the uploader is reused
+- how logo updates propagate across the system
+- root cause of the Battlestar Coffee Co logo not displaying
+- confirmation that fallback initials only show when no real logo exists
+- confirmation that the main Katalyst Ko logo was resized appropriately

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,6 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -33,11 +32,11 @@ import {
   ExternalLink,
   Mail,
   Clock,
-  Upload,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
 import { OrgMembership, MembershipRole } from '@/types/crm';
+import { MediaUploader } from '@/components/MediaUploader';
 
 const ROLE_LABELS: Record<MembershipRole, string> = {
   ORG_ADMIN: 'Org Admin',
@@ -180,32 +179,6 @@ export default function HubManagementScreen() {
   const [internalLogoUrlDraft, setInternalLogoUrlDraft] = useState(org?.internalLogoUrl || '');
   const [savingLogos, setSavingLogos] = useState(false);
   const [logoSaved, setLogoSaved] = useState(false);
-  const [clientLogoUploading, setClientLogoUploading] = useState(false);
-  const [internalLogoUploading, setInternalLogoUploading] = useState(false);
-  const clientLogoInputRef = useRef<any>(null);
-  const internalLogoInputRef = useRef<any>(null);
-
-  const handleBrandingLogoUpload = useCallback(async (field: 'client' | 'internal', file: File) => {
-    if (!org) return;
-    const setUploading = field === 'client' ? setClientLogoUploading : setInternalLogoUploading;
-    const setDraft = field === 'client' ? setLogoUrlDraft : setInternalLogoUrlDraft;
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('orgId', org.id);
-      fd.append('fileType', 'OTHER');
-      fd.append('visibility', 'CLIENT_VISIBLE');
-      const res = await fetch('/api/files', { method: 'POST', body: fd });
-      if (!res.ok) throw new Error('Upload failed');
-      const data = await res.json();
-      setDraft(`/api/files/${data.file.id}?inline=true`);
-    } catch {
-      Alert.alert('Upload Failed', 'Could not upload logo. Please try again.');
-    } finally {
-      setUploading(false);
-    }
-  }, [org]);
 
   const handleSaveLogos = useCallback(async () => {
     if (!org) return;
@@ -216,7 +189,7 @@ export default function HubManagementScreen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ logoUrl: logoUrlDraft.trim(), internalLogoUrl: internalLogoUrlDraft.trim() }),
       });
-      queryClient.invalidateQueries({ queryKey: ['orgs'] });
+      queryClient.invalidateQueries({ queryKey: ['crm_orgs'] });
       setLogoSaved(true);
       setTimeout(() => setLogoSaved(false), 2500);
     } finally {
@@ -661,98 +634,26 @@ export default function HubManagementScreen() {
                 <Edit3 size={13} color={Colors.light.tint} />
                 <Text style={styles.sectionTitle}>Portal Branding</Text>
               </View>
-              <View style={{ paddingHorizontal: 12, paddingVertical: 10, gap: 10 }}>
+              <View style={{ paddingHorizontal: 12, paddingVertical: 10, gap: 12 }}>
                 <Text style={styles.portalLinkDesc}>
-                  Set a logo for this org's portal header. Upload an image or paste a URL. The client logo takes priority; the internal logo is the default fallback.
+                  Upload or paste a URL for this org's portal logo. Client logo takes priority; internal logo is the fallback.
                 </Text>
 
-                {/* Client Logo */}
-                <Text style={[styles.modalSub, { marginBottom: 2 }]}>Client Logo</Text>
-                {!!logoUrlDraft && (
-                  <Image
-                    source={{ uri: logoUrlDraft }}
-                    style={styles.logoPreview}
-                    resizeMode="contain"
-                  />
-                )}
-                <View style={styles.logoInputRow}>
-                  <TextInput
-                    style={[styles.logoInput, { flex: 1, marginBottom: 0 }]}
-                    value={logoUrlDraft}
-                    onChangeText={setLogoUrlDraft}
-                    placeholder="https://example.com/logo.png"
-                    placeholderTextColor={Colors.light.textSecondary}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                  <TouchableOpacity
-                    style={styles.logoUploadBtn}
-                    onPress={() => clientLogoInputRef.current?.click?.()}
-                    disabled={clientLogoUploading}
-                  >
-                    {clientLogoUploading
-                      ? <ActivityIndicator size="small" color={Colors.light.tint} />
-                      : <><Upload size={11} color={Colors.light.tint} /><Text style={styles.logoUploadBtnText}>Upload</Text></>
-                    }
-                  </TouchableOpacity>
-                </View>
-                {Platform.OS === 'web' && (
-                  <input
-                    ref={clientLogoInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/svg+xml,image/gif,image/webp"
-                    style={{ display: 'none' }}
-                    onChange={(e: any) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleBrandingLogoUpload('client', file);
-                      e.target.value = '';
-                    }}
-                  />
-                )}
+                <MediaUploader
+                  label="Client Logo"
+                  currentUrl={logoUrlDraft || null}
+                  onUrlChange={(url) => setLogoUrlDraft(url || '')}
+                  orgId={org.id}
+                  shape="wide"
+                />
 
-                {/* Internal Logo */}
-                <Text style={[styles.modalSub, { marginBottom: 2, marginTop: 4 }]}>Internal Logo</Text>
-                {!!internalLogoUrlDraft && (
-                  <Image
-                    source={{ uri: internalLogoUrlDraft }}
-                    style={styles.logoPreview}
-                    resizeMode="contain"
-                  />
-                )}
-                <View style={styles.logoInputRow}>
-                  <TextInput
-                    style={[styles.logoInput, { flex: 1, marginBottom: 0 }]}
-                    value={internalLogoUrlDraft}
-                    onChangeText={setInternalLogoUrlDraft}
-                    placeholder="https://example.com/internal-logo.png"
-                    placeholderTextColor={Colors.light.textSecondary}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                  <TouchableOpacity
-                    style={styles.logoUploadBtn}
-                    onPress={() => internalLogoInputRef.current?.click?.()}
-                    disabled={internalLogoUploading}
-                  >
-                    {internalLogoUploading
-                      ? <ActivityIndicator size="small" color={Colors.light.tint} />
-                      : <><Upload size={11} color={Colors.light.tint} /><Text style={styles.logoUploadBtnText}>Upload</Text></>
-                    }
-                  </TouchableOpacity>
-                </View>
-                {Platform.OS === 'web' && (
-                  <input
-                    ref={internalLogoInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/svg+xml,image/gif,image/webp"
-                    style={{ display: 'none' }}
-                    onChange={(e: any) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleBrandingLogoUpload('internal', file);
-                      e.target.value = '';
-                    }}
-                  />
-                )}
+                <MediaUploader
+                  label="Internal Logo"
+                  currentUrl={internalLogoUrlDraft || null}
+                  onUrlChange={(url) => setInternalLogoUrlDraft(url || '')}
+                  orgId={org.id}
+                  shape="wide"
+                />
 
                 <TouchableOpacity
                   style={[styles.copyBtnFull, logoSaved && styles.copyBtnDone, savingLogos && { opacity: 0.6 }]}

@@ -49,6 +49,29 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 - **UserContext**: Primary store is AsyncStorage; DB sync added in Phase 3 (fire-and-forget upsert on init and on create/update). AsyncStorage IDs used directly as PostgreSQL `User.id` (string PK). `syncUserToDB()` called on boot and on every mutation.
 - **ClientsContext**: DELETED. The legacy `Client` type is fully replaced by `Organization` + `Contact`. Dashboard client counts now derive from `useCrm().orgs`. `autoAddClientIfNew` in sales-tracking now calls `addOrg` via `useCrm`. `contexts/ClientsContext.tsx` and `types/client.ts` deleted.
 
+## Phase 14 — MediaUploader, Client Hubs Cards & Logo Bug Fixes (2026-04-21)
+
+### Shared MediaUploader Component
+- **`components/MediaUploader.tsx`**: Reusable file uploader with click + drag-drop, live preview, replace/remove actions, upload state machine (idle/uploading/success/error), shape variants (wide/square/circle). Replaces ad-hoc logo input UI in hub and CRM pages.
+
+### Client Hubs Index — Full Card Redesign
+- **`app/(tabs)/client-hubs.tsx`**: Replaced thin search-result rows with proper 2-column responsive management cards.
+  - **Top section**: OrgAvatar (logo image → initial-letter fallback) + org name + `Active Client` status badge + `Portal Live` badge.
+  - **Middle section**: Primary contact name, email, org type, "Logo configured" / "No logo set" readiness indicator (green/gray).
+  - **Bottom section**: Orange `Open Hub` + outline `Copy Link` + gear `Settings` buttons on a gray-tinted footer.
+- `OrgAvatar` component added inside the file: loads `org.logoUrl` then `org.internalLogoUrl` with `onError` fallback to initial-letter avatar.
+
+### Critical Logo Bug Fixes
+1. **Wrong query key in hub/[id].tsx**: Was invalidating `['orgs']` after branding save — changed to `['crm_orgs']` so CrmContext actually refreshes. Cards now show "Logo configured" correctly.
+2. **Wrong FormData field in crm/[id].tsx**: Was sending `organizationId` but files API expects `orgId` — logo uploads were silently failing without this fix.
+3. **Wrong response field in crm/[id].tsx**: Was reading `data.id` but API returns `{ file: { id } }` — URL construction was broken.
+
+### Files API Null-Params Defense
+- **`app/api/files/[id]+api.ts`**: Added `params ?? {}` guard and early 404 return in both GET and DELETE handlers. Expo Router SSR sometimes calls dynamic API routes with `null` params during static rendering; this was causing 500 errors.
+
+### Sidebar Logo Size
+- Katalyst Ko logo in `components/Sidebar.tsx` enlarged from 160×58 → 200×80 with increased vertical padding.
+
 ## Phase 11 — Org Profile Redesign (2026-04-21)
 
 ### Layout

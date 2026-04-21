@@ -2,7 +2,8 @@ import { pool } from '@/lib/pool';
 import { readUpload, deleteUpload } from '@/lib/files';
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+  const { id } = params ?? {};
+  if (!id) return new Response('Not found', { status: 404 });
   const client = await pool.connect();
   try {
     const result = await client.query(
@@ -35,7 +36,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+  const { id } = params ?? {};
+  if (!id) return Response.json({ error: 'Not found' }, { status: 404 });
   const client = await pool.connect();
   try {
     const result = await client.query(

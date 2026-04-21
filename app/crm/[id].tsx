@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -50,6 +50,7 @@ import {
   ExternalLink,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { MediaUploader } from '@/components/MediaUploader';
 import { useCrm } from '@/contexts/CrmContext';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -226,27 +227,6 @@ export default function OrgProfileScreen() {
   const [clientUserForm, setClientUserForm] = useState({ name: '', email: '' });
   const [clientUserSaving, setClientUserSaving] = useState(false);
 
-  const logoInputRef = useRef<any>(null);
-  const [logoUploading, setLogoUploading] = useState(false);
-
-  const handleLogoUpload = useCallback(async (file: File) => {
-    if (!org) return;
-    setLogoUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('organizationId', org.id);
-      fd.append('visibility', 'CLIENT_VISIBLE');
-      const res = await fetch('/api/files', { method: 'POST', body: fd });
-      if (!res.ok) throw new Error('Upload failed');
-      const data = await res.json();
-      updateOrg({ ...org, logoUrl: `/api/files/${data.id}?inline=true` });
-    } catch {
-      Alert.alert('Upload Failed', 'Could not upload logo. Please try again.');
-    } finally {
-      setLogoUploading(false);
-    }
-  }, [org, updateOrg]);
 
   const { data: memberships = [], isLoading: membershipsLoading, refetch: refetchMemberships } = useQuery<OrgMembership[]>({
     queryKey: ['memberships', org?.id],
@@ -545,44 +525,13 @@ export default function OrgProfileScreen() {
         </Modal>
         {/* Logo */}
         <View style={styles.orgLogoWrap}>
-          {org.logoUrl || org.internalLogoUrl ? (
-            <Image
-              source={{ uri: org.logoUrl || org.internalLogoUrl }}
-              style={styles.orgLogoImage}
-              resizeMode="contain"
-            />
-          ) : (
-            <View style={styles.orgLogoFallback}>
-              <Text style={styles.orgLogoInitial}>{org.name.charAt(0).toUpperCase()}</Text>
-            </View>
-          )}
-          {logoUploading && (
-            <View style={styles.orgLogoOverlay}>
-              <ActivityIndicator size="small" color="#fff" />
-            </View>
-          )}
-        </View>
-        <TouchableOpacity
-          style={styles.uploadLogoBtn}
-          onPress={() => logoInputRef.current?.click?.()}
-          disabled={logoUploading}
-        >
-          <Upload size={11} color={Colors.light.tint} />
-          <Text style={styles.uploadLogoBtnText}>{org.logoUrl ? 'Change Logo' : 'Upload Logo'}</Text>
-        </TouchableOpacity>
-        {Platform.OS === 'web' && (
-          <input
-            ref={logoInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/svg+xml"
-            style={{ display: 'none' }}
-            onChange={(e: any) => {
-              const file = e.target.files?.[0];
-              if (file) handleLogoUpload(file);
-              e.target.value = '';
-            }}
+          <MediaUploader
+            currentUrl={org.logoUrl || org.internalLogoUrl}
+            onUrlChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })}
+            orgId={org.id}
+            shape="wide"
           />
-        )}
+        </View>
 
         <Text style={styles.orgNameLarge}>{org.name}</Text>
         {org.type && <Text style={styles.orgTypeLarge}>{org.type}</Text>}
@@ -1970,36 +1919,10 @@ const styles = StyleSheet.create({
   },
   orgMenuItemText: { fontSize: 14, color: Colors.light.text },
   orgLogoWrap: {
-    width: 88, height: 88, borderRadius: 14,
-    overflow: 'hidden',
-    marginBottom: 10,
-    position: 'relative' as const,
-    backgroundColor: Colors.light.background,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: '100%' as any,
+    marginBottom: 12,
+    paddingHorizontal: 4,
   },
-  orgLogoImage: { width: 88, height: 88, borderRadius: 14 },
-  orgLogoFallback: {
-    width: 88, height: 88, borderRadius: 14,
-    backgroundColor: Colors.light.tint,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  orgLogoInitial: { fontSize: 34, fontWeight: '800' as const, color: '#fff' },
-  orgLogoOverlay: {
-    position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  uploadLogoBtn: {
-    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 5,
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
-    backgroundColor: `${Colors.light.tint}14`,
-    borderWidth: 1, borderColor: `${Colors.light.tint}40`,
-    marginBottom: 10,
-  },
-  uploadLogoBtnText: { fontSize: 12, fontWeight: '600' as const, color: Colors.light.tint },
   orgBadgesRow: { flexDirection: 'row' as const, gap: 6, flexWrap: 'wrap' as const, justifyContent: 'center' as const, marginTop: 8 },
   portalEnabledBadge: {
     flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4,
