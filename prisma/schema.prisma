@@ -134,6 +134,8 @@ model Organization {
   convertedToActiveDate DateTime?
   campaignsData        Json?
   departmentsData      Json?
+  logoUrl              String?
+  internalLogoUrl      String?
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 

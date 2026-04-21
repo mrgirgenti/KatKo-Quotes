@@ -3,7 +3,7 @@ import { pool } from '@/lib/pool';
 export async function GET(_request: Request, { orgId }: { orgId: string }) {
   try {
     const result = await pool.query(
-      `SELECT id, name, "hubEnabled" FROM "Organization" WHERE id = $1`,
+      `SELECT id, name, "hubEnabled", "logoUrl", "internalLogoUrl" FROM "Organization" WHERE id = $1`,
       [orgId]
     );
     if (!result.rows[0]) {
@@ -13,7 +13,12 @@ export async function GET(_request: Request, { orgId }: { orgId: string }) {
     if (!org.hubEnabled) {
       return Response.json({ error: 'Hub not enabled for this organization' }, { status: 403 });
     }
-    return Response.json({ id: org.id, name: org.name });
+    return Response.json({
+      id: org.id,
+      name: org.name,
+      logoUrl: org.logoUrl || null,
+      internalLogoUrl: org.internalLogoUrl || null,
+    });
   } catch (err) {
     console.error('[GET /api/portal/[orgId]]', err);
     return Response.json({ error: 'Server error' }, { status: 500 });

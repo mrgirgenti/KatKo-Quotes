@@ -170,6 +170,28 @@ export default function HubManagementScreen() {
     updateOrgHubEnabled({ orgId: org.id, enabled: val });
   }, [org, updateOrgHubEnabled]);
 
+  const [logoUrlDraft, setLogoUrlDraft] = useState(org?.logoUrl || '');
+  const [internalLogoUrlDraft, setInternalLogoUrlDraft] = useState(org?.internalLogoUrl || '');
+  const [savingLogos, setSavingLogos] = useState(false);
+  const [logoSaved, setLogoSaved] = useState(false);
+
+  const handleSaveLogos = useCallback(async () => {
+    if (!org) return;
+    setSavingLogos(true);
+    try {
+      await fetch(`/api/orgs/${org.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ logoUrl: logoUrlDraft.trim(), internalLogoUrl: internalLogoUrlDraft.trim() }),
+      });
+      queryClient.invalidateQueries({ queryKey: ['orgs'] });
+      setLogoSaved(true);
+      setTimeout(() => setLogoSaved(false), 2500);
+    } finally {
+      setSavingLogos(false);
+    }
+  }, [org, logoUrlDraft, internalLogoUrlDraft, queryClient]);
+
   // Promotes an existing CLIENT member to ORG_ADMIN by patching their membership role
   const handleAssignAdmin = useCallback(async () => {
     if (!org || !selectedAdminMembershipId) return;
@@ -600,6 +622,55 @@ export default function HubManagementScreen() {
                 </View>
               </View>
             )}
+
+            {/* Portal Branding */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Edit3 size={13} color={Colors.light.tint} />
+                <Text style={styles.sectionTitle}>Portal Branding</Text>
+              </View>
+              <View style={{ paddingHorizontal: 12, paddingVertical: 10, gap: 10 }}>
+                <Text style={styles.portalLinkDesc}>
+                  Set a logo URL for this org's portal header. The client logo takes priority; the internal logo is the default fallback.
+                </Text>
+                <Text style={[styles.modalSub, { marginBottom: 2 }]}>Client Logo URL</Text>
+                <TextInput
+                  style={styles.logoInput}
+                  value={logoUrlDraft}
+                  onChangeText={setLogoUrlDraft}
+                  placeholder="https://example.com/logo.png"
+                  placeholderTextColor={Colors.light.textSecondary}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <Text style={[styles.modalSub, { marginBottom: 2 }]}>Internal Logo URL</Text>
+                <TextInput
+                  style={styles.logoInput}
+                  value={internalLogoUrlDraft}
+                  onChangeText={setInternalLogoUrlDraft}
+                  placeholder="https://example.com/internal-logo.png"
+                  placeholderTextColor={Colors.light.textSecondary}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <TouchableOpacity
+                  style={[styles.copyBtnFull, logoSaved && styles.copyBtnDone, savingLogos && { opacity: 0.6 }]}
+                  onPress={handleSaveLogos}
+                  disabled={savingLogos}
+                >
+                  {savingLogos ? (
+                    <ActivityIndicator size="small" color={Colors.light.tint} />
+                  ) : (
+                    <>
+                      <CheckCircle2 size={12} color={logoSaved ? '#16A34A' : Colors.light.tint} />
+                      <Text style={[styles.copyBtnText, logoSaved && styles.copyBtnTextDone]}>
+                        {logoSaved ? 'Saved!' : 'Save Branding'}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
 
           </View>{/* end colRight */}
 
@@ -1396,6 +1467,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF7F0',
     borderWidth: 1,
     borderColor: Colors.light.tint,
+  },
+  logoInput: {
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    fontSize: 12,
+    color: Colors.light.text,
+    backgroundColor: Colors.light.background,
   },
   copyBtnFull: {
     flexDirection: 'row',

@@ -52,6 +52,8 @@ function toFrontendOrg(org: any, contacts: any[], activityLogs: any[]): Organiza
     campaigns: (org.campaignsData as CampaignAssignment[] | null) || [],
     departments: (org.departmentsData as Department[] | null) || [],
     hubEnabled: org.hubEnabled ?? false,
+    logoUrl: org.logoUrl ?? undefined,
+    internalLogoUrl: org.internalLogoUrl ?? undefined,
     createdAt: new Date(org.createdAt).toISOString(),
   };
 }

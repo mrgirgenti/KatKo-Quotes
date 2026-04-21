@@ -52,6 +52,8 @@ function toFrontendOrg(org: any, contacts: any[], activityLogs: any[]): Organiza
     campaigns: (org.campaignsData as CampaignAssignment[] | null) || [],
     departments: (org.departmentsData as Department[] | null) || [],
     hubEnabled: org.hubEnabled ?? false,
+    logoUrl: org.logoUrl ?? undefined,
+    internalLogoUrl: org.internalLogoUrl ?? undefined,
     createdAt: new Date(org.createdAt).toISOString(),
   };
 }
@@ -94,8 +96,10 @@ export async function PUT(request: Request, { id }: { id: string }) {
         "campaignsData" = $8::jsonb,
         "departmentsData" = $9::jsonb,
         "hubEnabled" = $10,
+        "logoUrl" = $11,
+        "internalLogoUrl" = $12,
         "updatedAt" = NOW()
-      WHERE id = $11 RETURNING *`,
+      WHERE id = $13 RETURNING *`,
       [
         body.name ?? existing.name,
         body.type !== undefined ? body.type : existing.type,
@@ -107,6 +111,8 @@ export async function PUT(request: Request, { id }: { id: string }) {
         JSON.stringify(body.campaigns !== undefined ? body.campaigns : (existing.campaignsData ?? [])),
         JSON.stringify(body.departments !== undefined ? body.departments : (existing.departmentsData ?? [])),
         body.hubEnabled !== undefined ? body.hubEnabled : (existing.hubEnabled ?? false),
+        body.logoUrl !== undefined ? (body.logoUrl || null) : (existing.logoUrl ?? null),
+        body.internalLogoUrl !== undefined ? (body.internalLogoUrl || null) : (existing.internalLogoUrl ?? null),
         id,
       ],
     );

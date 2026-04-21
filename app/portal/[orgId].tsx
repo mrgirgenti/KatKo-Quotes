@@ -11,6 +11,7 @@ import {
   Platform,
   Modal,
   Pressable,
+  Image,
 } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import {
@@ -659,6 +660,23 @@ export default function ClientPortal() {
   const [editSecondsLeft, setEditSecondsLeft] = useState(0);
   const [cancelling, setCancelling] = useState(false);
 
+  const [orgLogoUrl, setOrgLogoUrl] = useState<string | null>(null);
+  const [orgInternalLogoUrl, setOrgInternalLogoUrl] = useState<string | null>(null);
+  const [orgDisplayName, setOrgDisplayName] = useState<string>('');
+
+  useEffect(() => {
+    if (!orgId) return;
+    fetch(`/api/portal/${orgId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        if (data.logoUrl) setOrgLogoUrl(data.logoUrl);
+        if (data.internalLogoUrl) setOrgInternalLogoUrl(data.internalLogoUrl);
+        if (data.name) setOrgDisplayName(data.name);
+      })
+      .catch(() => {});
+  }, [orgId]);
+
   const EDIT_WINDOW_MS = 10 * 60 * 1000;
 
   useEffect(() => {
@@ -844,10 +862,32 @@ export default function ClientPortal() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={styles.topBar}>
-        <View>
-          <Text style={styles.logoText}>KATALYST KO</Text>
-          <Text style={styles.logoSub}>Client Portal</Text>
-        </View>
+        {(() => {
+          const logoSrc = orgLogoUrl || orgInternalLogoUrl;
+          if (logoSrc) {
+            return (
+              <View style={styles.topBarBrandRow}>
+                <Image
+                  source={{ uri: logoSrc }}
+                  style={styles.topBarLogo}
+                  resizeMode="contain"
+                />
+                {orgDisplayName ? (
+                  <View style={{ marginLeft: 10 }}>
+                    <Text style={styles.logoText}>{orgDisplayName.toUpperCase()}</Text>
+                    <Text style={styles.logoSub}>Client Portal</Text>
+                  </View>
+                ) : null}
+              </View>
+            );
+          }
+          return (
+            <View>
+              <Text style={styles.logoText}>KATALYST KO</Text>
+              <Text style={styles.logoSub}>Client Portal</Text>
+            </View>
+          );
+        })()}
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -1347,6 +1387,8 @@ const ddStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F9FAFB' },
   topBar: { backgroundColor: '#000', paddingHorizontal: 24, paddingVertical: 14, flexDirection: 'row', alignItems: 'center' },
+  topBarBrandRow: { flexDirection: 'row', alignItems: 'center' },
+  topBarLogo: { width: 100, height: 40 },
   logoText: { color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 2 },
   logoSub: { color: BRAND, fontSize: 10, fontWeight: '600', letterSpacing: 1, marginTop: 1 },
   scrollContent: { flexGrow: 1, alignItems: 'center', padding: 20, paddingVertical: 36 },

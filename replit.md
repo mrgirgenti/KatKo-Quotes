@@ -31,6 +31,25 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 - **UserContext**: Primary store is AsyncStorage; DB sync added in Phase 3 (fire-and-forget upsert on init and on create/update). AsyncStorage IDs used directly as PostgreSQL `User.id` (string PK). `syncUserToDB()` called on boot and on every mutation.
 - **ClientsContext**: DELETED. The legacy `Client` type is fully replaced by `Organization` + `Contact`. Dashboard client counts now derive from `useCrm().orgs`. `autoAddClientIfNew` in sales-tracking now calls `addOrg` via `useCrm`. `contexts/ClientsContext.tsx` and `types/client.ts` deleted.
 
+## Phase 8 — Client Portal Branding (2026-04-21)
+
+### New DB columns
+- `Organization.logoUrl TEXT` — org-specific client-facing logo (client override)
+- `Organization.internalLogoUrl TEXT` — admin-set internal default logo for this org
+
+### Priority logic for portal header logo
+1. `logoUrl` (org-specific client override)
+2. `internalLogoUrl` (admin-side default)
+3. Text fallback: "KATALYST KO / Client Portal"
+
+### Changed files
+- `prisma/schema.prisma`: Added `logoUrl` + `internalLogoUrl` to `Organization` model
+- `types/crm.ts`: Added `logoUrl?` + `internalLogoUrl?` to `Organization` interface
+- `app/api/orgs+api.ts` + `app/api/orgs/[id]+api.ts`: Both `toFrontendOrg` functions now return logo fields. `PUT /api/orgs/[id]` accepts + persists both logo fields (params 11 & 12).
+- `app/api/portal/[orgId]+api.ts`: GET now returns `logoUrl` + `internalLogoUrl` alongside org name
+- `app/portal/[orgId].tsx`: Fetches org info on mount (GET) to read logo URLs. Top bar now renders org logo image + org name when a logo URL is present, with `Image` from React Native. New styles: `topBarBrandRow`, `topBarLogo`.
+- `app/hub/[id].tsx`: New "Portal Branding" section in right column with `logoUrlDraft` / `internalLogoUrlDraft` state, text inputs for both URL fields, and a "Save Branding" button that calls `PUT /api/orgs/[id]`. New `logoInput` style.
+
 ## Phase 7 — Activity Tracking Expansion + CRM Detail Page Fix (2026-04-21)
 
 ### Bug Fixes
