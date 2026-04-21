@@ -23,6 +23,7 @@ import {
   FileText,
   ChevronRight,
   X,
+  XCircle,
   Trash2,
   Plus,
   Clock,
@@ -40,6 +41,9 @@ import {
   PhoneCall,
   Users,
   Shield,
+  Send,
+  Inbox,
+  Package,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
@@ -160,6 +164,7 @@ export default function OrgProfileScreen() {
   const router = useRouter();
   const {
     orgs, templates,
+    isLoading: orgsLoading,
     updateOrg, deleteOrg,
     addContact, updateContact, deleteContact,
     addActivity, deleteActivity,
@@ -426,6 +431,18 @@ export default function OrgProfileScreen() {
     });
   }, [org, updateCampaignStep]);
 
+  if (orgsLoading && !org) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ title: 'Loading…' }} />
+        <View style={styles.notFound}>
+          <Clock size={48} color={Colors.light.border} />
+          <Text style={styles.notFoundText}>Loading…</Text>
+        </View>
+      </View>
+    );
+  }
+
   if (!org) {
     return (
       <View style={styles.container}>
@@ -674,15 +691,30 @@ export default function OrgProfileScreen() {
           ) : (
             <ScrollView showsVerticalScrollIndicator={false}>
               {org.activityLog.map((entry) => {
-                const typeCfg = ACTIVITY_TYPE_CONFIG[entry.type];
+                const typeCfg = ACTIVITY_TYPE_CONFIG[entry.type] ?? ACTIVITY_TYPE_CONFIG['note'];
+                const isSystemEvent = !!ACTIVITY_TYPE_CONFIG[entry.type]?.isSystem;
+                const iconColor = typeCfg.color;
+                const iconEl =
+                  entry.type === 'call'             ? <PhoneCall size={14} color={iconColor} /> :
+                  entry.type === 'email'            ? <Mail size={14} color={iconColor} /> :
+                  entry.type === 'meeting'          ? <Users size={14} color={iconColor} /> :
+                  entry.type === 'text'             ? <MessageSquare size={14} color={iconColor} /> :
+                  entry.type === 'client_intake'    ? <Inbox size={14} color={iconColor} /> :
+                  entry.type === 'client_cancel'    ? <XCircle size={14} color={iconColor} /> :
+                  entry.type === 'quote_sent'       ? <Send size={14} color={iconColor} /> :
+                  entry.type === 'quote_approved'   ? <CheckCircle size={14} color={iconColor} /> :
+                  entry.type === 'invoice_sent'     ? <FileText size={14} color={iconColor} /> :
+                  entry.type === 'payment_received' ? <DollarSign size={14} color={iconColor} /> :
+                  entry.type === 'in_production'    ? <Package size={14} color={iconColor} /> :
+                  entry.type === 'completed'        ? <CheckCircle size={14} color={iconColor} /> :
+                  entry.type === 'hub_enabled'      ? <Shield size={14} color={iconColor} /> :
+                  entry.type === 'member_added' || entry.type === 'member_removed' ? <User size={14} color={iconColor} /> :
+                  entry.type === 'contact_added' || entry.type === 'contact_updated' ? <User size={14} color={iconColor} /> :
+                  <FileText size={14} color={iconColor} />;
                 return (
-                  <View key={entry.id} style={styles.activityEntry}>
+                  <View key={entry.id} style={[styles.activityEntry, isSystemEvent && styles.activityEntrySystem]}>
                     <View style={[styles.activityIcon, { backgroundColor: typeCfg.color + '20' }]}>
-                      {entry.type === 'call' ? <PhoneCall size={14} color={typeCfg.color} /> :
-                       entry.type === 'email' ? <Mail size={14} color={typeCfg.color} /> :
-                       entry.type === 'meeting' ? <Users size={14} color={typeCfg.color} /> :
-                       entry.type === 'text' ? <MessageSquare size={14} color={typeCfg.color} /> :
-                       <FileText size={14} color={typeCfg.color} />}
+                      {iconEl}
                     </View>
                     <View style={styles.activityBody}>
                       <View style={styles.activityHeaderRow}>
@@ -1581,6 +1613,13 @@ const styles = StyleSheet.create({
   activityEntry: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 10,
     paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.light.border,
+  },
+  activityEntrySystem: {
+    backgroundColor: '#FAFAFA',
+    marginHorizontal: -12,
+    paddingHorizontal: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#E5E7EB',
   },
   activityIcon: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginTop: 2 },
   activityBody: { flex: 1 },

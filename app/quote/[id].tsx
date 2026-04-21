@@ -724,7 +724,14 @@ export default function QuoteDetailScreen() {
           {/* Right column — CRM contact card */}
           {linkedOrg && (
             <View style={styles.orderContactPanel}>
-              <Text style={styles.orderContactOrgName}>{linkedOrg.name}</Text>
+              <TouchableOpacity
+                style={styles.orderContactOrgLink}
+                onPress={() => router.push(`/crm/${linkedOrg.id}` as any)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.orderContactOrgName}>{linkedOrg.name}</Text>
+                <ExternalLink size={12} color={Colors.light.tint} />
+              </TouchableOpacity>
               {linkedContact && (
                 <>
                   <Text style={styles.orderContactName}>
@@ -1599,11 +1606,16 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start' as const,
     minWidth: 180,
   },
+  orderContactOrgLink: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+    marginBottom: 2,
+  },
   orderContactOrgName: {
     fontSize: 13,
     fontWeight: '700' as const,
     color: Colors.light.text,
-    marginBottom: 2,
   },
   orderContactName: {
     fontSize: 12,

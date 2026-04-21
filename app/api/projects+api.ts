@@ -109,7 +109,22 @@ export async function POST(request: Request) {
         (body as any).exportedToSheetsDate ?? null,
       ],
     );
-    return Response.json(toFrontendQuote(result.rows[0]), { status: 201 });
+    const created = result.rows[0];
+
+    if (created.organizationId) {
+      pool.query(
+        `INSERT INTO "ActivityLog" (id, "organizationId", "projectId", "actionType", "actionSummary", metadata, "createdAt")
+         VALUES (gen_random_uuid(), $1, $2, 'quote_created', $3, $4::jsonb, NOW())`,
+        [
+          created.organizationId,
+          created.id,
+          `Quote created: ${created.title || 'Untitled'}`,
+          JSON.stringify({ projectName: created.title, projectId: created.id }),
+        ],
+      ).catch((err) => console.error('[POST /api/projects] ActivityLog insert failed:', err));
+    }
+
+    return Response.json(toFrontendQuote(created), { status: 201 });
   } catch (err) {
     console.error('[POST /api/projects]', err);
     return Response.json({ error: 'Failed to create project' }, { status: 500 });

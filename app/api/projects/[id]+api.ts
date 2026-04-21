@@ -104,9 +104,26 @@ export async function GET(_req: Request, { id }: { id: string }) {
   }
 }
 
+const STATUS_TO_ACTIVITY: Record<string, string> = {
+  quoted:             'quote_sent',
+  quote_approved:     'quote_approved',
+  invoice_sent:       'invoice_sent',
+  paid:               'payment_received',
+  active:             'in_production',
+  production_started: 'in_production',
+  completed:          'completed',
+};
+
 export async function PUT(request: Request, { id }: { id: string }) {
   try {
     const body: Quote = await request.json();
+
+    const prevResult = await pool.query(
+      `SELECT "frontendStatus", "organizationId", title FROM "Project" WHERE id = $1`,
+      [id],
+    );
+    const prev = prevResult.rows[0];
+
     const result = await pool.query(
       `UPDATE "Project" SET
         title = $1, "clientName" = $2, "organizationId" = $3, "orderType" = $4,
@@ -146,13 +163,43 @@ export async function PUT(request: Request, { id }: { id: string }) {
     );
     if (!result.rows[0]) return Response.json({ error: 'Not found' }, { status: 404 });
 
+    const updated = result.rows[0];
+    const newStatus = updated.frontendStatus as string;
+    const oldStatus = prev?.frontendStatus as string | undefined;
+    const orgId = updated.organizationId as string | null;
+
+    if (orgId && newStatus && oldStatus && newStatus !== oldStatus) {
+      const activityType = STATUS_TO_ACTIVITY[newStatus];
+      if (activityType) {
+        const labels: Record<string, string> = {
+          quote_sent:       `Quote sent to client: ${updated.title || 'Untitled'}`,
+          quote_approved:   `Quote approved by client: ${updated.title || 'Untitled'}`,
+          invoice_sent:     `Invoice sent: ${updated.title || 'Untitled'}`,
+          payment_received: `Payment received for: ${updated.title || 'Untitled'}`,
+          in_production:    `Order moved to production: ${updated.title || 'Untitled'}`,
+          completed:        `Order completed: ${updated.title || 'Untitled'}`,
+        };
+        pool.query(
+          `INSERT INTO "ActivityLog" (id, "organizationId", "projectId", "actionType", "actionSummary", metadata, "createdAt")
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, $5::jsonb, NOW())`,
+          [
+            orgId,
+            id,
+            activityType,
+            labels[activityType] || `Status updated: ${newStatus}`,
+            JSON.stringify({ projectName: updated.title, fromStatus: oldStatus, toStatus: newStatus }),
+          ],
+        ).catch((err) => console.error('[PUT /api/projects/:id] ActivityLog insert failed:', err));
+      }
+    }
+
     if (body.lineItems?.length) {
       await upsertProjectItems(id, body.lineItems).catch((err) =>
         console.error('[PUT /api/projects/:id] ProjectItem upsert failed (non-fatal):', err),
       );
     }
 
-    return Response.json(toFrontendQuote(result.rows[0]));
+    return Response.json(toFrontendQuote(updated));
   } catch (err) {
     console.error('[PUT /api/projects/:id]', err);
     return Response.json({ error: 'Failed to update project' }, { status: 500 });

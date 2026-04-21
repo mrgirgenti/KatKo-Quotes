@@ -129,6 +129,23 @@ export async function POST(request: Request, { id }: { id: string }) {
         console.log(`[quote approve] Notification sent — id: ${emailResult.id}`);
       }
 
+      if (project.organizationId) {
+        pool.query(
+          `INSERT INTO "ActivityLog" (id, "organizationId", "projectId", "actionType", "actionSummary", metadata, "createdAt")
+           VALUES (gen_random_uuid(), $1, $2, 'quote_approved', $3, $4::jsonb, NOW())`,
+          [
+            project.organizationId,
+            id,
+            `Quote approved by client: ${project.title || 'Untitled'}`,
+            JSON.stringify({
+              projectName: project.title,
+              approvedBy: body.approvedBy || project.clientName,
+              total,
+            }),
+          ],
+        ).catch((err) => console.error('[quote approve] ActivityLog insert failed:', err));
+      }
+
       return Response.json({
         ok: true,
         action: 'approved',

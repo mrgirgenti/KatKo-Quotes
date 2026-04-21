@@ -7,7 +7,21 @@ export type ContactRole =
   | 'Billing Contact'
   | 'Other';
 
-export type ActivityType = 'call' | 'email' | 'note' | 'meeting' | 'text';
+export type ActivityType =
+  // Manual CRM log entries
+  | 'call' | 'email' | 'note' | 'meeting' | 'text'
+  // Client portal events
+  | 'client_intake' | 'client_cancel'
+  // Quote lifecycle
+  | 'quote_created' | 'quote_sent' | 'quote_approved'
+  // Financial
+  | 'invoice_sent' | 'payment_received'
+  // Production
+  | 'in_production' | 'completed'
+  // Account / access
+  | 'hub_enabled' | 'member_added' | 'member_removed'
+  // Contact changes
+  | 'contact_added' | 'contact_updated';
 
 export type CampaignStepType = 'call' | 'email' | 'text' | 'other';
 export type CampaignStepStatus = 'pending' | 'sent' | 'received' | 'responded' | 'skipped';
@@ -144,10 +158,31 @@ export const CONTACT_ROLES: ContactRole[] = [
   'Other',
 ];
 
-export const ACTIVITY_TYPE_CONFIG: Record<ActivityType, { label: string; color: string; icon: string }> = {
-  call:    { label: 'Call',    color: '#16A34A', icon: 'phone' },
-  email:   { label: 'Email',   color: '#2563EB', icon: 'mail' },
-  note:    { label: 'Note',    color: '#92400E', icon: 'file-text' },
-  meeting: { label: 'Meeting', color: '#7C3AED', icon: 'users' },
-  text:    { label: 'Text',    color: '#0891B2', icon: 'message-square' },
+export const ACTIVITY_TYPE_CONFIG: Record<ActivityType, { label: string; color: string; icon: string; isSystem?: boolean }> = {
+  // Manual CRM entries
+  call:            { label: 'Call',             color: '#16A34A', icon: 'phone-call' },
+  email:           { label: 'Email',            color: '#2563EB', icon: 'mail' },
+  note:            { label: 'Note',             color: '#92400E', icon: 'file-text' },
+  meeting:         { label: 'Meeting',          color: '#7C3AED', icon: 'users' },
+  text:            { label: 'Text',             color: '#0891B2', icon: 'message-square' },
+  // Client portal events
+  client_intake:   { label: 'Client Submitted', color: '#FF5A00', icon: 'inbox',         isSystem: true },
+  client_cancel:   { label: 'Client Cancelled', color: '#DC2626', icon: 'x-circle',      isSystem: true },
+  // Quote lifecycle
+  quote_created:   { label: 'Quote Created',    color: '#2563EB', icon: 'file-text',     isSystem: true },
+  quote_sent:      { label: 'Quote Sent',       color: '#7C3AED', icon: 'send',          isSystem: true },
+  quote_approved:  { label: 'Quote Approved',   color: '#16A34A', icon: 'check-circle',  isSystem: true },
+  // Financial
+  invoice_sent:    { label: 'Invoice Sent',     color: '#9333EA', icon: 'file-text',     isSystem: true },
+  payment_received:{ label: 'Payment Received', color: '#16A34A', icon: 'dollar-sign',   isSystem: true },
+  // Production
+  in_production:   { label: 'In Production',    color: '#FF5A00', icon: 'package',       isSystem: true },
+  completed:       { label: 'Completed',        color: '#16A34A', icon: 'check-circle',  isSystem: true },
+  // Account / access
+  hub_enabled:     { label: 'Hub Enabled',      color: '#0891B2', icon: 'shield',        isSystem: true },
+  member_added:    { label: 'Member Added',     color: '#4B5563', icon: 'user',          isSystem: true },
+  member_removed:  { label: 'Member Removed',   color: '#9CA3AF', icon: 'user',          isSystem: true },
+  // Contact changes
+  contact_added:   { label: 'Contact Added',    color: '#2563EB', icon: 'user',          isSystem: true },
+  contact_updated: { label: 'Contact Updated',  color: '#6B7280', icon: 'user',          isSystem: true },
 };

@@ -31,6 +31,41 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 - **UserContext**: Primary store is AsyncStorage; DB sync added in Phase 3 (fire-and-forget upsert on init and on create/update). AsyncStorage IDs used directly as PostgreSQL `User.id` (string PK). `syncUserToDB()` called on boot and on every mutation.
 - **ClientsContext**: DELETED. The legacy `Client` type is fully replaced by `Organization` + `Contact`. Dashboard client counts now derive from `useCrm().orgs`. `autoAddClientIfNew` in sales-tracking now calls `addOrg` via `useCrm`. `contexts/ClientsContext.tsx` and `types/client.ts` deleted.
 
+## Phase 7 — Activity Tracking Expansion + CRM Detail Page Fix (2026-04-21)
+
+### Bug Fixes
+- **CRM detail page crash fixed**: `client_intake` (and any unknown activity type) caused `Cannot read properties of undefined (reading 'color')` because `ACTIVITY_TYPE_CONFIG` only had the 5 manual types. Fixed by:
+  - Expanding `ActivityType` union in `types/crm.ts` to include all system event types
+  - Adding all types to `ACTIVITY_TYPE_CONFIG` with `isSystem: true` flag
+  - Adding safe fallback in `crm/[id].tsx`: `ACTIVITY_TYPE_CONFIG[entry.type] ?? ACTIVITY_TYPE_CONFIG['note']`
+  - Adding `isLoading` loading state guard in `crm/[id].tsx` (was showing "Contact not found" before orgs loaded)
+
+### New System Activity Types
+Added to `ActivityType` and `ACTIVITY_TYPE_CONFIG`:
+- `client_intake` — Client submitted a project via portal (Inbox icon, orange)
+- `client_cancel` — Client cancelled a portal submission (XCircle icon, red)
+- `quote_created` — Quote/project created (FileText icon, blue)
+- `quote_sent` — Quote sent to client (Send icon, purple)
+- `quote_approved` — Client approved the quote (CheckCircle icon, green)
+- `invoice_sent` — Invoice sent (FileText icon, purple)
+- `payment_received` — Payment received (DollarSign icon, green)
+- `in_production` — Order moved to production (Package icon, orange)
+- `completed` — Order completed (CheckCircle icon, green)
+- `hub_enabled` — Client Hub enabled for org (Shield icon, blue)
+- `member_added` / `member_removed` — Team membership changes (User icon)
+- `contact_added` / `contact_updated` — Contact record changes (User icon)
+
+System events render with a distinct left-border style (`activityEntrySystem`) to distinguish them from manual CRM log entries.
+
+### Automatic Activity Logging Added
+- **`POST /api/projects`**: Logs `quote_created` when a new project is created with an `organizationId`
+- **`PUT /api/projects/[id]`**: Reads old `frontendStatus` before update, logs status-change activities (`quote_sent`, `quote_approved`, `invoice_sent`, `payment_received`, `in_production`, `completed`) when status transitions for projects with an org link
+- **`POST /api/portal/quote/[id]`** (approve action): Logs `quote_approved` when client approves a quote with an org link
+
+### Quote View Improvements
+- Org name in quote detail CRM panel is now a clickable link (with `ExternalLink` icon) that navigates to `/crm/[orgId]`
+- New `orderContactOrgLink` style (row with gap) and removed `marginBottom` from `orderContactOrgName` (moved to link row)
+
 ## Phase 6 — Client Hub Project Submission Intake (2026-04-19)
 
 ### New files
