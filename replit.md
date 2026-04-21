@@ -31,6 +31,37 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 - **UserContext**: Primary store is AsyncStorage; DB sync added in Phase 3 (fire-and-forget upsert on init and on create/update). AsyncStorage IDs used directly as PostgreSQL `User.id` (string PK). `syncUserToDB()` called on boot and on every mutation.
 - **ClientsContext**: DELETED. The legacy `Client` type is fully replaced by `Organization` + `Contact`. Dashboard client counts now derive from `useCrm().orgs`. `autoAddClientIfNew` in sales-tracking now calls `addOrg` via `useCrm`. `contexts/ClientsContext.tsx` and `types/client.ts` deleted.
 
+## Phase 9 — Client Portal Dashboard Redesign (2026-04-21)
+
+### Architecture
+The client portal (`app/portal/[orgId].tsx`) is now a full dashboard-driven SaaS-style UI with sidebar navigation. The `Step` type changed from `'email' | 'form' | 'success'` to `'email' | 'dashboard'`. After email verification, the user lands in the dashboard; the submission form is now a view within the dashboard rather than a separate step.
+
+### New API endpoint
+- `app/api/portal/[orgId]/projects+api.ts` — GET returns all non-cancelled projects for the org (id, title, status, inHandsDate, createdAt, lineItemCount). Validates hubEnabled.
+
+### Dashboard layout (step === 'dashboard')
+- **Sidebar** (210px dark `#111827` background): Org logo/name, 6 nav items with active highlight, user avatar + sign-out button at the bottom. Sticky on web via `Platform.select({ web: { position: 'sticky', height: '100vh' } })`.
+- **Main content area** (`flex: 1`, light gray): Scrollable content per active view.
+
+### Nav views
+- **Dashboard (Home)** — Welcome header, responsive `dashGrid` with: Active Projects section card (pipeline + status + in-hands date), Quotes & Invoices section card, Artwork empty state. "View all →" links navigate to detail views.
+- **Projects** — Full project list with `ProjectPipeline` component (7-step dot pipeline) and status pill per project.
+- **Quotes & Invoices** — Filtered to QUOTED + INVOICE_SENT projects.
+- **Artwork** — Empty state (placeholder for future feature).
+- **Catalogs** — Empty state.
+- **Submit Request** — Existing submission form (unchanged logic). After submission, shows success inline with edit/cancel window.
+
+### New top-level components (defined in portal file)
+- `StatusPill` — colored pill badge matching `PORTAL_STATUS_CONFIG`
+- `ProjectPipeline` — 7-step dot-and-line pipeline showing current status position
+- `NAV_ITEMS` — array of `{ id, label, Icon }` for sidebar nav
+- `PORTAL_STATUS_CONFIG` — maps DB status strings to display label + colors
+- `STATUS_PIPELINE` — canonical ordered status array
+
+### Styling
+- `dash` StyleSheet added: sidebar, nav items, section cards, project cards, quote rows, empty states, grid layout
+- All original styles preserved for the submission form and email step
+
 ## Phase 8 — Client Portal Branding (2026-04-21)
 
 ### New DB columns

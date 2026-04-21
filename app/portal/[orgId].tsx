@@ -27,6 +27,17 @@ import {
   FileText,
   Check,
   Edit2,
+  LayoutDashboard,
+  Folder,
+  Layers,
+  BookOpen,
+  ClipboardList,
+  LogOut,
+  Package,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Receipt,
 } from 'lucide-react-native';
 import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
 
@@ -39,7 +50,81 @@ const TEXT_MED = '#374151';
 const TEXT_LIGHT = '#6B7280';
 const TEXT_PLACEHOLDER = '#9CA3AF';
 
-type Step = 'email' | 'form' | 'success';
+type Step = 'email' | 'dashboard';
+type ActiveView = 'home' | 'projects' | 'quotes' | 'artwork' | 'catalogs' | 'submit';
+
+interface PortalProject {
+  id: string;
+  title: string;
+  status: string;
+  inHandsDate: string | null;
+  createdAt: string;
+  lineItemCount: number;
+}
+
+const STATUS_PIPELINE = ['NEEDS_REVIEW', 'QUOTING', 'QUOTED', 'INVOICE_SENT', 'PAID', 'IN_PRODUCTION', 'COMPLETED'] as const;
+
+const PORTAL_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  NEEDS_REVIEW:  { label: 'Needs Review',    color: '#D97706', bg: '#FEF3C7' },
+  QUOTING:       { label: 'Being Quoted',    color: '#2563EB', bg: '#EFF6FF' },
+  QUOTED:        { label: 'Quote Ready',     color: '#7C3AED', bg: '#F5F3FF' },
+  INVOICE_SENT:  { label: 'Invoice Sent',    color: '#6D28D9', bg: '#EDE9FE' },
+  PAID:          { label: 'Paid',            color: '#059669', bg: '#ECFDF5' },
+  IN_PRODUCTION: { label: 'In Production',   color: '#EA580C', bg: '#FFF7ED' },
+  COMPLETED:     { label: 'Completed',       color: '#16A34A', bg: '#F0FDF4' },
+  CANCELLED:     { label: 'Cancelled',       color: '#6B7280', bg: '#F3F4F6' },
+};
+
+function StatusPill({ status }: { status: string }) {
+  const cfg = PORTAL_STATUS_CONFIG[status] || { label: status, color: '#6B7280', bg: '#F3F4F6' };
+  return (
+    <View style={{ backgroundColor: cfg.bg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
+      <Text style={{ fontSize: 11, fontWeight: '700', color: cfg.color }}>{cfg.label}</Text>
+    </View>
+  );
+}
+
+function ProjectPipeline({ status }: { status: string }) {
+  const currentIdx = STATUS_PIPELINE.indexOf(status as any);
+  const PIPE_LABELS = ['Review', 'Quoting', 'Quoted', 'Invoice', 'Paid', 'Production', 'Done'];
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 0, marginTop: 8 }}>
+      {STATUS_PIPELINE.map((s, i) => {
+        const done = currentIdx > i;
+        const active = currentIdx === i;
+        return (
+          <React.Fragment key={s}>
+            <View style={{ alignItems: 'center', flex: 1 }}>
+              <View style={{
+                width: active ? 14 : 10,
+                height: active ? 14 : 10,
+                borderRadius: active ? 7 : 5,
+                backgroundColor: done ? '#16A34A' : active ? BRAND : '#E5E7EB',
+                borderWidth: active ? 2 : 0,
+                borderColor: active ? BRAND : 'transparent',
+              }} />
+              <Text style={{ fontSize: 8, color: active ? BRAND : done ? '#16A34A' : '#9CA3AF', marginTop: 3, textAlign: 'center' }}>
+                {PIPE_LABELS[i]}
+              </Text>
+            </View>
+            {i < STATUS_PIPELINE.length - 1 && (
+              <View style={{ height: 2, flex: 0.5, backgroundColor: done ? '#16A34A' : '#E5E7EB', marginBottom: 14 }} />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </View>
+  );
+}
+
+const NAV_ITEMS: { id: ActiveView; label: string; Icon: React.ComponentType<any> }[] = [
+  { id: 'home',     label: 'Dashboard',       Icon: LayoutDashboard },
+  { id: 'projects', label: 'Projects',         Icon: Folder },
+  { id: 'quotes',   label: 'Quotes & Invoices', Icon: Receipt },
+  { id: 'artwork',  label: 'Artwork',           Icon: Layers },
+  { id: 'catalogs', label: 'Catalogs',          Icon: BookOpen },
+  { id: 'submit',   label: 'Submit Request',    Icon: ClipboardList },
+];
 
 interface ClientSession {
   userId: string;
@@ -660,6 +745,10 @@ export default function ClientPortal() {
   const [editSecondsLeft, setEditSecondsLeft] = useState(0);
   const [cancelling, setCancelling] = useState(false);
 
+  const [activeView, setActiveView] = useState<ActiveView>('home');
+  const [orgProjects, setOrgProjects] = useState<PortalProject[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+
   const [orgLogoUrl, setOrgLogoUrl] = useState<string | null>(null);
   const [orgInternalLogoUrl, setOrgInternalLogoUrl] = useState<string | null>(null);
   const [orgDisplayName, setOrgDisplayName] = useState<string>('');
@@ -703,6 +792,26 @@ export default function ClientPortal() {
     setDropdown({ visible: true, title, options, selected, onSelect });
   }, []);
 
+  const fetchOrgProjects = useCallback(async (oid: string) => {
+    setProjectsLoading(true);
+    try {
+      const res = await fetch(`/api/portal/${oid}/projects`);
+      if (res.ok) {
+        const data = await res.json();
+        setOrgProjects(data);
+      }
+    } catch {}
+    setProjectsLoading(false);
+  }, []);
+
+  const handleSignOut = useCallback(() => {
+    setSession(null);
+    setStep('email');
+    setActiveView('home');
+    setOrgProjects([]);
+    setEmail('');
+  }, []);
+
   const handleEmailSubmit = useCallback(async () => {
     const trimmed = email.trim();
     if (!trimmed) { setEmailError('Please enter your email address.'); return; }
@@ -717,13 +826,15 @@ export default function ClientPortal() {
       const data = await res.json();
       if (!res.ok) { setEmailError(data.error || 'Could not verify your email.'); return; }
       setSession(data);
-      setStep('form');
+      setStep('dashboard');
+      setActiveView('home');
+      fetchOrgProjects(data.orgId);
     } catch {
       setEmailError('Connection error. Please try again.');
     } finally {
       setEmailLoading(false);
     }
-  }, [email, orgId]);
+  }, [email, orgId, fetchOrgProjects]);
 
   const handleSubmit = useCallback(async () => {
     if (!session) return;
@@ -809,7 +920,7 @@ export default function ClientPortal() {
     setSubmittedAt(null);
     setSubmissionEmailSent(false);
     setFormErrors({});
-    setStep('form');
+    setActiveView('submit');
   }, []);
 
   const handleEditSubmission = useCallback(async () => {
@@ -827,7 +938,7 @@ export default function ClientPortal() {
     setSubmissionEmailSent(false);
     setSubmitError('');
     setFormErrors({});
-    setStep('form');
+    setActiveView('submit');
     setCancelling(false);
   }, [session, submittedId, cancelling]);
 
@@ -857,21 +968,332 @@ export default function ClientPortal() {
     setLineItems(prev => prev.filter(li => li.id !== id));
   }, []);
 
+  const logoSrc = orgLogoUrl || orgInternalLogoUrl;
+  const displayName = orgDisplayName || session?.orgName || 'KATALYST KO';
+
+  const activeProjects = orgProjects.filter(p =>
+    !['COMPLETED', 'CANCELLED'].includes(p.status)
+  );
+  const quoteProjects = orgProjects.filter(p =>
+    ['QUOTED', 'INVOICE_SENT'].includes(p.status)
+  );
+
+  function formatDate(d: string | null) {
+    if (!d) return '—';
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return '—';
+    return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function ProjectCard({ project }: { project: PortalProject }) {
+    return (
+      <View style={dash.projectCard}>
+        <View style={dash.projectCardTop}>
+          <Text style={dash.projectCardTitle} numberOfLines={1}>{project.title}</Text>
+          <StatusPill status={project.status} />
+        </View>
+        <ProjectPipeline status={project.status} />
+        <View style={dash.projectCardMeta}>
+          <Clock size={11} color={TEXT_LIGHT} />
+          <Text style={dash.projectCardMetaText}>In Hands: {formatDate(project.inHandsDate)}</Text>
+          {project.lineItemCount > 0 && (
+            <>
+              <View style={dash.metaDot} />
+              <Package size={11} color={TEXT_LIGHT} />
+              <Text style={dash.projectCardMetaText}>{project.lineItemCount} item{project.lineItemCount !== 1 ? 's' : ''}</Text>
+            </>
+          )}
+        </View>
+      </View>
+    );
+  }
+
+  function EmptyState({ icon, title, sub }: { icon: React.ReactNode; title: string; sub: string }) {
+    return (
+      <View style={dash.emptyState}>
+        <View style={dash.emptyIcon}>{icon}</View>
+        <Text style={dash.emptyTitle}>{title}</Text>
+        <Text style={dash.emptySub}>{sub}</Text>
+      </View>
+    );
+  }
+
+  function SectionCard({ title, count, onViewAll, children }: {
+    title: string; count?: number; onViewAll?: () => void; children: React.ReactNode;
+  }) {
+    return (
+      <View style={dash.sectionCard}>
+        <View style={dash.sectionCardHeader}>
+          <Text style={dash.sectionCardTitle}>{title}{count != null ? ` (${count})` : ''}</Text>
+          {onViewAll && (
+            <TouchableOpacity onPress={onViewAll}>
+              <Text style={dash.viewAllLink}>View all →</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        {children}
+      </View>
+    );
+  }
+
+  const HomeView = () => (
+    <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <Text style={dash.welcomeText}>Welcome back, <Text style={{ color: BRAND }}>{session?.userName}</Text></Text>
+      <Text style={dash.welcomeSub}>{displayName} · Client Portal</Text>
+
+      <View style={dash.dashGrid}>
+        <View style={{ flex: 1.4, minWidth: 260 }}>
+          <SectionCard
+            title="Active Projects"
+            count={activeProjects.length}
+            onViewAll={() => setActiveView('projects')}
+          >
+            {projectsLoading
+              ? <ActivityIndicator color={BRAND} style={{ marginVertical: 20 }} />
+              : activeProjects.length === 0
+                ? <EmptyState icon={<Folder size={22} color="#9CA3AF" />} title="No active projects" sub="Submit a request to get started." />
+                : activeProjects.slice(0, 3).map(p => <ProjectCard key={p.id} project={p} />)
+            }
+          </SectionCard>
+        </View>
+
+        <View style={{ flex: 1, minWidth: 220 }}>
+          <SectionCard
+            title="Quotes & Invoices"
+            count={quoteProjects.length}
+            onViewAll={() => setActiveView('quotes')}
+          >
+            {projectsLoading
+              ? <ActivityIndicator color={BRAND} style={{ marginVertical: 20 }} />
+              : quoteProjects.length === 0
+                ? <EmptyState icon={<Receipt size={22} color="#9CA3AF" />} title="No pending quotes" sub="Quotes ready for review will appear here." />
+                : quoteProjects.map(p => (
+                    <View key={p.id} style={dash.quoteRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={dash.quoteTitle} numberOfLines={1}>{p.title}</Text>
+                        <Text style={dash.quoteMeta}>{formatDate(p.createdAt)}</Text>
+                      </View>
+                      <StatusPill status={p.status} />
+                    </View>
+                  ))
+            }
+          </SectionCard>
+
+          <SectionCard title="Artwork" onViewAll={() => setActiveView('artwork')}>
+            <EmptyState icon={<Layers size={22} color="#9CA3AF" />} title="No artwork yet" sub="Uploaded files will appear here." />
+          </SectionCard>
+        </View>
+      </View>
+    </ScrollView>
+  );
+
+  const ProjectsView = () => (
+    <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
+      <Text style={dash.pageTitle}>Projects</Text>
+      {projectsLoading
+        ? <ActivityIndicator color={BRAND} style={{ marginTop: 40 }} />
+        : orgProjects.length === 0
+          ? <EmptyState icon={<Folder size={32} color="#9CA3AF" />} title="No projects yet" sub="Your submitted requests will appear here." />
+          : orgProjects.map(p => <ProjectCard key={p.id} project={p} />)
+      }
+    </ScrollView>
+  );
+
+  const QuotesView = () => (
+    <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
+      <Text style={dash.pageTitle}>Quotes & Invoices</Text>
+      {quoteProjects.length === 0
+        ? <EmptyState icon={<Receipt size={32} color="#9CA3AF" />} title="No quotes pending" sub="When Katalyst Ko sends a quote, it'll appear here." />
+        : quoteProjects.map(p => (
+            <View key={p.id} style={dash.projectCard}>
+              <View style={dash.projectCardTop}>
+                <Text style={dash.projectCardTitle} numberOfLines={1}>{p.title}</Text>
+                <StatusPill status={p.status} />
+              </View>
+              <View style={dash.projectCardMeta}>
+                <Clock size={11} color={TEXT_LIGHT} />
+                <Text style={dash.projectCardMetaText}>Submitted: {formatDate(p.createdAt)}</Text>
+              </View>
+            </View>
+          ))
+      }
+    </ScrollView>
+  );
+
+  const ArtworkView = () => (
+    <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
+      <Text style={dash.pageTitle}>Artwork</Text>
+      <EmptyState
+        icon={<Layers size={40} color="#D1D5DB" />}
+        title="No artwork uploaded yet"
+        sub="Design files and artwork will appear here once uploaded by the Katalyst Ko team."
+      />
+    </ScrollView>
+  );
+
+  const CatalogsView = () => (
+    <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
+      <Text style={dash.pageTitle}>Catalogs</Text>
+      <EmptyState
+        icon={<BookOpen size={40} color="#D1D5DB" />}
+        title="No catalogs available"
+        sub="Product catalogs will be shared here by your Katalyst Ko representative."
+      />
+    </ScrollView>
+  );
+
+  const SubmitView = () => (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView contentContainerStyle={dash.viewContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        {submittedId ? (
+          <View style={[styles.card, { maxWidth: 520 }]}>
+            <View style={styles.successIcon}><CheckCircle size={40} color="#16A34A" /></View>
+            <Text style={styles.cardTitle}>Request Submitted!</Text>
+            <Text style={styles.cardSub}>
+              Your project request has been received.{submissionEmailSent ? ' A confirmation has been sent to your email.' : ' The Katalyst Ko team will review it and reach out with a quote.'}
+            </Text>
+            <View style={styles.successRef}>
+              <Text style={styles.successRefLabel}>Reference ID</Text>
+              <Text style={styles.successRefValue} numberOfLines={1}>{submittedId}</Text>
+            </View>
+            {editSecondsLeft > 0 && (
+              <View style={styles.editWindowBox}>
+                <Text style={styles.editWindowTitle}>Need to make a change?</Text>
+                <Text style={styles.editWindowSub}>
+                  You can edit or cancel this request for{' '}
+                  <Text style={{ fontWeight: '700', color: TEXT }}>
+                    {Math.floor(editSecondsLeft / 60)}:{String(editSecondsLeft % 60).padStart(2, '0')}
+                  </Text>
+                </Text>
+                <View style={styles.editWindowBtns}>
+                  <TouchableOpacity style={[styles.editBtn, cancelling && styles.btnDisabled]} onPress={handleEditSubmission} disabled={cancelling}>
+                    {cancelling
+                      ? <ActivityIndicator size="small" color="#374151" />
+                      : <><Edit2 size={14} color="#374151" /><Text style={styles.editBtnText}>Edit Request</Text></>
+                    }
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.cancelBtn, cancelling && styles.btnDisabled]} onPress={handleCancelSubmission} disabled={cancelling}>
+                    <Trash2 size={14} color="#DC2626" />
+                    <Text style={styles.cancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+            <TouchableOpacity style={[styles.btn, { marginTop: 4 }]} onPress={handleNewRequest}>
+              <Text style={styles.btnText}>Submit Another Request</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.backBtn} onPress={() => setActiveView('home')}>
+              <ArrowLeft size={14} color={TEXT_LIGHT} />
+              <Text style={styles.backBtnText}>Back to Dashboard</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={[styles.card, { maxWidth: 720 }]}>
+            <Text style={styles.formTitle}>Submit a Project Request</Text>
+            <Text style={styles.formSub}>Fill in the details below — your submission will come straight into Ko OS ready for pricing.</Text>
+
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionLabel}>Request Details</Text>
+              <View style={[liStyles.twoCol, { marginBottom: 4 }]}>
+                <View style={[pFields.container, { flex: 1 }]}>
+                  <Text style={pFields.label}>Organization</Text>
+                  <View style={pFields.readOnly}><Text style={pFields.readOnlyText}>{session?.orgName}</Text></View>
+                </View>
+                <View style={[pFields.container, { flex: 1 }]}>
+                  <Text style={pFields.label}>Submitted By</Text>
+                  <View style={pFields.readOnly}><Text style={pFields.readOnlyText}>{session?.userName}</Text></View>
+                </View>
+              </View>
+              <View style={pFields.container}>
+                <Text style={pFields.label}>Project Name <Text style={{ color: BRAND }}>*</Text></Text>
+                <TextInput
+                  style={[pFields.input, formErrors.projectName && pFields.inputError]}
+                  value={projectName}
+                  onChangeText={v => { setProjectName(v); setFormErrors(e => ({ ...e, projectName: false })); }}
+                  placeholder="e.g. Spring 2025 Team Shirts"
+                  placeholderTextColor={TEXT_PLACEHOLDER}
+                />
+              </View>
+              <View style={liStyles.twoCol}>
+                <View style={[pFields.container, { flex: 1 }]}>
+                  <Text style={pFields.label}>Order Type</Text>
+                  <TouchableOpacity style={pFields.selectRow} onPress={() => openDropdown('Order Type', PORTAL_ORDER_TYPES, orderType, setOrderType)}>
+                    <Text style={pFields.selectText}>{orderType}</Text>
+                    <ChevronDown size={15} color={TEXT_LIGHT} />
+                  </TouchableOpacity>
+                </View>
+                <View style={[{ flex: 1 }]}>
+                  <PortalDatePicker
+                    label="In Hands Date"
+                    required
+                    value={inHandsDate}
+                    onChange={v => { setInHandsDate(v); setFormErrors(e => ({ ...e, inHandsDate: false })); }}
+                    hasError={formErrors.inHandsDate}
+                  />
+                </View>
+              </View>
+            </View>
+
+            <Text style={styles.sectionTitle}>Line Items</Text>
+            <Text style={styles.sectionSub}>Add one line item per design or service type.</Text>
+            {lineItems.map((item, i) => (
+              <PortalLineItemCard
+                key={item.id}
+                item={item}
+                index={i}
+                canDelete={lineItems.length > 1}
+                onChange={updated => updateLineItem(item.id, updated)}
+                onDelete={() => removeLineItem(item.id)}
+                openDropdown={openDropdown}
+              />
+            ))}
+            <TouchableOpacity style={styles.addLineItemBtn} onPress={addLineItem}>
+              <Plus size={14} color={BRAND} />
+              <Text style={styles.addLineItemText}>Add Another Line Item</Text>
+            </TouchableOpacity>
+
+            <View style={[pFields.container, { marginTop: 4 }]}>
+              <Text style={pFields.label}>Overall Request Notes</Text>
+              <Text style={pFields.hint}>Any general instructions or context for the entire request.</Text>
+              <TextInput
+                style={pFields.textarea}
+                value={requestNotes}
+                onChangeText={setRequestNotes}
+                placeholder="Shipping details, rush notes, color direction, brand standards…"
+                placeholderTextColor={TEXT_PLACEHOLDER}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
+
+            {submitError ? <View style={styles.errorBox}><Text style={styles.errorText}>{submitError}</Text></View> : null}
+
+            <TouchableOpacity style={[styles.btn, submitting && styles.btnDisabled]} onPress={handleSubmit} disabled={submitting}>
+              {submitting ? <ActivityIndicator size="small" color="#fff" /> : (
+                <>
+                  <Send size={16} color="#fff" />
+                  <Text style={[styles.btnText, { marginLeft: 8 }]}>Submit Request</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+
   return (
     <View style={styles.root}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={styles.topBar}>
-        {(() => {
-          const logoSrc = orgLogoUrl || orgInternalLogoUrl;
-          if (logoSrc) {
-            return (
+      {/* ── EMAIL STEP ── */}
+      {step === 'email' && (
+        <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+          <View style={styles.topBar}>
+            {logoSrc ? (
               <View style={styles.topBarBrandRow}>
-                <Image
-                  source={{ uri: logoSrc }}
-                  style={styles.topBarLogo}
-                  resizeMode="contain"
-                />
+                <Image source={{ uri: logoSrc }} style={styles.topBarLogo} resizeMode="contain" />
                 {orgDisplayName ? (
                   <View style={{ marginLeft: 10 }}>
                     <Text style={styles.logoText}>{orgDisplayName.toUpperCase()}</Text>
@@ -879,244 +1301,109 @@ export default function ClientPortal() {
                   </View>
                 ) : null}
               </View>
-            );
-          }
-          return (
-            <View>
-              <Text style={styles.logoText}>KATALYST KO</Text>
-              <Text style={styles.logoSub}>Client Portal</Text>
-            </View>
-          );
-        })()}
-      </View>
-
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-
-          {/* ── EMAIL STEP ── */}
-          {step === 'email' && (
-            <View style={styles.card}>
-              <View style={styles.cardIcon}>
-                <FileText size={28} color={BRAND} />
+            ) : (
+              <View>
+                <Text style={styles.logoText}>KATALYST KO</Text>
+                <Text style={styles.logoSub}>Client Portal</Text>
               </View>
-              <Text style={styles.cardTitle}>Client Hub Access</Text>
-              <Text style={styles.cardSub}>
-                Enter the email address associated with your account to access your organization's portal.
-              </Text>
-              <View style={pFields.container}>
-                <Text style={pFields.label}>Email Address <Text style={{ color: BRAND }}>*</Text></Text>
-                <TextInput
-                  style={pFields.input}
-                  value={email}
-                  onChangeText={v => { setEmail(v); setEmailError(''); }}
-                  placeholder="your@email.com"
-                  placeholderTextColor={TEXT_PLACEHOLDER}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  onSubmitEditing={handleEmailSubmit}
-                  returnKeyType="done"
-                />
-              </View>
-              {emailError ? <View style={styles.errorBox}><Text style={styles.errorText}>{emailError}</Text></View> : null}
-              <TouchableOpacity style={[styles.btn, emailLoading && styles.btnDisabled]} onPress={handleEmailSubmit} disabled={emailLoading}>
-                {emailLoading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.btnText}>Access Portal</Text>}
-              </TouchableOpacity>
-              <Text style={styles.helpText}>Don't have an account? Contact Katalyst Ko to get set up.</Text>
-            </View>
-          )}
-
-          {/* ── FORM STEP ── */}
-          {step === 'form' && session && (
-            <View style={[styles.card, { maxWidth: 720 }]}>
-              {/* Welcome */}
-              <View style={styles.welcomeRow}>
-                <View style={styles.welcomeAvatar}>
-                  <Text style={styles.welcomeAvatarText}>{session.userName?.[0]?.toUpperCase() || '?'}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.welcomeName}>Hi, {session.userName}!</Text>
-                  <Text style={styles.welcomeOrg}>{session.orgName}</Text>
-                </View>
-              </View>
-              <View style={styles.divider} />
-
-              <Text style={styles.formTitle}>Submit a Project Request</Text>
-              <Text style={styles.formSub}>
-                Fill in the details below — your submission will come straight into Ko OS ready for pricing.
-              </Text>
-
-              {/* ── REQUEST FIELDS ── */}
-              <View style={styles.sectionCard}>
-                <Text style={styles.sectionLabel}>Request Details</Text>
-
-                {/* Auto-filled read-only */}
-                <View style={[liStyles.twoCol, { marginBottom: 4 }]}>
-                  <View style={[pFields.container, { flex: 1 }]}>
-                    <Text style={pFields.label}>Organization</Text>
-                    <View style={pFields.readOnly}><Text style={pFields.readOnlyText}>{session.orgName}</Text></View>
-                  </View>
-                  <View style={[pFields.container, { flex: 1 }]}>
-                    <Text style={pFields.label}>Submitted By</Text>
-                    <View style={pFields.readOnly}><Text style={pFields.readOnlyText}>{session.userName}</Text></View>
-                  </View>
-                </View>
-
-                {/* Project Name */}
+            )}
+          </View>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+              <View style={styles.card}>
+                <View style={styles.cardIcon}><FileText size={28} color={BRAND} /></View>
+                <Text style={styles.cardTitle}>Client Hub Access</Text>
+                <Text style={styles.cardSub}>
+                  Enter the email address associated with your account to access your organization's portal.
+                </Text>
                 <View style={pFields.container}>
-                  <Text style={pFields.label}>Project Name <Text style={{ color: BRAND }}>*</Text></Text>
+                  <Text style={pFields.label}>Email Address <Text style={{ color: BRAND }}>*</Text></Text>
                   <TextInput
-                    style={[pFields.input, formErrors.projectName && pFields.inputError]}
-                    value={projectName}
-                    onChangeText={v => { setProjectName(v); setFormErrors(e => ({ ...e, projectName: false })); }}
-                    placeholder="e.g. Spring 2025 Team Shirts"
+                    style={pFields.input}
+                    value={email}
+                    onChangeText={v => { setEmail(v); setEmailError(''); }}
+                    placeholder="your@email.com"
                     placeholderTextColor={TEXT_PLACEHOLDER}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    onSubmitEditing={handleEmailSubmit}
+                    returnKeyType="done"
                   />
                 </View>
-
-                {/* Order Type + In Hands Date */}
-                <View style={liStyles.twoCol}>
-                  <View style={[pFields.container, { flex: 1 }]}>
-                    <Text style={pFields.label}>Order Type</Text>
-                    <TouchableOpacity
-                      style={pFields.selectRow}
-                      onPress={() => openDropdown('Order Type', PORTAL_ORDER_TYPES, orderType, setOrderType)}
-                    >
-                      <Text style={pFields.selectText}>{orderType}</Text>
-                      <ChevronDown size={15} color={TEXT_LIGHT} />
-                    </TouchableOpacity>
-                  </View>
-                  <View style={[{ flex: 1 }]}>
-                    <PortalDatePicker
-                      label="In Hands Date"
-                      required
-                      value={inHandsDate}
-                      onChange={v => { setInHandsDate(v); setFormErrors(e => ({ ...e, inHandsDate: false })); }}
-                      hasError={formErrors.inHandsDate}
-                    />
-                  </View>
-                </View>
+                {emailError ? <View style={styles.errorBox}><Text style={styles.errorText}>{emailError}</Text></View> : null}
+                <TouchableOpacity style={[styles.btn, emailLoading && styles.btnDisabled]} onPress={handleEmailSubmit} disabled={emailLoading}>
+                  {emailLoading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.btnText}>Access Portal</Text>}
+                </TouchableOpacity>
+                <Text style={styles.helpText}>Don't have an account? Contact Katalyst Ko to get set up.</Text>
               </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Powered by Katalyst Ko · Client Hub</Text>
+          </View>
+        </View>
+      )}
 
-              {/* ── LINE ITEMS ── */}
-              <Text style={styles.sectionTitle}>Line Items</Text>
-              <Text style={styles.sectionSub}>Add one line item per design or service type.</Text>
-
-              {lineItems.map((item, i) => (
-                <PortalLineItemCard
-                  key={item.id}
-                  item={item}
-                  index={i}
-                  canDelete={lineItems.length > 1}
-                  onChange={updated => updateLineItem(item.id, updated)}
-                  onDelete={() => removeLineItem(item.id)}
-                  openDropdown={openDropdown}
-                />
-              ))}
-
-              <TouchableOpacity style={styles.addLineItemBtn} onPress={addLineItem}>
-                <Plus size={14} color={BRAND} />
-                <Text style={styles.addLineItemText}>Add Another Line Item</Text>
-              </TouchableOpacity>
-
-              {/* ── OVERALL NOTES ── */}
-              <View style={[pFields.container, { marginTop: 4 }]}>
-                <Text style={pFields.label}>Overall Request Notes</Text>
-                <Text style={pFields.hint}>Any general instructions or context for the entire request.</Text>
-                <TextInput
-                  style={pFields.textarea}
-                  value={requestNotes}
-                  onChangeText={setRequestNotes}
-                  placeholder="Shipping details, rush notes, color direction, brand standards…"
-                  placeholderTextColor={TEXT_PLACEHOLDER}
-                  multiline
-                  numberOfLines={4}
-                  textAlignVertical="top"
-                />
-              </View>
-
-              {submitError ? (
-                <View style={styles.errorBox}><Text style={styles.errorText}>{submitError}</Text></View>
-              ) : null}
-
-              <TouchableOpacity style={[styles.btn, submitting && styles.btnDisabled]} onPress={handleSubmit} disabled={submitting}>
-                {submitting ? <ActivityIndicator size="small" color="#fff" /> : (
-                  <>
-                    <Send size={16} color="#fff" />
-                    <Text style={[styles.btnText, { marginLeft: 8 }]}>Submit Request</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.backBtn} onPress={() => setStep('email')}>
-                <ArrowLeft size={14} color={TEXT_LIGHT} />
-                <Text style={styles.backBtnText}>Not you? Switch account</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* ── SUCCESS STEP ── */}
-          {step === 'success' && session && (
-            <View style={styles.card}>
-              <View style={styles.successIcon}><CheckCircle size={40} color="#16A34A" /></View>
-              <Text style={styles.cardTitle}>Request Submitted!</Text>
-              <Text style={styles.cardSub}>
-                Your project request has been received.{submissionEmailSent ? ' A confirmation has been sent to your email.' : ' The Katalyst Ko team will review it and reach out with next steps and a quote.'}
-              </Text>
-
-              <View style={styles.successRef}>
-                <Text style={styles.successRefLabel}>Reference ID</Text>
-                <Text style={styles.successRefValue} numberOfLines={1}>{submittedId}</Text>
-              </View>
-
-              {/* ── Edit window ── */}
-              {editSecondsLeft > 0 && (
-                <View style={styles.editWindowBox}>
-                  <Text style={styles.editWindowTitle}>Need to make a change?</Text>
-                  <Text style={styles.editWindowSub}>
-                    You can edit or cancel this request for{' '}
-                    <Text style={{ fontWeight: '700', color: TEXT }}>
-                      {Math.floor(editSecondsLeft / 60)}:{String(editSecondsLeft % 60).padStart(2, '0')}
-                    </Text>
-                  </Text>
-                  <View style={styles.editWindowBtns}>
-                    <TouchableOpacity
-                      style={[styles.editBtn, cancelling && styles.btnDisabled]}
-                      onPress={handleEditSubmission}
-                      disabled={cancelling}
-                    >
-                      {cancelling
-                        ? <ActivityIndicator size="small" color="#374151" />
-                        : <><Edit2 size={14} color="#374151" /><Text style={styles.editBtnText}>Edit Request</Text></>
-                      }
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.cancelBtn, cancelling && styles.btnDisabled]}
-                      onPress={handleCancelSubmission}
-                      disabled={cancelling}
-                    >
-                      <Trash2 size={14} color="#DC2626" />
-                      <Text style={styles.cancelBtnText}>Cancel</Text>
-                    </TouchableOpacity>
-                  </View>
+      {/* ── DASHBOARD STEP ── */}
+      {step === 'dashboard' && session && (
+        <View style={dash.layout}>
+          {/* Sidebar */}
+          <View style={dash.sidebar}>
+            <View style={dash.sidebarHeader}>
+              {logoSrc ? (
+                <Image source={{ uri: logoSrc }} style={dash.sidebarLogo} resizeMode="contain" />
+              ) : (
+                <View>
+                  <Text style={dash.sidebarLogoText}>{displayName.toUpperCase()}</Text>
+                  <Text style={dash.sidebarLogoBrand}>Client Portal</Text>
                 </View>
               )}
-
-              <TouchableOpacity style={[styles.btn, { marginTop: 4 }]} onPress={handleNewRequest}>
-                <Text style={styles.btnText}>Submit Another Request</Text>
-              </TouchableOpacity>
-              <Text style={styles.helpText}>
-                Questions? Email us at <Text style={{ color: BRAND }}>jobs@katalystko.com</Text>
-              </Text>
             </View>
-          )}
 
-        </ScrollView>
-      </KeyboardAvoidingView>
+            <View style={dash.sidebarNav}>
+              {NAV_ITEMS.map(({ id, label, Icon }) => {
+                const isActive = activeView === id;
+                return (
+                  <TouchableOpacity
+                    key={id}
+                    style={[dash.navItem, isActive && dash.navItemActive]}
+                    onPress={() => setActiveView(id)}
+                  >
+                    <Icon size={16} color={isActive ? '#fff' : '#9CA3AF'} />
+                    <Text style={[dash.navLabel, isActive && dash.navLabelActive]}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Powered by Katalyst Ko · Client Hub</Text>
-      </View>
+            <View style={dash.sidebarFooter}>
+              <View style={dash.userRow}>
+                <View style={dash.userAvatar}>
+                  <Text style={dash.userAvatarText}>{session.userName[0]?.toUpperCase() || '?'}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={dash.userName} numberOfLines={1}>{session.userName}</Text>
+                  <Text style={dash.userOrg} numberOfLines={1}>{session.orgName}</Text>
+                </View>
+                <TouchableOpacity onPress={handleSignOut} style={dash.signOutBtn}>
+                  <LogOut size={15} color="#9CA3AF" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          {/* Main content */}
+          <View style={dash.main}>
+            {activeView === 'home'     && <HomeView />}
+            {activeView === 'projects' && <ProjectsView />}
+            {activeView === 'quotes'   && <QuotesView />}
+            {activeView === 'artwork'  && <ArtworkView />}
+            {activeView === 'catalogs' && <CatalogsView />}
+            {activeView === 'submit'   && <SubmitView />}
+          </View>
+        </View>
+      )}
 
       {/* ── SHARED DROPDOWN MODAL ── */}
       <Modal visible={dropdown.visible} transparent animationType="fade" onRequestClose={() => setDropdown(d => ({ ...d, visible: false }))}>
@@ -1134,9 +1421,7 @@ export default function ClientPortal() {
                     setDropdown(d => ({ ...d, visible: false }));
                   }}
                 >
-                  <Text style={[ddStyles.optionText, dropdown.selected === opt && ddStyles.optionTextSelected]}>
-                    {opt}
-                  </Text>
+                  <Text style={[ddStyles.optionText, dropdown.selected === opt && ddStyles.optionTextSelected]}>{opt}</Text>
                   {dropdown.selected === opt && <View style={ddStyles.dot} />}
                 </TouchableOpacity>
               ))}
@@ -1450,4 +1735,104 @@ const styles = StyleSheet.create({
   cancelBtnText: { fontSize: 13, fontWeight: '600', color: '#DC2626' },
   footer: { backgroundColor: '#F3F4F6', borderTopWidth: 1, borderTopColor: BORDER, paddingVertical: 12, alignItems: 'center' },
   footerText: { fontSize: 12, color: TEXT_PLACEHOLDER },
+});
+
+const SIDEBAR_BG = '#111827';
+const SIDEBAR_ACTIVE = '#FF5A00';
+
+const dash = StyleSheet.create({
+  layout: { flex: 1, flexDirection: 'row', backgroundColor: '#F3F4F6' },
+
+  sidebar: {
+    width: 210,
+    backgroundColor: SIDEBAR_BG,
+    flexDirection: 'column',
+    ...Platform.select({ web: { position: 'sticky' as any, top: 0, height: '100vh' as any }, default: {} }),
+  },
+  sidebarHeader: {
+    paddingHorizontal: 18,
+    paddingTop: 22,
+    paddingBottom: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+  },
+  sidebarLogo: { width: 130, height: 36 },
+  sidebarLogoText: { color: '#fff', fontSize: 13, fontWeight: '800', letterSpacing: 1.5 },
+  sidebarLogoBrand: { color: BRAND, fontSize: 9, fontWeight: '600', letterSpacing: 1, marginTop: 2 },
+
+  sidebarNav: { flex: 1, paddingTop: 10, paddingHorizontal: 10 },
+  navItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8, marginBottom: 2,
+  },
+  navItemActive: { backgroundColor: SIDEBAR_ACTIVE },
+  navLabel: { fontSize: 13, color: '#9CA3AF', fontWeight: '500' },
+  navLabelActive: { color: '#fff', fontWeight: '700' },
+
+  sidebarFooter: {
+    paddingHorizontal: 10,
+    paddingBottom: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+    paddingTop: 12,
+  },
+  userRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  userAvatar: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center',
+  },
+  userAvatarText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  userName: { fontSize: 12, fontWeight: '600', color: '#E5E7EB' },
+  userOrg: { fontSize: 10, color: '#6B7280', marginTop: 1 },
+  signOutBtn: { padding: 6 },
+
+  main: { flex: 1, backgroundColor: '#F3F4F6' },
+
+  viewContent: { padding: 28, paddingBottom: 48 },
+
+  welcomeText: { fontSize: 22, fontWeight: '700', color: TEXT, marginBottom: 4 },
+  welcomeSub: { fontSize: 13, color: TEXT_LIGHT, marginBottom: 24 },
+
+  dashGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 16,
+  },
+
+  sectionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    marginBottom: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+    overflow: 'hidden',
+  },
+  sectionCardHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 18, paddingTop: 16, paddingBottom: 10,
+    borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+  },
+  sectionCardTitle: { fontSize: 14, fontWeight: '700', color: TEXT },
+  viewAllLink: { fontSize: 12, color: BRAND, fontWeight: '600' },
+
+  projectCard: {
+    paddingHorizontal: 18, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: '#F9FAFB',
+  },
+  projectCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  projectCardTitle: { flex: 1, fontSize: 13, fontWeight: '700', color: TEXT },
+  projectCardMeta: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 },
+  projectCardMetaText: { fontSize: 11, color: TEXT_LIGHT },
+  metaDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#D1D5DB' },
+
+  quoteRow: {
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: '#F9FAFB', gap: 10,
+  },
+  quoteTitle: { fontSize: 13, fontWeight: '600', color: TEXT },
+  quoteMeta: { fontSize: 11, color: TEXT_LIGHT, marginTop: 2 },
+
+  emptyState: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 20 },
+  emptyIcon: { marginBottom: 10, opacity: 0.5 },
+  emptyTitle: { fontSize: 13, fontWeight: '600', color: TEXT_LIGHT, marginBottom: 4 },
+  emptySub: { fontSize: 12, color: TEXT_PLACEHOLDER, textAlign: 'center', lineHeight: 17 },
+
+  pageTitle: { fontSize: 20, fontWeight: '700', color: TEXT, marginBottom: 20 },
 });
