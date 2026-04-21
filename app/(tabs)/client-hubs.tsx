@@ -65,7 +65,6 @@ function HubRow({ org, onPress, onCopyLink, copied, hideContact }: {
       </View>
       <View style={styles.colOrg}>
         <Text style={styles.tableOrgName} numberOfLines={1}>{org.name}</Text>
-        {org.type ? <Text style={styles.tableOrgType} numberOfLines={1}>{org.type}</Text> : null}
         {!hasLogo && (
           <View style={styles.noLogoTag}>
             <AlertCircle size={9} color="#D97706" />
@@ -73,16 +72,23 @@ function HubRow({ org, onPress, onCopyLink, copied, hideContact }: {
           </View>
         )}
       </View>
+      <View style={styles.colBizType}>
+        {org.type
+          ? <Text style={styles.tableOrgType} numberOfLines={1}>{org.type}</Text>
+          : <Text style={styles.tableDim}>—</Text>}
+      </View>
       {!hideContact && (
-        <View style={styles.colContact}>
-          {contactName ? (
-            <View>
-              <Text style={styles.tableContact} numberOfLines={1}>{contactName}</Text>
-              {contactEmail ? <Text style={styles.tableContactSub} numberOfLines={1}>{contactEmail}</Text> : null}
-            </View>
-          ) : (
-            <Text style={styles.tableDim}>No contact</Text>
-          )}
+        <View style={styles.colContactName}>
+          {contactName
+            ? <Text style={styles.tableContact} numberOfLines={1}>{contactName}</Text>
+            : <Text style={styles.tableDim}>No contact</Text>}
+        </View>
+      )}
+      {!hideContact && (
+        <View style={styles.colEmail}>
+          {contactEmail
+            ? <Text style={styles.tableContactSub} numberOfLines={1}>{contactEmail}</Text>
+            : <Text style={styles.tableDim}>—</Text>}
         </View>
       )}
       <View style={styles.colStatus}>
@@ -203,6 +209,8 @@ function AddOrgRow({
     ? `${primaryContact.firstName} ${primaryContact.lastName}`.trim()
     : null;
 
+  const contactEmail = primaryContact?.email || null;
+
   return (
     <TouchableOpacity style={styles.tableRow} onPress={onEnable} activeOpacity={0.7}>
       <View style={styles.colAvatar}>
@@ -210,15 +218,24 @@ function AddOrgRow({
       </View>
       <View style={styles.colOrg}>
         <Text style={styles.tableOrgName} numberOfLines={1}>{org.name}</Text>
-        {org.type ? <Text style={styles.tableOrgType} numberOfLines={1}>{org.type}</Text> : null}
+      </View>
+      <View style={styles.colBizType}>
+        {org.type
+          ? <Text style={styles.tableOrgType} numberOfLines={1}>{org.type}</Text>
+          : <Text style={styles.tableDim}>—</Text>}
       </View>
       {!hideContact && (
-        <View style={styles.colContact}>
-          {contactName ? (
-            <Text style={styles.tableContact} numberOfLines={1}>{contactName}</Text>
-          ) : (
-            <Text style={styles.tableDim}>No contact</Text>
-          )}
+        <View style={styles.colContactName}>
+          {contactName
+            ? <Text style={styles.tableContact} numberOfLines={1}>{contactName}</Text>
+            : <Text style={styles.tableDim}>No contact</Text>}
+        </View>
+      )}
+      {!hideContact && (
+        <View style={styles.colEmail}>
+          {contactEmail
+            ? <Text style={styles.tableContactSub} numberOfLines={1}>{contactEmail}</Text>
+            : <Text style={styles.tableDim}>—</Text>}
         </View>
       )}
       <View style={styles.colStatus}>
@@ -417,9 +434,11 @@ export default function ClientHubsScreen() {
                   <View style={styles.tableHeader}>
                     <View style={styles.colAvatar} />
                     <Text style={[styles.thText, styles.colOrg]}>ORGANIZATION</Text>
-                    {!hideContact && <Text style={[styles.thText, styles.colContact]}>PRIMARY CONTACT</Text>}
+                    <Text style={[styles.thText, styles.colBizType]}>BUSINESS TYPE</Text>
+                    {!hideContact && <Text style={[styles.thText, styles.colContactName]}>PRIMARY CONTACT</Text>}
+                    {!hideContact && <Text style={[styles.thText, styles.colEmail]}>CONTACT EMAIL</Text>}
                     <Text style={[styles.thText, styles.colStatus]}>STATUS</Text>
-                    <Text style={[styles.thText, styles.colActions]}>ACTIONS</Text>
+                    <Text style={[styles.thText, styles.colActionsHeader]}>ACTIONS</Text>
                   </View>
                   <View style={styles.tableBody}>
                     {hubEnabled.map((org, idx) => (
@@ -459,9 +478,11 @@ export default function ClientHubsScreen() {
                   <View style={[styles.tableHeader, { marginTop: hubEnabled.length > 0 ? 20 : 0 }]}>
                     <View style={styles.colAvatar} />
                     <Text style={[styles.thText, styles.colOrg]}>ORGANIZATION</Text>
-                    {!hideContact && <Text style={[styles.thText, styles.colContact]}>CONTACT</Text>}
+                    <Text style={[styles.thText, styles.colBizType]}>BUSINESS TYPE</Text>
+                    {!hideContact && <Text style={[styles.thText, styles.colContactName]}>PRIMARY CONTACT</Text>}
+                    {!hideContact && <Text style={[styles.thText, styles.colEmail]}>CONTACT EMAIL</Text>}
                     <Text style={[styles.thText, styles.colStatus]}>HUB</Text>
-                    <Text style={[styles.thText, styles.colActions]}>ENABLE</Text>
+                    <Text style={[styles.thText, styles.colActionsHeader]}>ENABLE</Text>
                   </View>
                   <View style={styles.tableBody}>
                     {notEnabled.map((org, idx) => (
@@ -620,10 +641,13 @@ const styles = StyleSheet.create({
 
   // Columns
   colAvatar: { width: 44 },
-  colOrg: { flex: 2.5 },
-  colContact: { flex: 2.5 },
+  colOrg: { flex: 2 },
+  colBizType: { flex: 1.5 },
+  colContactName: { flex: 2 },
+  colEmail: { flex: 2 },
   colStatus: { flex: 1.8, gap: 4 },
-  colActions: { flexDirection: 'row', alignItems: 'center', gap: 6, width: 120, justifyContent: 'flex-end' },
+  colActions: { flexDirection: 'row', alignItems: 'center', gap: 6, width: 110, justifyContent: 'flex-end' },
+  colActionsHeader: { width: 110, textAlign: 'right' as const },
 
   // Row content
   tableOrgName: { fontSize: 14, fontWeight: '600' as const, color: Colors.light.text },
