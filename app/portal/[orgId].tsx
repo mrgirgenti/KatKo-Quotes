@@ -24,8 +24,10 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
+  Check,
+  Edit2,
 } from 'lucide-react-native';
-import { LOCATIONS } from '@/types/quote';
+import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
 
 const BRAND = '#FF5A00';
 const BRAND_DARK = '#CC4700';
@@ -280,6 +282,99 @@ function PortalDatePicker({ value, onChange, label, required, hasError }: Portal
 }
 
 // ────────────────────────────────────────────────────────────
+// PortalComboCell — searchable + free-text input for table cells
+// ────────────────────────────────────────────────────────────
+interface PortalComboCellProps {
+  value: string;
+  onChangeText: (v: string) => void;
+  options: readonly string[];
+  placeholder: string;
+  cellWidth: number;
+}
+
+function PortalComboCell({ value, onChangeText, options, placeholder, cellWidth }: PortalComboCellProps) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filtered = search.trim()
+    ? options.filter(o => o.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  const handleOpen = () => {
+    setSearch(value || '');
+    setOpen(true);
+  };
+
+  const handleSelect = (opt: string) => {
+    onChangeText(opt);
+    setOpen(false);
+    setSearch('');
+  };
+
+  const handleConfirmTyped = () => {
+    if (search.trim()) onChangeText(search.trim());
+    setOpen(false);
+    setSearch('');
+  };
+
+  const typedIsNew = !!search.trim() && !filtered.some(o => o.toLowerCase() === search.trim().toLowerCase());
+
+  return (
+    <View style={[comboCellStyles.wrapper, { width: cellWidth }]}>
+      <TextInput
+        style={[liStyles.sizeInput, { flex: 1, marginHorizontal: 0 }]}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={TEXT_PLACEHOLDER}
+      />
+      <TouchableOpacity style={comboCellStyles.chevron} onPress={handleOpen}>
+        <ChevronDown size={10} color={TEXT_LIGHT} />
+      </TouchableOpacity>
+
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={comboCellStyles.overlay} onPress={() => setOpen(false)}>
+          <Pressable style={comboCellStyles.card} onPress={() => {}}>
+            <Text style={comboCellStyles.cardTitle}>{placeholder}</Text>
+            <View style={comboCellStyles.searchRow}>
+              <TextInput
+                style={comboCellStyles.searchInput}
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search or type a custom value…"
+                placeholderTextColor={TEXT_PLACEHOLDER}
+                autoFocus
+                onSubmitEditing={handleConfirmTyped}
+              />
+            </View>
+            <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
+              {typedIsNew && (
+                <TouchableOpacity style={comboCellStyles.customOption} onPress={handleConfirmTyped}>
+                  <Edit2 size={12} color={BRAND} />
+                  <Text style={comboCellStyles.customOptionText}>Use "{search.trim()}"</Text>
+                </TouchableOpacity>
+              )}
+              {filtered.map(opt => (
+                <TouchableOpacity
+                  key={opt}
+                  style={[comboCellStyles.option, value === opt && comboCellStyles.optionSel]}
+                  onPress={() => handleSelect(opt)}
+                >
+                  <Text style={[comboCellStyles.optionText, value === opt && comboCellStyles.optionTextSel]}>
+                    {opt}
+                  </Text>
+                  {value === opt && <Check size={13} color={BRAND} />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
 // PortalLineItemCard
 // ────────────────────────────────────────────────────────────
 interface PortalLineItemCardProps {
@@ -451,19 +546,19 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
               {/* Data rows */}
               {item.sizeRows.map((row, ri) => (
                 <View key={row.id} style={liStyles.sizeDataRow}>
-                  <TextInput
-                    style={[liStyles.sizeInput, { width: 130 }]}
+                  <PortalComboCell
                     value={row.product}
                     onChangeText={v => updRow(row.id, { product: v })}
+                    options={PRODUCTS}
                     placeholder="Style / Product"
-                    placeholderTextColor={TEXT_PLACEHOLDER}
+                    cellWidth={130}
                   />
-                  <TextInput
-                    style={[liStyles.sizeInput, { width: 90 }]}
+                  <PortalComboCell
                     value={row.color}
                     onChangeText={v => updRow(row.id, { color: v })}
+                    options={PRODUCT_COLORS}
                     placeholder="Color"
-                    placeholderTextColor={TEXT_PLACEHOLDER}
+                    cellWidth={90}
                   />
                   {SIZE_KEYS.map(k => (
                     <TextInput
@@ -1032,6 +1127,84 @@ const liStyles = StyleSheet.create({
   grandTotalValue: { fontSize: 14, fontWeight: '700', color: '#15803D' },
 });
 
+const comboCellStyles = StyleSheet.create({
+  wrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 2,
+  },
+  chevron: {
+    paddingHorizontal: 2,
+    paddingVertical: 6,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    width: '100%',
+    maxWidth: 340,
+    overflow: 'hidden',
+  },
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: TEXT,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  searchRow: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: TEXT,
+    backgroundColor: BG,
+  },
+  customOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    backgroundColor: '#FFF7F0',
+  },
+  customOptionText: {
+    fontSize: 13,
+    color: BRAND,
+    fontWeight: '600',
+  },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  optionSel: { backgroundColor: '#FFF7ED' },
+  optionText: { fontSize: 13, color: TEXT_MED, flex: 1 },
+  optionTextSel: { color: BRAND, fontWeight: '600' },
+});
+
 const pCal = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   card: { backgroundColor: '#fff', borderRadius: 16, width: '100%', maxWidth: 320, overflow: 'hidden' },
@@ -1055,8 +1228,24 @@ const pCal = StyleSheet.create({
 });
 
 const ddStyles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 18, borderTopRightRadius: 18, paddingBottom: Platform.OS === 'ios' ? 28 : 16 },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    ...Platform.select({
+      web: { justifyContent: 'center', alignItems: 'center', padding: 24 },
+      default: { justifyContent: 'flex-end' },
+    }),
+  },
+  sheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 16,
+    ...Platform.select({
+      web: { borderRadius: 12, width: '100%', maxWidth: 320, paddingBottom: 12 } as any,
+      default: {},
+    }),
+  },
   handle: { width: 40, height: 4, backgroundColor: '#D1D5DB', borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 6 },
   title: { fontSize: 15, fontWeight: '700', color: TEXT, paddingHorizontal: 20, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: BORDER },
   option: { paddingHorizontal: 20, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', flexDirection: 'row', alignItems: 'center' },
