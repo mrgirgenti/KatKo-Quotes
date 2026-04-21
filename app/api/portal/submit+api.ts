@@ -72,10 +72,12 @@ export async function POST(request: Request) {
 
     const mappedOrderType = mapOrderType(orderType || 'New Order');
 
+    const submittedOrderDate = new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+
     const projectResult = await pool.query(
       `INSERT INTO "Project" (
         id, title, "clientName", "organizationId",
-        "orderType", "inHandsDate",
+        "orderType", "orderDate", "inHandsDate",
         "hasOnlineFee", "hasSalesTax", "hasCardFee",
         calculations, "salesData", "lineItemsData",
         "frontendStatus", status, "intakeSource",
@@ -83,11 +85,11 @@ export async function POST(request: Request) {
         "isLocked", "exportedToSheets", "createdAt", "updatedAt"
       ) VALUES (
         gen_random_uuid(), $1, $2, $3,
-        $4, $5,
+        $4, $5, $6,
         true, false, true,
-        NULL::jsonb, NULL::jsonb, $6::jsonb,
+        NULL::jsonb, NULL::jsonb, $7::jsonb,
         'needs_review', 'NEEDS_REVIEW'::"ProjectStatus", 'CLIENT_HUB'::"IntakeSource",
-        $7, $8,
+        $8, $9,
         false, false, NOW(), NOW()
       ) RETURNING *`,
       [
@@ -95,6 +97,7 @@ export async function POST(request: Request) {
         orgName || orgCheck.rows[0].name,
         orgId,
         mappedOrderType,
+        submittedOrderDate,
         inHandsDate || null,
         JSON.stringify(lineItemsData),
         userId,

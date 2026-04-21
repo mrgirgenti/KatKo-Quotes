@@ -90,7 +90,7 @@ export async function POST(request: Request) {
         body.personOrganization || '',
         body.orgId ?? null,
         body.orderType || 'New',
-        body.orderDate || null,
+        new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
         body.inHandsDate || null,
         body.invoiceNumber || null,
         body.hasOnlineFee ?? true,

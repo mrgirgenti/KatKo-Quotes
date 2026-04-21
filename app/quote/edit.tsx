@@ -254,10 +254,12 @@ export default function EditQuoteScreen() {
             />
             <View style={styles.row}>
               <View style={styles.halfField}>
-                <DateInput
+                <FormInput
                   label="Order Date"
                   value={orderDate}
-                  onChangeText={setOrderDate}
+                  onChangeText={() => {}}
+                  editable={false}
+                  style={{ backgroundColor: '#F3F4F6', color: '#9CA3AF' }}
                 />
               </View>
               <View style={styles.halfField}>
