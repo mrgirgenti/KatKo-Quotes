@@ -441,6 +441,21 @@ model ActivityLog {
   @@index([actionType])
 }
 
+model ClientCatalog {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  vendorName   String?
+  category     String   @default("Apparel")
+  catalogUrl   String
+  websiteUrl   String?
+  coverImageUrl String?
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
 model EmailNotification {
   id               String                  @id @default(uuid())
   relatedProjectId String?

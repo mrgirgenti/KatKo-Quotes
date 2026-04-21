@@ -20,6 +20,15 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 - Sidebar reads dynamic company logo from `orgAdmin.companyLogo` (falls back to hardcoded CDN URI)
 - `UserContext` exposes: `isOrgAdmin()`, `orgAdmin` (first user with role=org_admin), `createUser(name, email?, role?)`
 
+## Client-Facing Catalogs — 2026-04-21
+- **`ClientCatalog` database table** added via Prisma schema (id, name, description, vendorName, category, catalogUrl, websiteUrl, coverImageUrl, isActive, sortOrder, timestamps)
+- **API routes**: `GET/POST /api/client-catalogs` and `PATCH/DELETE /api/client-catalogs/[id]`
+- **Admin Catalogs page** (`app/(tabs)/catalogs.tsx`) refactored with two tabs:
+  - "Wholesale Vendors" — existing internal vendor references (SanMar, S&S, etc.)
+  - "Client-Facing Catalogs" — DB-driven retail catalogs with full add/edit/delete management UI
+- **Portal CatalogsView** now fetches `/api/client-catalogs` and renders catalog cards (name, vendor, category badge, description, Open Catalog + Website buttons) when catalogs exist; falls back to empty state message when none are added yet
+- **Portal branding**: "Client Portal" text changed to "Client Portals by Katalyst Ko Printshop" in all three top bar / sidebar locations (email step with logo, email step without logo, dashboard sidebar without logo)
+
 ## Known Bug Fixes (Phase 13) — 2026-04-21
 - **Client Portal design unification**:
   - Changed `SIDEBAR_BG` from `#111827` (dark navy) to `#000000` (pure black) to match Ko OS header/sidebar.

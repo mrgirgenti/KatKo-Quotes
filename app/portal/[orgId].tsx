@@ -12,6 +12,7 @@ import {
   Modal,
   Pressable,
   Image,
+  Linking,
 } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import {
@@ -42,6 +43,7 @@ import {
   X,
   Download,
   Image as ImageIcon,
+  ExternalLink,
 } from 'lucide-react-native';
 import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
 
@@ -868,6 +870,22 @@ export default function ClientPortal() {
   const [orgProjects, setOrgProjects] = useState<PortalProject[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
 
+  const [clientCatalogs, setClientCatalogs] = useState<Array<{
+    id: string; name: string; description: string | null; vendorName: string | null;
+    category: string; catalogUrl: string; websiteUrl: string | null;
+  }>>([]);
+  const [catalogsLoading, setCatalogsLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeView !== 'catalogs') return;
+    setCatalogsLoading(true);
+    fetch('/api/client-catalogs')
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setClientCatalogs(Array.isArray(data) ? data : []))
+      .catch(() => setClientCatalogs([]))
+      .finally(() => setCatalogsLoading(false));
+  }, [activeView]);
+
   const [orgLogoUrl, setOrgLogoUrl] = useState<string | null>(null);
   const [orgDisplayName, setOrgDisplayName] = useState<string>('');
 
@@ -1470,14 +1488,62 @@ export default function ClientPortal() {
     </ScrollView>
   );
 
+  const CAT_COLORS: Record<string, string> = {
+    Apparel: '#4F46E5', Promotional: '#FF5A00', Accessories: '#0891B2', Signage: '#16A34A', Other: '#6B7280',
+  };
+
   const CatalogsView = () => (
     <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
       <Text style={dash.pageTitle}>Catalogs</Text>
-      <EmptyState
-        icon={<BookOpen size={40} color="#D1D5DB" />}
-        title="No catalogs available"
-        sub="Product catalogs will be shared here by your Katalyst Ko representative."
-      />
+      <Text style={{ fontSize: 13, color: TEXT_LIGHT, marginBottom: 20, marginTop: -8 }}>Browse product catalogs shared by Katalyst Ko</Text>
+      {catalogsLoading ? (
+        <View style={{ alignItems: 'center', paddingVertical: 48 }}>
+          <ActivityIndicator color={BRAND} />
+          <Text style={{ fontSize: 14, color: TEXT_LIGHT, marginTop: 10 }}>Loading catalogs…</Text>
+        </View>
+      ) : clientCatalogs.length === 0 ? (
+        <EmptyState
+          icon={<BookOpen size={40} color="#D1D5DB" />}
+          title="No catalogs available yet"
+          sub="Product catalogs will be shared here by your Katalyst Ko representative."
+        />
+      ) : (
+        <View style={{ gap: 14 }}>
+          {clientCatalogs.map(cat => {
+            const color = CAT_COLORS[cat.category] || '#6B7280';
+            const initials = (cat.vendorName || cat.name).split(' ').map((w: string) => w[0]).join('').slice(0, 3).toUpperCase();
+            return (
+              <View key={cat.id} style={catStyles.card}>
+                <View style={catStyles.cardTop}>
+                  <View style={[catStyles.avatar, { backgroundColor: color }]}>
+                    <Text style={catStyles.avatarText}>{initials}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={catStyles.name}>{cat.name}</Text>
+                    {cat.vendorName ? <Text style={catStyles.vendor}>{cat.vendorName}</Text> : null}
+                  </View>
+                  <View style={[catStyles.badge, { backgroundColor: color + '18' }]}>
+                    <Text style={[catStyles.badgeText, { color }]}>{cat.category}</Text>
+                  </View>
+                </View>
+                {cat.description ? <Text style={catStyles.description}>{cat.description}</Text> : null}
+                <View style={catStyles.actions}>
+                  <TouchableOpacity style={catStyles.primaryBtn} onPress={() => Linking.openURL(cat.catalogUrl)}>
+                    <BookOpen size={15} color="#fff" />
+                    <Text style={catStyles.primaryBtnText}>Open Catalog</Text>
+                  </TouchableOpacity>
+                  {cat.websiteUrl ? (
+                    <TouchableOpacity style={catStyles.secondaryBtn} onPress={() => Linking.openURL(cat.websiteUrl!)}>
+                      <ExternalLink size={14} color={BRAND} />
+                      <Text style={catStyles.secondaryBtnText}>Website</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
     </ScrollView>
   );
 
@@ -1688,14 +1754,14 @@ export default function ClientPortal() {
                 {orgDisplayName ? (
                   <View style={{ marginLeft: 10 }}>
                     <Text style={styles.logoText}>{orgDisplayName.toUpperCase()}</Text>
-                    <Text style={styles.logoSub}>Client Portal</Text>
+                    <Text style={styles.logoSub}>Client Portals by Katalyst Ko Printshop</Text>
                   </View>
                 ) : null}
               </View>
             ) : (
               <View>
                 <Text style={styles.logoText}>KATALYST KO</Text>
-                <Text style={styles.logoSub}>Client Portal</Text>
+                <Text style={styles.logoSub}>Client Portals by Katalyst Ko Printshop</Text>
               </View>
             )}
           </View>
@@ -1747,7 +1813,7 @@ export default function ClientPortal() {
               ) : (
                 <View>
                   <Text style={dash.sidebarLogoText}>{displayName.toUpperCase()}</Text>
-                  <Text style={dash.sidebarLogoBrand}>Client Portal</Text>
+                  <Text style={dash.sidebarLogoBrand}>Client Portals by Katalyst Ko Printshop</Text>
                 </View>
               )}
             </View>
@@ -2102,7 +2168,7 @@ const styles = StyleSheet.create({
   topBarBrandRow: { flexDirection: 'row', alignItems: 'center' },
   topBarLogo: { width: 100, height: 40 },
   logoText: { color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 2 },
-  logoSub: { color: BRAND, fontSize: 10, fontWeight: '600', letterSpacing: 1, marginTop: 1 },
+  logoSub: { color: BRAND, fontSize: 9, fontWeight: '600', letterSpacing: 0, marginTop: 2 },
   scrollContent: { flexGrow: 1, alignItems: 'center', padding: 20, paddingVertical: 36 },
   card: {
     backgroundColor: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 520,
@@ -2185,7 +2251,7 @@ const dash = StyleSheet.create({
   },
   sidebarLogo: { width: 130, height: 36 },
   sidebarLogoText: { color: '#fff', fontSize: 13, fontWeight: '800', letterSpacing: 1.5 },
-  sidebarLogoBrand: { color: BRAND, fontSize: 9, fontWeight: '600', letterSpacing: 1, marginTop: 2 },
+  sidebarLogoBrand: { color: BRAND, fontSize: 8, fontWeight: '600', letterSpacing: 0, marginTop: 2 },
 
   sidebarNav: { flex: 1, paddingTop: 10, paddingHorizontal: 10 },
   navItem: {
@@ -2437,4 +2503,46 @@ const mbStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
+});
+
+const catStyles = StyleSheet.create({
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: BORDER,
+    gap: 12,
+  },
+  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatar: { width: 48, height: 48, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  avatarText: { fontSize: 13, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
+  name: { fontSize: 15, fontWeight: '700', color: TEXT },
+  vendor: { fontSize: 12, color: TEXT_LIGHT, marginTop: 1 },
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  badgeText: { fontSize: 11, fontWeight: '700' },
+  description: { fontSize: 13, color: TEXT_LIGHT, lineHeight: 19 },
+  actions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  primaryBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: BRAND,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  primaryBtnText: { fontSize: 13, fontWeight: '600', color: '#fff' },
+  secondaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: BRAND,
+  },
+  secondaryBtnText: { fontSize: 13, fontWeight: '600', color: BRAND },
 });
