@@ -1,4 +1,4 @@
-import { useWindowDimensions } from 'react-native';
+import { useWindowDimensions, Platform } from 'react-native';
 
 export const BREAKPOINTS = {
   mobile: 768,
@@ -13,8 +13,17 @@ export type BreakpointInfo = {
   height: number;
 };
 
+function getInitialWidth(): number {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    return window.innerWidth;
+  }
+  return 0;
+}
+
 export function useBreakpoint(): BreakpointInfo {
-  const { width, height } = useWindowDimensions();
+  const dims = useWindowDimensions();
+  const width = dims.width > 0 ? dims.width : getInitialWidth();
+  const height = dims.height;
   return {
     isMobile: width < BREAKPOINTS.mobile,
     isTablet: width >= BREAKPOINTS.mobile && width < BREAKPOINTS.tablet,
