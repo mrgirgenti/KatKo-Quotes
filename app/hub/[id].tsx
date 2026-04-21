@@ -102,12 +102,16 @@ export default function HubManagementScreen() {
     },
   });
 
+  // Helper: exclude placeholder users with no real email and a default/empty name
+  const isRealClientUser = (m: OrgMembership) =>
+    !!(m.userEmail) || !!(m.userName && m.userName.trim() !== '' && m.userName.trim() !== 'User');
+
   // CLIENT users with ORG_ADMIN role = the org's primary admin contacts
-  const clientOrgAdmins = memberships.filter((m) => m.userType === 'CLIENT' && m.role === 'ORG_ADMIN');
+  const clientOrgAdmins = memberships.filter((m) => m.userType === 'CLIENT' && m.role === 'ORG_ADMIN' && isRealClientUser(m));
   // CLIENT users with non-admin roles
-  const regularClients = memberships.filter((m) => m.userType === 'CLIENT' && m.role !== 'ORG_ADMIN');
+  const regularClients = memberships.filter((m) => m.userType === 'CLIENT' && m.role !== 'ORG_ADMIN' && isRealClientUser(m));
   // All client users (for counts / portal-ready check)
-  const allClientMembers = memberships.filter((m) => m.userType === 'CLIENT');
+  const allClientMembers = memberships.filter((m) => m.userType === 'CLIENT' && isRealClientUser(m));
   // INTERNAL users assigned as account reps for this org
   const accountReps = memberships.filter((m) => m.userType === 'INTERNAL');
 

@@ -20,6 +20,18 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 - Sidebar reads dynamic company logo from `orgAdmin.companyLogo` (falls back to hardcoded CDN URI)
 - `UserContext` exposes: `isOrgAdmin()`, `orgAdmin` (first user with role=org_admin), `createUser(name, email?, role?)`
 
+## Known Bug Fixes (Phase 13) — 2026-04-21
+- **Client Portal design unification**:
+  - Changed `SIDEBAR_BG` from `#111827` (dark navy) to `#000000` (pure black) to match Ko OS header/sidebar.
+  - All brand accent colors already matched (`#FF5A00`).
+- **Client Portal form re-render bug**:
+  - *Root cause*: `HomeView`, `ProjectsView`, `QuotesView`, `ArtworkView`, `CatalogsView`, `SubmitView` were defined as inner arrow functions inside the main component and rendered as `<SubmitView />`. On every parent re-render (every keystroke), React created new function references, unmounted and remounted the components, causing inputs to lose focus.
+  - *Fix*: Changed all view renders from JSX component syntax (`<SubmitView />`) to function-call syntax (`SubmitView()`). This inlines the JSX in the parent's render tree and React reconciles it normally without unmount/remount.
+- **Blank/placeholder "User" entries in Client Hub**:
+  - *Root cause*: Internal users with default `firstName='User'` and `@noemail.internal` email were appearing in membership lists, and client users invited without a name got the 'User' default.
+  - *Fix 1*: Added `isRealClientUser` filter in `hub/[id].tsx` that excludes memberships with no real email AND no real/non-default name.
+  - *Fix 2*: Added DB-level filter in `app/api/memberships+api.ts` to exclude internal placeholder users (INTERNAL type with noemail.internal email and default 'User' name).
+
 ## Known Bug Fixes (Phase 12)
 - **Org profile "Loading..." stuck bug (2026-04-21)**:
   - *Root cause*: React Query v5 defaulted `networkMode: 'online'`, which pauses query fetches when the browser detects the network as offline. In Replit's proxied environment, `navigator.onLine` can falsely report offline, causing `orgsQuery.isLoading` to remain `true` indefinitely.

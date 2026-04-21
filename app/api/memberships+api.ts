@@ -55,6 +55,12 @@ export async function GET(request: Request) {
        FROM "OrganizationMembership" om
        JOIN "User" u ON om."userId" = u.id
        WHERE om."organizationId" = $1
+         AND NOT (
+           u."userType" = 'INTERNAL'
+           AND u.email LIKE '%@noemail.internal'
+           AND u."firstName" = 'User'
+           AND (u."lastName" IS NULL OR u."lastName" = '')
+         )
        ORDER BY om."createdAt" ASC`,
       [orgId],
     );

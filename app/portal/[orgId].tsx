@@ -1704,12 +1704,12 @@ export default function ClientPortal() {
 
           {/* Main content */}
           <View style={dash.main}>
-            {activeView === 'home'     && <HomeView />}
-            {activeView === 'projects' && <ProjectsView />}
-            {activeView === 'quotes'   && <QuotesView />}
-            {activeView === 'artwork'  && <ArtworkView />}
-            {activeView === 'catalogs' && <CatalogsView />}
-            {activeView === 'submit'   && <SubmitView />}
+            {activeView === 'home'     && HomeView()}
+            {activeView === 'projects' && ProjectsView()}
+            {activeView === 'quotes'   && QuotesView()}
+            {activeView === 'artwork'  && ArtworkView()}
+            {activeView === 'catalogs' && CatalogsView()}
+            {activeView === 'submit'   && SubmitView()}
           </View>
         </View>
       )}
@@ -2046,7 +2046,7 @@ const styles = StyleSheet.create({
   footerText: { fontSize: 12, color: TEXT_PLACEHOLDER },
 });
 
-const SIDEBAR_BG = '#111827';
+const SIDEBAR_BG = '#000000';
 const SIDEBAR_ACTIVE = '#FF5A00';
 
 const dash = StyleSheet.create({
