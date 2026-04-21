@@ -1,0 +1,58 @@
+We need to redesign the Client Hubs index page from a flat list-row layout into a true card-based management view.
+
+Current issue:
+The current Client Hubs page renders each organization like a simple list item/row with minimal information. It does not feel like a management dashboard and does not provide enough context at a glance.
+
+Objective:
+Make the Client Hubs page feel like a card-based SaaS admin view where each organization is represented by a visually distinct card with useful management information.
+
+Requirements:
+
+1. Replace row/list layout with card layout
+- Do NOT render each Client Hub as a thin list row
+- Render each organization as a card with spacing, padding, hierarchy, and clear visual grouping
+- Cards should feel like dashboard/account cards, not table rows
+
+2. Each Client Hub card should include:
+- organization logo or fallback avatar/initial
+- organization name
+- primary contact name
+- client status (ex: Active Client)
+- hub enabled status
+- org admin assigned / not assigned
+- client user count
+- optional portal readiness indicator
+
+3. Card actions
+Each card should have visible or easy-access actions such as:
+- View / Open
+- Manage Users
+- Copy Portal Link
+- Enable / Disable Hub if appropriate
+Use a clean action area rather than burying everything in an unclear row layout
+
+4. Visual hierarchy
+- Organization name should be prominent
+- Primary contact and metadata should be secondary
+- Status badges should be clear and easy to scan
+- Use spacing, subtle borders/shadows, and rounded cards so the page feels intentional and modern
+
+5. Grid / responsive behavior
+- On larger screens, use a grid of cards rather than a single stacked list if that fits the layout well
+- On smaller screens, cards can stack vertically
+- Keep the layout clean and not overcrowded
+
+6. Preserve existing functionality
+- Keep existing data and navigation behavior working
+- This is a UI/layout upgrade, not a full data model rewrite
+
+7. Styling consistency
+- Match Ko OS styling and design language
+- Do not introduce a completely different visual style
+
+Deliver back:
+- exact files changed
+- whether cards use grid or stacked layout
+- what information each card now displays
+- what actions are available on each card
+- confirmation that the page is now card-based rather than row-based

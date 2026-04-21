@@ -1,0 +1,85 @@
+We need a very specific UI redesign of the Client Hubs index page.
+
+Current issue:
+The current page renders each organization as a thin list row. It feels like a placeholder list, not a real SaaS management page. It does not give enough context or visual hierarchy.
+
+Objective:
+Redesign the Client Hubs index page into a clean card-based admin view so each organization feels like a manageable “account card,” not a list item.
+
+Design direction:
+Think “organization management cards” rather than “rows” or “search results.”
+Each card should give enough information to understand the state of that client hub without having to click into it first.
+
+Layout requirements:
+
+1. Overall page layout
+- Keep the page title and search at the top
+- Below that, render Client Hubs as cards, not rows
+- Use either:
+  - a responsive grid of cards on wider screens
+  - stacked cards on smaller screens
+- Avoid the current thin horizontal row look
+
+2. Card structure
+Each organization should render as a visually distinct card with:
+- rounded corners
+- padding
+- subtle border and/or shadow
+- clear spacing between sections
+- enough height to feel like a true card, not a list item
+
+3. Card content
+Each Client Hub card should include:
+
+Top section:
+- organization logo if available
+- fallback avatar/initial if no logo
+- organization name (prominent)
+- client status badge (ex: Active Client)
+- hub enabled badge or indicator if needed
+
+Middle section:
+- primary contact name
+- primary contact email if available
+- org admin name or “No Org Admin Assigned”
+- client user count
+- optional portal readiness indicator
+
+Bottom section:
+- action buttons or action area for:
+  - Open / View
+  - Manage Users
+  - Copy Portal Link
+- Keep actions visible and usable without making the card cluttered
+
+4. Visual hierarchy
+- Organization name should be the most prominent text
+- Status badges should be easy to scan
+- Secondary metadata (contact, org admin, user count) should be smaller but readable
+- Do not hide all context behind a tiny arrow or dot
+
+5. Styling
+- Match the Ko OS design language
+- Use the same colors, font system, spacing, and button style as the rest of the app
+- Do not introduce a totally different design language
+
+6. Functionality
+- Preserve existing search/filter behavior
+- Preserve navigation into the organization/client hub detail view
+- This is a UI/layout upgrade, not a full data model rewrite
+
+7. Deliverable expectation
+When done, the page should feel like an actual management dashboard where I can quickly scan:
+- who the organization is
+- whether their portal is active
+- who the main contact is
+- whether an org admin is assigned
+- how many client users they have
+- what action I should take next
+
+Deliver back:
+- exact files changed
+- whether the final layout uses grid or stacked cards
+- what data appears on each card
+- what actions are visible on each card
+- confirmation that the page is now truly card-based and not just a styled row
