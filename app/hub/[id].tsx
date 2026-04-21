@@ -32,6 +32,7 @@ import {
   Clock,
   ToggleLeft,
   ToggleRight,
+  MapPin,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
@@ -394,91 +395,82 @@ export default function HubManagementScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
-        {/* Hub Status Card */}
-        <View style={styles.statusCard}>
-          <View style={[styles.statusCardRow, (isMobile || isTablet) && styles.statusCardRowMobile]}>
-            {/* Top row: avatar + name + toggle */}
-            <View style={styles.statusCardIdentity}>
-              <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={46} shape="circle" />
-              <View style={{ flex: 1, gap: 5 }}>
-                <View style={styles.orgNameRow}>
-                  <Text style={styles.orgName} numberOfLines={1}>{org.name}</Text>
-                  <View style={[styles.readyPill, isReady ? styles.readyPillGreen : styles.readyPillAmber]}>
-                    {isReady
-                      ? <CheckCircle2 size={9} color="#16A34A" />
-                      : <AlertCircle size={9} color="#D97706" />}
-                    <Text style={[styles.readyPillText, isReady ? styles.readyPillTextGreen : styles.readyPillTextAmber]}>
-                      {isReady ? 'Portal Ready' : 'Needs Setup'}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.statsRow}>
-                  <Users size={11} color={Colors.light.textSecondary} />
-                  <Text style={styles.statText}>{allClientMembers.length} member{allClientMembers.length !== 1 ? 's' : ''}</Text>
-                  <View style={styles.statDot} />
-                  <ShieldCheck size={11} color={Colors.light.textSecondary} />
-                  <Text style={styles.statText}>{clientOrgAdmins.length > 0 ? clientOrgAdmins[0].userName : 'No org admin'}</Text>
-                </View>
-              </View>
+        {/* Hub Identity Card — matches client profile layout */}
+        <View style={styles.identityCard}>
+          {/* Large centered logo */}
+          <View style={styles.identityLogoWrap}>
+            <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={88} shape="circle" />
+          </View>
 
-              {/* Hub toggle — always in the top-right of the identity row */}
-              <TouchableOpacity style={styles.hubToggle} onPress={handleHubToggle} activeOpacity={0.7}>
-                <Text style={[styles.toggleLabel, hubOn && styles.toggleLabelOn]}>
-                  {hubOn ? 'Hub On' : 'Hub Off'}
+          {/* Org name + type */}
+          <Text style={styles.identityOrgName}>{org.name}</Text>
+          {org.type ? <Text style={styles.identityOrgType}>{org.type}</Text> : null}
+
+          {/* Badges row: Portal Ready/Needs Setup + Hub On/Off toggle */}
+          <View style={styles.identityBadgesRow}>
+            <View style={[styles.readyPill, isReady ? styles.readyPillGreen : styles.readyPillAmber]}>
+              {isReady
+                ? <CheckCircle2 size={9} color="#16A34A" />
+                : <AlertCircle size={9} color="#D97706" />}
+              <Text style={[styles.readyPillText, isReady ? styles.readyPillTextGreen : styles.readyPillTextAmber]}>
+                {isReady ? 'Portal Ready' : 'Needs Setup'}
+              </Text>
+            </View>
+            <TouchableOpacity style={styles.hubToggle} onPress={handleHubToggle} activeOpacity={0.7}>
+              <Text style={[styles.toggleLabel, hubOn && styles.toggleLabelOn]}>
+                {hubOn ? 'Hub On' : 'Hub Off'}
+              </Text>
+              {hubOn
+                ? <ToggleRight size={28} color={Colors.light.tint} />
+                : <ToggleLeft size={28} color={Colors.light.border} />
+              }
+            </TouchableOpacity>
+          </View>
+
+          {/* Stats row */}
+          <View style={styles.statsRow}>
+            <Users size={11} color={Colors.light.textSecondary} />
+            <Text style={styles.statText}>{allClientMembers.length} member{allClientMembers.length !== 1 ? 's' : ''}</Text>
+            <View style={styles.statDot} />
+            <ShieldCheck size={11} color={Colors.light.textSecondary} />
+            <Text style={styles.statText}>{clientOrgAdmins.length > 0 ? clientOrgAdmins[0].userName : 'No org admin'}</Text>
+          </View>
+
+          {/* Account Rep row */}
+          <View style={styles.identityRepRow}>
+            <View style={styles.identityRepInner}>
+              <Text style={styles.headerRepLabel}>Account Rep</Text>
+              <TouchableOpacity
+                onPress={() => { setSelectedRepUserId(accountReps[0]?.userId || ''); setAssignRepModal(true); }}
+              >
+                <Text style={styles.headerRepChange}>
+                  {accountReps.length > 0 ? 'Change' : 'Assign'}
                 </Text>
-                {hubOn
-                  ? <ToggleRight size={28} color={Colors.light.tint} />
-                  : <ToggleLeft size={28} color={Colors.light.border} />
-                }
               </TouchableOpacity>
             </View>
-
-            {/* Account Rep — only show on desktop or as separate row on mobile */}
-            {isDesktop ? (
-              <View style={styles.headerRepBlock}>
-                <View style={styles.headerRepLabelRow}>
-                  <Text style={styles.headerRepLabel}>Account Rep</Text>
-                  <TouchableOpacity
-                    onPress={() => { setSelectedRepUserId(accountReps[0]?.userId || ''); setAssignRepModal(true); }}
-                  >
-                    <Text style={styles.headerRepChange}>
-                      {accountReps.length > 0 ? 'Change' : 'Assign'}
-                    </Text>
-                  </TouchableOpacity>
+            {accountReps.length > 0 ? (
+              <View style={styles.headerRepRow}>
+                <View style={[styles.headerRepAvatar, { backgroundColor: accountReps[0].userAvatarColor || Colors.light.tint }]}>
+                  <Text style={styles.headerRepAvatarText}>{(accountReps[0].userName || '?')[0].toUpperCase()}</Text>
                 </View>
-                {accountReps.length > 0 ? (
-                  <View style={styles.headerRepRow}>
-                    <View style={[styles.headerRepAvatar, { backgroundColor: accountReps[0].userAvatarColor || Colors.light.tint }]}>
-                      <Text style={styles.headerRepAvatarText}>{(accountReps[0].userName || '?')[0].toUpperCase()}</Text>
-                    </View>
-                    <Text style={styles.headerRepName} numberOfLines={1}>{accountReps[0].userName}</Text>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    onPress={() => { setSelectedRepUserId(defaultRepUser?.id || ''); setAssignRepModal(true); }}
-                  >
-                    <Text style={styles.headerRepUnassigned}>Unassigned — tap to assign</Text>
-                  </TouchableOpacity>
-                )}
+                <Text style={styles.headerRepName} numberOfLines={1}>{accountReps[0].userName}</Text>
               </View>
             ) : (
-              <View style={styles.mobileRepRow}>
-                <Text style={styles.headerRepLabel}>Account Rep: </Text>
-                {accountReps.length > 0 ? (
-                  <View style={[styles.headerRepAvatar, { backgroundColor: accountReps[0].userAvatarColor || Colors.light.tint }]}>
-                    <Text style={styles.headerRepAvatarText}>{(accountReps[0].userName || '?')[0].toUpperCase()}</Text>
-                  </View>
-                ) : null}
-                <TouchableOpacity
-                  onPress={() => { setSelectedRepUserId(accountReps[0]?.userId || ''); setAssignRepModal(true); }}
-                >
-                  <Text style={styles.headerRepChange}>
-                    {accountReps.length > 0 ? accountReps[0].userName : 'Assign'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                onPress={() => { setSelectedRepUserId(defaultRepUser?.id || ''); setAssignRepModal(true); }}
+              >
+                <Text style={styles.headerRepUnassigned}>Unassigned — tap to assign</Text>
+              </TouchableOpacity>
             )}
           </View>
+
+          {/* Location */}
+          {(org.city || org.state) ? (
+            <View style={styles.identityLocation}>
+              <MapPin size={12} color={Colors.light.textSecondary} />
+              <Text style={styles.identityLocationText}>{[org.city, org.state].filter(Boolean).join(', ')}</Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Body — single column on mobile/tablet, two columns on desktop */}
@@ -969,49 +961,72 @@ const styles = StyleSheet.create({
     flex: 0,
   },
 
-  // Status Card
-  statusCard: {
+  // Identity Card (matches client profile layout)
+  identityCard: {
     backgroundColor: Colors.light.surface,
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.border,
-  },
-  statusCardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    paddingTop: 24,
+    paddingBottom: 20,
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-    gap: 14,
+    alignItems: 'center' as const,
   },
-  statusCardRowMobile: {
-    flexDirection: 'column',
-    alignItems: 'stretch',
-    gap: 12,
+  identityLogoWrap: {
+    alignItems: 'center' as const,
+    marginBottom: 14,
   },
-  statusCardIdentity: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
+  identityOrgName: {
+    fontSize: 20,
+    fontWeight: '800' as const,
+    color: Colors.light.text,
+    textAlign: 'center' as const,
+    marginBottom: 2,
   },
-  mobileRepRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingTop: 4,
+  identityOrgType: {
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+    marginBottom: 10,
+    textAlign: 'center' as const,
+  },
+  identityBadgesRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    flexWrap: 'wrap' as const,
+    justifyContent: 'center' as const,
+    marginBottom: 10,
+  },
+  identityRepRow: {
+    marginTop: 10,
+    alignItems: 'center' as const,
+    gap: 5,
     borderTopWidth: 1,
     borderTopColor: Colors.light.border,
-    paddingVertical: 8,
+    paddingTop: 10,
+    alignSelf: 'stretch' as const,
   },
+  identityRepInner: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    justifyContent: 'center' as const,
+  },
+  identityLocation: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+    marginTop: 8,
+  },
+  identityLocationText: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+  },
+
   orgNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
     flexWrap: 'wrap',
-  },
-  orgName: {
-    fontSize: 20,
-    fontWeight: '800' as const,
-    color: Colors.light.text,
   },
   readyPill: {
     flexDirection: 'row',
