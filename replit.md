@@ -31,6 +31,26 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 - **UserContext**: Primary store is AsyncStorage; DB sync added in Phase 3 (fire-and-forget upsert on init and on create/update). AsyncStorage IDs used directly as PostgreSQL `User.id` (string PK). `syncUserToDB()` called on boot and on every mutation.
 - **ClientsContext**: DELETED. The legacy `Client` type is fully replaced by `Organization` + `Contact`. Dashboard client counts now derive from `useCrm().orgs`. `autoAddClientIfNew` in sales-tracking now calls `addOrg` via `useCrm`. `contexts/ClientsContext.tsx` and `types/client.ts` deleted.
 
+## Phase 11 — Org Profile Redesign (2026-04-21)
+
+### Layout
+- **Left panel**: Identity card (88×88 logo + Upload Logo button, org name, type, status badges, address block), Lead Tracking section (if Cold/Working), Primary Contact card, Account Rep card (from ORG_ADMIN Hub membership), Stats row (quotes count + total revenue), action buttons.
+- **Right panel**: Replaced tab system with always-visible scrollable cards: Active Projects, Activity, Contacts, Quotes & Revenue, Client Hub, Campaigns.
+
+### Logo Upload
+- "Upload Logo" / "Change Logo" button triggers hidden `<input type="file">` (web only) → POSTs to `/api/files` → updates `org.logoUrl` via `updateOrg`.
+- Displays `org.logoUrl` → `org.internalLogoUrl` → initial-letter fallback (consistent with portal logo priority system).
+
+### Account Rep
+- Derived from the ORG_ADMIN Hub membership for the org (no new DB column required).
+- "Assign account rep" link opens the Add Member modal with ORG_ADMIN pre-selected.
+
+### Card-based Right Panel
+- Removes tab bar; all sections always visible and scrollable.
+- Contacts card includes full department-grouped management (add/edit/delete contacts & departments inline).
+- Client Hub card includes toggle, "Open Client Portal" external link, Internal Team section, Client Users section.
+- Campaigns card only renders if org is a lead (Cold/Working) or has existing campaigns.
+
 ## Phase 10 — Artwork Upload & Media Bin (2026-04-21)
 
 ### File Storage Architecture

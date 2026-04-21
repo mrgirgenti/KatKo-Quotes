@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   Pressable,
   Alert,
   Switch,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
@@ -44,6 +46,8 @@ import {
   Send,
   Inbox,
   Package,
+  Upload,
+  ExternalLink,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
@@ -180,7 +184,6 @@ export default function OrgProfileScreen() {
 
   const org = useMemo(() => orgs.find((o) => o.id === id), [orgs, id]);
 
-  const [activeTab, setActiveTab] = useState<'activity' | 'contacts' | 'quotes' | 'campaigns' | 'hub'>('activity');
   const [editOrgModal, setEditOrgModal] = useState(false);
   const [orgForm, setOrgForm] = useState({ name: '', type: '', address: '', city: '', state: '', website: '', notes: '', status: 'Cold' as CrmStatus });
   const [showOrgTypeDropdown, setShowOrgTypeDropdown] = useState(false);
@@ -208,6 +211,28 @@ export default function OrgProfileScreen() {
   const [addClientUserModal, setAddClientUserModal] = useState(false);
   const [clientUserForm, setClientUserForm] = useState({ name: '', email: '' });
   const [clientUserSaving, setClientUserSaving] = useState(false);
+
+  const logoInputRef = useRef<any>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+
+  const handleLogoUpload = useCallback(async (file: File) => {
+    if (!org) return;
+    setLogoUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('organizationId', org.id);
+      fd.append('visibility', 'CLIENT_VISIBLE');
+      const res = await fetch('/api/files', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      updateOrg({ ...org, logoUrl: `/api/files/${data.id}?inline=true` });
+    } catch {
+      Alert.alert('Upload Failed', 'Could not upload logo. Please try again.');
+    } finally {
+      setLogoUploading(false);
+    }
+  }, [org, updateOrg]);
 
   const { data: memberships = [], isLoading: membershipsLoading, refetch: refetchMemberships } = useQuery<OrgMembership[]>({
     queryKey: ['memberships', org?.id],
@@ -460,9 +485,92 @@ export default function OrgProfileScreen() {
 
   const activeCampaigns = org.campaigns.filter((c) => c.steps.some((s) => s.status === 'pending'));
 
+  const primaryContact = org.contacts.find((c) => c.isPrimary) || org.contacts[0] || null;
+  const accountRep = memberships.find((m) => m.userType !== 'CLIENT' && m.role === 'ORG_ADMIN') || memberships.find((m) => m.userType !== 'CLIENT') || null;
+
   const leftPanel = (
     <View style={styles.leftPanel}>
-      {/* Lead tracking banner */}
+      {/* Identity card */}
+      <View style={styles.orgIdentityCard}>
+        {/* Logo */}
+        <View style={styles.orgLogoWrap}>
+          {org.logoUrl || org.internalLogoUrl ? (
+            <Image
+              source={{ uri: org.logoUrl || org.internalLogoUrl }}
+              style={styles.orgLogoImage}
+              resizeMode="contain"
+            />
+          ) : (
+            <View style={styles.orgLogoFallback}>
+              <Text style={styles.orgLogoInitial}>{org.name.charAt(0).toUpperCase()}</Text>
+            </View>
+          )}
+          {logoUploading && (
+            <View style={styles.orgLogoOverlay}>
+              <ActivityIndicator size="small" color="#fff" />
+            </View>
+          )}
+        </View>
+        <TouchableOpacity
+          style={styles.uploadLogoBtn}
+          onPress={() => logoInputRef.current?.click?.()}
+          disabled={logoUploading}
+        >
+          <Upload size={11} color={Colors.light.tint} />
+          <Text style={styles.uploadLogoBtnText}>{org.logoUrl ? 'Change Logo' : 'Upload Logo'}</Text>
+        </TouchableOpacity>
+        {Platform.OS === 'web' && (
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/svg+xml"
+            style={{ display: 'none' }}
+            onChange={(e: any) => {
+              const file = e.target.files?.[0];
+              if (file) handleLogoUpload(file);
+              e.target.value = '';
+            }}
+          />
+        )}
+
+        <Text style={styles.orgNameLarge}>{org.name}</Text>
+        {org.type && <Text style={styles.orgTypeLarge}>{org.type}</Text>}
+
+        <View style={styles.orgBadgesRow}>
+          <StatusBadge status={org.status} />
+          {org.hubEnabled && (
+            <View style={styles.portalEnabledBadge}>
+              <Shield size={10} color="#7C3AED" />
+              <Text style={styles.portalEnabledBadgeText}>Portal On</Text>
+            </View>
+          )}
+        </View>
+
+        {(org.city || org.state || org.address || org.website) && (
+          <View style={styles.orgAddressBlock}>
+            {(org.city || org.state) && (
+              <View style={styles.infoRow}>
+                <MapPin size={12} color={Colors.light.textSecondary} />
+                <Text style={styles.infoText}>{[org.city, org.state].filter(Boolean).join(', ')}</Text>
+              </View>
+            )}
+            {org.address && (
+              <View style={styles.infoRow}>
+                <Building2 size={12} color={Colors.light.textSecondary} />
+                <Text style={styles.infoText}>{org.address}</Text>
+              </View>
+            )}
+            {org.website && (
+              <View style={styles.infoRow}>
+                <Globe size={12} color={Colors.light.textSecondary} />
+                <Text style={styles.infoText}>{org.website}</Text>
+              </View>
+            )}
+          </View>
+        )}
+      </View>
+
+      {/* Lead tracking */}
       {isLead && (
         <View style={styles.leadBanner}>
           <View style={styles.leadBannerHeader}>
@@ -470,7 +578,7 @@ export default function OrgProfileScreen() {
             <Text style={styles.leadBannerTitle}>Lead Tracking</Text>
           </View>
           <Text style={styles.leadBannerSub}>
-            This contact is in your outreach pipeline. Update their status as you progress.
+            Update their status as you progress through outreach.
           </Text>
           <View style={styles.statusChangeRow}>
             {(['Cold', 'Working', 'Active Client', 'Past Client'] as CrmStatus[]).map((s) => {
@@ -498,25 +606,132 @@ export default function OrgProfileScreen() {
         </View>
       )}
 
-      {/* Active quotes/projects tracker */}
+      {/* Primary Contact */}
+      {primaryContact && (
+        <View style={styles.leftInfoCard}>
+          <Text style={styles.leftInfoCardLabel}>Primary Contact</Text>
+          <View style={styles.leftPersonRow}>
+            <View style={styles.leftPersonAvatar}>
+              <Text style={styles.leftPersonAvatarText}>{primaryContact.firstName.charAt(0).toUpperCase()}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.leftPersonName}>{primaryContact.firstName} {primaryContact.lastName}</Text>
+              {primaryContact.role && <Text style={styles.leftPersonRole}>{primaryContact.role}</Text>}
+              {primaryContact.email && (
+                <View style={styles.leftPersonDetail}>
+                  <Mail size={11} color={Colors.light.tint} />
+                  <Text style={styles.leftPersonDetailText} numberOfLines={1}>{primaryContact.email}</Text>
+                </View>
+              )}
+              {primaryContact.phone && (
+                <View style={styles.leftPersonDetail}>
+                  <Phone size={11} color={Colors.light.tint} />
+                  <Text style={styles.leftPersonDetailText}>{primaryContact.phone}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Account Rep */}
+      <View style={styles.leftInfoCard}>
+        <Text style={styles.leftInfoCardLabel}>Account Rep</Text>
+        {accountRep ? (
+          <View style={styles.leftPersonRow}>
+            <View style={[styles.leftPersonAvatar, { backgroundColor: accountRep.userAvatarColor || Colors.light.tint }]}>
+              <Text style={styles.leftPersonAvatarText}>{(accountRep.userName || '?')[0].toUpperCase()}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.leftPersonName}>{accountRep.userName}</Text>
+              <Text style={styles.leftPersonRole}>{MEMBERSHIP_ROLE_LABELS[accountRep.role] || accountRep.role}</Text>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.leftRepUnassigned}
+            onPress={() => { setMemberForm({ userId: '', role: 'ORG_ADMIN' }); setAddMemberModal(true); }}
+          >
+            <User size={13} color={Colors.light.textSecondary} />
+            <Text style={styles.leftRepUnassignedText}>Assign account rep</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Stats */}
+      <View style={styles.leftStatsRow}>
+        <View style={styles.leftStatBox}>
+          <Text style={styles.leftStatValue}>{relatedQuotes.length}</Text>
+          <Text style={styles.leftStatLabel}>Quotes</Text>
+        </View>
+        <View style={styles.leftStatDivider} />
+        <View style={styles.leftStatBox}>
+          <Text style={[styles.leftStatValue, { color: Colors.light.success }]}>{formatCurrency(totalSpent)}</Text>
+          <Text style={styles.leftStatLabel}>Revenue</Text>
+        </View>
+      </View>
+
+      {/* Notes */}
+      {org.notes && (
+        <View style={styles.leftInfoCard}>
+          <Text style={styles.leftInfoCardLabel}>Notes</Text>
+          <Text style={styles.notesText}>{org.notes}</Text>
+        </View>
+      )}
+
+      {/* Actions */}
+      <TouchableOpacity
+        style={styles.newQuoteBtn}
+        onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
+      >
+        <Plus size={14} color="#fff" />
+        <Text style={styles.newQuoteBtnText}>New Quote</Text>
+      </TouchableOpacity>
+      <View style={styles.editDeleteRow}>
+        <TouchableOpacity style={styles.editOrgBtn} onPress={openEditOrg}>
+          <Edit3 size={14} color="#fff" />
+          <Text style={styles.editOrgBtnText}>Edit Profile</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.deleteOrgBtn} onPress={handleDeleteOrg}>
+          <Trash2 size={14} color={Colors.light.error} />
+          <Text style={styles.deleteOrgBtnText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
+      <Text style={styles.memberSince}>Added {formatDate(org.createdAt)}</Text>
+    </View>
+  );
+
+  const rightPanel = (
+    <ScrollView style={styles.rightPanel} showsVerticalScrollIndicator={false} contentContainerStyle={styles.rightPanelContent}>
+
+      {/* Active Projects card */}
       {activeQuotes.length > 0 && (
-        <View style={styles.activeProjectsBanner}>
-          <View style={styles.activeProjectsHeader}>
-            <ShoppingBag size={14} color="#7C3AED" />
-            <Text style={styles.activeProjectsTitle}>Active Projects</Text>
-            <Text style={styles.activeProjectsCount}>{activeQuotes.length}</Text>
+        <View style={styles.infoCard}>
+          <View style={styles.infoCardHeader}>
+            <View style={styles.infoCardHeaderLeft}>
+              <ShoppingBag size={15} color="#7C3AED" />
+              <Text style={styles.infoCardTitle}>Active Projects</Text>
+              <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{activeQuotes.length}</Text></View>
+            </View>
+            <TouchableOpacity
+              style={styles.infoCardAction}
+              onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
+            >
+              <Plus size={13} color={Colors.light.tint} />
+              <Text style={styles.infoCardActionText}>New Quote</Text>
+            </TouchableOpacity>
           </View>
           {activeQuotes.map((q) => {
             const eff = getEffectiveStatus(q);
             const cfg = STATUS_CONFIG[eff];
             return (
-              <TouchableOpacity key={q.id} style={styles.activeProjectRow} onPress={() => router.push(`/quote/${q.id}` as any)}>
-                <View style={styles.activeProjectLeft}>
-                  <Text style={styles.activeProjectName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
-                  {q.invoiceNumber ? <Text style={styles.activeProjectNum}>#{q.invoiceNumber}</Text> : null}
+              <TouchableOpacity key={q.id} style={styles.projectRow} onPress={() => router.push(`/quote/${q.id}` as any)}>
+                <View style={styles.projectRowLeft}>
+                  <Text style={styles.projectRowName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
+                  {q.invoiceNumber ? <Text style={styles.projectRowNum}>#{q.invoiceNumber}</Text> : null}
                 </View>
-                <View style={[styles.activeProjectStatusBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
-                  <Text style={[styles.activeProjectStatusText, { color: cfg.color }]}>{cfg.label}</Text>
+                <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+                  <Text style={[styles.projectRowBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
                 </View>
                 <ChevronRight size={12} color={Colors.light.textSecondary} />
               </TouchableOpacity>
@@ -525,172 +740,28 @@ export default function OrgProfileScreen() {
         </View>
       )}
 
-      {/* Contacts mini-section */}
-      {org.contacts.length > 0 && (
-        <View style={styles.contactsMiniPanel}>
-          <View style={styles.contactsMiniHeader}>
-            <Users size={13} color={Colors.light.tint} />
-            <Text style={styles.contactsMiniTitle}>Contacts</Text>
-            <Text style={styles.contactsMiniCount}>{org.contacts.length}</Text>
-          </View>
-          {org.contacts.map((c) => (
-            <View key={c.id} style={styles.contactsMiniRow}>
-              <View style={styles.contactsMiniAvatar}>
-                <Text style={styles.contactsMiniAvatarText}>{c.firstName.charAt(0).toUpperCase()}</Text>
-              </View>
-              <View style={styles.contactsMiniInfo}>
-                <Text style={styles.contactsMiniName}>
-                  {c.firstName} {c.lastName}
-                  {c.isPrimary ? ' ★' : ''}
-                </Text>
-                {c.role ? <Text style={styles.contactsMiniRole}>{c.role}</Text> : null}
-                {c.phone ? (
-                  <View style={styles.contactsMiniDetail}>
-                    <Phone size={10} color={Colors.light.textSecondary} />
-                    <Text style={styles.contactsMiniDetailText}>{c.phone}</Text>
-                  </View>
-                ) : null}
-                {c.email ? (
-                  <View style={styles.contactsMiniDetail}>
-                    <Mail size={10} color={Colors.light.textSecondary} />
-                    <Text style={styles.contactsMiniDetailText}>{c.email}</Text>
-                  </View>
-                ) : null}
-              </View>
-            </View>
-          ))}
-          <TouchableOpacity style={styles.contactsMiniViewAll} onPress={() => setActiveTab('contacts')}>
-            <Text style={styles.contactsMiniViewAllText}>Manage Contacts →</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Org info */}
-      <View style={styles.orgInfoCard}>
-        <View style={styles.orgAvatarLarge}>
-          <Text style={styles.orgAvatarInitial}>{org.name.charAt(0).toUpperCase()}</Text>
-        </View>
-        <Text style={styles.orgNameLarge}>{org.name}</Text>
-        {org.type && (
-          <Text style={styles.orgTypeLarge}>{org.type}</Text>
-        )}
-        <StatusBadge status={org.status} />
-
-        <View style={styles.divider} />
-
-        {(org.city || org.state) && (
-          <View style={styles.infoRow}>
-            <MapPin size={14} color={Colors.light.textSecondary} />
-            <Text style={styles.infoText}>{[org.city, org.state].filter(Boolean).join(', ')}</Text>
-          </View>
-        )}
-        {org.address && (
-          <View style={styles.infoRow}>
-            <Building2 size={14} color={Colors.light.textSecondary} />
-            <Text style={styles.infoText}>{org.address}</Text>
-          </View>
-        )}
-        {org.website && (
-          <View style={styles.infoRow}>
-            <Globe size={14} color={Colors.light.textSecondary} />
-            <Text style={styles.infoText}>{org.website}</Text>
-          </View>
-        )}
-        {org.notes && (
-          <>
-            <View style={styles.divider} />
-            <Text style={styles.notesLabel}>Notes</Text>
-            <Text style={styles.notesText}>{org.notes}</Text>
-          </>
-        )}
-
-        <View style={styles.divider} />
-
-        <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <ShoppingBag size={16} color={Colors.light.tint} />
-            <Text style={styles.statValue}>{relatedQuotes.length}</Text>
-            <Text style={styles.statLabel}>Quotes</Text>
-          </View>
-          <View style={styles.statBox}>
-            <DollarSign size={16} color={Colors.light.success} />
-            <Text style={styles.statValue}>{formatCurrency(totalSpent)}</Text>
-            <Text style={styles.statLabel}>Spent</Text>
-          </View>
-        </View>
-
-        <View style={styles.divider} />
-
-        <TouchableOpacity
-          style={styles.newQuoteBtn}
-          onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
-        >
-          <Plus size={14} color="#fff" />
-          <Text style={styles.newQuoteBtnText}>New Quote</Text>
-        </TouchableOpacity>
-        <View style={styles.editDeleteRow}>
-          <TouchableOpacity style={styles.editOrgBtn} onPress={openEditOrg}>
-            <Edit3 size={14} color="#fff" />
-            <Text style={styles.editOrgBtnText}>Edit Profile</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.deleteOrgBtn} onPress={handleDeleteOrg}>
-            <Trash2 size={14} color={Colors.light.error} />
-            <Text style={styles.deleteOrgBtnText}>Delete</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.memberSince}>Added {formatDate(org.createdAt)}</Text>
-      </View>
-    </View>
-  );
-
-  const tabs = [
-    { key: 'activity', label: 'Activity', count: org.activityLog.length },
-    { key: 'contacts', label: 'Contacts', count: org.contacts.length },
-    { key: 'quotes', label: 'Quotes', count: relatedQuotes.length },
-    { key: 'campaigns', label: 'Campaigns', count: org.campaigns.length },
-    { key: 'hub', label: 'Hub', count: memberships.length },
-  ] as const;
-
-  const rightPanel = (
-    <View style={styles.rightPanel}>
-      {/* Tabs */}
-      <View style={styles.tabBar}>
-        {tabs.map((t) => (
-          <TouchableOpacity
-            key={t.key}
-            style={[styles.tab, activeTab === t.key && styles.tabActive]}
-            onPress={() => setActiveTab(t.key)}
-          >
-            <Text style={[styles.tabText, activeTab === t.key && styles.tabTextActive]}>{t.label}</Text>
-            {t.count > 0 && (
-              <View style={[styles.tabBadge, activeTab === t.key && styles.tabBadgeActive]}>
-                <Text style={[styles.tabBadgeText, activeTab === t.key && styles.tabBadgeTextActive]}>{t.count}</Text>
-              </View>
+      {/* Activity card */}
+      <View style={styles.infoCard}>
+        <View style={styles.infoCardHeader}>
+          <View style={styles.infoCardHeaderLeft}>
+            <Clock size={15} color={Colors.light.tint} />
+            <Text style={styles.infoCardTitle}>Activity</Text>
+            {org.activityLog.length > 0 && (
+              <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{org.activityLog.length}</Text></View>
             )}
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Activity tab */}
-      {activeTab === 'activity' && (
-        <View style={styles.tabContent}>
-          <View style={styles.tabContentHeader}>
-            <Text style={styles.tabContentTitle}>Activity Log</Text>
-            <TouchableOpacity style={styles.addItemBtn} onPress={() => setActivityModal(true)}>
-              <Plus size={14} color="#fff" />
-              <Text style={styles.addItemBtnText}>Log Activity</Text>
-            </TouchableOpacity>
           </View>
-          {org.activityLog.length === 0 ? (
-            <View style={styles.emptyTab}>
-              <Clock size={32} color={Colors.light.border} />
-              <Text style={styles.emptyTabText}>No activity logged yet.</Text>
-              <Text style={styles.emptyTabSub}>Log a call, email, or note to start tracking.</Text>
-            </View>
-          ) : (
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {org.activityLog.map((entry) => {
+          <TouchableOpacity style={styles.infoCardAction} onPress={() => setActivityModal(true)}>
+            <Plus size={13} color={Colors.light.tint} />
+            <Text style={styles.infoCardActionText}>Log Activity</Text>
+          </TouchableOpacity>
+        </View>
+        {org.activityLog.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyCardText}>No activity logged yet.</Text>
+            <Text style={styles.emptyCardSub}>Log a call, email, or note to start tracking.</Text>
+          </View>
+        ) : (
+          org.activityLog.map((entry) => {
                 const typeCfg = ACTIVITY_TYPE_CONFIG[entry.type] ?? ACTIVITY_TYPE_CONFIG['note'];
                 const isSystemEvent = !!ACTIVITY_TYPE_CONFIG[entry.type]?.isSystem;
                 const iconColor = typeCfg.color;
@@ -711,63 +782,63 @@ export default function OrgProfileScreen() {
                   entry.type === 'member_added' || entry.type === 'member_removed' ? <User size={14} color={iconColor} /> :
                   entry.type === 'contact_added' || entry.type === 'contact_updated' ? <User size={14} color={iconColor} /> :
                   <FileText size={14} color={iconColor} />;
-                return (
-                  <View key={entry.id} style={[styles.activityEntry, isSystemEvent && styles.activityEntrySystem]}>
-                    <View style={[styles.activityIcon, { backgroundColor: typeCfg.color + '20' }]}>
-                      {iconEl}
-                    </View>
-                    <View style={styles.activityBody}>
-                      <View style={styles.activityHeaderRow}>
-                        <Text style={styles.activityType}>{typeCfg.label}</Text>
-                        {entry.contactName && (
-                          <Text style={styles.activityContact}>· {entry.contactName}</Text>
-                        )}
-                        <Text style={styles.activityDate}>{formatDate(entry.date)}</Text>
-                      </View>
-                      {entry.subject ? <Text style={styles.activitySubject}>{entry.subject}</Text> : null}
-                      <Text style={styles.activityNote}>{entry.body}</Text>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.activityDelete}
-                      onPress={() => deleteActivity({ orgId: org.id, entryId: entry.id })}
-                    >
-                      <X size={13} color={Colors.light.textSecondary} />
-                    </TouchableOpacity>
+            return (
+              <View key={entry.id} style={[styles.activityEntry, isSystemEvent && styles.activityEntrySystem]}>
+                <View style={[styles.activityIcon, { backgroundColor: typeCfg.color + '20' }]}>
+                  {iconEl}
+                </View>
+                <View style={styles.activityBody}>
+                  <View style={styles.activityHeaderRow}>
+                    <Text style={styles.activityType}>{typeCfg.label}</Text>
+                    {entry.contactName && (
+                      <Text style={styles.activityContact}>· {entry.contactName}</Text>
+                    )}
+                    <Text style={styles.activityDate}>{formatDate(entry.date)}</Text>
                   </View>
-                );
-              })}
-              <View style={{ height: 40 }} />
-            </ScrollView>
-          )}
-        </View>
-      )}
+                  {entry.subject ? <Text style={styles.activitySubject}>{entry.subject}</Text> : null}
+                  <Text style={styles.activityNote}>{entry.body}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.activityDelete}
+                  onPress={() => deleteActivity({ orgId: org.id, entryId: entry.id })}
+                >
+                  <X size={13} color={Colors.light.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            );
+          })
+        )}
+      </View>
 
-      {/* Contacts tab */}
-      {activeTab === 'contacts' && (
-        <View style={styles.tabContent}>
-          <View style={styles.tabContentHeader}>
-            <Text style={styles.tabContentTitle}>Contacts</Text>
-            <View style={styles.tabHeaderBtns}>
-              <TouchableOpacity style={styles.addItemBtnSecondary} onPress={openAddDept}>
-                <Plus size={13} color={Colors.light.tint} />
-                <Text style={styles.addItemBtnSecondaryText}>Department</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.addItemBtn} onPress={openAddContact}>
-                <Plus size={14} color="#fff" />
-                <Text style={styles.addItemBtnText}>Add Contact</Text>
-              </TouchableOpacity>
-            </View>
+      {/* Contacts card */}
+      <View style={styles.infoCard}>
+        <View style={styles.infoCardHeader}>
+          <View style={styles.infoCardHeaderLeft}>
+            <Users size={15} color={Colors.light.tint} />
+            <Text style={styles.infoCardTitle}>Contacts</Text>
+            {org.contacts.length > 0 && (
+              <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{org.contacts.length}</Text></View>
+            )}
           </View>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity style={styles.infoCardActionSecondary} onPress={openAddDept}>
+              <Plus size={12} color={Colors.light.tint} />
+              <Text style={styles.infoCardActionSecondaryText}>Dept</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.infoCardAction} onPress={openAddContact}>
+              <Plus size={13} color={Colors.light.tint} />
+              <Text style={styles.infoCardActionText}>Add Contact</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
-          {/* Departments + contacts grouped */}
-          {org.contacts.length === 0 && (org.departments || []).length === 0 ? (
-            <View style={styles.emptyTab}>
-              <User size={32} color={Colors.light.border} />
-              <Text style={styles.emptyTabText}>No contacts yet.</Text>
-              <Text style={styles.emptyTabSub}>Add departments to organize people by team, then add contacts under each department.</Text>
-            </View>
-          ) : (
-            <ScrollView showsVerticalScrollIndicator={false}>
+        {org.contacts.length === 0 && (org.departments || []).length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyCardText}>No contacts yet.</Text>
+            <Text style={styles.emptyCardSub}>Add departments to organize people by team, then add contacts.</Text>
+          </View>
+        ) : (
+          <>
               {/* Departments with their contacts */}
               {(org.departments || []).map((dept) => {
                 const deptContacts = org.contacts.filter((c) => c.departmentId === dept.id);
@@ -833,259 +904,264 @@ export default function OrgProfileScreen() {
                   </View>
                 );
               })()}
-              <View style={{ height: 40 }} />
-            </ScrollView>
-          )}
+          </>
+        )}
+      </View>
+
+      {/* Quotes & Revenue card */}
+      <View style={styles.infoCard}>
+        <View style={styles.infoCardHeader}>
+          <View style={styles.infoCardHeaderLeft}>
+            <FileText size={15} color={Colors.light.tint} />
+            <Text style={styles.infoCardTitle}>Quotes & Revenue</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.infoCardAction}
+            onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
+          >
+            <Plus size={13} color={Colors.light.tint} />
+            <Text style={styles.infoCardActionText}>New Quote</Text>
+          </TouchableOpacity>
         </View>
-      )}
-
-      {/* Quotes tab */}
-      {activeTab === 'quotes' && (
-        <View style={styles.tabContent}>
-          <View style={styles.tabContentHeader}>
-            <Text style={styles.tabContentTitle}>Quotes & Invoices</Text>
-            <TouchableOpacity style={styles.addItemBtn} onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}>
-              <Plus size={14} color="#fff" />
-              <Text style={styles.addItemBtnText}>New Quote</Text>
-            </TouchableOpacity>
+        <View style={styles.revenueStatsRow}>
+          <View style={styles.revenueStatBox}>
+            <Text style={styles.revenueStatValue}>{relatedQuotes.length}</Text>
+            <Text style={styles.revenueStatLabel}>Total Quotes</Text>
           </View>
-          {relatedQuotes.length === 0 ? (
-            <View style={styles.emptyTab}>
-              <FileText size={32} color={Colors.light.border} />
-              <Text style={styles.emptyTabText}>No quotes yet.</Text>
-              <Text style={styles.emptyTabSub}>Create a quote to link it to this contact.</Text>
-            </View>
-          ) : (
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {relatedQuotes.map((q) => (
-                <TouchableOpacity
-                  key={q.id}
-                  style={styles.quoteRow}
-                  onPress={() => router.push(`/quote/${q.id}` as any)}
-                >
-                  <View style={styles.quoteRowLeft}>
-                    <Text style={styles.quoteProject} numberOfLines={1}>{q.projectName}</Text>
-                    <View style={styles.quoteMeta}>
-                      {q.invoiceNumber && <Text style={styles.quoteNum}>#{q.invoiceNumber}</Text>}
-                      <Text style={styles.quoteDate}>{formatDate(q.createdAt)}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.quoteRowRight}>
-                    <Text style={styles.quoteAmount}>{formatCurrency(q.calculations.total)}</Text>
-                    <Text style={styles.quoteStatus}>{q.status.toUpperCase()}</Text>
-                  </View>
-                  <ChevronRight size={14} color={Colors.light.border} />
-                </TouchableOpacity>
-              ))}
-              <View style={{ height: 40 }} />
-            </ScrollView>
-          )}
+          <View style={styles.revenueStatDivider} />
+          <View style={styles.revenueStatBox}>
+            <Text style={[styles.revenueStatValue, { color: Colors.light.success }]}>{formatCurrency(totalSpent)}</Text>
+            <Text style={styles.revenueStatLabel}>Total Revenue</Text>
+          </View>
         </View>
-      )}
-
-      {/* Hub tab */}
-      {activeTab === 'hub' && (
-        <View style={styles.tabContent}>
-          <View style={styles.hubToggleRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.hubToggleLabel}>Client Hub Enabled</Text>
-              <Text style={styles.hubToggleSub}>Grant this org access to the Client Hub portal</Text>
-            </View>
-            <Switch
-              value={org.hubEnabled ?? false}
-              onValueChange={(val) => updateOrgHubEnabled({ orgId: org.id, enabled: val })}
-              trackColor={{ false: Colors.light.border, true: '#FF5A00' }}
-              thumbColor="#fff"
-            />
+        {relatedQuotes.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyCardText}>No quotes yet.</Text>
+            <Text style={styles.emptyCardSub}>Create a quote to link it to this organization.</Text>
           </View>
-
-          {/* Internal team members */}
-          <View style={styles.tabContentHeader}>
-            <Text style={styles.tabContentTitle}>Internal Team</Text>
-            <TouchableOpacity style={styles.addItemBtn} onPress={() => { setMemberForm({ userId: '', role: 'MEMBER' }); setAddMemberModal(true); }}>
-              <Plus size={14} color="#fff" />
-              <Text style={styles.addItemBtnText}>Add</Text>
-            </TouchableOpacity>
-          </View>
-
-          {membershipsLoading ? (
-            <View style={[styles.emptyTab, { paddingVertical: 16 }]}>
-              <Text style={styles.emptyTabSub}>Loading...</Text>
-            </View>
-          ) : memberships.filter((m) => m.userType !== 'CLIENT').length === 0 ? (
-            <View style={[styles.emptyTab, { paddingVertical: 16 }]}>
-              <Text style={styles.emptyTabSub}>No internal team members assigned.</Text>
-            </View>
-          ) : (
-            memberships.filter((m) => m.userType !== 'CLIENT').map((m) => (
-              <View key={m.id} style={[styles.memberRow, m.role === 'ORG_ADMIN' && styles.memberRowAdmin]}>
-                <View style={[styles.memberAvatar, { backgroundColor: m.userAvatarColor || '#FF5A00' }]}>
-                  <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
+        ) : (
+          relatedQuotes.map((q) => (
+            <TouchableOpacity
+              key={q.id}
+              style={styles.quoteRow}
+              onPress={() => router.push(`/quote/${q.id}` as any)}
+            >
+              <View style={styles.quoteRowLeft}>
+                <Text style={styles.quoteProject} numberOfLines={1}>{q.projectName}</Text>
+                <View style={styles.quoteMeta}>
+                  {q.invoiceNumber && <Text style={styles.quoteNum}>#{q.invoiceNumber}</Text>}
+                  <Text style={styles.quoteDate}>{formatDate(q.createdAt)}</Text>
                 </View>
-                <View style={styles.memberInfo}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={styles.memberName}>{m.userName || 'Unknown User'}</Text>
-                    {m.role === 'ORG_ADMIN' && (
-                      <View style={styles.adminBadge}><Text style={styles.adminBadgeText}>Admin</Text></View>
-                    )}
-                  </View>
-                  <Text style={styles.memberRole}>{MEMBERSHIP_ROLE_LABELS[m.role] || m.role}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.memberDelete}
-                  onPress={() => Alert.alert('Remove Member', `Remove ${m.userName || 'this member'}?`, [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Remove', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
-                  ])}
-                >
-                  <X size={13} color={Colors.light.textSecondary} />
-                </TouchableOpacity>
               </View>
-            ))
-          )}
-
-          {/* Client users */}
-          <View style={[styles.tabContentHeader, { marginTop: 8 }]}>
-            <Text style={styles.tabContentTitle}>Client Users</Text>
-            <TouchableOpacity style={styles.addItemBtn} onPress={() => { setClientUserForm({ name: '', email: '' }); setAddClientUserModal(true); }}>
-              <Plus size={14} color="#fff" />
-              <Text style={styles.addItemBtnText}>Invite</Text>
+              <View style={styles.quoteRowRight}>
+                <Text style={styles.quoteAmount}>{formatCurrency(q.calculations.total)}</Text>
+                <Text style={styles.quoteStatus}>{q.status.toUpperCase()}</Text>
+              </View>
+              <ChevronRight size={14} color={Colors.light.border} />
             </TouchableOpacity>
+          ))
+        )}
+      </View>
+
+      {/* Client Hub card */}
+      <View style={styles.infoCard}>
+        <View style={styles.infoCardHeader}>
+          <View style={styles.infoCardHeaderLeft}>
+            <Shield size={15} color="#7C3AED" />
+            <Text style={styles.infoCardTitle}>Client Hub</Text>
           </View>
-
-          {membershipsLoading ? (
-            <View style={[styles.emptyTab, { paddingVertical: 16 }]}>
-              <Text style={styles.emptyTabSub}>Loading...</Text>
-            </View>
-          ) : memberships.filter((m) => m.userType === 'CLIENT').length === 0 ? (
-            <View style={[styles.emptyTab, { paddingVertical: 16 }]}>
-              <Shield size={24} color={Colors.light.border} />
-              <Text style={styles.emptyTabSub}>No client users yet. Invite a client to give them hub access.</Text>
-            </View>
-          ) : (
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {memberships.filter((m) => m.userType === 'CLIENT').map((m) => (
-                <View key={m.id} style={styles.memberRow}>
-                  <View style={[styles.memberAvatar, { backgroundColor: '#6366F1' }]}>
-                    <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
-                  </View>
-                  <View style={styles.memberInfo}>
-                    <Text style={styles.memberName}>{m.userName || 'Unknown User'}</Text>
-                    <Text style={styles.memberRole}>{m.userEmail || 'No email'}</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.memberDelete}
-                    onPress={() => Alert.alert('Remove Client', `Remove ${m.userName || 'this client'}?`, [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Remove', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
-                    ])}
-                  >
-                    <X size={13} color={Colors.light.textSecondary} />
-                  </TouchableOpacity>
-                </View>
-              ))}
-              <View style={{ height: 40 }} />
-            </ScrollView>
-          )}
+          <Switch
+            value={org.hubEnabled ?? false}
+            onValueChange={(val) => updateOrgHubEnabled({ orgId: org.id, enabled: val })}
+            trackColor={{ false: Colors.light.border, true: '#FF5A00' }}
+            thumbColor="#fff"
+          />
         </View>
-      )}
+        {org.hubEnabled && (
+          <TouchableOpacity
+            style={styles.portalLinkRow}
+            onPress={() => {
+              if (Platform.OS === 'web') {
+                (window as any).open(`/portal/${org.id}`, '_blank');
+              }
+            }}
+          >
+            <ExternalLink size={13} color={Colors.light.tint} />
+            <Text style={styles.portalLinkText}>Open Client Portal</Text>
+          </TouchableOpacity>
+        )}
 
-      {/* Campaigns tab */}
-      {activeTab === 'campaigns' && (
-        <View style={styles.tabContent}>
-          <View style={styles.tabContentHeader}>
-            <Text style={styles.tabContentTitle}>Campaigns</Text>
-            <TouchableOpacity style={styles.addItemBtn} onPress={() => setCampaignModal(true)}>
-              <Plus size={14} color="#fff" />
-              <Text style={styles.addItemBtnText}>Start Campaign</Text>
+        <View style={styles.infoCardSubHeader}>
+          <Text style={styles.infoCardSubTitle}>Internal Team</Text>
+          <TouchableOpacity onPress={() => { setMemberForm({ userId: '', role: 'MEMBER' }); setAddMemberModal(true); }}>
+            <Plus size={16} color={Colors.light.tint} />
+          </TouchableOpacity>
+        </View>
+        {membershipsLoading ? (
+          <Text style={styles.emptyCardSub}>Loading...</Text>
+        ) : memberships.filter((m) => m.userType !== 'CLIENT').length === 0 ? (
+          <Text style={styles.emptyCardSub}>No internal team members assigned.</Text>
+        ) : (
+          memberships.filter((m) => m.userType !== 'CLIENT').map((m) => (
+            <View key={m.id} style={[styles.memberRow, m.role === 'ORG_ADMIN' && styles.memberRowAdmin]}>
+              <View style={[styles.memberAvatar, { backgroundColor: m.userAvatarColor || '#FF5A00' }]}>
+                <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
+              </View>
+              <View style={styles.memberInfo}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.memberName}>{m.userName || 'Unknown User'}</Text>
+                  {m.role === 'ORG_ADMIN' && (
+                    <View style={styles.adminBadge}><Text style={styles.adminBadgeText}>Admin</Text></View>
+                  )}
+                </View>
+                <Text style={styles.memberRole}>{MEMBERSHIP_ROLE_LABELS[m.role] || m.role}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.memberDelete}
+                onPress={() => Alert.alert('Remove Member', `Remove ${m.userName || 'this member'}?`, [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Remove', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
+                ])}
+              >
+                <X size={13} color={Colors.light.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
+
+        <View style={[styles.infoCardSubHeader, { marginTop: 12 }]}>
+          <Text style={styles.infoCardSubTitle}>Client Users</Text>
+          <TouchableOpacity onPress={() => { setClientUserForm({ name: '', email: '' }); setAddClientUserModal(true); }}>
+            <Plus size={16} color={Colors.light.tint} />
+          </TouchableOpacity>
+        </View>
+        {membershipsLoading ? (
+          <Text style={styles.emptyCardSub}>Loading...</Text>
+        ) : memberships.filter((m) => m.userType === 'CLIENT').length === 0 ? (
+          <Text style={[styles.emptyCardSub, { marginTop: 4 }]}>No client users yet. Invite a client to give them portal access.</Text>
+        ) : (
+          memberships.filter((m) => m.userType === 'CLIENT').map((m) => (
+            <View key={m.id} style={styles.memberRow}>
+              <View style={[styles.memberAvatar, { backgroundColor: '#6366F1' }]}>
+                <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
+              </View>
+              <View style={styles.memberInfo}>
+                <Text style={styles.memberName}>{m.userName || 'Unknown User'}</Text>
+                <Text style={styles.memberRole}>{m.userEmail || 'No email'}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.memberDelete}
+                onPress={() => Alert.alert('Remove Client', `Remove ${m.userName || 'this client'}?`, [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Remove', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
+                ])}
+              >
+                <X size={13} color={Colors.light.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
+      </View>
+
+      {/* Campaigns card */}
+      {(isLead || org.campaigns.length > 0) && (
+        <View style={styles.infoCard}>
+          <View style={styles.infoCardHeader}>
+            <View style={styles.infoCardHeaderLeft}>
+              <TrendingUp size={15} color="#F59E0B" />
+              <Text style={styles.infoCardTitle}>Campaigns</Text>
+              {org.campaigns.length > 0 && (
+                <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{org.campaigns.length}</Text></View>
+              )}
+            </View>
+            <TouchableOpacity style={styles.infoCardAction} onPress={() => setCampaignModal(true)}>
+              <Plus size={13} color={Colors.light.tint} />
+              <Text style={styles.infoCardActionText}>Start Campaign</Text>
             </TouchableOpacity>
           </View>
           {org.campaigns.length === 0 ? (
-            <View style={styles.emptyTab}>
-              <TrendingUp size={32} color={Colors.light.border} />
-              <Text style={styles.emptyTabText}>No campaigns yet.</Text>
-              <Text style={styles.emptyTabSub}>Start a campaign to track your outreach steps.</Text>
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyCardText}>No campaigns yet.</Text>
+              <Text style={styles.emptyCardSub}>Start a campaign to track your outreach steps.</Text>
             </View>
           ) : (
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {org.campaigns.map((campaign) => {
-                const completedCount = campaign.steps.filter((s) => s.status !== 'pending').length;
-                const totalCount = campaign.steps.length;
-                const progress = totalCount > 0 ? completedCount / totalCount : 0;
-                return (
-                  <View key={campaign.id} style={styles.campaignCard}>
-                    <View style={styles.campaignHeader}>
-                      <View style={styles.campaignHeaderLeft}>
-                        <Text style={styles.campaignName}>{campaign.templateName}</Text>
-                        <Text style={styles.campaignDate}>Started {formatDate(campaign.startedDate)}</Text>
-                      </View>
-                      <View style={styles.campaignProgress}>
-                        <Text style={styles.campaignProgressText}>{completedCount}/{totalCount}</Text>
-                        <View style={styles.campaignProgressBar}>
-                          <View style={[styles.campaignProgressFill, { width: `${progress * 100}%` as any }]} />
-                        </View>
-                      </View>
-                      <TouchableOpacity
-                        style={styles.campaignDelete}
-                        onPress={() => {
-                          Alert.alert('Remove Campaign', 'Remove this campaign from the contact?', [
-                            { text: 'Cancel', style: 'cancel' },
-                            { text: 'Remove', style: 'destructive', onPress: () => deleteCampaign({ orgId: org.id, campaignId: campaign.id }) },
-                          ]);
-                        }}
-                      >
-                        <Trash2 size={13} color={Colors.light.textSecondary} />
-                      </TouchableOpacity>
+            org.campaigns.map((campaign) => {
+              const completedCount = campaign.steps.filter((s) => s.status !== 'pending').length;
+              const totalCount = campaign.steps.length;
+              const progress = totalCount > 0 ? completedCount / totalCount : 0;
+              return (
+                <View key={campaign.id} style={styles.campaignCard}>
+                  <View style={styles.campaignHeader}>
+                    <View style={styles.campaignHeaderLeft}>
+                      <Text style={styles.campaignName}>{campaign.templateName}</Text>
+                      <Text style={styles.campaignDate}>Started {formatDate(campaign.startedDate)}</Text>
                     </View>
-                    {campaign.steps.map((step) => {
-                      const stepCfg = STEP_STATUS_CONFIG[step.status];
-                      return (
-                        <View key={step.id} style={styles.campaignStep}>
-                          <View style={styles.campaignStepNum}>
-                            <Text style={styles.campaignStepNumText}>{step.stepNumber}</Text>
-                          </View>
-                          <View style={styles.campaignStepInfo}>
-                            <Text style={styles.campaignStepLabel}>{step.label}</Text>
-                            <View style={styles.campaignStepMeta}>
-                              <View style={[styles.campaignStepTypeBadge, { backgroundColor: ACTIVITY_TYPE_CONFIG[step.type as ActivityType]?.color + '20' || '#F3F4F6' }]}>
-                                <Text style={[styles.campaignStepTypeText, { color: ACTIVITY_TYPE_CONFIG[step.type as ActivityType]?.color || '#6B7280' }]}>
-                                  {step.type.charAt(0).toUpperCase() + step.type.slice(1)}
-                                </Text>
-                              </View>
-                              {step.scheduledDate && (
-                                <Text style={styles.campaignStepDate}>Due {formatDate(step.scheduledDate)}</Text>
-                              )}
+                    <View style={styles.campaignProgress}>
+                      <Text style={styles.campaignProgressText}>{completedCount}/{totalCount}</Text>
+                      <View style={styles.campaignProgressBar}>
+                        <View style={[styles.campaignProgressFill, { width: `${progress * 100}%` as any }]} />
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.campaignDelete}
+                      onPress={() => {
+                        Alert.alert('Remove Campaign', 'Remove this campaign from the contact?', [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Remove', style: 'destructive', onPress: () => deleteCampaign({ orgId: org.id, campaignId: campaign.id }) },
+                        ]);
+                      }}
+                    >
+                      <Trash2 size={13} color={Colors.light.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                  {campaign.steps.map((step) => {
+                    return (
+                      <View key={step.id} style={styles.campaignStep}>
+                        <View style={styles.campaignStepNum}>
+                          <Text style={styles.campaignStepNumText}>{step.stepNumber}</Text>
+                        </View>
+                        <View style={styles.campaignStepInfo}>
+                          <Text style={styles.campaignStepLabel}>{step.label}</Text>
+                          <View style={styles.campaignStepMeta}>
+                            <View style={[styles.campaignStepTypeBadge, { backgroundColor: ACTIVITY_TYPE_CONFIG[step.type as ActivityType]?.color + '20' || '#F3F4F6' }]}>
+                              <Text style={[styles.campaignStepTypeText, { color: ACTIVITY_TYPE_CONFIG[step.type as ActivityType]?.color || '#6B7280' }]}>
+                                {step.type.charAt(0).toUpperCase() + step.type.slice(1)}
+                              </Text>
                             </View>
-                          </View>
-                          <View style={styles.campaignStepStatus}>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                              <View style={styles.stepStatusRow}>
-                                {STEP_STATUSES.map((ss) => (
-                                  <TouchableOpacity
-                                    key={ss}
-                                    style={[styles.stepStatusBtn, step.status === ss && { backgroundColor: STEP_STATUS_CONFIG[ss].bg, borderColor: STEP_STATUS_CONFIG[ss].color }]}
-                                    onPress={() => handleUpdateStepStatus(campaign, step, ss)}
-                                  >
-                                    <Text style={[styles.stepStatusBtnText, step.status === ss && { color: STEP_STATUS_CONFIG[ss].color, fontWeight: '700' as const }]}>
-                                      {STEP_STATUS_CONFIG[ss].label}
-                                    </Text>
-                                  </TouchableOpacity>
-                                ))}
-                              </View>
-                            </ScrollView>
+                            {step.scheduledDate && (
+                              <Text style={styles.campaignStepDate}>Due {formatDate(step.scheduledDate)}</Text>
+                            )}
                           </View>
                         </View>
-                      );
-                    })}
-                  </View>
-                );
-              })}
-              <View style={{ height: 40 }} />
-            </ScrollView>
+                        <View style={styles.campaignStepStatus}>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                            <View style={styles.stepStatusRow}>
+                              {STEP_STATUSES.map((ss) => (
+                                <TouchableOpacity
+                                  key={ss}
+                                  style={[styles.stepStatusBtn, step.status === ss && { backgroundColor: STEP_STATUS_CONFIG[ss].bg, borderColor: STEP_STATUS_CONFIG[ss].color }]}
+                                  onPress={() => handleUpdateStepStatus(campaign, step, ss)}
+                                >
+                                  <Text style={[styles.stepStatusBtnText, step.status === ss && { color: STEP_STATUS_CONFIG[ss].color, fontWeight: '700' as const }]}>
+                                    {STEP_STATUS_CONFIG[ss].label}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          </ScrollView>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              );
+            })
           )}
         </View>
       )}
-    </View>
+
+      <View style={{ height: 40 }} />
+    </ScrollView>
   );
 
   return (
@@ -1895,4 +1971,163 @@ const styles = StyleSheet.create({
   },
   userPickerRowSelected: { backgroundColor: `#FF5A0012` },
   userPickerName: { flex: 1, fontSize: 14, color: Colors.light.text },
+
+  orgIdentityCard: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    padding: 18,
+    alignItems: 'center' as const,
+  },
+  orgLogoWrap: {
+    width: 88, height: 88, borderRadius: 14,
+    overflow: 'hidden',
+    marginBottom: 10,
+    position: 'relative' as const,
+    backgroundColor: Colors.light.background,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  orgLogoImage: { width: 88, height: 88, borderRadius: 14 },
+  orgLogoFallback: {
+    width: 88, height: 88, borderRadius: 14,
+    backgroundColor: Colors.light.tint,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  orgLogoInitial: { fontSize: 34, fontWeight: '800' as const, color: '#fff' },
+  orgLogoOverlay: {
+    position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  uploadLogoBtn: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 5,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
+    backgroundColor: `${Colors.light.tint}14`,
+    borderWidth: 1, borderColor: `${Colors.light.tint}40`,
+    marginBottom: 10,
+  },
+  uploadLogoBtnText: { fontSize: 12, fontWeight: '600' as const, color: Colors.light.tint },
+  orgBadgesRow: { flexDirection: 'row' as const, gap: 6, flexWrap: 'wrap' as const, justifyContent: 'center' as const, marginTop: 8 },
+  portalEnabledBadge: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12,
+    backgroundColor: '#F5F3FF', borderWidth: 1, borderColor: '#DDD6FE',
+  },
+  portalEnabledBadgeText: { fontSize: 11, fontWeight: '700' as const, color: '#7C3AED' },
+  orgAddressBlock: { gap: 4, marginTop: 10, alignSelf: 'flex-start' as const, width: '100%' as any },
+
+  leftInfoCard: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    padding: 12,
+    gap: 8,
+  },
+  leftInfoCardLabel: {
+    fontSize: 10, fontWeight: '700' as const, color: Colors.light.textSecondary,
+    textTransform: 'uppercase' as const, letterSpacing: 0.5,
+  },
+  leftPersonRow: { flexDirection: 'row' as const, alignItems: 'flex-start' as const, gap: 10 },
+  leftPersonAvatar: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: Colors.light.tint,
+    justifyContent: 'center', alignItems: 'center',
+    flexShrink: 0,
+  },
+  leftPersonAvatarText: { fontSize: 15, fontWeight: '800' as const, color: '#fff' },
+  leftPersonName: { fontSize: 14, fontWeight: '700' as const, color: Colors.light.text },
+  leftPersonRole: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 1 },
+  leftPersonDetail: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 5, marginTop: 3 },
+  leftPersonDetailText: { fontSize: 12, color: Colors.light.textSecondary, flex: 1 },
+  leftRepUnassigned: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6,
+    paddingVertical: 4,
+  },
+  leftRepUnassignedText: { fontSize: 13, color: Colors.light.textSecondary, fontStyle: 'italic' as const },
+
+  leftStatsRow: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 12, borderWidth: 1, borderColor: Colors.light.border,
+    padding: 14, flexDirection: 'row' as const, alignItems: 'center' as const,
+  },
+  leftStatBox: { flex: 1, alignItems: 'center' as const, gap: 3 },
+  leftStatValue: { fontSize: 18, fontWeight: '800' as const, color: Colors.light.text },
+  leftStatLabel: { fontSize: 11, color: Colors.light.textSecondary, fontWeight: '500' as const },
+  leftStatDivider: { width: 1, height: 32, backgroundColor: Colors.light.border },
+
+  rightPanelContent: { padding: 16, gap: 16 },
+
+  infoCard: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 14, borderWidth: 1,
+    borderColor: Colors.light.border,
+    padding: 14,
+  },
+  infoCardHeader: {
+    flexDirection: 'row' as const, alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    marginBottom: 12,
+  },
+  infoCardHeaderLeft: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 7 },
+  infoCardTitle: { fontSize: 15, fontWeight: '700' as const, color: Colors.light.text },
+  infoCardBadge: {
+    backgroundColor: Colors.light.border, borderRadius: 10,
+    paddingHorizontal: 6, paddingVertical: 1,
+    minWidth: 18, alignItems: 'center' as const,
+  },
+  infoCardBadgeText: { fontSize: 11, fontWeight: '700' as const, color: Colors.light.textSecondary },
+  infoCardAction: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
+    backgroundColor: `${Colors.light.tint}14`,
+    borderWidth: 1, borderColor: `${Colors.light.tint}30`,
+  },
+  infoCardActionText: { fontSize: 12, fontWeight: '600' as const, color: Colors.light.tint },
+  infoCardActionSecondary: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 3,
+    paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8,
+    borderWidth: 1, borderColor: Colors.light.border,
+  },
+  infoCardActionSecondaryText: { fontSize: 12, fontWeight: '600' as const, color: Colors.light.tint },
+  infoCardSubHeader: {
+    flexDirection: 'row' as const, alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    paddingTop: 8, paddingBottom: 6,
+    borderTopWidth: 1, borderTopColor: Colors.light.border,
+  },
+  infoCardSubTitle: { fontSize: 12, fontWeight: '700' as const, color: Colors.light.textSecondary, textTransform: 'uppercase' as const, letterSpacing: 0.4 },
+  emptyCard: { paddingVertical: 18, alignItems: 'center' as const, gap: 4 },
+  emptyCardText: { fontSize: 14, fontWeight: '600' as const, color: Colors.light.text },
+  emptyCardSub: { fontSize: 12, color: Colors.light.textSecondary, textAlign: 'center' as const },
+
+  projectRow: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8,
+    paddingVertical: 10, borderTopWidth: 1, borderTopColor: Colors.light.border,
+  },
+  projectRowLeft: { flex: 1 },
+  projectRowName: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.text },
+  projectRowNum: { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
+  projectRowBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1 },
+  projectRowBadgeText: { fontSize: 11, fontWeight: '700' as const },
+
+  revenueStatsRow: {
+    flexDirection: 'row' as const, alignItems: 'center' as const,
+    backgroundColor: Colors.light.background, borderRadius: 10,
+    padding: 12, marginBottom: 12,
+  },
+  revenueStatBox: { flex: 1, alignItems: 'center' as const, gap: 2 },
+  revenueStatValue: { fontSize: 18, fontWeight: '800' as const, color: Colors.light.text },
+  revenueStatLabel: { fontSize: 11, color: Colors.light.textSecondary, fontWeight: '500' as const },
+  revenueStatDivider: { width: 1, height: 32, backgroundColor: Colors.light.border },
+
+  portalLinkRow: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 7,
+    paddingVertical: 8, paddingHorizontal: 4, marginBottom: 4,
+  },
+  portalLinkText: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.tint },
 });
