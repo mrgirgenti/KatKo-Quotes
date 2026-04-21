@@ -107,7 +107,7 @@ export function buildClientInviteEmail(opts: {
   const text = [
     `Hi ${clientName},`,
     '',
-    `You've been invited to the ${orgName} client portal by Katalyst Ko Printshop.`,
+    `You've been invited to the ${orgName} client hub by Katalyst Ko Printshop.`,
     '',
     `Access your portal here:`,
     `  ${portalUrl}`,
@@ -126,7 +126,7 @@ export function buildClientInviteEmail(opts: {
     <tr><td style="padding:32px;">
       <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111;">You're invited!</h1>
       <p style="margin:0 0 24px;font-size:15px;color:#555;line-height:1.6;">
-        Hi ${clientName}, you've been invited to the <strong>${orgName}</strong> client portal by Katalyst Ko Printshop.
+        Hi ${clientName}, you've been invited to the <strong>${orgName}</strong> client hub by Katalyst Ko Printshop.
       </p>
       <table cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
         <tr><td style="background:#FF5A00;border-radius:8px;padding:0;">

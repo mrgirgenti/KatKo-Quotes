@@ -586,7 +586,7 @@ export default function QuoteDetailScreen() {
         </View>
         <Text style={styles.intakeBannerText}>
           {isClientHub
-            ? 'This project came in from the client portal. Review the line items below, then start quoting to add pricing.'
+            ? 'This project came in from the client hub. Review the line items below, then start quoting to add pricing.'
             : 'This project is awaiting review. No pricing has been set yet — start quoting to add costs and totals.'}
         </Text>
         <View style={styles.intakeBannerActions}>

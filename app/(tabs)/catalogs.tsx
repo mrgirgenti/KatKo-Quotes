@@ -549,7 +549,7 @@ export default function CatalogsScreen() {
             <View style={styles.clientHeader}>
               <View>
                 <Text style={styles.sectionTitle}>Client-Facing Catalogs</Text>
-                <Text style={styles.pageSubtitle}>These catalogs appear in every client portal</Text>
+                <Text style={styles.pageSubtitle}>These catalogs appear in every client hub</Text>
               </View>
               <TouchableOpacity
                 style={styles.addBtn}
@@ -570,7 +570,7 @@ export default function CatalogsScreen() {
                 <BookOpen size={40} color="#D1D5DB" />
                 <Text style={styles.emptyTitle}>No client catalogs yet</Text>
                 <Text style={styles.emptySub}>
-                  Add your first retail catalog — it will appear in all client portals automatically.
+                  Add your first retail catalog — it will appear in all client hubs automatically.
                 </Text>
                 <TouchableOpacity
                   style={[styles.addBtn, { marginTop: 16 }]}

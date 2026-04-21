@@ -729,7 +729,7 @@ export default function OrgProfileScreen() {
             onPress={() => { if (Platform.OS === 'web') { (window as any).open(`/portal/${org.id}`, '_blank'); } }}
           >
             <ExternalLink size={13} color={Colors.light.tint} />
-            <Text style={styles.portalLinkText}>Open Client Portal</Text>
+            <Text style={styles.portalLinkText}>Open Client Hub</Text>
           </TouchableOpacity>
         )}
         <View style={styles.infoCardSubHeader}>

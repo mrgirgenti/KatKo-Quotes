@@ -1314,7 +1314,7 @@ export default function ClientPortal() {
   const HomeView = () => (
     <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <Text style={dash.welcomeText}>Welcome back, <Text style={{ color: BRAND }}>{session?.userName}</Text></Text>
-      <Text style={dash.welcomeSub}>{displayName} · Client Portal</Text>
+      <Text style={dash.welcomeSub}>{displayName} · Client Hub</Text>
 
       <View style={dash.dashGrid}>
         <View style={{ flex: 1.4, minWidth: 260 }}>
@@ -1754,14 +1754,14 @@ export default function ClientPortal() {
                 {orgDisplayName ? (
                   <View style={{ marginLeft: 10 }}>
                     <Text style={styles.logoText}>{orgDisplayName.toUpperCase()}</Text>
-                    <Text style={styles.logoSub}>Client Portals by Katalyst Ko Printshop</Text>
+                    <Text style={styles.logoSub}>Client Hub by Katalyst Ko Printshop</Text>
                   </View>
                 ) : null}
               </View>
             ) : (
               <View>
                 <Text style={styles.logoText}>KATALYST KO</Text>
-                <Text style={styles.logoSub}>Client Portals by Katalyst Ko Printshop</Text>
+                <Text style={styles.logoSub}>Client Hub by Katalyst Ko Printshop</Text>
               </View>
             )}
           </View>
@@ -1813,7 +1813,7 @@ export default function ClientPortal() {
               ) : (
                 <View>
                   <Text style={dash.sidebarLogoText}>{displayName.toUpperCase()}</Text>
-                  <Text style={dash.sidebarLogoBrand}>Client Portals by Katalyst Ko Printshop</Text>
+                  <Text style={dash.sidebarLogoBrand}>Client Hub by Katalyst Ko Printshop</Text>
                 </View>
               )}
               <Text style={dash.sidebarClientHub}>Client Hub</Text>
