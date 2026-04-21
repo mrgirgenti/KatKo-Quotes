@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   RefreshControl,
   TextInput,
-  Image,
   useWindowDimensions,
   Platform,
 } from 'react-native';
@@ -29,6 +28,7 @@ import {
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
 import { Organization, Contact } from '@/types/crm';
+import { OrgAvatar } from '@/components/OrgAvatar';
 
 function getPrimaryContact(org: Organization): Contact | undefined {
   return org.contacts.find((c) => c.isPrimary) ?? org.contacts[0];
@@ -45,31 +45,6 @@ function getStatusStyle(status: string) {
   return STATUS_COLORS[status] ?? { bg: '#F3F4F6', text: '#6B7280', dot: '#9CA3AF' };
 }
 
-function OrgAvatar({ org, size = 52 }: { org: Organization; size?: number }) {
-  const [imgError, setImgError] = useState(false);
-  const logoUrl = org.logoUrl || org.internalLogoUrl;
-
-  if (logoUrl && !imgError) {
-    return (
-      <Image
-        source={{ uri: logoUrl }}
-        style={[styles.orgLogo, { width: size, height: size, borderRadius: 10 }]}
-        resizeMode="contain"
-        onError={() => setImgError(true)}
-      />
-    );
-  }
-
-  const initial = org.name[0]?.toUpperCase() || '?';
-  const colors = ['#FF5A00', '#7C3AED', '#0284C7', '#16A34A', '#DB2777'];
-  const colorIdx = org.name.charCodeAt(0) % colors.length;
-
-  return (
-    <View style={[styles.orgInitialAvatar, { width: size, height: size, borderRadius: 10, backgroundColor: colors[colorIdx] }]}>
-      <Text style={[styles.orgInitialText, { fontSize: size * 0.38 }]}>{initial}</Text>
-    </View>
-  );
-}
 
 function HubCard({ org, onPress, onCopyLink }: { org: Organization; onPress: () => void; onCopyLink: () => void }) {
   const primaryContact = getPrimaryContact(org);
@@ -78,13 +53,13 @@ function HubCard({ org, onPress, onCopyLink }: { org: Organization; onPress: () 
     : null;
   const contactEmail = primaryContact?.email || null;
   const statusStyle = getStatusStyle(org.status);
-  const hasLogo = !!(org.logoUrl || org.internalLogoUrl);
+  const hasLogo = !!org.logoUrl;
 
   return (
     <View style={styles.card}>
       {/* ── Top section: logo, name, badges ── */}
       <View style={styles.cardTop}>
-        <OrgAvatar org={org} size={52} />
+        <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={52} />
         <View style={styles.cardTopText}>
           <Text style={styles.orgName} numberOfLines={2}>{org.name}</Text>
           <View style={styles.badgeRow}>
@@ -543,21 +518,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     padding: 16,
     gap: 14,
-  },
-  orgLogo: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    flexShrink: 0,
-  },
-  orgInitialAvatar: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexShrink: 0,
-  },
-  orgInitialText: {
-    fontWeight: '800',
-    color: '#fff',
   },
   cardTopText: {
     flex: 1,

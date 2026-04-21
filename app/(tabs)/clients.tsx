@@ -13,6 +13,7 @@ import {
   FlatList,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { OrgAvatar } from '@/components/OrgAvatar';
 import {
   Plus,
   Search,
@@ -67,21 +68,6 @@ function StatusBadge({ status }: { status: CrmStatus }) {
   );
 }
 
-function OrgAvatar({ org, size = 40 }: { org: Organization; size?: number }) {
-  const initial = org.name.charAt(0).toUpperCase();
-  const isActive = org.status === 'Active Client';
-  return (
-    <View style={[
-      styles.avatar,
-      { width: size, height: size, borderRadius: size / 2 },
-      isActive && styles.avatarActive,
-    ]}>
-      <Text style={[styles.avatarText, { fontSize: size * 0.38 }, isActive && styles.avatarTextActive]}>
-        {initial}
-      </Text>
-    </View>
-  );
-}
 
 interface OrgRowProps {
   org: Organization;
@@ -97,7 +83,7 @@ function OrgRow({ org, onPress }: OrgRowProps) {
   return (
     <TouchableOpacity style={styles.tableRow} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.colAvatar}>
-        <OrgAvatar org={org} size={36} />
+        <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={36} shape="circle" />
       </View>
       <View style={styles.colName}>
         <Text style={styles.tableOrgName} numberOfLines={1}>{org.name}</Text>
@@ -166,7 +152,7 @@ function OrgCard({ org, onPress }: OrgRowProps) {
       activeOpacity={0.85}
     >
       <View style={styles.orgCardLeft}>
-        <OrgAvatar org={org} size={46} />
+        <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={46} />
         <View style={styles.orgCardInfo}>
           <View style={styles.orgCardNameRow}>
             <Text style={styles.orgCardName} numberOfLines={1}>{org.name}</Text>
@@ -959,14 +945,6 @@ const styles = StyleSheet.create({
   },
   badgeDot: { width: 6, height: 6, borderRadius: 3 },
   badgeText: { fontSize: 11, fontWeight: '700' as const },
-
-  avatar: {
-    backgroundColor: Colors.light.border,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  avatarActive: { backgroundColor: Colors.light.tint },
-  avatarText: { fontWeight: '800' as const, color: Colors.light.textSecondary },
-  avatarTextActive: { color: '#fff' },
 
   list: { flex: 1 },
   listContent: { padding: 16, gap: 10 },

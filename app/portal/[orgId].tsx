@@ -786,7 +786,6 @@ export default function ClientPortal() {
   const [projectsLoading, setProjectsLoading] = useState(false);
 
   const [orgLogoUrl, setOrgLogoUrl] = useState<string | null>(null);
-  const [orgInternalLogoUrl, setOrgInternalLogoUrl] = useState<string | null>(null);
   const [orgDisplayName, setOrgDisplayName] = useState<string>('');
 
   useEffect(() => {
@@ -796,7 +795,6 @@ export default function ClientPortal() {
       .then(data => {
         if (!data) return;
         if (data.logoUrl) setOrgLogoUrl(data.logoUrl);
-        if (data.internalLogoUrl) setOrgInternalLogoUrl(data.internalLogoUrl);
         if (data.name) setOrgDisplayName(data.name);
       })
       .catch(() => {});
@@ -1118,7 +1116,7 @@ export default function ClientPortal() {
     setLineItems(prev => prev.filter(li => li.id !== id));
   }, []);
 
-  const logoSrc = orgLogoUrl || orgInternalLogoUrl;
+  const logoSrc = orgLogoUrl;
   const displayName = orgDisplayName || session?.orgName || 'KATALYST KO';
 
   const activeProjects = orgProjects.filter(p =>

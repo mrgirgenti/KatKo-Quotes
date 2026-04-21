@@ -1,0 +1,45 @@
+We need to lock the organization logo behavior into one clear system-wide rule.
+
+This is the desired behavior:
+
+1. Organization Profile
+- I need to be able to click into an Organization and upload or change that organization’s logo/photo
+- The upload/change action should be available from the Organization profile itself
+- The Organization profile should show the current logo in a clean compact profile-style logo/avatar area, not a giant permanent upload box
+
+2. Single source of truth
+- That uploaded organization logo must become the single shared logo for that organization across the system
+- Do NOT maintain separate conflicting logo images in different areas
+
+3. Where that same organization logo must appear
+The same resolved organization logo must display in all of these places:
+- Contacts list page (as the icon/image for that organization)
+- Organization profile header
+- Client Hubs cards/index
+- Client Portal page/login/header for that specific organization when their Client Hub is enabled
+- any other organization-branded surface where the org avatar/icon is shown
+
+4. Fallback behavior
+- If no organization logo exists, fallback to initials/avatar
+- If a valid organization logo exists, that real logo must display instead of fallback initials
+
+5. Upload/change behavior
+- Upload/change should be triggered from the Organization profile
+- Users should be able to:
+  - upload
+  - replace
+  - remove
+- But the profile header should remain visually clean and compact
+
+6. Implementation requirement
+- Treat this as one shared organization logo system, not separate UI fixes
+- I want one organization logo field/source of truth and consistent display everywhere
+
+Deliver back:
+- exact files changed
+- the exact organization logo field/source of truth being used
+- confirmation that changing the logo from the Organization profile updates:
+  - Contacts list page icon
+  - Client Hubs cards
+  - Client Portal org branding
+- confirmation that fallback initials only show when no org logo exists

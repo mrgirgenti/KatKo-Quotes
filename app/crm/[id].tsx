@@ -50,7 +50,7 @@ import {
   ExternalLink,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { MediaUploader } from '@/components/MediaUploader';
+import { OrgLogoUploader } from '@/components/OrgLogoUploader';
 import { useCrm } from '@/contexts/CrmContext';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -525,11 +525,12 @@ export default function OrgProfileScreen() {
         </Modal>
         {/* Logo */}
         <View style={styles.orgLogoWrap}>
-          <MediaUploader
-            currentUrl={org.logoUrl || org.internalLogoUrl}
-            onUrlChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })}
+          <OrgLogoUploader
             orgId={org.id}
-            shape="wide"
+            orgName={org.name}
+            currentLogoUrl={org.logoUrl}
+            onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })}
+            size={88}
           />
         </View>
 
@@ -1919,9 +1920,8 @@ const styles = StyleSheet.create({
   },
   orgMenuItemText: { fontSize: 14, color: Colors.light.text },
   orgLogoWrap: {
-    width: '100%' as any,
-    marginBottom: 12,
-    paddingHorizontal: 4,
+    alignItems: 'center' as const,
+    marginBottom: 14,
   },
   orgBadgesRow: { flexDirection: 'row' as const, gap: 6, flexWrap: 'wrap' as const, justifyContent: 'center' as const, marginTop: 8 },
   portalEnabledBadge: {

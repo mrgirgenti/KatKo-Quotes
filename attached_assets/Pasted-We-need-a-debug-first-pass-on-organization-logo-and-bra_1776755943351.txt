@@ -1,0 +1,54 @@
+We need a debug-first pass on organization logo and branding because it still does not work correctly.
+
+Current issue:
+The logo and branding system is still broken. Uploading/updating organization branding does not consistently show the real logo across the app. The app is still falling back to initials/avatar or not showing the correct branding in the expected places.
+
+This is NOT a request for more UI polish. This is a request to trace and fix the full data path end-to-end.
+
+Debug and fix the following:
+
+1. Trace the full logo data flow end-to-end
+For organization logos, identify:
+- where the uploaded file is stored
+- what database field stores the resolved logo URL/reference
+- what API routes read/write that field
+- what frontend components consume that field
+- where fallback initials/avatar are being triggered
+
+2. Confirm the single source of truth
+- Tell me the exact field that is supposed to be the single source of truth for organization logos
+- If there is more than one field currently being used, identify them and fix the duplication/conflict
+- Do not leave multiple competing logo fields in place
+
+3. Debug the current real example
+Use Battlestar Coffee Co specifically and explain:
+- where its logo upload currently exists
+- why the UI is not showing that real logo
+- which surfaces are failing to render it correctly
+
+4. Fix all display surfaces
+Once the source of truth is corrected, ensure the resolved organization logo displays consistently across:
+- Organization / Contact profile
+- Client Hubs card/index
+- Client Portal login/access page
+- Client Portal dashboard/header/sidebar
+- any other org-branded surface
+
+5. Fallback behavior
+- Initials/avatar fallback must ONLY display when no valid organization logo exists
+- If a valid logo exists, fallback must not override it
+
+6. Upload/update propagation
+- When a logo is uploaded or changed, confirm that the updated logo appears across the system without requiring weird manual workarounds
+- If cache invalidation or stale state is causing the issue, fix that
+
+7. Main Katalyst Ko logo
+- Also verify the main Katalyst Ko logo sizing in the upper-left/sidebar and confirm it is large enough and rendered intentionally
+
+Deliver back:
+- exact root cause of why logo/branding still does not work
+- exact files changed
+- the exact single source of truth field now used for organization logos
+- where duplicate/conflicting logic was removed
+- confirmation of which pages/components now render the correct logo
+- confirmation that fallback only appears when no valid logo exists

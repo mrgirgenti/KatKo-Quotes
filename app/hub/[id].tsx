@@ -36,7 +36,7 @@ import {
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
 import { OrgMembership, MembershipRole } from '@/types/crm';
-import { MediaUploader } from '@/components/MediaUploader';
+import { OrgAvatar } from '@/components/OrgAvatar';
 
 const ROLE_LABELS: Record<MembershipRole, string> = {
   ORG_ADMIN: 'Org Admin',
@@ -175,27 +175,6 @@ export default function HubManagementScreen() {
     updateOrgHubEnabled({ orgId: org.id, enabled: val });
   }, [org, updateOrgHubEnabled]);
 
-  const [logoUrlDraft, setLogoUrlDraft] = useState(org?.logoUrl || '');
-  const [internalLogoUrlDraft, setInternalLogoUrlDraft] = useState(org?.internalLogoUrl || '');
-  const [savingLogos, setSavingLogos] = useState(false);
-  const [logoSaved, setLogoSaved] = useState(false);
-
-  const handleSaveLogos = useCallback(async () => {
-    if (!org) return;
-    setSavingLogos(true);
-    try {
-      await fetch(`/api/orgs/${org.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ logoUrl: logoUrlDraft.trim(), internalLogoUrl: internalLogoUrlDraft.trim() }),
-      });
-      queryClient.invalidateQueries({ queryKey: ['crm_orgs'] });
-      setLogoSaved(true);
-      setTimeout(() => setLogoSaved(false), 2500);
-    } finally {
-      setSavingLogos(false);
-    }
-  }, [org, logoUrlDraft, internalLogoUrlDraft, queryClient]);
 
   // Promotes an existing CLIENT member to ORG_ADMIN by patching their membership role
   const handleAssignAdmin = useCallback(async () => {
@@ -634,43 +613,19 @@ export default function HubManagementScreen() {
                 <Edit3 size={13} color={Colors.light.tint} />
                 <Text style={styles.sectionTitle}>Portal Branding</Text>
               </View>
-              <View style={{ paddingHorizontal: 12, paddingVertical: 10, gap: 12 }}>
-                <Text style={styles.portalLinkDesc}>
-                  Upload or paste a URL for this org's portal logo. Client logo takes priority; internal logo is the fallback.
-                </Text>
-
-                <MediaUploader
-                  label="Client Logo"
-                  currentUrl={logoUrlDraft || null}
-                  onUrlChange={(url) => setLogoUrlDraft(url || '')}
-                  orgId={org.id}
-                  shape="wide"
-                />
-
-                <MediaUploader
-                  label="Internal Logo"
-                  currentUrl={internalLogoUrlDraft || null}
-                  onUrlChange={(url) => setInternalLogoUrlDraft(url || '')}
-                  orgId={org.id}
-                  shape="wide"
-                />
-
-                <TouchableOpacity
-                  style={[styles.copyBtnFull, logoSaved && styles.copyBtnDone, savingLogos && { opacity: 0.6 }]}
-                  onPress={handleSaveLogos}
-                  disabled={savingLogos}
-                >
-                  {savingLogos ? (
-                    <ActivityIndicator size="small" color={Colors.light.tint} />
+              <View style={styles.brandingBody}>
+                <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={64} shape="square" />
+                <View style={styles.brandingInfo}>
+                  <Text style={styles.brandingOrgName} numberOfLines={1}>{org.name}</Text>
+                  {org.logoUrl ? (
+                    <Text style={styles.brandingLogoSet}>Logo configured</Text>
                   ) : (
-                    <>
-                      <CheckCircle2 size={12} color={logoSaved ? '#16A34A' : Colors.light.tint} />
-                      <Text style={[styles.copyBtnText, logoSaved && styles.copyBtnTextDone]}>
-                        {logoSaved ? 'Saved!' : 'Save Branding'}
-                      </Text>
-                    </>
+                    <Text style={styles.brandingLogoMissing}>No logo — initials shown</Text>
                   )}
-                </TouchableOpacity>
+                  <Text style={styles.brandingNote}>
+                    Manage this logo from the Organization Profile.
+                  </Text>
+                </View>
               </View>
             </View>
 
@@ -1583,5 +1538,36 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: Colors.light.tint,
+  },
+  brandingBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+  },
+  brandingInfo: {
+    flex: 1,
+    gap: 3,
+  },
+  brandingOrgName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.light.text,
+  },
+  brandingLogoSet: {
+    fontSize: 12,
+    color: '#16A34A',
+    fontWeight: '500',
+  },
+  brandingLogoMissing: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+  },
+  brandingNote: {
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+    marginTop: 4,
+    lineHeight: 15,
   },
 });

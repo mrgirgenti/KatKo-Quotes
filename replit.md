@@ -49,6 +49,31 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 - **UserContext**: Primary store is AsyncStorage; DB sync added in Phase 3 (fire-and-forget upsert on init and on create/update). AsyncStorage IDs used directly as PostgreSQL `User.id` (string PK). `syncUserToDB()` called on boot and on every mutation.
 - **ClientsContext**: DELETED. The legacy `Client` type is fully replaced by `Organization` + `Contact`. Dashboard client counts now derive from `useCrm().orgs`. `autoAddClientIfNew` in sales-tracking now calls `addOrg` via `useCrm`. `contexts/ClientsContext.tsx` and `types/client.ts` deleted.
 
+## Phase 15 — Unified Organization Logo System (2026-04-21)
+
+### Single Source of Truth: `Organization.logoUrl`
+The entire app now uses one field — `Organization.logoUrl` — as the single authoritative org logo. `internalLogoUrl` remains in the DB schema for backward compatibility but is no longer managed or displayed anywhere in the UI.
+
+### New Shared Components
+- **`components/OrgAvatar.tsx`**: Logo-aware avatar used everywhere. Props: `name`, `logoUrl?`, `size`, `shape` (`square`|`circle`). Shows real logo if `logoUrl` is set and loads successfully; falls back to colored initial circle/square.
+- **`components/OrgLogoUploader.tsx`**: Compact profile-style logo uploader for the Org Profile. Shows current logo (or initials) as an 88px avatar with a camera badge overlay. Actions: "Change" link + "Remove" link (only shown when logo exists). No permanent dashed upload box.
+
+### Changes by File
+- **`app/(tabs)/clients.tsx`**: Replaced local initials-only `OrgAvatar` with shared `OrgAvatar` that shows the real org logo (`logoUrl`) in list and card rows.
+- **`app/(tabs)/client-hubs.tsx`**: Replaced local `OrgAvatar` with shared component; `hasLogo` now checks `org.logoUrl` only (not `internalLogoUrl`).
+- **`app/crm/[id].tsx`**: Replaced the wide dashed `MediaUploader` with compact `OrgLogoUploader`. Upload/change/remove managed here; writes to `logoUrl` only.
+- **`app/hub/[id].tsx`**: Removed dual-logo Portal Branding section. Replaced with a read-only display showing the current org logo (`OrgAvatar`) + "Manage this logo from the Organization Profile." message. Removed `logoUrlDraft`, `internalLogoUrlDraft`, `savingLogos`, `logoSaved` state and `handleSaveLogos` handler.
+- **`app/portal/[orgId].tsx`**: Removed `orgInternalLogoUrl` state. Portal uses `orgLogoUrl` (= `org.logoUrl`) exclusively.
+
+### Logo Display Coverage
+| Surface | Field Used | Fallback |
+|---|---|---|
+| Contacts list (table + cards) | `org.logoUrl` | Colored initial circle |
+| Organization profile header | `org.logoUrl` | Colored initial square |
+| Client Hubs index cards | `org.logoUrl` | Colored initial square |
+| Hub Management branding panel | `org.logoUrl` (read-only) | Colored initial square |
+| Client Portal header/sidebar | `org.logoUrl` | No logo shown |
+
 ## Phase 14 — MediaUploader, Client Hubs Cards & Logo Bug Fixes (2026-04-21)
 
 ### Shared MediaUploader Component
