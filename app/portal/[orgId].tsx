@@ -1816,6 +1816,7 @@ export default function ClientPortal() {
                   <Text style={dash.sidebarLogoBrand}>Client Portals by Katalyst Ko Printshop</Text>
                 </View>
               )}
+              <Text style={dash.sidebarClientHub}>Client Hub</Text>
             </View>
 
             <View style={dash.sidebarNav}>
@@ -2252,6 +2253,7 @@ const dash = StyleSheet.create({
   sidebarLogo: { width: 130, height: 36 },
   sidebarLogoText: { color: '#fff', fontSize: 13, fontWeight: '800', letterSpacing: 1.5 },
   sidebarLogoBrand: { color: BRAND, fontSize: 8, fontWeight: '600', letterSpacing: 0, marginTop: 2 },
+  sidebarClientHub: { color: '#fff', fontSize: 11, fontWeight: '700', letterSpacing: 0.5, marginTop: 10, opacity: 0.5 },
 
   sidebarNav: { flex: 1, paddingTop: 10, paddingHorizontal: 10 },
   navItem: {
