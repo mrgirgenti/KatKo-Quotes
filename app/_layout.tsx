@@ -11,7 +11,12 @@ import { CrmProvider } from '@/contexts/CrmContext';
 
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { networkMode: 'always' },
+    mutations: { networkMode: 'always' },
+  },
+});
 
 function RootLayoutNav() {
   return (

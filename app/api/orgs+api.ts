@@ -40,9 +40,9 @@ function toFrontendOrg(org: any, contacts: any[], activityLogs: any[]): Organiza
     city: org.city ?? undefined,
     state: org.state ?? undefined,
     notes: org.notes ?? undefined,
-    address: undefined,
+    address: org.address ?? undefined,
     zip: undefined,
-    website: undefined,
+    website: org.website ?? undefined,
     status: (org.crmStatus || 'Cold') as Organization['status'],
     convertedToActiveDate: org.convertedToActiveDate
       ? new Date(org.convertedToActiveDate).toISOString()

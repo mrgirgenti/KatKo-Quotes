@@ -1,0 +1,90 @@
+Additionally, we need a focused pass on Organization/Client profile behavior, linked navigation, logo consistency, and Client Portal form refinement.
+
+Requirements:
+
+1. Fix broken Organization / Client detail pages
+- Clicking into an Organization or Client/Contact currently throws errors and details cannot be viewed
+- Debug and fix the exact route, data fetch, and record mapping for:
+  - organization detail
+  - client/contact detail
+- These pages must open reliably and display usable details
+
+2. Organization / Contact profile layout
+Implement a cleaner SaaS-style Organization profile layout:
+
+Left side:
+- organization logo
+- organization name
+- button to upload/change logo
+- primary contact
+- email
+- phone
+- account rep
+- status badges (Portal Enabled, Active Client, etc.)
+
+Right side:
+- card-style Activity section
+- card-style Quotes summary
+- card-style Campaigns section
+- card-style Client Hub section
+
+3. Organization logo consistency across the system
+- The organization logo should be editable from the Organization / Client Hub area
+- If Org Admin uploads a logo, that can override the internal default logo
+- Otherwise the internally uploaded logo should display
+- Reuse the same logo logic across:
+  - Organization profile
+  - Client Hub cards
+  - Client Portal login/header
+  - Client Portal dashboard/sidebar where appropriate
+- Do not create separate logo systems
+
+4. Activity tracking expansion
+Track meaningful workflow events in the Organization / Client activity timeline.
+
+At minimum:
+- request submitted
+- request edited
+- request canceled
+- quote created
+- quote sent
+- quote approved
+- payment link / invoice sent
+- payment received
+- production started
+- project completed
+- invite sent
+- invite resent
+- invite accepted
+- client hub enabled/disabled
+- account rep changed
+- org admin changed
+
+Activity entries should show:
+- event type
+- timestamp
+- related project/quote if applicable
+- readable summary
+
+5. Quote / Project linked navigation
+- In quote/project views, organization name and person/client name should be clickable
+- Clicking should open the correct Organization or Client/Contact entry in the Contacts/CRM area
+
+6. Client Portal dropdown refinement
+- The popup/select UI for Service Style and Locations is too wide
+- Adjust it so it feels aligned with the field width and more inline with the form
+- Keep it mobile-friendly but not oversized
+
+7. Product and Color alignment with New Quote
+- Product and Color fields in Client Portal must use the same options/logic as New Quote
+- Allow custom typed Product and Color values when needed
+- Do not create a separate product/color system
+
+Deliver back:
+- exact files changed
+- exact root cause of broken Organization/Client detail pages
+- how logo logic is reused system-wide
+- how Activity tracking was expanded
+- confirmation that quote/project names now navigate correctly
+- how dropdown width was adjusted
+- how Product/Color now reuse New Quote logic

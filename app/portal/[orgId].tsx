@@ -543,7 +543,7 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
         </View>
 
         {/* Service Style */}
-        <View style={pFields.container}>
+        <View style={[pFields.container, { maxWidth: 280 }]}>
           <Text style={pFields.label}>Service Style</Text>
           <TouchableOpacity
             style={pFields.selectRow}
@@ -641,8 +641,8 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
             <View>
               {/* Header row */}
               <View style={liStyles.sizeHeaderRow}>
-                <Text style={[liStyles.sizeCell, liStyles.sizeHeaderText, { width: 130 }]}>Product</Text>
-                <Text style={[liStyles.sizeCell, liStyles.sizeHeaderText, { width: 90 }]}>Color</Text>
+                <Text style={[liStyles.sizeCell, liStyles.sizeHeaderText, { width: 180 }]}>Product</Text>
+                <Text style={[liStyles.sizeCell, liStyles.sizeHeaderText, { width: 110 }]}>Color</Text>
                 {SIZE_KEYS.map(k => (
                   <Text key={k} style={[liStyles.sizeCell, liStyles.sizeHeaderText, liStyles.sizeCellNum]}>
                     {SIZE_LABELS[k]}
@@ -660,14 +660,14 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
                     onChangeText={v => updRow(row.id, { product: v })}
                     options={PRODUCTS}
                     placeholder="Style / Product"
-                    cellWidth={130}
+                    cellWidth={180}
                   />
                   <PortalComboCell
                     value={row.color}
                     onChangeText={v => updRow(row.id, { color: v })}
                     options={PRODUCT_COLORS}
                     placeholder="Color"
-                    cellWidth={90}
+                    cellWidth={110}
                   />
                   {SIZE_KEYS.map(k => (
                     <TextInput
@@ -692,8 +692,8 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
               {/* Totals row */}
               {item.sizeRows.length > 1 && (
                 <View style={liStyles.sizeTotalRow}>
-                  <Text style={[liStyles.sizeCell, { width: 130, color: TEXT_LIGHT, fontSize: 11 }]}>Totals</Text>
-                  <View style={{ width: 90 }} />
+                  <Text style={[liStyles.sizeCell, { width: 180, color: TEXT_LIGHT, fontSize: 11 }]}>Totals</Text>
+                  <View style={{ width: 110 }} />
                   {SIZE_KEYS.map(k => (
                     <Text key={k} style={[liStyles.sizeCell, liStyles.sizeCellNum, { fontWeight: '600', fontSize: 11, color: TEXT_MED }]}>
                       {colTotal(item.sizeRows, k) || ''}

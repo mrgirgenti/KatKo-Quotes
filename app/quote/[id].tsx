@@ -66,7 +66,7 @@ import { exportSingleSaleToSheets } from '@/utils/googleSheetsExport';
 export default function QuoteDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { quotes, sales, convertToSale, convertToQuote, deleteQuote, isConverting, markExportedToSheets, lockSale, projects, startProduction } = useQuotes();
+  const { quotes, sales, convertToSale, convertToQuote, deleteQuote, isConverting, markExportedToSheets, lockSale, projects, startProduction, isLoading: quotesLoading } = useQuotes();
   const { currentUser } = useUser();
   const { orgs } = useCrm();
   const [toastVisible, setToastVisible] = useState(false);
@@ -105,9 +105,23 @@ export default function QuoteDetailScreen() {
     });
   }, [projects, quotes, sales]);
 
-  const quote = useMemo(() => {
+  const contextQuote = useMemo(() => {
     return allProjects.find((q) => q.id === id);
   }, [allProjects, id]);
+
+  const [directQuote, setDirectQuote] = useState<any>(null);
+  const [directQuoteLoading, setDirectQuoteLoading] = useState(true);
+  useEffect(() => {
+    if (!id) { setDirectQuoteLoading(false); return; }
+    let cancelled = false;
+    fetch(`/api/projects/${id}`, { headers: { 'Content-Type': 'application/json' } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (!cancelled) { if (data) setDirectQuote(data); setDirectQuoteLoading(false); } })
+      .catch(() => { if (!cancelled) setDirectQuoteLoading(false); });
+    return () => { cancelled = true; };
+  }, [id]);
+
+  const quote = contextQuote || directQuote || undefined;
 
   useEffect(() => {
     if (!quote) return;
@@ -534,6 +548,17 @@ export default function QuoteDetailScreen() {
   }, [quote]);
 
   if (!quote) {
+    if (quotesLoading || directQuoteLoading) {
+      return (
+        <View style={styles.container}>
+          <Stack.Screen options={{ title: 'Loading…' }} />
+          <View style={styles.notFound}>
+            <ActivityIndicator size="large" color={Colors.light.tint} />
+            <Text style={[styles.notFoundText, { marginTop: 12 }]}>Loading…</Text>
+          </View>
+        </View>
+      );
+    }
     return (
       <View style={styles.container}>
         <Stack.Screen options={{ title: 'Quote Details' }} />
@@ -727,7 +752,17 @@ export default function QuoteDetailScreen() {
         <View style={[styles.orderBodyRow, linkedOrg ? styles.orderBodySplit : null]}>
           {/* Left column */}
           <View style={linkedOrg ? styles.orderBodyLeft : null}>
-            <Text style={styles.orderClientName}>{quote.personOrganization}</Text>
+            {linkedOrg ? (
+              <TouchableOpacity
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}
+                onPress={() => router.push(`/crm/${linkedOrg.id}` as any)}
+              >
+                <Text style={[styles.orderClientName, { color: Colors.light.tint, textDecorationLine: 'underline' }]}>{quote.personOrganization}</Text>
+                <ExternalLink size={14} color={Colors.light.tint} />
+              </TouchableOpacity>
+            ) : (
+              <Text style={styles.orderClientName}>{quote.personOrganization}</Text>
+            )}
             <Text style={styles.orderProjectName}>{quote.projectName}</Text>
             <View style={styles.orderDivider} />
             <View style={styles.infoRow}>

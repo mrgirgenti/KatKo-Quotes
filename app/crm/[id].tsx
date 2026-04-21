@@ -182,11 +182,25 @@ export default function OrgProfileScreen() {
   const { quotes } = useQuotes();
   const { isDesktop } = useBreakpoint();
 
-  const org = useMemo(() => orgs.find((o) => o.id === id), [orgs, id]);
+  const { data: directOrg, isLoading: directOrgLoading } = useQuery<Organization>({
+    queryKey: ['org_detail', id],
+    queryFn: async () => {
+      const res = await fetch(`/api/orgs/${id}`, { headers: { 'Content-Type': 'application/json' } });
+      if (!res.ok) throw new Error(`API error ${res.status}`);
+      return res.json();
+    },
+    enabled: !!id,
+    staleTime: 1000 * 30,
+    networkMode: 'always',
+  });
+
+  const contextOrg = useMemo(() => orgs.find((o) => o.id === id), [orgs, id]);
+  const org: Organization | undefined = contextOrg || directOrg;
 
   const [editOrgModal, setEditOrgModal] = useState(false);
   const [orgForm, setOrgForm] = useState({ name: '', type: '', address: '', city: '', state: '', website: '', notes: '', status: 'Cold' as CrmStatus });
   const [showOrgTypeDropdown, setShowOrgTypeDropdown] = useState(false);
+  const [showOrgMenu, setShowOrgMenu] = useState(false);
 
   const [contactModal, setContactModal] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
@@ -456,7 +470,7 @@ export default function OrgProfileScreen() {
     });
   }, [org, updateCampaignStep]);
 
-  if (orgsLoading && !org) {
+  if ((orgsLoading || directOrgLoading) && !org) {
     return (
       <View style={styles.container}>
         <Stack.Screen options={{ title: 'Loading…' }} />
@@ -492,6 +506,43 @@ export default function OrgProfileScreen() {
     <View style={styles.leftPanel}>
       {/* Identity card */}
       <View style={styles.orgIdentityCard}>
+        {/* Actions menu */}
+        <TouchableOpacity
+          style={styles.orgMenuBtn}
+          onPress={() => setShowOrgMenu((v) => !v)}
+        >
+          <MoreHorizontal size={18} color={Colors.light.textSecondary} />
+        </TouchableOpacity>
+        <Modal visible={showOrgMenu} transparent animationType="none" onRequestClose={() => setShowOrgMenu(false)}>
+          <Pressable style={styles.orgMenuOverlay} onPress={() => setShowOrgMenu(false)}>
+            <View style={styles.orgMenuDropdown}>
+              <TouchableOpacity
+                style={styles.orgMenuItem}
+                onPress={() => {
+                  setShowOrgMenu(false);
+                  router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } });
+                }}
+              >
+                <Plus size={14} color={Colors.light.tint} />
+                <Text style={styles.orgMenuItemText}>New Quote</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.orgMenuItem}
+                onPress={() => { setShowOrgMenu(false); openEditOrg(); }}
+              >
+                <Edit3 size={14} color={Colors.light.text} />
+                <Text style={styles.orgMenuItemText}>Edit Profile</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.orgMenuItem, styles.orgMenuItemDanger]}
+                onPress={() => { setShowOrgMenu(false); handleDeleteOrg(); }}
+              >
+                <Trash2 size={14} color={Colors.light.error} />
+                <Text style={[styles.orgMenuItemText, { color: Colors.light.error }]}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Modal>
         {/* Logo */}
         <View style={styles.orgLogoWrap}>
           {org.logoUrl || org.internalLogoUrl ? (
@@ -606,71 +657,6 @@ export default function OrgProfileScreen() {
         </View>
       )}
 
-      {/* Primary Contact */}
-      {primaryContact && (
-        <View style={styles.leftInfoCard}>
-          <Text style={styles.leftInfoCardLabel}>Primary Contact</Text>
-          <View style={styles.leftPersonRow}>
-            <View style={styles.leftPersonAvatar}>
-              <Text style={styles.leftPersonAvatarText}>{primaryContact.firstName.charAt(0).toUpperCase()}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.leftPersonName}>{primaryContact.firstName} {primaryContact.lastName}</Text>
-              {primaryContact.role && <Text style={styles.leftPersonRole}>{primaryContact.role}</Text>}
-              {primaryContact.email && (
-                <View style={styles.leftPersonDetail}>
-                  <Mail size={11} color={Colors.light.tint} />
-                  <Text style={styles.leftPersonDetailText} numberOfLines={1}>{primaryContact.email}</Text>
-                </View>
-              )}
-              {primaryContact.phone && (
-                <View style={styles.leftPersonDetail}>
-                  <Phone size={11} color={Colors.light.tint} />
-                  <Text style={styles.leftPersonDetailText}>{primaryContact.phone}</Text>
-                </View>
-              )}
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* Account Rep */}
-      <View style={styles.leftInfoCard}>
-        <Text style={styles.leftInfoCardLabel}>Account Rep</Text>
-        {accountRep ? (
-          <View style={styles.leftPersonRow}>
-            <View style={[styles.leftPersonAvatar, { backgroundColor: accountRep.userAvatarColor || Colors.light.tint }]}>
-              <Text style={styles.leftPersonAvatarText}>{(accountRep.userName || '?')[0].toUpperCase()}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.leftPersonName}>{accountRep.userName}</Text>
-              <Text style={styles.leftPersonRole}>{MEMBERSHIP_ROLE_LABELS[accountRep.role] || accountRep.role}</Text>
-            </View>
-          </View>
-        ) : (
-          <TouchableOpacity
-            style={styles.leftRepUnassigned}
-            onPress={() => { setMemberForm({ userId: '', role: 'ORG_ADMIN' }); setAddMemberModal(true); }}
-          >
-            <User size={13} color={Colors.light.textSecondary} />
-            <Text style={styles.leftRepUnassignedText}>Assign account rep</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Stats */}
-      <View style={styles.leftStatsRow}>
-        <View style={styles.leftStatBox}>
-          <Text style={styles.leftStatValue}>{relatedQuotes.length}</Text>
-          <Text style={styles.leftStatLabel}>Quotes</Text>
-        </View>
-        <View style={styles.leftStatDivider} />
-        <View style={styles.leftStatBox}>
-          <Text style={[styles.leftStatValue, { color: Colors.light.success }]}>{formatCurrency(totalSpent)}</Text>
-          <Text style={styles.leftStatLabel}>Revenue</Text>
-        </View>
-      </View>
-
       {/* Notes */}
       {org.notes && (
         <View style={styles.leftInfoCard}>
@@ -679,24 +665,194 @@ export default function OrgProfileScreen() {
         </View>
       )}
 
-      {/* Actions */}
-      <TouchableOpacity
-        style={styles.newQuoteBtn}
-        onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
-      >
-        <Plus size={14} color="#fff" />
-        <Text style={styles.newQuoteBtnText}>New Quote</Text>
-      </TouchableOpacity>
-      <View style={styles.editDeleteRow}>
-        <TouchableOpacity style={styles.editOrgBtn} onPress={openEditOrg}>
-          <Edit3 size={14} color="#fff" />
-          <Text style={styles.editOrgBtnText}>Edit Profile</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.deleteOrgBtn} onPress={handleDeleteOrg}>
-          <Trash2 size={14} color={Colors.light.error} />
-          <Text style={styles.deleteOrgBtnText}>Delete</Text>
-        </TouchableOpacity>
+      {/* Contacts card */}
+      <View style={styles.infoCard}>
+        <View style={styles.infoCardHeader}>
+          <View style={styles.infoCardHeaderLeft}>
+            <Users size={15} color={Colors.light.tint} />
+            <Text style={styles.infoCardTitle}>Contacts</Text>
+            {org.contacts.length > 0 && (
+              <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{org.contacts.length}</Text></View>
+            )}
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity style={styles.infoCardActionSecondary} onPress={openAddDept}>
+              <Plus size={12} color={Colors.light.tint} />
+              <Text style={styles.infoCardActionSecondaryText}>Dept</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.infoCardAction} onPress={openAddContact}>
+              <Plus size={13} color={Colors.light.tint} />
+              <Text style={styles.infoCardActionText}>Add Contact</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        {org.contacts.length === 0 && (org.departments || []).length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyCardText}>No contacts yet.</Text>
+            <Text style={styles.emptyCardSub}>Add departments to organize people by team, then add contacts.</Text>
+          </View>
+        ) : (
+          <>
+            {(org.departments || []).map((dept) => {
+              const deptContacts = org.contacts.filter((c) => c.departmentId === dept.id);
+              return (
+                <View key={dept.id} style={styles.deptSection}>
+                  <View style={styles.deptHeader}>
+                    <View style={styles.deptHeaderLeft}>
+                      <Users size={13} color={Colors.light.tint} />
+                      <Text style={styles.deptName}>{dept.name}</Text>
+                      <Text style={styles.deptCount}>{deptContacts.length} contact{deptContacts.length !== 1 ? 's' : ''}</Text>
+                    </View>
+                    <View style={styles.deptHeaderActions}>
+                      <TouchableOpacity
+                        style={styles.deptAddBtn}
+                        onPress={() => {
+                          setEditingContact(null);
+                          setContactForm({ firstName: '', lastName: '', role: 'Primary Contact', email: '', phone: '', notes: '', isPrimary: false, departmentId: dept.id });
+                          setContactModal(true);
+                        }}
+                      >
+                        <Plus size={12} color={Colors.light.tint} />
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.deptActionBtn} onPress={() => openEditDept(dept)}>
+                        <Edit3 size={12} color={Colors.light.textSecondary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.deptActionBtn}
+                        onPress={() => Alert.alert('Delete Department', `Remove "${dept.name}"? Contacts in this department will become unassigned.`, [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Delete', style: 'destructive', onPress: () => deleteDepartment({ orgId: org.id, deptId: dept.id }) },
+                        ])}
+                      >
+                        <Trash2 size={12} color={Colors.light.error} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  {deptContacts.length === 0 ? (
+                    <Text style={styles.deptEmpty}>No contacts in this department yet.</Text>
+                  ) : (
+                    deptContacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} onSetPrimary={() => updateContact({ orgId: org.id, contact: { ...c, isPrimary: !c.isPrimary } })} />)
+                  )}
+                </View>
+              );
+            })}
+            {(() => {
+              const unassigned = org.contacts.filter((c) => !c.departmentId || !(org.departments || []).find((d) => d.id === c.departmentId));
+              if ((org.departments || []).length === 0) {
+                return org.contacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} onSetPrimary={() => updateContact({ orgId: org.id, contact: { ...c, isPrimary: !c.isPrimary } })} />);
+              }
+              if (unassigned.length === 0) return null;
+              return (
+                <View style={styles.deptSection}>
+                  <View style={styles.deptHeader}>
+                    <View style={styles.deptHeaderLeft}>
+                      <User size={13} color={Colors.light.textSecondary} />
+                      <Text style={[styles.deptName, { color: Colors.light.textSecondary }]}>Unassigned</Text>
+                      <Text style={styles.deptCount}>{unassigned.length}</Text>
+                    </View>
+                  </View>
+                  {unassigned.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} onSetPrimary={() => updateContact({ orgId: org.id, contact: { ...c, isPrimary: !c.isPrimary } })} />)}
+                </View>
+              );
+            })()}
+          </>
+        )}
       </View>
+
+      {/* Client Hub card */}
+      <View style={styles.infoCard}>
+        <View style={styles.infoCardHeader}>
+          <View style={styles.infoCardHeaderLeft}>
+            <Shield size={15} color="#7C3AED" />
+            <Text style={styles.infoCardTitle}>Client Hub</Text>
+          </View>
+          <Switch
+            value={org.hubEnabled ?? false}
+            onValueChange={(val) => updateOrgHubEnabled({ orgId: org.id, enabled: val })}
+            trackColor={{ false: Colors.light.border, true: '#FF5A00' }}
+            thumbColor="#fff"
+          />
+        </View>
+        {org.hubEnabled && (
+          <TouchableOpacity
+            style={styles.portalLinkRow}
+            onPress={() => { if (Platform.OS === 'web') { (window as any).open(`/portal/${org.id}`, '_blank'); } }}
+          >
+            <ExternalLink size={13} color={Colors.light.tint} />
+            <Text style={styles.portalLinkText}>Open Client Portal</Text>
+          </TouchableOpacity>
+        )}
+        <View style={styles.infoCardSubHeader}>
+          <Text style={styles.infoCardSubTitle}>Internal Team</Text>
+          <TouchableOpacity onPress={() => { setMemberForm({ userId: '', role: 'MEMBER' }); setAddMemberModal(true); }}>
+            <Plus size={16} color={Colors.light.tint} />
+          </TouchableOpacity>
+        </View>
+        {membershipsLoading ? (
+          <Text style={styles.emptyCardSub}>Loading...</Text>
+        ) : memberships.filter((m) => m.userType !== 'CLIENT').length === 0 ? (
+          <Text style={styles.emptyCardSub}>No internal team members assigned.</Text>
+        ) : (
+          memberships.filter((m) => m.userType !== 'CLIENT').map((m) => (
+            <View key={m.id} style={[styles.memberRow, m.role === 'ORG_ADMIN' && styles.memberRowAdmin]}>
+              <View style={[styles.memberAvatar, { backgroundColor: m.userAvatarColor || '#FF5A00' }]}>
+                <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
+              </View>
+              <View style={styles.memberInfo}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.memberName}>{m.userName || 'Unknown User'}</Text>
+                  {m.role === 'ORG_ADMIN' && (
+                    <View style={styles.adminBadge}><Text style={styles.adminBadgeText}>Admin</Text></View>
+                  )}
+                </View>
+                <Text style={styles.memberRole}>{MEMBERSHIP_ROLE_LABELS[m.role] || m.role}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.memberDelete}
+                onPress={() => Alert.alert('Remove Member', `Remove ${m.userName || 'this member'}?`, [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Remove', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
+                ])}
+              >
+                <X size={13} color={Colors.light.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
+        <View style={[styles.infoCardSubHeader, { marginTop: 12 }]}>
+          <Text style={styles.infoCardSubTitle}>Client Users</Text>
+          <TouchableOpacity onPress={() => { setClientUserForm({ name: '', email: '' }); setAddClientUserModal(true); }}>
+            <Plus size={16} color={Colors.light.tint} />
+          </TouchableOpacity>
+        </View>
+        {membershipsLoading ? (
+          <Text style={styles.emptyCardSub}>Loading...</Text>
+        ) : memberships.filter((m) => m.userType === 'CLIENT').length === 0 ? (
+          <Text style={[styles.emptyCardSub, { marginTop: 4 }]}>No client users yet. Invite a client to give them portal access.</Text>
+        ) : (
+          memberships.filter((m) => m.userType === 'CLIENT').map((m) => (
+            <View key={m.id} style={styles.memberRow}>
+              <View style={[styles.memberAvatar, { backgroundColor: '#6366F1' }]}>
+                <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
+              </View>
+              <View style={styles.memberInfo}>
+                <Text style={styles.memberName}>{m.userName || 'Unknown User'}</Text>
+                <Text style={styles.memberRole}>{m.userEmail || 'No email'}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.memberDelete}
+                onPress={() => Alert.alert('Remove Client', `Remove ${m.userName || 'this client'}?`, [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Remove', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
+                ])}
+              >
+                <X size={13} color={Colors.light.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
+      </View>
+
       <Text style={styles.memberSince}>Added {formatDate(org.createdAt)}</Text>
     </View>
   );
@@ -810,104 +966,6 @@ export default function OrgProfileScreen() {
         )}
       </View>
 
-      {/* Contacts card */}
-      <View style={styles.infoCard}>
-        <View style={styles.infoCardHeader}>
-          <View style={styles.infoCardHeaderLeft}>
-            <Users size={15} color={Colors.light.tint} />
-            <Text style={styles.infoCardTitle}>Contacts</Text>
-            {org.contacts.length > 0 && (
-              <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{org.contacts.length}</Text></View>
-            )}
-          </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity style={styles.infoCardActionSecondary} onPress={openAddDept}>
-              <Plus size={12} color={Colors.light.tint} />
-              <Text style={styles.infoCardActionSecondaryText}>Dept</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.infoCardAction} onPress={openAddContact}>
-              <Plus size={13} color={Colors.light.tint} />
-              <Text style={styles.infoCardActionText}>Add Contact</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {org.contacts.length === 0 && (org.departments || []).length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyCardText}>No contacts yet.</Text>
-            <Text style={styles.emptyCardSub}>Add departments to organize people by team, then add contacts.</Text>
-          </View>
-        ) : (
-          <>
-              {/* Departments with their contacts */}
-              {(org.departments || []).map((dept) => {
-                const deptContacts = org.contacts.filter((c) => c.departmentId === dept.id);
-                return (
-                  <View key={dept.id} style={styles.deptSection}>
-                    <View style={styles.deptHeader}>
-                      <View style={styles.deptHeaderLeft}>
-                        <Users size={13} color={Colors.light.tint} />
-                        <Text style={styles.deptName}>{dept.name}</Text>
-                        <Text style={styles.deptCount}>{deptContacts.length} contact{deptContacts.length !== 1 ? 's' : ''}</Text>
-                      </View>
-                      <View style={styles.deptHeaderActions}>
-                        <TouchableOpacity
-                          style={styles.deptAddBtn}
-                          onPress={() => {
-                            setEditingContact(null);
-                            setContactForm({ firstName: '', lastName: '', role: 'Primary Contact', email: '', phone: '', notes: '', isPrimary: false, departmentId: dept.id });
-                            setContactModal(true);
-                          }}
-                        >
-                          <Plus size={12} color={Colors.light.tint} />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.deptActionBtn} onPress={() => openEditDept(dept)}>
-                          <Edit3 size={12} color={Colors.light.textSecondary} />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.deptActionBtn}
-                          onPress={() => Alert.alert('Delete Department', `Remove "${dept.name}"? Contacts in this department will become unassigned.`, [
-                            { text: 'Cancel', style: 'cancel' },
-                            { text: 'Delete', style: 'destructive', onPress: () => deleteDepartment({ orgId: org.id, deptId: dept.id }) },
-                          ])}
-                        >
-                          <Trash2 size={12} color={Colors.light.error} />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                    {deptContacts.length === 0 ? (
-                      <Text style={styles.deptEmpty}>No contacts in this department yet.</Text>
-                    ) : (
-                      deptContacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} onSetPrimary={() => updateContact({ orgId: org.id, contact: { ...c, isPrimary: !c.isPrimary } })} />)
-                    )}
-                  </View>
-                );
-              })}
-
-              {/* Unassigned contacts */}
-              {(() => {
-                const unassigned = org.contacts.filter((c) => !c.departmentId || !(org.departments || []).find((d) => d.id === c.departmentId));
-                if ((org.departments || []).length === 0) {
-                  return org.contacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} onSetPrimary={() => updateContact({ orgId: org.id, contact: { ...c, isPrimary: !c.isPrimary } })} />);
-                }
-                if (unassigned.length === 0) return null;
-                return (
-                  <View style={styles.deptSection}>
-                    <View style={styles.deptHeader}>
-                      <View style={styles.deptHeaderLeft}>
-                        <User size={13} color={Colors.light.textSecondary} />
-                        <Text style={[styles.deptName, { color: Colors.light.textSecondary }]}>Unassigned</Text>
-                        <Text style={styles.deptCount}>{unassigned.length}</Text>
-                      </View>
-                    </View>
-                    {unassigned.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} onSetPrimary={() => updateContact({ orgId: org.id, contact: { ...c, isPrimary: !c.isPrimary } })} />)}
-                  </View>
-                );
-              })()}
-          </>
-        )}
-      </View>
-
       {/* Quotes & Revenue card */}
       <View style={styles.infoCard}>
         <View style={styles.infoCardHeader}>
@@ -959,106 +1017,6 @@ export default function OrgProfileScreen() {
               </View>
               <ChevronRight size={14} color={Colors.light.border} />
             </TouchableOpacity>
-          ))
-        )}
-      </View>
-
-      {/* Client Hub card */}
-      <View style={styles.infoCard}>
-        <View style={styles.infoCardHeader}>
-          <View style={styles.infoCardHeaderLeft}>
-            <Shield size={15} color="#7C3AED" />
-            <Text style={styles.infoCardTitle}>Client Hub</Text>
-          </View>
-          <Switch
-            value={org.hubEnabled ?? false}
-            onValueChange={(val) => updateOrgHubEnabled({ orgId: org.id, enabled: val })}
-            trackColor={{ false: Colors.light.border, true: '#FF5A00' }}
-            thumbColor="#fff"
-          />
-        </View>
-        {org.hubEnabled && (
-          <TouchableOpacity
-            style={styles.portalLinkRow}
-            onPress={() => {
-              if (Platform.OS === 'web') {
-                (window as any).open(`/portal/${org.id}`, '_blank');
-              }
-            }}
-          >
-            <ExternalLink size={13} color={Colors.light.tint} />
-            <Text style={styles.portalLinkText}>Open Client Portal</Text>
-          </TouchableOpacity>
-        )}
-
-        <View style={styles.infoCardSubHeader}>
-          <Text style={styles.infoCardSubTitle}>Internal Team</Text>
-          <TouchableOpacity onPress={() => { setMemberForm({ userId: '', role: 'MEMBER' }); setAddMemberModal(true); }}>
-            <Plus size={16} color={Colors.light.tint} />
-          </TouchableOpacity>
-        </View>
-        {membershipsLoading ? (
-          <Text style={styles.emptyCardSub}>Loading...</Text>
-        ) : memberships.filter((m) => m.userType !== 'CLIENT').length === 0 ? (
-          <Text style={styles.emptyCardSub}>No internal team members assigned.</Text>
-        ) : (
-          memberships.filter((m) => m.userType !== 'CLIENT').map((m) => (
-            <View key={m.id} style={[styles.memberRow, m.role === 'ORG_ADMIN' && styles.memberRowAdmin]}>
-              <View style={[styles.memberAvatar, { backgroundColor: m.userAvatarColor || '#FF5A00' }]}>
-                <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
-              </View>
-              <View style={styles.memberInfo}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={styles.memberName}>{m.userName || 'Unknown User'}</Text>
-                  {m.role === 'ORG_ADMIN' && (
-                    <View style={styles.adminBadge}><Text style={styles.adminBadgeText}>Admin</Text></View>
-                  )}
-                </View>
-                <Text style={styles.memberRole}>{MEMBERSHIP_ROLE_LABELS[m.role] || m.role}</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.memberDelete}
-                onPress={() => Alert.alert('Remove Member', `Remove ${m.userName || 'this member'}?`, [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Remove', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
-                ])}
-              >
-                <X size={13} color={Colors.light.textSecondary} />
-              </TouchableOpacity>
-            </View>
-          ))
-        )}
-
-        <View style={[styles.infoCardSubHeader, { marginTop: 12 }]}>
-          <Text style={styles.infoCardSubTitle}>Client Users</Text>
-          <TouchableOpacity onPress={() => { setClientUserForm({ name: '', email: '' }); setAddClientUserModal(true); }}>
-            <Plus size={16} color={Colors.light.tint} />
-          </TouchableOpacity>
-        </View>
-        {membershipsLoading ? (
-          <Text style={styles.emptyCardSub}>Loading...</Text>
-        ) : memberships.filter((m) => m.userType === 'CLIENT').length === 0 ? (
-          <Text style={[styles.emptyCardSub, { marginTop: 4 }]}>No client users yet. Invite a client to give them portal access.</Text>
-        ) : (
-          memberships.filter((m) => m.userType === 'CLIENT').map((m) => (
-            <View key={m.id} style={styles.memberRow}>
-              <View style={[styles.memberAvatar, { backgroundColor: '#6366F1' }]}>
-                <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
-              </View>
-              <View style={styles.memberInfo}>
-                <Text style={styles.memberName}>{m.userName || 'Unknown User'}</Text>
-                <Text style={styles.memberRole}>{m.userEmail || 'No email'}</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.memberDelete}
-                onPress={() => Alert.alert('Remove Client', `Remove ${m.userName || 'this client'}?`, [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Remove', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
-                ])}
-              >
-                <X size={13} color={Colors.light.textSecondary} />
-              </TouchableOpacity>
-            </View>
           ))
         )}
       </View>
@@ -1979,7 +1937,38 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.border,
     padding: 18,
     alignItems: 'center' as const,
+    position: 'relative' as const,
   },
+  orgMenuBtn: {
+    position: 'absolute' as const, top: 10, right: 10,
+    width: 30, height: 30, borderRadius: 8,
+    justifyContent: 'center' as const, alignItems: 'center' as const,
+    zIndex: 10,
+  },
+  orgMenuOverlay: {
+    flex: 1,
+  },
+  orgMenuDropdown: {
+    position: 'absolute' as const, top: 56, left: 12,
+    backgroundColor: Colors.light.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    paddingVertical: 4,
+    minWidth: 160,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+  },
+  orgMenuItem: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 10,
+    paddingHorizontal: 14, paddingVertical: 10,
+  },
+  orgMenuItemDanger: {
+    borderTopWidth: 1, borderTopColor: Colors.light.border,
+  },
+  orgMenuItemText: { fontSize: 14, color: Colors.light.text },
   orgLogoWrap: {
     width: 88, height: 88, borderRadius: 14,
     overflow: 'hidden',

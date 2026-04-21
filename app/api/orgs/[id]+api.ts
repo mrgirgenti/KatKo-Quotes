@@ -40,9 +40,9 @@ function toFrontendOrg(org: any, contacts: any[], activityLogs: any[]): Organiza
     city: org.city ?? undefined,
     state: org.state ?? undefined,
     notes: org.notes ?? undefined,
-    address: undefined,
+    address: org.address ?? undefined,
     zip: undefined,
-    website: undefined,
+    website: org.website ?? undefined,
     status: (org.crmStatus || 'Cold') as Organization['status'],
     convertedToActiveDate: org.convertedToActiveDate
       ? new Date(org.convertedToActiveDate).toISOString()
@@ -98,8 +98,10 @@ export async function PUT(request: Request, { id }: { id: string }) {
         "hubEnabled" = $10,
         "logoUrl" = $11,
         "internalLogoUrl" = $12,
+        address = $13,
+        website = $14,
         "updatedAt" = NOW()
-      WHERE id = $13 RETURNING *`,
+      WHERE id = $15 RETURNING *`,
       [
         body.name ?? existing.name,
         body.type !== undefined ? body.type : existing.type,
@@ -113,6 +115,8 @@ export async function PUT(request: Request, { id }: { id: string }) {
         body.hubEnabled !== undefined ? body.hubEnabled : (existing.hubEnabled ?? false),
         body.logoUrl !== undefined ? (body.logoUrl || null) : (existing.logoUrl ?? null),
         body.internalLogoUrl !== undefined ? (body.internalLogoUrl || null) : (existing.internalLogoUrl ?? null),
+        body.address !== undefined ? (body.address || null) : (existing.address ?? null),
+        body.website !== undefined ? (body.website || null) : (existing.website ?? null),
         id,
       ],
     );

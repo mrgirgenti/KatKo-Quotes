@@ -20,6 +20,12 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 - Sidebar reads dynamic company logo from `orgAdmin.companyLogo` (falls back to hardcoded CDN URI)
 - `UserContext` exposes: `isOrgAdmin()`, `orgAdmin` (first user with role=org_admin), `createUser(name, email?, role?)`
 
+## Known Bug Fixes (Phase 12)
+- **Org profile "Loading..." stuck bug (2026-04-21)**:
+  - *Root cause*: React Query v5 defaulted `networkMode: 'online'`, which pauses query fetches when the browser detects the network as offline. In Replit's proxied environment, `navigator.onLine` can falsely report offline, causing `orgsQuery.isLoading` to remain `true` indefinitely.
+  - *Fix 1*: Added `networkMode: 'always'` to the global `QueryClient` in `app/_layout.tsx` so all queries bypass online/offline detection.
+  - *Fix 2*: Added a direct per-org `useQuery(['org_detail', id])` in `app/crm/[id].tsx` that fetches from `/api/orgs/{id}` directly, as a belt-and-suspenders fallback. The page uses whichever data source resolves first (CrmContext orgs list OR direct org fetch).
+
 ## Known Bug Fixes (Phase 3)
 - **Quote submit persistence fix (2026-04-19)**:
   - *Bug 1*: `isAdmin` in QuotesContext evaluated `false` during async `UserContext` init (`currentUser=null`), causing the per-user filter `q.userId === null` to drop all DB quotes. Fix: `const isAdmin = !currentUser || currentUser.role === 'org_admin'` — treat no-user state as admin view so quotes are visible during initialization.
