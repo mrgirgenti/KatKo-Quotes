@@ -378,7 +378,10 @@ export const [CrmProvider, useCrm] = createContextHook(() => {
         body: JSON.stringify({ hubEnabled: enabled }),
       });
     },
-    onSuccess: invalidateOrgs,
+    onSuccess: (_data, vars) => {
+      invalidateOrgs();
+      queryClient.invalidateQueries({ queryKey: ['org_detail', vars.orgId] });
+    },
   });
 
   const createMembershipMutation = useMutation({

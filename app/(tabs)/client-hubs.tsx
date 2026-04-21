@@ -16,18 +16,16 @@ import {
   Search,
   CheckCircle2,
   Plus,
-  User,
   Copy,
   Settings,
   ExternalLink,
-  Mail,
   AlertCircle,
-  ChevronRight,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
 import { Organization, Contact } from '@/types/crm';
 import { OrgAvatar } from '@/components/OrgAvatar';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 function getPrimaryContact(org: Organization): Contact | undefined {
   return org.contacts.find((c) => c.isPrimary) ?? org.contacts[0];
@@ -44,11 +42,13 @@ function getStatusStyle(status: string) {
   return STATUS_COLORS[status] ?? { bg: '#F3F4F6', text: '#6B7280', dot: '#9CA3AF' };
 }
 
-function HubRow({ org, onPress, onCopyLink, copied }: {
+// ── Desktop/tablet table row ──
+function HubRow({ org, onPress, onCopyLink, copied, hideContact }: {
   org: Organization;
   onPress: () => void;
   onCopyLink: () => void;
   copied: boolean;
+  hideContact?: boolean;
 }) {
   const primaryContact = getPrimaryContact(org);
   const contactName = primaryContact
@@ -73,16 +73,18 @@ function HubRow({ org, onPress, onCopyLink, copied }: {
           </View>
         )}
       </View>
-      <View style={styles.colContact}>
-        {contactName ? (
-          <View>
-            <Text style={styles.tableContact} numberOfLines={1}>{contactName}</Text>
-            {contactEmail ? <Text style={styles.tableContactSub} numberOfLines={1}>{contactEmail}</Text> : null}
-          </View>
-        ) : (
-          <Text style={styles.tableDim}>No contact</Text>
-        )}
-      </View>
+      {!hideContact && (
+        <View style={styles.colContact}>
+          {contactName ? (
+            <View>
+              <Text style={styles.tableContact} numberOfLines={1}>{contactName}</Text>
+              {contactEmail ? <Text style={styles.tableContactSub} numberOfLines={1}>{contactEmail}</Text> : null}
+            </View>
+          ) : (
+            <Text style={styles.tableDim}>No contact</Text>
+          )}
+        </View>
+      )}
       <View style={styles.colStatus}>
         <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
           <View style={[styles.statusDot, { backgroundColor: statusStyle.dot }]} />
@@ -116,14 +118,85 @@ function HubRow({ org, onPress, onCopyLink, copied }: {
   );
 }
 
+// ── Mobile card ──
+function HubCard({ org, onPress, onCopyLink, copied }: {
+  org: Organization;
+  onPress: () => void;
+  onCopyLink: () => void;
+  copied: boolean;
+}) {
+  const primaryContact = getPrimaryContact(org);
+  const contactName = primaryContact
+    ? `${primaryContact.firstName} ${primaryContact.lastName}`.trim()
+    : null;
+  const contactEmail = primaryContact?.email || null;
+  const statusStyle = getStatusStyle(org.status);
+  const hasLogo = !!org.logoUrl;
+
+  return (
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+      <View style={styles.cardTop}>
+        <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={42} shape="circle" />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={styles.cardOrgName} numberOfLines={1}>{org.name}</Text>
+          {org.type ? <Text style={styles.tableOrgType} numberOfLines={1}>{org.type}</Text> : null}
+          {!hasLogo && (
+            <View style={styles.noLogoTag}>
+              <AlertCircle size={9} color="#D97706" />
+              <Text style={styles.noLogoTagText}>No logo</Text>
+            </View>
+          )}
+        </View>
+        <View style={{ gap: 4, alignItems: 'flex-end' }}>
+          <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
+            <View style={[styles.statusDot, { backgroundColor: statusStyle.dot }]} />
+            <Text style={[styles.statusBadgeText, { color: statusStyle.text }]}>{org.status}</Text>
+          </View>
+          <View style={styles.portalBadge}>
+            <Globe size={9} color="#7C3AED" />
+            <Text style={styles.portalBadgeText}>Live</Text>
+          </View>
+        </View>
+      </View>
+      {contactName && (
+        <Text style={styles.cardContactLine} numberOfLines={1}>
+          {contactName}{contactEmail ? ` · ${contactEmail}` : ''}
+        </Text>
+      )}
+      <View style={styles.cardActions}>
+        <TouchableOpacity style={[styles.actionPrimary, { flex: 1 }]} onPress={onPress} activeOpacity={0.8}>
+          <ExternalLink size={12} color="#fff" />
+          <Text style={styles.actionPrimaryText}>Open Hub</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionGhost, copied && styles.actionGhostDone]}
+          onPress={onCopyLink}
+          activeOpacity={0.8}
+        >
+          {copied
+            ? <CheckCircle2 size={13} color="#16A34A" />
+            : <Copy size={13} color={Colors.light.textSecondary} />
+          }
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionGhost} onPress={onPress} activeOpacity={0.8}>
+          <Settings size={13} color={Colors.light.textSecondary} />
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// ── Desktop/tablet "add" row ──
 function AddOrgRow({
   org,
   onEnable,
   enabling,
+  hideContact,
 }: {
   org: Organization;
   onEnable: () => void;
   enabling: boolean;
+  hideContact?: boolean;
 }) {
   const primaryContact = getPrimaryContact(org);
   const contactName = primaryContact
@@ -139,13 +212,15 @@ function AddOrgRow({
         <Text style={styles.tableOrgName} numberOfLines={1}>{org.name}</Text>
         {org.type ? <Text style={styles.tableOrgType} numberOfLines={1}>{org.type}</Text> : null}
       </View>
-      <View style={styles.colContact}>
-        {contactName ? (
-          <Text style={styles.tableContact} numberOfLines={1}>{contactName}</Text>
-        ) : (
-          <Text style={styles.tableDim}>No contact</Text>
-        )}
-      </View>
+      {!hideContact && (
+        <View style={styles.colContact}>
+          {contactName ? (
+            <Text style={styles.tableContact} numberOfLines={1}>{contactName}</Text>
+          ) : (
+            <Text style={styles.tableDim}>No contact</Text>
+          )}
+        </View>
+      )}
       <View style={styles.colStatus}>
         <Text style={styles.tableDim}>Hub off</Text>
       </View>
@@ -163,9 +238,50 @@ function AddOrgRow({
   );
 }
 
+// ── Mobile "add" card ──
+function AddOrgCard({
+  org,
+  onEnable,
+  enabling,
+}: {
+  org: Organization;
+  onEnable: () => void;
+  enabling: boolean;
+}) {
+  const primaryContact = getPrimaryContact(org);
+  const contactName = primaryContact
+    ? `${primaryContact.firstName} ${primaryContact.lastName}`.trim()
+    : null;
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardTop}>
+        <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={42} shape="circle" />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={styles.cardOrgName} numberOfLines={1}>{org.name}</Text>
+          {org.type ? <Text style={styles.tableOrgType} numberOfLines={1}>{org.type}</Text> : null}
+          {contactName && <Text style={styles.tableContact} numberOfLines={1}>{contactName}</Text>}
+        </View>
+        <Text style={styles.tableDim}>Hub off</Text>
+      </View>
+      <View style={styles.cardActions}>
+        {enabling ? (
+          <ActivityIndicator size="small" color={Colors.light.tint} />
+        ) : (
+          <TouchableOpacity style={[styles.enableBtn, { flex: 1 }]} onPress={onEnable} activeOpacity={0.75}>
+            <Plus size={12} color="#fff" />
+            <Text style={styles.enableBtnText}>Enable Hub</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+}
+
 export default function ClientHubsScreen() {
   const router = useRouter();
   const { orgs, isLoading, updateOrgHubEnabled } = useCrm();
+  const { isMobile, isTablet } = useBreakpoint();
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [togglingOrgId, setTogglingOrgId] = useState<string | null>(null);
@@ -223,15 +339,15 @@ export default function ClientHubsScreen() {
     setTimeout(() => setCopiedId(null), 2000);
   }, []);
 
+  const useCardLayout = isMobile;
+  const hideContact = isTablet;
+
   return (
     <View style={styles.container}>
       {/* ── Page header ── */}
       <View style={styles.pageHeader}>
         <View style={styles.headerTop}>
           <Text style={styles.pageTitle}>Client Hubs</Text>
-          <Text style={styles.pageSubtitle}>
-            {orgs.filter(o => o.hubEnabled).length} active hub{orgs.filter(o => o.hubEnabled).length !== 1 ? 's' : ''}
-          </Text>
         </View>
 
         {/* Stats bar */}
@@ -249,11 +365,6 @@ export default function ClientHubsScreen() {
           <View style={styles.statItem}>
             <Text style={[styles.statValue, { color: '#D97706' }]}>{noLogoCount}</Text>
             <Text style={styles.statLabel}>No Logo</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: Colors.light.tint }]}>{orgs.filter(o => !o.hubEnabled).length}</Text>
-            <Text style={styles.statLabel}>Available</Text>
           </View>
         </View>
 
@@ -286,54 +397,87 @@ export default function ClientHubsScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.light.tint} />
           }
         >
-          {/* ── Hub-enabled table ── */}
+          {/* ── Hub-enabled section ── */}
           {hubEnabled.length > 0 && (
             <>
-              <View style={styles.tableHeader}>
-                <View style={styles.colAvatar} />
-                <Text style={[styles.thText, styles.colOrg]}>ORGANIZATION</Text>
-                <Text style={[styles.thText, styles.colContact]}>PRIMARY CONTACT</Text>
-                <Text style={[styles.thText, styles.colStatus]}>STATUS</Text>
-                <Text style={[styles.thText, styles.colActions]}>ACTIONS</Text>
-              </View>
-              <View style={styles.tableBody}>
-                {hubEnabled.map((org, idx) => (
-                  <View key={org.id}>
-                    <HubRow
+              {useCardLayout ? (
+                <View style={styles.cardList}>
+                  {hubEnabled.map((org) => (
+                    <HubCard
+                      key={org.id}
                       org={org}
                       onPress={() => router.push(`/hub/${org.id}` as any)}
                       onCopyLink={() => handleCopyLink(org)}
                       copied={copiedId === org.id}
                     />
-                    {idx < hubEnabled.length - 1 && <View style={styles.tableDivider} />}
+                  ))}
+                </View>
+              ) : (
+                <>
+                  <View style={styles.tableHeader}>
+                    <View style={styles.colAvatar} />
+                    <Text style={[styles.thText, styles.colOrg]}>ORGANIZATION</Text>
+                    {!hideContact && <Text style={[styles.thText, styles.colContact]}>PRIMARY CONTACT</Text>}
+                    <Text style={[styles.thText, styles.colStatus]}>STATUS</Text>
+                    <Text style={[styles.thText, styles.colActions]}>ACTIONS</Text>
                   </View>
-                ))}
-              </View>
+                  <View style={styles.tableBody}>
+                    {hubEnabled.map((org, idx) => (
+                      <View key={org.id}>
+                        <HubRow
+                          org={org}
+                          onPress={() => router.push(`/hub/${org.id}` as any)}
+                          onCopyLink={() => handleCopyLink(org)}
+                          copied={copiedId === org.id}
+                          hideContact={hideContact}
+                        />
+                        {idx < hubEnabled.length - 1 && <View style={styles.tableDivider} />}
+                      </View>
+                    ))}
+                  </View>
+                </>
+              )}
             </>
           )}
 
           {/* ── Search results — not yet enabled ── */}
           {notEnabled.length > 0 && (
             <>
-              <View style={[styles.tableHeader, { marginTop: hubEnabled.length > 0 ? 20 : 0 }]}>
-                <View style={styles.colAvatar} />
-                <Text style={[styles.thText, styles.colOrg]}>ORGANIZATION</Text>
-                <Text style={[styles.thText, styles.colContact]}>CONTACT</Text>
-                <Text style={[styles.thText, styles.colStatus]}>HUB</Text>
-                <Text style={[styles.thText, styles.colActions]}>ENABLE</Text>
-              </View>
-              <View style={styles.tableBody}>
-                {notEnabled.map((org, idx) => (
-                  <View key={org.id}>
-                    <AddOrgRow
+              {useCardLayout ? (
+                <View style={[styles.cardList, { marginTop: hubEnabled.length > 0 ? 16 : 0 }]}>
+                  {notEnabled.map((org) => (
+                    <AddOrgCard
+                      key={org.id}
                       org={org}
                       onEnable={() => handleEnableHub(org)}
                       enabling={togglingOrgId === org.id}
                     />
-                    {idx < notEnabled.length - 1 && <View style={styles.tableDivider} />}
+                  ))}
+                </View>
+              ) : (
+                <>
+                  <View style={[styles.tableHeader, { marginTop: hubEnabled.length > 0 ? 20 : 0 }]}>
+                    <View style={styles.colAvatar} />
+                    <Text style={[styles.thText, styles.colOrg]}>ORGANIZATION</Text>
+                    {!hideContact && <Text style={[styles.thText, styles.colContact]}>CONTACT</Text>}
+                    <Text style={[styles.thText, styles.colStatus]}>HUB</Text>
+                    <Text style={[styles.thText, styles.colActions]}>ENABLE</Text>
                   </View>
-                ))}
-              </View>
+                  <View style={styles.tableBody}>
+                    {notEnabled.map((org, idx) => (
+                      <View key={org.id}>
+                        <AddOrgRow
+                          org={org}
+                          onEnable={() => handleEnableHub(org)}
+                          enabling={togglingOrgId === org.id}
+                          hideContact={hideContact}
+                        />
+                        {idx < notEnabled.length - 1 && <View style={styles.tableDivider} />}
+                      </View>
+                    ))}
+                  </View>
+                </>
+              )}
             </>
           )}
 
@@ -384,13 +528,12 @@ const styles = StyleSheet.create({
   headerTop: {
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 10,
+    paddingBottom: 14,
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 10,
   },
   pageTitle: { fontSize: 24, fontWeight: '800' as const, color: Colors.light.text },
-  pageSubtitle: { fontSize: 14, color: Colors.light.textSecondary },
 
   // Stats bar
   statsBar: {
@@ -530,6 +673,7 @@ const styles = StyleSheet.create({
   actionPrimary: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 5,
     backgroundColor: Colors.light.tint,
     borderRadius: 7,
@@ -552,6 +696,7 @@ const styles = StyleSheet.create({
   enableBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 5,
     backgroundColor: Colors.light.tint,
     borderRadius: 7,
@@ -559,6 +704,40 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   enableBtnText: { fontSize: 12, fontWeight: '700' as const, color: '#fff' },
+
+  // Mobile card layout
+  cardList: {
+    padding: 12,
+    gap: 10,
+  },
+  card: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    padding: 14,
+    gap: 10,
+  },
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  cardOrgName: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: Colors.light.text,
+  },
+  cardContactLine: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    paddingLeft: 54,
+  },
+  cardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
 
   // Empty
   emptyState: {

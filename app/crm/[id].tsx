@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,6 @@ import {
   Platform,
   Pressable,
   Alert,
-  Switch,
   Image,
   ActivityIndicator,
 } from 'react-native';
@@ -48,6 +47,8 @@ import {
   Package,
   Upload,
   ExternalLink,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { OrgLogoUploader } from '@/components/OrgLogoUploader';
@@ -197,6 +198,19 @@ export default function OrgProfileScreen() {
 
   const contextOrg = useMemo(() => orgs.find((o) => o.id === id), [orgs, id]);
   const org: Organization | undefined = contextOrg || directOrg;
+
+  // Local optimistic state for hub toggle so it responds instantly on web
+  const [localHubEnabled, setLocalHubEnabled] = useState(org?.hubEnabled ?? false);
+  useEffect(() => {
+    setLocalHubEnabled(org?.hubEnabled ?? false);
+  }, [org?.hubEnabled]);
+
+  const handleHubToggle = useCallback(() => {
+    if (!org) return;
+    const newVal = !localHubEnabled;
+    setLocalHubEnabled(newVal);
+    updateOrgHubEnabled({ orgId: org.id, enabled: newVal });
+  }, [org, localHubEnabled, updateOrgHubEnabled]);
 
   const [editOrgModal, setEditOrgModal] = useState(false);
   const [orgForm, setOrgForm] = useState({ name: '', type: '', address: '', city: '', state: '', website: '', notes: '', status: 'Cold' as CrmStatus });
@@ -716,14 +730,21 @@ export default function OrgProfileScreen() {
             <Shield size={15} color="#7C3AED" />
             <Text style={styles.infoCardTitle}>Client Hub</Text>
           </View>
-          <Switch
-            value={org.hubEnabled ?? false}
-            onValueChange={(val) => updateOrgHubEnabled({ orgId: org.id, enabled: val })}
-            trackColor={{ false: Colors.light.border, true: '#FF5A00' }}
-            thumbColor="#fff"
-          />
+          <TouchableOpacity
+            style={styles.hubToggleBtn}
+            onPress={handleHubToggle}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.hubToggleBtnText, localHubEnabled && styles.hubToggleBtnTextOn]}>
+              {localHubEnabled ? 'On' : 'Off'}
+            </Text>
+            {localHubEnabled
+              ? <ToggleRight size={26} color="#FF5A00" />
+              : <ToggleLeft size={26} color={Colors.light.border} />
+            }
+          </TouchableOpacity>
         </View>
-        {org.hubEnabled && (
+        {localHubEnabled && (
           <TouchableOpacity
             style={styles.portalLinkRow}
             onPress={() => { if (Platform.OS === 'web') { (window as any).open(`/portal/${org.id}`, '_blank'); } }}
@@ -2000,6 +2021,13 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: `${Colors.light.tint}30`,
   },
   infoCardActionText: { fontSize: 12, fontWeight: '600' as const, color: Colors.light.tint },
+  hubToggleBtn: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4,
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
+    borderWidth: 1, borderColor: Colors.light.border,
+  },
+  hubToggleBtnText: { fontSize: 11, fontWeight: '600' as const, color: Colors.light.textSecondary },
+  hubToggleBtnTextOn: { color: '#FF5A00' },
   infoCardActionSecondary: {
     flexDirection: 'row' as const, alignItems: 'center' as const, gap: 3,
     paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8,

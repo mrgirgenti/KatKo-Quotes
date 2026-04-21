@@ -15,6 +15,7 @@ import {
   Linking,
 } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import {
   CheckCircle,
   Send,
@@ -830,6 +831,7 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
 // ────────────────────────────────────────────────────────────
 export default function ClientPortal() {
   const { orgId } = useLocalSearchParams<{ orgId: string }>();
+  const { isMobile } = useBreakpoint();
 
   const [step, setStep] = useState<Step>('email');
   const [session, setSession] = useState<ClientSession | null>(null);
@@ -1804,58 +1806,76 @@ export default function ClientPortal() {
 
       {/* ── DASHBOARD STEP ── */}
       {step === 'dashboard' && session && (
-        <View style={dash.layout}>
-          {/* Sidebar */}
-          <View style={dash.sidebar}>
-            <View style={dash.sidebarHeader}>
-              {logoSrc ? (
-                <Image source={{ uri: logoSrc }} style={dash.sidebarLogo} resizeMode="contain" />
-              ) : (
-                <View>
-                  <Text style={dash.sidebarLogoText}>{displayName.toUpperCase()}</Text>
-                  <Text style={dash.sidebarLogoBrand}>Client Hub by Katalyst Ko Printshop</Text>
-                </View>
-              )}
-              <Text style={dash.sidebarClientHub}>Client Hub</Text>
-            </View>
+        <View style={[dash.layout, isMobile && dash.layoutMobile]}>
+          {/* Desktop/tablet: Sidebar */}
+          {!isMobile && (
+            <View style={dash.sidebar}>
+              <View style={dash.sidebarHeader}>
+                {logoSrc ? (
+                  <Image source={{ uri: logoSrc }} style={dash.sidebarLogo} resizeMode="contain" />
+                ) : (
+                  <View>
+                    <Text style={dash.sidebarLogoText}>{displayName.toUpperCase()}</Text>
+                    <Text style={dash.sidebarLogoBrand}>Client Hub by Katalyst Ko Printshop</Text>
+                  </View>
+                )}
+                <Text style={dash.sidebarClientHub}>Client Hub</Text>
+              </View>
 
-            <View style={dash.sidebarNav}>
-              {NAV_ITEMS.map(({ id, label, Icon }) => {
-                const isActive = activeView === id;
-                return (
-                  <TouchableOpacity
-                    key={id}
-                    style={[dash.navItem, isActive && dash.navItemActive]}
-                    onPress={() => {
-                      setActiveView(id);
-                      if (id === 'artwork' && session) fetchMediaBin(session.orgId);
-                    }}
-                  >
-                    <Icon size={16} color={isActive ? '#fff' : '#9CA3AF'} />
-                    <Text style={[dash.navLabel, isActive && dash.navLabelActive]}>{label}</Text>
+              <View style={dash.sidebarNav}>
+                {NAV_ITEMS.map(({ id, label, Icon }) => {
+                  const isActive = activeView === id;
+                  return (
+                    <TouchableOpacity
+                      key={id}
+                      style={[dash.navItem, isActive && dash.navItemActive]}
+                      onPress={() => {
+                        setActiveView(id);
+                        if (id === 'artwork' && session) fetchMediaBin(session.orgId);
+                      }}
+                    >
+                      <Icon size={16} color={isActive ? '#fff' : '#9CA3AF'} />
+                      <Text style={[dash.navLabel, isActive && dash.navLabelActive]}>{label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <View style={dash.sidebarFooter}>
+                <View style={dash.userRow}>
+                  <View style={dash.userAvatar}>
+                    <Text style={dash.userAvatarText}>{session.userName[0]?.toUpperCase() || '?'}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={dash.userName} numberOfLines={1}>{session.userName}</Text>
+                    <Text style={dash.userOrg} numberOfLines={1}>{session.orgName}</Text>
+                  </View>
+                  <TouchableOpacity onPress={handleSignOut} style={dash.signOutBtn}>
+                    <LogOut size={15} color="#9CA3AF" />
                   </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <View style={dash.sidebarFooter}>
-              <View style={dash.userRow}>
-                <View style={dash.userAvatar}>
-                  <Text style={dash.userAvatarText}>{session.userName[0]?.toUpperCase() || '?'}</Text>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={dash.userName} numberOfLines={1}>{session.userName}</Text>
-                  <Text style={dash.userOrg} numberOfLines={1}>{session.orgName}</Text>
-                </View>
-                <TouchableOpacity onPress={handleSignOut} style={dash.signOutBtn}>
-                  <LogOut size={15} color="#9CA3AF" />
-                </TouchableOpacity>
               </View>
             </View>
-          </View>
+          )}
+
+          {/* Mobile: Top bar */}
+          {isMobile && (
+            <View style={dash.mobileTopBar}>
+              <View style={dash.mobileTopBarLeft}>
+                {logoSrc ? (
+                  <Image source={{ uri: logoSrc }} style={dash.mobileTopLogo} resizeMode="contain" />
+                ) : (
+                  <Text style={dash.mobileTopOrgName} numberOfLines={1}>{displayName.toUpperCase()}</Text>
+                )}
+              </View>
+              <TouchableOpacity onPress={handleSignOut} style={dash.signOutBtn}>
+                <LogOut size={18} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Main content */}
-          <View style={dash.main}>
+          <View style={[dash.main, isMobile && dash.mainMobile]}>
             {activeView === 'home'     && HomeView()}
             {activeView === 'projects' && ProjectsView()}
             {activeView === 'quotes'   && QuotesView()}
@@ -1863,6 +1883,29 @@ export default function ClientPortal() {
             {activeView === 'catalogs' && CatalogsView()}
             {activeView === 'submit'   && SubmitView()}
           </View>
+
+          {/* Mobile: Bottom tab bar */}
+          {isMobile && (
+            <View style={dash.mobileBottomBar}>
+              {NAV_ITEMS.map(({ id, label, Icon }) => {
+                const isActive = activeView === id;
+                return (
+                  <TouchableOpacity
+                    key={id}
+                    style={dash.mobileNavItem}
+                    onPress={() => {
+                      setActiveView(id);
+                      if (id === 'artwork' && session) fetchMediaBin(session.orgId);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Icon size={20} color={isActive ? BRAND : '#9CA3AF'} />
+                    <Text style={[dash.mobileNavLabel, isActive && dash.mobileNavLabelActive]}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
         </View>
       )}
 
@@ -2236,6 +2279,51 @@ const SIDEBAR_ACTIVE = '#FF5A00';
 
 const dash = StyleSheet.create({
   layout: { flex: 1, flexDirection: 'row', backgroundColor: '#F3F4F6' },
+  layoutMobile: { flexDirection: 'column' },
+
+  // Mobile top bar
+  mobileTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: SIDEBAR_BG,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    ...Platform.select({ web: { position: 'sticky' as any, top: 0, zIndex: 10 } as any, default: {} }),
+  },
+  mobileTopBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  mobileTopLogo: { width: 100, height: 28 },
+  mobileTopOrgName: { color: '#fff', fontSize: 13, fontWeight: '800', letterSpacing: 1.2 },
+
+  // Mobile bottom tab bar
+  mobileBottomBar: {
+    flexDirection: 'row',
+    backgroundColor: SIDEBAR_BG,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+    ...Platform.select({ web: { position: 'sticky' as any, bottom: 0, zIndex: 10 } as any, default: {} }),
+  },
+  mobileNavItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    gap: 3,
+  },
+  mobileNavLabel: {
+    fontSize: 9,
+    fontWeight: '500',
+    color: '#9CA3AF',
+  },
+  mobileNavLabelActive: {
+    color: BRAND,
+    fontWeight: '700',
+  },
+
+  // Main content: add bottom padding on mobile for the tab bar
+  mainMobile: {
+    paddingBottom: 0,
+  },
 
   sidebar: {
     width: 210,
@@ -2281,9 +2369,9 @@ const dash = StyleSheet.create({
   userOrg: { fontSize: 10, color: '#6B7280', marginTop: 1 },
   signOutBtn: { padding: 6 },
 
-  main: { flex: 1, backgroundColor: '#F3F4F6' },
+  main: { flex: 1, backgroundColor: '#F3F4F6', overflow: 'hidden' as any },
 
-  viewContent: { padding: 28, paddingBottom: 48 },
+  viewContent: { padding: 20, paddingBottom: 48 },
 
   welcomeText: { fontSize: 22, fontWeight: '700', color: TEXT, marginBottom: 4 },
   welcomeSub: { fontSize: 13, color: TEXT_LIGHT, marginBottom: 24 },

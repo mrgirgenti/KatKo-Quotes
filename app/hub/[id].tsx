@@ -1,11 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Switch,
   Modal,
   Pressable,
   TextInput,
@@ -27,16 +26,18 @@ import {
   ChevronDown,
   Trash2,
   Edit3,
-  User,
   Copy,
   ExternalLink,
   Mail,
   Clock,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
 import { OrgMembership, MembershipRole } from '@/types/crm';
 import { OrgAvatar } from '@/components/OrgAvatar';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 const ROLE_LABELS: Record<MembershipRole, string> = {
   ORG_ADMIN: 'Org Admin',
@@ -77,8 +78,15 @@ export default function HubManagementScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { orgs, isLoading: crmLoading, updateOrgHubEnabled } = useCrm();
+  const { isMobile, isTablet, isDesktop } = useBreakpoint();
 
   const org = orgs.find((o) => o.id === id);
+
+  // Local optimistic state for the hub toggle so it responds instantly on web
+  const [hubOn, setHubOn] = useState(org?.hubEnabled ?? false);
+  useEffect(() => {
+    setHubOn(org?.hubEnabled ?? false);
+  }, [org?.hubEnabled]);
 
   const { data: memberships = [], isLoading: membershipsLoading, refetch: refetchMemberships } =
     useQuery<OrgMembership[]>({
@@ -170,10 +178,12 @@ export default function HubManagementScreen() {
     }
   }, [portalUrl]);
 
-  const handleHubToggle = useCallback((val: boolean) => {
+  const handleHubToggle = useCallback(() => {
     if (!org) return;
-    updateOrgHubEnabled({ orgId: org.id, enabled: val });
-  }, [org, updateOrgHubEnabled]);
+    const newVal = !hubOn;
+    setHubOn(newVal);
+    updateOrgHubEnabled({ orgId: org.id, enabled: newVal });
+  }, [org, hubOn, updateOrgHubEnabled]);
 
 
   // Promotes an existing CLIENT member to ORG_ADMIN by patching their membership role
@@ -386,76 +396,96 @@ export default function HubManagementScreen() {
 
         {/* Hub Status Card */}
         <View style={styles.statusCard}>
-          <View style={styles.statusCardRow}>
-            {/* Org identity */}
-            <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={46} shape="circle" />
-            <View style={{ flex: 1, gap: 5 }}>
-              <View style={styles.orgNameRow}>
-                <Text style={styles.orgName} numberOfLines={1}>{org.name}</Text>
-                <View style={[styles.readyPill, isReady ? styles.readyPillGreen : styles.readyPillAmber]}>
-                  {isReady
-                    ? <CheckCircle2 size={9} color="#16A34A" />
-                    : <AlertCircle size={9} color="#D97706" />}
-                  <Text style={[styles.readyPillText, isReady ? styles.readyPillTextGreen : styles.readyPillTextAmber]}>
-                    {isReady ? 'Portal Ready' : 'Needs Setup'}
-                  </Text>
+          <View style={[styles.statusCardRow, (isMobile || isTablet) && styles.statusCardRowMobile]}>
+            {/* Top row: avatar + name + toggle */}
+            <View style={styles.statusCardIdentity}>
+              <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={46} shape="circle" />
+              <View style={{ flex: 1, gap: 5 }}>
+                <View style={styles.orgNameRow}>
+                  <Text style={styles.orgName} numberOfLines={1}>{org.name}</Text>
+                  <View style={[styles.readyPill, isReady ? styles.readyPillGreen : styles.readyPillAmber]}>
+                    {isReady
+                      ? <CheckCircle2 size={9} color="#16A34A" />
+                      : <AlertCircle size={9} color="#D97706" />}
+                    <Text style={[styles.readyPillText, isReady ? styles.readyPillTextGreen : styles.readyPillTextAmber]}>
+                      {isReady ? 'Portal Ready' : 'Needs Setup'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.statsRow}>
+                  <Users size={11} color={Colors.light.textSecondary} />
+                  <Text style={styles.statText}>{allClientMembers.length} member{allClientMembers.length !== 1 ? 's' : ''}</Text>
+                  <View style={styles.statDot} />
+                  <ShieldCheck size={11} color={Colors.light.textSecondary} />
+                  <Text style={styles.statText}>{clientOrgAdmins.length > 0 ? clientOrgAdmins[0].userName : 'No org admin'}</Text>
                 </View>
               </View>
-              <View style={styles.statsRow}>
-                <Users size={11} color={Colors.light.textSecondary} />
-                <Text style={styles.statText}>{allClientMembers.length} member{allClientMembers.length !== 1 ? 's' : ''}</Text>
-                <View style={styles.statDot} />
-                <ShieldCheck size={11} color={Colors.light.textSecondary} />
-                <Text style={styles.statText}>{clientOrgAdmins.length > 0 ? clientOrgAdmins[0].userName : 'No org admin'}</Text>
-              </View>
+
+              {/* Hub toggle — always in the top-right of the identity row */}
+              <TouchableOpacity style={styles.hubToggle} onPress={handleHubToggle} activeOpacity={0.7}>
+                <Text style={[styles.toggleLabel, hubOn && styles.toggleLabelOn]}>
+                  {hubOn ? 'Hub On' : 'Hub Off'}
+                </Text>
+                {hubOn
+                  ? <ToggleRight size={28} color={Colors.light.tint} />
+                  : <ToggleLeft size={28} color={Colors.light.border} />
+                }
+              </TouchableOpacity>
             </View>
 
-            {/* Account Rep — shown prominently in header */}
-            <View style={styles.headerRepBlock}>
-              <View style={styles.headerRepLabelRow}>
-                <Text style={styles.headerRepLabel}>Account Rep</Text>
+            {/* Account Rep — only show on desktop or as separate row on mobile */}
+            {isDesktop ? (
+              <View style={styles.headerRepBlock}>
+                <View style={styles.headerRepLabelRow}>
+                  <Text style={styles.headerRepLabel}>Account Rep</Text>
+                  <TouchableOpacity
+                    onPress={() => { setSelectedRepUserId(accountReps[0]?.userId || ''); setAssignRepModal(true); }}
+                  >
+                    <Text style={styles.headerRepChange}>
+                      {accountReps.length > 0 ? 'Change' : 'Assign'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                {accountReps.length > 0 ? (
+                  <View style={styles.headerRepRow}>
+                    <View style={[styles.headerRepAvatar, { backgroundColor: accountReps[0].userAvatarColor || Colors.light.tint }]}>
+                      <Text style={styles.headerRepAvatarText}>{(accountReps[0].userName || '?')[0].toUpperCase()}</Text>
+                    </View>
+                    <Text style={styles.headerRepName} numberOfLines={1}>{accountReps[0].userName}</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => { setSelectedRepUserId(defaultRepUser?.id || ''); setAssignRepModal(true); }}
+                  >
+                    <Text style={styles.headerRepUnassigned}>Unassigned — tap to assign</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : (
+              <View style={styles.mobileRepRow}>
+                <Text style={styles.headerRepLabel}>Account Rep: </Text>
+                {accountReps.length > 0 ? (
+                  <View style={[styles.headerRepAvatar, { backgroundColor: accountReps[0].userAvatarColor || Colors.light.tint }]}>
+                    <Text style={styles.headerRepAvatarText}>{(accountReps[0].userName || '?')[0].toUpperCase()}</Text>
+                  </View>
+                ) : null}
                 <TouchableOpacity
                   onPress={() => { setSelectedRepUserId(accountReps[0]?.userId || ''); setAssignRepModal(true); }}
                 >
                   <Text style={styles.headerRepChange}>
-                    {accountReps.length > 0 ? 'Change' : 'Assign'}
+                    {accountReps.length > 0 ? accountReps[0].userName : 'Assign'}
                   </Text>
                 </TouchableOpacity>
               </View>
-              {accountReps.length > 0 ? (
-                <View style={styles.headerRepRow}>
-                  <View style={[styles.headerRepAvatar, { backgroundColor: accountReps[0].userAvatarColor || Colors.light.tint }]}>
-                    <Text style={styles.headerRepAvatarText}>{(accountReps[0].userName || '?')[0].toUpperCase()}</Text>
-                  </View>
-                  <Text style={styles.headerRepName} numberOfLines={1}>{accountReps[0].userName}</Text>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  onPress={() => { setSelectedRepUserId(defaultRepUser?.id || ''); setAssignRepModal(true); }}
-                >
-                  <Text style={styles.headerRepUnassigned}>Unassigned — tap to assign</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Hub toggle */}
-            <View style={styles.hubToggle}>
-              <Text style={styles.toggleLabel}>Hub</Text>
-              <Switch
-                value={org.hubEnabled ?? false}
-                onValueChange={handleHubToggle}
-                trackColor={{ false: Colors.light.border, true: Colors.light.tint }}
-                thumbColor="#fff"
-              />
-            </View>
+            )}
           </View>
         </View>
 
-        {/* Two-column body */}
-        <View style={styles.columns}>
+        {/* Body — single column on mobile/tablet, two columns on desktop */}
+        <View style={[styles.columns, (!isDesktop) && styles.columnsMobile]}>
 
           {/* LEFT — Org Admin + Team Members */}
-          <View style={styles.colLeft}>
+          <View style={[styles.colLeft, (!isDesktop) && styles.colLeftMobile]}>
 
             {/* Org Admin */}
             <View style={styles.section}>
@@ -574,7 +604,7 @@ export default function HubManagementScreen() {
           </View>{/* end colLeft */}
 
           {/* RIGHT — Portal Link */}
-          <View style={styles.colRight}>
+          <View style={[styles.colRight, (!isDesktop) && styles.colRightMobile]}>
 
             {/* Portal Link */}
             {org.hubEnabled && (
@@ -916,15 +946,27 @@ const styles = StyleSheet.create({
     gap: 0,
     alignItems: 'flex-start',
   },
+  columnsMobile: {
+    flexDirection: 'column',
+  },
   colLeft: {
     flex: 3,
     gap: 0,
     borderRightWidth: 1,
     borderRightColor: Colors.light.border,
   },
+  colLeftMobile: {
+    flex: 0,
+    borderRightWidth: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+  },
   colRight: {
     flex: 2,
     gap: 0,
+  },
+  colRightMobile: {
+    flex: 0,
   },
 
   // Status Card
@@ -940,6 +982,25 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 16,
     gap: 14,
+  },
+  statusCardRowMobile: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 12,
+  },
+  statusCardIdentity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  mobileRepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    paddingVertical: 8,
   },
   orgNameRow: {
     flexDirection: 'row',
@@ -1012,23 +1073,24 @@ const styles = StyleSheet.create({
   },
 
   hubToggle: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 5,
     flexShrink: 0,
-    borderLeftWidth: 1,
-    borderLeftColor: Colors.light.border,
-    paddingLeft: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
   },
   toggleLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '600',
     color: Colors.light.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
-  toggleSub: {
-    fontSize: 11,
-    color: Colors.light.textSecondary,
+  toggleLabelOn: {
+    color: Colors.light.tint,
   },
 
   statsRow: {
