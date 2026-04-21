@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   RefreshControl,
   TextInput,
-  useWindowDimensions,
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -23,7 +22,7 @@ import {
   ExternalLink,
   Mail,
   AlertCircle,
-  Shield,
+  ChevronRight,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
@@ -45,8 +44,12 @@ function getStatusStyle(status: string) {
   return STATUS_COLORS[status] ?? { bg: '#F3F4F6', text: '#6B7280', dot: '#9CA3AF' };
 }
 
-
-function HubCard({ org, onPress, onCopyLink }: { org: Organization; onPress: () => void; onCopyLink: () => void }) {
+function HubRow({ org, onPress, onCopyLink, copied }: {
+  org: Organization;
+  onPress: () => void;
+  onCopyLink: () => void;
+  copied: boolean;
+}) {
   const primaryContact = getPrimaryContact(org);
   const contactName = primaryContact
     ? `${primaryContact.firstName} ${primaryContact.lastName}`.trim()
@@ -56,86 +59,60 @@ function HubCard({ org, onPress, onCopyLink }: { org: Organization; onPress: () 
   const hasLogo = !!org.logoUrl;
 
   return (
-    <View style={styles.card}>
-      {/* ── Top section: logo, name, badges ── */}
-      <View style={styles.cardTop}>
-        <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={52} />
-        <View style={styles.cardTopText}>
-          <Text style={styles.orgName} numberOfLines={2}>{org.name}</Text>
-          <View style={styles.badgeRow}>
-            <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
-              <View style={[styles.statusDot, { backgroundColor: statusStyle.dot }]} />
-              <Text style={[styles.statusBadgeText, { color: statusStyle.text }]}>{org.status}</Text>
-            </View>
-            <View style={styles.hubBadge}>
-              <Shield size={10} color="#7C3AED" />
-              <Text style={styles.hubBadgeText}>Portal Live</Text>
-            </View>
-          </View>
-        </View>
+    <TouchableOpacity style={styles.tableRow} onPress={onPress} activeOpacity={0.7}>
+      <View style={styles.colAvatar}>
+        <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={36} shape="circle" />
       </View>
-
-      {/* ── Divider ── */}
-      <View style={styles.cardDivider} />
-
-      {/* ── Middle section: contact, type, portal readiness ── */}
-      <View style={styles.cardMeta}>
-        {contactName ? (
-          <View style={styles.metaRow}>
-            <User size={12} color={Colors.light.textSecondary} />
-            <Text style={styles.metaText} numberOfLines={1}>{contactName}</Text>
-          </View>
-        ) : (
-          <View style={styles.metaRow}>
-            <User size={12} color={Colors.light.textSecondary} />
-            <Text style={[styles.metaText, { color: Colors.light.textSecondary, fontStyle: 'italic' }]}>No primary contact</Text>
+      <View style={styles.colOrg}>
+        <Text style={styles.tableOrgName} numberOfLines={1}>{org.name}</Text>
+        {org.type ? <Text style={styles.tableOrgType} numberOfLines={1}>{org.type}</Text> : null}
+        {!hasLogo && (
+          <View style={styles.noLogoTag}>
+            <AlertCircle size={9} color="#D97706" />
+            <Text style={styles.noLogoTagText}>No logo</Text>
           </View>
         )}
-        {contactEmail ? (
-          <View style={styles.metaRow}>
-            <Mail size={12} color={Colors.light.textSecondary} />
-            <Text style={styles.metaText} numberOfLines={1}>{contactEmail}</Text>
+      </View>
+      <View style={styles.colContact}>
+        {contactName ? (
+          <View>
+            <Text style={styles.tableContact} numberOfLines={1}>{contactName}</Text>
+            {contactEmail ? <Text style={styles.tableContactSub} numberOfLines={1}>{contactEmail}</Text> : null}
           </View>
-        ) : null}
-        {org.type ? (
-          <View style={styles.metaRow}>
-            <Globe size={12} color={Colors.light.textSecondary} />
-            <Text style={styles.metaText}>{org.type}</Text>
-          </View>
-        ) : null}
-        <View style={styles.metaRow}>
-          {hasLogo ? (
-            <>
-              <CheckCircle2 size={12} color="#16A34A" />
-              <Text style={[styles.metaText, { color: '#16A34A' }]}>Logo configured</Text>
-            </>
-          ) : (
-            <>
-              <AlertCircle size={12} color="#D97706" />
-              <Text style={[styles.metaText, { color: '#D97706' }]}>No logo set</Text>
-            </>
-          )}
+        ) : (
+          <Text style={styles.tableDim}>No contact</Text>
+        )}
+      </View>
+      <View style={styles.colStatus}>
+        <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
+          <View style={[styles.statusDot, { backgroundColor: statusStyle.dot }]} />
+          <Text style={[styles.statusBadgeText, { color: statusStyle.text }]}>{org.status}</Text>
+        </View>
+        <View style={styles.portalBadge}>
+          <Globe size={9} color="#7C3AED" />
+          <Text style={styles.portalBadgeText}>Live</Text>
         </View>
       </View>
-
-      {/* ── Divider ── */}
-      <View style={styles.cardDivider} />
-
-      {/* ── Bottom section: actions ── */}
-      <View style={styles.cardActions}>
+      <View style={styles.colActions}>
         <TouchableOpacity style={styles.actionPrimary} onPress={onPress} activeOpacity={0.8}>
-          <ExternalLink size={13} color="#fff" />
-          <Text style={styles.actionPrimaryText}>Open Hub</Text>
+          <ExternalLink size={12} color="#fff" />
+          <Text style={styles.actionPrimaryText}>Open</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionSecondary} onPress={onCopyLink} activeOpacity={0.8}>
-          <Copy size={13} color={Colors.light.tint} />
-          <Text style={styles.actionSecondaryText}>Copy Link</Text>
+        <TouchableOpacity
+          style={[styles.actionGhost, copied && styles.actionGhostDone]}
+          onPress={onCopyLink}
+          activeOpacity={0.8}
+        >
+          {copied
+            ? <CheckCircle2 size={13} color="#16A34A" />
+            : <Copy size={13} color={Colors.light.textSecondary} />
+          }
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionGhost} onPress={onPress} activeOpacity={0.8}>
           <Settings size={13} color={Colors.light.textSecondary} />
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -152,26 +129,37 @@ function AddOrgRow({
   const contactName = primaryContact
     ? `${primaryContact.firstName} ${primaryContact.lastName}`.trim()
     : null;
-  const initial = org.name[0]?.toUpperCase() || '?';
 
   return (
-    <View style={styles.addRow}>
-      <View style={styles.addRowAvatar}>
-        <Text style={styles.addRowAvatarText}>{initial}</Text>
+    <TouchableOpacity style={styles.tableRow} onPress={onEnable} activeOpacity={0.7}>
+      <View style={styles.colAvatar}>
+        <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={36} shape="circle" />
       </View>
-      <View style={styles.addRowInfo}>
-        <Text style={styles.addRowName}>{org.name}</Text>
-        {contactName ? <Text style={styles.addRowSub}>{contactName}</Text> : null}
+      <View style={styles.colOrg}>
+        <Text style={styles.tableOrgName} numberOfLines={1}>{org.name}</Text>
+        {org.type ? <Text style={styles.tableOrgType} numberOfLines={1}>{org.type}</Text> : null}
       </View>
-      {enabling ? (
-        <ActivityIndicator size="small" color={Colors.light.tint} />
-      ) : (
-        <TouchableOpacity style={styles.enableBtn} onPress={onEnable} activeOpacity={0.75}>
-          <Plus size={12} color="#fff" />
-          <Text style={styles.enableBtnText}>Enable</Text>
-        </TouchableOpacity>
-      )}
-    </View>
+      <View style={styles.colContact}>
+        {contactName ? (
+          <Text style={styles.tableContact} numberOfLines={1}>{contactName}</Text>
+        ) : (
+          <Text style={styles.tableDim}>No contact</Text>
+        )}
+      </View>
+      <View style={styles.colStatus}>
+        <Text style={styles.tableDim}>Hub off</Text>
+      </View>
+      <View style={styles.colActions}>
+        {enabling ? (
+          <ActivityIndicator size="small" color={Colors.light.tint} />
+        ) : (
+          <TouchableOpacity style={styles.enableBtn} onPress={onEnable} activeOpacity={0.75}>
+            <Plus size={12} color="#fff" />
+            <Text style={styles.enableBtnText}>Enable</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -182,12 +170,6 @@ export default function ClientHubsScreen() {
   const [search, setSearch] = useState('');
   const [togglingOrgId, setTogglingOrgId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const { width } = useWindowDimensions();
-
-  const twoCol = width >= 720;
-  const cardWidth = twoCol
-    ? (width - 240 - 16 * 3) / 2  // account for sidebar + gaps
-    : undefined;
 
   const q = search.toLowerCase().trim();
 
@@ -210,6 +192,8 @@ export default function ClientHubsScreen() {
         : [],
     [orgs, q],
   );
+
+  const noLogoCount = useMemo(() => orgs.filter((o) => o.hubEnabled && !o.logoUrl).length, [orgs]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -243,29 +227,50 @@ export default function ClientHubsScreen() {
     <View style={styles.container}>
       {/* ── Page header ── */}
       <View style={styles.pageHeader}>
-        <View style={styles.pageTitleRow}>
-          <Globe size={22} color={Colors.light.tint} />
+        <View style={styles.headerTop}>
           <Text style={styles.pageTitle}>Client Hubs</Text>
-          <View style={styles.countPill}>
-            <Text style={styles.countPillText}>{hubEnabled.length} active</Text>
+          <Text style={styles.pageSubtitle}>
+            {orgs.filter(o => o.hubEnabled).length} active hub{orgs.filter(o => o.hubEnabled).length !== 1 ? 's' : ''}
+          </Text>
+        </View>
+
+        {/* Stats bar */}
+        <View style={styles.statsBar}>
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: Colors.light.text }]}>{orgs.filter(o => o.hubEnabled).length}</Text>
+            <Text style={styles.statLabel}>Total</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: '#16A34A' }]}>{orgs.filter(o => o.hubEnabled && o.status === 'Active Client').length}</Text>
+            <Text style={styles.statLabel}>Active</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: '#D97706' }]}>{noLogoCount}</Text>
+            <Text style={styles.statLabel}>No Logo</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: Colors.light.tint }]}>{orgs.filter(o => !o.hubEnabled).length}</Text>
+            <Text style={styles.statLabel}>Available</Text>
           </View>
         </View>
-        <Text style={styles.pageSubtitle}>
-          Manage client portals, branding, and team access for each organization.
-        </Text>
-      </View>
 
-      {/* ── Search ── */}
-      <View style={styles.searchRow}>
-        <Search size={14} color={Colors.light.textSecondary} style={{ marginLeft: 12 }} />
-        <TextInput
-          style={styles.searchInput}
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search organizations…"
-          placeholderTextColor={Colors.light.textSecondary}
-          clearButtonMode="while-editing"
-        />
+        {/* Search row */}
+        <View style={styles.searchRow}>
+          <View style={styles.searchBox}>
+            <Search size={14} color={Colors.light.textSecondary} />
+            <TextInput
+              style={styles.searchInput}
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search organizations…"
+              placeholderTextColor={Colors.light.textSecondary}
+              clearButtonMode="while-editing"
+            />
+          </View>
+        </View>
       </View>
 
       {isLoading ? (
@@ -276,96 +281,90 @@ export default function ClientHubsScreen() {
       ) : (
         <ScrollView
           style={styles.list}
-          contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.light.tint} />
           }
         >
-          {/* ── Hub-enabled section ── */}
+          {/* ── Hub-enabled table ── */}
           {hubEnabled.length > 0 && (
-            <View style={styles.listSection}>
-              <View style={styles.sectionHeader}>
-                <CheckCircle2 size={13} color="#16A34A" />
-                <Text style={styles.sectionTitle}>Hub Enabled</Text>
-                <View style={styles.sectionCountBadge}>
-                  <Text style={styles.sectionCountText}>{hubEnabled.length}</Text>
-                </View>
+            <>
+              <View style={styles.tableHeader}>
+                <View style={styles.colAvatar} />
+                <Text style={[styles.thText, styles.colOrg]}>ORGANIZATION</Text>
+                <Text style={[styles.thText, styles.colContact]}>PRIMARY CONTACT</Text>
+                <Text style={[styles.thText, styles.colStatus]}>STATUS</Text>
+                <Text style={[styles.thText, styles.colActions]}>ACTIONS</Text>
               </View>
-              <View style={[styles.cardGrid, twoCol && styles.cardGridTwoCol]}>
-                {hubEnabled.map((org) => (
-                  <View key={org.id} style={twoCol ? { width: cardWidth } : undefined}>
-                    <HubCard
+              <View style={styles.tableBody}>
+                {hubEnabled.map((org, idx) => (
+                  <View key={org.id}>
+                    <HubRow
                       org={org}
                       onPress={() => router.push(`/hub/${org.id}` as any)}
                       onCopyLink={() => handleCopyLink(org)}
+                      copied={copiedId === org.id}
                     />
-                    {copiedId === org.id && (
-                      <View style={styles.copiedToast}>
-                        <CheckCircle2 size={12} color="#16A34A" />
-                        <Text style={styles.copiedToastText}>Link copied!</Text>
-                      </View>
-                    )}
+                    {idx < hubEnabled.length - 1 && <View style={styles.tableDivider} />}
                   </View>
                 ))}
               </View>
-            </View>
+            </>
           )}
 
           {/* ── Search results — not yet enabled ── */}
           {notEnabled.length > 0 && (
-            <View style={styles.listSection}>
-              <View style={styles.sectionHeader}>
-                <User size={13} color={Colors.light.textSecondary} />
-                <Text style={[styles.sectionTitle, { color: Colors.light.textSecondary }]}>
-                  Add to Hub
-                </Text>
-                <View style={[styles.sectionCountBadge, { backgroundColor: '#F3F4F6' }]}>
-                  <Text style={[styles.sectionCountText, { color: Colors.light.textSecondary }]}>{notEnabled.length}</Text>
-                </View>
+            <>
+              <View style={[styles.tableHeader, { marginTop: hubEnabled.length > 0 ? 20 : 0 }]}>
+                <View style={styles.colAvatar} />
+                <Text style={[styles.thText, styles.colOrg]}>ORGANIZATION</Text>
+                <Text style={[styles.thText, styles.colContact]}>CONTACT</Text>
+                <Text style={[styles.thText, styles.colStatus]}>HUB</Text>
+                <Text style={[styles.thText, styles.colActions]}>ENABLE</Text>
               </View>
-              <View style={styles.addList}>
+              <View style={styles.tableBody}>
                 {notEnabled.map((org, idx) => (
-                  <View key={org.id} style={idx < notEnabled.length - 1 ? styles.addRowDivider : undefined}>
+                  <View key={org.id}>
                     <AddOrgRow
                       org={org}
                       onEnable={() => handleEnableHub(org)}
                       enabling={togglingOrgId === org.id}
                     />
+                    {idx < notEnabled.length - 1 && <View style={styles.tableDivider} />}
                   </View>
                 ))}
               </View>
-            </View>
+            </>
           )}
 
           {/* ── Empty states ── */}
           {orgs.length === 0 && (
-            <View style={styles.emptyContainer}>
+            <View style={styles.emptyState}>
               <Globe size={44} color={Colors.light.border} />
               <Text style={styles.emptyTitle}>No organizations yet</Text>
-              <Text style={styles.emptySub}>
+              <Text style={styles.emptyText}>
                 Add organizations in Contacts to manage their Client Hubs here.
               </Text>
             </View>
           )}
 
           {orgs.length > 0 && hubEnabled.length === 0 && !q && (
-            <View style={styles.emptyContainer}>
+            <View style={styles.emptyState}>
               <Globe size={44} color={Colors.light.border} />
               <Text style={styles.emptyTitle}>No hubs enabled yet</Text>
-              <Text style={styles.emptySub}>
-                Search for an organization above to enable their Client Hub and generate a portal link.
+              <Text style={styles.emptyText}>
+                Search for an organization above to enable their Client Hub.
               </Text>
             </View>
           )}
 
           {q && hubEnabled.length === 0 && notEnabled.length === 0 && (
-            <View style={styles.emptyContainer}>
+            <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>No results for "{search}"</Text>
             </View>
           )}
 
-          <View style={{ height: 32 }} />
+          <View style={{ height: 40 }} />
         </ScrollView>
       )}
     </View>
@@ -373,68 +372,69 @@ export default function ClientHubsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-  },
+  container: { flex: 1, backgroundColor: Colors.light.background },
 
   // Page header
   pageHeader: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 14,
-    gap: 4,
+    backgroundColor: Colors.light.surface,
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.border,
-    backgroundColor: Colors.light.surface,
+    paddingTop: Platform.OS === 'web' ? 0 : 48,
   },
-  pageTitleRow: {
+  headerTop: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'baseline',
     gap: 10,
   },
-  pageTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: Colors.light.text,
+  pageTitle: { fontSize: 24, fontWeight: '800' as const, color: Colors.light.text },
+  pageSubtitle: { fontSize: 14, color: Colors.light.textSecondary },
+
+  // Stats bar
+  statsBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 12,
+    backgroundColor: Colors.light.background,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
   },
-  countPill: {
-    backgroundColor: '#FFF0E8',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  countPillText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.light.tint,
-  },
-  pageSubtitle: {
-    fontSize: 13,
-    color: Colors.light.textSecondary,
-    lineHeight: 18,
-    marginTop: 2,
-  },
+  statItem: { flex: 1, alignItems: 'center' },
+  statValue: { fontSize: 18, fontWeight: '800' as const, color: Colors.light.text },
+  statLabel: { fontSize: 10, color: Colors.light.textSecondary, fontWeight: '500' as const, marginTop: 1 },
+  statDivider: { width: 1, height: 32, backgroundColor: Colors.light.border },
 
   // Search
   searchRow: {
     flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingBottom: 12,
     alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 4,
-    borderWidth: 1.5,
-    borderColor: Colors.light.border,
+  },
+  searchBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.light.background,
     borderRadius: 10,
-    backgroundColor: Colors.light.surface,
-    gap: 6,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: 9,
-    paddingRight: 12,
     fontSize: 14,
     color: Colors.light.text,
+    outlineStyle: 'none' as any,
   },
 
   // Loading
@@ -449,92 +449,60 @@ const styles = StyleSheet.create({
     color: Colors.light.textSecondary,
   },
 
-  // List
-  list: {
-    flex: 1,
-  },
-  listContent: {
-    padding: 16,
-    gap: 24,
-  },
-  listSection: {
-    gap: 10,
-  },
-  sectionHeader: {
+  // Table
+  list: { flex: 1 },
+  tableHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
-    paddingHorizontal: 2,
-    marginBottom: 2,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#000000',
   },
-  sectionTitle: {
+  thText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: Colors.light.text,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    flex: 1,
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.4,
   },
-  sectionCountBadge: {
-    backgroundColor: '#DCFCE7',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  sectionCountText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#15803D',
-  },
-
-  // Card grid
-  cardGrid: {
-    gap: 12,
-  },
-  cardGridTwoCol: {
+  tableBody: { backgroundColor: Colors.light.surface },
+  tableRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-
-  // Card
-  card: {
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     backgroundColor: Colors.light.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    overflow: 'hidden',
-    // shadow
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
   },
+  tableDivider: { height: 1, backgroundColor: Colors.light.border, marginLeft: 16 },
 
-  // Card top section
-  cardTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 16,
-    gap: 14,
-  },
-  cardTopText: {
-    flex: 1,
-    gap: 8,
-  },
-  orgName: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: Colors.light.text,
-    lineHeight: 22,
-  },
-  badgeRow: {
+  // Columns
+  colAvatar: { width: 44 },
+  colOrg: { flex: 2.5 },
+  colContact: { flex: 2.5 },
+  colStatus: { flex: 1.8, gap: 4 },
+  colActions: { flexDirection: 'row', alignItems: 'center', gap: 6, width: 120, justifyContent: 'flex-end' },
+
+  // Row content
+  tableOrgName: { fontSize: 14, fontWeight: '600' as const, color: Colors.light.text },
+  tableOrgType: { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
+  tableContact: { fontSize: 13, color: Colors.light.textSecondary },
+  tableContactSub: { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
+  tableDim: { fontSize: 13, color: Colors.light.border },
+
+  // No logo tag
+  noLogoTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    flexWrap: 'wrap',
+    gap: 3,
+    marginTop: 3,
   },
+  noLogoTagText: {
+    fontSize: 10,
+    color: '#D97706',
+    fontWeight: '500' as const,
+  },
+
+  // Badges
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -542,201 +510,65 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 8,
     paddingVertical: 3,
+    alignSelf: 'flex-start',
   },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  hubBadge: {
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusBadgeText: { fontSize: 11, fontWeight: '600' as const },
+  portalBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
     backgroundColor: '#EDE9FE',
+    alignSelf: 'flex-start',
   },
-  hubBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#7C3AED',
-  },
+  portalBadgeText: { fontSize: 10, fontWeight: '600' as const, color: '#7C3AED' },
 
-  // Card divider
-  cardDivider: {
-    height: 1,
-    backgroundColor: Colors.light.border,
-    marginHorizontal: 0,
-  },
-
-  // Card meta section
-  cardMeta: {
-    padding: 14,
-    gap: 7,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-  },
-  metaText: {
-    fontSize: 12,
-    color: Colors.light.text,
-    flex: 1,
-  },
-
-  // Card actions
-  cardActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 8,
-    backgroundColor: '#FAFAFA',
-  },
+  // Actions
   actionPrimary: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: Colors.light.tint,
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    flex: 1,
-    justifyContent: 'center',
-  },
-  actionPrimaryText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  actionSecondary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderWidth: 1.5,
-    borderColor: Colors.light.tint,
-    flex: 1,
-    justifyContent: 'center',
-  },
-  actionSecondaryText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.light.tint,
-  },
-  actionGhost: {
-    padding: 8,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: Colors.light.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  // Copied toast
-  copiedToast: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 5,
-    marginTop: 6,
-    alignSelf: 'flex-end',
+    backgroundColor: Colors.light.tint,
+    borderRadius: 7,
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: '#DCFCE7',
-    borderRadius: 20,
+    paddingVertical: 6,
   },
-  copiedToastText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#15803D',
-  },
-
-  // Add-to-hub rows
-  addList: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: 10,
-    borderWidth: 1,
+  actionPrimaryText: { fontSize: 12, fontWeight: '700' as const, color: '#fff' },
+  actionGhost: {
+    padding: 6,
+    borderRadius: 7,
+    borderWidth: 1.5,
     borderColor: Colors.light.border,
-    overflow: 'hidden',
-  },
-  addRowDivider: {
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-  },
-  addRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 12,
-  },
-  addRowAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.light.border,
     justifyContent: 'center',
     alignItems: 'center',
-    flexShrink: 0,
   },
-  addRowAvatarText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.light.textSecondary,
-  },
-  addRowInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  addRowName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.light.text,
-  },
-  addRowSub: {
-    fontSize: 12,
-    color: Colors.light.textSecondary,
+  actionGhostDone: {
+    borderColor: '#BBF7D0',
+    backgroundColor: '#F0FDF4',
   },
   enableBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     backgroundColor: Colors.light.tint,
-    borderRadius: 8,
+    borderRadius: 7,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  enableBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#fff',
-  },
+  enableBtnText: { fontSize: 12, fontWeight: '700' as const, color: '#fff' },
 
   // Empty
-  emptyContainer: {
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 48,
-    paddingHorizontal: 40,
-    gap: 12,
+    gap: 10,
+    padding: 40,
+    paddingTop: 64,
   },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.light.text,
-    textAlign: 'center',
-  },
-  emptySub: {
-    fontSize: 13,
-    color: Colors.light.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
+  emptyTitle: { fontSize: 18, fontWeight: '700' as const, color: Colors.light.text, textAlign: 'center' },
+  emptyText: { fontSize: 14, color: Colors.light.textSecondary, textAlign: 'center', lineHeight: 20 },
 });

@@ -388,9 +388,7 @@ export default function HubManagementScreen() {
         <View style={styles.statusCard}>
           <View style={styles.statusCardRow}>
             {/* Org identity */}
-            <View style={styles.orgAvatar}>
-              <Text style={styles.orgAvatarText}>{org.name[0]?.toUpperCase()}</Text>
-            </View>
+            <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={46} shape="circle" />
             <View style={{ flex: 1, gap: 5 }}>
               <View style={styles.orgNameRow}>
                 <Text style={styles.orgName} numberOfLines={1}>{org.name}</Text>
@@ -887,8 +885,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.background,
   },
   content: {
-    padding: 14,
-    gap: 12,
+    paddingBottom: 40,
+    gap: 0,
   },
   centered: {
     flex: 1,
@@ -915,31 +913,33 @@ const styles = StyleSheet.create({
   // Two-column layout
   columns: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 0,
     alignItems: 'flex-start',
   },
   colLeft: {
     flex: 3,
-    gap: 12,
+    gap: 0,
+    borderRightWidth: 1,
+    borderRightColor: Colors.light.border,
   },
   colRight: {
     flex: 2,
-    gap: 12,
+    gap: 0,
   },
 
   // Status Card
   statusCard: {
     backgroundColor: Colors.light.surface,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    overflow: 'hidden',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
   },
   statusCardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    gap: 14,
   },
   orgNameRow: {
     flexDirection: 'row',
@@ -947,23 +947,9 @@ const styles = StyleSheet.create({
     gap: 7,
     flexWrap: 'wrap',
   },
-  orgAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.light.tint,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexShrink: 0,
-  },
-  orgAvatarText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#fff',
-  },
   orgName: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800' as const,
     color: Colors.light.text,
   },
   readyPill: {
@@ -1064,27 +1050,24 @@ const styles = StyleSheet.create({
   // Sections
   section: {
     backgroundColor: Colors.light.surface,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
+    borderRadius: 0,
     overflow: 'hidden',
   },
   sectionLast: {},
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#000000',
     gap: 7,
   },
   sectionTitle: {
     fontSize: 11,
-    fontWeight: '700',
-    color: Colors.light.textSecondary,
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
     flex: 1,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     letterSpacing: 0.5,
   },
   sectionActionBtn: {
@@ -1092,12 +1075,12 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: Colors.light.tint,
+    borderColor: 'rgba(255,255,255,0.6)',
   },
   sectionActionBtnText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: Colors.light.tint,
+    fontWeight: '600' as const,
+    color: '#fff',
   },
   sectionActionBtnPrimary: {
     flexDirection: 'row',
@@ -1110,7 +1093,7 @@ const styles = StyleSheet.create({
   },
   sectionActionBtnPrimaryText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: '#fff',
   },
 
@@ -1137,23 +1120,23 @@ const styles = StyleSheet.create({
   memberRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    gap: 9,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 10,
     borderTopWidth: 1,
     borderTopColor: Colors.light.border,
   },
   memberAvatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     flexShrink: 0,
   },
   memberAvatarText: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '700' as const,
     color: '#fff',
   },
   memberInfo: {
@@ -1161,16 +1144,16 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   memberName: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '600' as const,
     color: Colors.light.text,
   },
   memberEmail: {
-    fontSize: 11,
+    fontSize: 12,
     color: Colors.light.textSecondary,
   },
   rowActionBtn: {
-    padding: 5,
+    padding: 6,
   },
 
   // Role badge
