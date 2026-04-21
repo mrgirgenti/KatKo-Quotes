@@ -1,4 +1,7 @@
 import { pool } from '@/lib/pool';
+import { sendEmail, buildSubmissionConfirmationEmail } from '@/lib/email';
+
+const EDIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
 function mapOrderType(portalOrderType: string): string {
   if (portalOrderType === 'Reorder') return 'Re-Order';
@@ -32,7 +35,7 @@ export async function POST(request: Request) {
     }
 
     const userCheck = await pool.query(
-      `SELECT u.id FROM "OrganizationMembership" om
+      `SELECT u.id, u.name, u.email FROM "OrganizationMembership" om
        JOIN "User" u ON u.id = om."userId"
        WHERE om."organizationId" = $1 AND u.id = $2 AND u."userType" = 'CLIENT'`,
       [orgId, userId]
@@ -41,11 +44,10 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    // lineItems is an array of LineItem-compatible objects (without pricing).
-    // Store directly in lineItemsData — same structure as the quote system.
-    const lineItemsArr = Array.isArray(lineItems) && lineItems.length > 0
-      ? lineItems
-      : [];
+    const clientName = userCheck.rows[0].name || 'there';
+    const clientEmail = userCheck.rows[0].email || null;
+
+    const lineItemsArr = Array.isArray(lineItems) && lineItems.length > 0 ? lineItems : [];
 
     const lineItemsData = lineItemsArr.map((item: any, i: number) => ({
       id: item.id || `intake_${Date.now()}_${i}`,
@@ -102,7 +104,7 @@ export async function POST(request: Request) {
 
     const project = projectResult.rows[0];
 
-    // Also create ProjectItem records for each line item (for structured querying)
+    // Create ProjectItem records for structured querying
     for (const item of lineItemsData) {
       const totalQty = Object.values(item.sizes)
         .reduce((sum: number, v) => sum + ((v as number) || 0), 0);
@@ -160,6 +162,34 @@ export async function POST(request: Request) {
       ]
     );
 
+    // Send confirmation email to client (non-blocking)
+    let emailSent = false;
+    if (clientEmail) {
+      const portalUrl = body.portalUrl || '';
+      const { subject, html, text } = buildSubmissionConfirmationEmail({
+        clientName,
+        projectName: title.trim(),
+        orgName: orgName || orgCheck.rows[0].name,
+        inHandsDate: inHandsDate || '',
+        lineItems: lineItemsData.map((li: any) => ({
+          designName: li.designName,
+          serviceStyle: li.serviceStyle,
+        })),
+        notes: notes || '',
+        portalUrl,
+      });
+
+      const emailResult = await sendEmail({ to: clientEmail, subject, html, text });
+      if (emailResult.error) {
+        console.error('[portal/submit] Confirmation email failed:', emailResult.error);
+      } else {
+        console.log(`[portal/submit] Confirmation email sent to ${clientEmail} — id: ${emailResult.id}`);
+        emailSent = true;
+      }
+    } else {
+      console.warn('[portal/submit] No client email found — skipping confirmation email');
+    }
+
     return Response.json({
       id: project.id,
       title: project.title,
@@ -167,10 +197,70 @@ export async function POST(request: Request) {
       intakeSource: 'CLIENT_HUB',
       lineItemCount: lineItemsData.length,
       createdAt: project.createdAt,
+      emailSent,
     }, { status: 201 });
 
   } catch (err) {
     console.error('[POST /api/portal/submit]', err);
     return Response.json({ error: 'Failed to submit project' }, { status: 500 });
+  }
+}
+
+// Cancel a recently submitted project (within edit window)
+export async function DELETE(request: Request) {
+  try {
+    const body = await request.json();
+    const { projectId, userId, orgId } = body;
+
+    if (!projectId || !userId || !orgId) {
+      return Response.json({ error: 'Missing required fields: projectId, userId, orgId' }, { status: 400 });
+    }
+
+    // Verify ownership and that it's within the edit window
+    const projectCheck = await pool.query(
+      `SELECT id, "createdAt", "createdByUserId", "organizationId"
+       FROM "Project"
+       WHERE id = $1 AND "createdByUserId" = $2 AND "organizationId" = $3
+         AND status = 'NEEDS_REVIEW'::"ProjectStatus"`,
+      [projectId, userId, orgId]
+    );
+
+    if (!projectCheck.rows[0]) {
+      return Response.json({ error: 'Project not found or you do not have permission to cancel it' }, { status: 404 });
+    }
+
+    const createdAt = new Date(projectCheck.rows[0].createdAt).getTime();
+    const elapsed = Date.now() - createdAt;
+
+    if (elapsed > EDIT_WINDOW_MS) {
+      return Response.json({ error: 'Edit window has expired (10 minutes)' }, { status: 403 });
+    }
+
+    // Cancel the project
+    await pool.query(
+      `UPDATE "Project"
+       SET status = 'CANCELLED'::"ProjectStatus", "frontendStatus" = 'cancelled', "updatedAt" = NOW()
+       WHERE id = $1`,
+      [projectId]
+    );
+
+    await pool.query(
+      `INSERT INTO "ActivityLog" (
+        id, "organizationId", "projectId", "userId",
+        "actionType", "actionSummary", metadata, "createdAt"
+      ) VALUES (gen_random_uuid(), $1, $2, $3, 'client_cancel', $4, $5::jsonb, NOW())`,
+      [
+        orgId,
+        projectId,
+        userId,
+        'Client cancelled project request within edit window',
+        JSON.stringify({ cancelledWithinMinutes: Math.floor(elapsed / 60000) }),
+      ]
+    );
+
+    return Response.json({ ok: true, cancelled: true });
+  } catch (err) {
+    console.error('[DELETE /api/portal/submit]', err);
+    return Response.json({ error: 'Failed to cancel project' }, { status: 500 });
   }
 }

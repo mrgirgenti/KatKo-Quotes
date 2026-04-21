@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -654,6 +654,23 @@ export default function ClientPortal() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submittedId, setSubmittedId] = useState('');
+  const [submittedAt, setSubmittedAt] = useState<Date | null>(null);
+  const [submissionEmailSent, setSubmissionEmailSent] = useState(false);
+  const [editSecondsLeft, setEditSecondsLeft] = useState(0);
+  const [cancelling, setCancelling] = useState(false);
+
+  const EDIT_WINDOW_MS = 10 * 60 * 1000;
+
+  useEffect(() => {
+    if (!submittedAt) { setEditSecondsLeft(0); return; }
+    const tick = () => {
+      const remaining = Math.max(0, EDIT_WINDOW_MS - (Date.now() - submittedAt.getTime()));
+      setEditSecondsLeft(Math.ceil(remaining / 1000));
+    };
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [submittedAt]);
 
   const [dropdown, setDropdown] = useState<DropdownState>({
     visible: false, title: '', options: [], selected: '', onSelect: () => {},
@@ -753,6 +770,8 @@ export default function ClientPortal() {
       const data = await res.json();
       if (!res.ok) { setSubmitError(data.error || 'Submission failed. Please try again.'); return; }
       setSubmittedId(data.id);
+      setSubmittedAt(data.createdAt ? new Date(data.createdAt) : new Date());
+      setSubmissionEmailSent(!!data.emailSent);
       setStep('success');
     } catch {
       setSubmitError('Connection error. Please try again.');
@@ -769,9 +788,44 @@ export default function ClientPortal() {
     setLineItems([emptyLineItem()]);
     setSubmitError('');
     setSubmittedId('');
+    setSubmittedAt(null);
+    setSubmissionEmailSent(false);
     setFormErrors({});
     setStep('form');
   }, []);
+
+  const handleEditSubmission = useCallback(async () => {
+    if (!session || !submittedId || cancelling) return;
+    setCancelling(true);
+    try {
+      await fetch('/api/portal/submit', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: submittedId, userId: session.userId, orgId: session.orgId }),
+      });
+    } catch {}
+    setSubmittedId('');
+    setSubmittedAt(null);
+    setSubmissionEmailSent(false);
+    setSubmitError('');
+    setFormErrors({});
+    setStep('form');
+    setCancelling(false);
+  }, [session, submittedId, cancelling]);
+
+  const handleCancelSubmission = useCallback(async () => {
+    if (!session || !submittedId || cancelling) return;
+    setCancelling(true);
+    try {
+      await fetch('/api/portal/submit', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: submittedId, userId: session.userId, orgId: session.orgId }),
+      });
+    } catch {}
+    setCancelling(false);
+    handleNewRequest();
+  }, [session, submittedId, cancelling, handleNewRequest]);
 
   const updateLineItem = useCallback((id: string, updated: PortalLineItem) => {
     setLineItems(prev => prev.map(li => li.id === id ? updated : li));
@@ -967,13 +1021,48 @@ export default function ClientPortal() {
               <View style={styles.successIcon}><CheckCircle size={40} color="#16A34A" /></View>
               <Text style={styles.cardTitle}>Request Submitted!</Text>
               <Text style={styles.cardSub}>
-                Your project request has been received. The Katalyst Ko team will review it and reach out with next steps and a quote.
+                Your project request has been received.{submissionEmailSent ? ' A confirmation has been sent to your email.' : ' The Katalyst Ko team will review it and reach out with next steps and a quote.'}
               </Text>
+
               <View style={styles.successRef}>
                 <Text style={styles.successRefLabel}>Reference ID</Text>
                 <Text style={styles.successRefValue} numberOfLines={1}>{submittedId}</Text>
               </View>
-              <TouchableOpacity style={styles.btn} onPress={handleNewRequest}>
+
+              {/* ── Edit window ── */}
+              {editSecondsLeft > 0 && (
+                <View style={styles.editWindowBox}>
+                  <Text style={styles.editWindowTitle}>Need to make a change?</Text>
+                  <Text style={styles.editWindowSub}>
+                    You can edit or cancel this request for{' '}
+                    <Text style={{ fontWeight: '700', color: TEXT }}>
+                      {Math.floor(editSecondsLeft / 60)}:{String(editSecondsLeft % 60).padStart(2, '0')}
+                    </Text>
+                  </Text>
+                  <View style={styles.editWindowBtns}>
+                    <TouchableOpacity
+                      style={[styles.editBtn, cancelling && styles.btnDisabled]}
+                      onPress={handleEditSubmission}
+                      disabled={cancelling}
+                    >
+                      {cancelling
+                        ? <ActivityIndicator size="small" color="#374151" />
+                        : <><Edit2 size={14} color="#374151" /><Text style={styles.editBtnText}>Edit Request</Text></>
+                      }
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.cancelBtn, cancelling && styles.btnDisabled]}
+                      onPress={handleCancelSubmission}
+                      disabled={cancelling}
+                    >
+                      <Trash2 size={14} color="#DC2626" />
+                      <Text style={styles.cancelBtnText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
+              <TouchableOpacity style={[styles.btn, { marginTop: 4 }]} onPress={handleNewRequest}>
                 <Text style={styles.btnText}>Submit Another Request</Text>
               </TouchableOpacity>
               <Text style={styles.helpText}>
@@ -1295,9 +1384,28 @@ const styles = StyleSheet.create({
   backBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12, padding: 8 },
   backBtnText: { fontSize: 13, color: TEXT_LIGHT },
   successIcon: { alignSelf: 'center', marginBottom: 16 },
-  successRef: { backgroundColor: '#F9FAFB', borderRadius: 8, padding: 12, marginBottom: 20, borderWidth: 1, borderColor: BORDER },
+  successRef: { backgroundColor: '#F9FAFB', borderRadius: 8, padding: 12, marginBottom: 20, borderWidth: 1, borderColor: BORDER, width: '100%' },
   successRefLabel: { fontSize: 11, fontWeight: '600', color: TEXT_PLACEHOLDER, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
   successRefValue: { fontSize: 13, color: TEXT_MED, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+  editWindowBox: {
+    width: '100%', borderWidth: 1, borderColor: '#FED7AA', borderRadius: 10,
+    backgroundColor: '#FFF7ED', padding: 14, marginBottom: 16,
+  },
+  editWindowTitle: { fontSize: 13, fontWeight: '700', color: '#92400E', marginBottom: 3 },
+  editWindowSub: { fontSize: 12, color: '#78350F', marginBottom: 10 },
+  editWindowBtns: { flexDirection: 'row', gap: 8 },
+  editBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    borderWidth: 1, borderColor: BORDER, borderRadius: 8, paddingVertical: 9,
+    backgroundColor: '#fff',
+  },
+  editBtnText: { fontSize: 13, fontWeight: '600', color: '#374151' },
+  cancelBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
+    borderWidth: 1, borderColor: '#FCA5A5', borderRadius: 8, paddingVertical: 9, paddingHorizontal: 14,
+    backgroundColor: '#FEF2F2',
+  },
+  cancelBtnText: { fontSize: 13, fontWeight: '600', color: '#DC2626' },
   footer: { backgroundColor: '#F3F4F6', borderTopWidth: 1, borderTopColor: BORDER, paddingVertical: 12, alignItems: 'center' },
   footerText: { fontSize: 12, color: TEXT_PLACEHOLDER },
 });

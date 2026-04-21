@@ -1,4 +1,5 @@
 import { pool } from '@/lib/pool';
+import { sendEmail, buildQuoteApprovedNotificationEmail } from '@/lib/email';
 
 export async function GET(_req: Request, { id }: { id: string }) {
   try {
@@ -39,9 +40,6 @@ export async function GET(_req: Request, { id }: { id: string }) {
         color: v.color || '',
         sizes: v.sizes || {},
       })),
-      subtotal: calculations
-        ? null
-        : null,
     }));
 
     const orgResult = p.organizationId
@@ -76,13 +74,69 @@ export async function POST(request: Request, { id }: { id: string }) {
     const { action } = body;
 
     if (action === 'approve') {
-      const result = await pool.query(
-        `UPDATE "Project" SET "frontendStatus" = 'active', status = 'IN_PRODUCTION'::"ProjectStatus", "updatedAt" = NOW()
-         WHERE id = $1 AND status NOT IN ('NEEDS_REVIEW', 'DRAFT') RETURNING id`,
+      // Fetch project details first for the email notification
+      const projectResult = await pool.query(
+        `SELECT p.id, p.title, p."clientName", p.calculations, p."organizationId",
+                o.name AS "orgName"
+         FROM "Project" p
+         LEFT JOIN "Organization" o ON o.id = p."organizationId"
+         WHERE p.id = $1 AND p.status NOT IN ('NEEDS_REVIEW', 'DRAFT')`,
         [id]
       );
-      if (!result.rows[0]) return Response.json({ error: 'Not found or not approvable' }, { status: 404 });
-      return Response.json({ ok: true, action: 'approved' });
+
+      if (!projectResult.rows[0]) {
+        return Response.json({ error: 'Not found or not approvable' }, { status: 404 });
+      }
+
+      const project = projectResult.rows[0];
+
+      // Transition to QUOTE_SENT + quote_approved frontend status
+      // (Quote is approved by client; awaiting invoice/payment — not yet in production)
+      const updateResult = await pool.query(
+        `UPDATE "Project"
+         SET "frontendStatus" = 'quote_approved',
+             status = 'QUOTE_SENT'::"ProjectStatus",
+             "updatedAt" = NOW()
+         WHERE id = $1 AND status NOT IN ('NEEDS_REVIEW', 'DRAFT')
+         RETURNING id`,
+        [id]
+      );
+
+      if (!updateResult.rows[0]) {
+        return Response.json({ error: 'Not found or already processed' }, { status: 404 });
+      }
+
+      // Send real notification email to Katalyst Ko team
+      const calculations = project.calculations as any;
+      const total: number | null = calculations?.total ?? null;
+      const orgName = project.orgName || project.clientName || '';
+      const adminUrl = typeof globalThis !== 'undefined' && (globalThis as any).location
+        ? `${(globalThis as any).location.origin}/quote/${id}`
+        : `https://906806bc-a164-4b36-995b-783dc3fd5d73-00-310kzlkir9n18.spock.replit.dev/quote/${id}`;
+
+      const { subject, html, text } = buildQuoteApprovedNotificationEmail({
+        projectName: project.title || 'Untitled Project',
+        orgName,
+        submittedBy: body.approvedBy || project.clientName || 'Client',
+        total,
+        adminUrl,
+      });
+
+      const emailResult = await sendEmail({ to: 'jobs@katalystko.com', subject, html, text });
+      if (emailResult.error) {
+        console.error('[quote approve] Email notification failed:', emailResult.error);
+      } else {
+        console.log(`[quote approve] Notification sent — id: ${emailResult.id}`);
+      }
+
+      return Response.json({
+        ok: true,
+        action: 'approved',
+        projectName: project.title,
+        orgName,
+        total,
+        emailSent: !emailResult.error,
+      });
     }
 
     return Response.json({ error: 'Unknown action' }, { status: 400 });

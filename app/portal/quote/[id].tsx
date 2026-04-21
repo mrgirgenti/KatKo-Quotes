@@ -172,6 +172,7 @@ export default function ClientQuoteView() {
   const [error, setError] = useState('');
   const [approved, setApproved] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [approvalEmailSent, setApprovalEmailSent] = useState(false);
 
   useEffect(() => {
     if (!id) { setError('Invalid quote link.'); setLoading(false); return; }
@@ -195,8 +196,10 @@ export default function ClientQuoteView() {
         body: JSON.stringify({ action: 'approve' }),
       });
       const data = await res.json();
-      if (res.ok && data.ok) { setApproved(true); }
-      else { setError(data.error || 'Could not approve. Please contact us.'); }
+      if (res.ok && data.ok) {
+        setApproved(true);
+        setApprovalEmailSent(!!data.emailSent);
+      } else { setError(data.error || 'Could not approve. Please contact us.'); }
     } catch {
       setError('Connection error. Please try again.');
     } finally {
@@ -243,10 +246,16 @@ export default function ClientQuoteView() {
           <>
             {approved ? (
               <View style={styles.card}>
+                <View style={styles.approvedBadge}>
+                  <CheckCircle size={14} color="#065F46" />
+                  <Text style={styles.approvedBadgeText}>Quote Approved</Text>
+                </View>
                 <View style={styles.successIcon}><CheckCircle size={44} color="#16A34A" /></View>
-                <Text style={styles.cardTitle}>Quote Approved!</Text>
+                <Text style={styles.cardTitle}>You're all set!</Text>
                 <Text style={styles.cardSub}>
-                  The Katalyst Ko team has been notified. We'll be in touch shortly to confirm next steps.
+                  {approvalEmailSent
+                    ? 'The Katalyst Ko team has been notified and will follow up shortly to confirm next steps.'
+                    : 'Your approval has been recorded. Reach out to us and we\'ll confirm next steps.'}
                 </Text>
                 <Text style={styles.helpText}>
                   Questions? Email <Text style={{ color: BRAND }}>jobs@katalystko.com</Text>
@@ -462,6 +471,12 @@ const styles = StyleSheet.create({
   },
   errorTitle: { fontSize: 20, fontWeight: '700', color: TEXT, textAlign: 'center', marginBottom: 8 },
   errorSub: { fontSize: 14, color: TEXT_LIGHT, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
+  approvedBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#D1FAE5', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5,
+    marginBottom: 16,
+  },
+  approvedBadgeText: { fontSize: 12, fontWeight: '700', color: '#065F46', textTransform: 'uppercase', letterSpacing: 0.5 },
   successIcon: { marginBottom: 16 },
   cardTitle: { fontSize: 22, fontWeight: '700', color: TEXT, textAlign: 'center', marginBottom: 8 },
   cardSub: { fontSize: 14, color: TEXT_LIGHT, textAlign: 'center', lineHeight: 21, marginBottom: 20 },
