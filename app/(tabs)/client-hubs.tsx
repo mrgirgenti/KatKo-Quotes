@@ -619,8 +619,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 14,
     backgroundColor: '#000000',
+    minHeight: 48,
   },
   thText: {
     fontSize: 11,
