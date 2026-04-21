@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     }
 
     const userCheck = await pool.query(
-      `SELECT u.id, u.name, u.email FROM "OrganizationMembership" om
+      `SELECT u.id, u."firstName", u."lastName", u.email FROM "OrganizationMembership" om
        JOIN "User" u ON u.id = om."userId"
        WHERE om."organizationId" = $1 AND u.id = $2 AND u."userType" = 'CLIENT'`,
       [orgId, userId]
@@ -44,7 +44,8 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const clientName = userCheck.rows[0].name || 'there';
+    const row = userCheck.rows[0];
+    const clientName = `${row.firstName || ''} ${row.lastName || ''}`.trim() || 'there';
     const clientEmail = userCheck.rows[0].email || null;
 
     const lineItemsArr = Array.isArray(lineItems) && lineItems.length > 0 ? lineItems : [];
