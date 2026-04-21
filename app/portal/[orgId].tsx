@@ -38,6 +38,10 @@ import {
   CheckCircle2,
   XCircle,
   Receipt,
+  Upload,
+  X,
+  Download,
+  Image as ImageIcon,
 } from 'lucide-react-native';
 import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
 
@@ -52,6 +56,25 @@ const TEXT_PLACEHOLDER = '#9CA3AF';
 
 type Step = 'email' | 'dashboard';
 type ActiveView = 'home' | 'projects' | 'quotes' | 'artwork' | 'catalogs' | 'submit';
+
+interface PendingFile {
+  id: string;
+  name: string;
+  size: number;
+  file: globalThis.File;
+}
+
+interface MediaFile {
+  id: string;
+  originalName: string;
+  mimeType: string | null;
+  fileSize: number | null;
+  fileType: string;
+  projectId: string | null;
+  createdAt: string;
+  firstName: string | null;
+  lastName: string | null;
+}
 
 interface PortalProject {
   id: string;
@@ -745,6 +768,19 @@ export default function ClientPortal() {
   const [editSecondsLeft, setEditSecondsLeft] = useState(0);
   const [cancelling, setCancelling] = useState(false);
 
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+
+  const [mediaBinFiles, setMediaBinFiles] = useState<MediaFile[]>([]);
+  const [mediaBinLoading, setMediaBinLoading] = useState(false);
+  const [mediaBinUploading, setMediaBinUploading] = useState(false);
+
+  const fileInputRef = useRef<any>(null);
+  const mediaBinInputRef = useRef<any>(null);
+  const dropZoneRef = useRef<any>(null);
+  const mediaBinDropRef = useRef<any>(null);
+
   const [activeView, setActiveView] = useState<ActiveView>('home');
   const [orgProjects, setOrgProjects] = useState<PortalProject[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
@@ -803,6 +839,103 @@ export default function ClientPortal() {
     } catch {}
     setProjectsLoading(false);
   }, []);
+
+  const fetchMediaBin = useCallback(async (oid: string) => {
+    setMediaBinLoading(true);
+    try {
+      const res = await fetch(`/api/files?orgId=${oid}&scope=org`);
+      if (res.ok) {
+        const data = await res.json();
+        setMediaBinFiles(data.files || []);
+      }
+    } catch {}
+    setMediaBinLoading(false);
+  }, []);
+
+  const handleFilesAdded = useCallback((rawFiles: globalThis.File[]) => {
+    const allowed = rawFiles.filter(f => {
+      const n = f.name.toLowerCase();
+      return n.endsWith('.ai') || n.endsWith('.svg') || n.endsWith('.png')
+        || n.endsWith('.jpg') || n.endsWith('.jpeg') || n.endsWith('.pdf');
+    });
+    if (allowed.length === 0) return;
+    setPendingFiles(prev => [
+      ...prev,
+      ...allowed.map(f => ({ id: Math.random().toString(36).slice(2), name: f.name, size: f.size, file: f })),
+    ]);
+  }, []);
+
+  const removePendingFile = useCallback((id: string) => {
+    setPendingFiles(prev => prev.filter(f => f.id !== id));
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !dropZoneRef.current) return;
+    const el = dropZoneRef.current as any;
+    const onDragOver = (e: any) => { e.preventDefault(); setIsDraggingOver(true); };
+    const onDragLeave = () => setIsDraggingOver(false);
+    const onDrop = (e: any) => {
+      e.preventDefault();
+      setIsDraggingOver(false);
+      const files = Array.from((e.dataTransfer?.files || []) as globalThis.File[]);
+      handleFilesAdded(files);
+    };
+    el.addEventListener('dragover', onDragOver);
+    el.addEventListener('dragleave', onDragLeave);
+    el.addEventListener('drop', onDrop);
+    return () => {
+      el.removeEventListener('dragover', onDragOver);
+      el.removeEventListener('dragleave', onDragLeave);
+      el.removeEventListener('drop', onDrop);
+    };
+  }, [handleFilesAdded, activeView]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !mediaBinDropRef.current) return;
+    const el = mediaBinDropRef.current as any;
+    const onDragOver = (e: any) => { e.preventDefault(); };
+    const onDrop = (e: any) => {
+      e.preventDefault();
+      if (!session) return;
+      const files = Array.from((e.dataTransfer?.files || []) as globalThis.File[]);
+      if (files.length === 0) return;
+      handleMediaBinUpload(files);
+    };
+    el.addEventListener('dragover', onDragOver);
+    el.addEventListener('drop', onDrop);
+    return () => {
+      el.removeEventListener('dragover', onDragOver);
+      el.removeEventListener('drop', onDrop);
+    };
+  }, [activeView, session]);
+
+  const handleMediaBinUpload = useCallback(async (rawFiles: globalThis.File[]) => {
+    if (!session) return;
+    const allowed = rawFiles.filter(f => {
+      const n = f.name.toLowerCase();
+      return n.endsWith('.ai') || n.endsWith('.svg') || n.endsWith('.png')
+        || n.endsWith('.jpg') || n.endsWith('.jpeg') || n.endsWith('.pdf');
+    });
+    if (allowed.length === 0) return;
+    setMediaBinUploading(true);
+    for (const f of allowed) {
+      const fd = new FormData();
+      fd.append('file', f);
+      fd.append('orgId', session.orgId);
+      fd.append('uploadedByUserId', session.userId);
+      fd.append('fileType', 'ARTWORK');
+      fd.append('visibility', 'CLIENT_VISIBLE');
+      await fetch('/api/files', { method: 'POST', body: fd }).catch(() => {});
+    }
+    await fetchMediaBin(session.orgId);
+    setMediaBinUploading(false);
+  }, [session, fetchMediaBin]);
+
+  const deleteMediaBinFile = useCallback(async (fileId: string) => {
+    if (!session) return;
+    await fetch(`/api/files/${fileId}`, { method: 'DELETE' }).catch(() => {});
+    setMediaBinFiles(prev => prev.filter(f => f.id !== fileId));
+  }, [session]);
 
   const handleSignOut = useCallback(() => {
     setSession(null);
@@ -898,7 +1031,23 @@ export default function ClientPortal() {
       });
       const data = await res.json();
       if (!res.ok) { setSubmitError(data.error || 'Submission failed. Please try again.'); return; }
-      setSubmittedId(data.id);
+      const projectId = data.id;
+      if (pendingFiles.length > 0) {
+        setUploadingFiles(true);
+        for (const pf of pendingFiles) {
+          const fd = new FormData();
+          fd.append('file', pf.file);
+          fd.append('orgId', session.orgId);
+          fd.append('projectId', projectId);
+          fd.append('uploadedByUserId', session.userId);
+          fd.append('fileType', 'ARTWORK');
+          fd.append('visibility', 'CLIENT_VISIBLE');
+          await fetch('/api/files', { method: 'POST', body: fd }).catch(() => {});
+        }
+        setUploadingFiles(false);
+        setPendingFiles([]);
+      }
+      setSubmittedId(projectId);
       setSubmittedAt(data.createdAt ? new Date(data.createdAt) : new Date());
       setSubmissionEmailSent(!!data.emailSent);
       setStep('success');
@@ -907,7 +1056,7 @@ export default function ClientPortal() {
     } finally {
       setSubmitting(false);
     }
-  }, [session, projectName, orderType, inHandsDate, requestNotes, lineItems]);
+  }, [session, projectName, orderType, inHandsDate, requestNotes, lineItems, pendingFiles]);
 
   const handleNewRequest = useCallback(() => {
     setProjectName('');
@@ -915,6 +1064,7 @@ export default function ClientPortal() {
     setInHandsDate('');
     setRequestNotes('');
     setLineItems([emptyLineItem()]);
+    setPendingFiles([]);
     setSubmitError('');
     setSubmittedId('');
     setSubmittedAt(null);
@@ -983,6 +1133,28 @@ export default function ClientPortal() {
     const dt = new Date(d);
     if (isNaN(dt.getTime())) return '—';
     return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function formatBytes(bytes: number | null): string {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1048576) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / 1048576).toFixed(1)} MB`;
+  }
+
+  function getMimeLabel(mime: string | null, name: string): string {
+    const ext = name.split('.').pop()?.toUpperCase();
+    if (ext && ['AI', 'SVG', 'PNG', 'JPG', 'JPEG', 'PDF'].includes(ext)) return ext === 'JPEG' ? 'JPG' : ext;
+    if (!mime) return 'FILE';
+    const map: Record<string, string> = {
+      'image/png': 'PNG', 'image/jpeg': 'JPG', 'image/svg+xml': 'SVG',
+      'application/pdf': 'PDF', 'application/postscript': 'AI', 'application/illustrator': 'AI',
+    };
+    return map[mime] || 'FILE';
+  }
+
+  function isImageMime(mime: string | null): boolean {
+    return !!mime && ['image/png', 'image/jpeg', 'image/svg+xml'].includes(mime);
   }
 
   function ProjectCard({ project }: { project: PortalProject }) {
@@ -1079,8 +1251,8 @@ export default function ClientPortal() {
             }
           </SectionCard>
 
-          <SectionCard title="Artwork" onViewAll={() => setActiveView('artwork')}>
-            <EmptyState icon={<Layers size={22} color="#9CA3AF" />} title="No artwork yet" sub="Uploaded files will appear here." />
+          <SectionCard title="Artwork" onViewAll={() => { setActiveView('artwork'); if (session) fetchMediaBin(session.orgId); }}>
+            <EmptyState icon={<Layers size={22} color="#9CA3AF" />} title="No artwork yet" sub="Upload files in the Artwork section to build your media library." />
           </SectionCard>
         </View>
       </View>
@@ -1122,12 +1294,94 @@ export default function ClientPortal() {
 
   const ArtworkView = () => (
     <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
-      <Text style={dash.pageTitle}>Artwork</Text>
-      <EmptyState
-        icon={<Layers size={40} color="#D1D5DB" />}
-        title="No artwork uploaded yet"
-        sub="Design files and artwork will appear here once uploaded by the Katalyst Ko team."
-      />
+      <View style={dash.pageTitleRow}>
+        <Text style={dash.pageTitle}>Artwork / Media Bin</Text>
+        <TouchableOpacity
+          style={mbStyles.uploadBtn}
+          onPress={() => mediaBinInputRef.current?.click?.()}
+          disabled={mediaBinUploading}
+        >
+          {mediaBinUploading
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <><Upload size={14} color="#fff" /><Text style={mbStyles.uploadBtnText}>Upload Files</Text></>
+          }
+        </TouchableOpacity>
+      </View>
+      {Platform.OS === 'web' && (
+        <input
+          ref={mediaBinInputRef}
+          type="file"
+          accept=".ai,.svg,.png,.jpg,.jpeg,.pdf"
+          multiple
+          style={{ display: 'none' }}
+          onChange={(e: any) => {
+            const files = Array.from((e.target.files || []) as globalThis.File[]);
+            if (files.length > 0) handleMediaBinUpload(files);
+            e.target.value = '';
+          }}
+        />
+      )}
+      <View
+        ref={mediaBinDropRef}
+        style={mbStyles.dropZone}
+      >
+        <Upload size={18} color="#9CA3AF" />
+        <Text style={mbStyles.dropZoneText}>Drop files here to upload  ·  AI, SVG, PNG, JPG, PDF</Text>
+      </View>
+      {mediaBinLoading ? (
+        <ActivityIndicator size="large" color={BRAND} style={{ marginTop: 32 }} />
+      ) : mediaBinFiles.length === 0 ? (
+        <EmptyState
+          icon={<Layers size={40} color="#D1D5DB" />}
+          title="No files in your Media Bin"
+          sub="Upload reusable artwork and design files here. They'll be available for your team and future projects."
+        />
+      ) : (
+        <View style={mbStyles.fileGrid}>
+          {mediaBinFiles.map(file => (
+            <View key={file.id} style={mbStyles.fileCard}>
+              <View style={mbStyles.filePreview}>
+                {isImageMime(file.mimeType) ? (
+                  <Image
+                    source={{ uri: `/api/files/${file.id}?inline=true` }}
+                    style={mbStyles.previewImage}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <View style={mbStyles.fileTypeBox}>
+                    <Text style={mbStyles.fileTypeLabel}>{getMimeLabel(file.mimeType, file.originalName)}</Text>
+                  </View>
+                )}
+              </View>
+              <View style={mbStyles.fileMeta}>
+                <Text style={mbStyles.fileName} numberOfLines={2}>{file.originalName}</Text>
+                <Text style={mbStyles.fileSize}>{formatBytes(file.fileSize)} · {formatDate(file.createdAt)}</Text>
+              </View>
+              <View style={mbStyles.fileActions}>
+                <TouchableOpacity
+                  style={mbStyles.fileActionBtn}
+                  onPress={() => {
+                    if (Platform.OS === 'web') {
+                      const a = document.createElement('a');
+                      a.href = `/api/files/${file.id}`;
+                      a.download = file.originalName;
+                      a.click();
+                    }
+                  }}
+                >
+                  <Download size={14} color={TEXT_MED} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={mbStyles.fileActionBtn}
+                  onPress={() => deleteMediaBinFile(file.id)}
+                >
+                  <Trash2 size={14} color="#DC2626" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 
@@ -1267,13 +1521,65 @@ export default function ClientPortal() {
               />
             </View>
 
+            {/* Artwork Upload Zone */}
+            <View style={[pFields.container, { marginTop: 4 }]}>
+              <Text style={pFields.label}>Attach Artwork Files</Text>
+              <Text style={pFields.hint}>AI, SVG, PNG, JPG, PDF · Multiple files supported</Text>
+              {Platform.OS === 'web' && (
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".ai,.svg,.png,.jpg,.jpeg,.pdf"
+                  multiple
+                  style={{ display: 'none' }}
+                  onChange={(e: any) => {
+                    const files = Array.from((e.target.files || []) as globalThis.File[]);
+                    handleFilesAdded(files);
+                    e.target.value = '';
+                  }}
+                />
+              )}
+              <TouchableOpacity
+                ref={dropZoneRef}
+                style={[upStyles.dropZone, isDraggingOver && upStyles.dropZoneActive]}
+                onPress={() => fileInputRef.current?.click?.()}
+                activeOpacity={0.85}
+              >
+                <Upload size={22} color={isDraggingOver ? BRAND : '#9CA3AF'} />
+                <Text style={[upStyles.dropZoneText, isDraggingOver && { color: BRAND }]}>
+                  {isDraggingOver ? 'Drop to add files' : 'Click or drag files here'}
+                </Text>
+                <Text style={upStyles.dropZoneSub}>AI · SVG · PNG · JPG · PDF</Text>
+              </TouchableOpacity>
+              {pendingFiles.length > 0 && (
+                <View style={upStyles.fileList}>
+                  {pendingFiles.map(pf => (
+                    <View key={pf.id} style={upStyles.fileRow}>
+                      <FileText size={14} color={BRAND} style={{ flexShrink: 0 }} />
+                      <Text style={upStyles.fileRowName} numberOfLines={1}>{pf.name}</Text>
+                      <Text style={upStyles.fileRowSize}>{pf.size < 1048576 ? `${(pf.size / 1024).toFixed(0)} KB` : `${(pf.size / 1048576).toFixed(1)} MB`}</Text>
+                      <TouchableOpacity onPress={() => removePendingFile(pf.id)} style={upStyles.fileRemoveBtn}>
+                        <X size={13} color={TEXT_LIGHT} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {uploadingFiles && (
+                <View style={upStyles.uploadingRow}>
+                  <ActivityIndicator size="small" color={BRAND} />
+                  <Text style={upStyles.uploadingText}>Uploading files…</Text>
+                </View>
+              )}
+            </View>
+
             {submitError ? <View style={styles.errorBox}><Text style={styles.errorText}>{submitError}</Text></View> : null}
 
-            <TouchableOpacity style={[styles.btn, submitting && styles.btnDisabled]} onPress={handleSubmit} disabled={submitting}>
+            <TouchableOpacity style={[styles.btn, (submitting || uploadingFiles) && styles.btnDisabled]} onPress={handleSubmit} disabled={submitting || uploadingFiles}>
               {submitting ? <ActivityIndicator size="small" color="#fff" /> : (
                 <>
                   <Send size={16} color="#fff" />
-                  <Text style={[styles.btnText, { marginLeft: 8 }]}>Submit Request</Text>
+                  <Text style={[styles.btnText, { marginLeft: 8 }]}>Submit Request{pendingFiles.length > 0 ? ` + ${pendingFiles.length} file${pendingFiles.length !== 1 ? 's' : ''}` : ''}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -1368,7 +1674,10 @@ export default function ClientPortal() {
                   <TouchableOpacity
                     key={id}
                     style={[dash.navItem, isActive && dash.navItemActive]}
-                    onPress={() => setActiveView(id)}
+                    onPress={() => {
+                      setActiveView(id);
+                      if (id === 'artwork' && session) fetchMediaBin(session.orgId);
+                    }}
                   >
                     <Icon size={16} color={isActive ? '#fff' : '#9CA3AF'} />
                     <Text style={[dash.navLabel, isActive && dash.navLabelActive]}>{label}</Text>
@@ -1835,4 +2144,179 @@ const dash = StyleSheet.create({
   emptySub: { fontSize: 12, color: TEXT_PLACEHOLDER, textAlign: 'center', lineHeight: 17 },
 
   pageTitle: { fontSize: 20, fontWeight: '700', color: TEXT, marginBottom: 20 },
+
+  pageTitleRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20,
+  },
+});
+
+const upStyles = StyleSheet.create({
+  dropZone: {
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    borderStyle: 'dashed',
+    borderRadius: 10,
+    paddingVertical: 22,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FAFAFA',
+    marginTop: 8,
+  },
+  dropZoneActive: {
+    borderColor: BRAND,
+    backgroundColor: '#FFF7F5',
+  },
+  dropZoneText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: TEXT_LIGHT,
+    marginTop: 4,
+  },
+  dropZoneSub: {
+    fontSize: 11,
+    color: TEXT_PLACEHOLDER,
+  },
+  fileList: {
+    marginTop: 10,
+    gap: 6,
+  },
+  fileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  fileRowName: {
+    flex: 1,
+    fontSize: 12,
+    color: TEXT_MED,
+    fontWeight: '500',
+  },
+  fileRowSize: {
+    fontSize: 11,
+    color: TEXT_LIGHT,
+  },
+  fileRemoveBtn: {
+    padding: 2,
+  },
+  uploadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+    paddingVertical: 8,
+  },
+  uploadingText: {
+    fontSize: 12,
+    color: TEXT_LIGHT,
+  },
+});
+
+const mbStyles = StyleSheet.create({
+  uploadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: BRAND,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  uploadBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  dropZone: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: '#FAFAFA',
+    marginBottom: 20,
+  },
+  dropZoneText: {
+    fontSize: 12,
+    color: TEXT_LIGHT,
+  },
+  fileGrid: {
+    gap: 10,
+  },
+  fileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 12,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  filePreview: {
+    width: 52,
+    height: 52,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    flexShrink: 0,
+  },
+  previewImage: {
+    width: 52,
+    height: 52,
+  },
+  fileTypeBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  fileTypeLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: BRAND,
+    letterSpacing: 0.5,
+  },
+  fileMeta: {
+    flex: 1,
+    gap: 2,
+  },
+  fileName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: TEXT,
+    lineHeight: 17,
+  },
+  fileSize: {
+    fontSize: 11,
+    color: TEXT_LIGHT,
+  },
+  fileActions: {
+    flexDirection: 'row',
+    gap: 4,
+    flexShrink: 0,
+  },
+  fileActionBtn: {
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
 });

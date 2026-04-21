@@ -82,6 +82,16 @@ export default function QuoteDetailScreen() {
   const [waveLinkCopied, setWaveLinkCopied] = useState(false);
   const [emailCopied, setEmailCopied] = useState(false);
 
+  interface ProjectFile {
+    id: string;
+    originalName: string;
+    mimeType: string | null;
+    fileSize: number | null;
+    fileType: string;
+    createdAt: string;
+  }
+  const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
+
   const toggleItem = useCallback((itemId: string) => {
     setExpandedItems(prev => ({ ...prev, [itemId]: !prev[itemId] }));
   }, []);
@@ -98,6 +108,17 @@ export default function QuoteDetailScreen() {
   const quote = useMemo(() => {
     return allProjects.find((q) => q.id === id);
   }, [allProjects, id]);
+
+  useEffect(() => {
+    if (!quote) return;
+    const orgId = quote.orgId;
+    const projectId = quote.id;
+    if (!orgId) return;
+    fetch(`/api/files?orgId=${orgId}&projectId=${projectId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.files) setProjectFiles(data.files); })
+      .catch(() => {});
+  }, [quote?.id, quote?.orgId]);
 
   const linkedOrg = useMemo(() => {
     if (!quote) return undefined;
@@ -975,6 +996,90 @@ export default function QuoteDetailScreen() {
     );
   };
 
+  const renderUploadedArtwork = () => {
+    if (projectFiles.length === 0) return null;
+
+    function fmtBytes(bytes: number | null): string {
+      if (!bytes) return '';
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1048576) return `${(bytes / 1024).toFixed(0)} KB`;
+      return `${(bytes / 1048576).toFixed(1)} MB`;
+    }
+
+    function fmtMime(mime: string | null, name: string): string {
+      const ext = name.split('.').pop()?.toUpperCase();
+      if (ext && ['AI', 'SVG', 'PNG', 'JPG', 'JPEG', 'PDF'].includes(ext)) return ext === 'JPEG' ? 'JPG' : ext;
+      if (!mime) return 'FILE';
+      const map: Record<string, string> = {
+        'image/png': 'PNG', 'image/jpeg': 'JPG', 'image/svg+xml': 'SVG',
+        'application/pdf': 'PDF', 'application/postscript': 'AI', 'application/illustrator': 'AI',
+      };
+      return map[mime] || 'FILE';
+    }
+
+    function isImageMime(mime: string | null): boolean {
+      return !!mime && ['image/png', 'image/jpeg', 'image/svg+xml'].includes(mime);
+    }
+
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Uploaded Artwork ({projectFiles.length})</Text>
+        </View>
+        <View style={koArtStyles.grid}>
+          {projectFiles.map(file => (
+            <View key={file.id} style={koArtStyles.card}>
+              <View style={koArtStyles.preview}>
+                {isImageMime(file.mimeType) ? (
+                  <Image
+                    source={{ uri: `/api/files/${file.id}?inline=true` }}
+                    style={koArtStyles.previewImg}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <View style={koArtStyles.typeBadge}>
+                    <Text style={koArtStyles.typeLabel}>{fmtMime(file.mimeType, file.originalName)}</Text>
+                  </View>
+                )}
+              </View>
+              <View style={koArtStyles.info}>
+                <Text style={koArtStyles.fileName} numberOfLines={2}>{file.originalName}</Text>
+                <Text style={koArtStyles.fileMeta}>{fmtBytes(file.fileSize)}</Text>
+              </View>
+              <View style={koArtStyles.actions}>
+                <TouchableOpacity
+                  style={koArtStyles.actionBtn}
+                  onPress={() => {
+                    if (Platform.OS === 'web') {
+                      window.open(`/api/files/${file.id}?inline=true`, '_blank');
+                    }
+                  }}
+                >
+                  <ExternalLink size={13} color={Colors.light.tint} />
+                  <Text style={koArtStyles.actionBtnText}>View</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={koArtStyles.actionBtn}
+                  onPress={() => {
+                    if (Platform.OS === 'web') {
+                      const a = document.createElement('a');
+                      a.href = `/api/files/${file.id}`;
+                      a.download = file.originalName;
+                      a.click();
+                    }
+                  }}
+                >
+                  <Download size={13} color={Colors.light.textSecondary} />
+                  <Text style={koArtStyles.actionBtnTextMuted}>Download</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
   const renderPricingSummary = () => {
     if (!quote.calculations) return null;
     const q = quote.calculations;
@@ -1237,6 +1342,7 @@ export default function QuoteDetailScreen() {
               {renderIntakeBanner()}
               {renderOrderInfo()}
               {renderLineItems()}
+              {renderUploadedArtwork()}
             </View>
             <View style={styles.desktopRight}>
               {renderSendQuotePanel()}
@@ -1249,6 +1355,7 @@ export default function QuoteDetailScreen() {
             {renderIntakeBanner()}
             {renderOrderInfo()}
             {renderLineItems()}
+            {renderUploadedArtwork()}
             {renderSendQuotePanel()}
             {quote.status !== 'needs_review' && renderPricingSummary()}
             {(quote.status === 'active' || quote.status === 'production_started' || quote.status === 'completed') && renderSalesTracking()}
@@ -2938,5 +3045,86 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600' as const,
     color: '#7C3AED',
+  },
+});
+
+const koArtStyles = StyleSheet.create({
+  grid: {
+    gap: 8,
+  },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E1E2E',
+    borderRadius: 10,
+    padding: 10,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+  },
+  preview: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    flexShrink: 0,
+  },
+  previewImg: {
+    width: 48,
+    height: 48,
+  },
+  typeBadge: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  typeLabel: {
+    fontSize: 9,
+    fontWeight: '800' as const,
+    color: '#FF5A00',
+    letterSpacing: 0.5,
+  },
+  info: {
+    flex: 1,
+    gap: 2,
+  },
+  fileName: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#fff',
+    lineHeight: 16,
+  },
+  fileMeta: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.4)',
+  },
+  actions: {
+    flexDirection: 'row' as const,
+    gap: 6,
+    flexShrink: 0,
+  },
+  actionBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  actionBtnText: {
+    fontSize: 11,
+    color: '#60A5FA',
+    fontWeight: '500' as const,
+  },
+  actionBtnTextMuted: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '500' as const,
   },
 });

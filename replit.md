@@ -31,6 +31,41 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 - **UserContext**: Primary store is AsyncStorage; DB sync added in Phase 3 (fire-and-forget upsert on init and on create/update). AsyncStorage IDs used directly as PostgreSQL `User.id` (string PK). `syncUserToDB()` called on boot and on every mutation.
 - **ClientsContext**: DELETED. The legacy `Client` type is fully replaced by `Organization` + `Contact`. Dashboard client counts now derive from `useCrm().orgs`. `autoAddClientIfNew` in sales-tracking now calls `addOrg` via `useCrm`. `contexts/ClientsContext.tsx` and `types/client.ts` deleted.
 
+## Phase 10 — Artwork Upload & Media Bin (2026-04-21)
+
+### File Storage Architecture
+- **Storage backend**: Filesystem at `/home/runner/workspace/uploads/{orgId}/{uuid}-{filename}`. The `File.storageKey` field stores the relative path.
+- **Supported types**: AI, SVG, PNG, JPG/JPEG, PDF
+- **Two scopes**: Project-specific files (`projectId` + `organizationId` both set) and org-level Media Bin files (`projectId = null`, `organizationId` only).
+- **Visibility**: All client-uploaded files use `visibility = CLIENT_VISIBLE`.
+
+### New API Endpoints
+- `POST /api/files` — Multipart file upload. Fields: `file` (File), `orgId`, `projectId?`, `uploadedByUserId?`, `fileType?`, `visibility?`. Validates extension, writes to filesystem, inserts `File` DB record.
+- `GET /api/files?orgId=X&projectId=Y&scope=org` — Lists files. `scope=org` returns only org-level (no projectId). `projectId` filters to project-specific files.
+- `GET /api/files/[id]` — Serves raw file from filesystem with correct Content-Type. `?inline=true` for browser preview, default is attachment download.
+- `DELETE /api/files/[id]` — Deletes file from filesystem and DB.
+
+### New lib
+- `lib/files.ts` — `writeUpload`, `readUpload`, `deleteUpload`, `ensureOrgDir`, `ALLOWED_MIME_TYPES`, `getMimeLabel`, `formatBytes`.
+
+### Client Portal — Submit Request
+- Drag-and-drop upload zone added above Submit button in `SubmitView`. Hidden `<input type="file">` triggers on click or file drop (DOM events via `dropZoneRef.current.addEventListener`). Files queued as `PendingFile[]` state, uploaded sequentially after project creation. Submit button label shows pending file count.
+- `handleNewRequest` clears `pendingFiles` on reset.
+
+### Client Portal — Artwork / Media Bin view
+- Replaced empty placeholder with a full file library:
+  - Header row with "Upload Files" button (orange) + hidden file input
+  - Dashed drop zone for drag-and-drop (`mediaBinDropRef`)
+  - File grid: thumbnail preview for images, type badge (AI/PDF/etc.) for others, file name, size, date, Download + Delete actions
+  - `fetchMediaBin(orgId)` called when switching to 'artwork' nav item
+  - All Media Bin files stored with `projectId = null` (org-level scope)
+
+### Ko OS — Uploaded Artwork section
+- Added `renderUploadedArtwork()` in `app/quote/[id].tsx`
+- Appears below Line Items in both desktop-left column and mobile layout
+- `useEffect` fetches `/api/files?orgId=X&projectId=Y` when quote loads
+- Dark-themed cards (matching Ko OS aesthetic): image thumbnail or type badge, filename, size, View (opens in new tab) + Download actions
+
 ## Phase 9 — Client Portal Dashboard Redesign (2026-04-21)
 
 ### Architecture
