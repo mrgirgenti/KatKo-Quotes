@@ -907,8 +907,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.background,
   },
   content: {
+    padding: 16,
     paddingBottom: 40,
-    gap: 0,
+    gap: 14,
   },
   centered: {
     flex: 1,
@@ -935,40 +936,37 @@ const styles = StyleSheet.create({
   // Two-column layout
   columns: {
     flexDirection: 'row',
-    gap: 0,
+    gap: 14,
     alignItems: 'flex-start',
   },
   columnsMobile: {
     flexDirection: 'column',
+    gap: 14,
   },
   colLeft: {
     flex: 3,
-    gap: 0,
-    borderRightWidth: 1,
-    borderRightColor: Colors.light.border,
+    gap: 14,
   },
   colLeftMobile: {
     flex: 0,
-    borderRightWidth: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
+    gap: 14,
   },
   colRight: {
     flex: 2,
-    gap: 0,
+    gap: 14,
   },
   colRightMobile: {
     flex: 0,
+    gap: 14,
   },
 
   // Identity Card (matches client profile layout)
   identityCard: {
     backgroundColor: Colors.light.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-    paddingTop: 24,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    padding: 18,
     alignItems: 'center' as const,
   },
   identityLogoWrap: {
@@ -985,16 +983,18 @@ const styles = StyleSheet.create({
   identityOrgType: {
     fontSize: 13,
     color: Colors.light.textSecondary,
-    marginBottom: 10,
+    marginTop: 3,
+    marginBottom: 6,
     textAlign: 'center' as const,
   },
   identityBadgesRow: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    gap: 8,
+    gap: 6,
     flexWrap: 'wrap' as const,
     justifyContent: 'center' as const,
-    marginBottom: 10,
+    marginTop: 8,
+    marginBottom: 6,
   },
   identityRepRow: {
     marginTop: 10,
@@ -1127,8 +1127,10 @@ const styles = StyleSheet.create({
   // Sections
   section: {
     backgroundColor: Colors.light.surface,
-    borderRadius: 0,
-    overflow: 'hidden',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    overflow: 'hidden' as const,
   },
   sectionLast: {},
   sectionHeader: {
