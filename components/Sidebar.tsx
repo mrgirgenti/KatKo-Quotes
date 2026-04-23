@@ -102,7 +102,7 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
 
       {!collapsed && (
         <View style={styles.logoContainer}>
-          <Image source={{ uri: logoUri }} style={styles.logo} resizeMode="contain" />
+          <Image source={{ uri: logoUri }} style={[styles.logo, { backgroundColor: 'transparent' }]} resizeMode="contain" />
         </View>
       )}
 

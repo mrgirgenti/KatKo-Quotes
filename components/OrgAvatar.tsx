@@ -25,7 +25,7 @@ export function OrgAvatar({ name, logoUrl, size = 40, shape = 'square' }: OrgAva
     return (
       <Image
         source={{ uri: logoUrl }}
-        style={{ width: size, height: size, borderRadius }}
+        style={{ width: size, height: size, borderRadius, backgroundColor: 'transparent' }}
         resizeMode="contain"
         onError={() => setImgError(true)}
       />

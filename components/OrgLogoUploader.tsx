@@ -73,7 +73,7 @@ export function OrgLogoUploader({ orgId, orgName, currentLogoUrl, onLogoChange, 
     <View style={styles.wrapper}>
       <View style={{ position: 'relative', width: size, height: size }}>
         <TouchableOpacity
-          style={[styles.avatarBtn, { width: size, height: size, borderRadius }]}
+          style={[styles.avatarBtn, { width: size, height: size, borderRadius }, hasLogo && styles.avatarBtnTransparent]}
           onPress={() => !uploading && fileInputRef.current?.click?.()}
           activeOpacity={0.85}
           disabled={uploading}
@@ -81,7 +81,7 @@ export function OrgLogoUploader({ orgId, orgName, currentLogoUrl, onLogoChange, 
           {hasLogo ? (
             <Image
               source={{ uri: previewUrl! }}
-              style={{ width: size, height: size, borderRadius }}
+              style={{ width: size, height: size, borderRadius, backgroundColor: 'transparent' }}
               resizeMode="contain"
               onError={() => setImgError(true)}
             />
@@ -142,6 +142,9 @@ const styles = StyleSheet.create({
   avatarBtn: {
     overflow: 'hidden',
     backgroundColor: '#F3F4F6',
+  },
+  avatarBtnTransparent: {
+    backgroundColor: 'transparent',
   },
   initial: {
     justifyContent: 'center',
