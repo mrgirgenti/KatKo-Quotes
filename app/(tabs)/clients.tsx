@@ -525,6 +525,14 @@ export default function ClientsScreen() {
         </ScrollView>
 
         <View style={styles.searchRow}>
+          <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
+            <Plus size={16} color="#fff" />
+            <Text style={styles.addBtnText}>Add Contact</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.importBtn} onPress={() => setImportModalVisible(true)}>
+            <Upload size={14} color={Colors.light.tint} />
+            <Text style={styles.importBtnText}>Import</Text>
+          </TouchableOpacity>
           <View style={styles.searchBox}>
             <Search size={15} color={Colors.light.textSecondary} />
             <TextInput
@@ -540,14 +548,6 @@ export default function ClientsScreen() {
               </TouchableOpacity>
             ) : null}
           </View>
-          <TouchableOpacity style={styles.importBtn} onPress={() => setImportModalVisible(true)}>
-            <Upload size={14} color={Colors.light.tint} />
-            <Text style={styles.importBtnText}>Import</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
-            <Plus size={16} color="#fff" />
-            <Text style={styles.addBtnText}>Add Contact</Text>
-          </TouchableOpacity>
         </View>
 
         {isDesktop && (
