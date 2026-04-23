@@ -1,0 +1,85 @@
+======================================================================
+15. CRITICAL BUG – QUOTE EDITS ARE NOT SAVING
+======================================================================
+
+There is a major save/persistence issue in the quote system.
+
+Current problem:
+When I edit a quote, the system does NOT reliably save the updated details.
+
+This is happening across multiple statuses, including:
+- Quoting
+- Quoted
+- In Production
+- Completed
+
+That means quote/project edits are not persisting properly even after changes are made.
+
+--------------------------------------------------
+A. REQUIRED FIX
+--------------------------------------------------
+
+Please audit and fix the quote edit/save flow so edits persist correctly across all applicable quote/project states.
+
+When I edit a quote/project, the system must reliably save updates to things like:
+- line items
+- products/styles
+- colors
+- sizes and quantities
+- service types
+- locations
+- notes/instructions
+- artwork/mockups
+- due date / in-hands date
+- totals
+- markup
+- any other editable quote/project details
+
+This needs to work consistently whether the record is:
+- Quoting
+- Quoted
+- In Production
+- Completed
+
+--------------------------------------------------
+B. SAVE BEHAVIOR EXPECTATION
+--------------------------------------------------
+
+Expected behavior:
+- when I make changes and save/update, those changes should persist immediately
+- if I reload the page, navigate away, or reopen the quote/project, the edits should still be there
+- totals / markup / quantities should reflect the latest saved values
+- backend/project list/client-facing views should all reflect the saved version where appropriate
+
+--------------------------------------------------
+C. AUDIT WHAT IS FAILING
+--------------------------------------------------
+
+Please inspect and fix all likely failure points, including:
+- frontend form state not binding correctly
+- edited fields not being included in update payload
+- partial updates overwriting or dropping nested line item data
+- backend update endpoint not persisting all fields
+- status-based restrictions incorrectly preventing saves
+- stale data being reloaded after save
+- quote/project version logic interfering with persistence
+- autosave/manual save logic not actually committing changes
+
+--------------------------------------------------
+D. IMPORTANT RULE
+--------------------------------------------------
+
+Do NOT make quote editing only work in draft state.
+
+Editing must work correctly across the statuses listed above, with proper persistence.
+
+If there are intentional restrictions for certain completed/finalized states, those should be explicit and clearly handled — but as of now the problem is that edits are being made and not saved, which is broken behavior.
+
+--------------------------------------------------
+E. FINAL OUTCOME
+--------------------------------------------------
+
+I need quote/project edits to save reliably and consistently across all relevant statuses.
+
+This is a critical system issue, not a cosmetic one.
+Please treat this as a core persistence/data integrity fix.

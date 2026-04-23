@@ -87,7 +87,12 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
         body: JSON.stringify(updatedQuote),
       });
     },
-    onSuccess: invalidateQuotes,
+    onSuccess: (savedQuote: Quote) => {
+      queryClient.setQueryData<Quote[]>(['quotes'], (old) =>
+        (old || []).map((q) => (q.id === savedQuote.id ? savedQuote : q)),
+      );
+      invalidateQuotes();
+    },
   });
 
   const deleteQuoteMutation = useMutation({
@@ -350,6 +355,7 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
     isLoading: quotesQuery.isLoading,
     addQuote: addQuoteMutation.mutate,
     updateQuote: updateQuoteMutation.mutate,
+    updateQuoteAsync: updateQuoteMutation.mutateAsync,
     deleteQuote: deleteQuoteMutation.mutate,
     convertToSale: convertToActiveMutation.mutate,
     convertToActive: convertToActiveMutation.mutate,

@@ -54,7 +54,7 @@ const createEmptyLineItem = (): LineItem => ({
 export default function EditQuoteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { allQuotes, updateQuote } = useQuotes();
+  const { allQuotes, updateQuoteAsync } = useQuotes();
   const { currentUserId, isOrgAdmin } = useUser();
 
   const originalQuote = useMemo(() => {
@@ -125,7 +125,9 @@ export default function EditQuoteScreen() {
     setLineItems((prev) => prev.filter((_, i) => i !== index));
   }, [lineItems.length]);
 
-  const handleSave = useCallback(() => {
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = useCallback(async () => {
     if (!personOrganization.trim()) {
       Alert.alert('Missing Info', 'Please enter person/organization name.');
       return;
@@ -152,19 +154,25 @@ export default function EditQuoteScreen() {
       inHandsDate,
       invoiceNumber,
       lineItems,
-      markupEach: 0,
       hasOnlineFee,
       hasSalesTax,
       hasCardFee,
       calculations,
     };
 
-    updateQuote(updatedQuote);
-    setToastMessage(`${itemType} updated successfully!`);
-    setToastVisible(true);
-    setTimeout(() => {
-      router.back();
-    }, 1500);
+    setIsSaving(true);
+    try {
+      await updateQuoteAsync(updatedQuote);
+      setToastMessage(`${itemType} updated successfully!`);
+      setToastVisible(true);
+      setTimeout(() => {
+        router.back();
+      }, 1000);
+    } catch (err) {
+      Alert.alert('Save Failed', 'Could not save your changes. Please check your connection and try again.');
+    } finally {
+      setIsSaving(false);
+    }
   }, [
     personOrganization,
     projectName,
@@ -178,7 +186,7 @@ export default function EditQuoteScreen() {
     hasCardFee,
     calculations,
     originalQuote,
-    updateQuote,
+    updateQuoteAsync,
     router,
     itemType,
   ]);
@@ -342,12 +350,12 @@ export default function EditQuoteScreen() {
           <Text style={styles.cancelButtonText}>Cancel</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.saveButton, !calculations && styles.saveButtonDisabled]}
+          style={[styles.saveButton, (!calculations || isSaving) && styles.saveButtonDisabled]}
           onPress={handleSave}
-          disabled={!calculations}
+          disabled={!calculations || isSaving}
         >
           <Save size={18} color="#fff" />
-          <Text style={styles.saveButtonText}>Save Changes</Text>
+          <Text style={styles.saveButtonText}>{isSaving ? 'Saving…' : 'Save Changes'}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
