@@ -30,6 +30,8 @@ import {
   ChevronDown,
   Check,
   ArrowUpDown,
+  Wifi,
+  WifiOff,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
@@ -39,7 +41,7 @@ import { ContactImportModal } from '@/components/ContactImportModal';
 
 const FILTER_TABS: (CrmStatus | 'All')[] = ['All', 'Cold', 'Working', 'Active Client', 'Past Client'];
 
-type SortField = 'name' | 'type' | 'contact' | 'campaign' | 'activity' | 'status';
+type SortField = 'name' | 'type' | 'contact' | 'campaign' | 'activity' | 'status' | 'hub';
 type SortDir = 'asc' | 'desc';
 type AddMode = 'org' | 'person';
 type AddStep = 'choose' | 'details';
@@ -134,6 +136,19 @@ function OrgRow({ org, onPress }: OrgRowProps) {
       </View>
       <View style={styles.colStatus}>
         <StatusBadge status={org.status} />
+      </View>
+      <View style={styles.colHub}>
+        {org.hubEnabled ? (
+          <View style={styles.hubBadgeActive}>
+            <Wifi size={11} color={Colors.light.tint} />
+            <Text style={styles.hubBadgeTextActive}>Active</Text>
+          </View>
+        ) : (
+          <View style={styles.hubBadgeInactive}>
+            <WifiOff size={11} color={Colors.light.placeholder} />
+            <Text style={styles.hubBadgeTextInactive}>Inactive</Text>
+          </View>
+        )}
       </View>
       <View style={styles.colArrow}>
         <ChevronRight size={16} color={Colors.light.border} />
@@ -255,6 +270,8 @@ export default function ClientsScreen() {
         cmp = da - db;
       } else if (sortField === 'status') {
         cmp = a.status.localeCompare(b.status);
+      } else if (sortField === 'hub') {
+        cmp = (a.hubEnabled ? 1 : 0) - (b.hubEnabled ? 1 : 0);
       }
       return sortDir === 'asc' ? cmp : -cmp;
     });
@@ -485,16 +502,19 @@ export default function ClientsScreen() {
             <View style={styles.colStatus}>
               <SortBtn field="status" label="Status" />
             </View>
+            <View style={styles.colHub}>
+              <SortBtn field="hub" label="Client Hub" />
+            </View>
             <View style={styles.colArrow} />
           </View>
         )}
         {!isDesktop && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mobileSortScroll} contentContainerStyle={styles.mobileSortRow}>
             <Text style={styles.mobileSortLabel}>Sort:</Text>
-            {(['name', 'type', 'contact', 'activity', 'status'] as SortField[]).map((f) => (
+            {(['name', 'type', 'contact', 'activity', 'status', 'hub'] as SortField[]).map((f) => (
               <TouchableOpacity key={f} style={[styles.mobileSortBtn, sortField === f && styles.mobileSortBtnActive]} onPress={() => toggleSort(f)}>
                 <Text style={[styles.mobileSortBtnText, sortField === f && styles.mobileSortBtnTextActive]}>
-                  {f === 'name' ? 'Name' : f === 'type' ? 'Type' : f === 'contact' ? 'Contact' : f === 'activity' ? 'Activity' : 'Status'}
+                  {f === 'name' ? 'Name' : f === 'type' ? 'Type' : f === 'contact' ? 'Contact' : f === 'activity' ? 'Activity' : f === 'status' ? 'Status' : 'Hub'}
                   {sortField === f ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                 </Text>
               </TouchableOpacity>
@@ -1159,6 +1179,24 @@ const styles = StyleSheet.create({
   },
   sectionDividerLine: { flex: 1, height: 1, backgroundColor: Colors.light.border },
   sectionDividerLabel: { fontSize: 11, fontWeight: '700' as const, color: Colors.light.textSecondary, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
+
+  colHub: { width: 100, justifyContent: 'center' as const },
+  hubBadgeActive: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4,
+    backgroundColor: '#FFF4EE', borderRadius: 6,
+    paddingHorizontal: 7, paddingVertical: 3,
+    alignSelf: 'flex-start' as const,
+    borderWidth: 1, borderColor: '#FF5A0030',
+  },
+  hubBadgeInactive: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4,
+    backgroundColor: Colors.light.background, borderRadius: 6,
+    paddingHorizontal: 7, paddingVertical: 3,
+    alignSelf: 'flex-start' as const,
+    borderWidth: 1, borderColor: Colors.light.border,
+  },
+  hubBadgeTextActive: { fontSize: 11, color: Colors.light.tint, fontWeight: '600' as const },
+  hubBadgeTextInactive: { fontSize: 11, color: Colors.light.textSecondary },
 
   sortBtn: {
     flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4,
