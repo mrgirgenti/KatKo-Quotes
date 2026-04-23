@@ -1,0 +1,181 @@
+We need to simplify the backend Client Hub experience by making it align directly with the Organization Contact page structure instead of maintaining a separate-feeling page.
+
+OVERALL DIRECTION
+The backend Client Hub view should effectively use the Organization Contact page as the primary layout and structure.
+
+The reason:
+- the Organization Contact page is already the stronger page structure
+- the Client Hub backend page should not feel like a separate system
+- the only major thing the earlier Client Hub version did better was more clearly separating Org Admin and Team Members
+
+So the goal is:
+- use the Organization Contact page as the base
+- preserve and improve the clarity around Org Admin and Team Members / hub users
+- tighten naming and permissions
+
+======================================================================
+1. USE ORGANIZATION CONTACT PAGE AS THE BASE FOR CLIENT HUB BACKEND
+======================================================================
+
+Please update the backend Client Hub experience so it is effectively the same page structure/layout as the Organization Contact page.
+
+We do NOT need two different page systems here.
+
+Use the Organization Contact page as the main pattern for the backend Client Hub / organization record page.
+
+Keep the stronger layout from the Organization Contact page, including:
+- organization header area
+- contacts section
+- notes section
+- right-side activity / projects / quotes cards
+- client hub section
+
+The earlier Client Hub backend page only needs to influence how clearly user roles are shown.
+
+======================================================================
+2. CLIENT HUB USER SECTION LABEL CHANGES
+======================================================================
+
+Inside the Client Hub section on the backend OS:
+
+- change “Internal Team” to “Katalyst Ko Rep”
+- change “Client Users” to “Client Hub Users”
+
+These labels are clearer and better aligned with how we actually use the system.
+
+======================================================================
+3. ORG ADMIN / TEAM MEMBER CLARITY
+======================================================================
+
+One of the things the earlier Client Hub page did better was making Org Admin and Team Members very clear.
+
+Please preserve that clarity inside the Organization Contact / Client Hub experience.
+
+We need a cleaner distinction for:
+- Org Admin
+- Client Hub Users / Team Members
+- Katalyst Ko Rep
+
+Make those sections easy to understand visually.
+
+Permission/role visibility should be obvious at a glance.
+
+======================================================================
+4. CONTACTS SECTION – REMOVE PRIMARY CONTACT QUICK-TOGGLE ICON
+======================================================================
+
+In the Contacts section, remove the person icon / quick action that currently allows someone to be identified as Primary Contact directly from the contact row.
+
+That should NOT be changeable from the list row itself.
+
+Instead:
+- Primary Contact should only be changeable by actually editing the contact
+- move that control into the Edit Contact experience only
+
+So the change is:
+- remove the row-level quick-toggle person icon for Primary Contact
+- keep edit and other appropriate actions
+- primary contact status should only be controlled from the contact edit form
+
+======================================================================
+5. EDIT CONTACT – ADD “ENABLE CLIENT HUB ACCESS”
+======================================================================
+
+Inside the Edit Contact experience, add a field/control for:
+
+- “Enable Client Hub Access”
+
+This is where client hub access should be managed.
+
+That means:
+- client hub access should be enabled/disabled from inside the contact edit experience
+- not from random row actions
+- not from a quick-toggle in the list
+
+This should be role/permission aware and cleanly tied to Client Hub user membership.
+
+======================================================================
+6. CLIENT HUB TAB FILTERING – ONLY SHOW ENABLED/ACTIVE CLIENT HUBS
+======================================================================
+
+In the backend OS Client Hub tab/list, ONLY enabled/active client hubs should appear at the top / in that view.
+
+No other clients should show in the Client Hub area unless Client Hub has actually been enabled for them.
+
+In other words:
+- do not show all clients there by default
+- only show organizations/clients with active Client Hub enabled
+- hide all others until they are enabled
+
+This needs to be enforced in the backend OS Client Hub listing behavior.
+
+======================================================================
+7. ORGANIZATION CONTACT PAGE – ADD BUSINESS TYPE FIELD IN HEADER DETAILS
+======================================================================
+
+On the Contacts / Organization Contact page, above Address, add the organization’s Business Type.
+
+Examples:
+- Business
+- Church
+- Ministry
+- School
+- etc.
+
+This should appear in the same presentation style as:
+- Address
+- Website
+- Notes
+- Delivery
+
+So the order should include Business Type before Address.
+
+======================================================================
+8. REMOVE DUPLICATE NOTES DISPLAY
+======================================================================
+
+Notes is currently shown twice on the Contacts page.
+
+Right now:
+- Notes appears once in the row list under Website
+- then again in the separate Notes section below
+
+This is redundant.
+
+Please remove the FIRST Notes display that appears in the detail list under Website.
+
+Keep only the dedicated Notes section below.
+
+So the top summary rows should no longer include Notes there.
+
+======================================================================
+9. FINAL PAGE GOAL
+======================================================================
+
+The final backend organization/client page should feel like one clean unified system.
+
+Desired outcome:
+- Organization Contact page becomes the consistent base layout
+- Client Hub backend no longer feels like a separate competing page
+- Client Hub user roles are clearly labeled
+- Client Hub user access is managed properly through Edit Contact
+- only active/enabled client hubs appear in the backend Client Hub tab
+- Business Type is visible in the organization details
+- duplicate Notes display is removed
+
+======================================================================
+10. UX / IMPLEMENTATION GUIDANCE
+======================================================================
+
+Please keep the implementation clean and avoid patchwork.
+
+Use the existing Organization Contact page as the source layout/component where possible.
+
+We want:
+- consistency
+- fewer duplicate page types
+- clearer role labeling
+- cleaner contact management
+- tighter Client Hub access logic
+
+Please do not just rename labels without cleaning up the actual structure and permissions behind them.

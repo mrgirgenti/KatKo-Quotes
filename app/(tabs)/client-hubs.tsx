@@ -323,18 +323,19 @@ export default function ClientHubsScreen() {
   const [search, setSearch] = useState('');
   const [togglingOrgId, setTogglingOrgId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   const q = search.toLowerCase().trim();
 
   const allHubs = useMemo(
     () =>
       orgs
-        .filter((o) => !q || o.name.toLowerCase().includes(q))
+        .filter((o) => (showAll || o.hubEnabled) && (!q || o.name.toLowerCase().includes(q)))
         .sort((a, b) => {
           if (a.hubEnabled !== b.hubEnabled) return a.hubEnabled ? -1 : 1;
           return a.name.localeCompare(b.name);
         }),
-    [orgs, q],
+    [orgs, q, showAll],
   );
 
   const noLogoCount = useMemo(() => orgs.filter((o) => o.hubEnabled && !o.logoUrl).length, [orgs]);
@@ -352,7 +353,7 @@ export default function ClientHubsScreen() {
       setTimeout(() => {
         setTogglingOrgId(null);
         if (newEnabled) {
-          router.push(`/hub/${org.id}` as any);
+          router.push(`/crm/${org.id}` as any);
         }
       }, 500);
     },
@@ -412,6 +413,14 @@ export default function ClientHubsScreen() {
               clearButtonMode="while-editing"
             />
           </View>
+          <TouchableOpacity
+            style={[styles.showAllBtn, showAll && styles.showAllBtnActive]}
+            onPress={() => setShowAll((v) => !v)}
+          >
+            <Text style={[styles.showAllBtnText, showAll && styles.showAllBtnTextActive]}>
+              {showAll ? 'Active Only' : 'Show All'}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -437,7 +446,7 @@ export default function ClientHubsScreen() {
                     <HubCard
                       key={org.id}
                       org={org}
-                      onPress={() => router.push(`/hub/${org.id}` as any)}
+                      onPress={() => router.push(`/crm/${org.id}` as any)}
                       onCopyLink={() => handleCopyLink(org)}
                       copied={copiedId === org.id}
                       onToggle={() => handleToggleHub(org)}
@@ -461,7 +470,7 @@ export default function ClientHubsScreen() {
                       <View key={org.id}>
                         <HubRow
                           org={org}
-                          onPress={() => router.push(`/hub/${org.id}` as any)}
+                          onPress={() => router.push(`/crm/${org.id}` as any)}
                           onCopyLink={() => handleCopyLink(org)}
                           copied={copiedId === org.id}
                           onToggle={() => handleToggleHub(org)}
@@ -564,6 +573,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.light.text,
     outlineStyle: 'none' as any,
+  },
+  showAllBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: Colors.light.background,
+  },
+  showAllBtnActive: {
+    borderColor: Colors.light.tint,
+    backgroundColor: `${Colors.light.tint}10`,
+  },
+  showAllBtnText: {
+    fontSize: 13,
+    fontWeight: '500' as any,
+    color: Colors.light.textSecondary,
+  },
+  showAllBtnTextActive: {
+    color: Colors.light.tint,
+    fontWeight: '600' as any,
   },
 
   // Loading

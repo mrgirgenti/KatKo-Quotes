@@ -118,7 +118,7 @@ const STEP_STATUS_CONFIG: Record<CampaignStepStatus, { label: string; color: str
 
 const STEP_STATUSES: CampaignStepStatus[] = ['pending', 'sent', 'received', 'responded', 'skipped'];
 
-function ContactCard({ contact: c, onEdit, onDelete, onSetPrimary }: { contact: Contact; onEdit: () => void; onDelete: () => void; onSetPrimary: () => void }) {
+function ContactCard({ contact: c, onEdit, onDelete }: { contact: Contact; onEdit: () => void; onDelete: () => void }) {
   return (
     <View style={styles.contactCard}>
       <View style={[styles.contactAvatar, c.isPrimary && styles.contactAvatarPrimary]}>
@@ -151,12 +151,6 @@ function ContactCard({ contact: c, onEdit, onDelete, onSetPrimary }: { contact: 
         {c.notes && <Text style={styles.contactNotes}>{c.notes}</Text>}
       </View>
       <View style={styles.contactActions}>
-        <TouchableOpacity
-          style={[styles.contactActionBtn, c.isPrimary && styles.contactActionBtnPrimary]}
-          onPress={onSetPrimary}
-        >
-          <User size={14} color={c.isPrimary ? Colors.light.tint : Colors.light.textSecondary} />
-        </TouchableOpacity>
         <TouchableOpacity style={styles.contactActionBtn} onPress={onEdit}>
           <Edit3 size={14} color={Colors.light.textSecondary} />
         </TouchableOpacity>
@@ -232,7 +226,7 @@ export default function OrgProfileScreen() {
 
   const [contactModal, setContactModal] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
-  const [contactForm, setContactForm] = useState({ firstName: '', lastName: '', role: 'Primary Contact' as ContactRole, email: '', phone: '', notes: '', isPrimary: false, departmentId: '' });
+  const [contactForm, setContactForm] = useState({ firstName: '', lastName: '', role: 'Primary Contact' as ContactRole, email: '', phone: '', notes: '', isPrimary: false, departmentId: '', hubAccess: false });
 
   const [activityModal, setActivityModal] = useState(false);
   const [activityForm, setActivityForm] = useState({ type: 'call' as ActivityType, date: new Date().toISOString().slice(0, 10), subject: '', body: '', contactId: '' });
@@ -274,6 +268,51 @@ export default function OrgProfileScreen() {
       return res.json();
     },
   });
+
+  const { data: orgFiles = [], refetch: refetchOrgFiles } = useQuery<any[]>({
+    queryKey: ['org_files', org?.id],
+    queryFn: async () => {
+      if (!org?.id) return [];
+      const res = await fetch(`/api/files?orgId=${org.id}&scope=org`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.files || [];
+    },
+    enabled: !!org?.id,
+  });
+
+  const [orgFilesUploading, setOrgFilesUploading] = useState(false);
+  const [orgFilesDragOver, setOrgFilesDragOver] = useState(false);
+
+  const handleOrgFileUpload = useCallback(async (file: File) => {
+    if (!org) return;
+    setOrgFilesUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('orgId', org.id);
+      fd.append('fileType', 'ARTWORK');
+      fd.append('visibility', 'CLIENT_VISIBLE');
+      const res = await fetch('/api/files', { method: 'POST', body: fd });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        Alert.alert('Upload failed', err?.error || 'Could not upload file.');
+      } else {
+        refetchOrgFiles();
+      }
+    } catch {
+      Alert.alert('Upload failed', 'Something went wrong.');
+    } finally {
+      setOrgFilesUploading(false);
+    }
+  }, [org, refetchOrgFiles]);
+
+  const handleOrgFileDelete = useCallback(async (fileId: string) => {
+    try {
+      await fetch(`/api/files/${fileId}`, { method: 'DELETE' });
+      refetchOrgFiles();
+    } catch {}
+  }, [refetchOrgFiles]);
 
   const handleAddMember = useCallback(async () => {
     if (!org || !memberForm.userId) return;
@@ -395,26 +434,51 @@ export default function OrgProfileScreen() {
 
   const openAddContact = useCallback(() => {
     setEditingContact(null);
-    setContactForm({ firstName: '', lastName: '', role: 'Primary Contact', email: '', phone: '', notes: '', isPrimary: org?.contacts.length === 0, departmentId: '' });
+    setContactForm({ firstName: '', lastName: '', role: 'Primary Contact', email: '', phone: '', notes: '', isPrimary: org?.contacts.length === 0, departmentId: '', hubAccess: false });
     setContactModal(true);
   }, [org]);
 
   const openEditContact = useCallback((c: Contact) => {
     setEditingContact(c);
-    setContactForm({ firstName: c.firstName, lastName: c.lastName, role: c.role || 'Primary Contact', email: c.email || '', phone: c.phone || '', notes: c.notes || '', isPrimary: !!c.isPrimary, departmentId: c.departmentId || '' });
+    const alreadyHasHub = !!(c.email && memberships.some((m) => (m as any).userType === 'CLIENT' && m.userEmail === c.email));
+    setContactForm({ firstName: c.firstName, lastName: c.lastName, role: c.role || 'Primary Contact', email: c.email || '', phone: c.phone || '', notes: c.notes || '', isPrimary: !!c.isPrimary, departmentId: c.departmentId || '', hubAccess: alreadyHasHub });
     setContactModal(true);
-  }, []);
+  }, [memberships]);
 
-  const handleSaveContact = useCallback(() => {
+  const handleSaveContact = useCallback(async () => {
     if (!org || !contactForm.firstName.trim()) return;
-    const payload = { ...contactForm, firstName: contactForm.firstName.trim(), lastName: contactForm.lastName.trim(), departmentId: contactForm.departmentId || undefined };
+    const { hubAccess, ...rest } = contactForm;
+    const payload = { ...rest, firstName: contactForm.firstName.trim(), lastName: contactForm.lastName.trim(), departmentId: contactForm.departmentId || undefined };
     if (editingContact) {
       updateContact({ orgId: org.id, contact: { ...editingContact, ...payload } });
     } else {
       addContact({ orgId: org.id, contact: payload });
     }
+    const email = contactForm.email.trim();
+    if (email) {
+      const existingClientMembership = memberships.find((m) => (m as any).userType === 'CLIENT' && m.userEmail === email);
+      if (hubAccess && !existingClientMembership) {
+        try {
+          const fullName = `${contactForm.firstName.trim()} ${contactForm.lastName.trim()}`.trim();
+          const userId = `client_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+          const userRes = await fetch('/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: userId, name: fullName, email, userType: 'CLIENT' }),
+          });
+          const newUser = userRes.ok ? await userRes.json() : { id: userId };
+          await createMembershipAsync({ organizationId: org.id, userId: newUser.id, role: 'MEMBER' });
+          refetchMemberships();
+        } catch {}
+      } else if (!hubAccess && existingClientMembership) {
+        try {
+          await fetch(`/api/memberships/${existingClientMembership.id}`, { method: 'DELETE' });
+          refetchMemberships();
+        } catch {}
+      }
+    }
     setContactModal(false);
-  }, [org, contactForm, editingContact, addContact, updateContact]);
+  }, [org, contactForm, editingContact, addContact, updateContact, memberships, createMembershipAsync, refetchMemberships]);
 
   const handleDeleteContact = useCallback((c: Contact) => {
     if (!org) return;
@@ -570,6 +634,13 @@ export default function OrgProfileScreen() {
 
         {/* Business info rows — always shown */}
         <View style={styles.orgInfoBlock}>
+          {org.type ? (
+            <View style={styles.orgInfoRow}>
+              <Building2 size={12} color={Colors.light.textSecondary} />
+              <Text style={styles.orgInfoKey}>Business Type</Text>
+              <Text style={styles.orgInfoVal} numberOfLines={1}>{org.type}</Text>
+            </View>
+          ) : null}
           <View style={styles.orgInfoRow}>
             <MapPin size={12} color={Colors.light.textSecondary} />
             <Text style={styles.orgInfoKey}>Address</Text>
@@ -577,20 +648,10 @@ export default function OrgProfileScreen() {
               {[org.address, [org.city, org.state].filter(Boolean).join(', ')].filter(Boolean).join(', ') || '—'}
             </Text>
           </View>
-          <View style={styles.orgInfoRow}>
+          <View style={[styles.orgInfoRow, { borderBottomWidth: 0 }]}>
             <Globe size={12} color={Colors.light.textSecondary} />
             <Text style={styles.orgInfoKey}>Website</Text>
             <Text style={styles.orgInfoVal} numberOfLines={1}>{org.website || '—'}</Text>
-          </View>
-          <View style={styles.orgInfoRow}>
-            <FileText size={12} color={Colors.light.textSecondary} />
-            <Text style={styles.orgInfoKey}>Notes</Text>
-            <Text style={styles.orgInfoVal} numberOfLines={3}>{org.notes || '—'}</Text>
-          </View>
-          <View style={[styles.orgInfoRow, { borderBottomWidth: 0 }]}>
-            <Building2 size={12} color={Colors.light.textSecondary} />
-            <Text style={styles.orgInfoKey}>Delivery</Text>
-            <Text style={styles.orgInfoVal}>—</Text>
           </View>
         </View>
       </View>
@@ -705,7 +766,7 @@ export default function OrgProfileScreen() {
                   {deptContacts.length === 0 ? (
                     <Text style={styles.deptEmpty}>No contacts in this department yet.</Text>
                   ) : (
-                    deptContacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} onSetPrimary={() => updateContact({ orgId: org.id, contact: { ...c, isPrimary: !c.isPrimary } })} />)
+                    deptContacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} />)
                   )}
                 </View>
               );
@@ -713,7 +774,7 @@ export default function OrgProfileScreen() {
             {(() => {
               const unassigned = org.contacts.filter((c) => !c.departmentId || !(org.departments || []).find((d) => d.id === c.departmentId));
               if ((org.departments || []).length === 0) {
-                return org.contacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} onSetPrimary={() => updateContact({ orgId: org.id, contact: { ...c, isPrimary: !c.isPrimary } })} />);
+                return org.contacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} />);
               }
               if (unassigned.length === 0) return null;
               return (
@@ -725,7 +786,7 @@ export default function OrgProfileScreen() {
                       <Text style={styles.deptCount}>{unassigned.length}</Text>
                     </View>
                   </View>
-                  {unassigned.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} onSetPrimary={() => updateContact({ orgId: org.id, contact: { ...c, isPrimary: !c.isPrimary } })} />)}
+                  {unassigned.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} />)}
                 </View>
               );
             })()}
@@ -784,7 +845,7 @@ export default function OrgProfileScreen() {
           </View>
         )}
         <View style={styles.infoCardSubHeader}>
-          <Text style={styles.infoCardSubTitle}>Internal Team</Text>
+          <Text style={styles.infoCardSubTitle}>Katalyst Ko Rep</Text>
           <TouchableOpacity onPress={() => { setMemberForm({ userId: '', role: 'MEMBER' }); setAddMemberModal(true); }}>
             <Plus size={16} color={Colors.light.tint} />
           </TouchableOpacity>
@@ -821,7 +882,7 @@ export default function OrgProfileScreen() {
           ))
         )}
         <View style={[styles.infoCardSubHeader, { marginTop: 12 }]}>
-          <Text style={styles.infoCardSubTitle}>Client Users</Text>
+          <Text style={styles.infoCardSubTitle}>Client Hub Users</Text>
           <TouchableOpacity onPress={() => { setClientUserForm({ name: '', email: '' }); setAddClientUserModal(true); }}>
             <Plus size={16} color={Colors.light.tint} />
           </TouchableOpacity>
@@ -1119,6 +1180,103 @@ export default function OrgProfileScreen() {
         </View>
       )}
 
+      {/* Media Uploads card */}
+      <View style={styles.infoCard}>
+        <View style={styles.infoCardHeader}>
+          <View style={styles.infoCardHeaderLeft}>
+            <Upload size={15} color="#fff" />
+            <Text style={styles.infoCardTitle}>Media Uploads</Text>
+            {orgFiles.length > 0 && (
+              <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{orgFiles.length}</Text></View>
+            )}
+          </View>
+          {Platform.OS === 'web' && (
+            <TouchableOpacity
+              style={[styles.infoCardAction, orgFilesUploading && { opacity: 0.6 }]}
+              disabled={orgFilesUploading}
+              onPress={() => {
+                if (typeof document === 'undefined') return;
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.ai,.svg,.png,.jpg,.jpeg,.pdf,.dst,.emb';
+                input.onchange = (e: any) => {
+                  const file = e.target?.files?.[0];
+                  if (file) handleOrgFileUpload(file);
+                };
+                input.click();
+              }}
+            >
+              <Upload size={13} color="#fff" />
+              <Text style={styles.infoCardActionText}>{orgFilesUploading ? 'Uploading…' : 'Upload'}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        {orgFiles.length === 0 ? (
+          <View
+            style={[styles.orgMediaDropZone, orgFilesDragOver && styles.orgMediaDropZoneActive]}
+            onDragOver={(e: any) => { e.preventDefault(); setOrgFilesDragOver(true); }}
+            onDragLeave={() => setOrgFilesDragOver(false)}
+            onDrop={(e: any) => {
+              e.preventDefault();
+              setOrgFilesDragOver(false);
+              const file = e.dataTransfer?.files?.[0];
+              if (file) handleOrgFileUpload(file);
+            }}
+          >
+            <Upload size={22} color={Colors.light.border} />
+            <Text style={styles.orgMediaDropText}>Drop files here or tap Upload</Text>
+            <Text style={styles.orgMediaDropSub}>AI · SVG · PNG · JPG · PDF · DST · EMB</Text>
+          </View>
+        ) : (
+          <View
+            style={[styles.orgMediaGrid, orgFilesDragOver && { opacity: 0.7 }]}
+            onDragOver={(e: any) => { e.preventDefault(); setOrgFilesDragOver(true); }}
+            onDragLeave={() => setOrgFilesDragOver(false)}
+            onDrop={(e: any) => {
+              e.preventDefault();
+              setOrgFilesDragOver(false);
+              const file = e.dataTransfer?.files?.[0];
+              if (file) handleOrgFileUpload(file);
+            }}
+          >
+            {orgFiles.map((f: any) => {
+              const isImage = f.mimeType?.startsWith('image/');
+              const ext = (f.originalName || '').split('.').pop()?.toUpperCase() || 'FILE';
+              return (
+                <View key={f.id} style={styles.orgMediaItem}>
+                  {isImage ? (
+                    <Image
+                      source={{ uri: `/api/files/${f.id}?inline=true` }}
+                      style={styles.orgMediaThumb}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.orgMediaIcon}>
+                      <FileText size={18} color={Colors.light.tint} />
+                      <Text style={styles.orgMediaExt}>{ext}</Text>
+                    </View>
+                  )}
+                  <Text style={styles.orgMediaName} numberOfLines={1}>{f.originalName}</Text>
+                  <View style={styles.orgMediaActions}>
+                    {Platform.OS === 'web' && (
+                      <TouchableOpacity
+                        onPress={() => (typeof window !== 'undefined') && window.open(`/api/files/${f.id}?inline=true`, '_blank')}
+                        style={styles.orgMediaActionBtn}
+                      >
+                        <ExternalLink size={12} color={Colors.light.textSecondary} />
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity onPress={() => handleOrgFileDelete(f.id)} style={styles.orgMediaActionBtn}>
+                      <Trash2 size={12} color={Colors.light.error} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </View>
+
       <View style={{ height: 40 }} />
     </ScrollView>
   );
@@ -1266,6 +1424,12 @@ export default function OrgProfileScreen() {
                   {contactForm.isPrimary ? <CheckCircle size={18} color={Colors.light.tint} /> : <Circle size={18} color={Colors.light.textSecondary} />}
                   <Text style={styles.primaryToggleText}>Set as primary contact</Text>
                 </TouchableOpacity>
+                {!!contactForm.email.trim() && (
+                  <TouchableOpacity style={[styles.primaryToggle, { marginTop: 4 }]} onPress={() => setContactForm((f) => ({ ...f, hubAccess: !f.hubAccess }))}>
+                    {contactForm.hubAccess ? <CheckCircle size={18} color={Colors.light.tint} /> : <Circle size={18} color={Colors.light.textSecondary} />}
+                    <Text style={styles.primaryToggleText}>Enable Client Hub Access</Text>
+                  </TouchableOpacity>
+                )}
               </ScrollView>
               <View style={styles.modalActions}>
                 <TouchableOpacity style={styles.cancelBtn} onPress={() => setContactModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
@@ -2180,5 +2344,77 @@ const styles = StyleSheet.create({
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
     backgroundColor: Colors.light.surface,
+  },
+
+  orgMediaDropZone: {
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    paddingVertical: 28,
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: Colors.light.border,
+    borderStyle: 'dashed' as const,
+    borderRadius: 10,
+    marginTop: 10,
+  },
+  orgMediaDropZoneActive: {
+    borderColor: Colors.light.tint,
+    backgroundColor: `${Colors.light.tint}08`,
+  },
+  orgMediaDropText: {
+    fontSize: 13,
+    fontWeight: '500' as const,
+    color: Colors.light.textSecondary,
+    textAlign: 'center' as const,
+  },
+  orgMediaDropSub: {
+    fontSize: 11,
+    color: Colors.light.placeholder,
+    textAlign: 'center' as const,
+  },
+  orgMediaGrid: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    gap: 10,
+    marginTop: 10,
+  },
+  orgMediaItem: {
+    width: 90,
+    gap: 4,
+  },
+  orgMediaThumb: {
+    width: 90,
+    height: 72,
+    borderRadius: 8,
+    backgroundColor: Colors.light.border,
+  },
+  orgMediaIcon: {
+    width: 90,
+    height: 72,
+    borderRadius: 8,
+    backgroundColor: Colors.light.background,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 4,
+  },
+  orgMediaExt: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: Colors.light.tint,
+    letterSpacing: 0.5,
+  },
+  orgMediaName: {
+    fontSize: 10,
+    color: Colors.light.textSecondary,
+    lineHeight: 13,
+  },
+  orgMediaActions: {
+    flexDirection: 'row' as const,
+    gap: 6,
+  },
+  orgMediaActionBtn: {
+    padding: 3,
   },
 });
