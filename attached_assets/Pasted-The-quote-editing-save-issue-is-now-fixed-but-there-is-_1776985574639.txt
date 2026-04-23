@@ -1,0 +1,150 @@
+The quote editing/save issue is now fixed, but there is still one remaining critical bug:
+
+The “Submit Quote” button does NOT work for NEW quotes.
+
+======================================================================
+PROBLEM
+======================================================================
+
+When creating a new quote, I can now edit/save details correctly, but clicking “Submit Quote” does not complete the quote submission workflow.
+
+This issue appears specific to NEW quotes.
+
+Please debug the Submit Quote flow for newly-created quotes only.
+
+======================================================================
+EXPECTED BEHAVIOR
+======================================================================
+
+When I click “Submit Quote” on a new quote, the system should:
+
+1. Validate required quote fields
+2. Save/persist the latest quote details
+3. Change the quote/project status from draft/quoting/new to the correct submitted/quoted state
+4. Make the quote visible in the correct Projects list/status
+5. If applicable, make it visible to the client in their Client Hub under Quotes + Invoices
+6. Trigger any required quote-submitted email/notification workflow
+7. Show a success message only after the submit action actually succeeds
+8. Redirect or update the UI to show the submitted quote state
+
+======================================================================
+DEBUG THIS SPECIFIC FLOW
+======================================================================
+
+Please trace the Submit Quote button behavior for NEW quotes:
+
+A. Button wiring
+- Confirm the Submit Quote button is connected to the correct handler
+- Confirm it is not only wired for existing quotes
+- Confirm it is not disabled by missing quote ID/state
+- Confirm it does not silently fail
+
+B. New quote ID/state
+- Confirm newly-created quotes have a valid quote/project ID before Submit Quote runs
+- Confirm Submit Quote is using the correct ID
+- Confirm it is not trying to submit before creation completes
+- If needed, force create/save first, then submit
+
+C. Payload
+- Log the submit payload
+- Confirm it includes:
+  - quote/project ID
+  - client/organization ID
+  - line items
+  - totals
+  - status transition
+  - client visibility / publish flag if applicable
+
+D. Backend endpoint
+- Confirm the correct submit endpoint/mutation is called
+- Confirm backend accepts newly-created quote records
+- Confirm validation is not rejecting new quote records
+- Confirm endpoint updates status correctly
+
+E. Database
+- Confirm the quote/project record status changes in the database
+- Confirm submitted/quoted timestamp is recorded if applicable
+- Confirm latest quote data remains saved
+- Confirm no rollback occurs
+
+F. UI/cache
+- Invalidate/refetch quote/project queries after submit
+- Update UI to submitted/quoted state
+- Ensure stale draft/new state does not overwrite the submitted state
+
+======================================================================
+LIKELY ROOT CAUSES
+======================================================================
+
+Please specifically check for:
+
+- Submit Quote handler only works for existing quotes, not newly-created quotes
+- New quote does not have a valid ID at submit time
+- Save and submit are separate, and submit fires before save/create finishes
+- Submit endpoint expects a different status or quote type
+- Status transition is missing for new quotes
+- Button calls saveQuote but not submitQuote
+- Mutation succeeds but cache refetch restores old status
+- Backend rejects new quotes because required fields are missing or named differently
+- Submit button is using projectId when it should use quoteId, or vice versa
+
+======================================================================
+REQUIRED FIX
+======================================================================
+
+Fix the new quote submit flow so it follows a reliable sequence:
+
+1. If quote is new and not yet persisted:
+   - create quote first
+   - get returned ID
+
+2. Save latest quote details
+
+3. Submit/publish quote:
+   - update status correctly
+   - set quote as submitted/quoted/client-visible as needed
+
+4. Refetch/invalidate relevant queries
+
+5. Show success only after database confirms submit succeeded
+
+======================================================================
+ACCEPTANCE TEST
+======================================================================
+
+Please verify:
+
+Test 1:
+- Create a brand new quote
+- Add client, project name, product, service, quantities, pricing, markup
+- Click Submit Quote
+- Confirm no error
+- Confirm quote status changes correctly
+- Confirm quote appears in Projects with correct status
+- Refresh page
+- Confirm status and quote details remain
+
+Test 2:
+- Create a new quote and immediately click Submit Quote without navigating away
+- Confirm it still works
+
+Test 3:
+- Create a new quote, save it, then click Submit Quote
+- Confirm it works
+
+Test 4:
+- Confirm client-facing visibility updates if the quote should appear in Client Hub
+
+======================================================================
+IMPORTANT
+======================================================================
+
+Do not break the quote editing/save fix that is now working.
+
+This task is only to fix the Submit Quote button/workflow for NEW quotes.
+
+Please report back:
+- what was broken
+- whether the issue was button wiring, missing ID, backend mutation, validation, or status transition
+- what files/functions were changed
+- which acceptance tests passed

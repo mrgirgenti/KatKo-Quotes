@@ -1,12 +1,16 @@
 import { pool } from '@/lib/pool';
 import type { Quote } from '@/types/quote';
 
+const VALID_STATUSES = new Set(['draft','needs_review','quoting','quoted','invoice_sent','paid','active','production_started','completed','expired']);
+
 function toFrontendQuote(p: any): Quote {
   let status = (p.frontendStatus || 'quoted') as Quote['status'];
   if (p.status === 'NEEDS_REVIEW') status = 'needs_review';
   if (p.status === 'QUOTING') status = 'quoting';
   if (p.status === 'PAID') status = 'paid';
   if (p.status === 'INVOICE_SENT') status = 'invoice_sent';
+  if (status === 'quote_approved') status = 'quoted';
+  if (!VALID_STATUSES.has(status as string)) status = 'quoted';
   return {
     id: p.id,
     orgId: p.organizationId ?? undefined,

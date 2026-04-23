@@ -203,11 +203,11 @@ export default function NewQuoteScreen() {
       hasCardFee,
       calculations,
       createdAt: new Date().toISOString(),
-      status: 'quoted',
+      status: 'quoting',
     };
 
     const label = invoiceNumber ? `#${invoiceNumber} ` : '';
-    setToastMessage(`Quote ${label}submitted!`);
+    setToastMessage(`Quote ${label}created! Click "Send Quote" to send to your client.`);
     setToastVisible(true);
     resetForm();
     addQuote(quote, {
