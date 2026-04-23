@@ -444,10 +444,11 @@ interface PortalComboCellProps {
   onChangeText: (v: string) => void;
   options: readonly string[];
   placeholder: string;
-  cellWidth: number;
+  cellWidth?: number;
+  containerStyle?: any;
 }
 
-function PortalComboCell({ value, onChangeText, options, placeholder, cellWidth }: PortalComboCellProps) {
+function PortalComboCell({ value, onChangeText, options, placeholder, cellWidth, containerStyle }: PortalComboCellProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -475,7 +476,7 @@ function PortalComboCell({ value, onChangeText, options, placeholder, cellWidth 
   const typedIsNew = !!search.trim() && !filtered.some(o => o.toLowerCase() === search.trim().toLowerCase());
 
   return (
-    <View style={[comboCellStyles.wrapper, { width: cellWidth }]}>
+    <View style={[comboCellStyles.wrapper, containerStyle ?? { width: cellWidth }]}>
       <TextInput
         style={[liStyles.sizeInput, { flex: 1, marginHorizontal: 0 }]}
         value={value}
@@ -723,84 +724,71 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
           {/* ── Products + Sizes ── */}
           <View style={liStyles.sizeSection}>
             <Text style={liStyles.sizeSectionTitle}>Products + Sizes</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View>
-                {/* Header row */}
-                <View style={liStyles.sizeHeaderRow}>
-                  <View style={{ width: 200, marginHorizontal: 2 }}>
-                    <Text style={[liStyles.sizeHeaderText, { textAlign: 'left' }]}>Product</Text>
-                  </View>
-                  <View style={{ width: 110, marginHorizontal: 2 }}>
-                    <Text style={[liStyles.sizeHeaderText, { textAlign: 'left' }]}>Color</Text>
-                  </View>
-                  {SIZE_KEYS.map(k => (
-                    <View key={k} style={[liStyles.sizeCellNum, { marginHorizontal: 2 }]}>
-                      <Text style={[liStyles.sizeHeaderText, { textAlign: 'center' }]}>{SIZE_LABELS[k]}</Text>
-                    </View>
-                  ))}
-                  <Text style={[liStyles.sizeCell, liStyles.sizeHeaderText, liStyles.sizeCellTotal]}>Total</Text>
-                  <View style={{ width: 28 }} />
-                </View>
 
-                {/* Data rows */}
-                {item.sizeRows.map(row => (
-                  <View key={row.id} style={liStyles.sizeDataRow}>
+            {item.sizeRows.map((row, rIdx) => {
+              const rt = rowTotal(row);
+              return (
+                <View key={row.id} style={[liStyles.sizeVariantRow, rIdx % 2 === 1 && liStyles.sizeVariantRowAlt]}>
+                  {/* Row A: Product + Color + Delete */}
+                  <View style={liStyles.sizePickerRow}>
                     <PortalComboCell
                       value={row.product}
                       onChangeText={v => updRow(row.id, { product: v })}
                       options={PRODUCTS}
                       placeholder="Style / Product"
-                      cellWidth={200}
+                      containerStyle={{ flex: 2, marginHorizontal: 0 }}
                     />
                     <PortalComboCell
                       value={row.color}
                       onChangeText={v => updRow(row.id, { color: v })}
                       options={PRODUCT_COLORS}
                       placeholder="Color"
-                      cellWidth={110}
+                      containerStyle={{ flex: 1, marginHorizontal: 0 }}
                     />
-                    {SIZE_KEYS.map(k => (
-                      <TextInput
-                        key={k}
-                        style={[liStyles.sizeInput, liStyles.sizeCellNum]}
-                        value={row[k] ? String(row[k]) : ''}
-                        onChangeText={v => updRow(row.id, { [k]: parseInt(v) || 0 } as any)}
-                        placeholder="0"
-                        placeholderTextColor={TEXT_PLACEHOLDER}
-                        keyboardType="number-pad"
-                      />
-                    ))}
-                    <Text style={[liStyles.sizeCell, liStyles.sizeCellTotal, { fontWeight: '700', color: TEXT_MED }]}>
-                      {rowTotal(row)}
-                    </Text>
                     <TouchableOpacity style={liStyles.delRowBtn} onPress={() => delRow(row.id)}>
                       <Trash2 size={12} color="#DC2626" />
                     </TouchableOpacity>
                   </View>
-                ))}
-
-                {/* Totals row */}
-                {item.sizeRows.length > 1 && (
-                  <View style={liStyles.sizeTotalRow}>
-                    <View style={{ width: 200, marginHorizontal: 2 }}>
-                      <Text style={{ color: TEXT_LIGHT, fontSize: 11 }}>Totals</Text>
-                    </View>
-                    <View style={{ width: 110, marginHorizontal: 2 }} />
+                  {/* Row B: Size inputs */}
+                  <View style={liStyles.sizeCellsRow}>
                     {SIZE_KEYS.map(k => (
-                      <View key={k} style={[liStyles.sizeCellNum, { marginHorizontal: 2, alignItems: 'center' }]}>
-                        <Text style={{ fontWeight: '600', fontSize: 11, color: TEXT_MED, textAlign: 'center' }}>
-                          {colTotal(item.sizeRows, k) || ''}
-                        </Text>
+                      <View key={k} style={liStyles.sizeCellCol}>
+                        <Text style={liStyles.sizeColLabel}>{SIZE_LABELS[k]}</Text>
+                        <TextInput
+                          style={liStyles.sizeColInput}
+                          value={row[k] ? String(row[k]) : ''}
+                          onChangeText={v => updRow(row.id, { [k]: parseInt(v) || 0 } as any)}
+                          placeholder="0"
+                          placeholderTextColor={TEXT_PLACEHOLDER}
+                          keyboardType="number-pad"
+                        />
                       </View>
                     ))}
-                    <Text style={[liStyles.sizeCell, liStyles.sizeCellTotal, { fontWeight: '700', fontSize: 12, color: TEXT }]}>
-                      {total}
-                    </Text>
-                    <View style={{ width: 28 }} />
+                    <View style={liStyles.sizeTotalCol}>
+                      <Text style={liStyles.sizeColLabel}>Total</Text>
+                      <Text style={liStyles.sizeTotalValue}>{rt > 0 ? rt : '—'}</Text>
+                    </View>
                   </View>
-                )}
+                </View>
+              );
+            })}
+
+            {/* Column totals row — only when multiple rows */}
+            {item.sizeRows.length > 1 && (
+              <View style={liStyles.sizeSumRow}>
+                <Text style={liStyles.sizeSumLabel}>Totals</Text>
+                <View style={{ flex: 1, flexDirection: 'row' }}>
+                  {SIZE_KEYS.map(k => (
+                    <View key={k} style={{ flex: 1, alignItems: 'center' }}>
+                      <Text style={liStyles.sizeSumValue}>{colTotal(item.sizeRows, k) || ''}</Text>
+                    </View>
+                  ))}
+                  <View style={{ flex: 1, alignItems: 'center' }}>
+                    <Text style={[liStyles.sizeSumValue, { color: '#15803D', fontWeight: '700' }]}>{total}</Text>
+                  </View>
+                </View>
               </View>
-            </ScrollView>
+            )}
 
             <TouchableOpacity style={liStyles.addRowBtn} onPress={addRow}>
               <Plus size={12} color={BRAND} />
@@ -3310,28 +3298,45 @@ const liStyles = StyleSheet.create({
     letterSpacing: 0.5, paddingHorizontal: 12, paddingVertical: 8,
     borderBottomWidth: 1, borderBottomColor: BORDER,
   },
-  sizeHeaderRow: {
+  sizeVariantRow: {
+    flexDirection: 'column',
+    borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+    backgroundColor: '#fff',
+  },
+  sizeVariantRowAlt: { backgroundColor: '#FAFAFA' },
+  sizePickerRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 8, paddingTop: 8, paddingBottom: 4, gap: 6,
+  },
+  sizeCellsRow: {
+    flexDirection: 'row', paddingHorizontal: 8, paddingBottom: 8, gap: 4,
+  },
+  sizeCellCol: { flex: 1, alignItems: 'center' },
+  sizeTotalCol: { flex: 1, alignItems: 'center' },
+  sizeColLabel: {
+    fontSize: 9, fontWeight: '700', color: TEXT_LIGHT,
+    textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 3,
+  },
+  sizeColInput: {
+    borderWidth: 1, borderColor: '#E9EAEB', borderRadius: 4,
+    width: '100%', height: 32, textAlign: 'center', fontSize: 12, color: TEXT,
+    backgroundColor: '#fff',
+  },
+  sizeTotalValue: {
+    fontSize: 13, fontWeight: '700', color: BRAND,
+    textAlign: 'center', paddingTop: 6,
+  },
+  sizeSumRow: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 8, paddingVertical: 6,
-    borderBottomWidth: 1, borderBottomColor: BORDER, backgroundColor: '#F3F4F6',
+    borderTopWidth: 1, borderTopColor: BORDER, backgroundColor: '#F9FAFB',
   },
-  sizeHeaderText: { fontSize: 11, fontWeight: '600', color: TEXT_LIGHT },
-  sizeDataRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 8, paddingVertical: 3,
-    borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
-  },
-  sizeCell: { paddingHorizontal: 4, textAlign: 'center' },
-  sizeCellNum: { width: 52, textAlign: 'center' },
-  sizeCellTotal: { width: 58, textAlign: 'center' },
+  sizeSumLabel: { fontSize: 10, fontWeight: '600', color: TEXT_LIGHT, width: 44 },
+  sizeSumValue: { fontSize: 11, fontWeight: '600', color: TEXT_MED, textAlign: 'center' },
   sizeInput: {
     borderWidth: 1, borderColor: '#E9EAEB', borderRadius: 6,
     paddingHorizontal: 6, paddingVertical: 5, fontSize: 12, color: TEXT,
     backgroundColor: '#fff', marginHorizontal: 2, textAlign: 'center',
-  },
-  sizeTotalRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 8, paddingVertical: 5, borderTopWidth: 1, borderTopColor: BORDER,
   },
   delRowBtn: { width: 28, alignItems: 'center', justifyContent: 'center', paddingVertical: 6 },
   addRowBtn: {
