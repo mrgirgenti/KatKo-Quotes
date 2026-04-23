@@ -13,6 +13,7 @@ import {
   Pressable,
   Image,
   Linking,
+  Animated,
 } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -56,6 +57,7 @@ import {
   Library,
   Tag,
   MapPin,
+  Menu,
 } from 'lucide-react-native';
 import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
 
@@ -978,6 +980,8 @@ export default function ClientPortal() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<FullPortalProject | null>(null);
   const [projectViewLoading, setProjectViewLoading] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const sidebarWidthAnim = useRef(new Animated.Value(210)).current;
 
   const [clientCatalogs, setClientCatalogs] = useState<Array<{
     id: string; name: string; description: string | null; vendorName: string | null;
@@ -1226,6 +1230,16 @@ export default function ClientPortal() {
     setOrgProjects([]);
     setEmail('');
   }, []);
+
+  const toggleSidebar = useCallback(() => {
+    const toValue = sidebarCollapsed ? 210 : 56;
+    Animated.timing(sidebarWidthAnim, {
+      toValue,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+    setSidebarCollapsed(c => !c);
+  }, [sidebarCollapsed, sidebarWidthAnim]);
 
   const handleEmailSubmit = useCallback(async () => {
     const trimmed = email.trim();
@@ -2904,6 +2918,17 @@ export default function ClientPortal() {
             </View>
           )}
         </View>
+
+        {/* Sign Out */}
+        <TouchableOpacity
+          style={profStyles.signOutBlock}
+          onPress={handleSignOut}
+          activeOpacity={0.8}
+        >
+          <LogOut size={16} color="#DC2626" />
+          <Text style={profStyles.signOutText}>Sign Out</Text>
+        </TouchableOpacity>
+
       </ScrollView>
     );
   };
@@ -3054,20 +3079,32 @@ export default function ClientPortal() {
         <View style={[dash.layout, isMobile && dash.layoutMobile]}>
           {/* Desktop/tablet: Sidebar */}
           {!isMobile && (
-            <View style={dash.sidebar}>
-              <View style={dash.sidebarHeader}>
-                {logoSrc ? (
-                  <Image source={{ uri: logoSrc }} style={sidebarLogoStyle} resizeMode="contain" />
-                ) : (
-                  <View>
-                    <Text style={dash.sidebarLogoText}>{displayName.toUpperCase()}</Text>
-                    <Text style={dash.sidebarLogoBrand}>Client Hub by Katalyst Ko Printshop</Text>
-                  </View>
+            <Animated.View style={[dash.sidebar, { width: sidebarWidthAnim }]}>
+              {/* Hamburger + "Client Hub" title row */}
+              <View style={dash.sidebarHamburgerRow}>
+                <TouchableOpacity onPress={toggleSidebar} style={dash.hamburgerBtn} activeOpacity={0.7}>
+                  <Menu size={20} color="#fff" />
+                </TouchableOpacity>
+                {!sidebarCollapsed && (
+                  <Text style={dash.sidebarClientHubTitle} numberOfLines={1}>Client Hub</Text>
                 )}
-                <Text style={dash.sidebarClientHub}>Client Hub</Text>
               </View>
 
-              <View style={dash.sidebarNav}>
+              {/* Logo / org name — only when expanded */}
+              {!sidebarCollapsed && (
+                <View style={dash.sidebarHeader}>
+                  {logoSrc ? (
+                    <Image source={{ uri: logoSrc }} style={sidebarLogoStyle} resizeMode="contain" />
+                  ) : (
+                    <View>
+                      <Text style={dash.sidebarLogoText}>{displayName.toUpperCase()}</Text>
+                      <Text style={dash.sidebarLogoBrand}>Client Hub by Katalyst Ko Printshop</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              <View style={[dash.sidebarNav, sidebarCollapsed && { alignItems: 'center', paddingHorizontal: 0 }]}>
                 {NAV_ITEMS.map(({ id, label, Icon }, idx) => {
                   const isActive = activeView === id;
                   const showDivider = idx === 1 || idx === 3 || idx === 5;
@@ -3075,23 +3112,25 @@ export default function ClientPortal() {
                     <React.Fragment key={id}>
                       {showDivider && <View style={dash.navDivider} />}
                       <TouchableOpacity
-                        style={[dash.navItem, isActive && dash.navItemActive]}
+                        style={[dash.navItem, isActive && dash.navItemActive, sidebarCollapsed && dash.navItemCollapsed]}
                         onPress={() => {
                           setActiveView(id);
                           if (id === 'artwork' && session) fetchMediaBin(session.orgId);
                         }}
                       >
                         <Icon size={16} color={isActive ? '#fff' : '#9CA3AF'} />
-                        <Text style={[dash.navLabel, isActive && dash.navLabelActive]}>{label}</Text>
+                        {!sidebarCollapsed && (
+                          <Text style={[dash.navLabel, isActive && dash.navLabelActive]}>{label}</Text>
+                        )}
                       </TouchableOpacity>
                     </React.Fragment>
                   );
                 })}
               </View>
 
-              <View style={dash.sidebarFooter}>
+              <View style={[dash.sidebarFooter, sidebarCollapsed && { alignItems: 'center', paddingHorizontal: 0 }]}>
                 <TouchableOpacity
-                  style={dash.userRow}
+                  style={[dash.userRow, sidebarCollapsed && { justifyContent: 'center' }]}
                   onPress={() => { setActiveView('profile'); fetchTeam(session.orgId); }}
                   activeOpacity={0.8}
                 >
@@ -3102,16 +3141,15 @@ export default function ClientPortal() {
                       <Text style={dash.userAvatarText}>{session.userName[0]?.toUpperCase() || '?'}</Text>
                     )}
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={dash.userName} numberOfLines={1}>{session.userName}</Text>
-                    <Text style={dash.userOrg} numberOfLines={1}>{session.orgName}</Text>
-                  </View>
-                  <TouchableOpacity onPress={handleSignOut} style={dash.signOutBtn}>
-                    <LogOut size={15} color="#9CA3AF" />
-                  </TouchableOpacity>
+                  {!sidebarCollapsed && (
+                    <View style={{ flex: 1 }}>
+                      <Text style={dash.userName} numberOfLines={1}>{session.userName}</Text>
+                      <Text style={dash.userOrg} numberOfLines={1}>{session.orgName}</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               </View>
-            </View>
+            </Animated.View>
           )}
 
           {/* Mobile: Top bar */}
@@ -3608,15 +3646,24 @@ const dash = StyleSheet.create({
   },
 
   sidebar: {
-    width: 210,
     backgroundColor: SIDEBAR_BG,
     flexDirection: 'column',
+    overflow: 'hidden' as any,
     ...Platform.select({ web: { position: 'sticky' as any, top: 0, height: '100vh' as any }, default: {} }),
+  },
+  sidebarHamburgerRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 14, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)',
+  },
+  hamburgerBtn: { padding: 4 },
+  sidebarClientHubTitle: {
+    color: '#fff', fontSize: 14, fontWeight: '700', letterSpacing: 0.3, flex: 1,
   },
   sidebarHeader: {
     paddingHorizontal: 18,
-    paddingTop: 22,
-    paddingBottom: 18,
+    paddingTop: 16,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.06)',
   },
@@ -3632,6 +3679,7 @@ const dash = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8, marginBottom: 2,
   },
   navItemActive: { backgroundColor: SIDEBAR_ACTIVE },
+  navItemCollapsed: { justifyContent: 'center', paddingHorizontal: 0, width: 40, alignSelf: 'center' },
   navLabel: { fontSize: 13, color: '#9CA3AF', fontWeight: '500' },
   navLabelActive: { color: '#fff', fontWeight: '700' },
 
@@ -4323,6 +4371,12 @@ const profStyles = StyleSheet.create({
     borderRadius: 10, borderWidth: 1, borderColor: BORDER, borderStyle: 'dashed' as any,
     backgroundColor: '#F9FAFB', padding: 28, alignItems: 'center',
   },
+  signOutBlock: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginTop: 8, padding: 16, borderRadius: 12,
+    borderWidth: 1, borderColor: '#FEE2E2', backgroundColor: '#FFF5F5',
+  },
+  signOutText: { fontSize: 14, fontWeight: '600', color: '#DC2626' },
 });
 
 const pvStyles = StyleSheet.create({
