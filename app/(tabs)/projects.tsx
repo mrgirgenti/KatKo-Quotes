@@ -669,7 +669,44 @@ export default function ProjectsScreen() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.title}>Projects</Text>
-          <Text style={styles.subtitle}>{resolvedProjects.length} project{resolvedProjects.length !== 1 ? 's' : ''}</Text>
+        </View>
+
+        {/* Stats Bar */}
+        <View style={styles.statsBar}>
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: '#16A34A' }]}>
+              {statusCounts['completed'] ?? 0}
+            </Text>
+            <Text style={styles.statLabel}>Completed</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: Colors.light.tint }]}>
+              {(statusCounts['active'] ?? 0) + (statusCounts['production_started'] ?? 0)}
+            </Text>
+            <Text style={styles.statLabel}>In Production</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: Colors.light.text }]}>
+              {resolvedProjects.length}
+            </Text>
+            <Text style={styles.statLabel}>Active Projects</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: '#2563EB' }]}>
+              {(statusCounts['quoting'] ?? 0) + (statusCounts['quoted'] ?? 0)}
+            </Text>
+            <Text style={styles.statLabel}>Quoted</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: '#DC2626' }]}>
+              {statusCounts['needs_review'] ?? 0}
+            </Text>
+            <Text style={styles.statLabel}>Needs Review</Text>
+          </View>
         </View>
 
         {/* Status Pills */}
@@ -962,10 +999,19 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: Colors.light.text,
   },
-  subtitle: {
-    fontSize: 14,
-    color: Colors.light.textSecondary,
+  statsBar: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: Colors.light.surface,
+    marginBottom: 4,
   },
+  statItem: { flex: 1, alignItems: 'center' as const, paddingVertical: 12 },
+  statValue: { fontSize: 18, fontWeight: '800' as const, color: Colors.light.text },
+  statLabel: { fontSize: 10, color: Colors.light.textSecondary, fontWeight: '500' as const, marginTop: 1 },
+  statDivider: { width: 1, height: 32, backgroundColor: Colors.light.border },
 
   pillsScroll: { maxHeight: 46 },
   pillsRow: {

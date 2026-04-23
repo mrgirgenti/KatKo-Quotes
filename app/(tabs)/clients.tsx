@@ -357,6 +357,7 @@ export default function ClientsScreen() {
     working: orgs.filter((o) => o.status === 'Working').length,
     cold: orgs.filter((o) => o.status === 'Cold').length,
     totalPeople: orgs.reduce((sum, o) => sum + o.contacts.length, 0),
+    liveHubs: orgs.filter((o) => o.hubEnabled).length,
   }), [orgs]);
 
   const orgSearchResults = useMemo(() => {
@@ -465,28 +466,22 @@ export default function ClientsScreen() {
       <View style={styles.pageHeader}>
         <View style={styles.headerTop}>
           <Text style={styles.pageTitle}>Contacts</Text>
-          <Text style={styles.pageSubtitle}>{orgs.length} org{orgs.length !== 1 ? 's' : ''} · {stats.totalPeople} people</Text>
         </View>
 
         <View style={styles.statsBar}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{stats.total}</Text>
-            <Text style={styles.statLabel}>Total</Text>
+            <Text style={[styles.statValue, { color: Colors.light.tint }]}>{stats.total}</Text>
+            <Text style={styles.statLabel}>Total Orgs</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: '#FF5A00' }]}>{stats.active}</Text>
-            <Text style={styles.statLabel}>Active</Text>
+            <Text style={[styles.statValue, { color: '#2563EB' }]}>{stats.totalPeople}</Text>
+            <Text style={styles.statLabel}>Total People</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: '#2563EB' }]}>{stats.working}</Text>
-            <Text style={styles.statLabel}>Working</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: '#6B7280' }]}>{stats.cold}</Text>
-            <Text style={styles.statLabel}>Cold</Text>
+            <Text style={[styles.statValue, { color: '#16A34A' }]}>{stats.liveHubs}</Text>
+            <Text style={styles.statLabel}>Live Client Hubs</Text>
           </View>
         </View>
 
