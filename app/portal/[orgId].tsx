@@ -58,6 +58,8 @@ import {
   Tag,
   MapPin,
   Menu,
+  ArrowUpDown,
+  ChevronUp,
 } from 'lucide-react-native';
 import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
 
@@ -968,6 +970,9 @@ export default function ClientPortal() {
   const [mpCostMin, setMpCostMin] = useState('');
   const [mpCostMax, setMpCostMax] = useState('');
   const [mpShowFilters, setMpShowFilters] = useState(false);
+  type MpSortField = 'status' | 'project' | 'submitted' | 'inHands' | 'items' | 'total';
+  const [mpSortField, setMpSortField] = useState<MpSortField>('submitted');
+  const [mpSortDir, setMpSortDir] = useState<'asc' | 'desc'>('desc');
 
   const fileInputRef = useRef<any>(null);
   const mediaBinInputRef = useRef<any>(null);

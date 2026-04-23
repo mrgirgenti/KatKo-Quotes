@@ -1,0 +1,97 @@
+======================================================================
+17. PRODUCTS + SIZES ROW LAYOUT FIX (CRITICAL UI BUG)
+======================================================================
+
+We have a broken layout in the “Products + Sizes” section when submitting a project.
+
+Current issues:
+- The XS size input box is missing entirely
+- The “Color” field is too wide and is pushing other fields out of view
+- The layout does not align properly with all size columns
+- The row breaks visually and functionally
+
+This is not acceptable and should not be patched incrementally.
+
+REQUIRED FIX:
+Do NOT try to manually adjust widths again.
+
+Instead, replicate the exact layout structure used in the BACKEND quote builder for Products + Sizes.
+
+======================================================================
+EXPECTED STRUCTURE (MATCH BACKEND)
+======================================================================
+
+Each row should follow a fixed, grid-based layout:
+
+Columns (left → right):
+
+1. Product / Style selector
+2. Color selector
+3. XS
+4. SM
+5. MD
+6. LG
+7. XL
+8. 2XL
+9. 3XL
+10. 4XL
+11. Total
+12. Delete (icon)
+
+All size inputs MUST be visible, including XS.
+
+======================================================================
+LAYOUT REQUIREMENTS
+======================================================================
+
+- Use a consistent grid or flex system so all columns fit in one row
+- Do NOT allow “Color” or “Product” fields to expand unpredictably
+- Assign controlled/fixed or proportional widths to each column
+- Ensure all size fields are always visible on standard desktop width
+
+Suggested behavior:
+- Product = fixed or max width (not dominant)
+- Color = smaller than current (reduce width significantly)
+- Size inputs = evenly distributed, equal width
+- Total = small fixed width
+- Delete icon = minimal width
+
+======================================================================
+RESPONSIVENESS
+======================================================================
+
+- Desktop: full row visible with all sizes
+- Tablet: allow horizontal scroll if necessary (acceptable)
+- Mobile: stack or allow scroll, but DO NOT hide size fields
+
+======================================================================
+FUNCTIONAL REQUIREMENTS
+======================================================================
+
+- XS input must be restored and functional
+- All size inputs must accept values properly
+- Total should auto-calculate based on all sizes
+- “Add Garment / Style” should create a properly aligned new row
+- Deleting a row should not break layout
+
+======================================================================
+IMPORTANT
+======================================================================
+
+This layout MUST match the backend quote builder exactly for consistency.
+
+We should not have two different systems for:
+- backend quoting
+- client request submission
+
+They should share the same layout logic and component structure where possible.
+
+======================================================================
+GOAL
+======================================================================
+
+- Clean, aligned, professional row layout
+- All sizes visible (including XS)
+- No overflow or hidden inputs
+- Matches backend experience exactly
+- No more manual width hacks
