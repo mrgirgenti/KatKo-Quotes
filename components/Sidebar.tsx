@@ -213,13 +213,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   logoContainer: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
   },
   logo: {
-    width: 200,
-    height: 80,
+    width: '100%',
+    height: 110,
   },
   divider: {
     height: 1,
