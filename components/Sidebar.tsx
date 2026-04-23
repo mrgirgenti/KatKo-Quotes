@@ -32,7 +32,6 @@ const NAV_ITEMS = [
   { label: 'New Quote', icon: FilePlus, href: '/' },
   { label: 'Projects', icon: FolderKanban, href: '/projects' },
   { label: 'Contacts', icon: Users, href: '/clients' },
-  { label: 'Catalogs', icon: BookOpen, href: '/catalogs' },
   { label: 'Client Hubs', icon: Globe, href: '/client-hubs' },
 ];
 
@@ -135,6 +134,19 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
       </View>
 
       <View style={styles.spacer} />
+
+      <TouchableOpacity
+        style={[styles.navItem, isRouteActive('/catalogs', pathname) && styles.navItemActive, collapsed && styles.navItemCollapsed]}
+        onPress={() => navigate('/catalogs')}
+      >
+        {isRouteActive('/catalogs', pathname) && !collapsed && <View style={styles.activeBar} />}
+        <BookOpen size={20} color={isRouteActive('/catalogs', pathname) ? '#FFFFFF' : SB.iconColor} />
+        {!collapsed && (
+          <Text style={[styles.navLabel, isRouteActive('/catalogs', pathname) && styles.navLabelActive]}>
+            Catalogs
+          </Text>
+        )}
+      </TouchableOpacity>
 
       <View style={styles.divider} />
 
