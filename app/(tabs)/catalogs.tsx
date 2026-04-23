@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import { ExternalLink, BookOpen, Tag, Plus, Pencil, Trash2, X, Globe, ChevronDown } from 'lucide-react-native';
+import { ExternalLink, BookOpen, Tag, Plus, Pencil, Trash2, X, Globe, ChevronDown, GripVertical } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
 const BRAND = Colors.light.tint;
@@ -187,6 +187,13 @@ const CATEGORY_COLORS: Record<string, string> = {
   Other: '#6B7280',
 };
 
+function reorderArr<T>(arr: T[], from: number, to: number): T[] {
+  const next = [...arr];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+}
+
 function getCategoryInitials(cat: ClientCatalog): string {
   return (cat.vendorName || cat.name).split(' ').map(w => w[0]).join('').slice(0, 3).toUpperCase();
 }
@@ -351,6 +358,18 @@ export default function CatalogsScreen() {
   const [editing, setEditing] = useState<ClientCatalog | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Vendor order (local only)
+  const [apparelVendors, setApparelVendors] = useState([...APPAREL_VENDORS]);
+  const [promoVendors, setPromoVendors] = useState([...PROMO_VENDORS]);
+
+  // Drag state
+  const apparelSrc = useRef(-1);
+  const [apparelOver, setApparelOver] = useState(-1);
+  const promoSrc = useRef(-1);
+  const [promoOver, setPromoOver] = useState(-1);
+  const clientSrc = useRef(-1);
+  const [clientOver, setClientOver] = useState(-1);
+
   const fetchClientCatalogs = useCallback(async (includeInactive = true) => {
     setLoading(true);
     try {
@@ -415,14 +434,69 @@ export default function CatalogsScreen() {
     }
   };
 
-  const renderVendorCard = (vendor: Vendor) => (
-    <View key={vendor.id} style={styles.vendorCard}>
+  const handleApparelDrop = (toIdx: number) => {
+    const from = apparelSrc.current;
+    if (from < 0 || from === toIdx) return;
+    setApparelVendors(v => reorderArr(v, from, toIdx));
+  };
+
+  const handlePromoDrop = (toIdx: number) => {
+    const from = promoSrc.current;
+    if (from < 0 || from === toIdx) return;
+    setPromoVendors(v => reorderArr(v, from, toIdx));
+  };
+
+  const handleClientDrop = (toIdx: number) => {
+    const from = clientSrc.current;
+    if (from < 0 || from === toIdx) return;
+    setClientCatalogs(prev => {
+      const reordered = reorderArr(prev, from, toIdx);
+      reordered.forEach((cat, idx) => {
+        fetch(`/api/client-catalogs/${cat.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sortOrder: idx }),
+        }).catch(console.error);
+      });
+      return reordered;
+    });
+  };
+
+  const dragProps = (
+    idx: number,
+    srcRef: React.MutableRefObject<number>,
+    setOver: (i: number) => void,
+    onDrop: (i: number) => void,
+  ) => Platform.OS === 'web' ? ({
+    draggable: true,
+    onDragStart: () => { srcRef.current = idx; },
+    onDragOver: (e: any) => { e.preventDefault(); setOver(idx); },
+    onDrop: (e: any) => { e.preventDefault(); onDrop(idx); },
+    onDragEnd: () => { srcRef.current = -1; setOver(-1); },
+  } as any) : {};
+
+  const renderVendorCard = (
+    vendor: Vendor,
+    idx: number,
+    overIdx: number,
+    srcRef: React.MutableRefObject<number>,
+    setOver: (i: number) => void,
+    onDrop: (i: number) => void,
+  ) => (
+    <View
+      key={vendor.id}
+      style={[styles.vendorCard, overIdx === idx && styles.dragOverCard]}
+      {...dragProps(idx, srcRef, setOver, onDrop)}
+    >
       <View style={styles.vendorCardTop}>
         <View style={[styles.vendorAvatar, { backgroundColor: vendor.color }]}>
           <Text style={styles.vendorInitials}>{vendor.initials}</Text>
         </View>
         <View style={styles.vendorMeta}>
           <Text style={styles.vendorName}>{vendor.name}</Text>
+        </View>
+        <View style={styles.dragHandle}>
+          <GripVertical size={16} color="#C0C6CF" />
         </View>
       </View>
       <Text style={styles.vendorDescription}>{vendor.description}</Text>
@@ -439,11 +513,15 @@ export default function CatalogsScreen() {
     </View>
   );
 
-  const renderClientCatalogCard = (cat: ClientCatalog) => {
+  const renderClientCatalogCard = (cat: ClientCatalog, idx: number) => {
     const color = getCategoryColor(cat.category);
     const initials = getCategoryInitials(cat);
     return (
-      <View key={cat.id} style={styles.clientCard}>
+      <View
+        key={cat.id}
+        style={[styles.clientCard, clientOver === idx && styles.dragOverCard]}
+        {...dragProps(idx, clientSrc, setClientOver, handleClientDrop)}
+      >
         <View style={styles.clientCardTop}>
           <View style={[styles.vendorAvatar, { backgroundColor: color }]}>
             <Text style={styles.vendorInitials}>{initials}</Text>
@@ -454,6 +532,9 @@ export default function CatalogsScreen() {
           </View>
           <View style={[styles.categoryBadge, { backgroundColor: color + '18' }]}>
             <Text style={[styles.categoryBadgeText, { color }]}>{cat.category}</Text>
+          </View>
+          <View style={styles.dragHandle}>
+            <GripVertical size={16} color="#C0C6CF" />
           </View>
         </View>
         {cat.description ? <Text style={styles.vendorDescription}>{cat.description}</Text> : null}
@@ -523,7 +604,9 @@ export default function CatalogsScreen() {
                 <Text style={styles.sectionSubtitle}>{APPAREL_VENDORS.length} suppliers</Text>
               </View>
             </View>
-            <View style={styles.vendorGrid}>{APPAREL_VENDORS.map(renderVendorCard)}</View>
+            <View style={styles.vendorGrid}>
+              {apparelVendors.map((v, i) => renderVendorCard(v, i, apparelOver, apparelSrc, setApparelOver, handleApparelDrop))}
+            </View>
             <View style={styles.sectionDivider} />
             <View style={styles.sectionHeader}>
               <View style={[styles.sectionIconBg, { backgroundColor: '#FFF7ED' }]}>
@@ -531,10 +614,12 @@ export default function CatalogsScreen() {
               </View>
               <View>
                 <Text style={styles.sectionTitle}>Promotional Vendors</Text>
-                <Text style={styles.sectionSubtitle}>{PROMO_VENDORS.length} suppliers</Text>
+                <Text style={styles.sectionSubtitle}>{promoVendors.length} suppliers</Text>
               </View>
             </View>
-            <View style={styles.vendorGrid}>{PROMO_VENDORS.map(renderVendorCard)}</View>
+            <View style={styles.vendorGrid}>
+              {promoVendors.map((v, i) => renderVendorCard(v, i, promoOver, promoSrc, setPromoOver, handlePromoDrop))}
+            </View>
             <View style={styles.addVendorNote}>
               <BookOpen size={20} color={TEXT_LIGHT} />
               <Text style={styles.addVendorText}>
@@ -581,7 +666,9 @@ export default function CatalogsScreen() {
                 </TouchableOpacity>
               </View>
             ) : (
-              <View style={styles.vendorGrid}>{clientCatalogs.map(renderClientCatalogCard)}</View>
+              <View style={styles.vendorGrid}>
+                {clientCatalogs.map((cat, i) => renderClientCatalogCard(cat, i))}
+              </View>
             )}
           </>
         )}
@@ -753,14 +840,24 @@ const styles = StyleSheet.create({
 
   vendorGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 16 },
   vendorCard: {
-    flex: 1,
-    minWidth: 280,
+    width: '31%' as any,
+    minWidth: 260,
     backgroundColor: SURFACE,
     borderRadius: 14,
     padding: 20,
     borderWidth: 1,
     borderColor: BORDER,
     gap: 14,
+  },
+  dragOverCard: {
+    borderColor: BRAND,
+    borderWidth: 2,
+    backgroundColor: '#FFF7ED',
+  },
+  dragHandle: {
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    paddingLeft: 4,
   },
   vendorCardTop: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 14 },
   vendorAvatar: { width: 52, height: 52, borderRadius: 12, justifyContent: 'center' as const, alignItems: 'center' as const, flexShrink: 0 },
@@ -823,8 +920,8 @@ const styles = StyleSheet.create({
   addBtnText: { fontSize: 13, fontWeight: '700' as const, color: '#fff' },
 
   clientCard: {
-    flex: 1,
-    minWidth: 280,
+    width: '31%' as any,
+    minWidth: 260,
     backgroundColor: SURFACE,
     borderRadius: 14,
     padding: 20,
