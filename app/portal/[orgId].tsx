@@ -1635,17 +1635,17 @@ export default function ClientPortal() {
 
           {/* Black table header — inside header so the header border falls below it */}
           <View style={mpStyles.tableHeader}>
-            <View style={{ width: 110 }}><Text style={mpStyles.thText}>STATUS</Text></View>
-            <View style={{ width: 115 }}><Text style={mpStyles.thText}>ORDER DATE</Text></View>
-            <View style={{ width: 105 }}><Text style={mpStyles.thText}>DUE DATE</Text></View>
-            <View style={{ flex: 1 }}><Text style={mpStyles.thText}>PROJECT</Text></View>
-            <View style={{ width: 62 }}><Text style={mpStyles.thText}># PCS</Text></View>
-            <View style={{ width: 90, alignItems: 'flex-end' }}><Text style={mpStyles.thText}>TOTAL</Text></View>
-            <View style={{ width: 80, alignItems: 'flex-end' }}><Text style={mpStyles.thText}>ACTIONS</Text></View>
+            <Text style={[mpStyles.thText, { width: 110 }]}>STATUS</Text>
+            <Text style={[mpStyles.thText, { flex: 1 }]}>PROJECT</Text>
+            <Text style={[mpStyles.thText, { width: 100 }]}>SUBMITTED</Text>
+            <Text style={[mpStyles.thText, { width: 100 }]}>IN-HANDS</Text>
+            <Text style={[mpStyles.thText, { width: 54, textAlign: 'center' }]}>ITEMS</Text>
+            <Text style={[mpStyles.thText, { width: 84, textAlign: 'right' }]}>TOTAL</Text>
+            <Text style={[mpStyles.thText, { width: 56 }]} />
           </View>
         </View>
 
-        {/* Table rows */}
+        {/* Project rows */}
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           {projectsLoading ? (
             <ActivityIndicator color={BRAND} style={{ marginTop: 40 }} />
@@ -1664,30 +1664,30 @@ export default function ClientPortal() {
               const canView = isQuoteStatus(p.status);
               const cost = p.totalCost && parseFloat(p.totalCost) > 0 ? `$${parseFloat(p.totalCost).toFixed(2)}` : '—';
               return (
-                <React.Fragment key={p.id}>
-                  <View style={mpStyles.tableRow}>
-                    <View style={{ width: 110 }}>
-                      <StatusPill status={p.status} />
-                    </View>
-                    <Text style={[mpStyles.tableDate, { width: 115 }]}>{formatDate(p.createdAt)}</Text>
-                    <Text style={[mpStyles.tableDate, { width: 105 }]}>{p.inHandsDate ? formatDate(p.inHandsDate) : '—'}</Text>
-                    <Text style={[mpStyles.tableProject, { flex: 1 }]} numberOfLines={1}>{p.title}</Text>
-                    <Text style={[mpStyles.tablePcs, { width: 62 }]}>
-                      {p.lineItemCount > 0 ? `${p.lineItemCount} pcs` : '—'}
-                    </Text>
-                    <View style={{ width: 90, alignItems: 'flex-end' }}>
-                      <Text style={[mpStyles.tableTotal, cost === '—' && mpStyles.tableTotalEmpty]}>{cost}</Text>
-                    </View>
-                    <View style={{ width: 80, alignItems: 'flex-end' }}>
-                      {canView && (
-                        <TouchableOpacity style={mpStyles.viewBtn} onPress={() => setActiveView('submit')}>
-                          <Text style={mpStyles.viewBtnText}>View</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
+                <View key={p.id} style={[mpStyles.projectRow, idx % 2 === 1 && mpStyles.projectRowAlt]}>
+                  <View style={{ width: 110 }}>
+                    <StatusPill status={p.status} />
                   </View>
-                  {idx < displayed.length - 1 && <View style={mpStyles.rowDivider} />}
-                </React.Fragment>
+                  <View style={{ flex: 1, paddingRight: 10 }}>
+                    <Text style={mpStyles.rowTitle} numberOfLines={1}>{p.title}</Text>
+                    <ProjectPipeline status={p.status} />
+                  </View>
+                  <Text style={[mpStyles.rowMeta, { width: 100 }]}>{formatDate(p.createdAt)}</Text>
+                  <Text style={[mpStyles.rowMeta, { width: 100 }]}>{p.inHandsDate ? formatDate(p.inHandsDate) : '—'}</Text>
+                  <Text style={[mpStyles.rowMeta, { width: 54, textAlign: 'center' }]}>
+                    {p.lineItemCount > 0 ? p.lineItemCount : '—'}
+                  </Text>
+                  <Text style={[mpStyles.rowCost, { width: 84, textAlign: 'right' }, (parseFloat(p.totalCost ?? '0') > 0) && mpStyles.rowCostFilled]}>
+                    {cost}
+                  </Text>
+                  <View style={{ width: 56, alignItems: 'flex-end' }}>
+                    {canView && (
+                      <TouchableOpacity style={mpStyles.viewBtn} onPress={() => setActiveView('submit')}>
+                        <Text style={mpStyles.viewBtnText}>View</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
               );
             })
           )}
@@ -3198,40 +3198,36 @@ const mpStyles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  tableRow: {
+  projectRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 18,
     backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  rowDivider: {
-    height: 1,
-    backgroundColor: BORDER,
-    marginHorizontal: 20,
+  projectRowAlt: {
+    backgroundColor: '#FAFAFA',
   },
-  tableDate: {
+  rowTitle: {
     fontSize: 13,
-    color: TEXT,
-  },
-  tableProject: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: TEXT,
-    paddingRight: 8,
-  },
-  tablePcs: {
-    fontSize: 12,
-    color: TEXT,
-  },
-  tableTotal: {
-    fontSize: 14,
     fontWeight: '700',
     color: TEXT,
+    marginBottom: 2,
   },
-  tableTotalEmpty: {
+  rowMeta: {
+    fontSize: 12,
     color: TEXT_LIGHT,
-    fontWeight: '400',
+  },
+  rowCost: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: TEXT_LIGHT,
+  },
+  rowCostFilled: {
+    color: '#111827',
+    fontWeight: '700',
     fontSize: 13,
   },
   viewBtn: {
