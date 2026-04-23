@@ -8,6 +8,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Plus, Save, X } from 'lucide-react-native';
@@ -54,21 +55,22 @@ const createEmptyLineItem = (): LineItem => ({
 export default function EditQuoteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { allQuotes, updateQuoteAsync } = useQuotes();
+  const { allQuotes, isLoading: quotesLoading, updateQuoteAsync } = useQuotes();
   const { currentUserId, isOrgAdmin } = useUser();
 
   const originalQuote = useMemo(() => {
     return allQuotes.find((q) => q.id === id);
   }, [allQuotes, id]);
 
+  // Permission guard — only kick out if data has loaded and the check is valid
   useEffect(() => {
-    if (originalQuote && !isOrgAdmin() && originalQuote.userId && originalQuote.userId !== currentUserId) {
+    if (!originalQuote) return;
+    if (!isOrgAdmin() && originalQuote.userId && originalQuote.userId !== currentUserId) {
       router.back();
     }
-  }, [originalQuote, currentUserId]);
+  }, [originalQuote?.id]);
 
-  const isSale = originalQuote?.status === 'sale';
-  const itemType = isSale ? 'Sale' : 'Quote';
+  const isCompleted = originalQuote?.status === 'completed';
 
   const [personOrganization, setPersonOrganization] = useState('');
   const [projectName, setProjectName] = useState('');
@@ -83,6 +85,12 @@ export default function EditQuoteScreen() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Re-init if the same edit screen is re-used for a different id
+  useEffect(() => {
+    setIsLoaded(false);
+  }, [id]);
 
   useEffect(() => {
     if (originalQuote && !isLoaded) {
@@ -92,7 +100,11 @@ export default function EditQuoteScreen() {
       setOrderDate(originalQuote.orderDate);
       setInHandsDate(originalQuote.inHandsDate);
       setInvoiceNumber(originalQuote.invoiceNumber);
-      setLineItems(originalQuote.lineItems.map(item => ({ ...item, sizes: { ...item.sizes }, markupEach: item.markupEach || 0 })));
+      setLineItems(
+        originalQuote.lineItems.length > 0
+          ? originalQuote.lineItems.map(item => ({ ...item, sizes: { ...item.sizes }, markupEach: item.markupEach || 0 }))
+          : [createEmptyLineItem()]
+      );
       setHasOnlineFee(originalQuote.hasOnlineFee);
       setHasSalesTax(originalQuote.hasSalesTax);
       setHasCardFee(originalQuote.hasCardFee);
@@ -100,9 +112,12 @@ export default function EditQuoteScreen() {
     }
   }, [originalQuote, isLoaded]);
 
+  // Recalculate from current form state; fall back to saved calculations so we
+  // never block a save just because quantities happen to total zero.
   const calculations = useMemo(
-    () => calculateQuote(lineItems, hasOnlineFee, hasSalesTax, hasCardFee),
-    [lineItems, hasOnlineFee, hasSalesTax, hasCardFee]
+    () => calculateQuote(lineItems, hasOnlineFee, hasSalesTax, hasCardFee)
+         ?? (isLoaded ? originalQuote?.calculations ?? null : null),
+    [lineItems, hasOnlineFee, hasSalesTax, hasCardFee, isLoaded, originalQuote?.calculations]
   );
 
   const handleAddLineItem = useCallback(() => {
@@ -125,21 +140,7 @@ export default function EditQuoteScreen() {
     setLineItems((prev) => prev.filter((_, i) => i !== index));
   }, [lineItems.length]);
 
-  const [isSaving, setIsSaving] = useState(false);
-
-  const handleSave = useCallback(async () => {
-    if (!personOrganization.trim()) {
-      Alert.alert('Missing Info', 'Please enter person/organization name.');
-      return;
-    }
-    if (!projectName.trim()) {
-      Alert.alert('Missing Info', 'Please enter project name.');
-      return;
-    }
-    if (!calculations) {
-      Alert.alert('Incomplete', 'Please add line items with quantities to calculate the quote.');
-      return;
-    }
+  const doSave = useCallback(async () => {
     if (!originalQuote) {
       Alert.alert('Error', 'Original quote not found.');
       return;
@@ -157,13 +158,13 @@ export default function EditQuoteScreen() {
       hasOnlineFee,
       hasSalesTax,
       hasCardFee,
-      calculations,
+      calculations: calculations ?? originalQuote.calculations,
     };
 
     setIsSaving(true);
     try {
       await updateQuoteAsync(updatedQuote);
-      setToastMessage(`${itemType} updated successfully!`);
+      setToastMessage('Changes saved successfully!');
       setToastVisible(true);
       setTimeout(() => {
         router.back();
@@ -174,22 +175,36 @@ export default function EditQuoteScreen() {
       setIsSaving(false);
     }
   }, [
-    personOrganization,
-    projectName,
-    orderType,
-    orderDate,
-    inHandsDate,
-    invoiceNumber,
-    lineItems,
-    hasOnlineFee,
-    hasSalesTax,
-    hasCardFee,
-    calculations,
-    originalQuote,
-    updateQuoteAsync,
-    router,
-    itemType,
+    personOrganization, projectName, orderType, orderDate, inHandsDate,
+    invoiceNumber, lineItems, hasOnlineFee, hasSalesTax, hasCardFee,
+    calculations, originalQuote, updateQuoteAsync, router,
   ]);
+
+  const handleSave = useCallback(() => {
+    if (!personOrganization.trim()) {
+      Alert.alert('Missing Info', 'Please enter a person or organization name.');
+      return;
+    }
+    if (!projectName.trim()) {
+      Alert.alert('Missing Info', 'Please enter a project name.');
+      return;
+    }
+
+    // For completed projects, require explicit confirmation before saving
+    if (isCompleted) {
+      Alert.alert(
+        'Edit Completed Project',
+        'This project is marked as Completed. Are you sure you want to make changes?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Yes, Save Changes', style: 'destructive', onPress: doSave },
+        ]
+      );
+      return;
+    }
+
+    doSave();
+  }, [personOrganization, projectName, isCompleted, doSave]);
 
   const handleCancel = useCallback(() => {
     Alert.alert('Discard Changes', 'Are you sure you want to discard your changes?', [
@@ -198,12 +213,26 @@ export default function EditQuoteScreen() {
     ]);
   }, [router]);
 
+  // Loading state — data hasn't arrived from server yet
+  if (!originalQuote && quotesLoading) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ title: 'Edit' }} />
+        <View style={styles.notFound}>
+          <ActivityIndicator size="large" color={Colors.light.tint} />
+          <Text style={[styles.notFoundText, { marginTop: 12 }]}>Loading quote…</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Not found after data loaded
   if (!originalQuote) {
     return (
       <View style={styles.container}>
         <Stack.Screen options={{ title: 'Edit' }} />
         <View style={styles.notFound}>
-          <Text style={styles.notFoundText}>Item not found</Text>
+          <Text style={styles.notFoundText}>Quote not found</Text>
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
             <Text style={styles.backBtnText}>Go Back</Text>
           </TouchableOpacity>
@@ -211,6 +240,12 @@ export default function EditQuoteScreen() {
       </View>
     );
   }
+
+  const statusLabel = {
+    quoting: 'Quoting', needs_review: 'In Review', quoted: 'Quoted',
+    active: 'In Production', production_started: 'In Production',
+    completed: 'Completed', paid: 'Paid', invoice_sent: 'Invoice Sent',
+  }[originalQuote.status] ?? 'Quote';
 
   return (
     <KeyboardAvoidingView
@@ -225,12 +260,20 @@ export default function EditQuoteScreen() {
       />
       <Stack.Screen
         options={{
-          title: `Edit ${itemType}`,
+          title: `Edit — ${statusLabel}`,
           headerStyle: { backgroundColor: Colors.light.headerBg },
           headerTintColor: '#fff',
         }}
       />
-      
+
+      {isCompleted && (
+        <View style={styles.completedBanner}>
+          <Text style={styles.completedBannerText}>
+            ⚠ This project is Completed — changes will require confirmation before saving.
+          </Text>
+        </View>
+      )}
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
@@ -283,7 +326,6 @@ export default function EditQuoteScreen() {
               value={invoiceNumber}
               onChangeText={setInvoiceNumber}
               placeholder=""
-              autoTitleCase
             />
           </View>
         </View>
@@ -331,30 +373,34 @@ export default function EditQuoteScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quote Summary</Text>
-          <CalculationDisplay
-            calculations={calculations}
-            hasOnlineFee={hasOnlineFee}
-            hasSalesTax={hasSalesTax}
-            hasCardFee={hasCardFee}
-          />
-        </View>
+        {calculations && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Quote Summary</Text>
+            <CalculationDisplay
+              calculations={calculations}
+              hasOnlineFee={hasOnlineFee}
+              hasSalesTax={hasSalesTax}
+              hasCardFee={hasCardFee}
+            />
+          </View>
+        )}
 
         <View style={styles.bottomPadding} />
       </ScrollView>
 
       <View style={styles.actionBar}>
-        <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
+        <TouchableOpacity style={styles.cancelButton} onPress={handleCancel} disabled={isSaving}>
           <X size={18} color={Colors.light.textSecondary} />
           <Text style={styles.cancelButtonText}>Cancel</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.saveButton, (!calculations || isSaving) && styles.saveButtonDisabled]}
+          style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
           onPress={handleSave}
-          disabled={!calculations || isSaving}
+          disabled={isSaving}
         >
-          <Save size={18} color="#fff" />
+          {isSaving
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <Save size={18} color="#fff" />}
           <Text style={styles.saveButtonText}>{isSaving ? 'Saving…' : 'Save Changes'}</Text>
         </TouchableOpacity>
       </View>
@@ -392,6 +438,18 @@ const styles = StyleSheet.create({
   backBtnText: {
     color: '#fff',
     fontWeight: '600' as const,
+  },
+  completedBanner: {
+    backgroundColor: '#FFF3CD',
+    borderBottomWidth: 1,
+    borderBottomColor: '#FFC107',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  completedBannerText: {
+    fontSize: 13,
+    color: '#856404',
+    fontWeight: '500' as const,
   },
   section: {
     marginBottom: 24,
