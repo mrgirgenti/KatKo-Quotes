@@ -25,12 +25,19 @@ export async function GET(_req: Request, { orgId }: { orgId: string }) {
           SELECT COUNT(*)::int
           FROM "ProjectItem" pi
           WHERE pi."projectId" = p.id
-        ) AS "lineItemCount"
+        ) AS "lineItemCount",
+        (
+          SELECT q.total
+          FROM "Quote" q
+          WHERE q."projectId" = p.id
+          ORDER BY q."versionNumber" DESC
+          LIMIT 1
+        ) AS "totalCost"
       FROM "Project" p
       WHERE p."organizationId" = $1
         AND p.status != 'CANCELLED'::"ProjectStatus"
       ORDER BY p."createdAt" DESC
-      LIMIT 50`,
+      LIMIT 100`,
       [orgId]
     );
 
