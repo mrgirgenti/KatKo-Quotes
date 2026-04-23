@@ -55,7 +55,7 @@ interface SidebarProps {
   defaultCollapsed?: boolean;
 }
 
-const LOGO_AVAILABLE_W = EXPANDED_WIDTH - 48; // 24px padding each side
+const LOGO_AVAILABLE_W = EXPANDED_WIDTH - 32; // 16px padding each side
 
 export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
@@ -77,10 +77,11 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
     if (!logoDims) return { width: LOGO_AVAILABLE_W, height: 60 };
     const { w, h } = logoDims;
     if (w >= h) {
+      // Landscape: fill available width, scale height proportionally
       return { width: LOGO_AVAILABLE_W, height: Math.round(LOGO_AVAILABLE_W * (h / w)) };
     } else {
-      const displayH = Math.min(LOGO_AVAILABLE_W, 140);
-      return { width: Math.round(displayH * (w / h)), height: displayH };
+      // Portrait: fill available width as max height, scale width proportionally
+      return { width: Math.round(LOGO_AVAILABLE_W * (w / h)), height: LOGO_AVAILABLE_W };
     }
   })();
 
@@ -233,8 +234,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   logoContainer: {
-    paddingVertical: 14,
-    paddingHorizontal: 24,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
     alignItems: 'center',
   },
   divider: {
