@@ -1243,13 +1243,13 @@ export default function OrgProfileScreen() {
             {/* Three tilted icon cards */}
             <View style={styles.mediaBinIconRow}>
               <View style={[styles.mediaBinCard, { transform: [{ rotate: '-10deg' }], marginRight: -12, zIndex: 1 }]}>
-                <LucideImage size={26} color="#6B9FBF" />
+                <LucideImage size={26} color="#C07840" />
               </View>
               <View style={[styles.mediaBinCard, styles.mediaBinCardCenter, { zIndex: 3 }]}>
-                <Film size={26} color="#5BA4CF" />
+                <Film size={26} color="#D48A4A" />
               </View>
               <View style={[styles.mediaBinCard, { transform: [{ rotate: '10deg' }], marginLeft: -12, zIndex: 1 }]}>
-                <Music size={26} color="#6B9FBF" />
+                <Music size={26} color="#C07840" />
               </View>
             </View>
             <Text style={styles.mediaBinEmptyText}>Drag and drop your media here</Text>
@@ -2383,18 +2383,18 @@ const styles = StyleSheet.create({
     gap: 14,
     marginTop: 10,
     borderRadius: 12,
-    backgroundColor: '#1C2128',
+    backgroundColor: '#1E1410',
     overflow: 'hidden' as const,
   },
   orgMediaDropZoneActive: {
     borderWidth: 1.5,
     borderColor: Colors.light.tint,
-    backgroundColor: '#1a2535',
+    backgroundColor: '#261A0E',
   },
   mediaDot: {
     position: 'absolute' as const,
     borderRadius: 999,
-    backgroundColor: '#5BA4CF',
+    backgroundColor: '#C07840',
     opacity: 0.55,
   },
   mediaBinIconRow: {
@@ -2407,9 +2407,9 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 12,
-    backgroundColor: '#2C3640',
+    backgroundColor: '#2A1D10',
     borderWidth: 1,
-    borderColor: '#3D4F5E',
+    borderColor: '#3D2A15',
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
@@ -2417,19 +2417,19 @@ const styles = StyleSheet.create({
     width: 66,
     height: 66,
     borderRadius: 14,
-    backgroundColor: '#2A3F52',
-    borderColor: '#4A6580',
+    backgroundColor: '#2E2010',
+    borderColor: '#5A3C1A',
     zIndex: 3,
   },
   mediaBinEmptyText: {
     fontSize: 13,
     fontWeight: '500' as const,
-    color: '#8BA5BB',
+    color: '#B08060',
     textAlign: 'center' as const,
   },
   mediaBinEmptySub: {
     fontSize: 11,
-    color: '#4E6070',
+    color: '#6B4A2A',
     textAlign: 'center' as const,
     marginTop: -6,
   },
