@@ -1,0 +1,55 @@
+======================================================================
+13. BUSINESS TYPE LAYOUT + ELLIPSIS DROPDOWN POSITION FIX
+======================================================================
+
+We need to fix two UI/UX issues on the Organization / Client Profile page.
+
+--------------------------------------------------
+A. BUSINESS TYPE LAYOUT FIX
+--------------------------------------------------
+
+Current issue:
+- “Business Type” label and value are crammed and breaking awkwardly across lines
+- There is plenty of horizontal space, but it is not being used properly
+
+Required fix:
+- Ensure “Business Type” label and its value display cleanly on a SINGLE LINE
+- Match the layout consistency of other fields like Address, Website, etc.
+- Adjust spacing, label width, or container layout as needed
+- Do NOT allow unnecessary wrapping unless screen size actually requires it
+
+Goal:
+- clean, readable, professional layout
+- consistent spacing across all detail rows
+
+--------------------------------------------------
+B. ELLIPSIS (⋯) DROPDOWN POSITIONING FIX
+--------------------------------------------------
+
+Current issue:
+- When clicking the ellipsis (⋯) menu on the client profile, the dropdown appears far on the LEFT side of the screen
+- This is incorrect positioning and breaks usability
+
+Required fix:
+- The dropdown menu must anchor to the ellipsis button that triggers it
+- It should appear:
+  - directly BELOW the ellipsis, OR
+  - slightly offset to the side (right-aligned with the button)
+
+Technical expectations:
+- Use proper relative/absolute positioning tied to the trigger element
+- Ensure correct z-index so it overlays properly
+- Ensure it stays within viewport bounds (no overflow off-screen)
+
+Goal:
+- dropdown appears exactly where the user expects it
+- feels responsive and polished
+- no jumping across the screen
+
+--------------------------------------------------
+FINAL OUTCOME
+--------------------------------------------------
+
+- Business Type displays cleanly in one line with proper spacing
+- Ellipsis dropdown opens in the correct anchored position next to the trigger
+- Overall UI feels tighter, more intentional, and production-ready

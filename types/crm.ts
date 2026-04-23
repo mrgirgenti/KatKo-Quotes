@@ -142,14 +142,14 @@ export const CRM_STATUS_CONFIG: Record<CrmStatus, { label: string; color: string
 };
 
 export const ORG_TYPES = [
-  'Church / Ministry',
-  'School / University',
-  'Nonprofit',
-  'Sports Team',
   'Business',
+  'Church / Ministry',
   'Government',
   'Individual',
+  'Nonprofit',
   'Other',
+  'School / University',
+  'Sports Team',
 ] as const;
 
 export const CONTACT_ROLES: ContactRole[] = [

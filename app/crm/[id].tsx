@@ -55,6 +55,8 @@ import {
   Film,
   Music,
   Image as LucideImage,
+  Wifi,
+  WifiOff,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { OrgLogoUploader } from '@/components/OrgLogoUploader';
@@ -121,7 +123,13 @@ const STEP_STATUS_CONFIG: Record<CampaignStepStatus, { label: string; color: str
 
 const STEP_STATUSES: CampaignStepStatus[] = ['pending', 'sent', 'received', 'responded', 'skipped'];
 
-function ContactCard({ contact: c, onEdit, onDelete }: { contact: Contact; onEdit: () => void; onDelete: () => void }) {
+function ContactCard({ contact: c, onEdit, onDelete, hubAccessEnabled, onEnableHub }: {
+  contact: Contact;
+  onEdit: () => void;
+  onDelete: () => void;
+  hubAccessEnabled: boolean;
+  onEnableHub?: () => void;
+}) {
   return (
     <View style={styles.contactCard}>
       <View style={[styles.contactAvatar, c.isPrimary && styles.contactAvatarPrimary]}>
@@ -154,6 +162,16 @@ function ContactCard({ contact: c, onEdit, onDelete }: { contact: Contact; onEdi
         {c.notes && <Text style={styles.contactNotes}>{c.notes}</Text>}
       </View>
       <View style={styles.contactActions}>
+        <TouchableOpacity
+          style={[styles.contactActionBtn, styles.contactHubBtn, hubAccessEnabled && styles.contactHubBtnActive]}
+          onPress={hubAccessEnabled ? undefined : (c.email ? onEnableHub : undefined)}
+          activeOpacity={hubAccessEnabled ? 1 : 0.6}
+        >
+          {hubAccessEnabled
+            ? <Wifi size={13} color={Colors.light.tint} />
+            : <WifiOff size={13} color={Colors.light.placeholder} />
+          }
+        </TouchableOpacity>
         <TouchableOpacity style={styles.contactActionBtn} onPress={onEdit}>
           <Edit3 size={14} color={Colors.light.textSecondary} />
         </TouchableOpacity>
@@ -450,8 +468,9 @@ export default function OrgProfileScreen() {
 
   const handleSaveContact = useCallback(async () => {
     if (!org || !contactForm.firstName.trim()) return;
-    const { hubAccess, ...rest } = contactForm;
-    const payload = { ...rest, firstName: contactForm.firstName.trim(), lastName: contactForm.lastName.trim(), departmentId: contactForm.departmentId || undefined };
+    const { hubAccess, isPrimary: _ip, ...rest } = contactForm;
+    const derivedIsPrimary = contactForm.role === 'Primary Contact';
+    const payload = { ...rest, firstName: contactForm.firstName.trim(), lastName: contactForm.lastName.trim(), departmentId: contactForm.departmentId || undefined, isPrimary: derivedIsPrimary };
     if (editingContact) {
       updateContact({ orgId: org.id, contact: { ...editingContact, ...payload } });
     } else {
@@ -490,6 +509,26 @@ export default function OrgProfileScreen() {
       { text: 'Remove', style: 'destructive', onPress: () => deleteContact({ orgId: org.id, contactId: c.id }) },
     ]);
   }, [org, deleteContact]);
+
+  const handleEnableHubFromCard = useCallback(async (c: Contact) => {
+    if (!org || !c.email) return;
+    const already = memberships.some((m) => (m as any).userType === 'CLIENT' && m.userEmail === c.email);
+    if (already) return;
+    try {
+      const fullName = `${c.firstName} ${c.lastName}`.trim();
+      const userId = `client_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const userRes = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: userId, name: fullName, email: c.email, userType: 'CLIENT' }),
+      });
+      const newUser = userRes.ok ? await userRes.json() : { id: userId };
+      await createMembershipAsync({ organizationId: org.id, userId: newUser.id, role: 'MEMBER' });
+      refetchMemberships();
+    } catch {
+      Alert.alert('Error', 'Could not enable Client Hub access.');
+    }
+  }, [org, memberships, createMembershipAsync, refetchMemberships]);
 
   const openAddDept = useCallback(() => {
     setEditingDept(null);
@@ -587,8 +626,12 @@ export default function OrgProfileScreen() {
         >
           <MoreHorizontal size={18} color={Colors.light.textSecondary} />
         </TouchableOpacity>
-        <Modal visible={showOrgMenu} transparent animationType="none" onRequestClose={() => setShowOrgMenu(false)}>
-          <Pressable style={styles.orgMenuOverlay} onPress={() => setShowOrgMenu(false)}>
+        {showOrgMenu && (
+          <>
+            <Pressable
+              style={{ position: 'fixed' as any, top: 0, left: 0, right: 0, bottom: 0, zIndex: 98 }}
+              onPress={() => setShowOrgMenu(false)}
+            />
             <View style={styles.orgMenuDropdown}>
               <TouchableOpacity
                 style={styles.orgMenuItem}
@@ -615,8 +658,8 @@ export default function OrgProfileScreen() {
                 <Text style={[styles.orgMenuItemText, { color: Colors.light.error }]}>Delete</Text>
               </TouchableOpacity>
             </View>
-          </Pressable>
-        </Modal>
+          </>
+        )}
         {/* Status badge — top-left */}
         <View style={styles.orgStatusBadge}>
           <StatusBadge status={org.status} />
@@ -769,7 +812,7 @@ export default function OrgProfileScreen() {
                   {deptContacts.length === 0 ? (
                     <Text style={styles.deptEmpty}>No contacts in this department yet.</Text>
                   ) : (
-                    deptContacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} />)
+                    deptContacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={!!(c.email && memberships.some((m) => (m as any).userType === 'CLIENT' && m.userEmail === c.email))} onEnableHub={() => handleEnableHubFromCard(c)} />)
                   )}
                 </View>
               );
@@ -777,7 +820,7 @@ export default function OrgProfileScreen() {
             {(() => {
               const unassigned = org.contacts.filter((c) => !c.departmentId || !(org.departments || []).find((d) => d.id === c.departmentId));
               if ((org.departments || []).length === 0) {
-                return org.contacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} />);
+                return org.contacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={!!(c.email && memberships.some((m) => (m as any).userType === 'CLIENT' && m.userEmail === c.email))} onEnableHub={() => handleEnableHubFromCard(c)} />);
               }
               if (unassigned.length === 0) return null;
               return (
@@ -789,7 +832,7 @@ export default function OrgProfileScreen() {
                       <Text style={styles.deptCount}>{unassigned.length}</Text>
                     </View>
                   </View>
-                  {unassigned.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} />)}
+                  {unassigned.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={!!(c.email && memberships.some((m) => (m as any).userType === 'CLIENT' && m.userEmail === c.email))} onEnableHub={() => handleEnableHubFromCard(c)} />)}
                 </View>
               );
             })()}
@@ -1448,12 +1491,8 @@ export default function OrgProfileScreen() {
                     </View>
                   </>
                 )}
-                <TouchableOpacity style={styles.primaryToggle} onPress={() => setContactForm((f) => ({ ...f, isPrimary: !f.isPrimary }))}>
-                  {contactForm.isPrimary ? <CheckCircle size={18} color={Colors.light.tint} /> : <Circle size={18} color={Colors.light.textSecondary} />}
-                  <Text style={styles.primaryToggleText}>Set as primary contact</Text>
-                </TouchableOpacity>
                 {!!contactForm.email.trim() && (
-                  <TouchableOpacity style={[styles.primaryToggle, { marginTop: 4 }]} onPress={() => setContactForm((f) => ({ ...f, hubAccess: !f.hubAccess }))}>
+                  <TouchableOpacity style={styles.primaryToggle} onPress={() => setContactForm((f) => ({ ...f, hubAccess: !f.hubAccess }))}>
                     {contactForm.hubAccess ? <CheckCircle size={18} color={Colors.light.tint} /> : <Circle size={18} color={Colors.light.textSecondary} />}
                     <Text style={styles.primaryToggleText}>Enable Client Hub Access</Text>
                   </TouchableOpacity>
@@ -1879,8 +1918,19 @@ const styles = StyleSheet.create({
   contactDetailText: { fontSize: 12, color: Colors.light.textSecondary },
   contactNotes: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 5, fontStyle: 'italic' },
   contactActions: { flexDirection: 'row', gap: 4 },
-  contactActionBtn: { padding: 6 },
+  contactActionBtn: { padding: 6, borderRadius: 6 },
   contactActionBtnPrimary: { backgroundColor: '#FFF4EE', borderRadius: 6 },
+  contactHubBtn: {
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: Colors.light.background,
+    padding: 6,
+  },
+  contactHubBtnActive: {
+    borderColor: '#FF5A0030',
+    backgroundColor: '#FF5A0010',
+  },
 
   quoteRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -2142,13 +2192,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   orgMenuDropdown: {
-    position: 'absolute' as const, top: 56, left: 12,
+    position: 'absolute' as const, top: 44, right: 8,
     backgroundColor: Colors.light.surface,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: Colors.light.border,
     paddingVertical: 4,
     minWidth: 160,
+    zIndex: 99,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
@@ -2192,7 +2243,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600' as const,
     color: Colors.light.textSecondary,
-    width: 52,
+    width: 78,
     flexShrink: 0,
     paddingTop: 1,
   },

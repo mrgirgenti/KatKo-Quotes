@@ -1,0 +1,82 @@
+======================================================================
+12. ORGANIZATION TYPE + CONTACT ROLE / ACCESS REFINEMENTS
+======================================================================
+
+We need to clean up how Organization Type, Contact Role, and Client Hub access are handled.
+
+--------------------------------------------------
+A. ORGANIZATION TYPE DROPDOWN
+--------------------------------------------------
+
+- The Organization Type dropdown must be sorted in alphabetical order
+- This applies anywhere Organization Type is selected or edited
+
+This is a simple UX fix but important for usability and consistency.
+
+--------------------------------------------------
+B. PRIMARY CONTACT – MOVE INTO ROLE (REMOVE DUPLICATE CONTROL)
+--------------------------------------------------
+
+Primary Contact designation should NOT exist as a separate checkbox at the bottom of the Edit Contact form.
+
+Changes required:
+- Remove the “Primary Contact” checkbox/toggle at the bottom of the Edit Contact form
+- The ONLY place to define Primary Contact should be within the “Role” field
+
+Example:
+Role options may include:
+- Primary Contact
+- Secondary Contact
+- Billing Contact
+- etc.
+
+This ensures:
+- no duplicate controls
+- no conflicting states
+- cleaner data structure
+
+--------------------------------------------------
+C. ENABLE CLIENT HUB ACCESS – KEEP + IMPROVE VISIBILITY
+--------------------------------------------------
+
+We DO want to keep the “Enable Client Hub Access” checkbox at the bottom of the Edit Contact form.
+
+But we also want better visibility from the main Organization page.
+
+Required behavior:
+
+1. In Edit Contact:
+   - Keep “Enable Client Hub Access” as a checkbox/toggle
+   - This is the ONLY place where access can be turned ON or OFF
+
+2. On the Organization / Contacts page:
+   - Show a visible indicator or toggle for Client Hub Access on each contact row
+   - If enabled → show as ON / active (e.g., green toggle or badge)
+   - If disabled → show as OFF / inactive
+
+IMPORTANT:
+- This toggle on the Organization page should be VIEW-FIRST
+- It may appear as a toggle UI, but:
+  - it should NOT allow turning OFF directly from the list
+  - turning OFF must require going into Edit Contact
+
+Optional (nice to have):
+- Allow turning ON from the list if currently OFF
+- But turning OFF should always require confirmation via Edit Contact
+
+Goal:
+- quick visibility of who has Client Hub access
+- controlled and intentional changes to access
+- no accidental removal of access from list view
+
+--------------------------------------------------
+D. FINAL OUTCOME
+--------------------------------------------------
+
+- Organization Type dropdown is clean and alphabetical
+- “Primary Contact” is controlled only through Role (no duplicate checkbox)
+- “Enable Client Hub Access” remains in Edit Contact
+- Client Hub access is clearly visible per contact on the Organization page
+- Access changes are controlled and intentional, not accidentally toggled
+
+This improves clarity, reduces duplicate logic, and tightens permission handling.
