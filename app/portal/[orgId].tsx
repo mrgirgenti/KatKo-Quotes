@@ -890,11 +890,15 @@ export default function ClientPortal() {
 
   const [orgLogoUrl, setOrgLogoUrl] = useState<string | null>(null);
   const [orgDisplayName, setOrgDisplayName] = useState<string>('');
+  const [hubDisabled, setHubDisabled] = useState(false);
 
   useEffect(() => {
     if (!orgId) return;
     fetch(`/api/portal/${orgId}`)
-      .then(r => r.ok ? r.json() : null)
+      .then(r => {
+        if (!r.ok) { setHubDisabled(true); return null; }
+        return r.json();
+      })
       .then(data => {
         if (!data) return;
         if (data.logoUrl) setOrgLogoUrl(data.logoUrl);
@@ -1741,6 +1745,28 @@ export default function ClientPortal() {
       </ScrollView>
     </KeyboardAvoidingView>
   );
+
+  if (hubDisabled) {
+    return (
+      <View style={[styles.root, { alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FAFB' }]}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={{ alignItems: 'center', gap: 14, maxWidth: 320, padding: 32 }}>
+          <View style={{
+            width: 64, height: 64, borderRadius: 32,
+            backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Text style={{ fontSize: 28 }}>🔒</Text>
+          </View>
+          <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827', textAlign: 'center' }}>
+            Hub Unavailable
+          </Text>
+          <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 20 }}>
+            This client portal is currently not available. Please contact your account manager for access.
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>

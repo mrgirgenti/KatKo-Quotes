@@ -49,6 +49,9 @@ import {
   ExternalLink,
   ToggleLeft,
   ToggleRight,
+  Copy,
+  CheckCircle2,
+  Settings,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { OrgLogoUploader } from '@/components/OrgLogoUploader';
@@ -211,6 +214,16 @@ export default function OrgProfileScreen() {
     setLocalHubEnabled(newVal);
     updateOrgHubEnabled({ orgId: org.id, enabled: newVal });
   }, [org, localHubEnabled, updateOrgHubEnabled]);
+
+  const [hubLinkCopied, setHubLinkCopied] = useState(false);
+  const handleCopyHubLink = useCallback(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && org) {
+      const link = `${window.location.origin}/portal/${org.id}`;
+      navigator.clipboard.writeText(link);
+      setHubLinkCopied(true);
+      setTimeout(() => setHubLinkCopied(false), 2000);
+    }
+  }, [org]);
 
   const [editOrgModal, setEditOrgModal] = useState(false);
   const [orgForm, setOrgForm] = useState({ name: '', type: '', address: '', city: '', state: '', website: '', notes: '', status: 'Cold' as CrmStatus });
@@ -742,13 +755,33 @@ export default function OrgProfileScreen() {
           </TouchableOpacity>
         </View>
         {localHubEnabled && (
-          <TouchableOpacity
-            style={styles.portalLinkRow}
-            onPress={() => { if (Platform.OS === 'web') { (window as any).open(`/portal/${org.id}`, '_blank'); } }}
-          >
-            <ExternalLink size={13} color={Colors.light.tint} />
-            <Text style={styles.portalLinkText}>Open Client Hub</Text>
-          </TouchableOpacity>
+          <View style={styles.portalPanel}>
+            <View style={styles.portalUrlRow}>
+              <Globe size={11} color={Colors.light.textSecondary} />
+              <Text style={styles.portalUrlText} numberOfLines={1}>
+                {Platform.OS === 'web' && typeof window !== 'undefined'
+                  ? `${window.location.origin}/portal/${org.id}`
+                  : `/portal/${org.id}`}
+              </Text>
+            </View>
+            <View style={styles.portalActions}>
+              <TouchableOpacity
+                style={styles.portalVisitBtn}
+                onPress={() => { if (Platform.OS === 'web') { (window as any).open(`/portal/${org.id}`, '_blank'); } }}
+              >
+                <ExternalLink size={13} color="#fff" />
+                <Text style={styles.portalVisitBtnText}>Visit Hub</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.portalIconBtn} onPress={handleCopyHubLink}>
+                {hubLinkCopied
+                  ? <CheckCircle2 size={16} color="#16A34A" />
+                  : <Copy size={16} color={Colors.light.textSecondary} />}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.portalIconBtn} onPress={() => router.push(`/hub/${org.id}` as any)}>
+                <Settings size={16} color={Colors.light.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
         <View style={styles.infoCardSubHeader}>
           <Text style={styles.infoCardSubTitle}>Internal Team</Text>
@@ -2090,9 +2123,55 @@ const styles = StyleSheet.create({
   revenueStatLabel: { fontSize: 11, color: Colors.light.textSecondary, fontWeight: '500' as const },
   revenueStatDivider: { width: 1, height: 32, backgroundColor: Colors.light.border },
 
-  portalLinkRow: {
-    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 7,
-    paddingVertical: 8, paddingHorizontal: 4, marginBottom: 4,
+  portalPanel: {
+    backgroundColor: Colors.light.background,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    padding: 10,
+    marginBottom: 4,
+    gap: 8,
   },
-  portalLinkText: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.tint },
+  portalUrlRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 5,
+  },
+  portalUrlText: {
+    flex: 1,
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+    fontFamily: 'monospace',
+  },
+  portalActions: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+  },
+  portalVisitBtn: {
+    flex: 1,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 5,
+    backgroundColor: Colors.light.tint,
+    borderRadius: 7,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+  },
+  portalVisitBtnText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#fff',
+  },
+  portalIconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    backgroundColor: Colors.light.surface,
+  },
 });
