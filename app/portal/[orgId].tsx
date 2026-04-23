@@ -688,7 +688,7 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
               <View>
                 {/* Header row */}
                 <View style={liStyles.sizeHeaderRow}>
-                  <View style={{ width: 180, marginHorizontal: 2 }}>
+                  <View style={{ width: 200, marginHorizontal: 2 }}>
                     <Text style={[liStyles.sizeHeaderText, { textAlign: 'left' }]}>Product</Text>
                   </View>
                   <View style={{ width: 110, marginHorizontal: 2 }}>
@@ -711,7 +711,7 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
                       onChangeText={v => updRow(row.id, { product: v })}
                       options={PRODUCTS}
                       placeholder="Style / Product"
-                      cellWidth={180}
+                      cellWidth={200}
                     />
                     <PortalComboCell
                       value={row.color}
@@ -743,7 +743,7 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
                 {/* Totals row */}
                 {item.sizeRows.length > 1 && (
                   <View style={liStyles.sizeTotalRow}>
-                    <View style={{ width: 180, marginHorizontal: 2 }}>
+                    <View style={{ width: 200, marginHorizontal: 2 }}>
                       <Text style={{ color: TEXT_LIGHT, fontSize: 11 }}>Totals</Text>
                     </View>
                     <View style={{ width: 110, marginHorizontal: 2 }} />
@@ -1858,7 +1858,7 @@ export default function ClientPortal() {
 
   const SubmitView = () => (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView contentContainerStyle={dash.viewContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[dash.viewContent, { alignItems: 'center' }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {submittedId ? (
           <View style={[styles.card, { maxWidth: 520 }]}>
             <View style={styles.successIcon}><CheckCircle size={40} color="#16A34A" /></View>
@@ -1902,7 +1902,7 @@ export default function ClientPortal() {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={[styles.card, { maxWidth: 860 }]}>
+          <View style={[styles.card, { maxWidth: 940 }]}>
             <Text style={styles.formTitle}>Submit a Project Request</Text>
             <Text style={styles.formSub}>Fill in the details below — your submission will come straight into Ko OS ready for pricing.</Text>
 
@@ -2350,8 +2350,8 @@ const liStyles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
   },
   sizeCell: { paddingHorizontal: 4, textAlign: 'center' },
-  sizeCellNum: { width: 40, textAlign: 'center' },
-  sizeCellTotal: { width: 46, textAlign: 'center' },
+  sizeCellNum: { width: 52, textAlign: 'center' },
+  sizeCellTotal: { width: 58, textAlign: 'center' },
   sizeInput: {
     borderWidth: 1, borderColor: '#E9EAEB', borderRadius: 6,
     paddingHorizontal: 6, paddingVertical: 5, fontSize: 12, color: TEXT,
