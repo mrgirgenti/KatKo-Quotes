@@ -202,6 +202,7 @@ interface PortalLineItem {
   showLoc4: boolean;
   notes: string;
   sizeRows: SizeRow[];
+  mockupFile: PendingFile | null;
   artworkFiles: PendingFile[];
   collapsed: boolean;
 }
@@ -226,6 +227,7 @@ function emptyLineItem(): PortalLineItem {
     showLoc4: false,
     notes: '',
     sizeRows: [emptyRow()],
+    mockupFile: null,
     artworkFiles: [],
     collapsed: false,
   };
@@ -524,17 +526,17 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
     onChange({ ...item, sizeRows: remaining.length > 0 ? remaining : [emptyRow()] });
   }, [item, onChange]);
 
-  const addArtworkFiles = useCallback((files: globalThis.File[]) => {
-    const newFiles: PendingFile[] = files.map(f => ({
-      id: `lf${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      name: f.name, size: f.size, file: f,
-    }));
-    upd({ artworkFiles: [...(item.artworkFiles || []), ...newFiles] });
-  }, [item, upd]);
+  const addMockupFile = useCallback((file: globalThis.File) => {
+    const pf: PendingFile = {
+      id: `mk${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      name: file.name, size: file.size, file,
+    };
+    upd({ mockupFile: pf });
+  }, [upd]);
 
-  const removeArtworkFile = useCallback((fileId: string) => {
-    upd({ artworkFiles: (item.artworkFiles || []).filter(f => f.id !== fileId) });
-  }, [item, upd]);
+  const removeMockupFile = useCallback(() => {
+    upd({ mockupFile: null });
+  }, [upd]);
 
   const total = grandTotal(item.sizeRows);
   const isCollapsed = item.collapsed;
@@ -791,45 +793,48 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
             />
           </View>
 
-          {/* ── Per-Item Artwork Upload ── */}
+          {/* ── Per-Item Mockup Upload ── */}
           <View style={liStyles.artworkSection}>
-            <Text style={pFields.label}>Artwork / Reference Files</Text>
+            <Text style={pFields.label}>Mockup</Text>
+            <Text style={liStyles.mockupBlurb}>
+              Please use this upload area to share a mockup with us (not required). For all actual artwork files, please upload at the end of the form.
+            </Text>
             {Platform.OS === 'web' && (
               <input
                 ref={liFileInputRef}
                 type="file"
-                accept=".ai,.svg,.png,.jpg,.jpeg,.pdf,.eps,.psd"
-                multiple
+                accept=".ai,.svg,.png,.jpg,.jpeg,.pdf"
+                multiple={false}
                 style={{ display: 'none' }}
                 onChange={(e: any) => {
-                  addArtworkFiles(Array.from((e.target.files || []) as globalThis.File[]));
+                  const files = Array.from((e.target.files || []) as globalThis.File[]);
+                  if (files[0]) addMockupFile(files[0]);
                   e.target.value = '';
                 }}
               />
             )}
-            <TouchableOpacity
-              style={liStyles.artworkDropZone}
-              onPress={() => liFileInputRef.current?.click?.()}
-              activeOpacity={0.85}
-            >
-              <Upload size={16} color="#9CA3AF" />
-              <Text style={liStyles.artworkDropText}>Click to attach artwork files</Text>
-              <Text style={liStyles.artworkDropSub}>AI · EPS · SVG · PNG · JPG · PDF · PSD</Text>
-            </TouchableOpacity>
-            {(item.artworkFiles || []).length > 0 && (
+            {!item.mockupFile ? (
+              <TouchableOpacity
+                style={liStyles.artworkDropZone}
+                onPress={() => liFileInputRef.current?.click?.()}
+                activeOpacity={0.85}
+              >
+                <Upload size={16} color="#9CA3AF" />
+                <Text style={liStyles.artworkDropText}>Click to attach a mockup (1 file)</Text>
+                <Text style={liStyles.artworkDropSub}>AI · SVG · PNG · JPG · PDF</Text>
+              </TouchableOpacity>
+            ) : (
               <View style={liStyles.artworkFileList}>
-                {(item.artworkFiles || []).map(pf => (
-                  <View key={pf.id} style={liStyles.artworkFileRow}>
-                    <FileText size={12} color={BRAND} style={{ flexShrink: 0 }} />
-                    <Text style={liStyles.artworkFileName} numberOfLines={1}>{pf.name}</Text>
-                    <Text style={liStyles.artworkFileSize}>
-                      {pf.size < 1048576 ? `${(pf.size / 1024).toFixed(0)} KB` : `${(pf.size / 1048576).toFixed(1)} MB`}
-                    </Text>
-                    <TouchableOpacity onPress={() => removeArtworkFile(pf.id)} style={{ padding: 4 }}>
-                      <X size={13} color={TEXT_LIGHT} />
-                    </TouchableOpacity>
-                  </View>
-                ))}
+                <View style={liStyles.artworkFileRow}>
+                  <FileText size={12} color={BRAND} style={{ flexShrink: 0 }} />
+                  <Text style={liStyles.artworkFileName} numberOfLines={1}>{item.mockupFile.name}</Text>
+                  <Text style={liStyles.artworkFileSize}>
+                    {item.mockupFile.size < 1048576 ? `${(item.mockupFile.size / 1024).toFixed(0)} KB` : `${(item.mockupFile.size / 1048576).toFixed(1)} MB`}
+                  </Text>
+                  <TouchableOpacity onPress={removeMockupFile} style={{ padding: 4 }}>
+                    <X size={13} color={TEXT_LIGHT} />
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
           </View>
@@ -1138,43 +1143,66 @@ export default function ClientPortal() {
     setSubmitError('');
     setFormErrors({});
 
-    const payload = {
-      orgId: session.orgId,
-      userId: session.userId,
-      orgName: session.orgName,
-      title: projectName.trim(),
-      orderType,
-      inHandsDate,
-      notes: requestNotes.trim() || null,
-      lineItems: lineItems.map(item => ({
-        id: item.id,
-        designName: item.designName.trim(),
-        serviceStyle: item.serviceStyle,
-        location1: item.location1,
-        location2: item.location2,
-        location3: item.location3,
-        location4: item.location4,
-        locationDetails: item.notes,
-        product: item.sizeRows[0]?.product || '',
-        productColor: item.sizeRows[0]?.color || '',
-        apparelProvider: '',
-        applicator: 'Katalyst Ko Printshop',
-        sizes: sizesToPayload(item.sizeRows),
-        garmentVariants: item.sizeRows
-          .filter(r => r.product || rowTotal(r) > 0)
-          .map(r => ({
-            product: r.product,
-            color: r.color,
-            sizes: { xs: r.xs, s: r.s, m: r.m, l: r.l, xl: r.xl, xxl: r.xxl, xxxl: r.xxxl, xxxxl: r.xxxxl, flat: 0 },
-          })),
-        productCostEach: 0,
-        serviceCostEach: 0,
-        serviceFeeEach: 0,
-        markupEach: 0,
-      })),
-    };
-
     try {
+      // Pre-upload mockup files (one per line item) to get their URLs for the admin view
+      const mockupUris: Record<string, string> = {};
+      for (const item of lineItems) {
+        if (item.mockupFile) {
+          const fd = new FormData();
+          fd.append('file', item.mockupFile.file);
+          fd.append('orgId', session.orgId);
+          fd.append('uploadedByUserId', session.userId);
+          fd.append('fileType', 'MOCKUP');
+          fd.append('visibility', 'CLIENT_VISIBLE');
+          try {
+            const uploadRes = await fetch('/api/files', { method: 'POST', body: fd });
+            if (uploadRes.ok) {
+              const uploadData = await uploadRes.json();
+              if (uploadData.file?.id) {
+                mockupUris[item.id] = `/api/files/${uploadData.file.id}?inline=true`;
+              }
+            }
+          } catch { /* non-fatal */ }
+        }
+      }
+
+      const payload = {
+        orgId: session.orgId,
+        userId: session.userId,
+        orgName: session.orgName,
+        title: projectName.trim(),
+        orderType,
+        inHandsDate,
+        notes: requestNotes.trim() || null,
+        lineItems: lineItems.map(item => ({
+          id: item.id,
+          designName: item.designName.trim(),
+          serviceStyle: item.serviceStyle,
+          location1: item.location1,
+          location2: item.location2,
+          location3: item.location3,
+          location4: item.location4,
+          locationDetails: item.notes,
+          product: item.sizeRows[0]?.product || '',
+          productColor: item.sizeRows[0]?.color || '',
+          apparelProvider: '',
+          applicator: 'Katalyst Ko Printshop',
+          sizes: sizesToPayload(item.sizeRows),
+          garmentVariants: item.sizeRows
+            .filter(r => r.product || rowTotal(r) > 0)
+            .map(r => ({
+              product: r.product,
+              color: r.color,
+              sizes: { xs: r.xs, s: r.s, m: r.m, l: r.l, xl: r.xl, xxl: r.xxl, xxxl: r.xxxl, xxxxl: r.xxxxl, flat: 0 },
+            })),
+          mockupUri: mockupUris[item.id] || null,
+          productCostEach: 0,
+          serviceCostEach: 0,
+          serviceFeeEach: 0,
+          markupEach: 0,
+        })),
+      };
+
       const res = await fetch('/api/portal/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1185,7 +1213,6 @@ export default function ClientPortal() {
       const projectId = data.id;
       const allFiles = [
         ...pendingFiles,
-        ...lineItems.flatMap(li => li.artworkFiles || []),
       ];
       if (allFiles.length > 0) {
         setUploadingFiles(true);
@@ -1984,12 +2011,12 @@ export default function ClientPortal() {
             {/* Artwork Upload Zone */}
             <View style={[pFields.container, { marginTop: 4 }]}>
               <Text style={pFields.label}>Attach Artwork Files</Text>
-              <Text style={pFields.hint}>AI, SVG, PNG, JPG, PDF · Multiple files supported</Text>
+              <Text style={pFields.hint}>AI, SVG, PNG, JPG, PDF, DST, EMB · Multiple files supported</Text>
               {Platform.OS === 'web' && (
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".ai,.svg,.png,.jpg,.jpeg,.pdf"
+                  accept=".ai,.svg,.png,.jpg,.jpeg,.pdf,.dst,.emb"
                   multiple
                   style={{ display: 'none' }}
                   onChange={(e: any) => {
@@ -2009,7 +2036,7 @@ export default function ClientPortal() {
                 <Text style={[upStyles.dropZoneText, isDraggingOver && { color: BRAND }]}>
                   {isDraggingOver ? 'Drop to add files' : 'Click or drag files here'}
                 </Text>
-                <Text style={upStyles.dropZoneSub}>AI · SVG · PNG · JPG · PDF</Text>
+                <Text style={upStyles.dropZoneSub}>AI · SVG · PNG · JPG · PDF · DST · EMB</Text>
               </TouchableOpacity>
               {pendingFiles.length > 0 && (
                 <View style={upStyles.fileList}>
@@ -2376,6 +2403,14 @@ const liStyles = StyleSheet.create({
   grandTotalLabel: { fontSize: 12, fontWeight: '600', color: '#15803D' },
   grandTotalValue: { fontSize: 14, fontWeight: '700', color: '#15803D' },
   cardSubtitle: { fontSize: 11, color: 'rgba(255,255,255,0.65)', marginTop: 1 },
+  mockupBlurb: {
+    fontSize: 11,
+    color: TEXT_LIGHT,
+    lineHeight: 16,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingTop: 2,
+  },
   artworkSection: {
     borderWidth: 1,
     borderColor: BORDER,

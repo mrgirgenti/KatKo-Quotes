@@ -65,6 +65,7 @@ export async function POST(request: Request) {
       locationDetails: item.locationDetails || '',
       sizes: item.sizes || { xs: 0, s: 0, m: 0, l: 0, xl: 0, xxl: 0, xxxl: 0, xxxxl: 0, flat: 0 },
       garmentVariants: item.garmentVariants || [],
+      mockupUri: item.mockupUri || null,
       productCostEach: 0,
       serviceCostEach: 0,
       serviceFeeEach: 0,

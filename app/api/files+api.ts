@@ -73,9 +73,10 @@ export async function POST(request: Request) {
   if (!ALLOWED_MIME_TYPES[mimeType]) {
     const name = fileEntry.name.toLowerCase();
     const isAllowedExt = name.endsWith('.ai') || name.endsWith('.svg') || name.endsWith('.png')
-      || name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.pdf');
+      || name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.pdf')
+      || name.endsWith('.dst') || name.endsWith('.emb');
     if (!isAllowedExt) {
-      return Response.json({ error: 'File type not allowed. Supported: AI, SVG, PNG, JPG, PDF.' }, { status: 400 });
+      return Response.json({ error: 'File type not allowed. Supported: AI, SVG, PNG, JPG, PDF, DST, EMB.' }, { status: 400 });
     }
   }
 
