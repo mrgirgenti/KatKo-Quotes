@@ -687,10 +687,10 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
               <View>
                 {/* Header row */}
                 <View style={liStyles.sizeHeaderRow}>
-                  <View style={{ width: 180 }}>
+                  <View style={{ width: 180, marginHorizontal: 2 }}>
                     <Text style={[liStyles.sizeHeaderText, { textAlign: 'left' }]}>Product</Text>
                   </View>
-                  <View style={{ width: 110 }}>
+                  <View style={{ width: 110, marginHorizontal: 2 }}>
                     <Text style={[liStyles.sizeHeaderText, { textAlign: 'left' }]}>Color</Text>
                   </View>
                   {SIZE_KEYS.map(k => (
@@ -742,10 +742,10 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
                 {/* Totals row */}
                 {item.sizeRows.length > 1 && (
                   <View style={liStyles.sizeTotalRow}>
-                    <View style={{ width: 180 }}>
+                    <View style={{ width: 180, marginHorizontal: 2 }}>
                       <Text style={{ color: TEXT_LIGHT, fontSize: 11 }}>Totals</Text>
                     </View>
-                    <View style={{ width: 110 }} />
+                    <View style={{ width: 110, marginHorizontal: 2 }} />
                     {SIZE_KEYS.map(k => (
                       <View key={k} style={[liStyles.sizeCellNum, { marginHorizontal: 2, alignItems: 'center' }]}>
                         <Text style={{ fontWeight: '600', fontSize: 11, color: TEXT_MED, textAlign: 'center' }}>
