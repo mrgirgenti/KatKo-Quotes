@@ -125,3 +125,38 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Failed to sync user' }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    if (!body.id) return Response.json({ error: 'id required' }, { status: 400 });
+
+    const fields: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (body.avatarColor !== undefined) {
+      fields.push(`"avatarColor" = $${idx++}`);
+      values.push(body.avatarColor || '#FF5A00');
+    }
+    if (body.avatarUri !== undefined) {
+      fields.push(`"avatarUri" = $${idx++}`);
+      values.push(body.avatarUri || null);
+    }
+
+    if (fields.length === 0) return Response.json({ error: 'Nothing to update' }, { status: 400 });
+
+    fields.push(`"updatedAt" = NOW()`);
+    values.push(body.id);
+
+    const result = await pool.query(
+      `UPDATE "User" SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+      values,
+    );
+    if (!result.rows[0]) return Response.json({ error: 'User not found' }, { status: 404 });
+    return Response.json(toFrontendUser(result.rows[0]));
+  } catch (err) {
+    console.error('[PATCH /api/users]', err);
+    return Response.json({ error: 'Failed to update user' }, { status: 500 });
+  }
+}

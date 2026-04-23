@@ -45,7 +45,8 @@ export async function POST(request: Request, { orgId }: { orgId: string }) {
     const memberResult = await pool.query(
       `SELECT u.id,
               TRIM(u."firstName" || ' ' || COALESCE(u."lastName", '')) AS name,
-              u.email, u."userType", u.status, om.role
+              u.email, u."userType", u.status, om.role,
+              u."avatarColor", u."avatarUri"
        FROM "OrganizationMembership" om
        JOIN "User" u ON u.id = om."userId"
        WHERE om."organizationId" = $1
@@ -78,9 +79,36 @@ export async function POST(request: Request, { orgId }: { orgId: string }) {
       role: user.role,
       orgName: org.name,
       orgId: org.id,
+      avatarColor: user.avatarColor || '#FF5A00',
+      avatarUri: user.avatarUri || null,
     });
   } catch (err) {
     console.error('[POST /api/portal/[orgId]]', err);
+    return Response.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request, { orgId }: { orgId: string }) {
+  try {
+    const body = await request.json();
+    const callerUserId = body.callerUserId;
+    if (!callerUserId) return Response.json({ error: 'callerUserId required' }, { status: 400 });
+
+    const memberCheck = await pool.query(
+      `SELECT om.role FROM "OrganizationMembership" om WHERE om."organizationId" = $1 AND om."userId" = $2`,
+      [orgId, callerUserId]
+    );
+    if (!memberCheck.rows[0] || memberCheck.rows[0].role !== 'ORG_ADMIN') {
+      return Response.json({ error: 'Only org admins can update the organization logo' }, { status: 403 });
+    }
+
+    await pool.query(
+      `UPDATE "Organization" SET "logoUrl" = $1, "updatedAt" = NOW() WHERE id = $2`,
+      [body.logoUrl || null, orgId]
+    );
+    return Response.json({ ok: true, logoUrl: body.logoUrl || null });
+  } catch (err) {
+    console.error('[PATCH /api/portal/[orgId]]', err);
     return Response.json({ error: 'Server error' }, { status: 500 });
   }
 }

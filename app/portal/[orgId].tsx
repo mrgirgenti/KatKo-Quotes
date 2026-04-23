@@ -161,7 +161,6 @@ const NAV_ITEMS: { id: ActiveView; label: string; Icon: React.ComponentType<any>
   { id: 'projects', label: 'My Projects',      Icon: Folder },
   { id: 'artwork',  label: 'Media Bin',        Icon: Layers },
   { id: 'catalogs', label: 'Product Catalogs', Icon: BookOpen },
-  { id: 'profile',  label: 'Profile',          Icon: User },
 ];
 
 interface ClientSession {
@@ -171,6 +170,8 @@ interface ClientSession {
   role: string;
   orgName: string;
   orgId: string;
+  avatarColor?: string;
+  avatarUri?: string | null;
 }
 
 const PORTAL_SERVICE_STYLES = [
@@ -931,8 +932,14 @@ export default function ClientPortal() {
   const [teamInviting, setTeamInviting] = useState(false);
   const [teamInviteError, setTeamInviteError] = useState('');
   const [teamInviteSuccess, setTeamInviteSuccess] = useState('');
-  const [profileName, setProfileName] = useState('');
+  const [profileAvatarColor, setProfileAvatarColor] = useState<string>(BRAND);
+  const [profilePicUri, setProfilePicUri] = useState<string | null>(null);
   const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSaveMsg, setProfileSaveMsg] = useState('');
+  const [orgLogoSaving, setOrgLogoSaving] = useState(false);
+  const [orgLogoSaveMsg, setOrgLogoSaveMsg] = useState('');
+  const profilePicInputRef = useRef<any>(null);
+  const orgLogoInputRef = useRef<any>(null);
 
   const [mpSearch, setMpSearch] = useState('');
   const [mpStatusFilter, setMpStatusFilter] = useState<string | null>(null);
@@ -1197,6 +1204,8 @@ export default function ClientPortal() {
       const data = await res.json();
       if (!res.ok) { setEmailError(data.error || 'Could not verify your email.'); return; }
       setSession(data);
+      setProfileAvatarColor(data.avatarColor || BRAND);
+      setProfilePicUri(data.avatarUri || null);
       setStep('dashboard');
       setActiveView('home');
       fetchOrgProjects(data.orgId);
@@ -2207,6 +2216,11 @@ export default function ClientPortal() {
 
   const isOrgAdmin = session?.role === 'ORG_ADMIN';
 
+  const AVATAR_COLORS = [
+    '#FF5A00', '#6366F1', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+    '#06B6D4', '#84CC16', '#F97316', '#EC4899', '#14B8A6', '#64748B',
+  ];
+
   const ProfileView = () => {
     const handleInvite = async () => {
       if (!session || !teamInviteEmail.trim()) return;
@@ -2234,19 +2248,152 @@ export default function ClientPortal() {
       } catch {}
     };
 
+    const handleProfilePicFile = async (e: any) => {
+      const file = e.target?.files?.[0];
+      if (!file || !session) return;
+      setProfileSaving(true);
+      setProfileSaveMsg('');
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('orgId', session.orgId);
+        fd.append('userId', session.userId);
+        const uploadRes = await fetch('/api/files', { method: 'POST', body: fd });
+        const uploadData = await uploadRes.json();
+        if (uploadRes.ok && uploadData.file?.id) {
+          const picUrl = `/api/files/${uploadData.file.id}?inline=true`;
+          await fetch('/api/users', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: session.userId, avatarUri: picUrl }),
+          });
+          setProfilePicUri(picUrl);
+          setProfileSaveMsg('Profile picture updated!');
+        }
+      } catch {}
+      setProfileSaving(false);
+      if (profilePicInputRef.current) profilePicInputRef.current.value = '';
+    };
+
+    const handleRemoveProfilePic = async () => {
+      if (!session) return;
+      setProfileSaving(true);
+      setProfileSaveMsg('');
+      try {
+        await fetch('/api/users', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: session.userId, avatarUri: null }),
+        });
+        setProfilePicUri(null);
+        setProfileSaveMsg('Profile picture removed.');
+      } catch {}
+      setProfileSaving(false);
+    };
+
+    const handleAvatarColorChange = async (color: string) => {
+      if (!session) return;
+      setProfileAvatarColor(color);
+      try {
+        await fetch('/api/users', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: session.userId, avatarColor: color }),
+        });
+        setProfileSaveMsg('Avatar color saved!');
+      } catch {}
+    };
+
+    const handleOrgLogoFile = async (e: any) => {
+      const file = e.target?.files?.[0];
+      if (!file || !session) return;
+      setOrgLogoSaving(true);
+      setOrgLogoSaveMsg('');
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('orgId', session.orgId);
+        fd.append('userId', session.userId);
+        const uploadRes = await fetch('/api/files', { method: 'POST', body: fd });
+        const uploadData = await uploadRes.json();
+        if (uploadRes.ok && uploadData.file?.id) {
+          const logoUrl = `/api/files/${uploadData.file.id}?inline=true`;
+          await fetch(`/api/portal/${session.orgId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callerUserId: session.userId, logoUrl }),
+          });
+          setOrgLogoUrl(logoUrl);
+          setOrgLogoSaveMsg('Organization logo updated!');
+        }
+      } catch {}
+      setOrgLogoSaving(false);
+      if (orgLogoInputRef.current) orgLogoInputRef.current.value = '';
+    };
+
+    const handleRemoveOrgLogo = async () => {
+      if (!session) return;
+      setOrgLogoSaving(true);
+      setOrgLogoSaveMsg('');
+      try {
+        await fetch(`/api/portal/${session.orgId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callerUserId: session.userId, logoUrl: null }),
+        });
+        setOrgLogoUrl(null);
+        setOrgLogoSaveMsg('Organization logo removed.');
+      } catch {}
+      setOrgLogoSaving(false);
+    };
+
     const ROLE_LABELS: Record<string, string> = {
       ORG_ADMIN: 'Admin', MEMBER: 'Member', BILLING_CONTACT: 'Billing', APPROVER: 'Approver',
     };
 
     return (
       <ScrollView style={{ flex: 1, backgroundColor: '#F9FAFB' }} contentContainerStyle={{ padding: 28, paddingBottom: 60, maxWidth: 680, alignSelf: 'center', width: '100%' }}>
+
+        {/* Hidden file inputs for web */}
+        {Platform.OS === 'web' && (
+          <>
+            <input
+              ref={profilePicInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={handleProfilePicFile}
+            />
+            <input
+              ref={orgLogoInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={handleOrgLogoFile}
+            />
+          </>
+        )}
+
         {/* Profile header */}
         <View style={profStyles.section}>
-          <View style={profStyles.avatarRow}>
-            <View style={profStyles.avatar}>
-              <Text style={profStyles.avatarText}>{session?.userName[0]?.toUpperCase() || '?'}</Text>
+          <View style={profStyles.sectionHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <User size={16} color={BRAND} />
+              <Text style={profStyles.sectionTitle}>My Profile</Text>
             </View>
-            <View style={{ flex: 1 }}>
+          </View>
+
+          <View style={profStyles.avatarRow}>
+            <View style={{ position: 'relative' }}>
+              <View style={[profStyles.avatar, { backgroundColor: profileAvatarColor }]}>
+                {profilePicUri ? (
+                  <Image source={{ uri: profilePicUri }} style={{ width: 64, height: 64, borderRadius: 32 }} />
+                ) : (
+                  <Text style={profStyles.avatarText}>{session?.userName[0]?.toUpperCase() || '?'}</Text>
+                )}
+              </View>
+            </View>
+            <View style={{ flex: 1, gap: 6 }}>
               <Text style={profStyles.userName}>{session?.userName}</Text>
               <Text style={profStyles.userEmail}>{session?.userEmail}</Text>
               <View style={profStyles.orgBadge}>
@@ -2254,14 +2401,53 @@ export default function ClientPortal() {
               </View>
             </View>
           </View>
+
+          {/* Profile picture controls */}
+          <View style={profStyles.editBlock}>
+            <Text style={profStyles.editLabel}>PROFILE PICTURE</Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+              <TouchableOpacity
+                style={profStyles.editBtn}
+                onPress={() => profilePicInputRef.current?.click()}
+                disabled={profileSaving}
+              >
+                {profileSaving ? <ActivityIndicator size="small" color={BRAND} /> : <Upload size={13} color={BRAND} />}
+                <Text style={profStyles.editBtnText}>{profilePicUri ? 'Change Photo' : 'Upload Photo'}</Text>
+              </TouchableOpacity>
+              {profilePicUri && (
+                <TouchableOpacity style={profStyles.editBtnDestructive} onPress={handleRemoveProfilePic} disabled={profileSaving}>
+                  <X size={13} color="#DC2626" />
+                  <Text style={profStyles.editBtnDestructiveText}>Remove</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {profileSaveMsg ? <Text style={profStyles.successText}>{profileSaveMsg}</Text> : null}
+          </View>
+
+          {/* Avatar color picker */}
+          <View style={profStyles.editBlock}>
+            <Text style={profStyles.editLabel}>AVATAR COLOR</Text>
+            <View style={profStyles.colorSwatches}>
+              {AVATAR_COLORS.map(c => (
+                <TouchableOpacity
+                  key={c}
+                  onPress={() => handleAvatarColorChange(c)}
+                  style={[
+                    profStyles.colorSwatch,
+                    { backgroundColor: c },
+                    profileAvatarColor === c && profStyles.colorSwatchSelected,
+                  ]}
+                >
+                  {profileAvatarColor === c && <Check size={12} color="#fff" strokeWidth={3} />}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
           <View style={profStyles.infoGrid}>
             <View style={profStyles.infoCell}>
               <Text style={profStyles.infoLabel}>EMAIL</Text>
               <Text style={profStyles.infoValue}>{session?.userEmail}</Text>
-            </View>
-            <View style={profStyles.infoCell}>
-              <Text style={profStyles.infoLabel}>ORGANIZATION</Text>
-              <Text style={profStyles.infoValue}>{session?.orgName}</Text>
             </View>
             <View style={profStyles.infoCell}>
               <Text style={profStyles.infoLabel}>ROLE</Text>
@@ -2269,6 +2455,48 @@ export default function ClientPortal() {
             </View>
           </View>
         </View>
+
+        {/* Organization Logo (ORG_ADMIN only) */}
+        {isOrgAdmin && (
+          <View style={profStyles.section}>
+            <View style={profStyles.sectionHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <ImageIcon size={16} color={BRAND} />
+                <Text style={profStyles.sectionTitle}>Organization Logo</Text>
+              </View>
+            </View>
+            <Text style={{ fontSize: 12, color: TEXT_LIGHT, marginBottom: 14 }}>
+              Your organization logo appears in the Client Hub sidebar for all team members.
+            </Text>
+            {orgLogoUrl ? (
+              <View style={profStyles.orgLogoPreview}>
+                <Image source={{ uri: orgLogoUrl }} style={{ width: 200, height: 80 }} resizeMode="contain" />
+              </View>
+            ) : (
+              <View style={profStyles.orgLogoEmpty}>
+                <ImageIcon size={28} color="#D1D5DB" />
+                <Text style={{ fontSize: 12, color: TEXT_PLACEHOLDER, marginTop: 6 }}>No logo uploaded</Text>
+              </View>
+            )}
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
+              <TouchableOpacity
+                style={profStyles.editBtn}
+                onPress={() => orgLogoInputRef.current?.click()}
+                disabled={orgLogoSaving}
+              >
+                {orgLogoSaving ? <ActivityIndicator size="small" color={BRAND} /> : <Upload size={13} color={BRAND} />}
+                <Text style={profStyles.editBtnText}>{orgLogoUrl ? 'Change Logo' : 'Upload Logo'}</Text>
+              </TouchableOpacity>
+              {orgLogoUrl && (
+                <TouchableOpacity style={profStyles.editBtnDestructive} onPress={handleRemoveOrgLogo} disabled={orgLogoSaving}>
+                  <X size={13} color="#DC2626" />
+                  <Text style={profStyles.editBtnDestructiveText}>Remove</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {orgLogoSaveMsg ? <Text style={profStyles.successText}>{orgLogoSaveMsg}</Text> : null}
+          </View>
+        )}
 
         {/* My Team */}
         <View style={profStyles.section}>
@@ -2525,7 +2753,6 @@ export default function ClientPortal() {
                         onPress={() => {
                           setActiveView(id);
                           if (id === 'artwork' && session) fetchMediaBin(session.orgId);
-                          if (id === 'profile' && session) fetchTeam(session.orgId);
                         }}
                       >
                         <Icon size={16} color={isActive ? '#fff' : '#9CA3AF'} />
@@ -2542,8 +2769,12 @@ export default function ClientPortal() {
                   onPress={() => { setActiveView('profile'); fetchTeam(session.orgId); }}
                   activeOpacity={0.8}
                 >
-                  <View style={[dash.userAvatar, activeView === 'profile' && { backgroundColor: BRAND }]}>
-                    <Text style={dash.userAvatarText}>{session.userName[0]?.toUpperCase() || '?'}</Text>
+                  <View style={[dash.userAvatar, { backgroundColor: profileAvatarColor }, activeView === 'profile' && { borderWidth: 2, borderColor: BRAND }]}>
+                    {profilePicUri ? (
+                      <Image source={{ uri: profilePicUri }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+                    ) : (
+                      <Text style={dash.userAvatarText}>{session.userName[0]?.toUpperCase() || '?'}</Text>
+                    )}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={dash.userName} numberOfLines={1}>{session.userName}</Text>
@@ -3725,6 +3956,40 @@ const profStyles = StyleSheet.create({
   removeBtn: { padding: 6, borderRadius: 6, backgroundColor: '#FEF2F2' },
   emptyTeam: { alignItems: 'center', paddingVertical: 20 },
   emptyTeamText: { fontSize: 13, color: TEXT_LIGHT },
+
+  editBlock: { marginBottom: 18 },
+  editLabel: { fontSize: 10, fontWeight: '700', color: TEXT_PLACEHOLDER, textTransform: 'uppercase', letterSpacing: 0.5 },
+  editBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderWidth: 1, borderColor: BRAND, borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 8,
+  },
+  editBtnText: { fontSize: 12, fontWeight: '600', color: BRAND },
+  editBtnDestructive: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderWidth: 1, borderColor: '#FECACA', borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#FEF2F2',
+  },
+  editBtnDestructiveText: { fontSize: 12, fontWeight: '600', color: '#DC2626' },
+
+  colorSwatches: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10 },
+  colorSwatch: {
+    width: 32, height: 32, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  colorSwatchSelected: {
+    borderWidth: 3, borderColor: '#fff',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 4,
+  },
+
+  orgLogoPreview: {
+    borderRadius: 10, borderWidth: 1, borderColor: BORDER,
+    backgroundColor: '#F9FAFB', padding: 16, alignItems: 'center',
+  },
+  orgLogoEmpty: {
+    borderRadius: 10, borderWidth: 1, borderColor: BORDER, borderStyle: 'dashed' as any,
+    backgroundColor: '#F9FAFB', padding: 28, alignItems: 'center',
+  },
 });
 
 const binPickStyles = StyleSheet.create({
