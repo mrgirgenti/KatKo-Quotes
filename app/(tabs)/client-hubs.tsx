@@ -20,6 +20,8 @@ import {
   Settings,
   ExternalLink,
   AlertCircle,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
@@ -43,11 +45,13 @@ function getStatusStyle(status: string) {
 }
 
 // ── Desktop/tablet table row ──
-function HubRow({ org, onPress, onCopyLink, copied, hideContact }: {
+function HubRow({ org, onPress, onCopyLink, copied, onToggle, enabling, hideContact }: {
   org: Organization;
   onPress: () => void;
   onCopyLink: () => void;
   copied: boolean;
+  onToggle: () => void;
+  enabling: boolean;
   hideContact?: boolean;
 }) {
   const primaryContact = getPrimaryContact(org);
@@ -59,7 +63,7 @@ function HubRow({ org, onPress, onCopyLink, copied, hideContact }: {
   const hasLogo = !!org.logoUrl;
 
   return (
-    <TouchableOpacity style={styles.tableRow} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity style={[styles.tableRow, !org.hubEnabled && styles.tableRowOff]} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.colAvatar}>
         <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={36} shape="circle" />
       </View>
@@ -96,40 +100,51 @@ function HubRow({ org, onPress, onCopyLink, copied, hideContact }: {
           <View style={[styles.statusDot, { backgroundColor: statusStyle.dot }]} />
           <Text style={[styles.statusBadgeText, { color: statusStyle.text }]}>{org.status}</Text>
         </View>
-        <View style={styles.portalBadge}>
-          <Globe size={9} color="#7C3AED" />
-          <Text style={styles.portalBadgeText}>Live</Text>
-        </View>
+        <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); onToggle(); }} activeOpacity={0.7}>
+          {enabling
+            ? <ActivityIndicator size="small" color={Colors.light.tint} style={{ width: 22 }} />
+            : org.hubEnabled
+              ? <ToggleRight size={22} color="#FF5A00" />
+              : <ToggleLeft size={22} color="#9CA3AF" />}
+        </TouchableOpacity>
       </View>
       <View style={styles.colActions}>
-        <TouchableOpacity style={styles.actionPrimary} onPress={onPress} activeOpacity={0.8}>
-          <ExternalLink size={12} color="#fff" />
-          <Text style={styles.actionPrimaryText}>Open</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionGhost, copied && styles.actionGhostDone]}
-          onPress={onCopyLink}
-          activeOpacity={0.8}
-        >
-          {copied
-            ? <CheckCircle2 size={13} color="#16A34A" />
-            : <Copy size={13} color={Colors.light.textSecondary} />
-          }
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionGhost} onPress={onPress} activeOpacity={0.8}>
-          <Settings size={13} color={Colors.light.textSecondary} />
-        </TouchableOpacity>
+        {org.hubEnabled ? (
+          <>
+            <TouchableOpacity style={styles.actionPrimary} onPress={onPress} activeOpacity={0.8}>
+              <ExternalLink size={12} color="#fff" />
+              <Text style={styles.actionPrimaryText}>Open</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionGhost, copied && styles.actionGhostDone]}
+              onPress={onCopyLink}
+              activeOpacity={0.8}
+            >
+              {copied
+                ? <CheckCircle2 size={13} color="#16A34A" />
+                : <Copy size={13} color={Colors.light.textSecondary} />
+              }
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionGhost} onPress={onPress} activeOpacity={0.8}>
+              <Settings size={13} color={Colors.light.textSecondary} />
+            </TouchableOpacity>
+          </>
+        ) : (
+          <Text style={styles.tableDim}>Hub Off</Text>
+        )}
       </View>
     </TouchableOpacity>
   );
 }
 
 // ── Mobile card ──
-function HubCard({ org, onPress, onCopyLink, copied }: {
+function HubCard({ org, onPress, onCopyLink, copied, onToggle, enabling }: {
   org: Organization;
   onPress: () => void;
   onCopyLink: () => void;
   copied: boolean;
+  onToggle: () => void;
+  enabling: boolean;
 }) {
   const primaryContact = getPrimaryContact(org);
   const contactName = primaryContact
@@ -140,7 +155,7 @@ function HubCard({ org, onPress, onCopyLink, copied }: {
   const hasLogo = !!org.logoUrl;
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity style={[styles.card, !org.hubEnabled && styles.cardOff]} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.cardTop}>
         <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={42} shape="circle" />
         <View style={{ flex: 1, gap: 2 }}>
@@ -153,15 +168,18 @@ function HubCard({ org, onPress, onCopyLink, copied }: {
             </View>
           )}
         </View>
-        <View style={{ gap: 4, alignItems: 'flex-end' }}>
+        <View style={{ gap: 6, alignItems: 'flex-end' }}>
           <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
             <View style={[styles.statusDot, { backgroundColor: statusStyle.dot }]} />
             <Text style={[styles.statusBadgeText, { color: statusStyle.text }]}>{org.status}</Text>
           </View>
-          <View style={styles.portalBadge}>
-            <Globe size={9} color="#7C3AED" />
-            <Text style={styles.portalBadgeText}>Live</Text>
-          </View>
+          <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); onToggle(); }} activeOpacity={0.7}>
+            {enabling
+              ? <ActivityIndicator size="small" color={Colors.light.tint} />
+              : org.hubEnabled
+                ? <ToggleRight size={24} color="#FF5A00" />
+                : <ToggleLeft size={24} color="#9CA3AF" />}
+          </TouchableOpacity>
         </View>
       </View>
       {contactName && (
@@ -169,25 +187,27 @@ function HubCard({ org, onPress, onCopyLink, copied }: {
           {contactName}{contactEmail ? ` · ${contactEmail}` : ''}
         </Text>
       )}
-      <View style={styles.cardActions}>
-        <TouchableOpacity style={[styles.actionPrimary, { flex: 1 }]} onPress={onPress} activeOpacity={0.8}>
-          <ExternalLink size={12} color="#fff" />
-          <Text style={styles.actionPrimaryText}>Open Hub</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionGhost, copied && styles.actionGhostDone]}
-          onPress={onCopyLink}
-          activeOpacity={0.8}
-        >
-          {copied
-            ? <CheckCircle2 size={13} color="#16A34A" />
-            : <Copy size={13} color={Colors.light.textSecondary} />
-          }
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionGhost} onPress={onPress} activeOpacity={0.8}>
-          <Settings size={13} color={Colors.light.textSecondary} />
-        </TouchableOpacity>
-      </View>
+      {org.hubEnabled && (
+        <View style={styles.cardActions}>
+          <TouchableOpacity style={[styles.actionPrimary, { flex: 1 }]} onPress={onPress} activeOpacity={0.8}>
+            <ExternalLink size={12} color="#fff" />
+            <Text style={styles.actionPrimaryText}>Open Hub</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionGhost, copied && styles.actionGhostDone]}
+            onPress={onCopyLink}
+            activeOpacity={0.8}
+          >
+            {copied
+              ? <CheckCircle2 size={13} color="#16A34A" />
+              : <Copy size={13} color={Colors.light.textSecondary} />
+            }
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionGhost} onPress={onPress} activeOpacity={0.8}>
+            <Settings size={13} color={Colors.light.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      )}
     </TouchableOpacity>
   );
 }
@@ -306,23 +326,14 @@ export default function ClientHubsScreen() {
 
   const q = search.toLowerCase().trim();
 
-  const hubEnabled = useMemo(
+  const allHubs = useMemo(
     () =>
       orgs
-        .filter((o) => o.hubEnabled)
         .filter((o) => !q || o.name.toLowerCase().includes(q))
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [orgs, q],
-  );
-
-  const notEnabled = useMemo(
-    () =>
-      q
-        ? orgs
-            .filter((o) => !o.hubEnabled)
-            .filter((o) => o.name.toLowerCase().includes(q))
-            .sort((a, b) => a.name.localeCompare(b.name))
-        : [],
+        .sort((a, b) => {
+          if (a.hubEnabled !== b.hubEnabled) return a.hubEnabled ? -1 : 1;
+          return a.name.localeCompare(b.name);
+        }),
     [orgs, q],
   );
 
@@ -333,14 +344,17 @@ export default function ClientHubsScreen() {
     setTimeout(() => setRefreshing(false), 500);
   }, []);
 
-  const handleEnableHub = useCallback(
+  const handleToggleHub = useCallback(
     (org: Organization) => {
+      const newEnabled = !org.hubEnabled;
       setTogglingOrgId(org.id);
-      updateOrgHubEnabled({ orgId: org.id, enabled: true });
+      updateOrgHubEnabled({ orgId: org.id, enabled: newEnabled });
       setTimeout(() => {
         setTogglingOrgId(null);
-        router.push(`/hub/${org.id}` as any);
-      }, 600);
+        if (newEnabled) {
+          router.push(`/hub/${org.id}` as any);
+        }
+      }, 500);
     },
     [updateOrgHubEnabled, router],
   );
@@ -414,18 +428,20 @@ export default function ClientHubsScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.light.tint} />
           }
         >
-          {/* ── Hub-enabled section ── */}
-          {hubEnabled.length > 0 && (
+          {/* ── Unified hub list ── */}
+          {allHubs.length > 0 && (
             <>
               {useCardLayout ? (
                 <View style={styles.cardList}>
-                  {hubEnabled.map((org) => (
+                  {allHubs.map((org) => (
                     <HubCard
                       key={org.id}
                       org={org}
                       onPress={() => router.push(`/hub/${org.id}` as any)}
                       onCopyLink={() => handleCopyLink(org)}
                       copied={copiedId === org.id}
+                      onToggle={() => handleToggleHub(org)}
+                      enabling={togglingOrgId === org.id}
                     />
                   ))}
                 </View>
@@ -437,63 +453,22 @@ export default function ClientHubsScreen() {
                     <Text style={[styles.thText, styles.colBizType]}>BUSINESS TYPE</Text>
                     {!hideContact && <Text style={[styles.thText, styles.colContactName]}>PRIMARY CONTACT</Text>}
                     {!hideContact && <Text style={[styles.thText, styles.colEmail]}>CONTACT EMAIL</Text>}
-                    <Text style={[styles.thText, styles.colStatus]}>STATUS</Text>
+                    <Text style={[styles.thText, styles.colStatus]}>STATUS / HUB</Text>
                     <Text style={[styles.thText, styles.colActionsHeader]}>ACTIONS</Text>
                   </View>
                   <View style={styles.tableBody}>
-                    {hubEnabled.map((org, idx) => (
+                    {allHubs.map((org, idx) => (
                       <View key={org.id}>
                         <HubRow
                           org={org}
                           onPress={() => router.push(`/hub/${org.id}` as any)}
                           onCopyLink={() => handleCopyLink(org)}
                           copied={copiedId === org.id}
-                          hideContact={hideContact}
-                        />
-                        {idx < hubEnabled.length - 1 && <View style={styles.tableDivider} />}
-                      </View>
-                    ))}
-                  </View>
-                </>
-              )}
-            </>
-          )}
-
-          {/* ── Search results — not yet enabled ── */}
-          {notEnabled.length > 0 && (
-            <>
-              {useCardLayout ? (
-                <View style={[styles.cardList, { marginTop: hubEnabled.length > 0 ? 16 : 0 }]}>
-                  {notEnabled.map((org) => (
-                    <AddOrgCard
-                      key={org.id}
-                      org={org}
-                      onEnable={() => handleEnableHub(org)}
-                      enabling={togglingOrgId === org.id}
-                    />
-                  ))}
-                </View>
-              ) : (
-                <>
-                  <View style={[styles.tableHeader, { marginTop: hubEnabled.length > 0 ? 20 : 0 }]}>
-                    <View style={styles.colAvatar} />
-                    <Text style={[styles.thText, styles.colOrg]}>ORGANIZATION</Text>
-                    <Text style={[styles.thText, styles.colBizType]}>BUSINESS TYPE</Text>
-                    {!hideContact && <Text style={[styles.thText, styles.colContactName]}>PRIMARY CONTACT</Text>}
-                    {!hideContact && <Text style={[styles.thText, styles.colEmail]}>CONTACT EMAIL</Text>}
-                    <Text style={[styles.thText, styles.colStatus]}>HUB</Text>
-                    <Text style={[styles.thText, styles.colActionsHeader]}>ENABLE</Text>
-                  </View>
-                  <View style={styles.tableBody}>
-                    {notEnabled.map((org, idx) => (
-                      <View key={org.id}>
-                        <AddOrgRow
-                          org={org}
-                          onEnable={() => handleEnableHub(org)}
+                          onToggle={() => handleToggleHub(org)}
                           enabling={togglingOrgId === org.id}
                           hideContact={hideContact}
                         />
-                        {idx < notEnabled.length - 1 && <View style={styles.tableDivider} />}
+                        {idx < allHubs.length - 1 && <View style={styles.tableDivider} />}
                       </View>
                     ))}
                   </View>
@@ -513,17 +488,7 @@ export default function ClientHubsScreen() {
             </View>
           )}
 
-          {orgs.length > 0 && hubEnabled.length === 0 && !q && (
-            <View style={styles.emptyState}>
-              <Globe size={44} color={Colors.light.border} />
-              <Text style={styles.emptyTitle}>No hubs enabled yet</Text>
-              <Text style={styles.emptyText}>
-                Search for an organization above to enable their Client Hub.
-              </Text>
-            </View>
-          )}
-
-          {q && hubEnabled.length === 0 && notEnabled.length === 0 && (
+          {q && allHubs.length === 0 && (
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>No results for "{search}"</Text>
             </View>
@@ -631,6 +596,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   tableBody: { backgroundColor: Colors.light.surface },
+  tableRowOff: {
+    opacity: 0.55,
+  },
   tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -734,6 +702,9 @@ const styles = StyleSheet.create({
   cardList: {
     padding: 12,
     gap: 10,
+  },
+  cardOff: {
+    opacity: 0.55,
   },
   card: {
     backgroundColor: Colors.light.surface,

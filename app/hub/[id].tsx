@@ -603,7 +603,7 @@ export default function HubManagementScreen() {
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <ExternalLink size={13} color={Colors.light.tint} />
-                  <Text style={styles.sectionTitle}>Portal Link</Text>
+                  <Text style={styles.sectionTitle}>Hub Link</Text>
                 </View>
                 <View style={{ paddingHorizontal: 12, paddingVertical: 10 }}>
                   <Text style={styles.portalLinkDesc}>
@@ -620,18 +620,18 @@ export default function HubManagementScreen() {
                   >
                     <Copy size={12} color={linkCopied ? '#16A34A' : Colors.light.tint} />
                     <Text style={[styles.copyBtnText, linkCopied && styles.copyBtnTextDone]}>
-                      {linkCopied ? 'Link Copied!' : 'Copy Portal Link'}
+                      {linkCopied ? 'Link Copied!' : 'Copy Hub Link'}
                     </Text>
                   </TouchableOpacity>
                 </View>
               </View>
             )}
 
-            {/* Portal Branding */}
+            {/* Organization Logo */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Edit3 size={13} color={Colors.light.tint} />
-                <Text style={styles.sectionTitle}>Portal Branding</Text>
+                <Text style={styles.sectionTitle}>Organization Logo</Text>
               </View>
               <View style={styles.brandingBody}>
                 <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={64} shape="square" />

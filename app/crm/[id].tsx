@@ -643,7 +643,7 @@ export default function OrgProfileScreen() {
       <View style={styles.infoCard}>
         <View style={styles.infoCardHeader}>
           <View style={styles.infoCardHeaderLeft}>
-            <Users size={15} color={Colors.light.tint} />
+            <Users size={15} color="#fff" />
             <Text style={styles.infoCardTitle}>Contacts</Text>
             {org.contacts.length > 0 && (
               <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{org.contacts.length}</Text></View>
@@ -651,11 +651,11 @@ export default function OrgProfileScreen() {
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TouchableOpacity style={styles.infoCardActionSecondary} onPress={openAddDept}>
-              <Plus size={12} color={Colors.light.tint} />
+              <Plus size={12} color="#fff" />
               <Text style={styles.infoCardActionSecondaryText}>Dept</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.infoCardAction} onPress={openAddContact}>
-              <Plus size={13} color={Colors.light.tint} />
+              <Plus size={13} color="#fff" />
               <Text style={styles.infoCardActionText}>Add Contact</Text>
             </TouchableOpacity>
           </View>
@@ -737,7 +737,7 @@ export default function OrgProfileScreen() {
       <View style={styles.infoCard}>
         <View style={styles.infoCardHeader}>
           <View style={styles.infoCardHeaderLeft}>
-            <Shield size={15} color="#7C3AED" />
+            <Shield size={15} color="#fff" />
             <Text style={styles.infoCardTitle}>Client Hub</Text>
           </View>
           <TouchableOpacity
@@ -866,7 +866,7 @@ export default function OrgProfileScreen() {
         <View style={styles.infoCard}>
           <View style={styles.infoCardHeader}>
             <View style={styles.infoCardHeaderLeft}>
-              <ShoppingBag size={15} color="#7C3AED" />
+              <ShoppingBag size={15} color="#fff" />
               <Text style={styles.infoCardTitle}>Active Projects</Text>
               <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{activeQuotes.length}</Text></View>
             </View>
@@ -874,7 +874,7 @@ export default function OrgProfileScreen() {
               style={styles.infoCardAction}
               onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
             >
-              <Plus size={13} color={Colors.light.tint} />
+              <Plus size={13} color="#fff" />
               <Text style={styles.infoCardActionText}>New Quote</Text>
             </TouchableOpacity>
           </View>
@@ -901,14 +901,14 @@ export default function OrgProfileScreen() {
       <View style={styles.infoCard}>
         <View style={styles.infoCardHeader}>
           <View style={styles.infoCardHeaderLeft}>
-            <Clock size={15} color={Colors.light.tint} />
+            <Clock size={15} color="#fff" />
             <Text style={styles.infoCardTitle}>Activity</Text>
             {org.activityLog.length > 0 && (
               <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{org.activityLog.length}</Text></View>
             )}
           </View>
           <TouchableOpacity style={styles.infoCardAction} onPress={() => setActivityModal(true)}>
-            <Plus size={13} color={Colors.light.tint} />
+            <Plus size={13} color="#fff" />
             <Text style={styles.infoCardActionText}>Log Activity</Text>
           </TouchableOpacity>
         </View>
@@ -971,14 +971,14 @@ export default function OrgProfileScreen() {
       <View style={styles.infoCard}>
         <View style={styles.infoCardHeader}>
           <View style={styles.infoCardHeaderLeft}>
-            <FileText size={15} color={Colors.light.tint} />
+            <FileText size={15} color="#fff" />
             <Text style={styles.infoCardTitle}>Quotes & Revenue</Text>
           </View>
           <TouchableOpacity
             style={styles.infoCardAction}
             onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
           >
-            <Plus size={13} color={Colors.light.tint} />
+            <Plus size={13} color="#fff" />
             <Text style={styles.infoCardActionText}>New Quote</Text>
           </TouchableOpacity>
         </View>
@@ -1027,14 +1027,14 @@ export default function OrgProfileScreen() {
         <View style={styles.infoCard}>
           <View style={styles.infoCardHeader}>
             <View style={styles.infoCardHeaderLeft}>
-              <TrendingUp size={15} color="#F59E0B" />
+              <TrendingUp size={15} color="#fff" />
               <Text style={styles.infoCardTitle}>Campaigns</Text>
               {org.campaigns.length > 0 && (
                 <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{org.campaigns.length}</Text></View>
               )}
             </View>
             <TouchableOpacity style={styles.infoCardAction} onPress={() => setCampaignModal(true)}>
-              <Plus size={13} color={Colors.light.tint} />
+              <Plus size={13} color="#fff" />
               <Text style={styles.infoCardActionText}>Start Campaign</Text>
             </TouchableOpacity>
           </View>
@@ -2057,41 +2057,48 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.surface,
     borderRadius: 14, borderWidth: 1,
     borderColor: Colors.light.border,
-    padding: 14,
+    paddingTop: 0,
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    overflow: 'hidden' as const,
   },
   infoCardHeader: {
     flexDirection: 'row' as const, alignItems: 'center' as const,
     justifyContent: 'space-between' as const,
+    backgroundColor: '#000',
+    marginHorizontal: -14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     marginBottom: 12,
   },
   infoCardHeaderLeft: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 7 },
-  infoCardTitle: { fontSize: 15, fontWeight: '700' as const, color: Colors.light.text },
+  infoCardTitle: { fontSize: 13, fontWeight: '700' as const, color: '#fff', textTransform: 'uppercase' as const, letterSpacing: 0.5 },
   infoCardBadge: {
-    backgroundColor: Colors.light.border, borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 10,
     paddingHorizontal: 6, paddingVertical: 1,
     minWidth: 18, alignItems: 'center' as const,
   },
-  infoCardBadgeText: { fontSize: 11, fontWeight: '700' as const, color: Colors.light.textSecondary },
+  infoCardBadgeText: { fontSize: 11, fontWeight: '700' as const, color: '#fff' },
   infoCardAction: {
     flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4,
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
-    backgroundColor: `${Colors.light.tint}14`,
-    borderWidth: 1, borderColor: `${Colors.light.tint}30`,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8,
+    backgroundColor: Colors.light.tint,
   },
-  infoCardActionText: { fontSize: 12, fontWeight: '600' as const, color: Colors.light.tint },
+  infoCardActionText: { fontSize: 12, fontWeight: '600' as const, color: '#fff' },
   hubToggleBtn: {
     flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4,
     paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
-    borderWidth: 1, borderColor: Colors.light.border,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
   },
-  hubToggleBtnText: { fontSize: 11, fontWeight: '600' as const, color: Colors.light.textSecondary },
+  hubToggleBtnText: { fontSize: 11, fontWeight: '600' as const, color: 'rgba(255,255,255,0.7)' },
   hubToggleBtnTextOn: { color: '#FF5A00' },
   infoCardActionSecondary: {
     flexDirection: 'row' as const, alignItems: 'center' as const, gap: 3,
-    paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8,
-    borderWidth: 1, borderColor: Colors.light.border,
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
   },
-  infoCardActionSecondaryText: { fontSize: 12, fontWeight: '600' as const, color: Colors.light.tint },
+  infoCardActionSecondaryText: { fontSize: 12, fontWeight: '600' as const, color: '#fff' },
   infoCardSubHeader: {
     flexDirection: 'row' as const, alignItems: 'center' as const,
     justifyContent: 'space-between' as const,
