@@ -686,15 +686,19 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
               <View>
                 {/* Header row */}
                 <View style={liStyles.sizeHeaderRow}>
-                  <Text style={[liStyles.sizeCell, liStyles.sizeHeaderText, { width: 180 }]}>Product</Text>
-                  <Text style={[liStyles.sizeCell, liStyles.sizeHeaderText, { width: 110 }]}>Color</Text>
+                  <View style={{ width: 180 }}>
+                    <Text style={[liStyles.sizeHeaderText, { textAlign: 'left' }]}>Product</Text>
+                  </View>
+                  <View style={{ width: 110 }}>
+                    <Text style={[liStyles.sizeHeaderText, { textAlign: 'left' }]}>Color</Text>
+                  </View>
                   {SIZE_KEYS.map(k => (
-                    <Text key={k} style={[liStyles.sizeCell, liStyles.sizeHeaderText, liStyles.sizeCellNum]}>
-                      {SIZE_LABELS[k]}
-                    </Text>
+                    <View key={k} style={[liStyles.sizeCellNum, { marginHorizontal: 2 }]}>
+                      <Text style={[liStyles.sizeHeaderText, { textAlign: 'center' }]}>{SIZE_LABELS[k]}</Text>
+                    </View>
                   ))}
                   <Text style={[liStyles.sizeCell, liStyles.sizeHeaderText, liStyles.sizeCellTotal]}>Total</Text>
-                  <View style={{ width: 32 }} />
+                  <View style={{ width: 28 }} />
                 </View>
 
                 {/* Data rows */}
@@ -737,17 +741,21 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
                 {/* Totals row */}
                 {item.sizeRows.length > 1 && (
                   <View style={liStyles.sizeTotalRow}>
-                    <Text style={[liStyles.sizeCell, { width: 180, color: TEXT_LIGHT, fontSize: 11 }]}>Totals</Text>
+                    <View style={{ width: 180 }}>
+                      <Text style={{ color: TEXT_LIGHT, fontSize: 11 }}>Totals</Text>
+                    </View>
                     <View style={{ width: 110 }} />
                     {SIZE_KEYS.map(k => (
-                      <Text key={k} style={[liStyles.sizeCell, liStyles.sizeCellNum, { fontWeight: '600', fontSize: 11, color: TEXT_MED }]}>
-                        {colTotal(item.sizeRows, k) || ''}
-                      </Text>
+                      <View key={k} style={[liStyles.sizeCellNum, { marginHorizontal: 2, alignItems: 'center' }]}>
+                        <Text style={{ fontWeight: '600', fontSize: 11, color: TEXT_MED, textAlign: 'center' }}>
+                          {colTotal(item.sizeRows, k) || ''}
+                        </Text>
+                      </View>
                     ))}
                     <Text style={[liStyles.sizeCell, liStyles.sizeCellTotal, { fontWeight: '700', fontSize: 12, color: TEXT }]}>
                       {total}
                     </Text>
-                    <View style={{ width: 32 }} />
+                    <View style={{ width: 28 }} />
                   </View>
                 )}
               </View>
