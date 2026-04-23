@@ -86,6 +86,21 @@ import {
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { STATUS_CONFIG, getEffectiveStatus } from '@/types/quote';
 
+const LEGACY_SERVICES: { key: string; color: string }[] = [
+  { key: 'Direct to Film', color: '#FF5A00' },
+  { key: 'Screen Print',   color: '#1C1C1E' },
+  { key: 'Embroidery',     color: '#1E3A8A' },
+  { key: 'Promotional',    color: '#0E7490' },
+];
+
+function normalizeLegacyService(raw: string): string {
+  const s = raw.toLowerCase();
+  if (s.includes('film') || s.includes('dtf')) return 'Direct to Film';
+  if (s.includes('screen')) return 'Screen Print';
+  if (s.includes('embroid')) return 'Embroidery';
+  return 'Promotional';
+}
+
 const MEMBERSHIP_ROLE_LABELS: Record<string, string> = {
   ORG_ADMIN: 'Org Admin',
   MEMBER: 'Member',
@@ -305,6 +320,7 @@ export default function OrgProfileScreen() {
 
   const [orgFilesUploading, setOrgFilesUploading] = useState(false);
   const [orgFilesDragOver, setOrgFilesDragOver] = useState(false);
+  const [hoveredLegacyKey, setHoveredLegacyKey] = useState<string | null>(null);
 
   const handleOrgFileUpload = useCallback(async (file: File) => {
     if (!org) return;
@@ -435,25 +451,34 @@ export default function OrgProfileScreen() {
   }, [relatedQuotes]);
 
   const legacyMetrics = useMemo(() => {
-    const revenue = completedQuotes.reduce((s, q) => s + (q.calculations?.total ?? 0), 0);
-    const markup = completedQuotes.reduce((s, q) => s + (q.calculations?.markupAmount ?? 0), 0);
-    const serviceMap: Record<string, { pcs: number; count: number }> = {};
+    const totalRevenue = completedQuotes.reduce((s, q) => s + (q.calculations?.total ?? 0), 0);
+    const totalMarkup = completedQuotes.reduce((s, q) => s + (q.calculations?.markupAmount ?? 0), 0);
+
+    const svcMap: Record<string, { revenue: number; pcs: number; projectIds: Set<string> }> = {};
+    LEGACY_SERVICES.forEach(({ key }) => {
+      svcMap[key] = { revenue: 0, pcs: 0, projectIds: new Set() };
+    });
+
     completedQuotes.forEach((q) => {
       (q.lineItems || []).forEach((li: any) => {
-        const svc = li.serviceStyle || li.service || 'Other';
+        const key = normalizeLegacyService(li.serviceStyle || li.service || '');
         const pcs = Object.values(li.sizes || {}).reduce((ps: number, v: any) => ps + (Number(v) || 0), 0);
-        if (!serviceMap[svc]) serviceMap[svc] = { pcs: 0, count: 0 };
-        serviceMap[svc].pcs += pcs;
-        serviceMap[svc].count += 1;
+        const liRevenue = ((li.productCostEach || 0) + (li.serviceCostEach || 0) + (li.serviceFeeEach || 0) + (li.markupEach || 0)) * Math.max(pcs, 0);
+        svcMap[key].revenue += liRevenue;
+        svcMap[key].pcs += pcs;
+        svcMap[key].projectIds.add(q.id!);
       });
     });
-    const totalLineItems = Object.values(serviceMap).reduce((s, v) => s + v.count, 0);
-    const services = Object.entries(serviceMap).map(([name, d]) => ({
-      name,
-      pcs: d.pcs,
-      pct: totalLineItems > 0 ? Math.round((d.count / totalLineItems) * 100) : 0,
-    })).sort((a, b) => b.pcs - a.pcs);
-    return { totalProjects: completedQuotes.length, revenue, markup, services };
+
+    const totalSvcRevenue = Object.values(svcMap).reduce((s, v) => s + v.revenue, 0);
+
+    const services = LEGACY_SERVICES.map(({ key, color }) => {
+      const d = svcMap[key];
+      const pct = totalSvcRevenue > 0 ? Math.round((d.revenue / totalSvcRevenue) * 100) : 0;
+      return { name: key, color, revenue: d.revenue, pcs: d.pcs, pct, projectCount: d.projectIds.size };
+    });
+
+    return { totalProjects: completedQuotes.length, revenue: totalRevenue, markup: totalMarkup, services };
   }, [completedQuotes]);
 
   const openEditOrg = useCallback(() => {
@@ -1041,29 +1066,53 @@ export default function OrgProfileScreen() {
             <Text style={styles.revenueStatLabel}>Profit</Text>
           </View>
         </View>
-        {legacyMetrics.services.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyCardText}>No completed projects yet.</Text>
-            <Text style={styles.emptyCardSub}>Completed projects will build this client's legacy stats.</Text>
-          </View>
-        ) : (
-          <View style={styles.legacyServiceList}>
-            {legacyMetrics.services.map((svc) => (
-              <View key={svc.name} style={styles.legacyServiceRow}>
-                <View style={styles.legacyServiceLeft}>
-                  <Text style={styles.legacyServiceName}>{svc.name}</Text>
-                  <View style={styles.legacyBarTrack}>
-                    <View style={[styles.legacyBarFill, { width: `${svc.pct}%` as any }]} />
+        {/* Donut circle grid — always render all 4 services */}
+        <View style={styles.legacyDonutRow}>
+          {legacyMetrics.services.map((svc) => {
+            const deg = svc.pct * 3.6;
+            const gradient = svc.pct > 0
+              ? `conic-gradient(${svc.color} 0deg ${deg}deg, #E2E8F0 ${deg}deg 360deg)`
+              : 'conic-gradient(#E2E8F0 0deg 360deg)';
+            return (
+              <Pressable
+                key={svc.name}
+                style={styles.legacyDonutItem}
+                onHoverIn={() => setHoveredLegacyKey(svc.name)}
+                onHoverOut={() => setHoveredLegacyKey(null)}
+              >
+                <View style={[styles.legacyDonutOuter, { background: gradient } as any]}>
+                  <View style={styles.legacyDonutInner}>
+                    <Text style={styles.legacyDonutPct}>{svc.pct}%</Text>
+                    <Text style={styles.legacyDonutPcs}>{svc.pcs.toLocaleString()} pcs</Text>
                   </View>
                 </View>
-                <View style={styles.legacyServiceRight}>
-                  <Text style={styles.legacyServicePct}>{svc.pct}%</Text>
-                  <Text style={styles.legacyServicePcs}>{svc.pcs.toLocaleString()} pcs</Text>
-                </View>
+                <Text style={[styles.legacyDonutLabel, { color: hoveredLegacyKey === svc.name ? svc.color : Colors.light.textSecondary }]}>
+                  {svc.name}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* Inline hover tooltip — renders below donuts, no z-index issues */}
+        {(() => {
+          const hov = legacyMetrics.services.find((s) => s.name === hoveredLegacyKey);
+          if (!hov) return null;
+          const avg = hov.projectCount > 0 ? hov.revenue / hov.projectCount : 0;
+          return (
+            <View style={[styles.legacyTooltip, { borderLeftColor: hov.color }]}>
+              <Text style={[styles.legacyTooltipTitle, { color: hov.color }]}>{hov.name}</Text>
+              <View style={styles.legacyTooltipRow}>
+                <Text style={styles.legacyTooltipItem}>Revenue: <Text style={styles.legacyTooltipBold}>{formatCurrency(hov.revenue)}</Text></Text>
+                <Text style={styles.legacyTooltipItem}>Pieces: <Text style={styles.legacyTooltipBold}>{hov.pcs.toLocaleString()} pcs</Text></Text>
+                <Text style={styles.legacyTooltipItem}>Projects: <Text style={styles.legacyTooltipBold}>{hov.projectCount}</Text></Text>
+                {hov.projectCount > 0 && (
+                  <Text style={styles.legacyTooltipItem}>Avg Order: <Text style={styles.legacyTooltipBold}>{formatCurrency(avg)}</Text></Text>
+                )}
               </View>
-            ))}
-          </View>
-        )}
+            </View>
+          );
+        })()}
       </View>
 
       {/* Active Projects card */}
@@ -2551,19 +2600,49 @@ const styles = StyleSheet.create({
   projectMetaTotal: { fontSize: 13, fontWeight: '700' as const, color: Colors.light.text },
   projectMetaMarkup: { fontSize: 12, fontWeight: '600' as const, color: '#FF5A00' },
 
-  legacyServiceList: { marginTop: 4, gap: 10 },
-  legacyServiceRow: {
-    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 12,
+  legacyDonutRow: {
+    flexDirection: 'row' as const, justifyContent: 'space-around' as const,
+    alignItems: 'flex-start' as const, paddingVertical: 12, paddingHorizontal: 4,
   },
-  legacyServiceLeft: { flex: 1, gap: 4 },
-  legacyServiceName: { fontSize: 12, fontWeight: '600' as const, color: Colors.light.text },
-  legacyBarTrack: {
-    height: 5, backgroundColor: Colors.light.border, borderRadius: 3, overflow: 'hidden' as const,
+  legacyDonutItem: {
+    alignItems: 'center' as const, gap: 8, cursor: 'default' as any,
   },
-  legacyBarFill: { height: 5, backgroundColor: '#FF5A00', borderRadius: 3 },
-  legacyServiceRight: { alignItems: 'flex-end' as const, gap: 1, minWidth: 58 },
-  legacyServicePct: { fontSize: 12, fontWeight: '700' as const, color: '#FF5A00' },
-  legacyServicePcs: { fontSize: 11, color: Colors.light.textSecondary },
+  legacyDonutOuter: {
+    width: 82, height: 82, borderRadius: 41,
+    justifyContent: 'center' as const, alignItems: 'center' as const,
+  },
+  legacyDonutInner: {
+    width: 58, height: 58, borderRadius: 29,
+    backgroundColor: Colors.light.surface,
+    justifyContent: 'center' as const, alignItems: 'center' as const, gap: 1,
+  },
+  legacyDonutPct: {
+    fontSize: 15, fontWeight: '800' as const, color: Colors.light.text, lineHeight: 18,
+  },
+  legacyDonutPcs: {
+    fontSize: 8, color: Colors.light.textSecondary, textAlign: 'center' as const, lineHeight: 11,
+  },
+  legacyDonutLabel: {
+    fontSize: 10, fontWeight: '600' as const, textAlign: 'center' as const,
+    maxWidth: 70, lineHeight: 13,
+  },
+  legacyTooltip: {
+    backgroundColor: Colors.light.background, borderRadius: 10,
+    borderWidth: 1, borderColor: Colors.light.border,
+    borderLeftWidth: 3, padding: 10, marginTop: 4, gap: 6,
+  },
+  legacyTooltipTitle: {
+    fontSize: 12, fontWeight: '700' as const, marginBottom: 2,
+  },
+  legacyTooltipRow: {
+    flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 10,
+  },
+  legacyTooltipItem: {
+    fontSize: 11, color: Colors.light.textSecondary,
+  },
+  legacyTooltipBold: {
+    fontWeight: '700' as const, color: Colors.light.text,
+  },
 
   revenueStatsRow: {
     flexDirection: 'row' as const, alignItems: 'center' as const,

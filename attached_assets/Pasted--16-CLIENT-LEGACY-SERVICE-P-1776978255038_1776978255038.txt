@@ -1,0 +1,205 @@
+======================================================================
+16. CLIENT LEGACY – SERVICE PERCENTAGE VISUALIZATION + FINAL DESIGN
+======================================================================
+
+We need to build a high-quality Client Legacy visualization that shows service distribution based on COMPLETED project history.
+
+This must be both:
+- visually polished (dashboard-quality)
+- logically accurate (based on revenue, not pieces)
+
+======================================================================
+A. CORE CALCULATION LOGIC (CRITICAL)
+======================================================================
+
+Service percentages must be calculated using ONLY:
+→ total COMPLETED revenue per service type
+
+DO NOT calculate percentages based on:
+- number of projects
+- number of pieces
+
+Example:
+- Direct to Film = $800
+- Promotional = $450
+- Embroidery = $300
+
+Then:
+- DTF = highest %
+- Promotional = second
+- Embroidery = third
+
+Even if piece counts differ significantly.
+
+ONLY include:
+- COMPLETED projects
+- valid revenue data
+
+If a project contains multiple service types:
+- allocate revenue correctly by line item/service
+
+======================================================================
+B. ALSO DISPLAY TOTAL PIECES (SECONDARY METRIC)
+======================================================================
+
+For each service type, also calculate:
+→ total completed pieces (quantity)
+
+This should NOT influence percentage calculation.
+
+Display format:
+- percentage = based on revenue
+- pieces = supporting metric
+
+Example:
+Screen Printing — 45% — 1,250 pcs
+
+======================================================================
+C. ICON DESIGN (PRIMARY VISUAL)
+======================================================================
+
+Each service should be displayed as a circular donut-style percentage icon.
+
+Inside the circle:
+
+1. CENTER (large + bold):
+   - Percentage (e.g. 68%)
+
+2. BELOW (inside circle, smaller font):
+   - Total pieces
+   - Example: "1,250 pcs"
+
+This should feel clean, balanced, and easy to scan.
+
+======================================================================
+D. LABEL BELOW ICON
+======================================================================
+
+Below each icon:
+- Show ONLY the service name
+
+Example:
+
+[Circle]
+   68%
+   1,250 pcs
+
+Direct to Film
+
+No extra labels or clutter.
+
+======================================================================
+E. FIXED SERVICE ORDER (MANDATORY)
+======================================================================
+
+Display services in this exact order ALWAYS:
+
+1. Direct to Film
+2. Screen Print
+3. Embroidery
+4. Promotional
+
+DO NOT sort dynamically.
+
+Even if a service = 0%, still display it.
+
+======================================================================
+F. COLOR SYSTEM (BRAND-ALIGNED)
+======================================================================
+
+Assign fixed colors per service:
+
+1. Direct to Film
+   → Brand ORANGE (primary accent)
+
+2. Screen Print
+   → Deep charcoal / near-black / dark slate
+
+3. Embroidery
+   → Rich deep blue (navy tone)
+
+4. Promotional
+   → Teal / muted green-blue (secondary accent)
+
+Requirements:
+- strong contrast
+- clean, modern look
+- consistent across entire app
+- avoid washed-out colors
+
+======================================================================
+G. VISUAL STYLE
+======================================================================
+
+- donut-style circular progress indicators
+- subtle gray track for empty portion
+- colored arc representing percentage
+- smooth edges / modern UI
+- evenly spaced icons
+- consistent sizing
+
+======================================================================
+H. ZERO STATE HANDLING
+======================================================================
+
+If service has 0%:
+- show circle
+- show "0%"
+- show "0 pcs"
+- minimal arc (or empty)
+- still display service name
+
+======================================================================
+I. TOOLTIP (HOVER STATE – IMPORTANT ADDITION)
+======================================================================
+
+Each service icon should have a hover tooltip.
+
+On hover, display:
+
+- Service Name
+- Total Revenue (for that service)
+- Total Pieces
+- Number of Completed Projects (for that service)
+- Optional (nice-to-have):
+  - Average order value
+
+Example tooltip:
+
+Direct to Film
+Revenue: $800
+Pieces: 100 pcs
+Projects: 3
+Avg Order: $266.67
+
+Tooltip should:
+- be clean and minimal
+- appear near the icon
+- not block other UI
+- follow standard UI positioning rules
+
+======================================================================
+J. SORTING (VISUAL ORDER VS LOGIC)
+======================================================================
+
+IMPORTANT:
+- Display order = FIXED (DTF → Screen Print → Embroidery → Promotional)
+- Percentages = based on revenue internally
+
+Do NOT reorder icons based on values.
+
+======================================================================
+K. FINAL GOAL
+======================================================================
+
+This section should instantly communicate:
+
+- where the client spends money
+- which services drive revenue
+- how much volume we’ve handled
+- overall client value distribution
+
+This should feel like a high-end dashboard component that:
+- is visually strong
+- is logically accurate
+- is easy to interpret in seconds
