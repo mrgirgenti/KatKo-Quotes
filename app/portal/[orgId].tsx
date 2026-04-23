@@ -2825,19 +2825,17 @@ const mbStyles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 13, color: TEXT },
   visualGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 12,
+    flexDirection: 'row', flexWrap: 'wrap', gap: 3,
   },
   visualCard: {
-    width: '30%',
-    minWidth: 120,
-    flex: 1,
+    width: 'calc(20% - 3px)' as any,
     backgroundColor: '#fff',
-    borderRadius: 10,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+    shadowOpacity: 0.04, shadowRadius: 2, elevation: 1,
   },
   visualThumb: {
     width: '100%',
@@ -2864,13 +2862,13 @@ const mbStyles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   visualMeta: {
-    padding: 8, gap: 2,
+    padding: 5, gap: 1,
   },
   visualFileName: {
-    fontSize: 12, fontWeight: '600', color: TEXT, lineHeight: 16,
+    fontSize: 10, fontWeight: '600', color: TEXT, lineHeight: 14,
   },
   visualFileSub: {
-    fontSize: 10, color: TEXT_LIGHT,
+    fontSize: 9, color: TEXT_LIGHT,
   },
   fileGrid: { gap: 10 },
   fileCard: {
