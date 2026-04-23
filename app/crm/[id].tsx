@@ -52,6 +52,9 @@ import {
   Copy,
   CheckCircle2,
   Settings,
+  Film,
+  Music,
+  Image as LucideImage,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { OrgLogoUploader } from '@/components/OrgLogoUploader';
@@ -923,23 +926,31 @@ export default function OrgProfileScreen() {
     <ScrollView style={styles.rightPanel} showsVerticalScrollIndicator={false} contentContainerStyle={styles.rightPanelContent}>
 
       {/* Active Projects card */}
-      {activeQuotes.length > 0 && (
-        <View style={styles.infoCard}>
-          <View style={styles.infoCardHeader}>
-            <View style={styles.infoCardHeaderLeft}>
-              <ShoppingBag size={15} color="#fff" />
-              <Text style={styles.infoCardTitle}>Active Projects</Text>
+      <View style={styles.infoCard}>
+        <View style={styles.infoCardHeader}>
+          <View style={styles.infoCardHeaderLeft}>
+            <ShoppingBag size={15} color="#fff" />
+            <Text style={styles.infoCardTitle}>Active Projects</Text>
+            {activeQuotes.length > 0 && (
               <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{activeQuotes.length}</Text></View>
-            </View>
-            <TouchableOpacity
-              style={styles.infoCardAction}
-              onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
-            >
-              <Plus size={13} color="#fff" />
-              <Text style={styles.infoCardActionText}>New Quote</Text>
-            </TouchableOpacity>
+            )}
           </View>
-          {activeQuotes.map((q) => {
+          <TouchableOpacity
+            style={styles.infoCardAction}
+            onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
+          >
+            <Plus size={13} color="#fff" />
+            <Text style={styles.infoCardActionText}>New Quote</Text>
+          </TouchableOpacity>
+        </View>
+        {activeQuotes.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <ShoppingBag size={26} color={Colors.light.border} />
+            <Text style={styles.emptyCardText}>No active projects yet</Text>
+            <Text style={styles.emptyCardSub}>Tap New Quote to start a project for this client.</Text>
+          </View>
+        ) : (
+          activeQuotes.map((q) => {
             const eff = getEffectiveStatus(q);
             const cfg = STATUS_CONFIG[eff];
             return (
@@ -954,9 +965,9 @@ export default function OrgProfileScreen() {
                 <ChevronRight size={12} color={Colors.light.textSecondary} />
               </TouchableOpacity>
             );
-          })}
-        </View>
-      )}
+          })
+        )}
+      </View>
 
       {/* Activity card */}
       <View style={styles.infoCard}>
@@ -1180,12 +1191,12 @@ export default function OrgProfileScreen() {
         </View>
       )}
 
-      {/* Media Uploads card */}
+      {/* Media Bin card */}
       <View style={styles.infoCard}>
         <View style={styles.infoCardHeader}>
           <View style={styles.infoCardHeaderLeft}>
-            <Upload size={15} color="#fff" />
-            <Text style={styles.infoCardTitle}>Media Uploads</Text>
+            <Film size={15} color="#fff" />
+            <Text style={styles.infoCardTitle}>Media Bin</Text>
             {orgFiles.length > 0 && (
               <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{orgFiles.length}</Text></View>
             )}
@@ -1213,7 +1224,7 @@ export default function OrgProfileScreen() {
         </View>
         {orgFiles.length === 0 ? (
           <View
-            style={[styles.orgMediaDropZone, orgFilesDragOver && styles.orgMediaDropZoneActive]}
+            style={[styles.orgMediaEmptyBin, orgFilesDragOver && styles.orgMediaDropZoneActive]}
             onDragOver={(e: any) => { e.preventDefault(); setOrgFilesDragOver(true); }}
             onDragLeave={() => setOrgFilesDragOver(false)}
             onDrop={(e: any) => {
@@ -1223,9 +1234,26 @@ export default function OrgProfileScreen() {
               if (file) handleOrgFileUpload(file);
             }}
           >
-            <Upload size={22} color={Colors.light.border} />
-            <Text style={styles.orgMediaDropText}>Drop files here or tap Upload</Text>
-            <Text style={styles.orgMediaDropSub}>AI · SVG · PNG · JPG · PDF · DST · EMB</Text>
+            {/* Floating accent dots */}
+            <View style={[styles.mediaDot, { top: 18, left: 28, width: 5, height: 5 }]} />
+            <View style={[styles.mediaDot, { top: 12, right: 60, width: 4, height: 4 }]} />
+            <View style={[styles.mediaDot, { top: 30, right: 32, width: 6, height: 6, opacity: 0.4 }]} />
+            <View style={[styles.mediaDot, { bottom: 44, left: 18, width: 4, height: 4, opacity: 0.35 }]} />
+            <View style={[styles.mediaDot, { bottom: 30, right: 20, width: 5, height: 5, opacity: 0.5 }]} />
+            {/* Three tilted icon cards */}
+            <View style={styles.mediaBinIconRow}>
+              <View style={[styles.mediaBinCard, { transform: [{ rotate: '-10deg' }], marginRight: -12, zIndex: 1 }]}>
+                <LucideImage size={26} color="#6B9FBF" />
+              </View>
+              <View style={[styles.mediaBinCard, styles.mediaBinCardCenter, { zIndex: 3 }]}>
+                <Film size={26} color="#5BA4CF" />
+              </View>
+              <View style={[styles.mediaBinCard, { transform: [{ rotate: '10deg' }], marginLeft: -12, zIndex: 1 }]}>
+                <Music size={26} color="#6B9FBF" />
+              </View>
+            </View>
+            <Text style={styles.mediaBinEmptyText}>Drag and drop your media here</Text>
+            <Text style={styles.mediaBinEmptySub}>AI · SVG · PNG · JPG · PDF · DST · EMB</Text>
           </View>
         ) : (
           <View
@@ -2346,31 +2374,64 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.surface,
   },
 
-  orgMediaDropZone: {
+  orgMediaEmptyBin: {
+    position: 'relative' as const,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    paddingVertical: 28,
-    gap: 6,
-    borderWidth: 1.5,
-    borderColor: Colors.light.border,
-    borderStyle: 'dashed' as const,
-    borderRadius: 10,
+    paddingVertical: 36,
+    paddingHorizontal: 12,
+    gap: 14,
     marginTop: 10,
+    borderRadius: 12,
+    backgroundColor: '#1C2128',
+    overflow: 'hidden' as const,
   },
   orgMediaDropZoneActive: {
+    borderWidth: 1.5,
     borderColor: Colors.light.tint,
-    backgroundColor: `${Colors.light.tint}08`,
+    backgroundColor: '#1a2535',
   },
-  orgMediaDropText: {
+  mediaDot: {
+    position: 'absolute' as const,
+    borderRadius: 999,
+    backgroundColor: '#5BA4CF',
+    opacity: 0.55,
+  },
+  mediaBinIconRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-end' as const,
+    justifyContent: 'center' as const,
+    marginBottom: 4,
+  },
+  mediaBinCard: {
+    width: 58,
+    height: 58,
+    borderRadius: 12,
+    backgroundColor: '#2C3640',
+    borderWidth: 1,
+    borderColor: '#3D4F5E',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  mediaBinCardCenter: {
+    width: 66,
+    height: 66,
+    borderRadius: 14,
+    backgroundColor: '#2A3F52',
+    borderColor: '#4A6580',
+    zIndex: 3,
+  },
+  mediaBinEmptyText: {
     fontSize: 13,
     fontWeight: '500' as const,
-    color: Colors.light.textSecondary,
+    color: '#8BA5BB',
     textAlign: 'center' as const,
   },
-  orgMediaDropSub: {
+  mediaBinEmptySub: {
     fontSize: 11,
-    color: Colors.light.placeholder,
+    color: '#4E6070',
     textAlign: 'center' as const,
+    marginTop: -6,
   },
   orgMediaGrid: {
     flexDirection: 'row' as const,
