@@ -1619,6 +1619,62 @@ export default function ClientPortal() {
       return true;
     });
 
+    const toggleSort = (field: typeof mpSortField) => {
+      if (mpSortField === field) {
+        setMpSortDir(d => d === 'asc' ? 'desc' : 'asc');
+      } else {
+        setMpSortField(field);
+        setMpSortDir('asc');
+      }
+    };
+
+    const sortedDisplayed = [...displayed].sort((a, b) => {
+      let valA: any, valB: any;
+      switch (mpSortField) {
+        case 'status':
+          valA = normalSt(a.status); valB = normalSt(b.status); break;
+        case 'project':
+          valA = (a.title || '').toLowerCase(); valB = (b.title || '').toLowerCase(); break;
+        case 'submitted':
+          valA = new Date(a.createdAt).getTime(); valB = new Date(b.createdAt).getTime(); break;
+        case 'inHands':
+          valA = a.inHandsDate ? new Date(a.inHandsDate).getTime() : 0;
+          valB = b.inHandsDate ? new Date(b.inHandsDate).getTime() : 0; break;
+        case 'items':
+          valA = a.lineItemCount || 0; valB = b.lineItemCount || 0; break;
+        case 'total':
+          valA = parseFloat(a.totalCost || '0'); valB = parseFloat(b.totalCost || '0'); break;
+        default: valA = 0; valB = 0;
+      }
+      if (valA < valB) return mpSortDir === 'asc' ? -1 : 1;
+      if (valA > valB) return mpSortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    const SortTh = ({ field, label, width, flex, align }: {
+      field: typeof mpSortField; label: string;
+      width?: number; flex?: number; align?: 'left' | 'center' | 'right';
+    }) => {
+      const active = mpSortField === field;
+      const dir = mpSortDir;
+      return (
+        <TouchableOpacity
+          onPress={() => toggleSort(field)}
+          style={[mpStyles.thBtn, width ? { width } : undefined, flex ? { flex } : undefined]}
+        >
+          <Text style={[mpStyles.thText, active && mpStyles.thTextActive, align === 'right' && { textAlign: 'right' }, align === 'center' && { textAlign: 'center' }]}>
+            {label}
+          </Text>
+          {active
+            ? (dir === 'asc'
+              ? <ChevronUp size={10} color="#FF5A00" />
+              : <ChevronDown size={10} color="#FF5A00" />)
+            : <ArrowUpDown size={10} color="rgba(255,255,255,0.4)" />
+          }
+        </TouchableOpacity>
+      );
+    };
+
     const hasActiveFilters = !!(mpStatusFilter || mpDateFrom || mpDateTo || mpCostMin || mpCostMax);
 
     const clearAll = () => {
@@ -1784,13 +1840,13 @@ export default function ClientPortal() {
 
           {/* Black table header — inside header so the header border falls below it */}
           <View style={mpStyles.tableHeader}>
-            <Text style={[mpStyles.thText, { width: 110 }]}>STATUS</Text>
-            <Text style={[mpStyles.thText, { flex: 1 }]}>PROJECT</Text>
-            <Text style={[mpStyles.thText, { width: 100 }]}>SUBMITTED</Text>
-            <Text style={[mpStyles.thText, { width: 100 }]}>IN-HANDS</Text>
-            <Text style={[mpStyles.thText, { width: 54, textAlign: 'center' }]}>ITEMS</Text>
-            <Text style={[mpStyles.thText, { width: 84, textAlign: 'right' }]}>TOTAL</Text>
-            <Text style={[mpStyles.thText, { width: 56 }]} />
+            <SortTh field="status"    label="STATUS"    width={110} />
+            <SortTh field="project"   label="PROJECT"   flex={1} />
+            <SortTh field="submitted" label="SUBMITTED" width={100} />
+            <SortTh field="inHands"   label="IN-HANDS"  width={100} />
+            <SortTh field="items"     label="ITEMS"     width={54} align="center" />
+            <SortTh field="total"     label="TOTAL"     width={84} align="right" />
+            <View style={{ width: 56 }} />
           </View>
         </View>
 
@@ -1798,7 +1854,7 @@ export default function ClientPortal() {
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           {projectsLoading ? (
             <ActivityIndicator color={BRAND} style={{ marginTop: 40 }} />
-          ) : displayed.length === 0 ? (
+          ) : sortedDisplayed.length === 0 ? (
             <View style={{ paddingHorizontal: 20, paddingTop: 48, alignItems: 'center' }}>
               {hasActiveFilters || mpSearch ? (
                 <EmptyState
@@ -1823,7 +1879,7 @@ export default function ClientPortal() {
               )}
             </View>
           ) : (
-            displayed.map((p, idx) => {
+            sortedDisplayed.map((p, idx) => {
               const canView = isQuoteStatus(p.status);
               const cost = p.totalCost && parseFloat(p.totalCost) > 0 ? `$${parseFloat(p.totalCost).toFixed(2)}` : '—';
               return (
@@ -1857,8 +1913,8 @@ export default function ClientPortal() {
 
           <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
             <Text style={mpStyles.resultCount}>
-              {displayed.length} project{displayed.length !== 1 ? 's' : ''}
-              {orgProjects.length !== displayed.length ? ` of ${orgProjects.length}` : ''}
+              {sortedDisplayed.length} project{sortedDisplayed.length !== 1 ? 's' : ''}
+              {orgProjects.length !== sortedDisplayed.length ? ` of ${orgProjects.length}` : ''}
             </Text>
           </View>
         </ScrollView>
@@ -3557,7 +3613,7 @@ const styles = StyleSheet.create({
   welcomeName: { fontSize: 16, fontWeight: '700', color: TEXT },
   welcomeOrg: { fontSize: 13, color: TEXT_LIGHT, marginTop: 1 },
   divider: { height: 1, backgroundColor: '#F3F4F6', marginBottom: 20 },
-  formTitle: { fontSize: 18, fontWeight: '700', color: TEXT, marginBottom: 3 },
+  formTitle: { fontSize: 24, fontWeight: '800', color: TEXT, marginBottom: 3 },
   formSub: { fontSize: 13, color: TEXT_LIGHT, marginBottom: 14, lineHeight: 19 },
   sectionCard: { backgroundColor: '#FAFAFA', borderWidth: 1, borderColor: BORDER, borderRadius: 12, padding: 12, marginBottom: 14 },
   sectionLabel: { fontSize: 11, fontWeight: '700', color: TEXT_LIGHT, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
@@ -3758,7 +3814,7 @@ const dash = StyleSheet.create({
   emptyTitle: { fontSize: 13, fontWeight: '600', color: TEXT_LIGHT, marginBottom: 4 },
   emptySub: { fontSize: 12, color: TEXT_PLACEHOLDER, textAlign: 'center', lineHeight: 17 },
 
-  pageTitle: { fontSize: 20, fontWeight: '700', color: TEXT, marginBottom: 20 },
+  pageTitle: { fontSize: 24, fontWeight: '800', color: TEXT, marginBottom: 20 },
 
   pageTitleRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20,
@@ -4169,6 +4225,14 @@ const mpStyles = StyleSheet.create({
     color: '#fff',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  thBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  thTextActive: {
+    color: '#FF5A00',
   },
 
   projectRow: {
