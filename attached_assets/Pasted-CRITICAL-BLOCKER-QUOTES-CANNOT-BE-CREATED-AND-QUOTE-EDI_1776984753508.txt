@@ -1,0 +1,237 @@
+CRITICAL BLOCKER: QUOTES CANNOT BE CREATED AND QUOTE EDITS STILL DO NOT SAVE
+
+The quote system is currently broken at a core level.
+
+Two major issues remain:
+1. New quotes cannot be created successfully
+2. Existing quotes still do not save changes after editing
+
+This has already been attempted multiple times, so do NOT do another surface-level patch. Please stop and perform a full source-of-truth + persistence audit.
+
+======================================================================
+1. PRIMARY GOAL
+======================================================================
+
+Fix the quote system so that:
+
+- new quotes can be created
+- quote edits save correctly
+- saved changes persist after refresh
+- saved changes appear correctly in the Projects table
+- saved changes appear correctly in the quote detail page
+- saved changes appear correctly in client-facing views where applicable
+
+This must work across statuses:
+- Needs Review
+- Quoting
+- Quoted
+- Invoice Sent
+- In Production
+- Completed
+
+======================================================================
+2. FIRST: IDENTIFY THE SOURCE OF TRUTH
+======================================================================
+
+Before changing code, identify and document:
+
+- Where is a quote created?
+- Which table/model stores the parent quote/project?
+- Which table/model stores line items?
+- Which table/model stores quantities/sizes?
+- Which table/model stores pricing/markup/totals?
+- Are client-submitted requests and manually-created quotes using the same model?
+- Are quote details being read from one source but saved to another?
+
+This is likely a source-of-truth mismatch. Fix that first.
+
+======================================================================
+3. DEBUG QUOTE CREATION
+======================================================================
+
+Trace the full new quote creation flow:
+
+A. UI
+- Does the New Quote button trigger the expected create flow?
+- Is the correct form state initialized?
+- Are required fields present?
+- Are line items initialized correctly?
+
+B. Payload
+- Log the exact create payload before submit
+- Confirm required fields are included
+- Confirm organization/client ID is included
+- Confirm line items are included
+- Confirm pricing defaults are valid
+
+C. API / Backend
+- Confirm the create endpoint is being called
+- Confirm validation is not rejecting fields silently
+- Confirm the API returns an error if creation fails
+- Confirm created quote/project ID is returned
+
+D. Database
+- Confirm parent quote/project row is created
+- Confirm line item rows are created
+- Confirm sizes/quantities are created
+- Confirm totals/markup are stored
+- Confirm created record is queryable after creation
+
+E. UI After Creation
+- After successful creation, redirect/open the created quote
+- Refetch Projects list
+- Confirm new quote appears in Projects table
+
+======================================================================
+4. DEBUG QUOTE EDIT/SAVE
+======================================================================
+
+Trace the full edit/save flow:
+
+A. Frontend State
+- Confirm edited fields update local state
+- Confirm nested line item updates are captured
+- Confirm size/quantity changes are captured
+- Confirm totals recalculate correctly
+
+B. Save Handler
+- Confirm the save handler fires
+- Confirm no status condition blocks save
+- Confirm save button is not calling the wrong function
+- Confirm edit mode and quote mode use the same reliable persistence logic
+
+C. Payload
+- Log the exact update payload before sending
+- Confirm it includes:
+  - project/quote fields
+  - all line items
+  - line item IDs
+  - sizes/quantities
+  - pricing fields
+  - markup fields
+  - media/artwork references
+
+D. Backend Update
+- Confirm the update endpoint receives the payload
+- Confirm validation schema does not strip fields
+- Confirm nested records are updated correctly
+- Confirm existing line items update
+- Confirm new line items insert
+- Confirm deleted line items are removed
+- Confirm totals save
+
+E. Database
+- Confirm database rows actually change
+- Confirm updated_at changes
+- Confirm correct quote/project ID is updated
+- Confirm no rollback occurs
+
+F. Refetch / Cache
+- Confirm cached stale data is not overwriting saved data
+- Invalidate quote/project queries after save
+- Refetch after successful save
+- Do not show success unless saved data is confirmed
+
+======================================================================
+5. REQUIRED FIXES
+======================================================================
+
+Implement a reliable quote persistence layer that supports:
+
+Quote creation:
+- create parent quote/project
+- create line items
+- create size/quantity data
+- create pricing/totals
+- return created ID
+
+Quote editing:
+- update parent quote/project
+- update existing line items
+- add new line items
+- delete removed line items
+- update sizes/quantities
+- update pricing/markup/totals
+- update media/artwork references
+
+Status handling:
+- saving should work across all editable statuses
+- if a status is locked, UI must disable editing and explain why
+- do not allow fake edits that cannot save
+
+======================================================================
+6. DO NOT MARK COMPLETE UNTIL THESE TESTS PASS
+======================================================================
+
+Test A — Create Quote:
+- Create a new quote from scratch
+- Add project name, client, line item, service, quantities, pricing
+- Save/create
+- Confirm quote appears in Projects table
+- Open it
+- Refresh
+- Confirm all data remains
+
+Test B — Edit Existing Quote:
+- Open an existing quote
+- Change project name, due date, service, quantities, markup
+- Save
+- Refresh
+- Confirm changes remain
+
+Test C — Add Line Item:
+- Open quote
+- Add second line item
+- Save
+- Refresh
+- Confirm second line item remains
+
+Test D — Delete Line Item:
+- Delete a line item
+- Save
+- Refresh
+- Confirm it stays deleted
+
+Test E — Change Status:
+- Move quote from Needs Review / Quoting to Quoted
+- Save
+- Refresh
+- Confirm status remains
+
+Test F — In Production / Completed:
+- Open In Production or Completed quote
+- Edit allowed fields
+- Save
+- Refresh
+- Confirm changes remain
+
+Test G — Projects Table Sync:
+- Edit total, markup, pieces, services
+- Save
+- Return to Projects table
+- Confirm table reflects updated values
+
+======================================================================
+7. REQUIRED DEBUG OUTPUT
+======================================================================
+
+Please report back with:
+
+- why quotes could not be created
+- why quote edits were not saving
+- which files/functions were broken
+- which database tables/models are the source of truth
+- what was changed
+- which acceptance tests passed
+
+======================================================================
+8. IMPORTANT
+======================================================================
+
+Do not just update frontend state.
+
+The fix must persist to the database and reload correctly after refresh.
+
+Do not show success toast unless the database update actually succeeds.
+
+If there are multiple quote/project models, unify the flow or clearly map the relationship so creation/editing always writes to the same source the UI reads from.

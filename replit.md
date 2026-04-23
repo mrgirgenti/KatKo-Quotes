@@ -92,6 +92,29 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
   - *Fix 1*: Added `networkMode: 'always'` to the global `QueryClient` in `app/_layout.tsx` so all queries bypass online/offline detection.
   - *Fix 2*: Added a direct per-org `useQuery(['org_detail', id])` in `app/crm/[id].tsx` that fetches from `/api/orgs/{id}` directly, as a belt-and-suspenders fallback. The page uses whichever data source resolves first (CrmContext orgs list OR direct org fetch).
 
+## CRITICAL FIX — Missing DB Columns Blocked All Saves (2026-04-23)
+
+### Root Cause
+`PUT /api/projects/[id]` included `"quoteSentAt" = $21` and `"waveInvoiceLink" = $22` in the SQL `UPDATE` statement. These two columns **did not exist** in the `Project` table. PostgreSQL threw `column "quoteSentAt" of relation "Project" does not exist` on every single save attempt. This meant:
+- Quote edits never persisted (every Save → 500 error)
+- Status changes (Mark Sent, Mark Paid, Start Quote) never persisted
+- Wave link saves never persisted
+- The `allQuotes` cache update still ran (so the UI looked right), but after a refresh the stale DB data was shown
+
+### Fix Applied
+Added the two missing columns directly to the PostgreSQL database:
+```sql
+ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "quoteSentAt" TEXT;
+ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "waveInvoiceLink" TEXT;
+```
+Updated `prisma/schema.prisma` to include `quoteSentAt String?` and `waveInvoiceLink String?` so the schema stays in sync with the real database.
+
+### Verification
+- `PUT /api/projects/:id` now returns HTTP 200 with the updated record
+- `POST /api/projects` (creation) was unaffected — it never referenced the missing columns
+- Both columns confirmed present in the DB via `information_schema.columns` query
+- `portal/quote/[id]+api.ts` which also reads these fields now works correctly
+
 ## Quote Edit Persistence Fixes (2026-04-23)
 
 ### Root Cause
