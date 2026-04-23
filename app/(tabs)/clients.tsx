@@ -29,6 +29,7 @@ import {
   Upload,
   ChevronDown,
   Check,
+  ArrowUpDown,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
@@ -38,6 +39,8 @@ import { ContactImportModal } from '@/components/ContactImportModal';
 
 const FILTER_TABS: (CrmStatus | 'All')[] = ['All', 'Cold', 'Working', 'Active Client', 'Past Client'];
 
+type SortField = 'name' | 'type' | 'contact' | 'campaign' | 'activity' | 'status';
+type SortDir = 'asc' | 'desc';
 type AddMode = 'org' | 'person';
 type AddStep = 'choose' | 'details';
 
@@ -197,6 +200,8 @@ export default function ClientsScreen() {
   const { isDesktop } = useBreakpoint();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<CrmStatus | 'All'>('All');
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [modalVisible, setModalVisible] = useState(false);
   const [importModalVisible, setImportModalVisible] = useState(false);
 
@@ -211,7 +216,7 @@ export default function ClientsScreen() {
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
 
   const filtered = useMemo(() => {
-    return orgs.filter((o) => {
+    const list = orgs.filter((o) => {
       const matchesFilter = filter === 'All' || o.status === filter;
       const q = search.toLowerCase();
       const matchesSearch =
@@ -227,7 +232,33 @@ export default function ClientsScreen() {
         );
       return matchesFilter && matchesSearch;
     });
-  }, [orgs, filter, search]);
+
+    return [...list].sort((a, b) => {
+      let cmp = 0;
+      if (sortField === 'name') {
+        cmp = a.name.localeCompare(b.name);
+      } else if (sortField === 'type') {
+        cmp = (a.type || '').localeCompare(b.type || '');
+      } else if (sortField === 'contact') {
+        const ca = (a.contacts.find((c) => c.isPrimary) || a.contacts[0]);
+        const cb = (b.contacts.find((c) => c.isPrimary) || b.contacts[0]);
+        const na = ca ? `${ca.lastName} ${ca.firstName}` : '';
+        const nb = cb ? `${cb.lastName} ${cb.firstName}` : '';
+        cmp = na.localeCompare(nb);
+      } else if (sortField === 'campaign') {
+        const ca = a.campaigns.find((c) => c.steps.some((s) => s.status === 'pending'));
+        const cb = b.campaigns.find((c) => c.steps.some((s) => s.status === 'pending'));
+        cmp = (ca?.templateName || '').localeCompare(cb?.templateName || '');
+      } else if (sortField === 'activity') {
+        const da = a.activityLog[0] ? new Date(a.activityLog[0].date).getTime() : 0;
+        const db = b.activityLog[0] ? new Date(b.activityLog[0].date).getTime() : 0;
+        cmp = da - db;
+      } else if (sortField === 'status') {
+        cmp = a.status.localeCompare(b.status);
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  }, [orgs, filter, search, sortField, sortDir]);
 
   const counts = useMemo(() => ({
     All: orgs.length,
@@ -318,6 +349,22 @@ export default function ClientsScreen() {
   const canSave = addMode === 'org'
     ? !!orgForm.name.trim()
     : !!(contactForm.firstName.trim() || contactForm.lastName.trim());
+
+  const toggleSort = useCallback((field: SortField) => {
+    if (sortField === field) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  }, [sortField]);
+
+  const SortBtn = ({ field, label }: { field: SortField; label: string }) => (
+    <TouchableOpacity style={styles.sortBtn} onPress={() => toggleSort(field)}>
+      <Text style={[styles.sortBtnText, sortField === field && styles.sortBtnTextActive]}>{label}</Text>
+      <ArrowUpDown size={11} color={sortField === field ? Colors.light.tint : 'rgba(255,255,255,0.35)'} />
+    </TouchableOpacity>
+  );
 
   const filterIcon = (tab: CrmStatus | 'All') => {
     if (tab === 'All') return <Users size={12} color={filter === tab ? Colors.light.tint : Colors.light.textSecondary} />;
@@ -423,13 +470,36 @@ export default function ClientsScreen() {
         {isDesktop && (
           <View style={styles.tableHeader}>
             <View style={styles.colAvatar} />
-            <View style={styles.colName}><Text style={styles.thText}>Organization</Text></View>
-            <View style={styles.colContact}><Text style={styles.thText}>Primary Contact</Text></View>
-            <View style={styles.colCampaign}><Text style={styles.thText}>Campaign</Text></View>
-            <View style={styles.colActivity}><Text style={styles.thText}>Last Activity</Text></View>
-            <View style={styles.colStatus}><Text style={styles.thText}>Status</Text></View>
+            <View style={styles.colName}>
+              <SortBtn field="name" label="Organization" />
+            </View>
+            <View style={styles.colContact}>
+              <SortBtn field="contact" label="Primary Contact" />
+            </View>
+            <View style={styles.colCampaign}>
+              <SortBtn field="campaign" label="Campaign" />
+            </View>
+            <View style={styles.colActivity}>
+              <SortBtn field="activity" label="Last Activity" />
+            </View>
+            <View style={styles.colStatus}>
+              <SortBtn field="status" label="Status" />
+            </View>
             <View style={styles.colArrow} />
           </View>
+        )}
+        {!isDesktop && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mobileSortScroll} contentContainerStyle={styles.mobileSortRow}>
+            <Text style={styles.mobileSortLabel}>Sort:</Text>
+            {(['name', 'type', 'contact', 'activity', 'status'] as SortField[]).map((f) => (
+              <TouchableOpacity key={f} style={[styles.mobileSortBtn, sortField === f && styles.mobileSortBtnActive]} onPress={() => toggleSort(f)}>
+                <Text style={[styles.mobileSortBtnText, sortField === f && styles.mobileSortBtnTextActive]}>
+                  {f === 'name' ? 'Name' : f === 'type' ? 'Type' : f === 'contact' ? 'Contact' : f === 'activity' ? 'Activity' : 'Status'}
+                  {sortField === f ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         )}
       </View>
 
@@ -1089,6 +1159,30 @@ const styles = StyleSheet.create({
   },
   sectionDividerLine: { flex: 1, height: 1, backgroundColor: Colors.light.border },
   sectionDividerLabel: { fontSize: 11, fontWeight: '700' as const, color: Colors.light.textSecondary, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
+
+  sortBtn: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4,
+  },
+  sortBtnText: {
+    fontSize: 11, fontWeight: '700' as const, color: 'rgba(255,255,255,0.6)',
+    textTransform: 'uppercase' as const, letterSpacing: 0.4,
+  },
+  sortBtnTextActive: { color: Colors.light.tint },
+
+  mobileSortScroll: { flexShrink: 0 },
+  mobileSortRow: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6,
+    paddingHorizontal: 16, paddingVertical: 8,
+  },
+  mobileSortLabel: { fontSize: 12, color: Colors.light.textSecondary, fontWeight: '600' as const, marginRight: 2 },
+  mobileSortBtn: {
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
+    borderWidth: 1, borderColor: Colors.light.border,
+    backgroundColor: Colors.light.surface,
+  },
+  mobileSortBtnActive: { borderColor: Colors.light.tint, backgroundColor: '#FFF4EE' },
+  mobileSortBtnText: { fontSize: 12, color: Colors.light.textSecondary },
+  mobileSortBtnTextActive: { color: Colors.light.tint, fontWeight: '700' as const },
 
   saveBtn: {
     backgroundColor: Colors.light.tint,
