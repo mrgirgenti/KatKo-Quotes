@@ -145,7 +145,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   const [dtfHeight1, setDtfHeight1] = useState('');
   const [dtfWidth2, setDtfWidth2] = useState('');
   const [dtfHeight2, setDtfHeight2] = useState('');
-  const [dtfRate, setDtfRate] = useState('0.04');
+  const [dtfRate, setDtfRate] = useState('0.03');
   const [embStitchCount1, setEmbStitchCount1] = useState('');
   const [embStitchCount2, setEmbStitchCount2] = useState('');
   const [includeDigitization, setIncludeDigitization] = useState(false);
@@ -1020,7 +1020,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                       <View style={[styles.dtfCalcRowMobile, { marginTop: 6 }]}>
                         <Text style={styles.dtfRateLabel}>Rate: $</Text>
                         <View style={[styles.dtfInputWrapper, { flex: 1 }]}>
-                          <TextInput style={styles.dtfRateInputInline} value={dtfRate} onChangeText={t => setDtfRate(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.04" placeholderTextColor={Colors.light.textSecondary} />
+                          <TextInput style={styles.dtfRateInputInline} value={dtfRate} onChangeText={t => setDtfRate(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.03" placeholderTextColor={Colors.light.textSecondary} />
                         </View>
                         <Text style={styles.dtfRateLabel}>/sq in</Text>
                       </View>
@@ -1047,7 +1047,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                         <Text style={styles.dtfInputLabel}>Rate</Text>
                         <View style={styles.dtfInputWrapper}>
                           <Text style={styles.dtfDollar}>$</Text>
-                          <TextInput style={styles.dtfRateInputInline} value={dtfRate} onChangeText={t => setDtfRate(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.04" placeholderTextColor={Colors.light.textSecondary} />
+                          <TextInput style={styles.dtfRateInputInline} value={dtfRate} onChangeText={t => setDtfRate(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.03" placeholderTextColor={Colors.light.textSecondary} />
                         </View>
                       </View>
                     </View>
@@ -1084,7 +1084,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                           <View style={[styles.dtfCalcRowMobile, { marginTop: 6 }]}>
                             <Text style={styles.dtfRateLabel}>Rate: $</Text>
                             <View style={[styles.dtfInputWrapper, { flex: 1 }]}>
-                              <TextInput style={styles.dtfRateInputInline} value={dtfRate} editable={false} keyboardType="decimal-pad" placeholder="0.04" placeholderTextColor={Colors.light.textSecondary} />
+                              <TextInput style={styles.dtfRateInputInline} value={dtfRate} editable={false} keyboardType="decimal-pad" placeholder="0.03" placeholderTextColor={Colors.light.textSecondary} />
                             </View>
                             <Text style={styles.dtfRateLabel}>/sq in</Text>
                           </View>
@@ -1111,7 +1111,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                             <Text style={styles.dtfInputLabel}>Rate</Text>
                             <View style={styles.dtfInputWrapper}>
                               <Text style={styles.dtfDollar}>$</Text>
-                              <TextInput style={styles.dtfRateInputInline} value={dtfRate} editable={false} keyboardType="decimal-pad" placeholder="0.04" placeholderTextColor={Colors.light.textSecondary} />
+                              <TextInput style={styles.dtfRateInputInline} value={dtfRate} editable={false} keyboardType="decimal-pad" placeholder="0.03" placeholderTextColor={Colors.light.textSecondary} />
                             </View>
                           </View>
                         </View>

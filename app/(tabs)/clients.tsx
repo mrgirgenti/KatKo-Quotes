@@ -32,7 +32,6 @@ import {
   ArrowUpDown,
   Wifi,
   WifiOff,
-  MoreHorizontal,
   Edit3,
   Trash2,
   UserPlus,
@@ -177,9 +176,14 @@ function OrgRow({ org, onPress, onDelete }: OrgRowProps) {
           )}
         </View>
         <View style={styles.colActions}>
-          <TouchableOpacity ref={menuBtnRef as any} style={styles.rowMenuBtn} onPress={(e) => { e.stopPropagation?.(); openMenu(); }} activeOpacity={0.7}>
-            <MoreHorizontal size={16} color={Colors.light.textSecondary} />
+          <TouchableOpacity style={styles.viewBtn} onPress={() => router.push(`/crm/${org.id}` as any)}>
+            <Text style={styles.viewBtnText}>View</Text>
           </TouchableOpacity>
+          <View ref={menuBtnRef} collapsable={false}>
+            <TouchableOpacity style={styles.menuBtn} onPress={(e) => { e.stopPropagation?.(); openMenu(); }} activeOpacity={0.7}>
+              <ChevronDown size={14} color={Colors.light.textSecondary} />
+            </TouchableOpacity>
+          </View>
         </View>
       </TouchableOpacity>
 
@@ -563,7 +567,9 @@ export default function ClientsScreen() {
             <View style={styles.colHub}>
               <SortBtn field="hub" label="Client Hub" />
             </View>
-            <View style={styles.colActions} />
+            <View style={styles.colActions}>
+              <Text style={styles.actionsHeaderText}>ACTIONS</Text>
+            </View>
           </View>
         )}
         {!isDesktop && (
@@ -1077,9 +1083,9 @@ const styles = StyleSheet.create({
   colName: { flex: 2.5 },
   colContact: { flex: 2.5 },
   colCampaign: { flex: 1.2 },
-  colStatus: { width: 120 },
+  colStatus: { width: 160 },
   colArrow: { width: 28, alignItems: 'center' },
-  colActions: { width: 36, alignItems: 'center' as const, justifyContent: 'center' as const },
+  colActions: { width: 120, flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'flex-end' as const, gap: 4 },
 
   tableOrgName: { fontSize: 14, fontWeight: '600' as const, color: Colors.light.text },
   tableOrgType: { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
@@ -1246,7 +1252,19 @@ const styles = StyleSheet.create({
   sectionDividerLine: { flex: 1, height: 1, backgroundColor: Colors.light.border },
   sectionDividerLabel: { fontSize: 11, fontWeight: '700' as const, color: Colors.light.textSecondary, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
 
-  colHub: { width: 115, justifyContent: 'center' as const },
+  colHub: { width: 150, justifyContent: 'center' as const },
+
+  viewBtn: {
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 7, backgroundColor: Colors.light.tint,
+  },
+  viewBtnText: { fontSize: 12, fontWeight: '700' as const, color: '#fff' },
+  menuBtn: {
+    width: 28, height: 28,
+    borderRadius: 7, borderWidth: 1, borderColor: Colors.light.border,
+    backgroundColor: '#fff', alignItems: 'center' as const, justifyContent: 'center' as const,
+  },
+  actionsHeaderText: { fontSize: 11, fontWeight: '700' as const, color: Colors.light.textSecondary, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
 
   rowMenuBtn: {
     width: 32, height: 32, borderRadius: 8,
