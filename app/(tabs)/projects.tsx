@@ -42,7 +42,7 @@ import { formatCurrency } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
 import { generateAndSharePDF, printQuote } from '@/utils/pdfGenerator';
 
-type SortField = 'date' | 'client' | 'total' | 'status' | 'inHands';
+type SortField = 'date' | 'client' | 'total' | 'status' | 'inHands' | 'project' | 'invoice' | 'services' | 'pcs' | 'markup';
 type SortDir = 'asc' | 'desc';
 
 const STATUS_PILLS: { key: 'all' | QuoteStatus; label: string }[] = [
@@ -459,6 +459,22 @@ export default function ProjectsScreen() {
         cmp = (a.quote.calculations?.total ?? 0) - (b.quote.calculations?.total ?? 0);
       } else if (sortField === 'status') {
         cmp = a.effectiveStatus.localeCompare(b.effectiveStatus);
+      } else if (sortField === 'project') {
+        cmp = (a.quote.projectName || '').localeCompare(b.quote.projectName || '');
+      } else if (sortField === 'invoice') {
+        cmp = (a.quote.invoiceNumber || '').localeCompare(b.quote.invoiceNumber || '');
+      } else if (sortField === 'services') {
+        const sa = [...new Set(a.quote.lineItems.map((i: any) => i.serviceStyle))].join(' ');
+        const sb = [...new Set(b.quote.lineItems.map((i: any) => i.serviceStyle))].join(' ');
+        cmp = sa.localeCompare(sb);
+      } else if (sortField === 'pcs') {
+        const pa = a.quote.lineItems.reduce((s: number, li: any) =>
+          s + Object.values(li.sizes || {}).reduce((ps: number, v: any) => ps + (Number(v) || 0), 0), 0);
+        const pb = b.quote.lineItems.reduce((s: number, li: any) =>
+          s + Object.values(li.sizes || {}).reduce((ps: number, v: any) => ps + (Number(v) || 0), 0), 0);
+        cmp = pa - pb;
+      } else if (sortField === 'markup') {
+        cmp = (a.quote.calculations?.markupAmount ?? 0) - (b.quote.calculations?.markupAmount ?? 0);
       }
       return sortDir === 'asc' ? cmp : -cmp;
     });
@@ -769,7 +785,9 @@ export default function ProjectsScreen() {
                 onToggle={toggleSelectAll}
               />
             </View>
-            <View style={styles.colStatus}><Text style={styles.thText}>Status</Text></View>
+            <View style={styles.colStatus}>
+              <SortBtn field="status" label="Status" />
+            </View>
             <View style={styles.colOrderDate}>
               <SortBtn field="date" label="Order Date" />
             </View>
@@ -779,15 +797,25 @@ export default function ProjectsScreen() {
             <View style={styles.colClient}>
               <SortBtn field="client" label="Client" />
             </View>
-            <View style={styles.colProject}><Text style={styles.thText}>Project</Text></View>
-            <View style={styles.colInvoice}><Text style={styles.thText}>Invoice #</Text></View>
+            <View style={styles.colProject}>
+              <SortBtn field="project" label="Project" />
+            </View>
+            <View style={styles.colInvoice}>
+              <SortBtn field="invoice" label="Invoice #" />
+            </View>
             <View style={styles.colApplicator}><Text style={styles.thText}>Applicator(s)</Text></View>
-            <View style={styles.colServices}><Text style={styles.thText}>Service(s)</Text></View>
-            <View style={styles.colPcs}><Text style={styles.thText}># PCS</Text></View>
+            <View style={styles.colServices}>
+              <SortBtn field="services" label="Service(s)" />
+            </View>
+            <View style={styles.colPcs}>
+              <SortBtn field="pcs" label="# PCS" />
+            </View>
             <View style={styles.colTotal}>
               <SortBtn field="total" label="Total" />
             </View>
-            <View style={styles.colMarkup}><Text style={styles.thText}>Markup</Text></View>
+            <View style={styles.colMarkup}>
+              <SortBtn field="markup" label="Markup" />
+            </View>
             <View style={styles.colActions}><Text style={styles.thText}>Actions</Text></View>
           </View>
         )}
@@ -812,10 +840,10 @@ export default function ProjectsScreen() {
       {!isDesktop && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mobileSortScroll} contentContainerStyle={styles.mobileSortRow}>
           <Text style={styles.mobileSortLabel}>Sort:</Text>
-          {(['date', 'inHands', 'client', 'total'] as SortField[]).map(f => (
+          {(['status', 'date', 'inHands', 'client', 'project', 'invoice', 'services', 'pcs', 'total', 'markup'] as SortField[]).map(f => (
             <TouchableOpacity key={f} style={[styles.mobileSortBtn, sortField === f && styles.mobileSortBtnActive]} onPress={() => toggleSort(f)}>
               <Text style={[styles.mobileSortBtnText, sortField === f && styles.mobileSortBtnTextActive]}>
-                {f === 'date' ? 'Order Date' : f === 'inHands' ? 'Due Date' : f === 'client' ? 'Client' : 'Total'}
+                {f === 'date' ? 'Order Date' : f === 'inHands' ? 'Due Date' : f === 'client' ? 'Client' : f === 'project' ? 'Project' : f === 'invoice' ? 'Invoice #' : f === 'services' ? 'Service(s)' : f === 'pcs' ? '# PCS' : f === 'total' ? 'Total' : f === 'markup' ? 'Markup' : 'Status'}
                 {sortField === f ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
               </Text>
             </TouchableOpacity>

@@ -41,7 +41,7 @@ import { ContactImportModal } from '@/components/ContactImportModal';
 
 const FILTER_TABS: (CrmStatus | 'All')[] = ['All', 'Cold', 'Working', 'Active Client', 'Past Client'];
 
-type SortField = 'name' | 'type' | 'contact' | 'campaign' | 'activity' | 'status' | 'hub';
+type SortField = 'name' | 'type' | 'contact' | 'campaign' | 'status' | 'hub';
 type SortDir = 'asc' | 'desc';
 type AddMode = 'org' | 'person';
 type AddStep = 'choose' | 'details';
@@ -123,15 +123,6 @@ function OrgRow({ org, onPress }: OrgRowProps) {
           <Text style={styles.tableCampaignActive} numberOfLines={1}>{activeCampaign.templateName}</Text>
         ) : (
           <Text style={styles.tableSecondaryDim}>—</Text>
-        )}
-      </View>
-      <View style={styles.colActivity}>
-        {lastActivity ? (
-          <Text style={styles.tableSecondary} numberOfLines={1}>
-            {new Date(lastActivity.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-          </Text>
-        ) : (
-          <Text style={styles.tableSecondaryDim}>No activity</Text>
         )}
       </View>
       <View style={styles.colStatus}>
@@ -264,10 +255,6 @@ export default function ClientsScreen() {
         const ca = a.campaigns.find((c) => c.steps.some((s) => s.status === 'pending'));
         const cb = b.campaigns.find((c) => c.steps.some((s) => s.status === 'pending'));
         cmp = (ca?.templateName || '').localeCompare(cb?.templateName || '');
-      } else if (sortField === 'activity') {
-        const da = a.activityLog[0] ? new Date(a.activityLog[0].date).getTime() : 0;
-        const db = b.activityLog[0] ? new Date(b.activityLog[0].date).getTime() : 0;
-        cmp = da - db;
       } else if (sortField === 'status') {
         cmp = a.status.localeCompare(b.status);
       } else if (sortField === 'hub') {
@@ -496,9 +483,6 @@ export default function ClientsScreen() {
             <View style={styles.colCampaign}>
               <SortBtn field="campaign" label="Campaign" />
             </View>
-            <View style={styles.colActivity}>
-              <SortBtn field="activity" label="Last Activity" />
-            </View>
             <View style={styles.colStatus}>
               <SortBtn field="status" label="Status" />
             </View>
@@ -511,10 +495,10 @@ export default function ClientsScreen() {
         {!isDesktop && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mobileSortScroll} contentContainerStyle={styles.mobileSortRow}>
             <Text style={styles.mobileSortLabel}>Sort:</Text>
-            {(['name', 'type', 'contact', 'activity', 'status', 'hub'] as SortField[]).map((f) => (
+            {(['name', 'type', 'contact', 'campaign', 'status', 'hub'] as SortField[]).map((f) => (
               <TouchableOpacity key={f} style={[styles.mobileSortBtn, sortField === f && styles.mobileSortBtnActive]} onPress={() => toggleSort(f)}>
                 <Text style={[styles.mobileSortBtnText, sortField === f && styles.mobileSortBtnTextActive]}>
-                  {f === 'name' ? 'Name' : f === 'type' ? 'Type' : f === 'contact' ? 'Contact' : f === 'activity' ? 'Activity' : f === 'status' ? 'Status' : 'Hub'}
+                  {f === 'name' ? 'Name' : f === 'type' ? 'Type' : f === 'contact' ? 'Contact' : f === 'campaign' ? 'Campaign' : f === 'status' ? 'Status' : 'Hub'}
                   {sortField === f ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                 </Text>
               </TouchableOpacity>
@@ -1010,9 +994,8 @@ const styles = StyleSheet.create({
   colAvatar: { width: 44 },
   colName: { flex: 2.5 },
   colContact: { flex: 2.5 },
-  colCampaign: { flex: 2 },
-  colActivity: { width: 90 },
-  colStatus: { width: 110 },
+  colCampaign: { flex: 1.2 },
+  colStatus: { width: 120 },
   colArrow: { width: 28, alignItems: 'center' },
 
   tableOrgName: { fontSize: 14, fontWeight: '600' as const, color: Colors.light.text },
@@ -1180,7 +1163,7 @@ const styles = StyleSheet.create({
   sectionDividerLine: { flex: 1, height: 1, backgroundColor: Colors.light.border },
   sectionDividerLabel: { fontSize: 11, fontWeight: '700' as const, color: Colors.light.textSecondary, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
 
-  colHub: { width: 100, justifyContent: 'center' as const },
+  colHub: { width: 115, justifyContent: 'center' as const },
   hubBadgeActive: {
     flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4,
     backgroundColor: '#FFF4EE', borderRadius: 6,

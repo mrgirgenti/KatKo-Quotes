@@ -1,0 +1,201 @@
+======================================================================
+14. CONTACTS TAB ACTIONS + CLIENT PAGE SECTION OVERHAUL
+======================================================================
+
+We need to improve the backend client / organization page further, especially the Contacts tab actions and the right-side project / quote summary sections.
+
+--------------------------------------------------
+A. CONTACTS TAB – ADD ACTIONS COLUMN / DROPDOWN
+--------------------------------------------------
+
+In the Contacts tab/page, add an Actions column that behaves similarly to the Actions dropdown in Projects.
+
+This should apply at the client / organization level and provide quick actions for managing that organization.
+
+The Actions dropdown should include, in this exact order:
+
+1. Edit Client/Organization
+2. Add Contacts
+--- divider line ---
+3. New Quote
+4. Upload Media
+--- divider line ---
+5. View Client Hub (ONLY if Client Hub is active/on)
+--- divider line ---
+6. Delete Contact/Organization
+
+Requirements:
+- visually mimic the Projects Actions dropdown style where possible
+- anchor correctly to the trigger button
+- only show “View Client Hub” if the hub is active/enabled
+- use clear destructive styling for Delete Contact/Organization
+
+Goal:
+- make the organization page easier to act on without hunting around the UI
+- create consistency with the rest of the OS
+
+--------------------------------------------------
+B. ACTIVE PROJECTS SECTION – EXPAND VISIBLE PROJECT DATA
+--------------------------------------------------
+
+On the client / organization page, the Active Projects section needs to show much more useful information for each project.
+
+For each active project, display:
+- Project Status
+- Order Date
+- Due Date
+- Project Name
+- Service(s) (derived from each line item)
+- # Pieces
+- Total
+- Markup
+
+If a project has more than one line item:
+- add a separating line / sub-line treatment similar to what we do in the main Projects page
+- service display should reflect multiple line items cleanly, not collapse into messy text
+
+This should feel much closer to the main Projects tab data visibility.
+
+--------------------------------------------------
+C. QUOTES & REVENUE SECTION – RENAME + EXPAND METRICS
+--------------------------------------------------
+
+Rename “Quotes & Revenue” to:
+
+- Submitted Quotes
+
+At the top metrics area of this section, it currently shows:
+- Total Quotes
+- Total Revenue
+
+Please add:
+- Total Profit (Markup)
+- Total # PCS
+
+So the top metrics in Submitted Quotes should become:
+1. Total Quotes
+2. Total Revenue
+3. Total Profit (Markup)
+4. Total # PCS
+
+These should be visually balanced and aligned in the summary area.
+
+--------------------------------------------------
+D. SUBMITTED QUOTES ENTRIES – EXPAND VISIBLE DATA
+--------------------------------------------------
+
+In the renamed Submitted Quotes section, each quote entry should show similar detail to what we are implementing for Active Projects.
+
+For each quote entry, display:
+- Project Status
+- Order Date
+- Due Date
+- Project Name
+- Service(s) (based on each line item)
+- # Pieces
+- Total
+- Markup
+
+Again:
+- if more than one line item exists, present it clearly like the Projects page
+- do not oversimplify into just project name + amount
+
+Goal:
+- make the client / organization page actually useful for quick business review
+- surface the same key info we care about in Projects
+
+--------------------------------------------------
+E. MOVE ACTIVITY SECTION
+--------------------------------------------------
+
+Move the Activity section so it sits BELOW the Submitted Quotes section.
+
+New right-side section order should be:
+1. Active Projects
+2. Submitted Quotes
+3. Activity
+
+This order makes more sense operationally.
+
+--------------------------------------------------
+F. ACTIVE PROJECTS – ADD METRICS HEADER
+--------------------------------------------------
+
+The Active Projects section should also have a metrics summary at the top, similar in spirit to the current Quotes & Revenue section.
+
+For Active Projects, show these metrics:
+1. # Active Projects
+   - only count active projects
+   - do NOT include completed projects
+
+2. Total Revenue
+3. Total Profit (Markup)
+4. Total PCS
+
+This should sit at the top of the Active Projects section in a summary strip / metrics area.
+
+--------------------------------------------------
+G. ADD NEW SECTION ABOVE ACTIVE PROJECTS: CLIENT LEGACY
+--------------------------------------------------
+
+Above the Active Projects section, add a new metrics section called:
+
+- Client Legacy
+
+This section should summarize the long-term business history for that client.
+
+Metrics to include:
+1. Total # Projects (completed)
+2. Total Revenue
+3. Total Profit (Markup)
+4. Percentages of projects by service type
+   Example:
+   - 80% Screen Printing
+   - 10% Direct to Film
+   - 8% Embroidery
+   - 2% Promotional
+
+5. Total number of pieces per service type
+   Example:
+   - Screen Printing: X pcs
+   - Direct to Film: Y pcs
+   - Embroidery: Z pcs
+   - Promotional: A pcs
+
+This section should act like a client business snapshot / historical profile.
+
+Goal:
+- help us quickly understand the value and history of a client
+- make the organization page more strategic, not just administrative
+
+--------------------------------------------------
+H. DATA / CALCULATION EXPECTATIONS
+--------------------------------------------------
+
+For all metrics above:
+- Revenue = customer-facing total
+- Profit = markup / profit value tracked in system
+- PCS = total quantity / total pieces
+- service-type percentages should be based on completed project history
+- service-type piece counts should also be based on historical project data
+
+Make sure calculations are consistent and not duplicated incorrectly across active vs completed scopes.
+
+--------------------------------------------------
+I. FINAL PAGE GOAL
+--------------------------------------------------
+
+The client / organization page should become a true operational dashboard.
+
+We want it to show:
+- who the client is
+- who their people are
+- whether their hub is active
+- quick actions
+- active work in progress
+- submitted quote pipeline
+- activity history
+- long-term client value / service history
+- media uploads
+
+This should feel like a strong account-management page, not a thin profile view.

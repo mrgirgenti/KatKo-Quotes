@@ -410,6 +410,51 @@ export default function OrgProfileScreen() {
 
   const isLead = org && (org.status === 'Cold' || org.status === 'Working');
 
+  const completedQuotes = useMemo(() =>
+    relatedQuotes.filter((q) => getEffectiveStatus(q) === 'completed'),
+    [relatedQuotes]
+  );
+
+  const getPcs = (q: any) =>
+    (q.lineItems || []).reduce((s: number, li: any) =>
+      s + Object.values(li.sizes || {}).reduce((ps: number, v: any) => ps + (Number(v) || 0), 0), 0);
+
+  const activeMetrics = useMemo(() => {
+    const revenue = activeQuotes.reduce((s, q) => s + (q.calculations?.total ?? 0), 0);
+    const markup = activeQuotes.reduce((s, q) => s + (q.calculations?.markupAmount ?? 0), 0);
+    const pcs = activeQuotes.reduce((s, q) => s + getPcs(q), 0);
+    return { revenue, markup, pcs };
+  }, [activeQuotes]);
+
+  const quoteMetrics = useMemo(() => {
+    const revenue = relatedQuotes.reduce((s, q) => s + (q.calculations?.total ?? 0), 0);
+    const markup = relatedQuotes.reduce((s, q) => s + (q.calculations?.markupAmount ?? 0), 0);
+    const pcs = relatedQuotes.reduce((s, q) => s + getPcs(q), 0);
+    return { revenue, markup, pcs };
+  }, [relatedQuotes]);
+
+  const legacyMetrics = useMemo(() => {
+    const revenue = completedQuotes.reduce((s, q) => s + (q.calculations?.total ?? 0), 0);
+    const markup = completedQuotes.reduce((s, q) => s + (q.calculations?.markupAmount ?? 0), 0);
+    const serviceMap: Record<string, { pcs: number; count: number }> = {};
+    completedQuotes.forEach((q) => {
+      (q.lineItems || []).forEach((li: any) => {
+        const svc = li.serviceStyle || li.service || 'Other';
+        const pcs = Object.values(li.sizes || {}).reduce((ps: number, v: any) => ps + (Number(v) || 0), 0);
+        if (!serviceMap[svc]) serviceMap[svc] = { pcs: 0, count: 0 };
+        serviceMap[svc].pcs += pcs;
+        serviceMap[svc].count += 1;
+      });
+    });
+    const totalLineItems = Object.values(serviceMap).reduce((s, v) => s + v.count, 0);
+    const services = Object.entries(serviceMap).map(([name, d]) => ({
+      name,
+      pcs: d.pcs,
+      pct: totalLineItems > 0 ? Math.round((d.count / totalLineItems) * 100) : 0,
+    })).sort((a, b) => b.pcs - a.pcs);
+    return { totalProjects: completedQuotes.length, revenue, markup, services };
+  }, [completedQuotes]);
+
   const openEditOrg = useCallback(() => {
     if (!org) return;
     setOrgForm({
