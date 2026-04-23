@@ -2356,7 +2356,7 @@ export default function ClientPortal() {
 
         {/* Hidden file inputs for web */}
         {Platform.OS === 'web' && (
-          <>
+          <View style={{ height: 0, overflow: 'hidden' }}>
             <input
               ref={profilePicInputRef}
               type="file"
@@ -2371,7 +2371,7 @@ export default function ClientPortal() {
               style={{ display: 'none' }}
               onChange={handleOrgLogoFile}
             />
-          </>
+          </View>
         )}
 
         {/* Profile header */}

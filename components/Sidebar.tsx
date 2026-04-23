@@ -55,6 +55,8 @@ interface SidebarProps {
   defaultCollapsed?: boolean;
 }
 
+const LOGO_AVAILABLE_W = EXPANDED_WIDTH - 48; // 24px padding each side
+
 export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const router = useRouter();
@@ -63,6 +65,24 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
 
   const { orgAdmin, currentUser } = useUser();
   const logoUri = orgAdmin?.companyLogo || FALLBACK_LOGO_URI;
+
+  const [logoDims, setLogoDims] = useState<{ w: number; h: number } | null>(null);
+
+  useEffect(() => {
+    if (!logoUri) { setLogoDims(null); return; }
+    Image.getSize(logoUri, (w, h) => setLogoDims({ w, h }), () => setLogoDims(null));
+  }, [logoUri]);
+
+  const computedLogoStyle = (() => {
+    if (!logoDims) return { width: LOGO_AVAILABLE_W, height: 60 };
+    const { w, h } = logoDims;
+    if (w >= h) {
+      return { width: LOGO_AVAILABLE_W, height: Math.round(LOGO_AVAILABLE_W * (h / w)) };
+    } else {
+      const displayH = Math.min(LOGO_AVAILABLE_W, 140);
+      return { width: Math.round(displayH * (w / h)), height: displayH };
+    }
+  })();
 
   useEffect(() => {
     setCollapsed(defaultCollapsed);
@@ -102,7 +122,7 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
 
       {!collapsed && (
         <View style={styles.logoContainer}>
-          <Image source={{ uri: logoUri }} style={[styles.logo, { backgroundColor: 'transparent' }]} resizeMode="contain" />
+          <Image source={{ uri: logoUri }} style={[computedLogoStyle, { backgroundColor: 'transparent' }]} resizeMode="contain" />
         </View>
       )}
 
@@ -213,12 +233,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   logoContainer: {
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingHorizontal: 24,
-  },
-  logo: {
-    width: '100%',
-    height: 110,
+    alignItems: 'center',
   },
   divider: {
     height: 1,
