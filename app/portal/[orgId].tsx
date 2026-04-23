@@ -54,6 +54,8 @@ import {
   Mail,
   Shield,
   Library,
+  Tag,
+  MapPin,
 } from 'lucide-react-native';
 import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
 
@@ -67,7 +69,7 @@ const TEXT_LIGHT = '#6B7280';
 const TEXT_PLACEHOLDER = '#9CA3AF';
 
 type Step = 'email' | 'dashboard';
-type ActiveView = 'home' | 'projects' | 'artwork' | 'catalogs' | 'submit' | 'profile';
+type ActiveView = 'home' | 'projects' | 'artwork' | 'catalogs' | 'submit' | 'profile' | 'project-view';
 
 interface PendingFile {
   id: string;
@@ -96,6 +98,22 @@ interface PortalProject {
   createdAt: string;
   lineItemCount: number;
   totalCost: string | null;
+}
+
+interface FullPortalProject {
+  id: string;
+  title: string;
+  status: string;
+  orderType: string | null;
+  orderDate: string | null;
+  inHandsDate: string | null;
+  notesClient: string | null;
+  lineItemsData: any[] | null;
+  calculations: any | null;
+  hasOnlineFee: boolean;
+  hasSalesTax: boolean;
+  hasCardFee: boolean;
+  createdAt: string;
 }
 
 const STATUS_PIPELINE = ['NEEDS_REVIEW', 'QUOTING', 'QUOTED', 'INVOICE_SENT', 'PAID', 'IN_PRODUCTION', 'COMPLETED'] as const;
@@ -957,6 +975,9 @@ export default function ClientPortal() {
   const [activeView, setActiveView] = useState<ActiveView>('home');
   const [orgProjects, setOrgProjects] = useState<PortalProject[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProject, setSelectedProject] = useState<FullPortalProject | null>(null);
+  const [projectViewLoading, setProjectViewLoading] = useState(false);
 
   const [clientCatalogs, setClientCatalogs] = useState<Array<{
     id: string; name: string; description: string | null; vendorName: string | null;
@@ -1054,6 +1075,22 @@ export default function ClientPortal() {
     } catch {}
     setProjectsLoading(false);
   }, []);
+
+  const handleViewProject = useCallback(async (projectId: string) => {
+    if (!session) return;
+    setSelectedProjectId(projectId);
+    setSelectedProject(null);
+    setActiveView('project-view');
+    setProjectViewLoading(true);
+    try {
+      const res = await fetch(`/api/portal/${session.orgId}/projects/${projectId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedProject(data);
+      }
+    } catch {}
+    setProjectViewLoading(false);
+  }, [session]);
 
   const fetchMediaBin = useCallback(async (oid: string) => {
     setMediaBinLoading(true);
@@ -1801,7 +1838,7 @@ export default function ClientPortal() {
                   </Text>
                   <View style={{ width: 56, alignItems: 'flex-end' }}>
                     {canView && (
-                      <TouchableOpacity style={mpStyles.viewBtn} onPress={() => setActiveView('submit')}>
+                      <TouchableOpacity style={mpStyles.viewBtn} onPress={() => handleViewProject(p.id)}>
                         <Text style={mpStyles.viewBtnText}>View</Text>
                       </TouchableOpacity>
                     )}
@@ -1819,6 +1856,306 @@ export default function ClientPortal() {
           </View>
         </ScrollView>
       </View>
+    );
+  };
+
+  const ProjectDetailView = () => {
+    const proj = selectedProject;
+    const calc = proj?.calculations;
+    const lineItems: any[] = proj?.lineItemsData ?? [];
+    const totalQty = lineItems.reduce((s: number, li: any) => {
+      const sizes = li.sizes ?? {};
+      return s + Object.values(sizes).reduce((a: number, v: any) => a + (Number(v) || 0), 0);
+    }, 0);
+
+    const fmt = (n: number | null | undefined) =>
+      n != null && n > 0 ? `$${n.toFixed(2)}` : '—';
+
+    const SIZE_LABELS = [
+      { key: 'xs', label: 'XS' }, { key: 's', label: 'SM' },
+      { key: 'm', label: 'MD' }, { key: 'l', label: 'LG' },
+      { key: 'xl', label: 'XL' }, { key: 'xxl', label: '2XL' },
+      { key: 'xxxl', label: '3XL' }, { key: 'xxxxl', label: '4XL' },
+    ];
+
+    return (
+      <ScrollView contentContainerStyle={[dash.viewContent, { paddingBottom: 40 }]} showsVerticalScrollIndicator={false}>
+        {/* Back header */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+          <TouchableOpacity
+            onPress={() => setActiveView('projects')}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, padding: 4 }}
+            activeOpacity={0.7}
+          >
+            <ChevronLeft size={18} color={BRAND} />
+            <Text style={{ fontSize: 13, color: BRAND, fontWeight: '600' }}>My Projects</Text>
+          </TouchableOpacity>
+          <Text style={{ fontSize: 13, color: TEXT_LIGHT }}>/ Quote Details</Text>
+        </View>
+
+        {projectViewLoading ? (
+          <View style={{ alignItems: 'center', paddingTop: 60 }}>
+            <ActivityIndicator size="large" color={BRAND} />
+            <Text style={{ marginTop: 12, color: TEXT_LIGHT }}>Loading project…</Text>
+          </View>
+        ) : !proj ? (
+          <View style={{ alignItems: 'center', paddingTop: 60 }}>
+            <Text style={{ color: TEXT_LIGHT }}>Project not found.</Text>
+          </View>
+        ) : (
+          <View style={{ flexDirection: 'row', gap: 20, alignItems: 'flex-start' }}>
+            {/* Left / Main column */}
+            <View style={{ flex: 1, gap: 16 }}>
+
+              {/* Status + title card */}
+              <View style={pvStyles.card}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                  <StatusPill status={proj.status} />
+                  {proj.orderType ? (
+                    <View style={{ backgroundColor: '#F3F4F6', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: TEXT_LIGHT }}>{proj.orderType}</Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text style={pvStyles.projectTitle}>{proj.title || 'Untitled Project'}</Text>
+                <ProjectPipeline status={proj.status} />
+              </View>
+
+              {/* Order info card */}
+              <View style={pvStyles.card}>
+                <View style={{ flexDirection: 'row', gap: 24 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={pvStyles.metaLabel}>ORDER DATE</Text>
+                    <Text style={pvStyles.metaValue}>{proj.orderDate ? proj.orderDate : '—'}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={pvStyles.metaLabel}>IN-HANDS DATE</Text>
+                    <Text style={pvStyles.metaValue}>{proj.inHandsDate ? formatDate(proj.inHandsDate) : '—'}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={pvStyles.metaLabel}>SUBMITTED</Text>
+                    <Text style={pvStyles.metaValue}>{formatDate(proj.createdAt)}</Text>
+                  </View>
+                </View>
+                {proj.notesClient ? (
+                  <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: BORDER }}>
+                    <Text style={pvStyles.metaLabel}>NOTES</Text>
+                    <Text style={{ fontSize: 13, color: TEXT, marginTop: 4, lineHeight: 20 }}>{proj.notesClient}</Text>
+                  </View>
+                ) : null}
+              </View>
+
+              {/* Line Items */}
+              <View style={pvStyles.card}>
+                <Text style={pvStyles.sectionTitle}>Line Items ({lineItems.length})</Text>
+
+                {lineItems.length === 0 ? (
+                  <Text style={{ color: TEXT_LIGHT, fontSize: 13, marginTop: 8 }}>No line items yet.</Text>
+                ) : (
+                  lineItems.map((li: any, idx: number) => {
+                    const sizes = li.sizes ?? {};
+                    const qty = Object.values(sizes).reduce((a: number, v: any) => a + (Number(v) || 0), 0);
+                    const activeSizes = SIZE_LABELS.filter(s => (sizes[s.key] || 0) > 0);
+                    return (
+                      <View key={li.id || idx} style={[pvStyles.lineItemBlock, idx > 0 && { marginTop: 20, paddingTop: 20, borderTopWidth: 1, borderTopColor: BORDER }]}>
+                        {/* Item header */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <View style={{ backgroundColor: BRAND, width: 22, height: 22, borderRadius: 4, alignItems: 'center', justifyContent: 'center' }}>
+                              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>#{idx + 1}</Text>
+                            </View>
+                            <Text style={pvStyles.lineItemName}>{li.designName || `Item ${idx + 1}`}</Text>
+                          </View>
+                          <View style={{ backgroundColor: '#FFF4EE', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4 }}>
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: BRAND }}>{qty} pcs</Text>
+                          </View>
+                        </View>
+
+                        {/* Item details grid */}
+                        <View style={{ flexDirection: 'row', gap: 16, marginBottom: 14 }}>
+                          <View style={{ flex: 1, gap: 8 }}>
+                            {li.serviceStyle ? (
+                              <View style={pvStyles.detailRow}>
+                                <Layers size={13} color={TEXT_LIGHT} />
+                                <Text style={pvStyles.detailLabel}>Service</Text>
+                                <Text style={pvStyles.detailValue}>{li.serviceStyle}</Text>
+                              </View>
+                            ) : null}
+                            {li.applicator ? (
+                              <View style={pvStyles.detailRow}>
+                                <User size={13} color={TEXT_LIGHT} />
+                                <Text style={pvStyles.detailLabel}>Applicator</Text>
+                                <Text style={[pvStyles.detailValue, { color: BRAND }]}>{li.applicator}</Text>
+                              </View>
+                            ) : null}
+                            {li.apparelProvider ? (
+                              <View style={pvStyles.detailRow}>
+                                <Package size={13} color={TEXT_LIGHT} />
+                                <Text style={pvStyles.detailLabel}>Source</Text>
+                                <Text style={pvStyles.detailValue}>{li.apparelProvider}</Text>
+                              </View>
+                            ) : null}
+                          </View>
+                          <View style={{ flex: 1, gap: 8 }}>
+                            {(li.product || li.productColor) ? (
+                              <View style={pvStyles.detailRow}>
+                                <Tag size={13} color={TEXT_LIGHT} />
+                                <Text style={pvStyles.detailLabel}>Product</Text>
+                                <Text style={pvStyles.detailValue} numberOfLines={1}>
+                                  {[li.product, li.productColor].filter(Boolean).join(' — ')}
+                                </Text>
+                              </View>
+                            ) : null}
+                            {(li.location1 || li.location2) ? (
+                              <View style={pvStyles.detailRow}>
+                                <MapPin size={13} color={TEXT_LIGHT} />
+                                <Text style={pvStyles.detailLabel}>Locations</Text>
+                                <Text style={pvStyles.detailValue} numberOfLines={1}>
+                                  {[li.location1, li.location2, li.location3, li.location4].filter(Boolean).join(', ')}
+                                </Text>
+                              </View>
+                            ) : null}
+                          </View>
+                        </View>
+
+                        {/* Sizes + quantities */}
+                        {activeSizes.length > 0 ? (
+                          <View style={{ marginBottom: 14 }}>
+                            <Text style={[pvStyles.metaLabel, { marginBottom: 8 }]}>SIZES + QUANTITIES</Text>
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                              {activeSizes.map(s => (
+                                <View key={s.key} style={pvStyles.sizeBox}>
+                                  <Text style={pvStyles.sizeLabel}>{s.label}</Text>
+                                  <Text style={pvStyles.sizeQty}>{sizes[s.key]}</Text>
+                                </View>
+                              ))}
+                            </View>
+                            <Text style={{ fontSize: 12, color: TEXT_LIGHT, textAlign: 'right', marginTop: 6 }}>
+                              Total: {qty} pcs
+                            </Text>
+                          </View>
+                        ) : null}
+
+                        {/* Per-piece costs */}
+                        <View style={pvStyles.costRow}>
+                          <View style={pvStyles.costCell}>
+                            <Text style={pvStyles.costLabel}>Product</Text>
+                            <Text style={pvStyles.costAmt}>{li.productCostEach > 0 ? `$${Number(li.productCostEach).toFixed(2)}/ea` : '—'}</Text>
+                          </View>
+                          <View style={pvStyles.costCell}>
+                            <Text style={pvStyles.costLabel}>Service</Text>
+                            <Text style={pvStyles.costAmt}>{li.serviceCostEach > 0 ? `$${Number(li.serviceCostEach).toFixed(2)}/ea` : '—'}</Text>
+                          </View>
+                          <View style={pvStyles.costCell}>
+                            <Text style={pvStyles.costLabel}>Fees</Text>
+                            <Text style={pvStyles.costAmt}>{li.serviceFeeEach > 0 ? `$${Number(li.serviceFeeEach).toFixed(2)}/ea` : '—'}</Text>
+                          </View>
+                          <View style={pvStyles.costCell}>
+                            <Text style={pvStyles.costLabel}>Markup</Text>
+                            <Text style={pvStyles.costAmt}>{li.markupEach > 0 ? `$${Number(li.markupEach).toFixed(2)}/ea` : '—'}</Text>
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+
+                {/* Footer summary bar */}
+                {lineItems.length > 0 && (
+                  <View style={pvStyles.lineItemFooter}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>
+                      {lineItems.length} Line Item{lineItems.length !== 1 ? 's' : ''} • {totalQty} Total Items
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+
+            {/* Right / Pricing column */}
+            <View style={{ width: 260, gap: 16 }}>
+              <View style={pvStyles.card}>
+                <Text style={pvStyles.sectionTitle}>Pricing Summary</Text>
+
+                <View style={{ marginTop: 14 }}>
+                  {/* Column headers */}
+                  <View style={pvStyles.priceHeaderRow}>
+                    <Text style={{ flex: 1 }} />
+                    <Text style={pvStyles.priceColHeader}>EACH</Text>
+                    <Text style={pvStyles.priceColHeader}>TOTAL</Text>
+                  </View>
+
+                  <View style={pvStyles.priceDivider} />
+
+                  <View style={pvStyles.priceRow}>
+                    <Text style={pvStyles.priceRowLabel}>Product Cost</Text>
+                    <Text style={pvStyles.priceRowVal}>{fmt(calc?.productCostEach)}</Text>
+                    <Text style={pvStyles.priceRowVal}>{fmt(calc?.productCostTotal)}</Text>
+                  </View>
+                  <View style={pvStyles.priceRow}>
+                    <Text style={pvStyles.priceRowLabel}>Service Cost</Text>
+                    <Text style={pvStyles.priceRowVal}>{fmt(calc?.serviceCostEach)}</Text>
+                    <Text style={pvStyles.priceRowVal}>{fmt(calc?.serviceCostTotal)}</Text>
+                  </View>
+                  <View style={pvStyles.priceRow}>
+                    <Text style={pvStyles.priceRowLabel}>Service Fees</Text>
+                    <Text style={pvStyles.priceRowVal}>{fmt(calc?.serviceFeeEach)}</Text>
+                    <Text style={pvStyles.priceRowVal}>{fmt(calc?.serviceFeeTotal)}</Text>
+                  </View>
+
+                  <View style={pvStyles.priceDivider} />
+
+                  <View style={pvStyles.priceRow}>
+                    <Text style={[pvStyles.priceRowLabel, { fontWeight: '700', color: TEXT }]}>Cost of Goods</Text>
+                    <Text style={[pvStyles.priceRowVal, { fontWeight: '700' }]}>{fmt(calc?.cogEach)}</Text>
+                    <Text style={[pvStyles.priceRowVal, { fontWeight: '700' }]}>{fmt(calc?.cogTotal)}</Text>
+                  </View>
+                  {calc?.markupAmount > 0 ? (
+                    <View style={pvStyles.priceRow}>
+                      <Text style={[pvStyles.priceRowLabel, { color: BRAND, fontWeight: '600' }]}>
+                        Markup {calc?.markupPercentage > 0 ? `(${calc.markupPercentage.toFixed(1)}%)` : ''}
+                      </Text>
+                      <Text style={[pvStyles.priceRowVal, { color: BRAND, fontWeight: '600' }]}>—</Text>
+                      <Text style={[pvStyles.priceRowVal, { color: BRAND, fontWeight: '600' }]}>{fmt(calc?.markupAmount)}</Text>
+                    </View>
+                  ) : null}
+
+                  <View style={pvStyles.priceDivider} />
+
+                  <View style={pvStyles.priceRow}>
+                    <Text style={[pvStyles.priceRowLabel, { fontWeight: '700', color: TEXT }]}>Subtotal</Text>
+                    <Text style={[pvStyles.priceRowVal, { fontWeight: '700' }]}>{fmt(calc?.totalPerPiece)}</Text>
+                    <Text style={[pvStyles.priceRowVal, { fontWeight: '700' }]}>{fmt(calc?.subtotal)}</Text>
+                  </View>
+                  {proj.hasOnlineFee && (
+                    <View style={pvStyles.priceRow}>
+                      <Text style={pvStyles.priceRowLabel}>Online Fee</Text>
+                      <Text style={pvStyles.priceRowVal}>{fmt(calc?.onlineFee && calc.totalQuantity > 0 ? calc.onlineFee / calc.totalQuantity : null)}</Text>
+                      <Text style={pvStyles.priceRowVal}>{fmt(calc?.onlineFee)}</Text>
+                    </View>
+                  )}
+                  {proj.hasCardFee && (
+                    <View style={pvStyles.priceRow}>
+                      <Text style={pvStyles.priceRowLabel}>Card Fee (3.75%)</Text>
+                      <Text style={pvStyles.priceRowVal}>{fmt(calc?.cardFee && calc.totalQuantity > 0 ? calc.cardFee / calc.totalQuantity : null)}</Text>
+                      <Text style={pvStyles.priceRowVal}>{fmt(calc?.cardFee)}</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Total block */}
+                <View style={pvStyles.totalBlock}>
+                  <Text style={pvStyles.totalLabel}>TOTAL</Text>
+                  <Text style={pvStyles.totalAmt}>
+                    {calc?.total > 0
+                      ? `$${Number(calc.total).toFixed(2)}`
+                      : 'Pending Review'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+      </ScrollView>
     );
   };
 
@@ -2795,12 +3132,13 @@ export default function ClientPortal() {
 
           {/* Main content */}
           <View style={[dash.main, isMobile && dash.mainMobile]}>
-            {activeView === 'home'     && HomeView()}
-            {activeView === 'projects' && <MyProjectsView />}
-            {activeView === 'artwork'  && <ArtworkView />}
-            {activeView === 'catalogs' && <CatalogsView />}
-            {activeView === 'submit'   && SubmitView()}
-            {activeView === 'profile'  && <ProfileView />}
+            {activeView === 'home'         && HomeView()}
+            {activeView === 'projects'     && <MyProjectsView />}
+            {activeView === 'project-view' && <ProjectDetailView />}
+            {activeView === 'artwork'      && <ArtworkView />}
+            {activeView === 'catalogs'     && <CatalogsView />}
+            {activeView === 'submit'       && SubmitView()}
+            {activeView === 'profile'      && <ProfileView />}
           </View>
 
           {/* Mobile: Bottom tab bar */}
@@ -3985,6 +4323,52 @@ const profStyles = StyleSheet.create({
     borderRadius: 10, borderWidth: 1, borderColor: BORDER, borderStyle: 'dashed' as any,
     backgroundColor: '#F9FAFB', padding: 28, alignItems: 'center',
   },
+});
+
+const pvStyles = StyleSheet.create({
+  card: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 20,
+    borderWidth: 1, borderColor: BORDER,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4,
+  },
+  projectTitle: { fontSize: 22, fontWeight: '800', color: TEXT, marginBottom: 4 },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: TEXT, marginBottom: 2 },
+  metaLabel: { fontSize: 10, fontWeight: '700', color: TEXT_LIGHT, letterSpacing: 0.5 },
+  metaValue: { fontSize: 13, fontWeight: '600', color: TEXT, marginTop: 3 },
+  lineItemBlock: {},
+  lineItemName: { fontSize: 15, fontWeight: '700', color: TEXT },
+  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  detailLabel: { fontSize: 12, color: TEXT_LIGHT, width: 66 },
+  detailValue: { fontSize: 12, color: TEXT, fontWeight: '500', flex: 1 },
+  sizeBox: {
+    borderWidth: 1, borderColor: BORDER, borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 8, minWidth: 52, alignItems: 'center',
+  },
+  sizeLabel: { fontSize: 10, fontWeight: '700', color: TEXT_LIGHT },
+  sizeQty: { fontSize: 15, fontWeight: '700', color: TEXT, marginTop: 2 },
+  costRow: {
+    flexDirection: 'row', gap: 0,
+    borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 12,
+  },
+  costCell: { flex: 1, alignItems: 'center', gap: 4 },
+  costLabel: { fontSize: 10, fontWeight: '600', color: TEXT_LIGHT },
+  costAmt: { fontSize: 12, fontWeight: '700', color: TEXT },
+  lineItemFooter: {
+    marginTop: 20, backgroundColor: BRAND, borderRadius: 10, padding: 14,
+    alignItems: 'center',
+  },
+  priceHeaderRow: { flexDirection: 'row', paddingBottom: 6 },
+  priceColHeader: { width: 70, textAlign: 'right', fontSize: 10, fontWeight: '700', color: TEXT_LIGHT, letterSpacing: 0.4 },
+  priceDivider: { height: 1, backgroundColor: BORDER, marginVertical: 8 },
+  priceRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
+  priceRowLabel: { flex: 1, fontSize: 12, color: TEXT_LIGHT },
+  priceRowVal: { width: 70, textAlign: 'right', fontSize: 12, color: TEXT },
+  totalBlock: {
+    marginTop: 16, backgroundColor: BRAND, borderRadius: 10, padding: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  totalLabel: { fontSize: 14, fontWeight: '800', color: '#fff' },
+  totalAmt: { fontSize: 22, fontWeight: '900', color: '#fff' },
 });
 
 const binPickStyles = StyleSheet.create({
