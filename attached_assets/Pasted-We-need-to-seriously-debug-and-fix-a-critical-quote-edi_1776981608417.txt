@@ -1,0 +1,243 @@
+We need to seriously debug and fix a critical quote editing persistence bug.
+
+PROBLEM
+I cannot edit and save quote/project changes reliably in the quote system. This happens no matter the project status, including:
+- Needs Review
+- Quoting
+- Quoted
+- Invoice Sent
+- In Production
+- Completed
+
+I have attempted to fix this multiple times, but the issue still persists.
+
+Do NOT attempt another superficial patch.
+Please perform a full trace-based debugging pass and identify exactly where the data is being lost.
+
+======================================================================
+1. EXPECTED BEHAVIOR
+======================================================================
+
+When I edit a quote/project and save:
+
+- changes should persist to the database
+- reopening the quote should show the saved changes
+- refreshing the page should show the saved changes
+- the Projects table should reflect updated values where applicable
+- client-facing views should reflect updated client-visible values where applicable
+
+This must work across statuses unless a status is intentionally locked.
+
+If a status is locked, the UI must clearly prevent editing. Do not allow editing if saving is blocked.
+
+======================================================================
+2. FIELDS THAT MUST SAVE
+======================================================================
+
+Audit and verify save behavior for all editable quote/project fields, including:
+
+Project-level fields:
+- project name
+- client / organization
+- order date
+- due date / in-hands date
+- status
+- invoice number
+- notes
+- client-visible notes
+- internal notes
+
+Line item fields:
+- design name
+- service type
+- product/style
+- product color
+- product source
+- applicator
+- print/decoration location
+- project notes/instructions
+- sizes and quantities
+- line item total quantity
+- product cost
+- service cost
+- fees
+- markup
+- subtotal
+- total
+
+Media fields:
+- mockups
+- artwork uploads
+- attached files
+
+Quote summary fields:
+- subtotal
+- fees
+- total
+- markup
+- profit
+- payment/invoice state
+
+======================================================================
+3. REQUIRED DEBUGGING METHOD
+======================================================================
+
+Please trace the entire save flow from UI to database.
+
+Do this in order:
+
+A. Frontend form state
+- Confirm edited values are actually updating local state
+- Confirm controlled inputs are bound correctly
+- Confirm nested line item changes update the correct object/array
+- Confirm no stale state is overwriting edited state before save
+
+B. Save button / submit handler
+- Confirm the correct save handler fires
+- Confirm it fires in all statuses
+- Confirm it does not silently exit because of status checks
+- Add temporary console logging if needed
+
+C. Payload sent to backend
+- Log/inspect the exact update payload before sending
+- Confirm edited fields are included
+- Confirm nested line items are included
+- Confirm IDs are included correctly
+- Confirm numeric fields are sent as numbers, not invalid strings
+- Confirm null/undefined values are not accidentally overwriting real values
+
+D. API route / mutation
+- Confirm the correct endpoint/mutation is called
+- Confirm it receives the payload
+- Confirm validation/schema does not strip fields
+- Confirm status restrictions are not blocking updates
+- Confirm nested line items are handled properly
+
+E. Database update
+- Confirm the database update query actually writes all fields
+- Confirm nested line items are updated, inserted, or deleted correctly
+- Confirm transaction logic does not rollback silently
+- Confirm the correct quote/project ID is being updated
+- Confirm update timestamps change after save
+
+F. Data refetch / UI refresh
+- Confirm the UI refetches the saved quote/project after save
+- Confirm cache invalidation is working
+- Confirm stale cached data is not replacing the saved data
+- Confirm optimistic updates are not masking failure
+
+======================================================================
+4. LIKELY ROOT CAUSES TO CHECK
+======================================================================
+
+Please specifically check for these common causes:
+
+- save handler only works for draft/quoting state
+- status condition blocks saving for quoted/in-production/completed records
+- frontend updates local state but payload excludes edited fields
+- nested line_items array is not being persisted
+- backend schema validates only partial fields and drops the rest
+- database update only updates parent quote but not line items
+- line item IDs are missing, causing update failure
+- new line items are not inserted
+- deleted line items are not removed
+- numeric inputs are saved as empty strings and rejected
+- save succeeds but cache refetch restores old data
+- separate quote/project tables are becoming out of sync
+- client-submitted project requests and manually created quotes use different data models
+- save endpoint updates quote but page reloads project, or vice versa
+
+======================================================================
+5. REQUIRED FIX
+======================================================================
+
+After identifying the exact failure point, fix the save flow so quote/project edits persist correctly.
+
+The fix must support:
+- updating existing line items
+- adding new line items
+- deleting line items
+- editing quantities
+- recalculating totals
+- saving project-level details
+- saving quote-level pricing details
+- saving across all editable statuses
+
+If some statuses should be locked, make that explicit:
+- disable editing
+- show clear locked-state messaging
+- do not allow fake edits that cannot save
+
+======================================================================
+6. REQUIRED ACCEPTANCE TESTS
+======================================================================
+
+Please verify the fix with these tests:
+
+Test 1:
+- Open a quote in Needs Review
+- Edit project name, due date, service, quantities, and markup
+- Save
+- Refresh page
+- Confirm changes remain
+
+Test 2:
+- Open a quote in Quoting
+- Add a new line item
+- Save
+- Refresh
+- Confirm new line item remains
+
+Test 3:
+- Open a Quoted project
+- Change quantities and total
+- Save
+- Refresh
+- Confirm values remain
+
+Test 4:
+- Open an In Production project
+- Edit line item notes or quantities
+- Save
+- Refresh
+- Confirm values remain
+
+Test 5:
+- Open a Completed project
+- Edit allowed fields
+- Save
+- Refresh
+- Confirm values remain
+
+Test 6:
+- Delete a line item
+- Save
+- Refresh
+- Confirm it stays deleted
+
+Test 7:
+- Upload or attach mockup/artwork
+- Save
+- Refresh
+- Confirm media remains attached
+
+Test 8:
+- Make a change
+- Save
+- Go back to Projects table
+- Confirm table reflects updated values
+
+======================================================================
+7. IMPORTANT
+======================================================================
+
+Do not mark this complete unless changes persist after refresh.
+
+The issue is not whether the UI appears to edit.
+The issue is whether the database saves and reloads the edited values correctly.
+
+Please provide a short summary of:
+- what was broken
+- where the data was being lost
+- what files/functions were changed
+- what tests passed

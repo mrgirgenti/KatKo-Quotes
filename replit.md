@@ -92,6 +92,18 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
   - *Fix 1*: Added `networkMode: 'always'` to the global `QueryClient` in `app/_layout.tsx` so all queries bypass online/offline detection.
   - *Fix 2*: Added a direct per-org `useQuery(['org_detail', id])` in `app/crm/[id].tsx` that fetches from `/api/orgs/{id}` directly, as a belt-and-suspenders fallback. The page uses whichever data source resolves first (CrmContext orgs list OR direct org fetch).
 
+## Quote Edit Persistence Fixes (2026-04-23)
+
+### Root Cause
+Four action handlers in `app/quote/[id].tsx` (`handleStartQuote`, `handleMarkQuoteSent`, `handleMarkPaid`, `handleSaveWaveLink`) used raw `fetch()` PUT calls that bypassed the React Query cache. This caused three compounding problems:
+1. After marking a quote as sent/paid or starting a quote, the cache retained the old status. On the next edit, `originalQuote` loaded from the stale cache and a subsequent save would overwrite the correct DB state, reverting the status change.
+2. The detail screen's `directQuote` (fetched once on mount) never refreshed after these bypassed actions, so the UI showed old data.
+3. `handleStartQuote` changed status to `quoting` in the DB but navigated to the edit screen with the cache still showing `needs_review` — meaning any save from the edit screen would revert the status.
+
+### Fixes Applied
+- **`app/quote/[id].tsx`**: All four handlers now use `updateQuoteAsync()` from `QuotesContext` instead of raw `fetch()`. This routes through the standard mutation pipeline: PUT → `setQueryData` (immediate cache update) → `invalidateQueries` (background refetch). After `handleStartQuote`, the edit screen's `originalQuote` now loads the correct `quoting` status from the updated cache.
+- **`app/api/projects/[id]+api.ts`**: Added `orderDate` to the SQL `UPDATE` statement (was missing, so the Order Date field was never persisted). Parameter list renumbered from $5→$23 to accommodate the new field.
+
 ## Known Bug Fixes (Phase 3)
 - **Quote submit persistence fix (2026-04-19)**:
   - *Bug 1*: `isAdmin` in QuotesContext evaluated `false` during async `UserContext` init (`currentUser=null`), causing the per-user filter `q.userId === null` to drop all DB quotes. Fix: `const isAdmin = !currentUser || currentUser.role === 'org_admin'` — treat no-user state as admin view so quotes are visible during initialization.

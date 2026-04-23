@@ -66,7 +66,7 @@ import { exportSingleSaleToSheets } from '@/utils/googleSheetsExport';
 export default function QuoteDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { quotes, sales, convertToSale, convertToQuote, deleteQuote, isConverting, markExportedToSheets, lockSale, projects, startProduction, isLoading: quotesLoading } = useQuotes();
+  const { quotes, sales, convertToSale, convertToQuote, deleteQuote, isConverting, markExportedToSheets, lockSale, projects, startProduction, isLoading: quotesLoading, updateQuoteAsync } = useQuotes();
   const { currentUser } = useUser();
   const { orgs } = useCrm();
   const [toastVisible, setToastVisible] = useState(false);
@@ -241,14 +241,10 @@ export default function QuoteDetailScreen() {
   const handleStartQuote = useCallback(async () => {
     if (!quote) return;
     try {
-      await fetch(`/api/projects/${quote.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...quote, status: 'quoting' }),
-      });
+      await updateQuoteAsync({ ...quote, status: 'quoting' });
     } catch {}
     router.push({ pathname: '/quote/edit', params: { id: quote.id } });
-  }, [quote, router]);
+  }, [quote, router, updateQuoteAsync]);
 
   const getQuotePortalUrl = useCallback(() => {
     if (!quote) return '';
@@ -286,11 +282,7 @@ export default function QuoteDetailScreen() {
     setIsSendingQuote(true);
     try {
       const sentAt = new Date().toISOString();
-      await fetch(`/api/projects/${quote.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...quote, status: 'quoted', quoteSentAt: sentAt }),
-      });
+      await updateQuoteAsync({ ...quote, status: 'quoted', quoteSentAt: sentAt });
 
       // Send quote email via Resend if the linked contact has an email address
       const contactEmail = linkedContact?.email;
@@ -325,16 +317,12 @@ export default function QuoteDetailScreen() {
     } finally {
       setIsSendingQuote(false);
     }
-  }, [quote, linkedContact, isSendingQuote, isReadyToSend, handleEdit, handleCopyQuoteLink, router]);
+  }, [quote, linkedContact, isSendingQuote, isReadyToSend, handleEdit, handleCopyQuoteLink, router, updateQuoteAsync]);
 
   const handleMarkPaid = useCallback(async () => {
     if (!quote) return;
     try {
-      await fetch(`/api/projects/${quote.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...quote, status: 'paid' }),
-      });
+      await updateQuoteAsync({ ...quote, status: 'paid' });
       setToastMessage('Marked as Paid! Ready for production.');
       setToastVisible(true);
       setTimeout(() => router.replace(`/quote/${quote.id}`), 800);
@@ -342,18 +330,14 @@ export default function QuoteDetailScreen() {
       setToastMessage('Error saving — please try again.');
       setToastVisible(true);
     }
-  }, [quote, router]);
+  }, [quote, router, updateQuoteAsync]);
 
   const handleSaveWaveLink = useCallback(async () => {
     if (!quote || isSavingWaveLink) return;
     const link = waveInvoiceLinkDraft.trim();
     setIsSavingWaveLink(true);
     try {
-      await fetch(`/api/projects/${quote.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...quote, waveInvoiceLink: link || null }),
-      });
+      await updateQuoteAsync({ ...quote, waveInvoiceLink: link || null });
       setToastMessage(link ? 'Wave invoice link saved!' : 'Wave invoice link removed.');
       setToastVisible(true);
       setTimeout(() => router.replace(`/quote/${quote.id}`), 600);
@@ -363,7 +347,7 @@ export default function QuoteDetailScreen() {
     } finally {
       setIsSavingWaveLink(false);
     }
-  }, [quote, waveInvoiceLinkDraft, isSavingWaveLink, router]);
+  }, [quote, waveInvoiceLinkDraft, isSavingWaveLink, router, updateQuoteAsync]);
 
   const handleCopyWaveLink = useCallback(async () => {
     if (!quote?.waveInvoiceLink) return;
