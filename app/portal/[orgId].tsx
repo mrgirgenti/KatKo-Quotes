@@ -2154,7 +2154,7 @@ export default function ClientPortal() {
               <View style={dash.sidebarNav}>
                 {NAV_ITEMS.map(({ id, label, Icon }, idx) => {
                   const isActive = activeView === id;
-                  const showDivider = idx === 3 || idx === 4;
+                  const showDivider = idx === 1 || idx === 3 || idx === 4;
                   return (
                     <React.Fragment key={id}>
                       {showDivider && <View style={dash.navDivider} />}

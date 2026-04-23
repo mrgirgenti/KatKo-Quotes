@@ -109,26 +109,29 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
       <View style={styles.divider} />
 
       <View style={styles.nav}>
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.map((item, idx) => {
           const active = isRouteActive(item.href, pathname);
           const IconComponent = item.icon;
+          const showDivider = idx === 1 || idx === 3;
           return (
-            <TouchableOpacity
-              key={item.href}
-              style={[styles.navItem, active && styles.navItemActive, collapsed && styles.navItemCollapsed]}
-              onPress={() => navigate(item.href)}
-            >
-              {active && !collapsed && <View style={styles.activeBar} />}
-              <IconComponent
-                size={20}
-                color={active ? '#FFFFFF' : SB.iconColor}
-              />
-              {!collapsed && (
-                <Text style={[styles.navLabel, active && styles.navLabelActive]}>
-                  {item.label}
-                </Text>
-              )}
-            </TouchableOpacity>
+            <React.Fragment key={item.href}>
+              {showDivider && <View style={styles.divider} />}
+              <TouchableOpacity
+                style={[styles.navItem, active && styles.navItemActive, collapsed && styles.navItemCollapsed]}
+                onPress={() => navigate(item.href)}
+              >
+                {active && !collapsed && <View style={styles.activeBar} />}
+                <IconComponent
+                  size={20}
+                  color={active ? '#FFFFFF' : SB.iconColor}
+                />
+                {!collapsed && (
+                  <Text style={[styles.navLabel, active && styles.navLabelActive]}>
+                    {item.label}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </React.Fragment>
           );
         })}
       </View>
