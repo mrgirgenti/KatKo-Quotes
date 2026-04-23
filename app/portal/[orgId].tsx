@@ -2383,75 +2383,64 @@ export default function ClientPortal() {
             </View>
           </View>
 
-          <View style={profStyles.avatarRow}>
-            <View style={{ position: 'relative' }}>
-              <View style={[profStyles.avatar, { backgroundColor: profileAvatarColor }]}>
-                {profilePicUri ? (
-                  <Image source={{ uri: profilePicUri }} style={{ width: 64, height: 64, borderRadius: 32 }} />
-                ) : (
-                  <Text style={profStyles.avatarText}>{session?.userName[0]?.toUpperCase() || '?'}</Text>
-                )}
-              </View>
-            </View>
-            <View style={{ flex: 1, gap: 6 }}>
-              <Text style={profStyles.userName}>{session?.userName}</Text>
-              <Text style={profStyles.userEmail}>{session?.userEmail}</Text>
-              <View style={profStyles.orgBadge}>
-                <Text style={profStyles.orgBadgeText}>{session?.orgName}</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Profile picture controls */}
-          <View style={profStyles.editBlock}>
-            <Text style={profStyles.editLabel}>PROFILE PICTURE</Text>
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-              <TouchableOpacity
-                style={profStyles.editBtn}
-                onPress={() => profilePicInputRef.current?.click()}
-                disabled={profileSaving}
-              >
-                {profileSaving ? <ActivityIndicator size="small" color={BRAND} /> : <Upload size={13} color={BRAND} />}
-                <Text style={profStyles.editBtnText}>{profilePicUri ? 'Change Photo' : 'Upload Photo'}</Text>
-              </TouchableOpacity>
-              {profilePicUri && (
-                <TouchableOpacity style={profStyles.editBtnDestructive} onPress={handleRemoveProfilePic} disabled={profileSaving}>
-                  <X size={13} color="#DC2626" />
-                  <Text style={profStyles.editBtnDestructiveText}>Remove</Text>
-                </TouchableOpacity>
+          {/* Centered avatar — matches backend profile card style */}
+          <View style={{ alignItems: 'center', paddingBottom: 20 }}>
+            <View style={[profStyles.avatarLarge, { backgroundColor: profileAvatarColor }]}>
+              {profilePicUri ? (
+                <Image source={{ uri: profilePicUri }} style={{ width: 88, height: 88, borderRadius: 10 }} />
+              ) : (
+                <Text style={profStyles.avatarLargeText}>{session?.userName[0]?.toUpperCase() || '?'}</Text>
               )}
             </View>
-            {profileSaveMsg ? <Text style={profStyles.successText}>{profileSaveMsg}</Text> : null}
+            <Text style={[profStyles.userName, { marginTop: 14, textAlign: 'center' }]}>{session?.userName}</Text>
+            <Text style={[profStyles.userEmail, { textAlign: 'center', marginBottom: 8 }]}>{session?.userEmail}</Text>
+            <View style={profStyles.orgBadge}>
+              <Text style={profStyles.orgBadgeText}>{session?.orgName}</Text>
+            </View>
           </View>
 
-          {/* Avatar color picker */}
-          <View style={profStyles.editBlock}>
-            <Text style={profStyles.editLabel}>AVATAR COLOR</Text>
-            <View style={profStyles.colorSwatches}>
-              {AVATAR_COLORS.map(c => (
+          {/* Two-column: Profile Picture | Avatar Color */}
+          <View style={{ flexDirection: 'row', gap: 16, marginTop: 4 }}>
+            {/* Left column: Profile Picture */}
+            <View style={{ flex: 1 }}>
+              <Text style={profStyles.editLabel}>PROFILE PICTURE</Text>
+              <View style={{ gap: 8, marginTop: 8 }}>
                 <TouchableOpacity
-                  key={c}
-                  onPress={() => handleAvatarColorChange(c)}
-                  style={[
-                    profStyles.colorSwatch,
-                    { backgroundColor: c },
-                    profileAvatarColor === c && profStyles.colorSwatchSelected,
-                  ]}
+                  style={profStyles.editBtn}
+                  onPress={() => profilePicInputRef.current?.click()}
+                  disabled={profileSaving}
                 >
-                  {profileAvatarColor === c && <Check size={12} color="#fff" strokeWidth={3} />}
+                  {profileSaving ? <ActivityIndicator size="small" color={BRAND} /> : <Upload size={13} color={BRAND} />}
+                  <Text style={profStyles.editBtnText}>{profilePicUri ? 'Change Photo' : 'Upload Photo'}</Text>
                 </TouchableOpacity>
-              ))}
+                {profilePicUri && (
+                  <TouchableOpacity style={profStyles.editBtnDestructive} onPress={handleRemoveProfilePic} disabled={profileSaving}>
+                    <X size={13} color="#DC2626" />
+                    <Text style={profStyles.editBtnDestructiveText}>Remove</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              {profileSaveMsg ? <Text style={profStyles.successText}>{profileSaveMsg}</Text> : null}
             </View>
-          </View>
 
-          <View style={profStyles.infoGrid}>
-            <View style={profStyles.infoCell}>
-              <Text style={profStyles.infoLabel}>EMAIL</Text>
-              <Text style={profStyles.infoValue}>{session?.userEmail}</Text>
-            </View>
-            <View style={profStyles.infoCell}>
-              <Text style={profStyles.infoLabel}>ROLE</Text>
-              <Text style={profStyles.infoValue}>{ROLE_LABELS[session?.role || ''] || session?.role || '—'}</Text>
+            {/* Right column: Avatar Color */}
+            <View style={{ flex: 1 }}>
+              <Text style={profStyles.editLabel}>AVATAR COLOR</Text>
+              <View style={[profStyles.colorSwatches, { marginTop: 8 }]}>
+                {AVATAR_COLORS.map(c => (
+                  <TouchableOpacity
+                    key={c}
+                    onPress={() => handleAvatarColorChange(c)}
+                    style={[
+                      profStyles.colorSwatch,
+                      { backgroundColor: c },
+                      profileAvatarColor === c && profStyles.colorSwatchSelected,
+                    ]}
+                  >
+                    {profileAvatarColor === c && <Check size={12} color="#fff" strokeWidth={3} />}
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
           </View>
         </View>
@@ -3892,6 +3881,12 @@ const profStyles = StyleSheet.create({
     backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center',
   },
   avatarText: { fontSize: 24, fontWeight: '700', color: '#fff' },
+  avatarLarge: {
+    width: 88, height: 88, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6,
+  },
+  avatarLargeText: { fontSize: 38, fontWeight: '700', color: '#fff' },
   userName: { fontSize: 18, fontWeight: '700', color: TEXT, marginBottom: 2 },
   userEmail: { fontSize: 13, color: TEXT_LIGHT, marginBottom: 6 },
   orgBadge: {
