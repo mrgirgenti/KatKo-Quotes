@@ -45,6 +45,8 @@ import {
   Download,
   Image as ImageIcon,
   ExternalLink,
+  Search,
+  Filter,
 } from 'lucide-react-native';
 import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
 
@@ -58,7 +60,7 @@ const TEXT_LIGHT = '#6B7280';
 const TEXT_PLACEHOLDER = '#9CA3AF';
 
 type Step = 'email' | 'dashboard';
-type ActiveView = 'home' | 'projects' | 'quotes' | 'artwork' | 'catalogs' | 'submit';
+type ActiveView = 'home' | 'projects' | 'artwork' | 'catalogs' | 'submit';
 
 interface PendingFile {
   id: string;
@@ -102,7 +104,8 @@ const PORTAL_STATUS_CONFIG: Record<string, { label: string; color: string; bg: s
 };
 
 function StatusPill({ status }: { status: string }) {
-  const cfg = PORTAL_STATUS_CONFIG[status] || { label: status, color: '#6B7280', bg: '#F3F4F6' };
+  const normalized = status.toUpperCase().replace('QUOTE_SENT', 'QUOTED');
+  const cfg = PORTAL_STATUS_CONFIG[normalized] || { label: status, color: '#6B7280', bg: '#F3F4F6' };
   return (
     <View style={{ backgroundColor: cfg.bg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
       <Text style={{ fontSize: 11, fontWeight: '700', color: cfg.color }}>{cfg.label}</Text>
@@ -111,7 +114,8 @@ function StatusPill({ status }: { status: string }) {
 }
 
 function ProjectPipeline({ status }: { status: string }) {
-  const currentIdx = STATUS_PIPELINE.indexOf(status as any);
+  const normalized = status.toUpperCase().replace('QUOTE_SENT', 'QUOTED') as any;
+  const currentIdx = STATUS_PIPELINE.indexOf(normalized);
   const PIPE_LABELS = ['Review', 'Quoting', 'Quoted', 'Invoice', 'Paid', 'Production', 'Done'];
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 0, marginTop: 8 }}>
@@ -145,11 +149,10 @@ function ProjectPipeline({ status }: { status: string }) {
 
 const NAV_ITEMS: { id: ActiveView; label: string; Icon: React.ComponentType<any> }[] = [
   { id: 'home',     label: 'Dashboard',       Icon: LayoutDashboard },
-  { id: 'projects', label: 'Projects',         Icon: Folder },
-  { id: 'quotes',   label: 'Quotes & Invoices', Icon: Receipt },
-  { id: 'artwork',  label: 'Artwork',           Icon: Layers },
-  { id: 'catalogs', label: 'Catalogs',          Icon: BookOpen },
-  { id: 'submit',   label: 'Submit Request',    Icon: ClipboardList },
+  { id: 'submit',   label: 'Submit a Project', Icon: ClipboardList },
+  { id: 'projects', label: 'My Projects',      Icon: Folder },
+  { id: 'artwork',  label: 'Media Bin',        Icon: Layers },
+  { id: 'catalogs', label: 'Product Catalogs', Icon: BookOpen },
 ];
 
 interface ClientSession {
@@ -830,7 +833,7 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
 // Main Portal Component
 // ────────────────────────────────────────────────────────────
 export default function ClientPortal() {
-  const { orgId } = useLocalSearchParams<{ orgId: string }>();
+  const { orgId, tab } = useLocalSearchParams<{ orgId: string; tab?: string }>();
   const { isMobile } = useBreakpoint();
 
   const [step, setStep] = useState<Step>('email');
@@ -862,6 +865,9 @@ export default function ClientPortal() {
   const [mediaBinFiles, setMediaBinFiles] = useState<MediaFile[]>([]);
   const [mediaBinLoading, setMediaBinLoading] = useState(false);
   const [mediaBinUploading, setMediaBinUploading] = useState(false);
+  const [mediaBinSearch, setMediaBinSearch] = useState('');
+
+  const [myProjectsTab, setMyProjectsTab] = useState<'requests' | 'quotes'>('requests');
 
   const fileInputRef = useRef<any>(null);
   const mediaBinInputRef = useRef<any>(null);
@@ -932,6 +938,13 @@ export default function ClientPortal() {
   ) => {
     setDropdown({ visible: true, title, options, selected, onSelect });
   }, []);
+
+  useEffect(() => {
+    if (step === 'dashboard' && tab === 'projects') {
+      setActiveView('projects');
+      setMyProjectsTab('requests');
+    }
+  }, [step, tab]);
 
   const fetchOrgProjects = useCallback(async (oid: string) => {
     setProjectsLoading(true);
@@ -1230,11 +1243,16 @@ export default function ClientPortal() {
   const logoSrc = orgLogoUrl;
   const displayName = orgDisplayName || session?.orgName || 'KATALYST KO';
 
-  const activeProjects = orgProjects.filter(p =>
-    !['COMPLETED', 'CANCELLED'].includes(p.status)
+  const normalizeStatus = (s: string) => s.toUpperCase().replace('QUOTE_SENT', 'QUOTED');
+
+  const requestProjects = orgProjects.filter(p =>
+    ['NEEDS_REVIEW', 'QUOTING'].includes(normalizeStatus(p.status))
   );
   const quoteProjects = orgProjects.filter(p =>
-    ['QUOTED', 'INVOICE_SENT'].includes(p.status)
+    ['QUOTED', 'QUOTE_SENT', 'INVOICE_SENT', 'PAID', 'IN_PRODUCTION', 'COMPLETED'].includes(normalizeStatus(p.status))
+  );
+  const activeProjects = orgProjects.filter(p =>
+    !['COMPLETED', 'CANCELLED'].includes(normalizeStatus(p.status))
   );
 
   function formatDate(d: string | null) {
@@ -1342,13 +1360,13 @@ export default function ClientPortal() {
           <SectionCard
             title="Quotes & Invoices"
             count={quoteProjects.length}
-            onViewAll={() => setActiveView('quotes')}
+            onViewAll={() => { setMyProjectsTab('quotes'); setActiveView('projects'); }}
           >
             {projectsLoading
               ? <ActivityIndicator color={BRAND} style={{ marginVertical: 20 }} />
               : quoteProjects.length === 0
                 ? <EmptyState icon={<Receipt size={22} color="#9CA3AF" />} title="No pending quotes" sub="Quotes ready for review will appear here." />
-                : quoteProjects.map(p => (
+                : quoteProjects.slice(0, 3).map(p => (
                     <View key={p.id} style={dash.quoteRow}>
                       <View style={{ flex: 1 }}>
                         <Text style={dash.quoteTitle} numberOfLines={1}>{p.title}</Text>
@@ -1360,198 +1378,272 @@ export default function ClientPortal() {
             }
           </SectionCard>
 
-          <SectionCard title="Artwork" onViewAll={() => { setActiveView('artwork'); if (session) fetchMediaBin(session.orgId); }}>
-            <EmptyState icon={<Layers size={22} color="#9CA3AF" />} title="No artwork yet" sub="Upload files in the Artwork section to build your media library." />
+          <SectionCard title="Media Bin" onViewAll={() => { setActiveView('artwork'); if (session) fetchMediaBin(session.orgId); }}>
+            <EmptyState icon={<Layers size={22} color="#9CA3AF" />} title="No artwork yet" sub="Upload files in the Media Bin section to build your media library." />
           </SectionCard>
         </View>
       </View>
     </ScrollView>
   );
 
-  const ProjectsView = () => (
-    <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
-      <Text style={dash.pageTitle}>Projects</Text>
-      {projectsLoading
-        ? <ActivityIndicator color={BRAND} style={{ marginTop: 40 }} />
-        : orgProjects.length === 0
-          ? <EmptyState icon={<Folder size={32} color="#9CA3AF" />} title="No projects yet" sub="Your submitted requests will appear here." />
-          : orgProjects.map(p => <ProjectCard key={p.id} project={p} />)
-      }
-    </ScrollView>
-  );
+  const MyProjectsView = () => {
+    const tabRequests = myProjectsTab === 'requests';
+    const displayed = tabRequests ? requestProjects : quoteProjects;
+    return (
+      <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
+        <Text style={dash.pageTitle}>My Projects</Text>
 
-  const QuotesView = () => (
-    <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
-      <Text style={dash.pageTitle}>Quotes & Invoices</Text>
-      {quoteProjects.length === 0
-        ? <EmptyState icon={<Receipt size={32} color="#9CA3AF" />} title="No quotes pending" sub="When Katalyst Ko sends a quote, it'll appear here." />
-        : quoteProjects.map(p => (
-            <View key={p.id} style={dash.projectCard}>
-              <View style={dash.projectCardTop}>
-                <Text style={dash.projectCardTitle} numberOfLines={1}>{p.title}</Text>
+        <View style={mpStyles.tabRow}>
+          <TouchableOpacity
+            style={[mpStyles.tab, tabRequests && mpStyles.tabActive]}
+            onPress={() => setMyProjectsTab('requests')}
+          >
+            <Text style={[mpStyles.tabLabel, tabRequests && mpStyles.tabLabelActive]}>
+              Submitted Requests{requestProjects.length > 0 ? ` (${requestProjects.length})` : ''}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[mpStyles.tab, !tabRequests && mpStyles.tabActive]}
+            onPress={() => setMyProjectsTab('quotes')}
+          >
+            <Text style={[mpStyles.tabLabel, !tabRequests && mpStyles.tabLabelActive]}>
+              Quotes & Invoices{quoteProjects.length > 0 ? ` (${quoteProjects.length})` : ''}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {projectsLoading ? (
+          <ActivityIndicator color={BRAND} style={{ marginTop: 40 }} />
+        ) : displayed.length === 0 ? (
+          tabRequests ? (
+            <EmptyState
+              icon={<ClipboardList size={32} color="#9CA3AF" />}
+              title="No submitted requests"
+              sub="Use 'Submit a Project' to send your next print request to Katalyst Ko."
+            />
+          ) : (
+            <EmptyState
+              icon={<Receipt size={32} color="#9CA3AF" />}
+              title="No quotes or invoices yet"
+              sub="Once Katalyst Ko prepares your quote, it will appear here for review."
+            />
+          )
+        ) : (
+          <View style={{ gap: 10 }}>
+            {displayed.map(p => (
+              <View key={p.id} style={mpStyles.projectRow}>
+                <View style={mpStyles.projectRowLeft}>
+                  <Text style={mpStyles.projectRowTitle} numberOfLines={1}>{p.title}</Text>
+                  <View style={mpStyles.projectRowMeta}>
+                    <Clock size={11} color={TEXT_LIGHT} />
+                    <Text style={mpStyles.projectRowMetaText}>
+                      {tabRequests ? 'Submitted' : 'Updated'}: {formatDate(p.createdAt)}
+                    </Text>
+                    {p.inHandsDate && (
+                      <>
+                        <View style={dash.metaDot} />
+                        <Calendar size={11} color={TEXT_LIGHT} />
+                        <Text style={mpStyles.projectRowMetaText}>In-Hands: {formatDate(p.inHandsDate)}</Text>
+                      </>
+                    )}
+                    {p.lineItemCount > 0 && (
+                      <>
+                        <View style={dash.metaDot} />
+                        <Package size={11} color={TEXT_LIGHT} />
+                        <Text style={mpStyles.projectRowMetaText}>{p.lineItemCount} item{p.lineItemCount !== 1 ? 's' : ''}</Text>
+                      </>
+                    )}
+                  </View>
+                  {!tabRequests && <ProjectPipeline status={p.status} />}
+                </View>
                 <StatusPill status={p.status} />
               </View>
-              <View style={dash.projectCardMeta}>
-                <Clock size={11} color={TEXT_LIGHT} />
-                <Text style={dash.projectCardMetaText}>Submitted: {formatDate(p.createdAt)}</Text>
-              </View>
-            </View>
-          ))
-      }
-    </ScrollView>
-  );
+            ))}
+          </View>
+        )}
+      </ScrollView>
+    );
+  };
 
-  const ArtworkView = () => (
-    <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
-      <View style={dash.pageTitleRow}>
-        <Text style={dash.pageTitle}>Artwork / Media Bin</Text>
-        <TouchableOpacity
-          style={mbStyles.uploadBtn}
-          onPress={() => mediaBinInputRef.current?.click?.()}
-          disabled={mediaBinUploading}
-        >
-          {mediaBinUploading
-            ? <ActivityIndicator size="small" color="#fff" />
-            : <><Upload size={14} color="#fff" /><Text style={mbStyles.uploadBtnText}>Upload Files</Text></>
-          }
-        </TouchableOpacity>
-      </View>
-      {Platform.OS === 'web' && (
-        <input
-          ref={mediaBinInputRef}
-          type="file"
-          accept=".ai,.svg,.png,.jpg,.jpeg,.pdf"
-          multiple
-          style={{ display: 'none' }}
-          onChange={(e: any) => {
-            const files = Array.from((e.target.files || []) as globalThis.File[]);
-            if (files.length > 0) handleMediaBinUpload(files);
-            e.target.value = '';
-          }}
-        />
-      )}
-      <View
-        ref={mediaBinDropRef}
-        style={mbStyles.dropZone}
-      >
-        <Upload size={18} color="#9CA3AF" />
-        <Text style={mbStyles.dropZoneText}>Drop files here to upload  ·  AI, SVG, PNG, JPG, PDF</Text>
-      </View>
-      {mediaBinLoading ? (
-        <ActivityIndicator size="large" color={BRAND} style={{ marginTop: 32 }} />
-      ) : mediaBinFiles.length === 0 ? (
-        <EmptyState
-          icon={<Layers size={40} color="#D1D5DB" />}
-          title="No files in your Media Bin"
-          sub="Upload reusable artwork and design files here. They'll be available for your team and future projects."
-        />
-      ) : (
-        <View style={mbStyles.fileGrid}>
-          {mediaBinFiles.map(file => (
-            <View key={file.id} style={mbStyles.fileCard}>
-              <View style={mbStyles.filePreview}>
-                {isImageMime(file.mimeType) ? (
-                  <Image
-                    source={{ uri: `/api/files/${file.id}?inline=true` }}
-                    style={mbStyles.previewImage}
-                    resizeMode="contain"
-                  />
-                ) : (
-                  <View style={mbStyles.fileTypeBox}>
-                    <Text style={mbStyles.fileTypeLabel}>{getMimeLabel(file.mimeType, file.originalName)}</Text>
-                  </View>
-                )}
-              </View>
-              <View style={mbStyles.fileMeta}>
-                <Text style={mbStyles.fileName} numberOfLines={2}>{file.originalName}</Text>
-                <Text style={mbStyles.fileSize}>{formatBytes(file.fileSize)} · {formatDate(file.createdAt)}</Text>
-              </View>
-              <View style={mbStyles.fileActions}>
-                <TouchableOpacity
-                  style={mbStyles.fileActionBtn}
-                  onPress={() => {
-                    if (Platform.OS === 'web') {
-                      const a = document.createElement('a');
-                      a.href = `/api/files/${file.id}`;
-                      a.download = file.originalName;
-                      a.click();
-                    }
-                  }}
-                >
-                  <Download size={14} color={TEXT_MED} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={mbStyles.fileActionBtn}
-                  onPress={() => deleteMediaBinFile(file.id)}
-                >
-                  <Trash2 size={14} color="#DC2626" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
+  const ArtworkView = () => {
+    const filtered = mediaBinSearch.trim()
+      ? mediaBinFiles.filter(f => f.originalName.toLowerCase().includes(mediaBinSearch.toLowerCase()))
+      : mediaBinFiles;
+    return (
+      <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
+        <View style={dash.pageTitleRow}>
+          <Text style={dash.pageTitle}>Media Bin</Text>
+          <TouchableOpacity
+            style={mbStyles.uploadBtn}
+            onPress={() => mediaBinInputRef.current?.click?.()}
+            disabled={mediaBinUploading}
+          >
+            {mediaBinUploading
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <><Upload size={14} color="#fff" /><Text style={mbStyles.uploadBtnText}>Upload Files</Text></>
+            }
+          </TouchableOpacity>
         </View>
-      )}
-    </ScrollView>
-  );
+        {Platform.OS === 'web' && (
+          <input
+            ref={mediaBinInputRef}
+            type="file"
+            accept=".ai,.svg,.png,.jpg,.jpeg,.pdf"
+            multiple
+            style={{ display: 'none' }}
+            onChange={(e: any) => {
+              const files = Array.from((e.target.files || []) as globalThis.File[]);
+              if (files.length > 0) handleMediaBinUpload(files);
+              e.target.value = '';
+            }}
+          />
+        )}
+        <View ref={mediaBinDropRef} style={mbStyles.dropZone}>
+          <Upload size={18} color="#9CA3AF" />
+          <Text style={mbStyles.dropZoneText}>Drop files here to upload  ·  AI, SVG, PNG, JPG, PDF</Text>
+        </View>
+
+        <View style={mbStyles.searchRow}>
+          <Search size={14} color={TEXT_PLACEHOLDER} style={{ marginRight: 8 }} />
+          <TextInput
+            style={mbStyles.searchInput}
+            placeholder="Search files…"
+            placeholderTextColor={TEXT_PLACEHOLDER}
+            value={mediaBinSearch}
+            onChangeText={setMediaBinSearch}
+          />
+          {mediaBinSearch.length > 0 && (
+            <TouchableOpacity onPress={() => setMediaBinSearch('')} style={{ padding: 4 }}>
+              <X size={14} color={TEXT_LIGHT} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {mediaBinLoading ? (
+          <ActivityIndicator size="large" color={BRAND} style={{ marginTop: 32 }} />
+        ) : filtered.length === 0 && mediaBinSearch ? (
+          <EmptyState
+            icon={<Search size={32} color="#D1D5DB" />}
+            title="No matching files"
+            sub={`No files found for "${mediaBinSearch}"`}
+          />
+        ) : mediaBinFiles.length === 0 ? (
+          <EmptyState
+            icon={<Layers size={40} color="#D1D5DB" />}
+            title="No files in your Media Bin"
+            sub="Upload reusable artwork and design files here. They'll be available for your team and future projects."
+          />
+        ) : (
+          <View style={mbStyles.visualGrid}>
+            {filtered.map(file => (
+              <View key={file.id} style={mbStyles.visualCard}>
+                <View style={mbStyles.visualThumb}>
+                  {isImageMime(file.mimeType) ? (
+                    <Image
+                      source={{ uri: `/api/files/${file.id}?inline=true` }}
+                      style={mbStyles.visualThumbImg}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={mbStyles.visualThumbPlaceholder}>
+                      <Text style={mbStyles.visualThumbLabel}>{getMimeLabel(file.mimeType, file.originalName)}</Text>
+                    </View>
+                  )}
+                  <View style={mbStyles.visualThumbActions}>
+                    <TouchableOpacity
+                      style={mbStyles.visualThumbBtn}
+                      onPress={() => {
+                        if (Platform.OS === 'web') {
+                          const a = document.createElement('a');
+                          a.href = `/api/files/${file.id}`;
+                          a.download = file.originalName;
+                          a.click();
+                        }
+                      }}
+                    >
+                      <Download size={13} color="#fff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[mbStyles.visualThumbBtn, { backgroundColor: 'rgba(220,38,38,0.8)' }]}
+                      onPress={() => deleteMediaBinFile(file.id)}
+                    >
+                      <Trash2 size={13} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                <View style={mbStyles.visualMeta}>
+                  <Text style={mbStyles.visualFileName} numberOfLines={1}>{file.originalName}</Text>
+                  <Text style={mbStyles.visualFileSub}>{formatBytes(file.fileSize)} · {formatDate(file.createdAt)}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+      </ScrollView>
+    );
+  };
 
   const CAT_COLORS: Record<string, string> = {
     Apparel: '#4F46E5', Promotional: '#FF5A00', Accessories: '#0891B2', Signage: '#16A34A', Other: '#6B7280',
   };
 
-  const CatalogsView = () => (
-    <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
-      <Text style={dash.pageTitle}>Catalogs</Text>
-      <Text style={{ fontSize: 13, color: TEXT_LIGHT, marginBottom: 20, marginTop: -8 }}>Browse product catalogs shared by Katalyst Ko</Text>
-      {catalogsLoading ? (
-        <View style={{ alignItems: 'center', paddingVertical: 48 }}>
-          <ActivityIndicator color={BRAND} />
-          <Text style={{ fontSize: 14, color: TEXT_LIGHT, marginTop: 10 }}>Loading catalogs…</Text>
-        </View>
-      ) : clientCatalogs.length === 0 ? (
-        <EmptyState
-          icon={<BookOpen size={40} color="#D1D5DB" />}
-          title="No catalogs available yet"
-          sub="Product catalogs will be shared here by your Katalyst Ko representative."
-        />
-      ) : (
-        <View style={{ gap: 14 }}>
-          {clientCatalogs.map(cat => {
-            const color = CAT_COLORS[cat.category] || '#6B7280';
-            const initials = (cat.vendorName || cat.name).split(' ').map((w: string) => w[0]).join('').slice(0, 3).toUpperCase();
-            return (
-              <View key={cat.id} style={catStyles.card}>
-                <View style={catStyles.cardTop}>
-                  <View style={[catStyles.avatar, { backgroundColor: color }]}>
-                    <Text style={catStyles.avatarText}>{initials}</Text>
+  const CatalogsView = () => {
+    const numCols = isMobile ? 1 : 3;
+    return (
+      <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
+        <Text style={dash.pageTitle}>Product Catalogs</Text>
+        <Text style={{ fontSize: 13, color: TEXT_LIGHT, marginBottom: 20, marginTop: -8 }}>Browse product catalogs shared by Katalyst Ko</Text>
+        {catalogsLoading ? (
+          <View style={{ alignItems: 'center', paddingVertical: 48 }}>
+            <ActivityIndicator color={BRAND} />
+            <Text style={{ fontSize: 14, color: TEXT_LIGHT, marginTop: 10 }}>Loading catalogs…</Text>
+          </View>
+        ) : clientCatalogs.length === 0 ? (
+          <EmptyState
+            icon={<BookOpen size={40} color="#D1D5DB" />}
+            title="No catalogs available yet"
+            sub="Product catalogs will be shared here by your Katalyst Ko representative."
+          />
+        ) : (
+          <View style={catStyles.grid}>
+            {clientCatalogs.map(cat => {
+              const color = CAT_COLORS[cat.category] || '#6B7280';
+              const initials = (cat.vendorName || cat.name).split(' ').map((w: string) => w[0]).join('').slice(0, 3).toUpperCase();
+              return (
+                <View key={cat.id} style={[catStyles.card, { flex: 1, minWidth: numCols === 1 ? '100%' : numCols === 2 ? '45%' : '30%' }]}>
+                  <View style={catStyles.cardTop}>
+                    <View style={[catStyles.avatar, { backgroundColor: color }]}>
+                      <Text style={catStyles.avatarText}>{initials}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={catStyles.name}>{cat.name}</Text>
+                      {cat.vendorName ? <Text style={catStyles.vendor}>{cat.vendorName}</Text> : null}
+                    </View>
+                    <View style={[catStyles.badge, { backgroundColor: color + '18' }]}>
+                      <Text style={[catStyles.badgeText, { color }]}>{cat.category}</Text>
+                    </View>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={catStyles.name}>{cat.name}</Text>
-                    {cat.vendorName ? <Text style={catStyles.vendor}>{cat.vendorName}</Text> : null}
-                  </View>
-                  <View style={[catStyles.badge, { backgroundColor: color + '18' }]}>
-                    <Text style={[catStyles.badgeText, { color }]}>{cat.category}</Text>
-                  </View>
-                </View>
-                {cat.description ? <Text style={catStyles.description}>{cat.description}</Text> : null}
-                <View style={catStyles.actions}>
-                  <TouchableOpacity style={catStyles.primaryBtn} onPress={() => Linking.openURL(cat.catalogUrl)}>
-                    <BookOpen size={15} color="#fff" />
-                    <Text style={catStyles.primaryBtnText}>Open Catalog</Text>
-                  </TouchableOpacity>
-                  {cat.websiteUrl ? (
-                    <TouchableOpacity style={catStyles.secondaryBtn} onPress={() => Linking.openURL(cat.websiteUrl!)}>
-                      <ExternalLink size={14} color={BRAND} />
-                      <Text style={catStyles.secondaryBtnText}>Website</Text>
+                  {cat.description ? <Text style={catStyles.description}>{cat.description}</Text> : null}
+                  <View style={catStyles.actions}>
+                    <TouchableOpacity style={catStyles.primaryBtn} onPress={() => Linking.openURL(cat.catalogUrl)}>
+                      <BookOpen size={15} color="#fff" />
+                      <Text style={catStyles.primaryBtnText}>Open Catalog</Text>
                     </TouchableOpacity>
-                  ) : null}
+                    {cat.websiteUrl ? (
+                      <TouchableOpacity style={catStyles.secondaryBtn} onPress={() => Linking.openURL(cat.websiteUrl!)}>
+                        <ExternalLink size={14} color={BRAND} />
+                        <Text style={catStyles.secondaryBtnText}>Website</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
                 </View>
-              </View>
-            );
-          })}
-        </View>
-      )}
-    </ScrollView>
-  );
+              );
+            })}
+          </View>
+        )}
+      </ScrollView>
+    );
+  };
 
   const SubmitView = () => (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -1849,20 +1941,23 @@ export default function ClientPortal() {
               </View>
 
               <View style={dash.sidebarNav}>
-                {NAV_ITEMS.map(({ id, label, Icon }) => {
+                {NAV_ITEMS.map(({ id, label, Icon }, idx) => {
                   const isActive = activeView === id;
+                  const showDivider = idx === 3 || idx === 4;
                   return (
-                    <TouchableOpacity
-                      key={id}
-                      style={[dash.navItem, isActive && dash.navItemActive]}
-                      onPress={() => {
-                        setActiveView(id);
-                        if (id === 'artwork' && session) fetchMediaBin(session.orgId);
-                      }}
-                    >
-                      <Icon size={16} color={isActive ? '#fff' : '#9CA3AF'} />
-                      <Text style={[dash.navLabel, isActive && dash.navLabelActive]}>{label}</Text>
-                    </TouchableOpacity>
+                    <React.Fragment key={id}>
+                      {showDivider && <View style={dash.navDivider} />}
+                      <TouchableOpacity
+                        style={[dash.navItem, isActive && dash.navItemActive]}
+                        onPress={() => {
+                          setActiveView(id);
+                          if (id === 'artwork' && session) fetchMediaBin(session.orgId);
+                        }}
+                      >
+                        <Icon size={16} color={isActive ? '#fff' : '#9CA3AF'} />
+                        <Text style={[dash.navLabel, isActive && dash.navLabelActive]}>{label}</Text>
+                      </TouchableOpacity>
+                    </React.Fragment>
                   );
                 })}
               </View>
@@ -1903,10 +1998,9 @@ export default function ClientPortal() {
           {/* Main content */}
           <View style={[dash.main, isMobile && dash.mainMobile]}>
             {activeView === 'home'     && HomeView()}
-            {activeView === 'projects' && ProjectsView()}
-            {activeView === 'quotes'   && QuotesView()}
-            {activeView === 'artwork'  && ArtworkView()}
-            {activeView === 'catalogs' && CatalogsView()}
+            {activeView === 'projects' && <MyProjectsView />}
+            {activeView === 'artwork'  && <ArtworkView />}
+            {activeView === 'catalogs' && <CatalogsView />}
             {activeView === 'submit'   && SubmitView()}
           </View>
 
@@ -1915,6 +2009,7 @@ export default function ClientPortal() {
             <View style={dash.mobileBottomBar}>
               {NAV_ITEMS.map(({ id, label, Icon }) => {
                 const isActive = activeView === id;
+                const shortLabel = id === 'submit' ? 'Submit' : id === 'projects' ? 'Projects' : id === 'artwork' ? 'Media' : id === 'catalogs' ? 'Catalogs' : label;
                 return (
                   <TouchableOpacity
                     key={id}
@@ -1926,7 +2021,7 @@ export default function ClientPortal() {
                     activeOpacity={0.7}
                   >
                     <Icon size={20} color={isActive ? BRAND : '#9CA3AF'} />
-                    <Text style={[dash.mobileNavLabel, isActive && dash.mobileNavLabelActive]}>{label}</Text>
+                    <Text style={[dash.mobileNavLabel, isActive && dash.mobileNavLabelActive]}>{shortLabel}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -2367,7 +2462,8 @@ const dash = StyleSheet.create({
   sidebarLogo: { width: 130, height: 36 },
   sidebarLogoText: { color: '#fff', fontSize: 13, fontWeight: '800', letterSpacing: 1.5 },
   sidebarLogoBrand: { color: BRAND, fontSize: 8, fontWeight: '600', letterSpacing: 0, marginTop: 2 },
-  sidebarClientHub: { color: '#fff', fontSize: 11, fontWeight: '700', letterSpacing: 0.5, marginTop: 10, opacity: 0.5 },
+  sidebarClientHub: { color: '#fff', fontSize: 11, fontWeight: '700', letterSpacing: 0.5, marginTop: 10, opacity: 1 },
+  navDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginHorizontal: 10, marginVertical: 6 },
 
   sidebarNav: { flex: 1, paddingTop: 10, paddingHorizontal: 10 },
   navItem: {
@@ -2520,104 +2616,95 @@ const upStyles = StyleSheet.create({
 
 const mbStyles = StyleSheet.create({
   uploadBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: BRAND,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: BRAND, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8,
   },
-  uploadBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#fff',
-  },
+  uploadBtnText: { fontSize: 13, fontWeight: '600', color: '#fff' },
   dropZone: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderStyle: 'dashed',
-    borderRadius: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    backgroundColor: '#FAFAFA',
-    marginBottom: 20,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderColor: '#E5E7EB', borderStyle: 'dashed',
+    borderRadius: 10, paddingVertical: 14, paddingHorizontal: 16,
+    backgroundColor: '#FAFAFA', marginBottom: 12,
   },
-  dropZoneText: {
-    fontSize: 12,
-    color: TEXT_LIGHT,
+  dropZoneText: { fontSize: 12, color: TEXT_LIGHT },
+  searchRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB',
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
+    marginBottom: 16, gap: 6,
   },
-  fileGrid: {
-    gap: 10,
+  searchInput: { flex: 1, fontSize: 13, color: TEXT },
+  visualGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 12,
   },
-  fileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  visualCard: {
+    width: '30%',
+    minWidth: 120,
+    flex: 1,
     backgroundColor: '#fff',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    padding: 12,
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+  },
+  visualThumb: {
+    width: '100%',
+    aspectRatio: 1,
+    backgroundColor: '#F3F4F6',
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  visualThumbImg: { width: '100%', height: '100%' },
+  visualThumbPlaceholder: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+  },
+  visualThumbLabel: {
+    fontSize: 14, fontWeight: '800', color: BRAND, letterSpacing: 1,
+  },
+  visualThumbActions: {
+    position: 'absolute', bottom: 6, right: 6,
+    flexDirection: 'row', gap: 4,
+  },
+  visualThumbBtn: {
+    width: 28, height: 28, borderRadius: 6,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  visualMeta: {
+    padding: 8, gap: 2,
+  },
+  visualFileName: {
+    fontSize: 12, fontWeight: '600', color: TEXT, lineHeight: 16,
+  },
+  visualFileSub: {
+    fontSize: 10, color: TEXT_LIGHT,
+  },
+  fileGrid: { gap: 10 },
+  fileCard: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
+    borderRadius: 10, borderWidth: 1, borderColor: '#E5E7EB',
+    padding: 12, gap: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
   },
   filePreview: {
-    width: 52,
-    height: 52,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    flexShrink: 0,
+    width: 52, height: 52, borderRadius: 8,
+    backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden', flexShrink: 0,
   },
-  previewImage: {
-    width: 52,
-    height: 52,
-  },
-  fileTypeBox: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-  },
-  fileTypeLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: BRAND,
-    letterSpacing: 0.5,
-  },
-  fileMeta: {
-    flex: 1,
-    gap: 2,
-  },
-  fileName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: TEXT,
-    lineHeight: 17,
-  },
-  fileSize: {
-    fontSize: 11,
-    color: TEXT_LIGHT,
-  },
-  fileActions: {
-    flexDirection: 'row',
-    gap: 4,
-    flexShrink: 0,
-  },
+  previewImage: { width: 52, height: 52 },
+  fileTypeBox: { alignItems: 'center', justifyContent: 'center', flex: 1 },
+  fileTypeLabel: { fontSize: 10, fontWeight: '800', color: BRAND, letterSpacing: 0.5 },
+  fileMeta: { flex: 1, gap: 2 },
+  fileName: { fontSize: 13, fontWeight: '600', color: TEXT, lineHeight: 17 },
+  fileSize: { fontSize: 11, color: TEXT_LIGHT },
+  fileActions: { flexDirection: 'row', gap: 4, flexShrink: 0 },
   fileActionBtn: {
-    padding: 8,
-    borderRadius: 6,
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    padding: 8, borderRadius: 6, backgroundColor: '#F9FAFB',
+    borderWidth: 1, borderColor: '#E5E7EB',
   },
 });
 
@@ -2661,4 +2748,77 @@ const catStyles = StyleSheet.create({
     borderColor: BRAND,
   },
   secondaryBtnText: { fontSize: 13, fontWeight: '600', color: BRAND },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+  },
+});
+
+const mpStyles = StyleSheet.create({
+  tabRow: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 10,
+    padding: 3,
+    marginBottom: 20,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 9,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  tabActive: {
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: TEXT_LIGHT,
+  },
+  tabLabelActive: {
+    color: TEXT,
+    fontWeight: '700',
+  },
+  projectRow: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  projectRowLeft: {
+    flex: 1,
+  },
+  projectRowTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: TEXT,
+    marginBottom: 6,
+  },
+  projectRowMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  projectRowMetaText: {
+    fontSize: 11,
+    color: TEXT_LIGHT,
+  },
 });

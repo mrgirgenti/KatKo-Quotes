@@ -1,5 +1,5 @@
 import { pool } from '@/lib/pool';
-import { sendEmail, buildSubmissionConfirmationEmail } from '@/lib/email';
+import { sendEmail, buildSubmissionConfirmationEmail, buildNewRequestAdminEmail } from '@/lib/email';
 
 const EDIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -166,10 +166,17 @@ export async function POST(request: Request) {
       ]
     );
 
+    // Determine portal URL for "View Your Request" link
+    const basePortalUrl = body.portalUrl || `${process.env.REPLIT_DEV_DOMAIN || ''}/portal/${orgId}`;
+    const projectPortalUrl = `${basePortalUrl}?tab=projects`;
+
+    // Determine admin URL for internal notification
+    const adminBaseUrl = process.env.REPLIT_DEV_DOMAIN || '';
+    const adminProjectUrl = `${adminBaseUrl}/quote/${project.id}`;
+
     // Send confirmation email to client (non-blocking)
     let emailSent = false;
     if (clientEmail) {
-      const portalUrl = body.portalUrl || '';
       const { subject, html, text } = buildSubmissionConfirmationEmail({
         clientName,
         projectName: title.trim(),
@@ -178,9 +185,17 @@ export async function POST(request: Request) {
         lineItems: lineItemsData.map((li: any) => ({
           designName: li.designName,
           serviceStyle: li.serviceStyle,
+          product: li.product || '',
+          productColor: li.productColor || '',
+          location1: li.location1 || '',
+          location2: li.location2 || '',
+          location3: li.location3 || '',
+          location4: li.location4 || '',
+          locationDetails: li.locationDetails || '',
+          sizes: li.sizes || {},
         })),
         notes: notes || '',
-        portalUrl,
+        portalUrl: projectPortalUrl,
       });
 
       const emailResult = await sendEmail({ to: clientEmail, subject, html, text });
@@ -192,6 +207,39 @@ export async function POST(request: Request) {
       }
     } else {
       console.warn('[portal/submit] No client email found — skipping confirmation email');
+    }
+
+    // Send admin notification to jobs@katalystko.com (non-blocking)
+    try {
+      const { subject: aSubj, html: aHtml, text: aTxt } = buildNewRequestAdminEmail({
+        projectName: title.trim(),
+        orgName: orgName || orgCheck.rows[0].name,
+        clientName,
+        clientEmail: clientEmail || '(no email)',
+        inHandsDate: inHandsDate || '',
+        lineItems: lineItemsData.map((li: any) => ({
+          designName: li.designName,
+          serviceStyle: li.serviceStyle,
+          product: li.product || '',
+          productColor: li.productColor || '',
+          location1: li.location1 || '',
+          location2: li.location2 || '',
+          location3: li.location3 || '',
+          location4: li.location4 || '',
+          locationDetails: li.locationDetails || '',
+          sizes: li.sizes || {},
+        })),
+        notes: notes || '',
+        adminUrl: adminProjectUrl,
+      });
+      const adminResult = await sendEmail({ to: 'jobs@katalystko.com', subject: aSubj, html: aHtml, text: aTxt });
+      if (adminResult.error) {
+        console.error('[portal/submit] Admin notification email failed:', adminResult.error);
+      } else {
+        console.log(`[portal/submit] Admin notification sent to jobs@katalystko.com — id: ${adminResult.id}`);
+      }
+    } catch (adminEmailErr) {
+      console.error('[portal/submit] Admin notification email error (non-fatal):', adminEmailErr);
     }
 
     return Response.json({

@@ -600,7 +600,7 @@ export default function QuoteDetailScreen() {
   };
 
   const renderSendQuotePanel = () => {
-    const showForStatuses: string[] = ['quoting', 'quoted', 'invoice_sent'];
+    const showForStatuses: string[] = ['needs_review', 'quoting', 'quoted', 'invoice_sent'];
     if (!showForStatuses.includes(quote.status)) return null;
     const portalUrl = getQuotePortalUrl();
     const isQuoted = quote.status === 'quoted' || quote.status === 'invoice_sent';

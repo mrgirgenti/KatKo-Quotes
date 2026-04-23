@@ -14,15 +14,21 @@ export async function GET(_req: Request, { orgId }: { orgId: string }) {
       `SELECT
         p.id,
         p.title,
-        p."frontendStatus" AS status,
+        CASE p.status::text
+          WHEN 'QUOTE_SENT' THEN 'QUOTED'
+          WHEN 'DRAFT' THEN 'NEEDS_REVIEW'
+          ELSE p.status::text
+        END AS status,
         p."inHandsDate",
         p."createdAt",
-        COUNT(li.id)::int AS "lineItemCount"
+        (
+          SELECT COUNT(*)::int
+          FROM "ProjectItem" pi
+          WHERE pi."projectId" = p.id
+        ) AS "lineItemCount"
       FROM "Project" p
-      LEFT JOIN "LineItem" li ON li."projectId" = p.id
       WHERE p."organizationId" = $1
-        AND p."frontendStatus" != 'CANCELLED'
-      GROUP BY p.id
+        AND p.status != 'CANCELLED'::"ProjectStatus"
       ORDER BY p."createdAt" DESC
       LIMIT 50`,
       [orgId]

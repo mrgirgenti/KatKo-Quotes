@@ -1,4 +1,49 @@
-# Katalyst Ko Quote Tracker 5000
+# Katalyst Ko Quote Tracker 5000 — Ko OS
+
+## Client Hub Overhaul (2026-04-23)
+Major 15-section overhaul of the Client Hub (`app/portal/[orgId].tsx`):
+
+### Sidebar Navigation
+- "Client Hub" label at top now fully white (opacity changed from 0.5 → 1.0)
+- NAV_ITEMS reordered: Dashboard → Submit a Project → My Projects → [divider] → Media Bin → [divider] → Product Catalogs
+- "Quotes & Invoices" removed as standalone sidebar nav item (merged into My Projects)
+- Labels renamed: Projects→"My Projects", Submit Request→"Submit a Project", Artwork→"Media Bin", Catalogs→"Product Catalogs"
+- Visual dividers added between nav groups in sidebar
+
+### My Projects View (unified)
+- Single view replacing separate "Projects" and "Quotes & Invoices" tabs
+- Tab switcher: "Submitted Requests" (NEEDS_REVIEW/QUOTING) | "Quotes & Invoices" (QUOTED/INVOICE_SENT/PAID/IN_PRODUCTION/COMPLETED)
+- Each project row shows title, submitted date, in-hands date, item count, status pill
+- Quotes & Invoices tab shows ProjectPipeline progress bar
+- HomeView's "Quotes & Invoices" section card now links to My Projects with correct tab
+- URL param `?tab=projects` auto-navigates to My Projects view after login
+
+### Product Catalogs — 3-Column Grid
+- CatalogsView changed from single-column list to responsive 3-col flexWrap grid
+- 1 col on mobile, 3 cols on desktop
+
+### Media Bin — Visual Gallery
+- Complete redesign from list view to Instagram-style grid with thumbnails
+- Search bar with live filtering by filename
+- Action buttons (download/delete) overlaid on hover
+- File name + size + date shown below each card
+
+### Status Mapping Fix
+- Portal projects API (`/api/portal/[orgId]/projects+api.ts`) now returns DB `status` enum (uppercase) instead of `frontendStatus` (lowercase)
+- QUOTE_SENT mapped to QUOTED for portal display
+- `StatusPill` and `ProjectPipeline` components updated to normalize statuses
+
+### Email Improvements
+- `buildSubmissionConfirmationEmail` in `lib/email.ts` now accepts full `FullLineItem` type with product, sizes, print locations, location details
+- New `buildNewRequestAdminEmail` function for admin notification
+- `portal/submit+api.ts` now sends:
+  - Client confirmation email with full line item details (product, color, sizes/qty, locations)
+  - Admin notification email to jobs@katalystko.com with all details + Ko OS link
+  - "View Your Request" button links to portal with `?tab=projects` URL param
+
+### Quote Workflow Bug Fix
+- `renderSendQuotePanel` in `app/quote/[id].tsx` now also shows for `needs_review` status
+- `handleAcceptIntake` in `app/(tabs)/projects.tsx` now logs errors instead of silently swallowing them
 
 A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custom apparel print shop.
 

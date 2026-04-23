@@ -216,21 +216,55 @@ export function buildQuoteEmail(opts: {
   return { subject, html, text: textLines.join('\n') };
 }
 
+export interface FullLineItem {
+  designName: string;
+  serviceStyle: string;
+  product?: string;
+  productColor?: string;
+  location1?: string;
+  location2?: string;
+  location3?: string;
+  location4?: string;
+  locationDetails?: string;
+  sizes?: Record<string, number>;
+  garmentVariants?: Array<{ color: string; sizes: Record<string, number> }>;
+}
+
+function formatSizes(sizes: Record<string, number> | undefined): string {
+  if (!sizes) return '';
+  const labels: Record<string, string> = {
+    xs: 'XS', s: 'S', m: 'M', l: 'L', xl: 'XL', xxl: '2XL', xxxl: '3XL', xxxxl: '4XL', flat: 'Flat',
+  };
+  const parts = Object.entries(sizes)
+    .filter(([, qty]) => qty > 0)
+    .map(([key, qty]) => `${labels[key] || key.toUpperCase()}: ${qty}`);
+  if (parts.length === 0) return '';
+  const total = Object.values(sizes).reduce((s, v) => s + (v || 0), 0);
+  return `${parts.join(', ')} (Total: ${total})`;
+}
+
 export function buildSubmissionConfirmationEmail(opts: {
   clientName: string;
   projectName: string;
   orgName: string;
   inHandsDate: string;
-  lineItems: Array<{ designName: string; serviceStyle: string }>;
+  lineItems: FullLineItem[];
   notes: string;
   portalUrl: string;
 }): { subject: string; html: string; text: string } {
   const { clientName, projectName, orgName, inHandsDate, lineItems, notes, portalUrl } = opts;
   const subject = `Project Request Submitted – ${projectName}`;
 
-  const liText = lineItems.map((li, i) =>
-    `  ${i + 1}. ${li.designName}${li.serviceStyle ? ` (${li.serviceStyle})` : ''}`
-  ).join('\n');
+  const liText = lineItems.map((li, i) => {
+    const lines: string[] = [`  ${i + 1}. ${li.designName}${li.serviceStyle ? ` (${li.serviceStyle})` : ''}`];
+    if (li.product) lines.push(`     Product: ${li.product}${li.productColor ? ` — ${li.productColor}` : ''}`);
+    const locs = [li.location1, li.location2, li.location3, li.location4].filter(Boolean);
+    if (locs.length) lines.push(`     Locations: ${locs.join(', ')}`);
+    if (li.locationDetails) lines.push(`     Location Notes: ${li.locationDetails}`);
+    const szStr = formatSizes(li.sizes);
+    if (szStr) lines.push(`     Sizes: ${szStr}`);
+    return lines.join('\n');
+  }).join('\n');
 
   const text = [
     `Hi ${clientName},`,
@@ -254,14 +288,21 @@ export function buildSubmissionConfirmationEmail(opts: {
     `— Katalyst Ko Printshop`,
   ].join('\n');
 
-  const liHtml = lineItems.map((li, i) =>
-    `<tr>
-      <td style="padding:10px 16px;border-bottom:1px solid #F3F4F6;font-size:13px;color:#374151;">
-        <strong style="color:#111;">${i + 1}. ${li.designName}</strong>
-        ${li.serviceStyle ? `<span style="color:#9CA3AF;font-size:12px;"> — ${li.serviceStyle}</span>` : ''}
+  const liHtml = lineItems.map((li, i) => {
+    const locs = [li.location1, li.location2, li.location3, li.location4].filter(Boolean);
+    const szStr = formatSizes(li.sizes);
+    const details: string[] = [];
+    if (li.product) details.push(`<strong>Product:</strong> ${li.product}${li.productColor ? ` — ${li.productColor}` : ''}`);
+    if (locs.length) details.push(`<strong>Print Locations:</strong> ${locs.join(', ')}`);
+    if (li.locationDetails) details.push(`<strong>Location Notes:</strong> ${li.locationDetails}`);
+    if (szStr) details.push(`<strong>Sizes:</strong> ${szStr}`);
+    return `<tr>
+      <td style="padding:12px 16px;border-bottom:1px solid #F3F4F6;font-size:13px;color:#374151;">
+        <div style="font-weight:700;color:#111;margin-bottom:${details.length ? '6px' : '0'};">${i + 1}. ${li.designName}${li.serviceStyle ? `<span style="color:#9CA3AF;font-weight:400;font-size:12px;"> — ${li.serviceStyle}</span>` : ''}</div>
+        ${details.map(d => `<div style="font-size:12px;color:#6B7280;margin-bottom:3px;">${d}</div>`).join('')}
       </td>
-    </tr>`
-  ).join('');
+    </tr>`;
+  }).join('');
 
   const html = emailWrapper(`
     <tr><td style="padding:32px;">
@@ -309,6 +350,110 @@ export function buildSubmissionConfirmationEmail(opts: {
         Questions? Reply to this email or reach us at
         <a href="mailto:${KO_JOBS_EMAIL}" style="color:#FF5A00;text-decoration:none;">${KO_JOBS_EMAIL}</a>
       </p>
+    </td></tr>`);
+
+  return { subject, html, text };
+}
+
+export function buildNewRequestAdminEmail(opts: {
+  projectName: string;
+  orgName: string;
+  clientName: string;
+  clientEmail: string;
+  lineItems: FullLineItem[];
+  inHandsDate: string;
+  notes: string;
+  adminUrl: string;
+}): { subject: string; html: string; text: string } {
+  const { projectName, orgName, clientName, clientEmail, lineItems, inHandsDate, notes, adminUrl } = opts;
+  const subject = `New Client Request — ${projectName} (${orgName})`;
+
+  const liText = lineItems.map((li, i) => {
+    const lines: string[] = [`  ${i + 1}. ${li.designName}${li.serviceStyle ? ` (${li.serviceStyle})` : ''}`];
+    if (li.product) lines.push(`     Product: ${li.product}${li.productColor ? ` — ${li.productColor}` : ''}`);
+    const locs = [li.location1, li.location2, li.location3, li.location4].filter(Boolean);
+    if (locs.length) lines.push(`     Locations: ${locs.join(', ')}`);
+    if (li.locationDetails) lines.push(`     Location Notes: ${li.locationDetails}`);
+    const szStr = formatSizes(li.sizes);
+    if (szStr) lines.push(`     Sizes: ${szStr}`);
+    return lines.join('\n');
+  }).join('\n');
+
+  const text = [
+    `New project request submitted via the Client Hub.`,
+    '',
+    `PROJECT: ${projectName}`,
+    `ORGANIZATION: ${orgName}`,
+    `CLIENT: ${clientName} <${clientEmail}>`,
+    ...(inHandsDate ? [`IN-HANDS DATE: ${inHandsDate}`] : []),
+    '',
+    `LINE ITEMS (${lineItems.length})`,
+    liText,
+    ...(notes ? ['', `NOTES`, `  ${notes}`] : []),
+    '',
+    `View in Ko OS:`,
+    `  ${adminUrl}`,
+    '',
+    `— Ko OS Notification`,
+  ].join('\n');
+
+  const liHtml = lineItems.map((li, i) => {
+    const locs = [li.location1, li.location2, li.location3, li.location4].filter(Boolean);
+    const szStr = formatSizes(li.sizes);
+    const details: string[] = [];
+    if (li.product) details.push(`<strong>Product:</strong> ${li.product}${li.productColor ? ` — ${li.productColor}` : ''}`);
+    if (locs.length) details.push(`<strong>Print Locations:</strong> ${locs.join(', ')}`);
+    if (li.locationDetails) details.push(`<strong>Location Notes:</strong> ${li.locationDetails}`);
+    if (szStr) details.push(`<strong>Sizes:</strong> ${szStr}`);
+    return `<tr>
+      <td style="padding:12px 16px;border-bottom:1px solid #F3F4F6;font-size:13px;color:#374151;">
+        <div style="font-weight:700;color:#111;margin-bottom:${details.length ? '6px' : '0'};">${i + 1}. ${li.designName}${li.serviceStyle ? `<span style="color:#9CA3AF;font-weight:400;font-size:12px;"> — ${li.serviceStyle}</span>` : ''}</div>
+        ${details.map(d => `<div style="font-size:12px;color:#6B7280;margin-bottom:3px;">${d}</div>`).join('')}
+      </td>
+    </tr>`;
+  }).join('');
+
+  const html = emailWrapper(`
+    <tr><td style="padding:32px;">
+      <div style="display:inline-block;background:#FEF3C7;border-radius:6px;padding:4px 12px;margin-bottom:16px;">
+        <span style="font-size:12px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:0.5px;">New Client Request</span>
+      </div>
+      <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111;">New request: ${projectName}</h1>
+      <p style="margin:0 0 24px;font-size:15px;color:#555;line-height:1.6;">
+        Submitted via the Client Hub. Review the details below and start building the quote.
+      </p>
+      <table cellpadding="0" cellspacing="0" width="100%" style="background:#F9FAFB;border-radius:10px;margin-bottom:20px;border:1px solid #E5E7EB;">
+        <tr><td style="padding:14px 20px;border-bottom:1px solid #E5E7EB;">
+          <p style="margin:0 0 2px;font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.5px;">Organization</p>
+          <p style="margin:0;font-size:14px;font-weight:600;color:#111;">${orgName}</p>
+        </td></tr>
+        <tr><td style="padding:14px 20px;border-bottom:1px solid #E5E7EB;">
+          <p style="margin:0 0 2px;font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.5px;">Client</p>
+          <p style="margin:0;font-size:14px;color:#374151;">${clientName} — <a href="mailto:${clientEmail}" style="color:#FF5A00;">${clientEmail}</a></p>
+        </td></tr>
+        ${inHandsDate ? `<tr><td style="padding:14px 20px;">
+          <p style="margin:0 0 2px;font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.5px;">In-Hands Date</p>
+          <p style="margin:0;font-size:14px;color:#374151;">${inHandsDate}</p>
+        </td></tr>` : ''}
+      </table>
+      <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#111;">Line Items (${lineItems.length})</p>
+      <table cellpadding="0" cellspacing="0" width="100%" style="border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;margin-bottom:20px;">
+        ${liHtml}
+      </table>
+      ${notes ? `
+      <table cellpadding="0" cellspacing="0" width="100%" style="background:#FFF7ED;border-radius:8px;margin-bottom:20px;border:1px solid #FED7AA;">
+        <tr><td style="padding:14px 16px;">
+          <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:0.5px;">Client Notes</p>
+          <p style="margin:0;font-size:13px;color:#78350F;line-height:1.5;">${notes}</p>
+        </td></tr>
+      </table>` : ''}
+      <table cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+        <tr><td style="background:#FF5A00;border-radius:8px;">
+          <a href="${adminUrl}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#fff;text-decoration:none;">
+            Open in Ko OS →
+          </a>
+        </td></tr>
+      </table>
     </td></tr>`);
 
   return { subject, html, text };

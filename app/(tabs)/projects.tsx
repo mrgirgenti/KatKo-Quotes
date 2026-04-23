@@ -573,12 +573,17 @@ export default function ProjectsScreen() {
       confirmText: 'Accept & Start Quote',
       onConfirm: async () => {
         try {
-          await fetch(`/api/projects/${quote.id}`, {
+          const res = await fetch(`/api/projects/${quote.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...quote, status: 'quoting' }),
           });
-        } catch {}
+          if (!res.ok) {
+            console.warn('[handleAcceptIntake] Status update failed, proceeding to quote editor anyway');
+          }
+        } catch (err) {
+          console.warn('[handleAcceptIntake] Status update error:', err);
+        }
         router.push(`/quote/${quote.id}`);
       },
     });

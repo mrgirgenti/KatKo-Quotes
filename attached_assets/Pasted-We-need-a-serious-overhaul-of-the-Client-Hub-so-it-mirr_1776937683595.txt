@@ -1,0 +1,490 @@
+We need a serious overhaul of the Client Hub so it mirrors the backend experience more closely, while still protecting internal-only business data.
+
+OVERALL GOAL
+The Client Hub should feel like a polished client-facing mirror of our backend system:
+- same design language
+- same general table/list/detail layouts
+- same status/tag feel
+- same project flow
+- but only client-safe fields should be visible
+
+This must be built from a shared source of truth so that when I update something on my end, it updates in the client’s corresponding project/quote/invoice automatically.
+
+======================================================================
+1. CORE DATA / SYNC REQUIREMENTS
+======================================================================
+
+We need one shared underlying project/quote/invoice record system, not separate disconnected copies.
+
+When a client submits a project:
+- it should appear on my backend Projects tab immediately
+- it should also appear in that client’s Client Hub immediately
+
+Any changes I make on my end should reflect in the client’s corresponding record automatically, including:
+- project status
+- quote status
+- invoice status
+- due date / in-hands date
+- line items
+- quantities
+- totals
+- uploaded media/mockups
+- any other client-visible data
+
+Do NOT create an admin system and a separate fake client system that drift apart.
+Use shared records with role-based views.
+
+Admin sees internal details.
+Client sees only client-safe details.
+
+======================================================================
+2. CLIENT HUB SIDEBAR CHANGES
+======================================================================
+
+Please update the sidebar as follows:
+
+Text/style:
+- The words “Client Hub” at the top left should be WHITE
+
+Rename items:
+- Projects → “My Projects”
+- Submit Request → “Submit a Project”
+- Artwork → “Media Bin”
+- Remove “Quotes & Invoices” from the sidebar entirely
+
+Sidebar order should be EXACTLY:
+1. Dashboard
+2. Submit a Project
+3. My Projects
+
+--- divider / line break ---
+
+4. Media Bin
+
+--- divider / line break ---
+
+5. Product Catalogs
+
+“Quotes & Invoices” should no longer be its own sidebar item. It will instead live inside My Projects as one of two sections.
+
+======================================================================
+3. PRODUCT CATALOGS TAB
+======================================================================
+
+I already changed the layout direction and want it replicated in the Client Hub.
+
+Please use a 3-column card layout like the attached reference.
+
+Requirements:
+- desktop: 3 columns
+- tablet: 2 columns
+- mobile: 1 column
+
+Each card should keep the same style and feel shown in the current layout:
+- brand initials or icon badge
+- catalog/company name
+- category tag
+- short description
+- CTA button: “Open Catalog”
+- secondary CTA: “Website” where applicable
+
+Match the current spacing and visual hierarchy shown in the reference.
+
+======================================================================
+4. MY PROJECTS TAB OVERHAUL
+======================================================================
+
+The revamped “My Projects” area should visually feel similar to the backend Projects tab, including:
+- filters / tags across the top
+- search
+- list/table experience
+- status badges
+- action buttons
+- overall backend-inspired layout
+
+However, client-facing statuses and fields should be sanitized.
+
+My Projects should contain TWO SECTIONS:
+
+[1] Submitted Project Requests
+[2] Quotes + Invoices
+
+These two sections can be on the same page with clear separation, or use an internal toggle/tab inside My Projects if that keeps the UI cleaner.
+
+--------------------------------------------------
+4A. SECTION 1: SUBMITTED PROJECT REQUESTS
+--------------------------------------------------
+
+This section should contain all project requests submitted by the client that are still in the request/review stage.
+
+This section should house:
+- newly submitted requests
+- requests under review
+- requests needing more info
+- requests not yet converted into formal quotes/invoices
+
+Behavior:
+- submitted requests remain in this section for 15 days
+- after 15 days, they should move to an archived status/view
+- archived items should preferably be hidden by default and accessible via a filter/tag
+- clients should have the ability to “Resubmit Request”
+
+Client-safe statuses for this section should be something like:
+- Submitted
+- Under Review
+- Needs Info
+- Archived
+
+These statuses should map to backend statuses and auto-update when I change things on my end.
+
+Suggested visible columns/data:
+- Status
+- Submitted Date / Order Date
+- In-Hands / Due Date
+- Project Name
+- Service(s)
+- Quantity if useful
+- Actions
+
+Actions:
+- View
+- Resubmit Request
+
+--------------------------------------------------
+4B. SECTION 2: QUOTES + INVOICES
+--------------------------------------------------
+
+This section should contain requests that have progressed into quote/invoice/payment/production/completed stages.
+
+This should house:
+- quotes
+- approved quotes
+- invoices
+- pending payment records
+- paid records
+- production/completed records where appropriate
+
+Client-safe statuses here should be something like:
+- Quote Ready
+- Quote Sent
+- Invoice Sent
+- Pending Payment
+- Paid
+- In Production
+- Completed
+- Expired
+
+Again, these must correlate with backend statuses and auto-update based on changes I make.
+
+Suggested visible columns/data:
+- Status
+- Date
+- Project Name
+- Final Quote / Invoice Total
+- Payment / production state
+- Actions
+
+Actions should include as appropriate:
+- View Quote
+- Review Quote
+- Approve Quote
+- Pay Invoice
+- Reorder
+
+Important distinction:
+- “Resubmit Request” is for old request-stage submissions
+- “Reorder” is for completed/paid work and should create a NEW project request based on the old completed project
+
+Paid invoices should support Reorder.
+Reorder should NOT overwrite the old completed project.
+It should create a new project request seeded from the prior completed job.
+
+======================================================================
+5. STATUS / TAG FILTER SYSTEM
+======================================================================
+
+In My Projects, incorporate a top filter/tag system similar to the backend Projects tab.
+
+The look and feel should visually match the backend filter tags.
+
+However, only show client-safe statuses in the Client Hub.
+
+These client-side tags/statuses must update automatically when I change statuses on my end.
+
+Potential tag groupings:
+
+For Submitted Project Requests:
+- All
+- Submitted
+- Under Review
+- Needs Info
+- Archived
+
+For Quotes + Invoices:
+- All
+- Quote Ready
+- Invoice Sent
+- Pending Payment
+- Paid
+- In Production
+- Completed
+- Expired
+
+======================================================================
+6. CLIENT PROJECT / QUOTE DETAIL PAGE
+======================================================================
+
+When a client clicks a project/quote, I want the detail page to have the same general structure and visual feel as my internal Quote Details / Project Details layout.
+
+Use the attached reference as the direction for layout:
+- top summary/header area
+- project info block
+- client/contact summary block
+- line items area
+- right-side pricing summary style
+- clean card layout
+- orange total emphasis
+- same overall visual language
+
+However, the client version must be SANITIZED.
+
+Client should be able to see:
+- project status
+- project name
+- submission/order date
+- in-hands / due date
+- line items
+- garment/item details
+- service type
+- print location if applicable
+- sizes and quantities
+- uploaded mockups/artwork
+- client-visible notes if any
+- subtotal
+- any customer-facing fees
+- final total
+- invoice/payment state
+- actions like approve / request changes / pay / reorder where appropriate
+
+Client should NOT be able to see internal business data like:
+- product cost
+- service cost
+- cost of goods
+- markup amount
+- markup %
+- actual profit
+- amount collected vs margin analytics
+- applicator/vendor info
+- source/vendor sourcing
+- sales tracking
+- internal notes
+- internal quoted vs actual profitability comparisons
+- any hidden quoting math
+
+Right-side pricing summary in client view should be simplified to things like:
+- Items subtotal
+- Setup/design fees if intended to be shown
+- Shipping if applicable
+- Tax if applicable
+- Customer-facing fees if intended
+- Final total
+
+Keep the polished design, but remove internal-only business data.
+
+======================================================================
+7. CLIENT HUB LIVE UPDATE BEHAVIOR
+======================================================================
+
+When I change something on my end, the client-facing version should update accordingly in their project/quote/invoice.
+
+But be smart about how this works.
+
+We should distinguish between:
+- internal draft edits
+- client-visible published updates
+
+I do NOT want accidental admin edits to create confusion for clients after they’ve already reviewed or approved something.
+
+Recommended behavior:
+- before approval: latest client-facing quote can update live
+- after approval: if material changes happen (price, quantities, services, due date, etc.), create an updated client-facing version or re-review state as needed
+
+Main point:
+Client hub should always reflect the current valid client-facing state based on my updates.
+
+======================================================================
+8. START QUOTING / QUOTE SUBMISSION BUG
+======================================================================
+
+There is currently a broken workflow when a Client submits a Project Request and I go into the quote.
+
+Right now:
+- the “Start Quoting” button at the top and bottom lets me edit and quote the project
+- but once I finish quoting, there is NO proper action to actually submit/send/publish the quote to the client
+- that element appears to have been missed
+
+Also:
+- if I go back to the main Projects tab
+- and use the dropdown in the Actions column for that quote
+- I see an option to “Accept the Quote”
+- but it does NOT perform the action correctly
+- the record remains stuck in the “Start Quoting” state
+- and the tag/status stays “Needs Review”
+
+This needs to be fixed.
+
+Required fix:
+When I complete quoting, I need a clear admin action such as:
+- Send Quote to Client
+or
+- Publish Quote
+or
+- Finalize + Send
+
+That action should:
+- change the backend record out of “Needs Review” / “Start Quoting”
+- move it into the correct quote-ready/sent state
+- make it visible in the client’s Quotes + Invoices section
+- allow the client to access/review/approve/pay as appropriate
+
+The current “Accept the Quote” behavior in the Actions dropdown needs to actually work and trigger the correct state transition, or be replaced with clearer wording if “Accept” is the wrong label.
+
+In short:
+The quote workflow is incomplete because I can quote/edit, but I cannot properly finalize and send the quote to the client from that screen.
+
+======================================================================
+9. MEDIA BIN TAB
+======================================================================
+
+Rename Artwork to “Media Bin”.
+
+This area should prioritize the client viewing and management experience for their uploaded media/art.
+
+I want it to feel more like an Instagram-profile-style media gallery, but cleaner and more professional.
+
+Requirements:
+- medium-sized cards/thumbnails
+- visual-first layout
+- artwork/media name displayed below each item
+- file size displayed below each item
+- date submitted displayed below each item
+- searchable media
+
+Search should help clients quickly find assets.
+
+The priority here is the viewing experience for clients to see and manage their media.
+
+Do NOT make this feel like a cluttered admin file manager.
+
+Goal:
+A clean visual asset library that helps clients recognize and manage their files easily.
+
+======================================================================
+10. SUBMISSION EMAIL OVERHAUL
+======================================================================
+
+When a client submits a Project Request from their Client Hub, they currently receive a confirmation email. The start of it is good, but it is incomplete.
+
+We need the submission email to include the FULL submission details, not just a summary.
+
+That email should include everything for the request, including for EACH line item:
+- project name
+- organization
+- in-hands date
+- all submitted line items
+- product / garment details
+- sizes and quantities
+- service type
+- print locations
+- project details
+- instructions / notes
+- uploaded artwork / art references
+- anything else submitted as part of the request
+
+The email should be sent:
+1. to the client user email associated with the submission
+2. ALSO always to jobs@katalystko.com
+
+Both emails should contain the same full submission detail so I can review it quickly from email and know to go into the system to quote.
+
+The email should still look polished and branded, but it needs to be much more complete and useful.
+
+======================================================================
+11. BROKEN “VIEW YOUR REQUEST” BUTTON IN EMAIL
+======================================================================
+
+The “View Your Request” button in the submission email currently does NOT work.
+
+This needs to be fixed.
+
+Most likely this is related to some of the request/client hub routing and visibility issues already being addressed, but regardless:
+- the button must link the client directly to the correct request record in their Client Hub
+- it must work for the actual authenticated user
+- it should open the corresponding project/request detail page
+- it should not route to a broken or unavailable page
+
+Please fully wire this up after the client-facing request/project detail pages are corrected.
+
+======================================================================
+12. IMPORTANT PERMISSIONS / VISIBILITY RULES
+======================================================================
+
+Clients must only be able to see their own records.
+
+Clients must never see:
+- markup
+- COGS
+- vendor/applicator info
+- internal notes
+- sales tracking
+- internal quoting calculations
+- actual profit
+- internal sourcing
+- internal fee structures unless intentionally customer-facing
+
+Admin should still retain full internal visibility.
+
+======================================================================
+13. DESIGN / UX DIRECTION
+======================================================================
+
+Overall design direction:
+- premium, clean, organized
+- very similar visual language to the backend
+- client-safe, not admin-dense
+- status clarity matters a lot
+- easy scanning matters a lot
+- polished client experience
+- keep orange emphasis/buttons where appropriate
+- keep consistency across Projects, Quote Details, Media Bin, Catalogs, and emails
+
+======================================================================
+14. IMPLEMENTATION PREFERENCE
+======================================================================
+
+Please implement this using shared reusable components where possible:
+- same design system between backend and client hub
+- same/similar status badge components
+- same/similar table/list components with role-based field visibility
+- same/similar detail layouts with client-safe rendering rules
+
+Avoid duplicating whole systems if the same component can be reused with different permissions/configs.
+
+Please also audit the current request → quote → invoice → paid → reorder workflow and fix any broken state transitions so the Client Hub and backend stay aligned.
+
+======================================================================
+15. DELIVERABLE EXPECTATION
+======================================================================
+
+Please do not just patch this superficially.
+
+I want:
+- the broken workflow fixed
+- the sidebar updated
+- My Projects restructured
+- Product Catalogs updated to the 3-column layout
+- Media Bin redesigned
+- project/request/quote detail pages corrected
+- submission email expanded with full details
+- “View Your Request” email button fixed
+- and the backend/client synchronization tightened so this system actually behaves like one connected product
