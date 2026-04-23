@@ -537,52 +537,49 @@ export default function OrgProfileScreen() {
             </View>
           </Pressable>
         </Modal>
-        {/* Logo */}
+        {/* Status badge — top-left */}
+        <View style={styles.orgStatusBadge}>
+          <StatusBadge status={org.status} />
+        </View>
+
+        {/* Logo — larger */}
         <View style={styles.orgLogoWrap}>
           <OrgLogoUploader
             orgId={org.id}
             orgName={org.name}
             currentLogoUrl={org.logoUrl}
             onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })}
-            size={88}
+            size={104}
           />
         </View>
 
         <Text style={styles.orgNameLarge}>{org.name}</Text>
-        {org.type && <Text style={styles.orgTypeLarge}>{org.type}</Text>}
 
-        <View style={styles.orgBadgesRow}>
-          <StatusBadge status={org.status} />
-          {org.hubEnabled && (
-            <View style={styles.portalEnabledBadge}>
-              <Shield size={10} color="#7C3AED" />
-              <Text style={styles.portalEnabledBadgeText}>Portal On</Text>
-            </View>
-          )}
-        </View>
-
-        {(org.city || org.state || org.address || org.website) && (
-          <View style={styles.orgAddressBlock}>
-            {(org.city || org.state) && (
-              <View style={styles.infoRow}>
-                <MapPin size={12} color={Colors.light.textSecondary} />
-                <Text style={styles.infoText}>{[org.city, org.state].filter(Boolean).join(', ')}</Text>
-              </View>
-            )}
-            {org.address && (
-              <View style={styles.infoRow}>
-                <Building2 size={12} color={Colors.light.textSecondary} />
-                <Text style={styles.infoText}>{org.address}</Text>
-              </View>
-            )}
-            {org.website && (
-              <View style={styles.infoRow}>
-                <Globe size={12} color={Colors.light.textSecondary} />
-                <Text style={styles.infoText}>{org.website}</Text>
-              </View>
-            )}
+        {/* Business info rows — always shown */}
+        <View style={styles.orgInfoBlock}>
+          <View style={styles.orgInfoRow}>
+            <MapPin size={12} color={Colors.light.textSecondary} />
+            <Text style={styles.orgInfoKey}>Address</Text>
+            <Text style={styles.orgInfoVal} numberOfLines={2}>
+              {[org.address, [org.city, org.state].filter(Boolean).join(', ')].filter(Boolean).join(', ') || '—'}
+            </Text>
           </View>
-        )}
+          <View style={styles.orgInfoRow}>
+            <Globe size={12} color={Colors.light.textSecondary} />
+            <Text style={styles.orgInfoKey}>Website</Text>
+            <Text style={styles.orgInfoVal} numberOfLines={1}>{org.website || '—'}</Text>
+          </View>
+          <View style={styles.orgInfoRow}>
+            <FileText size={12} color={Colors.light.textSecondary} />
+            <Text style={styles.orgInfoKey}>Notes</Text>
+            <Text style={styles.orgInfoVal} numberOfLines={3}>{org.notes || '—'}</Text>
+          </View>
+          <View style={[styles.orgInfoRow, { borderBottomWidth: 0 }]}>
+            <Building2 size={12} color={Colors.light.textSecondary} />
+            <Text style={styles.orgInfoKey}>Delivery</Text>
+            <Text style={styles.orgInfoVal}>—</Text>
+          </View>
+        </View>
       </View>
 
       {/* Lead tracking */}
@@ -1940,18 +1937,46 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: Colors.light.border,
   },
   orgMenuItemText: { fontSize: 14, color: Colors.light.text },
+  orgStatusBadge: {
+    position: 'absolute' as const,
+    top: 12,
+    left: 12,
+    zIndex: 5,
+  },
   orgLogoWrap: {
     alignItems: 'center' as const,
-    marginBottom: 14,
+    marginBottom: 12,
+    marginTop: 8,
   },
-  orgBadgesRow: { flexDirection: 'row' as const, gap: 6, flexWrap: 'wrap' as const, justifyContent: 'center' as const, marginTop: 8 },
-  portalEnabledBadge: {
-    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4,
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12,
-    backgroundColor: '#F5F3FF', borderWidth: 1, borderColor: '#DDD6FE',
+  orgInfoBlock: {
+    alignSelf: 'stretch' as const,
+    marginTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    paddingTop: 4,
   },
-  portalEnabledBadgeText: { fontSize: 11, fontWeight: '700' as const, color: '#7C3AED' },
-  orgAddressBlock: { gap: 4, marginTop: 10, alignSelf: 'flex-start' as const, width: '100%' as any },
+  orgInfoRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    gap: 8,
+    paddingVertical: 7,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+  },
+  orgInfoKey: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: Colors.light.textSecondary,
+    width: 52,
+    flexShrink: 0,
+    paddingTop: 1,
+  },
+  orgInfoVal: {
+    flex: 1,
+    fontSize: 12,
+    color: Colors.light.text,
+    lineHeight: 17,
+  },
 
   leftInfoCard: {
     backgroundColor: Colors.light.surface,
