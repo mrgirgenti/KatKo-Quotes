@@ -2383,7 +2383,7 @@ const styles = StyleSheet.create({
     gap: 14,
     marginTop: 10,
     borderRadius: 12,
-    backgroundColor: '#C85C28',
+    backgroundColor: '#FF5A00',
     overflow: 'hidden' as const,
   },
   orgMediaDropZoneActive: {
