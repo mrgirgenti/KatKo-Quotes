@@ -546,7 +546,7 @@ export default function ClientsScreen() {
           </TouchableOpacity>
           <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
             <Plus size={16} color="#fff" />
-            <Text style={styles.addBtnText}>Add</Text>
+            <Text style={styles.addBtnText}>Add Contact</Text>
           </TouchableOpacity>
         </View>
 

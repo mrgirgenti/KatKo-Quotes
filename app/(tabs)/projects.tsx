@@ -33,6 +33,7 @@ import {
   Trophy,
   Play,
   Flame,
+  FolderPlus,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useQuotes } from '@/contexts/QuotesContext';
@@ -709,6 +710,10 @@ export default function ProjectsScreen() {
 
         {/* Search + Filter Row */}
         <View style={styles.searchRow}>
+          <TouchableOpacity style={styles.startProjectBtn} onPress={() => router.push('/')}>
+            <FolderPlus size={15} color="#fff" />
+            <Text style={styles.startProjectBtnText}>Start Project</Text>
+          </TouchableOpacity>
           <View style={styles.searchBox}>
             <Search size={15} color={Colors.light.textSecondary} />
             <TextInput
@@ -1032,6 +1037,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.light.text,
     outlineStyle: 'none' as any,
+  },
+  startProjectBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    backgroundColor: Colors.light.tint,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 10,
+  },
+  startProjectBtnText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: '#fff',
+    whiteSpace: 'nowrap' as any,
   },
   filterBtn: {
     width: 40,
