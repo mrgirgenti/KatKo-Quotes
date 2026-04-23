@@ -47,6 +47,7 @@ import {
   ExternalLink,
   Search,
   Filter,
+  SlidersHorizontal,
 } from 'lucide-react-native';
 import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
 
@@ -1459,7 +1460,8 @@ export default function ClientPortal() {
       setMpCostMax('');
     };
 
-    const STATUS_CHIPS = [
+    const STATUS_PILLS_CFG = [
+      { key: null as string | null, label: 'All' },
       { key: 'NEEDS_REVIEW', label: 'Needs Review' },
       { key: 'QUOTING', label: 'Being Quoted' },
       { key: 'QUOTED', label: 'Quote Ready' },
@@ -1468,208 +1470,209 @@ export default function ClientPortal() {
       { key: 'COMPLETED', label: 'Completed' },
     ];
 
+    const statusCounts: Record<string, number> = {};
+    orgProjects.forEach(p => {
+      const norm = normalSt(p.status);
+      statusCounts[norm] = (statusCounts[norm] || 0) + 1;
+    });
+
     const isQuoteStatus = (s: string) => {
       const n = normalSt(s);
       return ['QUOTED', 'INVOICE_SENT', 'PAID', 'IN_PRODUCTION', 'COMPLETED'].includes(n);
     };
 
+    const advFilterCount = [mpDateFrom || mpDateTo, mpCostMin || mpCostMax].filter(Boolean).length;
+
     return (
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-        {/* Dark header bar matching admin style */}
-        <View style={mpStyles.headerBar}>
-          <View style={mpStyles.searchWrap}>
-            <Search size={14} color="#9CA3AF" style={{ marginRight: 8 }} />
-            <TextInput
-              style={mpStyles.searchInput}
-              placeholder="Search projects by name…"
-              placeholderTextColor="#6B7280"
-              value={mpSearch}
-              onChangeText={setMpSearch}
-            />
-            {mpSearch.length > 0 && (
-              <TouchableOpacity onPress={() => setMpSearch('')} style={{ padding: 4 }}>
-                <X size={14} color="#9CA3AF" />
-              </TouchableOpacity>
-            )}
+      <View style={{ flex: 1 }}>
+        {/* White header matching admin */}
+        <View style={mpStyles.header}>
+          <View style={mpStyles.headerTop}>
+            <Text style={mpStyles.headerTitle}>My Projects</Text>
+            <Text style={mpStyles.headerCount}>{orgProjects.length} project{orgProjects.length !== 1 ? 's' : ''}</Text>
           </View>
-          <TouchableOpacity
-            style={[mpStyles.filterToggleBtn, (mpShowFilters || hasActiveFilters) && mpStyles.filterToggleBtnActive]}
-            onPress={() => setMpShowFilters(v => !v)}
+
+          {/* Status pills — always visible */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={mpStyles.pillsScroll}
+            contentContainerStyle={mpStyles.pillsRow}
           >
-            <Filter size={15} color={mpShowFilters || hasActiveFilters ? '#FF5A00' : '#9CA3AF'} />
-            {hasActiveFilters && <View style={mpStyles.filterDot} />}
-          </TouchableOpacity>
-        </View>
-
-        {/* Filter panel */}
-        {mpShowFilters && (
-          <View style={mpStyles.filterPanel}>
-            {/* Status chips */}
-            <Text style={mpStyles.filterLabel}>Status</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
-              <View style={mpStyles.chipRow}>
-                <TouchableOpacity
-                  style={[mpStyles.chip, !mpStatusFilter && mpStyles.chipActive]}
-                  onPress={() => setMpStatusFilter(null)}
-                >
-                  <Text style={[mpStyles.chipText, !mpStatusFilter && mpStyles.chipTextActive]}>All</Text>
-                </TouchableOpacity>
-                {STATUS_CHIPS.map(c => (
-                  <TouchableOpacity
-                    key={c.key}
-                    style={[mpStyles.chip, mpStatusFilter === c.key && mpStyles.chipActive]}
-                    onPress={() => setMpStatusFilter(mpStatusFilter === c.key ? null : c.key)}
-                  >
-                    <Text style={[mpStyles.chipText, mpStatusFilter === c.key && mpStyles.chipTextActive]}>{c.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-
-            {/* Date range */}
-            <Text style={mpStyles.filterLabel}>Submitted Date Range</Text>
-            <View style={mpStyles.rangeRow}>
-              {Platform.OS === 'web' ? (
-                <>
-                  <input
-                    type="date"
-                    value={mpDateFrom}
-                    onChange={(e: any) => setMpDateFrom(e.target.value)}
-                    style={{ flex: 1, border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: TEXT, backgroundColor: '#fff', outline: 'none', fontFamily: 'inherit', minWidth: 0 } as any}
-                  />
-                  <Text style={mpStyles.rangeSep}>–</Text>
-                  <input
-                    type="date"
-                    value={mpDateTo}
-                    onChange={(e: any) => setMpDateTo(e.target.value)}
-                    style={{ flex: 1, border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: TEXT, backgroundColor: '#fff', outline: 'none', fontFamily: 'inherit', minWidth: 0 } as any}
-                  />
-                </>
-              ) : (
-                <>
-                  <TextInput style={mpStyles.rangeInput} value={mpDateFrom} onChangeText={setMpDateFrom} placeholder="From (YYYY-MM-DD)" placeholderTextColor="#9CA3AF" />
-                  <Text style={mpStyles.rangeSep}>–</Text>
-                  <TextInput style={mpStyles.rangeInput} value={mpDateTo} onChangeText={setMpDateTo} placeholder="To (YYYY-MM-DD)" placeholderTextColor="#9CA3AF" />
-                </>
-              )}
-              {(mpDateFrom || mpDateTo) && (
-                <TouchableOpacity onPress={() => { setMpDateFrom(''); setMpDateTo(''); }} style={{ marginLeft: 8 }}>
-                  <X size={14} color="#6B7280" />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Cost range */}
-            <Text style={[mpStyles.filterLabel, { marginTop: 14 }]}>Total Cost Range</Text>
-            <View style={mpStyles.rangeRow}>
-              <View style={mpStyles.costInputWrap}>
-                <Text style={mpStyles.costPrefix}>$</Text>
-                <TextInput
-                  style={mpStyles.costInput}
-                  value={mpCostMin}
-                  onChangeText={setMpCostMin}
-                  placeholder="Min"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="numeric"
-                />
-              </View>
-              <Text style={mpStyles.rangeSep}>–</Text>
-              <View style={mpStyles.costInputWrap}>
-                <Text style={mpStyles.costPrefix}>$</Text>
-                <TextInput
-                  style={mpStyles.costInput}
-                  value={mpCostMax}
-                  onChangeText={setMpCostMax}
-                  placeholder="Max"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="numeric"
-                />
-              </View>
-              {(mpCostMin || mpCostMax) && (
-                <TouchableOpacity onPress={() => { setMpCostMin(''); setMpCostMax(''); }} style={{ marginLeft: 8 }}>
-                  <X size={14} color="#6B7280" />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {hasActiveFilters && (
-              <TouchableOpacity onPress={clearAll} style={mpStyles.clearAllBtn}>
-                <Text style={mpStyles.clearAllText}>Clear All Filters</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-
-        {/* Table header */}
-        <View style={mpStyles.tableHeader}>
-          <Text style={[mpStyles.tableHeaderCell, { width: 110 }]}>STATUS</Text>
-          <Text style={[mpStyles.tableHeaderCell, { flex: 1 }]}>PROJECT</Text>
-          <Text style={[mpStyles.tableHeaderCell, { width: 90 }]}>SUBMITTED</Text>
-          <Text style={[mpStyles.tableHeaderCell, { width: 90 }]}>IN-HANDS</Text>
-          <Text style={[mpStyles.tableHeaderCell, { width: 54, textAlign: 'center' }]}>ITEMS</Text>
-          <Text style={[mpStyles.tableHeaderCell, { width: 80, textAlign: 'right' }]}>TOTAL</Text>
-          <Text style={[mpStyles.tableHeaderCell, { width: 56 }]} />
-        </View>
-
-        {/* Rows */}
-        {projectsLoading ? (
-          <ActivityIndicator color={BRAND} style={{ marginTop: 40 }} />
-        ) : displayed.length === 0 ? (
-          <View style={{ paddingHorizontal: 20, paddingTop: 40 }}>
-            <EmptyState
-              icon={<ClipboardList size={32} color="#9CA3AF" />}
-              title={hasActiveFilters || mpSearch ? 'No matching projects' : 'No projects yet'}
-              sub={hasActiveFilters || mpSearch
-                ? 'Try adjusting your search or filters.'
-                : "Use 'Submit a Project' to send your first print request to Katalyst Ko."}
-            />
-          </View>
-        ) : (
-          <View>
-            {displayed.map((p, idx) => {
-              const norm = normalSt(p.status);
-              const canView = isQuoteStatus(p.status);
-              const cost = p.totalCost ? `$${parseFloat(p.totalCost).toFixed(2)}` : '—';
+            {STATUS_PILLS_CFG.map(pill => {
+              const count = pill.key === null ? orgProjects.length : (statusCounts[pill.key] ?? 0);
+              const active = mpStatusFilter === pill.key;
+              const cfg = pill.key ? PORTAL_STATUS_CONFIG[pill.key] : null;
               return (
-                <View key={p.id} style={[mpStyles.tableRow, idx % 2 === 1 && mpStyles.tableRowAlt]}>
-                  <View style={{ width: 110 }}>
-                    <StatusPill status={p.status} />
-                  </View>
-                  <View style={{ flex: 1, paddingRight: 8 }}>
-                    <Text style={mpStyles.rowTitle} numberOfLines={1}>{p.title}</Text>
-                    {canView && <ProjectPipeline status={p.status} />}
-                  </View>
-                  <Text style={[mpStyles.rowMeta, { width: 90 }]}>{formatDate(p.createdAt)}</Text>
-                  <Text style={[mpStyles.rowMeta, { width: 90 }]}>{p.inHandsDate ? formatDate(p.inHandsDate) : '—'}</Text>
-                  <Text style={[mpStyles.rowMeta, { width: 54, textAlign: 'center' }]}>
-                    {p.lineItemCount > 0 ? p.lineItemCount : '—'}
+                <TouchableOpacity
+                  key={String(pill.key)}
+                  style={[
+                    mpStyles.pill,
+                    active && mpStyles.pillActive,
+                    active && cfg ? { backgroundColor: cfg.bg, borderColor: cfg.color } : null,
+                  ]}
+                  onPress={() => setMpStatusFilter(pill.key)}
+                >
+                  <Text style={[
+                    mpStyles.pillText,
+                    active && mpStyles.pillTextActive,
+                    active && cfg ? { color: cfg.color } : null,
+                  ]}>
+                    {pill.label}
                   </Text>
-                  <Text style={[mpStyles.rowCost, { width: 80, textAlign: 'right' }, parseFloat(p.totalCost ?? '0') > 0 && mpStyles.rowCostFilled]}>
-                    {cost}
-                  </Text>
-                  <View style={{ width: 56, alignItems: 'flex-end' }}>
-                    {canView && (
-                      <TouchableOpacity
-                        style={mpStyles.viewBtn}
-                        onPress={() => setActiveView('submit')}
-                      >
-                        <Text style={mpStyles.viewBtnText}>View</Text>
-                      </TouchableOpacity>
-                    )}
+                  <View style={[mpStyles.pillCount, active && cfg ? { backgroundColor: cfg.color } : null]}>
+                    <Text style={[mpStyles.pillCountText, active && cfg ? { color: '#fff' } : null]}>{count}</Text>
                   </View>
-                </View>
+                </TouchableOpacity>
               );
             })}
-          </View>
-        )}
+          </ScrollView>
 
-        <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
-          <Text style={mpStyles.resultCount}>
-            {displayed.length} project{displayed.length !== 1 ? 's' : ''}
-            {orgProjects.length !== displayed.length ? ` of ${orgProjects.length}` : ''}
-          </Text>
+          {/* Search + filter toggle */}
+          <View style={mpStyles.searchRow}>
+            <View style={mpStyles.searchBox}>
+              <Search size={15} color="#9CA3AF" />
+              <TextInput
+                style={mpStyles.searchInput}
+                placeholder="Search projects by name…"
+                placeholderTextColor="#9CA3AF"
+                value={mpSearch}
+                onChangeText={setMpSearch}
+              />
+              {mpSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setMpSearch('')}>
+                  <X size={14} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
+            </View>
+            <TouchableOpacity
+              style={[mpStyles.filterToggleBtn, (mpShowFilters || hasActiveFilters) && mpStyles.filterToggleBtnActive]}
+              onPress={() => setMpShowFilters(v => !v)}
+            >
+              <SlidersHorizontal size={16} color={mpShowFilters || hasActiveFilters ? BRAND : '#9CA3AF'} />
+              {advFilterCount > 0 && (
+                <View style={mpStyles.filterBadge}>
+                  <Text style={mpStyles.filterBadgeText}>{advFilterCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Advanced filter panel — inside header so border falls below table header */}
+          {mpShowFilters && (
+            <View style={mpStyles.filterPanel}>
+              <Text style={mpStyles.filterPanelTitle}>ADVANCED FILTERS</Text>
+              <View style={mpStyles.filtersRow}>
+                <View style={mpStyles.filterField}>
+                  <Text style={mpStyles.filterLabel}>From Date</Text>
+                  {Platform.OS === 'web' ? (
+                    <input
+                      type="date"
+                      value={mpDateFrom}
+                      onChange={(e: any) => setMpDateFrom(e.target.value)}
+                      style={{ border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: TEXT, backgroundColor: '#fff', outline: 'none', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' } as any}
+                    />
+                  ) : (
+                    <TextInput style={mpStyles.filterInput} value={mpDateFrom} onChangeText={setMpDateFrom} placeholder="YYYY-MM-DD" placeholderTextColor="#9CA3AF" />
+                  )}
+                </View>
+                <View style={mpStyles.filterField}>
+                  <Text style={mpStyles.filterLabel}>To Date</Text>
+                  {Platform.OS === 'web' ? (
+                    <input
+                      type="date"
+                      value={mpDateTo}
+                      onChange={(e: any) => setMpDateTo(e.target.value)}
+                      style={{ border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: TEXT, backgroundColor: '#fff', outline: 'none', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' } as any}
+                    />
+                  ) : (
+                    <TextInput style={mpStyles.filterInput} value={mpDateTo} onChangeText={setMpDateTo} placeholder="YYYY-MM-DD" placeholderTextColor="#9CA3AF" />
+                  )}
+                </View>
+                <View style={mpStyles.filterField}>
+                  <Text style={mpStyles.filterLabel}>Min Total ($)</Text>
+                  <TextInput style={mpStyles.filterInput} value={mpCostMin} onChangeText={setMpCostMin} placeholder="0" placeholderTextColor="#9CA3AF" keyboardType="numeric" />
+                </View>
+                <View style={mpStyles.filterField}>
+                  <Text style={mpStyles.filterLabel}>Max Total ($)</Text>
+                  <TextInput style={mpStyles.filterInput} value={mpCostMax} onChangeText={setMpCostMax} placeholder="No limit" placeholderTextColor="#9CA3AF" keyboardType="numeric" />
+                </View>
+                {hasActiveFilters && (
+                  <TouchableOpacity style={mpStyles.clearFiltersBtn} onPress={clearAll}>
+                    <Text style={mpStyles.clearFiltersBtnText}>Clear</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* Black table header — inside header so the header border falls below it */}
+          <View style={mpStyles.tableHeader}>
+            <View style={{ width: 110 }}><Text style={mpStyles.thText}>STATUS</Text></View>
+            <View style={{ width: 115 }}><Text style={mpStyles.thText}>ORDER DATE</Text></View>
+            <View style={{ width: 105 }}><Text style={mpStyles.thText}>DUE DATE</Text></View>
+            <View style={{ flex: 1 }}><Text style={mpStyles.thText}>PROJECT</Text></View>
+            <View style={{ width: 62 }}><Text style={mpStyles.thText}># PCS</Text></View>
+            <View style={{ width: 90, alignItems: 'flex-end' }}><Text style={mpStyles.thText}>TOTAL</Text></View>
+            <View style={{ width: 80, alignItems: 'flex-end' }}><Text style={mpStyles.thText}>ACTIONS</Text></View>
+          </View>
         </View>
-      </ScrollView>
+
+        {/* Table rows */}
+        <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          {projectsLoading ? (
+            <ActivityIndicator color={BRAND} style={{ marginTop: 40 }} />
+          ) : displayed.length === 0 ? (
+            <View style={{ paddingHorizontal: 20, paddingTop: 40 }}>
+              <EmptyState
+                icon={<ClipboardList size={32} color="#9CA3AF" />}
+                title={hasActiveFilters || mpSearch ? 'No matching projects' : 'No projects yet'}
+                sub={hasActiveFilters || mpSearch
+                  ? 'Try adjusting your search or filters.'
+                  : "Use 'Submit a Project' to send your first print request to Katalyst Ko."}
+              />
+            </View>
+          ) : (
+            displayed.map((p, idx) => {
+              const canView = isQuoteStatus(p.status);
+              const cost = p.totalCost && parseFloat(p.totalCost) > 0 ? `$${parseFloat(p.totalCost).toFixed(2)}` : '—';
+              return (
+                <React.Fragment key={p.id}>
+                  <View style={mpStyles.tableRow}>
+                    <View style={{ width: 110 }}>
+                      <StatusPill status={p.status} />
+                    </View>
+                    <Text style={[mpStyles.tableDate, { width: 115 }]}>{formatDate(p.createdAt)}</Text>
+                    <Text style={[mpStyles.tableDate, { width: 105 }]}>{p.inHandsDate ? formatDate(p.inHandsDate) : '—'}</Text>
+                    <Text style={[mpStyles.tableProject, { flex: 1 }]} numberOfLines={1}>{p.title}</Text>
+                    <Text style={[mpStyles.tablePcs, { width: 62 }]}>
+                      {p.lineItemCount > 0 ? `${p.lineItemCount} pcs` : '—'}
+                    </Text>
+                    <View style={{ width: 90, alignItems: 'flex-end' }}>
+                      <Text style={[mpStyles.tableTotal, cost === '—' && mpStyles.tableTotalEmpty]}>{cost}</Text>
+                    </View>
+                    <View style={{ width: 80, alignItems: 'flex-end' }}>
+                      {canView && (
+                        <TouchableOpacity style={mpStyles.viewBtn} onPress={() => setActiveView('submit')}>
+                          <Text style={mpStyles.viewBtnText}>View</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                  {idx < displayed.length - 1 && <View style={mpStyles.rowDivider} />}
+                </React.Fragment>
+              );
+            })
+          )}
+
+          <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
+            <Text style={mpStyles.resultCount}>
+              {displayed.length} project{displayed.length !== 1 ? 's' : ''}
+              {orgProjects.length !== displayed.length ? ` of ${orgProjects.length}` : ''}
+            </Text>
+          </View>
+        </ScrollView>
+      </View>
     );
   };
 
@@ -2962,221 +2965,271 @@ const catStyles = StyleSheet.create({
 });
 
 const mpStyles = StyleSheet.create({
-  headerBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#000',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 10,
-  },
-  searchWrap: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1A1A1A',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 13,
-    color: '#E5E7EB',
-    outlineStyle: 'none',
-  } as any,
-  filterToggleBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1A1A1A',
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    position: 'relative',
-  },
-  filterToggleBtnActive: {
-    borderColor: '#FF5A00',
-    backgroundColor: '#1A0A00',
-  },
-  filterDot: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FF5A00',
-  },
-  filterPanel: {
+  header: {
     backgroundColor: '#fff',
-    padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: BORDER,
   },
-  filterLabel: {
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 14,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: TEXT,
+  },
+  headerCount: {
+    fontSize: 14,
+    color: TEXT_LIGHT,
+  },
+
+  pillsScroll: { maxHeight: 46 },
+  pillsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    backgroundColor: BG,
+  },
+  pillActive: {
+    borderColor: BRAND,
+    backgroundColor: '#FFF4EE',
+  },
+  pillText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: TEXT_LIGHT,
+  },
+  pillTextActive: {
+    color: BRAND,
+    fontWeight: '700',
+  },
+  pillCount: {
+    backgroundColor: BORDER,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  pillCountText: {
     fontSize: 10,
     fontWeight: '700',
     color: TEXT_LIGHT,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 8,
   },
-  chipRow: {
+
+  searchRow: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    alignItems: 'center',
   },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
-  },
-  chipActive: {
-    backgroundColor: '#FF5A00',
-    borderColor: '#FF5A00',
-  },
-  chipText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: TEXT_LIGHT,
-  },
-  chipTextActive: {
-    color: '#fff',
-  },
-  rangeRow: {
+  searchBox: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  rangeInput: {
-    flex: 1,
+    backgroundColor: BG,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 12,
-    color: TEXT,
-    backgroundColor: '#fff',
+    borderColor: BORDER,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
   },
-  dateInputNative: {
+  searchInput: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 12,
+    fontSize: 14,
     color: TEXT,
-    backgroundColor: '#fff',
-  },
-  rangeSep: {
-    fontSize: 13,
-    color: TEXT_LIGHT,
-  },
-  costInputWrap: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    backgroundColor: '#fff',
-  },
-  costPrefix: {
-    fontSize: 12,
-    color: TEXT_LIGHT,
-    marginRight: 2,
-  },
-  costInput: {
-    flex: 1,
-    fontSize: 12,
-    color: TEXT,
-    paddingVertical: 8,
     outlineStyle: 'none',
   } as any,
-  clearAllBtn: {
-    marginTop: 14,
-    alignSelf: 'flex-start',
+  filterToggleBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: BORDER,
+    backgroundColor: BG,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  filterToggleBtnActive: {
+    borderColor: BRAND,
+    backgroundColor: '#FFF4EE',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: BRAND,
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  filterBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
+  filterPanel: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    paddingBottom: 16,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+  },
+  filterPanelTitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: TEXT_LIGHT,
+    letterSpacing: 0.8,
+    marginBottom: 10,
+  },
+  filtersRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-end',
+    flexWrap: 'wrap',
+  },
+  filterField: {
+    flex: 1,
+    minWidth: 120,
+    gap: 4,
+  },
+  filterLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: TEXT_LIGHT,
+  },
+  filterInput: {
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: TEXT,
+    backgroundColor: '#fff',
+  },
+  clearFiltersBtn: {
     paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingVertical: 9,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FECACA',
-    backgroundColor: '#FEF2F2',
+    borderColor: BORDER,
+    backgroundColor: BG,
+    alignSelf: 'flex-end',
   },
-  clearAllText: {
-    fontSize: 12,
+  clearFiltersBtnText: {
+    fontSize: 13,
+    color: TEXT_LIGHT,
     fontWeight: '600',
-    color: '#DC2626',
   },
+
   tableHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111827',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 10,
+    backgroundColor: '#111111',
   },
-  tableHeaderCell: {
-    fontSize: 10,
+  thText: {
+    fontSize: 11,
     fontWeight: '700',
-    color: '#9CA3AF',
+    color: '#fff',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+
   tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
-  tableRowAlt: {
-    backgroundColor: '#FAFAFA',
+  rowDivider: {
+    height: 1,
+    backgroundColor: BORDER,
+    marginHorizontal: 20,
   },
-  rowTitle: {
+  tableDate: {
     fontSize: 13,
+    color: TEXT,
+  },
+  tableProject: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: TEXT,
+    paddingRight: 8,
+  },
+  tablePcs: {
+    fontSize: 12,
+    color: TEXT,
+  },
+  tableTotal: {
+    fontSize: 14,
     fontWeight: '700',
     color: TEXT,
-    marginBottom: 2,
   },
-  rowMeta: {
-    fontSize: 12,
+  tableTotalEmpty: {
     color: TEXT_LIGHT,
-  },
-  rowCost: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: TEXT_LIGHT,
-  },
-  rowCostFilled: {
-    color: '#111827',
-    fontWeight: '700',
+    fontWeight: '400',
+    fontSize: 13,
   },
   viewBtn: {
-    backgroundColor: '#FF5A00',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 7,
+    backgroundColor: BRAND,
   },
   viewBtnText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: '#fff',
   },
   resultCount: {
     fontSize: 11,
     color: TEXT_LIGHT,
-    textAlign: 'center',
     paddingTop: 4,
   },
+
+  rangeSep: { fontSize: 13, color: TEXT_LIGHT },
+  rangeInput: {
+    flex: 1, borderWidth: 1, borderColor: BORDER, borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 8, fontSize: 12, color: TEXT, backgroundColor: '#fff',
+  },
+  costInputWrap: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1, borderColor: BORDER, borderRadius: 8, paddingHorizontal: 10, backgroundColor: '#fff',
+  },
+  costPrefix: { fontSize: 12, color: TEXT_LIGHT, marginRight: 2 },
+  costInput: { flex: 1, fontSize: 12, color: TEXT, paddingVertical: 8, outlineStyle: 'none' } as any,
+  clearAllBtn: {
+    marginTop: 14, alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 7,
+    borderRadius: 8, borderWidth: 1, borderColor: '#FECACA', backgroundColor: '#FEF2F2',
+  },
+  clearAllText: { fontSize: 12, fontWeight: '600', color: '#DC2626' },
 });
