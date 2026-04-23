@@ -910,6 +910,7 @@ export default function ClientPortal() {
   }, [activeView]);
 
   const [orgLogoUrl, setOrgLogoUrl] = useState<string | null>(null);
+  const [orgLogoDims, setOrgLogoDims] = useState<{ w: number; h: number } | null>(null);
   const [orgDisplayName, setOrgDisplayName] = useState<string>('');
   const [hubDisabled, setHubDisabled] = useState(false);
 
@@ -927,6 +928,23 @@ export default function ClientPortal() {
       })
       .catch(() => {});
   }, [orgId]);
+
+  useEffect(() => {
+    if (!orgLogoUrl) { setOrgLogoDims(null); return; }
+    Image.getSize(orgLogoUrl, (w, h) => setOrgLogoDims({ w, h }), () => setOrgLogoDims(null));
+  }, [orgLogoUrl]);
+
+  const SIDEBAR_INNER_W = 174; // sidebar 210px - 18px*2 padding
+  const LOGO_MAX = SIDEBAR_INNER_W * 0.9;
+  const sidebarLogoStyle = (() => {
+    if (!orgLogoDims) return { width: LOGO_MAX, height: 40 };
+    const { w, h } = orgLogoDims;
+    if (w >= h) {
+      return { width: LOGO_MAX, height: LOGO_MAX * (h / w) };
+    } else {
+      return { width: LOGO_MAX * (w / h), height: LOGO_MAX };
+    }
+  })();
 
   const EDIT_WINDOW_MS = 10 * 60 * 1000;
 
@@ -2120,7 +2138,7 @@ export default function ClientPortal() {
             <View style={dash.sidebar}>
               <View style={dash.sidebarHeader}>
                 {logoSrc ? (
-                  <Image source={{ uri: logoSrc }} style={dash.sidebarLogo} resizeMode="contain" />
+                  <Image source={{ uri: logoSrc }} style={sidebarLogoStyle} resizeMode="contain" />
                 ) : (
                   <View>
                     <Text style={dash.sidebarLogoText}>{displayName.toUpperCase()}</Text>
