@@ -48,6 +48,12 @@ import {
   Search,
   Filter,
   SlidersHorizontal,
+  User,
+  UserPlus,
+  UserMinus,
+  Mail,
+  Shield,
+  Library,
 } from 'lucide-react-native';
 import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
 
@@ -61,7 +67,7 @@ const TEXT_LIGHT = '#6B7280';
 const TEXT_PLACEHOLDER = '#9CA3AF';
 
 type Step = 'email' | 'dashboard';
-type ActiveView = 'home' | 'projects' | 'artwork' | 'catalogs' | 'submit';
+type ActiveView = 'home' | 'projects' | 'artwork' | 'catalogs' | 'submit' | 'profile';
 
 interface PendingFile {
   id: string;
@@ -155,6 +161,7 @@ const NAV_ITEMS: { id: ActiveView; label: string; Icon: React.ComponentType<any>
   { id: 'projects', label: 'My Projects',      Icon: Folder },
   { id: 'artwork',  label: 'Media Bin',        Icon: Layers },
   { id: 'catalogs', label: 'Product Catalogs', Icon: BookOpen },
+  { id: 'profile',  label: 'Profile',          Icon: User },
 ];
 
 interface ClientSession {
@@ -203,6 +210,7 @@ interface PortalLineItem {
   notes: string;
   sizeRows: SizeRow[];
   mockupFile: PendingFile | null;
+  mockupBinFile: { id: string; name: string } | null;
   artworkFiles: PendingFile[];
   collapsed: boolean;
 }
@@ -228,6 +236,7 @@ function emptyLineItem(): PortalLineItem {
     notes: '',
     sizeRows: [emptyRow()],
     mockupFile: null,
+    mockupBinFile: null,
     artworkFiles: [],
     collapsed: false,
   };
@@ -507,9 +516,10 @@ interface PortalLineItemCardProps {
   onChange: (updated: PortalLineItem) => void;
   onDelete: () => void;
   openDropdown: (title: string, options: readonly string[], selected: string, onSelect: (v: string) => void) => void;
+  onOpenMockupBinPicker: (itemId: string) => void;
 }
 
-function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDropdown }: PortalLineItemCardProps) {
+function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDropdown, onOpenMockupBinPicker }: PortalLineItemCardProps) {
   const upd = useCallback((patch: Partial<PortalLineItem>) => onChange({ ...item, ...patch }), [item, onChange]);
   const liFileInputRef = useRef<any>(null);
 
@@ -531,11 +541,15 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
       id: `mk${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       name: file.name, size: file.size, file,
     };
-    upd({ mockupFile: pf });
+    upd({ mockupFile: pf, mockupBinFile: null });
   }, [upd]);
 
   const removeMockupFile = useCallback(() => {
     upd({ mockupFile: null });
+  }, [upd]);
+
+  const removeMockupBinFile = useCallback(() => {
+    upd({ mockupBinFile: null });
   }, [upd]);
 
   const total = grandTotal(item.sizeRows);
@@ -813,17 +827,7 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
                 }}
               />
             )}
-            {!item.mockupFile ? (
-              <TouchableOpacity
-                style={liStyles.artworkDropZone}
-                onPress={() => liFileInputRef.current?.click?.()}
-                activeOpacity={0.85}
-              >
-                <Upload size={16} color="#9CA3AF" />
-                <Text style={liStyles.artworkDropText}>Click to attach a mockup (1 file)</Text>
-                <Text style={liStyles.artworkDropSub}>AI · SVG · PNG · JPG · PDF</Text>
-              </TouchableOpacity>
-            ) : (
+            {item.mockupFile ? (
               <View style={liStyles.artworkFileList}>
                 <View style={liStyles.artworkFileRow}>
                   <FileText size={12} color={BRAND} style={{ flexShrink: 0 }} />
@@ -836,6 +840,37 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
                   </TouchableOpacity>
                 </View>
               </View>
+            ) : item.mockupBinFile ? (
+              <View style={liStyles.artworkFileList}>
+                <View style={liStyles.artworkFileRow}>
+                  <Library size={12} color={BRAND} style={{ flexShrink: 0 }} />
+                  <Text style={liStyles.artworkFileName} numberOfLines={1}>{item.mockupBinFile.name}</Text>
+                  <Text style={liStyles.artworkFileSize}>Media Bin</Text>
+                  <TouchableOpacity onPress={removeMockupBinFile} style={{ padding: 4 }}>
+                    <X size={13} color={TEXT_LIGHT} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={liStyles.artworkDropZone}
+                  onPress={() => liFileInputRef.current?.click?.()}
+                  activeOpacity={0.85}
+                >
+                  <Upload size={16} color="#9CA3AF" />
+                  <Text style={liStyles.artworkDropText}>Click to attach a mockup (1 file)</Text>
+                  <Text style={liStyles.artworkDropSub}>AI · SVG · PNG · JPG · PDF</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={liStyles.binPickLink}
+                  onPress={() => onOpenMockupBinPicker(item.id)}
+                  activeOpacity={0.7}
+                >
+                  <Library size={12} color={BRAND} />
+                  <Text style={liStyles.binPickLinkText}>Choose from Media Bin</Text>
+                </TouchableOpacity>
+              </>
             )}
           </View>
         </View>
@@ -881,6 +916,23 @@ export default function ClientPortal() {
   const [mediaBinLoading, setMediaBinLoading] = useState(false);
   const [mediaBinUploading, setMediaBinUploading] = useState(false);
   const [mediaBinSearch, setMediaBinSearch] = useState('');
+
+  const [artworkFromBin, setArtworkFromBin] = useState<MediaFile[]>([]);
+  const [binPickerVisible, setBinPickerVisible] = useState(false);
+  const [binPickerTarget, setBinPickerTarget] = useState<'mockup' | 'artwork'>('artwork');
+  const [binPickerLineItemId, setBinPickerLineItemId] = useState<string | null>(null);
+  const [binPickerSearch, setBinPickerSearch] = useState('');
+
+  const [teamMembers, setTeamMembers] = useState<Array<{
+    id: string; name: string; email: string; status: string; role: string;
+  }>>([]);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [teamInviteEmail, setTeamInviteEmail] = useState('');
+  const [teamInviting, setTeamInviting] = useState(false);
+  const [teamInviteError, setTeamInviteError] = useState('');
+  const [teamInviteSuccess, setTeamInviteSuccess] = useState('');
+  const [profileName, setProfileName] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
 
   const [mpSearch, setMpSearch] = useState('');
   const [mpStatusFilter, setMpStatusFilter] = useState<string | null>(null);
@@ -1007,6 +1059,36 @@ export default function ClientPortal() {
     } catch {}
     setMediaBinLoading(false);
   }, []);
+
+  const fetchTeam = useCallback(async (oid: string) => {
+    setTeamLoading(true);
+    try {
+      const res = await fetch(`/api/portal/team?orgId=${oid}`);
+      if (res.ok) { const d = await res.json(); setTeamMembers(d.members || []); }
+    } catch {}
+    setTeamLoading(false);
+  }, []);
+
+  const openBinPicker = useCallback((target: 'mockup' | 'artwork', lineItemId?: string) => {
+    setBinPickerTarget(target);
+    setBinPickerLineItemId(lineItemId || null);
+    setBinPickerSearch('');
+    setBinPickerVisible(true);
+    if (session && mediaBinFiles.length === 0) fetchMediaBin(session.orgId);
+  }, [session, mediaBinFiles.length, fetchMediaBin]);
+
+  const handleBinPickerSelect = useCallback((file: MediaFile) => {
+    setBinPickerVisible(false);
+    if (binPickerTarget === 'mockup' && binPickerLineItemId) {
+      setLineItems(prev => prev.map(li =>
+        li.id === binPickerLineItemId
+          ? { ...li, mockupBinFile: { id: file.id, name: file.originalName }, mockupFile: null }
+          : li
+      ));
+    } else if (binPickerTarget === 'artwork') {
+      setArtworkFromBin(prev => prev.find(f => f.id === file.id) ? prev : [...prev, file]);
+    }
+  }, [binPickerTarget, binPickerLineItemId]);
 
   const handleFilesAdded = useCallback((rawFiles: globalThis.File[]) => {
     const allowed = rawFiles.filter(f => {
@@ -1147,7 +1229,9 @@ export default function ClientPortal() {
       // Pre-upload mockup files (one per line item) to get their URLs for the admin view
       const mockupUris: Record<string, string> = {};
       for (const item of lineItems) {
-        if (item.mockupFile) {
+        if (item.mockupBinFile) {
+          mockupUris[item.id] = `/api/files/${item.mockupBinFile.id}?inline=true`;
+        } else if (item.mockupFile) {
           const fd = new FormData();
           fd.append('file', item.mockupFile.file);
           fd.append('orgId', session.orgId);
@@ -1211,12 +1295,9 @@ export default function ClientPortal() {
       const data = await res.json();
       if (!res.ok) { setSubmitError(data.error || 'Submission failed. Please try again.'); return; }
       const projectId = data.id;
-      const allFiles = [
-        ...pendingFiles,
-      ];
-      if (allFiles.length > 0) {
+      if (pendingFiles.length > 0 || artworkFromBin.length > 0) {
         setUploadingFiles(true);
-        for (const pf of allFiles) {
+        for (const pf of pendingFiles) {
           const fd = new FormData();
           fd.append('file', pf.file);
           fd.append('orgId', session.orgId);
@@ -1226,8 +1307,16 @@ export default function ClientPortal() {
           fd.append('visibility', 'CLIENT_VISIBLE');
           await fetch('/api/files', { method: 'POST', body: fd }).catch(() => {});
         }
+        for (const bf of artworkFromBin) {
+          await fetch(`/api/files/${bf.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ projectId }),
+          }).catch(() => {});
+        }
         setUploadingFiles(false);
         setPendingFiles([]);
+        setArtworkFromBin([]);
       }
       setSubmittedId(projectId);
       setSubmittedAt(data.createdAt ? new Date(data.createdAt) : new Date());
@@ -1238,7 +1327,7 @@ export default function ClientPortal() {
     } finally {
       setSubmitting(false);
     }
-  }, [session, projectName, orderType, inHandsDate, requestNotes, lineItems, pendingFiles]);
+  }, [session, projectName, orderType, inHandsDate, requestNotes, lineItems, pendingFiles, artworkFromBin]);
 
   const handleNewRequest = useCallback(() => {
     setProjectName('');
@@ -1247,6 +1336,7 @@ export default function ClientPortal() {
     setRequestNotes('');
     setLineItems([emptyLineItem()]);
     setPendingFiles([]);
+    setArtworkFromBin([]);
     setSubmitError('');
     setSubmittedId('');
     setSubmittedAt(null);
@@ -1515,8 +1605,14 @@ export default function ClientPortal() {
         {/* White header matching admin */}
         <View style={mpStyles.header}>
           <View style={mpStyles.headerTop}>
-            <Text style={mpStyles.headerTitle}>My Projects</Text>
-            <Text style={mpStyles.headerCount}>{orgProjects.length} project{orgProjects.length !== 1 ? 's' : ''}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={mpStyles.headerTitle}>My Projects</Text>
+              <Text style={mpStyles.headerCount}>{orgProjects.length} project{orgProjects.length !== 1 ? 's' : ''}</Text>
+            </View>
+            <TouchableOpacity style={mpStyles.startProjectBtn} onPress={() => setActiveView('submit')} activeOpacity={0.85}>
+              <Plus size={14} color="#fff" />
+              <Text style={mpStyles.startProjectBtnText}>Start a Project</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Status pills — always visible */}
@@ -1650,14 +1746,28 @@ export default function ClientPortal() {
           {projectsLoading ? (
             <ActivityIndicator color={BRAND} style={{ marginTop: 40 }} />
           ) : displayed.length === 0 ? (
-            <View style={{ paddingHorizontal: 20, paddingTop: 40 }}>
-              <EmptyState
-                icon={<ClipboardList size={32} color="#9CA3AF" />}
-                title={hasActiveFilters || mpSearch ? 'No matching projects' : 'No projects yet'}
-                sub={hasActiveFilters || mpSearch
-                  ? 'Try adjusting your search or filters.'
-                  : "Use 'Submit a Project' to send your first print request to Katalyst Ko."}
-              />
+            <View style={{ paddingHorizontal: 20, paddingTop: 48, alignItems: 'center' }}>
+              {hasActiveFilters || mpSearch ? (
+                <EmptyState
+                  icon={<ClipboardList size={32} color="#9CA3AF" />}
+                  title="No matching projects"
+                  sub="Try adjusting your search or filters."
+                />
+              ) : (
+                <View style={mpStyles.ctaCard}>
+                  <View style={mpStyles.ctaIconWrap}>
+                    <ClipboardList size={32} color={BRAND} />
+                  </View>
+                  <Text style={mpStyles.ctaTitle}>No projects yet</Text>
+                  <Text style={mpStyles.ctaSub}>
+                    Ready to get started? Submit your first print request and we'll take it from there.
+                  </Text>
+                  <TouchableOpacity style={mpStyles.ctaBtn} onPress={() => setActiveView('submit')} activeOpacity={0.85}>
+                    <Plus size={16} color="#fff" />
+                    <Text style={mpStyles.ctaBtnText}>Start a Project</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           ) : (
             displayed.map((p, idx) => {
@@ -1986,6 +2096,7 @@ export default function ClientPortal() {
                 onChange={updated => updateLineItem(item.id, updated)}
                 onDelete={() => removeLineItem(item.id)}
                 openDropdown={openDropdown}
+                onOpenMockupBinPicker={(itemId) => openBinPicker('mockup', itemId)}
               />
             ))}
             <TouchableOpacity style={styles.addLineItemBtn} onPress={addLineItem}>
@@ -2038,7 +2149,15 @@ export default function ClientPortal() {
                 </Text>
                 <Text style={upStyles.dropZoneSub}>AI · SVG · PNG · JPG · PDF · DST · EMB</Text>
               </TouchableOpacity>
-              {pendingFiles.length > 0 && (
+              <TouchableOpacity
+                style={liStyles.binPickLink}
+                onPress={() => openBinPicker('artwork')}
+                activeOpacity={0.7}
+              >
+                <Library size={13} color={BRAND} />
+                <Text style={liStyles.binPickLinkText}>Choose from Media Bin</Text>
+              </TouchableOpacity>
+              {(pendingFiles.length > 0 || artworkFromBin.length > 0) && (
                 <View style={upStyles.fileList}>
                   {pendingFiles.map(pf => (
                     <View key={pf.id} style={upStyles.fileRow}>
@@ -2046,6 +2165,16 @@ export default function ClientPortal() {
                       <Text style={upStyles.fileRowName} numberOfLines={1}>{pf.name}</Text>
                       <Text style={upStyles.fileRowSize}>{pf.size < 1048576 ? `${(pf.size / 1024).toFixed(0)} KB` : `${(pf.size / 1048576).toFixed(1)} MB`}</Text>
                       <TouchableOpacity onPress={() => removePendingFile(pf.id)} style={upStyles.fileRemoveBtn}>
+                        <X size={13} color={TEXT_LIGHT} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  {artworkFromBin.map(f => (
+                    <View key={f.id} style={upStyles.fileRow}>
+                      <Library size={14} color={BRAND} style={{ flexShrink: 0 }} />
+                      <Text style={upStyles.fileRowName} numberOfLines={1}>{f.originalName}</Text>
+                      <Text style={upStyles.fileRowSize}>Media Bin</Text>
+                      <TouchableOpacity onPress={() => setArtworkFromBin(prev => prev.filter(x => x.id !== f.id))} style={upStyles.fileRemoveBtn}>
                         <X size={13} color={TEXT_LIGHT} />
                       </TouchableOpacity>
                     </View>
@@ -2066,7 +2195,7 @@ export default function ClientPortal() {
               {submitting ? <ActivityIndicator size="small" color="#fff" /> : (
                 <>
                   <Send size={16} color="#fff" />
-                  <Text style={[styles.btnText, { marginLeft: 8 }]}>Submit Request{pendingFiles.length > 0 ? ` + ${pendingFiles.length} file${pendingFiles.length !== 1 ? 's' : ''}` : ''}</Text>
+                  <Text style={[styles.btnText, { marginLeft: 8 }]}>{(() => { const total = pendingFiles.length + artworkFromBin.length; return `Submit Request${total > 0 ? ` + ${total} file${total !== 1 ? 's' : ''}` : ''}`; })()}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -2075,6 +2204,212 @@ export default function ClientPortal() {
       </ScrollView>
     </KeyboardAvoidingView>
   );
+
+  const isOrgAdmin = session?.role === 'ORG_ADMIN';
+
+  const ProfileView = () => {
+    const handleInvite = async () => {
+      if (!session || !teamInviteEmail.trim()) return;
+      setTeamInviting(true);
+      setTeamInviteError('');
+      setTeamInviteSuccess('');
+      try {
+        const res = await fetch('/api/portal/team', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orgId: session.orgId, callerUserId: session.userId, email: teamInviteEmail.trim() }),
+        });
+        const d = await res.json();
+        if (!res.ok) { setTeamInviteError(d.error || 'Failed to add member.'); }
+        else { setTeamInviteSuccess(`${teamInviteEmail.trim()} has been added.`); setTeamInviteEmail(''); fetchTeam(session.orgId); }
+      } catch { setTeamInviteError('Connection error. Please try again.'); }
+      setTeamInviting(false);
+    };
+
+    const handleRemove = async (userId: string) => {
+      if (!session) return;
+      try {
+        await fetch(`/api/portal/team/${userId}?orgId=${session.orgId}&callerUserId=${session.userId}`, { method: 'DELETE' });
+        setTeamMembers(prev => prev.filter(m => m.id !== userId));
+      } catch {}
+    };
+
+    const ROLE_LABELS: Record<string, string> = {
+      ORG_ADMIN: 'Admin', MEMBER: 'Member', BILLING_CONTACT: 'Billing', APPROVER: 'Approver',
+    };
+
+    return (
+      <ScrollView style={{ flex: 1, backgroundColor: '#F9FAFB' }} contentContainerStyle={{ padding: 28, paddingBottom: 60, maxWidth: 680, alignSelf: 'center', width: '100%' }}>
+        {/* Profile header */}
+        <View style={profStyles.section}>
+          <View style={profStyles.avatarRow}>
+            <View style={profStyles.avatar}>
+              <Text style={profStyles.avatarText}>{session?.userName[0]?.toUpperCase() || '?'}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={profStyles.userName}>{session?.userName}</Text>
+              <Text style={profStyles.userEmail}>{session?.userEmail}</Text>
+              <View style={profStyles.orgBadge}>
+                <Text style={profStyles.orgBadgeText}>{session?.orgName}</Text>
+              </View>
+            </View>
+          </View>
+          <View style={profStyles.infoGrid}>
+            <View style={profStyles.infoCell}>
+              <Text style={profStyles.infoLabel}>EMAIL</Text>
+              <Text style={profStyles.infoValue}>{session?.userEmail}</Text>
+            </View>
+            <View style={profStyles.infoCell}>
+              <Text style={profStyles.infoLabel}>ORGANIZATION</Text>
+              <Text style={profStyles.infoValue}>{session?.orgName}</Text>
+            </View>
+            <View style={profStyles.infoCell}>
+              <Text style={profStyles.infoLabel}>ROLE</Text>
+              <Text style={profStyles.infoValue}>{ROLE_LABELS[session?.role || ''] || session?.role || '—'}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* My Team */}
+        <View style={profStyles.section}>
+          <View style={profStyles.sectionHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Shield size={16} color={BRAND} />
+              <Text style={profStyles.sectionTitle}>My Team</Text>
+            </View>
+            <Text style={profStyles.memberCount}>{teamMembers.length} member{teamMembers.length !== 1 ? 's' : ''}</Text>
+          </View>
+
+          {isOrgAdmin && (
+            <View style={profStyles.inviteRow}>
+              <View style={profStyles.inviteInputWrap}>
+                <Mail size={14} color={TEXT_PLACEHOLDER} />
+                <TextInput
+                  style={profStyles.inviteInput}
+                  value={teamInviteEmail}
+                  onChangeText={setTeamInviteEmail}
+                  placeholder="Enter email to invite…"
+                  placeholderTextColor={TEXT_PLACEHOLDER}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+              <TouchableOpacity
+                style={[profStyles.inviteBtn, (teamInviting || !teamInviteEmail.trim()) && profStyles.inviteBtnDisabled]}
+                onPress={handleInvite}
+                disabled={teamInviting || !teamInviteEmail.trim()}
+              >
+                {teamInviting ? <ActivityIndicator size="small" color="#fff" /> : (
+                  <>
+                    <UserPlus size={14} color="#fff" />
+                    <Text style={profStyles.inviteBtnText}>Add</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+          {teamInviteError ? <Text style={profStyles.errorText}>{teamInviteError}</Text> : null}
+          {teamInviteSuccess ? <Text style={profStyles.successText}>{teamInviteSuccess}</Text> : null}
+
+          {teamLoading ? (
+            <ActivityIndicator color={BRAND} style={{ marginTop: 20 }} />
+          ) : teamMembers.length === 0 ? (
+            <View style={profStyles.emptyTeam}>
+              <Text style={profStyles.emptyTeamText}>No team members found.</Text>
+            </View>
+          ) : (
+            <View style={profStyles.memberList}>
+              {teamMembers.map((m, idx) => (
+                <View key={m.id} style={[profStyles.memberRow, idx % 2 === 1 && profStyles.memberRowAlt]}>
+                  <View style={profStyles.memberAvatar}>
+                    <Text style={profStyles.memberAvatarText}>{(m.name || m.email)[0]?.toUpperCase() || '?'}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={profStyles.memberName}>{m.name || m.email}</Text>
+                    <Text style={profStyles.memberEmail}>{m.email}</Text>
+                  </View>
+                  <View style={profStyles.memberMeta}>
+                    <View style={[profStyles.rolePill, m.role === 'ORG_ADMIN' && profStyles.rolePillAdmin]}>
+                      <Text style={[profStyles.rolePillText, m.role === 'ORG_ADMIN' && profStyles.rolePillTextAdmin]}>
+                        {ROLE_LABELS[m.role] || m.role}
+                      </Text>
+                    </View>
+                    {m.status === 'INVITED' && (
+                      <View style={profStyles.invitedBadge}>
+                        <Text style={profStyles.invitedBadgeText}>Invited</Text>
+                      </View>
+                    )}
+                  </View>
+                  {isOrgAdmin && m.id !== session?.userId && (
+                    <TouchableOpacity style={profStyles.removeBtn} onPress={() => handleRemove(m.id)}>
+                      <UserMinus size={14} color="#DC2626" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    );
+  };
+
+  const BinPickerModal = () => {
+    const filtered = binPickerSearch.trim()
+      ? mediaBinFiles.filter(f => f.originalName.toLowerCase().includes(binPickerSearch.toLowerCase()))
+      : mediaBinFiles;
+    return (
+      <Modal visible={binPickerVisible} transparent animationType="fade" onRequestClose={() => setBinPickerVisible(false)}>
+        <Pressable style={binPickStyles.overlay} onPress={() => setBinPickerVisible(false)}>
+          <Pressable style={binPickStyles.sheet} onPress={() => {}}>
+            <View style={binPickStyles.header}>
+              <Text style={binPickStyles.title}>Choose from Media Bin</Text>
+              <TouchableOpacity onPress={() => setBinPickerVisible(false)}>
+                <X size={18} color={TEXT_LIGHT} />
+              </TouchableOpacity>
+            </View>
+            <View style={binPickStyles.searchRow}>
+              <Search size={14} color={TEXT_PLACEHOLDER} />
+              <TextInput
+                style={binPickStyles.searchInput}
+                value={binPickerSearch}
+                onChangeText={setBinPickerSearch}
+                placeholder="Search files…"
+                placeholderTextColor={TEXT_PLACEHOLDER}
+              />
+            </View>
+            <ScrollView style={{ maxHeight: 360 }}>
+              {mediaBinLoading ? (
+                <ActivityIndicator color={BRAND} style={{ margin: 24 }} />
+              ) : filtered.length === 0 ? (
+                <View style={{ padding: 24, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: TEXT_LIGHT }}>
+                    {mediaBinFiles.length === 0 ? 'No files in your Media Bin yet.' : 'No matching files.'}
+                  </Text>
+                </View>
+              ) : (
+                filtered.map((f, idx) => (
+                  <TouchableOpacity
+                    key={f.id}
+                    style={[binPickStyles.fileRow, idx % 2 === 1 && binPickStyles.fileRowAlt]}
+                    onPress={() => handleBinPickerSelect(f)}
+                    activeOpacity={0.75}
+                  >
+                    <Library size={15} color={BRAND} style={{ flexShrink: 0 }} />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <Text style={binPickStyles.fileName} numberOfLines={1}>{f.originalName}</Text>
+                      {f.fileSize && <Text style={binPickStyles.fileMeta}>{f.fileSize < 1048576 ? `${(f.fileSize / 1024).toFixed(0)} KB` : `${(f.fileSize / 1048576).toFixed(1)} MB`}</Text>}
+                    </View>
+                    <Check size={14} color={BRAND} style={{ opacity: 0 }} />
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    );
+  };
 
   if (hubDisabled) {
     return (
@@ -2181,7 +2516,7 @@ export default function ClientPortal() {
               <View style={dash.sidebarNav}>
                 {NAV_ITEMS.map(({ id, label, Icon }, idx) => {
                   const isActive = activeView === id;
-                  const showDivider = idx === 1 || idx === 3 || idx === 4;
+                  const showDivider = idx === 1 || idx === 3 || idx === 5;
                   return (
                     <React.Fragment key={id}>
                       {showDivider && <View style={dash.navDivider} />}
@@ -2190,6 +2525,7 @@ export default function ClientPortal() {
                         onPress={() => {
                           setActiveView(id);
                           if (id === 'artwork' && session) fetchMediaBin(session.orgId);
+                          if (id === 'profile' && session) fetchTeam(session.orgId);
                         }}
                       >
                         <Icon size={16} color={isActive ? '#fff' : '#9CA3AF'} />
@@ -2201,8 +2537,12 @@ export default function ClientPortal() {
               </View>
 
               <View style={dash.sidebarFooter}>
-                <View style={dash.userRow}>
-                  <View style={dash.userAvatar}>
+                <TouchableOpacity
+                  style={dash.userRow}
+                  onPress={() => { setActiveView('profile'); fetchTeam(session.orgId); }}
+                  activeOpacity={0.8}
+                >
+                  <View style={[dash.userAvatar, activeView === 'profile' && { backgroundColor: BRAND }]}>
                     <Text style={dash.userAvatarText}>{session.userName[0]?.toUpperCase() || '?'}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
@@ -2212,7 +2552,7 @@ export default function ClientPortal() {
                   <TouchableOpacity onPress={handleSignOut} style={dash.signOutBtn}>
                     <LogOut size={15} color="#9CA3AF" />
                   </TouchableOpacity>
-                </View>
+                </TouchableOpacity>
               </View>
             </View>
           )}
@@ -2240,6 +2580,7 @@ export default function ClientPortal() {
             {activeView === 'artwork'  && <ArtworkView />}
             {activeView === 'catalogs' && <CatalogsView />}
             {activeView === 'submit'   && SubmitView()}
+            {activeView === 'profile'  && <ProfileView />}
           </View>
 
           {/* Mobile: Bottom tab bar */}
@@ -2267,6 +2608,9 @@ export default function ClientPortal() {
           )}
         </View>
       )}
+
+      {/* ── BIN PICKER MODAL ── */}
+      <BinPickerModal />
 
       {/* ── SHARED DROPDOWN MODAL ── */}
       <Modal visible={dropdown.visible} transparent animationType="fade" onRequestClose={() => setDropdown(d => ({ ...d, visible: false }))}>
@@ -2443,6 +2787,19 @@ const liStyles = StyleSheet.create({
   },
   artworkFileName: { flex: 1, fontSize: 12, color: TEXT_MED },
   artworkFileSize: { fontSize: 11, color: TEXT_PLACEHOLDER },
+  binPickLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  binPickLinkText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: BRAND,
+    textDecorationLine: 'underline',
+  },
 });
 
 const comboCellStyles = StyleSheet.create({
@@ -3263,4 +3620,132 @@ const mpStyles = StyleSheet.create({
     borderRadius: 8, borderWidth: 1, borderColor: '#FECACA', backgroundColor: '#FEF2F2',
   },
   clearAllText: { fontSize: 12, fontWeight: '600', color: '#DC2626' },
+
+  startProjectBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: BRAND, borderRadius: 8,
+    paddingHorizontal: 14, paddingVertical: 8,
+  },
+  startProjectBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+
+  ctaCard: {
+    alignItems: 'center', backgroundColor: '#fff', borderRadius: 16,
+    padding: 36, maxWidth: 400, width: '100%',
+    borderWidth: 1, borderColor: BORDER,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8,
+  },
+  ctaIconWrap: {
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: '#FFF4EE', alignItems: 'center', justifyContent: 'center',
+    marginBottom: 16,
+  },
+  ctaTitle: { fontSize: 18, fontWeight: '700', color: TEXT, marginBottom: 8, textAlign: 'center' },
+  ctaSub: { fontSize: 13, color: TEXT_LIGHT, textAlign: 'center', lineHeight: 20, marginBottom: 20 },
+  ctaBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: BRAND, borderRadius: 10,
+    paddingHorizontal: 24, paddingVertical: 12,
+  },
+  ctaBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+});
+
+const profStyles = StyleSheet.create({
+  section: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 22,
+    marginBottom: 18, borderWidth: 1, borderColor: BORDER,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4,
+  },
+  avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 },
+  avatar: {
+    width: 60, height: 60, borderRadius: 30,
+    backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center',
+  },
+  avatarText: { fontSize: 24, fontWeight: '700', color: '#fff' },
+  userName: { fontSize: 18, fontWeight: '700', color: TEXT, marginBottom: 2 },
+  userEmail: { fontSize: 13, color: TEXT_LIGHT, marginBottom: 6 },
+  orgBadge: {
+    alignSelf: 'flex-start', backgroundColor: '#FFF4EE', borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1, borderColor: '#FFD5BB',
+  },
+  orgBadgeText: { fontSize: 11, fontWeight: '600', color: BRAND },
+  infoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  infoCell: { flex: 1, minWidth: 120 },
+  infoLabel: { fontSize: 10, fontWeight: '700', color: TEXT_PLACEHOLDER, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 },
+  infoValue: { fontSize: 14, fontWeight: '500', color: TEXT },
+
+  sectionHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14,
+  },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: TEXT },
+  memberCount: { fontSize: 12, color: TEXT_LIGHT },
+
+  inviteRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+  inviteInputWrap: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderColor: BORDER, borderRadius: 9,
+    paddingHorizontal: 12, paddingVertical: 9, backgroundColor: BG,
+  },
+  inviteInput: { flex: 1, fontSize: 13, color: TEXT, outlineStyle: 'none' } as any,
+  inviteBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: BRAND, borderRadius: 9,
+    paddingHorizontal: 14, paddingVertical: 10,
+  },
+  inviteBtnDisabled: { opacity: 0.5 },
+  inviteBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  errorText: { fontSize: 12, color: '#DC2626', marginBottom: 8 },
+  successText: { fontSize: 12, color: '#16A34A', marginBottom: 8 },
+
+  memberList: { borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: BORDER },
+  memberRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#fff',
+  },
+  memberRowAlt: { backgroundColor: '#FAFAFA' },
+  memberAvatar: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  memberAvatarText: { fontSize: 13, fontWeight: '700', color: TEXT_MED },
+  memberName: { fontSize: 13, fontWeight: '600', color: TEXT },
+  memberEmail: { fontSize: 11, color: TEXT_LIGHT },
+  memberMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 0 },
+  rolePill: {
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20,
+    backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: BORDER,
+  },
+  rolePillAdmin: { backgroundColor: '#FFF4EE', borderColor: '#FFD5BB' },
+  rolePillText: { fontSize: 10, fontWeight: '600', color: TEXT_LIGHT },
+  rolePillTextAdmin: { color: BRAND },
+  invitedBadge: {
+    paddingHorizontal: 7, paddingVertical: 2, borderRadius: 20,
+    backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE',
+  },
+  invitedBadgeText: { fontSize: 10, fontWeight: '600', color: '#2563EB' },
+  removeBtn: { padding: 6, borderRadius: 6, backgroundColor: '#FEF2F2' },
+  emptyTeam: { alignItems: 'center', paddingVertical: 20 },
+  emptyTeamText: { fontSize: 13, color: TEXT_LIGHT },
+});
+
+const binPickStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  sheet: { backgroundColor: '#fff', borderRadius: 14, width: '100%', maxWidth: 480, overflow: 'hidden' },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    padding: 18, borderBottomWidth: 1, borderBottomColor: BORDER,
+  },
+  title: { fontSize: 15, fontWeight: '700', color: TEXT },
+  searchRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: BORDER, backgroundColor: '#F9FAFB',
+  },
+  searchInput: { flex: 1, fontSize: 13, color: TEXT, outlineStyle: 'none' } as any,
+  fileRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 13, backgroundColor: '#fff',
+  },
+  fileRowAlt: { backgroundColor: '#FAFAFA' },
+  fileName: { fontSize: 13, fontWeight: '500', color: TEXT },
+  fileMeta: { fontSize: 11, color: TEXT_PLACEHOLDER, marginTop: 1 },
 });

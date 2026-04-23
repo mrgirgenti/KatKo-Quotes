@@ -1,0 +1,33 @@
+======================================================================
+16. CLIENT HUB PROFILE / MY TEAM PERMISSIONS
+======================================================================
+
+We also need organization-level visibility into the users associated with a Client Hub.
+
+If an Organization has a Client Hub, there should be a way for users in that organization to see the people who are part of their hub, but permissions must be controlled carefully.
+
+This should live inside the user Profile area in the bottom-left corner of the Client Hub.
+
+Requirements:
+- Add a section called “My Team” (do NOT call it “User Management”)
+- This should show the users who are part of that organization’s Client Hub
+- Standard non-admin users should have VIEW-ONLY access to this list
+- Only Organization Admins and Katalyst Ko users should be able to add or remove users from the organization’s Client Hub
+- Everyone else can only view team members and related details, but cannot edit membership
+
+Behavior / permission rules:
+- Katalyst Ko users can add/remove organization users
+- Organization Admins can add/remove organization users
+- Non-admin organization users can only view the team list
+- No one should be able to edit users outside their organization
+- This must respect role-based permissions cleanly
+
+Profile experience:
+- The Profile area in the Client Hub should mirror the Profile section in the backend OS where applicable
+- If a user also has backend access to the OS, the Profile experience should feel aligned with the backend version
+- If a user does NOT have backend access, then the Client Hub Profile should serve as the place where they can make the same relevant self-service profile adjustments that would otherwise exist in the backend
+
+In short:
+- backend users should experience consistency between backend Profile and Client Hub Profile
+- client-hub-only users should still have access to equivalent profile controls that are appropriate for their role
+- “My Team” should live inside the Profile area and provide organization user visibility with strict role-based editing rights

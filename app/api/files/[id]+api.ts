@@ -34,6 +34,20 @@ export async function GET(request: Request, { id }: { id: string }) {
   }
 }
 
+export async function PATCH(request: Request, { id }: { id: string }) {
+  if (!id) return Response.json({ error: 'Not found' }, { status: 404 });
+  const body = await request.json().catch(() => ({}));
+  const { projectId } = body;
+  if (!projectId) return Response.json({ error: 'projectId required' }, { status: 400 });
+  const client = await pool.connect();
+  try {
+    await client.query(`UPDATE "File" SET "projectId" = $1 WHERE id = $2`, [projectId, id]);
+    return Response.json({ success: true });
+  } finally {
+    client.release();
+  }
+}
+
 export async function DELETE(_request: Request, { id }: { id: string }) {
   if (!id) return Response.json({ error: 'Not found' }, { status: 404 });
   const client = await pool.connect();
