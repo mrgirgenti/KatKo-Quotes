@@ -32,6 +32,12 @@ import {
   ArrowUpDown,
   Wifi,
   WifiOff,
+  MoreHorizontal,
+  Edit3,
+  Trash2,
+  UserPlus,
+  FileText,
+  Globe,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
@@ -77,74 +83,147 @@ function StatusBadge({ status }: { status: CrmStatus }) {
 interface OrgRowProps {
   org: Organization;
   onPress: () => void;
+  onDelete: () => void;
 }
 
-function OrgRow({ org, onPress }: OrgRowProps) {
+function OrgRow({ org, onPress, onDelete }: OrgRowProps) {
+  const router = useRouter();
   const primaries = org.contacts.filter((c) => c.isPrimary);
   const primaryContact = primaries[0] || org.contacts[0];
-  const lastActivity = org.activityLog[0];
   const activeCampaign = org.campaigns.find((c) => c.steps.some((s) => s.status === 'pending'));
+  const menuBtnRef = useRef<View>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+
+  const openMenu = () => {
+    menuBtnRef.current?.measure((_fx, _fy, width, height, px, py) => {
+      setMenuPos({ top: py + height + 4, right: Math.max(0, (typeof window !== 'undefined' ? window.innerWidth : 400) - px - width) });
+      setMenuOpen(true);
+    });
+  };
+
+  const handleAction = (action: string) => {
+    setMenuOpen(false);
+    if (action === 'edit') {
+      router.push(`/crm/${org.id}` as any);
+    } else if (action === 'addContact') {
+      router.push(`/crm/${org.id}` as any);
+    } else if (action === 'newQuote') {
+      router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } });
+    } else if (action === 'uploadMedia') {
+      router.push(`/crm/${org.id}` as any);
+    } else if (action === 'viewHub') {
+      if (typeof window !== 'undefined') (window as any).open(`/portal/${org.id}`, '_blank');
+    } else if (action === 'delete') {
+      onDelete();
+    }
+  };
 
   return (
-    <TouchableOpacity style={styles.tableRow} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.colAvatar}>
-        <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={36} shape="circle" />
-      </View>
-      <View style={styles.colName}>
-        <Text style={styles.tableOrgName} numberOfLines={1}>{org.name}</Text>
-        {org.type ? <Text style={styles.tableOrgType} numberOfLines={1}>{org.type}</Text> : null}
-      </View>
-      <View style={styles.colContact}>
-        {primaryContact ? (
-          <View>
-            <View style={styles.colContactNameRow}>
-              <Text style={styles.tableSecondary} numberOfLines={1}>
-                {primaryContact.firstName} {primaryContact.lastName}
-              </Text>
-              {primaries.length > 1 && (
-                <View style={styles.extraPrimariesBadge}>
-                  <Text style={styles.extraPrimariesText}>+{primaries.length - 1}</Text>
-                </View>
-              )}
+    <>
+      <TouchableOpacity style={styles.tableRow} onPress={onPress} activeOpacity={0.7}>
+        <View style={styles.colAvatar}>
+          <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={36} shape="circle" />
+        </View>
+        <View style={styles.colName}>
+          <Text style={styles.tableOrgName} numberOfLines={1}>{org.name}</Text>
+          {org.type ? <Text style={styles.tableOrgType} numberOfLines={1}>{org.type}</Text> : null}
+        </View>
+        <View style={styles.colContact}>
+          {primaryContact ? (
+            <View>
+              <View style={styles.colContactNameRow}>
+                <Text style={styles.tableSecondary} numberOfLines={1}>
+                  {primaryContact.firstName} {primaryContact.lastName}
+                </Text>
+                {primaries.length > 1 && (
+                  <View style={styles.extraPrimariesBadge}>
+                    <Text style={styles.extraPrimariesText}>+{primaries.length - 1}</Text>
+                  </View>
+                )}
+              </View>
+              {primaryContact.phone ? (
+                <Text style={styles.tableContactSub} numberOfLines={1}>{primaryContact.phone}</Text>
+              ) : null}
+              {primaryContact.email ? (
+                <Text style={styles.tableContactSub} numberOfLines={1}>{primaryContact.email}</Text>
+              ) : null}
             </View>
-            {primaryContact.phone ? (
-              <Text style={styles.tableContactSub} numberOfLines={1}>{primaryContact.phone}</Text>
-            ) : null}
-            {primaryContact.email ? (
-              <Text style={styles.tableContactSub} numberOfLines={1}>{primaryContact.email}</Text>
-            ) : null}
-          </View>
-        ) : (
-          <Text style={styles.tableSecondaryDim}>No contacts</Text>
-        )}
-      </View>
-      <View style={styles.colCampaign}>
-        {activeCampaign ? (
-          <Text style={styles.tableCampaignActive} numberOfLines={1}>{activeCampaign.templateName}</Text>
-        ) : (
-          <Text style={styles.tableSecondaryDim}>—</Text>
-        )}
-      </View>
-      <View style={styles.colStatus}>
-        <StatusBadge status={org.status} />
-      </View>
-      <View style={styles.colHub}>
-        {org.hubEnabled ? (
-          <View style={styles.hubBadgeActive}>
-            <Wifi size={11} color={Colors.light.tint} />
-            <Text style={styles.hubBadgeTextActive}>Active</Text>
-          </View>
-        ) : (
-          <View style={styles.hubBadgeInactive}>
-            <WifiOff size={11} color={Colors.light.placeholder} />
-            <Text style={styles.hubBadgeTextInactive}>Inactive</Text>
-          </View>
-        )}
-      </View>
-      <View style={styles.colArrow}>
-        <ChevronRight size={16} color={Colors.light.border} />
-      </View>
-    </TouchableOpacity>
+          ) : (
+            <Text style={styles.tableSecondaryDim}>No contacts</Text>
+          )}
+        </View>
+        <View style={styles.colCampaign}>
+          {activeCampaign ? (
+            <Text style={styles.tableCampaignActive} numberOfLines={1}>{activeCampaign.templateName}</Text>
+          ) : (
+            <Text style={styles.tableSecondaryDim}>—</Text>
+          )}
+        </View>
+        <View style={styles.colStatus}>
+          <StatusBadge status={org.status} />
+        </View>
+        <View style={styles.colHub}>
+          {org.hubEnabled ? (
+            <View style={styles.hubBadgeActive}>
+              <Wifi size={11} color={Colors.light.tint} />
+              <Text style={styles.hubBadgeTextActive}>Active</Text>
+            </View>
+          ) : (
+            <View style={styles.hubBadgeInactive}>
+              <WifiOff size={11} color={Colors.light.textSecondary} />
+              <Text style={styles.hubBadgeTextInactive}>Inactive</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.colActions}>
+          <TouchableOpacity ref={menuBtnRef as any} style={styles.rowMenuBtn} onPress={(e) => { e.stopPropagation?.(); openMenu(); }} activeOpacity={0.7}>
+            <MoreHorizontal size={16} color={Colors.light.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+
+      {/* Row action dropdown */}
+      {menuOpen && (
+        <Modal transparent animationType="none" onRequestClose={() => setMenuOpen(false)}>
+          <Pressable style={styles.rowMenuBackdrop} onPress={() => setMenuOpen(false)}>
+            <View style={[styles.rowMenuDropdown, { top: menuPos.top, right: menuPos.right }]}>
+              <TouchableOpacity style={styles.rowMenuItem} onPress={() => handleAction('edit')}>
+                <Edit3 size={14} color={Colors.light.text} />
+                <Text style={styles.rowMenuItemText}>Edit Client</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.rowMenuItem} onPress={() => handleAction('addContact')}>
+                <UserPlus size={14} color={Colors.light.text} />
+                <Text style={styles.rowMenuItemText}>Add Contacts</Text>
+              </TouchableOpacity>
+              <View style={styles.rowMenuDivider} />
+              <TouchableOpacity style={styles.rowMenuItem} onPress={() => handleAction('newQuote')}>
+                <FileText size={14} color={Colors.light.text} />
+                <Text style={styles.rowMenuItemText}>New Quote</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.rowMenuItem} onPress={() => handleAction('uploadMedia')}>
+                <Upload size={14} color={Colors.light.text} />
+                <Text style={styles.rowMenuItemText}>Upload Media</Text>
+              </TouchableOpacity>
+              {org.hubEnabled && (
+                <>
+                  <View style={styles.rowMenuDivider} />
+                  <TouchableOpacity style={styles.rowMenuItem} onPress={() => handleAction('viewHub')}>
+                    <Globe size={14} color={Colors.light.tint} />
+                    <Text style={[styles.rowMenuItemText, { color: Colors.light.tint }]}>View Client Hub</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+              <View style={styles.rowMenuDivider} />
+              <TouchableOpacity style={styles.rowMenuItem} onPress={() => handleAction('delete')}>
+                <Trash2 size={14} color={Colors.light.error} />
+                <Text style={[styles.rowMenuItemText, { color: Colors.light.error }]}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Modal>
+      )}
+    </>
   );
 }
 
@@ -202,7 +281,7 @@ function OrgCard({ org, onPress }: OrgRowProps) {
 
 export default function ClientsScreen() {
   const router = useRouter();
-  const { orgs, addOrg, addOrgWithContact, addContact } = useCrm();
+  const { orgs, addOrg, addOrgWithContact, addContact, deleteOrg } = useCrm();
   const { isDesktop } = useBreakpoint();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<CrmStatus | 'All'>('All');
@@ -489,7 +568,7 @@ export default function ClientsScreen() {
             <View style={styles.colHub}>
               <SortBtn field="hub" label="Client Hub" />
             </View>
-            <View style={styles.colArrow} />
+            <View style={styles.colActions} />
           </View>
         )}
         {!isDesktop && (
@@ -534,7 +613,15 @@ export default function ClientsScreen() {
           contentContainerStyle={styles.tableBody}
           ItemSeparatorComponent={() => <View style={styles.tableDivider} />}
           renderItem={({ item: org }) => (
-            <OrgRow org={org} onPress={() => router.push(`/crm/${org.id}` as any)} />
+            <OrgRow
+              org={org}
+              onPress={() => router.push(`/crm/${org.id}` as any)}
+              onDelete={() => {
+                if (typeof window === 'undefined' || window.confirm(`Delete ${org.name}? This cannot be undone.`)) {
+                  deleteOrg(org.id);
+                }
+              }}
+            />
           )}
         />
       ) : (
@@ -997,6 +1084,7 @@ const styles = StyleSheet.create({
   colCampaign: { flex: 1.2 },
   colStatus: { width: 120 },
   colArrow: { width: 28, alignItems: 'center' },
+  colActions: { width: 36, alignItems: 'center' as const, justifyContent: 'center' as const },
 
   tableOrgName: { fontSize: 14, fontWeight: '600' as const, color: Colors.light.text },
   tableOrgType: { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
@@ -1164,6 +1252,35 @@ const styles = StyleSheet.create({
   sectionDividerLabel: { fontSize: 11, fontWeight: '700' as const, color: Colors.light.textSecondary, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
 
   colHub: { width: 115, justifyContent: 'center' as const },
+
+  rowMenuBtn: {
+    width: 32, height: 32, borderRadius: 8,
+    alignItems: 'center' as const, justifyContent: 'center' as const,
+  },
+  rowMenuBackdrop: {
+    position: 'absolute' as any, top: 0, left: 0, right: 0, bottom: 0,
+  },
+  rowMenuDropdown: {
+    position: 'absolute' as any,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 8,
+    minWidth: 190,
+    paddingVertical: 4,
+    zIndex: 9999,
+  },
+  rowMenuItem: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 10,
+    paddingHorizontal: 14, paddingVertical: 10,
+  },
+  rowMenuItemText: { fontSize: 14, color: Colors.light.text },
+  rowMenuDivider: { height: 1, backgroundColor: Colors.light.border, marginVertical: 2 },
   hubBadgeActive: {
     flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4,
     backgroundColor: '#FFF4EE', borderRadius: 6,

@@ -57,6 +57,7 @@ import {
   Image as LucideImage,
   Wifi,
   WifiOff,
+  Award,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { OrgLogoUploader } from '@/components/OrgLogoUploader';
@@ -1013,6 +1014,58 @@ export default function OrgProfileScreen() {
   const rightPanel = (
     <ScrollView style={styles.rightPanel} showsVerticalScrollIndicator={false} contentContainerStyle={styles.rightPanelContent}>
 
+      {/* Client Legacy card */}
+      <View style={styles.infoCard}>
+        <View style={styles.infoCardHeader}>
+          <View style={styles.infoCardHeaderLeft}>
+            <Award size={15} color="#fff" />
+            <Text style={styles.infoCardTitle}>Client Legacy</Text>
+            {legacyMetrics.totalProjects > 0 && (
+              <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{legacyMetrics.totalProjects}</Text></View>
+            )}
+          </View>
+        </View>
+        <View style={styles.revenueStatsRow}>
+          <View style={styles.revenueStatBox}>
+            <Text style={styles.revenueStatValue}>{legacyMetrics.totalProjects}</Text>
+            <Text style={styles.revenueStatLabel}>Completed</Text>
+          </View>
+          <View style={styles.revenueStatDivider} />
+          <View style={styles.revenueStatBox}>
+            <Text style={[styles.revenueStatValue, { color: Colors.light.success }]}>{formatCurrency(legacyMetrics.revenue)}</Text>
+            <Text style={styles.revenueStatLabel}>Revenue</Text>
+          </View>
+          <View style={styles.revenueStatDivider} />
+          <View style={styles.revenueStatBox}>
+            <Text style={[styles.revenueStatValue, { color: '#FF5A00' }]}>{formatCurrency(legacyMetrics.markup)}</Text>
+            <Text style={styles.revenueStatLabel}>Profit</Text>
+          </View>
+        </View>
+        {legacyMetrics.services.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyCardText}>No completed projects yet.</Text>
+            <Text style={styles.emptyCardSub}>Completed projects will build this client's legacy stats.</Text>
+          </View>
+        ) : (
+          <View style={styles.legacyServiceList}>
+            {legacyMetrics.services.map((svc) => (
+              <View key={svc.name} style={styles.legacyServiceRow}>
+                <View style={styles.legacyServiceLeft}>
+                  <Text style={styles.legacyServiceName}>{svc.name}</Text>
+                  <View style={styles.legacyBarTrack}>
+                    <View style={[styles.legacyBarFill, { width: `${svc.pct}%` as any }]} />
+                  </View>
+                </View>
+                <View style={styles.legacyServiceRight}>
+                  <Text style={styles.legacyServicePct}>{svc.pct}%</Text>
+                  <Text style={styles.legacyServicePcs}>{svc.pcs.toLocaleString()} pcs</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+
       {/* Active Projects card */}
       <View style={styles.infoCard}>
         <View style={styles.infoCardHeader}>
@@ -1031,6 +1084,29 @@ export default function OrgProfileScreen() {
             <Text style={styles.infoCardActionText}>New Quote</Text>
           </TouchableOpacity>
         </View>
+        {activeQuotes.length > 0 && (
+          <View style={styles.revenueStatsRow}>
+            <View style={styles.revenueStatBox}>
+              <Text style={styles.revenueStatValue}>{activeQuotes.length}</Text>
+              <Text style={styles.revenueStatLabel}>Active</Text>
+            </View>
+            <View style={styles.revenueStatDivider} />
+            <View style={styles.revenueStatBox}>
+              <Text style={[styles.revenueStatValue, { color: Colors.light.success }]}>{formatCurrency(activeMetrics.revenue)}</Text>
+              <Text style={styles.revenueStatLabel}>Revenue</Text>
+            </View>
+            <View style={styles.revenueStatDivider} />
+            <View style={styles.revenueStatBox}>
+              <Text style={[styles.revenueStatValue, { color: '#FF5A00' }]}>{formatCurrency(activeMetrics.markup)}</Text>
+              <Text style={styles.revenueStatLabel}>Profit</Text>
+            </View>
+            <View style={styles.revenueStatDivider} />
+            <View style={styles.revenueStatBox}>
+              <Text style={styles.revenueStatValue}>{activeMetrics.pcs.toLocaleString()}</Text>
+              <Text style={styles.revenueStatLabel}>PCS</Text>
+            </View>
+          </View>
+        )}
         {activeQuotes.length === 0 ? (
           <View style={styles.emptyCard}>
             <ShoppingBag size={26} color={Colors.light.border} />
@@ -1041,16 +1117,118 @@ export default function OrgProfileScreen() {
           activeQuotes.map((q) => {
             const eff = getEffectiveStatus(q);
             const cfg = STATUS_CONFIG[eff];
+            const qPcs = getPcs(q);
+            const services = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))];
             return (
-              <TouchableOpacity key={q.id} style={styles.projectRow} onPress={() => router.push(`/quote/${q.id}` as any)}>
-                <View style={styles.projectRowLeft}>
+              <TouchableOpacity key={q.id} style={styles.projectRowExpanded} onPress={() => router.push(`/quote/${q.id}` as any)}>
+                <View style={styles.projectRowExpandedTop}>
+                  <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+                    <Text style={[styles.projectRowBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
+                  </View>
                   <Text style={styles.projectRowName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
                   {q.invoiceNumber ? <Text style={styles.projectRowNum}>#{q.invoiceNumber}</Text> : null}
+                  <ChevronRight size={12} color={Colors.light.textSecondary} style={{ marginLeft: 'auto' as any }} />
                 </View>
-                <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
-                  <Text style={[styles.projectRowBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
+                <View style={styles.projectRowExpandedMeta}>
+                  <Text style={styles.projectMetaItem}>Order: {q.orderDate ? formatDate(q.orderDate) : '—'}</Text>
+                  <Text style={styles.projectMetaSep}>·</Text>
+                  <Text style={styles.projectMetaItem}>Due: {q.inHandsDate ? formatDate(q.inHandsDate) : '—'}</Text>
                 </View>
-                <ChevronRight size={12} color={Colors.light.textSecondary} />
+                <View style={styles.projectRowExpandedBottom}>
+                  {services.length > 0 && (
+                    <Text style={styles.projectMetaService} numberOfLines={1}>{services.join(' · ')}</Text>
+                  )}
+                  <View style={styles.projectMetaNumbers}>
+                    {qPcs > 0 && <Text style={styles.projectMetaPcs}>{qPcs.toLocaleString()} pcs</Text>}
+                    <Text style={styles.projectMetaTotal}>{formatCurrency(q.calculations?.total ?? 0)}</Text>
+                    {(q.calculations?.markupAmount ?? 0) > 0 && (
+                      <Text style={styles.projectMetaMarkup}>+{formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
+                    )}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        )}
+      </View>
+
+      {/* Submitted Quotes card */}
+      <View style={styles.infoCard}>
+        <View style={styles.infoCardHeader}>
+          <View style={styles.infoCardHeaderLeft}>
+            <FileText size={15} color="#fff" />
+            <Text style={styles.infoCardTitle}>Submitted Quotes</Text>
+            {relatedQuotes.length > 0 && (
+              <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{relatedQuotes.length}</Text></View>
+            )}
+          </View>
+          <TouchableOpacity
+            style={styles.infoCardAction}
+            onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
+          >
+            <Plus size={13} color="#fff" />
+            <Text style={styles.infoCardActionText}>New Quote</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.revenueStatsRow}>
+          <View style={styles.revenueStatBox}>
+            <Text style={styles.revenueStatValue}>{relatedQuotes.length}</Text>
+            <Text style={styles.revenueStatLabel}>Total Quotes</Text>
+          </View>
+          <View style={styles.revenueStatDivider} />
+          <View style={styles.revenueStatBox}>
+            <Text style={[styles.revenueStatValue, { color: Colors.light.success }]}>{formatCurrency(quoteMetrics.revenue)}</Text>
+            <Text style={styles.revenueStatLabel}>Revenue</Text>
+          </View>
+          <View style={styles.revenueStatDivider} />
+          <View style={styles.revenueStatBox}>
+            <Text style={[styles.revenueStatValue, { color: '#FF5A00' }]}>{formatCurrency(quoteMetrics.markup)}</Text>
+            <Text style={styles.revenueStatLabel}>Profit</Text>
+          </View>
+          <View style={styles.revenueStatDivider} />
+          <View style={styles.revenueStatBox}>
+            <Text style={styles.revenueStatValue}>{quoteMetrics.pcs.toLocaleString()}</Text>
+            <Text style={styles.revenueStatLabel}>PCS</Text>
+          </View>
+        </View>
+        {relatedQuotes.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyCardText}>No quotes yet.</Text>
+            <Text style={styles.emptyCardSub}>Create a quote to link it to this organization.</Text>
+          </View>
+        ) : (
+          relatedQuotes.map((q) => {
+            const eff = getEffectiveStatus(q);
+            const cfg = STATUS_CONFIG[eff];
+            const qPcs = getPcs(q);
+            const services = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))];
+            return (
+              <TouchableOpacity key={q.id} style={styles.projectRowExpanded} onPress={() => router.push(`/quote/${q.id}` as any)}>
+                <View style={styles.projectRowExpandedTop}>
+                  <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+                    <Text style={[styles.projectRowBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
+                  </View>
+                  <Text style={styles.projectRowName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
+                  {q.invoiceNumber ? <Text style={styles.projectRowNum}>#{q.invoiceNumber}</Text> : null}
+                  <ChevronRight size={12} color={Colors.light.textSecondary} style={{ marginLeft: 'auto' as any }} />
+                </View>
+                <View style={styles.projectRowExpandedMeta}>
+                  <Text style={styles.projectMetaItem}>Order: {q.orderDate ? formatDate(q.orderDate) : '—'}</Text>
+                  <Text style={styles.projectMetaSep}>·</Text>
+                  <Text style={styles.projectMetaItem}>Due: {q.inHandsDate ? formatDate(q.inHandsDate) : '—'}</Text>
+                </View>
+                <View style={styles.projectRowExpandedBottom}>
+                  {services.length > 0 && (
+                    <Text style={styles.projectMetaService} numberOfLines={1}>{services.join(' · ')}</Text>
+                  )}
+                  <View style={styles.projectMetaNumbers}>
+                    {qPcs > 0 && <Text style={styles.projectMetaPcs}>{qPcs.toLocaleString()} pcs</Text>}
+                    <Text style={styles.projectMetaTotal}>{formatCurrency(q.calculations?.total ?? 0)}</Text>
+                    {(q.calculations?.markupAmount ?? 0) > 0 && (
+                      <Text style={styles.projectMetaMarkup}>+{formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
+                    )}
+                  </View>
+                </View>
               </TouchableOpacity>
             );
           })
@@ -1124,61 +1302,6 @@ export default function OrgProfileScreen() {
               </View>
             );
           })
-        )}
-      </View>
-
-      {/* Quotes & Revenue card */}
-      <View style={styles.infoCard}>
-        <View style={styles.infoCardHeader}>
-          <View style={styles.infoCardHeaderLeft}>
-            <FileText size={15} color="#fff" />
-            <Text style={styles.infoCardTitle}>Quotes & Revenue</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.infoCardAction}
-            onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
-          >
-            <Plus size={13} color="#fff" />
-            <Text style={styles.infoCardActionText}>New Quote</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.revenueStatsRow}>
-          <View style={styles.revenueStatBox}>
-            <Text style={styles.revenueStatValue}>{relatedQuotes.length}</Text>
-            <Text style={styles.revenueStatLabel}>Total Quotes</Text>
-          </View>
-          <View style={styles.revenueStatDivider} />
-          <View style={styles.revenueStatBox}>
-            <Text style={[styles.revenueStatValue, { color: Colors.light.success }]}>{formatCurrency(totalSpent)}</Text>
-            <Text style={styles.revenueStatLabel}>Total Revenue</Text>
-          </View>
-        </View>
-        {relatedQuotes.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyCardText}>No quotes yet.</Text>
-            <Text style={styles.emptyCardSub}>Create a quote to link it to this organization.</Text>
-          </View>
-        ) : (
-          relatedQuotes.map((q) => (
-            <TouchableOpacity
-              key={q.id}
-              style={styles.quoteRow}
-              onPress={() => router.push(`/quote/${q.id}` as any)}
-            >
-              <View style={styles.quoteRowLeft}>
-                <Text style={styles.quoteProject} numberOfLines={1}>{q.projectName}</Text>
-                <View style={styles.quoteMeta}>
-                  {q.invoiceNumber && <Text style={styles.quoteNum}>#{q.invoiceNumber}</Text>}
-                  <Text style={styles.quoteDate}>{formatDate(q.createdAt)}</Text>
-                </View>
-              </View>
-              <View style={styles.quoteRowRight}>
-                <Text style={styles.quoteAmount}>{formatCurrency(q.calculations?.total ?? 0)}</Text>
-                <Text style={styles.quoteStatus}>{q.status?.toUpperCase() ?? ''}</Text>
-              </View>
-              <ChevronRight size={14} color={Colors.light.border} />
-            </TouchableOpacity>
-          ))
         )}
       </View>
 
@@ -2407,6 +2530,40 @@ const styles = StyleSheet.create({
   projectRowNum: { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
   projectRowBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1 },
   projectRowBadgeText: { fontSize: 11, fontWeight: '700' as const },
+
+  projectRowExpanded: {
+    paddingVertical: 11, borderTopWidth: 1, borderTopColor: Colors.light.border, gap: 5,
+  },
+  projectRowExpandedTop: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 7,
+  },
+  projectRowExpandedMeta: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6, paddingLeft: 2,
+  },
+  projectRowExpandedBottom: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, flexWrap: 'wrap' as const, gap: 6, paddingLeft: 2,
+  },
+  projectMetaItem: { fontSize: 11, color: Colors.light.textSecondary },
+  projectMetaSep: { fontSize: 11, color: Colors.light.border },
+  projectMetaService: { fontSize: 11, color: Colors.light.textSecondary, flex: 1 },
+  projectMetaNumbers: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8 },
+  projectMetaPcs: { fontSize: 11, color: Colors.light.textSecondary },
+  projectMetaTotal: { fontSize: 13, fontWeight: '700' as const, color: Colors.light.text },
+  projectMetaMarkup: { fontSize: 12, fontWeight: '600' as const, color: '#FF5A00' },
+
+  legacyServiceList: { marginTop: 4, gap: 10 },
+  legacyServiceRow: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 12,
+  },
+  legacyServiceLeft: { flex: 1, gap: 4 },
+  legacyServiceName: { fontSize: 12, fontWeight: '600' as const, color: Colors.light.text },
+  legacyBarTrack: {
+    height: 5, backgroundColor: Colors.light.border, borderRadius: 3, overflow: 'hidden' as const,
+  },
+  legacyBarFill: { height: 5, backgroundColor: '#FF5A00', borderRadius: 3 },
+  legacyServiceRight: { alignItems: 'flex-end' as const, gap: 1, minWidth: 58 },
+  legacyServicePct: { fontSize: 12, fontWeight: '700' as const, color: '#FF5A00' },
+  legacyServicePcs: { fontSize: 11, color: Colors.light.textSecondary },
 
   revenueStatsRow: {
     flexDirection: 'row' as const, alignItems: 'center' as const,
