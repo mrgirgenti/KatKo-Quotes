@@ -345,7 +345,7 @@ export default function OrgProfileScreen() {
   const totalSpent = useMemo(() => {
     return relatedQuotes
       .filter((q) => q.status === 'completed')
-      .reduce((sum, q) => sum + (q.salesData?.amountCollected || q.calculations.total), 0);
+      .reduce((sum, q) => sum + (q.salesData?.amountCollected || q.calculations?.total || 0), 0);
   }, [relatedQuotes]);
 
   const isLead = org && (org.status === 'Cold' || org.status === 'Working');
@@ -1013,8 +1013,8 @@ export default function OrgProfileScreen() {
                 </View>
               </View>
               <View style={styles.quoteRowRight}>
-                <Text style={styles.quoteAmount}>{formatCurrency(q.calculations.total)}</Text>
-                <Text style={styles.quoteStatus}>{q.status.toUpperCase()}</Text>
+                <Text style={styles.quoteAmount}>{formatCurrency(q.calculations?.total ?? 0)}</Text>
+                <Text style={styles.quoteStatus}>{q.status?.toUpperCase() ?? ''}</Text>
               </View>
               <ChevronRight size={14} color={Colors.light.border} />
             </TouchableOpacity>
