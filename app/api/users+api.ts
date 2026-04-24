@@ -59,6 +59,16 @@ export async function POST(request: Request) {
       // Client users require a real email
       if (!body.email) return Response.json({ error: 'email required for client users' }, { status: 400 });
 
+      // Check if a user with this email already exists — if so, return them so the
+      // caller uses the correct existing ID (avoids FK violations on OrganizationMembership).
+      const existing = await pool.query(
+        `SELECT * FROM "User" WHERE LOWER(email) = LOWER($1)`,
+        [body.email.trim()],
+      );
+      if (existing.rows[0]) {
+        return Response.json(toFrontendUser(existing.rows[0]), { status: 200 });
+      }
+
       const result = await pool.query(
         `INSERT INTO "User" (
           id, "firstName", "lastName", email, phone,
@@ -76,7 +86,7 @@ export async function POST(request: Request) {
           "avatarColor" = EXCLUDED."avatarColor",
           "updatedAt"  = NOW()
         RETURNING *`,
-        [body.id, firstName, lastName, body.email, body.phone || null, body.avatarColor || '#6366F1'],
+        [body.id, firstName, lastName, body.email.trim(), body.phone || null, body.avatarColor || '#6366F1'],
       );
       return Response.json(toFrontendUser(result.rows[0]), { status: 201 });
     }
