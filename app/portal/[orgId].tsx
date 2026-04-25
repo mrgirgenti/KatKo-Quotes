@@ -895,7 +895,7 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
 // ────────────────────────────────────────────────────────────
 export default function ClientPortal() {
   const { orgId, tab } = useLocalSearchParams<{ orgId: string; tab?: string }>();
-  const { isMobile } = useBreakpoint();
+  const { isMobile, isTablet } = useBreakpoint();
 
   const [step, setStep] = useState<Step>('email');
   const [session, setSession] = useState<ClientSession | null>(null);
@@ -2345,7 +2345,7 @@ export default function ClientPortal() {
   };
 
   const CatalogsView = () => {
-    const numCols = isMobile ? 1 : 3;
+    const numCols = isMobile ? 1 : isTablet ? 2 : 3;
     return (
       <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
         <Text style={dash.pageTitle}>Product Catalogs</Text>

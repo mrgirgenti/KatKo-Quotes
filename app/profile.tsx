@@ -44,10 +44,12 @@ import Colors from '@/constants/colors';
 import { useUser } from '@/contexts/UserContext';
 import { AVATAR_COLORS, UserProfile } from '@/types/user';
 import { CropModal } from '@/components/CropModal';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { currentUser, users, updateUser, createUser, deleteUser, isUpdating, isOrgAdmin } = useUser();
+  const { isMobile } = useBreakpoint();
 
   const [name, setName] = useState(currentUser?.name || '');
   const [businessName, setBusinessName] = useState(currentUser?.businessName || '');
@@ -325,7 +327,7 @@ export default function ProfileScreen() {
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, !isMobile && styles.contentWide]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -929,6 +931,11 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 40,
+  },
+  contentWide: {
+    maxWidth: 720,
+    alignSelf: 'center',
+    width: '100%',
   },
   loading: {
     flex: 1,

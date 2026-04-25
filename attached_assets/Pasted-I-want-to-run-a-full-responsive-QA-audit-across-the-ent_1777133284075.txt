@@ -1,0 +1,176 @@
+I want to run a full responsive QA audit across the entire app for mobile and tablet.
+
+This should not be a quick visual skim. I want a detailed responsive compliance pass covering layout, sizing, spacing, readability, and usability.
+
+======================================================================
+1. PRIMARY GOAL
+======================================================================
+
+Audit and fix mobile/tablet responsiveness across the app, including:
+
+- column sizing
+- button placement
+- text size
+- header widths
+- table/card behavior
+- overflow issues
+- touch target sizing
+- form field alignment
+- sidebar/mobile nav behavior
+- dropdown/menu positioning
+- modal sizing
+- spacing/padding
+- horizontal scrolling where appropriate
+- broken wrapping
+- hidden or clipped content
+
+======================================================================
+2. BREAKPOINTS TO VERIFY
+======================================================================
+
+Please test and fix at minimum:
+
+Mobile:
+- 360px width
+- 390px width
+- 430px width
+
+Tablet:
+- 768px width
+- 820px width
+- 1024px width
+
+Desktop sanity check:
+- 1280px width
+
+======================================================================
+3. PAGES / AREAS TO AUDIT
+======================================================================
+
+Audit the entire app, especially:
+
+Backend OS:
+- Dashboard
+- Projects table
+- Project/Quote detail pages
+- New Quote / Edit Quote flow
+- Contacts / Organization pages
+- Client page
+- Media Uploads
+- Product Catalogs
+- Profile / settings areas
+- Actions dropdowns
+- Modals / edit forms
+
+Client Hub:
+- Dashboard
+- Submit a Project
+- My Projects
+- Submitted Project Requests
+- Quotes + Invoices
+- Project / Quote detail page
+- Media Bin
+- Product Catalogs
+- Profile
+- My Team
+
+======================================================================
+4. RESPONSIVE RULES
+======================================================================
+
+Tables:
+- should not crush columns into unreadable text
+- use horizontal scroll where necessary
+- important actions must remain accessible
+- status badges should not wrap awkwardly
+- multi-line rows should remain readable
+
+Cards:
+- should stack cleanly on mobile
+- spacing should remain consistent
+- text should not overflow
+- buttons should remain visible
+
+Forms:
+- fields should stack logically on mobile
+- labels should remain readable
+- input widths should be consistent
+- size/quantity grids should not hide XS or any size columns
+- horizontal scroll is acceptable for dense size grids
+
+Buttons:
+- should not overlap
+- should not be too small for touch
+- primary actions should remain easy to find
+- destructive actions should be visually clear
+
+Headers:
+- titles should not wrap awkwardly if avoidable
+- badges should align cleanly
+- section headers should use consistent widths and spacing
+
+Dropdowns / Ellipsis menus:
+- must anchor next to or below the trigger
+- must not open on the far side of the screen
+- must stay within viewport bounds
+- must work on mobile/tablet
+
+Modals:
+- should fit within viewport
+- should scroll internally if content is tall
+- buttons should remain accessible
+- no content should be clipped
+
+Navigation:
+- sidebar/mobile nav should behave correctly
+- active states should remain clear
+- profile area should remain accessible
+
+======================================================================
+5. SPECIFIC KNOWN ISSUES TO WATCH FOR
+======================================================================
+
+Please specifically verify:
+
+- Product + Sizes rows show all fields, including XS
+- Product Color field does not push size fields out of view
+- Business Type does not wrap awkwardly
+- Actions dropdowns open next to/below ellipsis
+- Client Hub sidebar labels fit correctly
+- My Projects sections are readable on mobile
+- Project/Quote detail pages do not overflow badly
+- Media Bin gallery cards resize properly
+- Product Catalogs use:
+  - 3 columns desktop
+  - 2 columns tablet
+  - 1 column mobile
+- Client Legacy percentage icons remain readable
+- Active Projects / Submitted Quotes metrics do not become cramped
+
+======================================================================
+6. OUTPUT REQUIRED
+======================================================================
+
+Please provide a responsive QA report with:
+
+For each issue found:
+- page/component
+- breakpoint where issue occurs
+- what is broken
+- fix applied
+
+Do not mark complete until the app has been checked across the listed breakpoints.
+
+======================================================================
+7. ONGOING REGULAR CHECK
+======================================================================
+
+Please add or document a repeatable responsive QA checklist/process we can run after future UI changes.
+
+Preferred:
+- create a reusable responsive QA checklist
+- optionally add automated visual/responsive tests if practical
+- ensure future edits do not reintroduce the same layout issues
+
+Goal:
+I want mobile/tablet quality to become part of the normal development workflow, not something we only check after something breaks.

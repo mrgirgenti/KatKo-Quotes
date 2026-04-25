@@ -393,7 +393,7 @@ export default function HubManagementScreen() {
         }}
       />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, isDesktop && styles.contentDesktop]}>
 
         {/* Hub Identity Card — matches client profile layout */}
         <View style={styles.identityCard}>
@@ -911,6 +911,11 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     gap: 14,
   },
+  contentDesktop: {
+    maxWidth: 1100,
+    alignSelf: 'center',
+    width: '100%',
+  },
   centered: {
     flex: 1,
     justifyContent: 'center',
@@ -942,6 +947,7 @@ const styles = StyleSheet.create({
   columnsMobile: {
     flexDirection: 'column',
     gap: 14,
+    alignItems: 'stretch',
   },
   colLeft: {
     flex: 3,
