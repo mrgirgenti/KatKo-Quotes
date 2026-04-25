@@ -165,12 +165,12 @@ function OrgRow({ org, onPress, onDelete }: OrgRowProps) {
         <View style={styles.colHub}>
           {org.hubEnabled ? (
             <View style={styles.hubBadgeActive}>
-              <Wifi size={11} color={Colors.light.tint} />
-              <Text style={styles.hubBadgeTextActive}>Active</Text>
+              <Wifi size={11} color="#16A34A" />
+              <Text style={styles.hubBadgeTextActive}>Live</Text>
             </View>
           ) : (
             <View style={styles.hubBadgeInactive}>
-              <WifiOff size={11} color={Colors.light.textSecondary} />
+              <WifiOff size={11} color="#FFFFFF" />
               <Text style={styles.hubBadgeTextInactive}>Inactive</Text>
             </View>
           )}
@@ -1083,7 +1083,7 @@ const styles = StyleSheet.create({
   colName: { flex: 2.5 },
   colContact: { flex: 2.5 },
   colCampaign: { flex: 1.2 },
-  colStatus: { width: 160 },
+  colStatus: { width: 160, alignItems: 'center' as const },
   colArrow: { width: 28, alignItems: 'center' },
   colActions: { width: 120, flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'flex-end' as const, gap: 4 },
 
@@ -1264,7 +1264,7 @@ const styles = StyleSheet.create({
     borderRadius: 7, borderWidth: 1, borderColor: Colors.light.border,
     backgroundColor: '#fff', alignItems: 'center' as const, justifyContent: 'center' as const,
   },
-  actionsHeaderText: { fontSize: 11, fontWeight: '700' as const, color: Colors.light.textSecondary, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
+  actionsHeaderText: { fontSize: 11, fontWeight: '700' as const, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: 0.5 },
 
   rowMenuBtn: {
     width: 32, height: 32, borderRadius: 8,
@@ -1296,26 +1296,26 @@ const styles = StyleSheet.create({
   rowMenuDivider: { height: 1, backgroundColor: Colors.light.border, marginVertical: 2 },
   hubBadgeActive: {
     flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4,
-    backgroundColor: '#FFF4EE', borderRadius: 6,
+    backgroundColor: '#DCFCE7', borderRadius: 6,
     paddingHorizontal: 7, paddingVertical: 3,
     alignSelf: 'flex-start' as const,
-    borderWidth: 1, borderColor: '#FF5A0030',
+    borderWidth: 1, borderColor: '#86EFAC',
   },
   hubBadgeInactive: {
     flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4,
-    backgroundColor: Colors.light.background, borderRadius: 6,
+    backgroundColor: '#374151', borderRadius: 6,
     paddingHorizontal: 7, paddingVertical: 3,
     alignSelf: 'flex-start' as const,
-    borderWidth: 1, borderColor: Colors.light.border,
+    borderWidth: 1, borderColor: '#4B5563',
   },
-  hubBadgeTextActive: { fontSize: 11, color: Colors.light.tint, fontWeight: '600' as const },
-  hubBadgeTextInactive: { fontSize: 11, color: Colors.light.textSecondary },
+  hubBadgeTextActive: { fontSize: 11, color: '#15803D', fontWeight: '600' as const },
+  hubBadgeTextInactive: { fontSize: 11, color: '#FFFFFF', fontWeight: '600' as const },
 
   sortBtn: {
     flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4,
   },
   sortBtnText: {
-    fontSize: 11, fontWeight: '700' as const, color: 'rgba(255,255,255,0.6)',
+    fontSize: 11, fontWeight: '700' as const, color: '#FFFFFF',
     textTransform: 'uppercase' as const, letterSpacing: 0.4,
   },
   sortBtnTextActive: { color: Colors.light.tint },
