@@ -45,6 +45,9 @@ import { generateAndSharePDF, printQuote } from '@/utils/pdfGenerator';
 
 type SortField = 'date' | 'client' | 'total' | 'status' | 'inHands' | 'project' | 'invoice' | 'services' | 'pcs' | 'markup';
 type SortDir = 'asc' | 'desc';
+type MobileListDataItem =
+  | { type: 'header'; key: string; label: string }
+  | { type: 'item'; quote: Quote; effectiveStatus: QuoteStatus };
 
 const STATUS_PILLS: { key: 'all' | QuoteStatus; label: string }[] = [
   { key: 'all',                label: 'All'             },
@@ -492,6 +495,28 @@ export default function ProjectsScreen() {
     }
   }, [sortField]);
 
+  const mobileListData = useMemo((): MobileListDataItem[] => {
+    if (isDesktop) return [];
+    const needsHeaders = sortField === 'client' || sortField === 'status';
+    if (!needsHeaders) {
+      return filtered.map(({ quote, effectiveStatus }) => ({ type: 'item' as const, quote, effectiveStatus }));
+    }
+    const result: MobileListDataItem[] = [];
+    let lastKey = '';
+    for (const { quote, effectiveStatus } of filtered) {
+      const groupKey = sortField === 'client' ? (quote.personOrganization || 'Unknown') : effectiveStatus;
+      const label = sortField === 'client'
+        ? (quote.personOrganization || 'Unknown')
+        : (STATUS_CONFIG[effectiveStatus]?.label ?? effectiveStatus);
+      if (groupKey !== lastKey) {
+        result.push({ type: 'header', key: `hdr-${groupKey}`, label });
+        lastKey = groupKey;
+      }
+      result.push({ type: 'item', quote, effectiveStatus });
+    }
+    return result;
+  }, [filtered, isDesktop, sortField]);
+
   const selectedQuotes = useMemo(() =>
     filtered.filter(({ quote }) => selectedIds.has(quote.id)).map(f => f.quote),
     [filtered, selectedIds]
@@ -907,12 +932,12 @@ export default function ProjectsScreen() {
               : 'Submit a quote to see it here.'}
           </Text>
         </View>
-      ) : (
+      ) : isDesktop ? (
         <FlatList
           data={filtered}
           keyExtractor={({ quote }) => quote.id}
-          contentContainerStyle={isDesktop ? styles.tableBody : styles.cardList}
-          ItemSeparatorComponent={isDesktop ? () => <View style={styles.tableDivider} /> : undefined}
+          contentContainerStyle={styles.tableBody}
+          ItemSeparatorComponent={() => <View style={styles.tableDivider} />}
           renderItem={({ item: { quote, effectiveStatus } }) => (
             <ProjectRow
               quote={quote}
@@ -927,12 +952,48 @@ export default function ProjectsScreen() {
               onExportSheets={() => handleExportSheets(quote)}
               onPrint={() => handlePrint(quote)}
               onAcceptIntake={() => handleAcceptIntake(quote)}
-              isDesktop={isDesktop}
+              isDesktop={true}
               isSelected={selectedIds.has(quote.id)}
               onToggleSelect={() => toggleSelect(quote.id)}
               selectionMode={selectionMode}
             />
           )}
+        />
+      ) : (
+        <FlatList
+          data={mobileListData}
+          keyExtractor={(item) => item.type === 'header' ? item.key : item.quote.id}
+          contentContainerStyle={styles.cardList}
+          renderItem={({ item }) => {
+            if (item.type === 'header') {
+              return (
+                <View style={styles.mobileSectionHeader}>
+                  <Text style={styles.mobileSectionHeaderText}>{item.label}</Text>
+                </View>
+              );
+            }
+            const { quote, effectiveStatus } = item;
+            return (
+              <ProjectRow
+                quote={quote}
+                effectiveStatus={effectiveStatus}
+                onPress={() => handleView(quote)}
+                onDelete={() => handleDelete(quote)}
+                onConvert={() => handleConvert(quote)}
+                onRevert={() => handleRevert(quote)}
+                onComplete={() => handleComplete(quote)}
+                onEdit={() => handleEdit(quote)}
+                onExportPDF={() => handleExportPDF(quote)}
+                onExportSheets={() => handleExportSheets(quote)}
+                onPrint={() => handlePrint(quote)}
+                onAcceptIntake={() => handleAcceptIntake(quote)}
+                isDesktop={false}
+                isSelected={selectedIds.has(quote.id)}
+                onToggleSelect={() => toggleSelect(quote.id)}
+                selectionMode={selectionMode}
+              />
+            );
+          }}
         />
       )}
 
@@ -1183,13 +1244,15 @@ const styles = StyleSheet.create({
   sortBtnText: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: 0.5 },
   sortBtnTextActive: { color: Colors.light.tint },
 
-  mobileSortScroll: { maxHeight: 38, backgroundColor: Colors.light.surface, borderBottomWidth: 1, borderBottomColor: Colors.light.border },
-  mobileSortRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8 },
+  mobileSortScroll: { backgroundColor: Colors.light.surface, borderBottomWidth: 1, borderBottomColor: Colors.light.border },
+  mobileSortRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10 },
   mobileSortLabel: { fontSize: 12, color: Colors.light.textSecondary, fontWeight: '600' },
-  mobileSortBtn: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12, borderWidth: 1, borderColor: Colors.light.border },
+  mobileSortBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1, borderColor: Colors.light.border },
   mobileSortBtnActive: { borderColor: Colors.light.tint, backgroundColor: '#FFF4EE' },
   mobileSortBtnText: { fontSize: 12, color: Colors.light.textSecondary },
   mobileSortBtnTextActive: { color: Colors.light.tint, fontWeight: '600' },
+  mobileSectionHeader: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 6 },
+  mobileSectionHeaderText: { fontSize: 11, fontWeight: '700', color: Colors.light.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8 },
 
   tableBody: { paddingBottom: 40 },
   tableDivider: { height: 1, backgroundColor: Colors.light.border, marginHorizontal: 20 },
