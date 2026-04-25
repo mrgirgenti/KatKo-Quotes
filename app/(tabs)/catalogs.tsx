@@ -11,8 +11,9 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
-import { ExternalLink, BookOpen, Tag, Plus, Pencil, Trash2, X, Globe, ChevronDown, GripVertical } from 'lucide-react-native';
+import { ExternalLink, BookOpen, Tag, Plus, Pencil, Trash2, X, Globe, ChevronDown, GripVertical, MoreVertical } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
 const BRAND = Colors.light.tint;
@@ -357,6 +358,12 @@ export default function CatalogsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editing, setEditing] = useState<ClientCatalog | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
+  // 2-column card width for mobile: (screen - 2×24 padding - 16 gap) / 2
+  const mobileCardWidth = Math.floor((screenWidth - 48 - 16) / 2);
 
   // Vendor order (local only)
   const [apparelVendors, setApparelVendors] = useState([...APPAREL_VENDORS]);
@@ -485,27 +492,33 @@ export default function CatalogsScreen() {
   ) => (
     <View
       key={vendor.id}
-      style={[styles.vendorCard, overIdx === idx && styles.dragOverCard]}
+      style={[
+        styles.vendorCard,
+        overIdx === idx && styles.dragOverCard,
+        isMobile && { width: mobileCardWidth, minWidth: 0 },
+      ]}
       {...dragProps(idx, srcRef, setOver, onDrop)}
     >
       <View style={styles.vendorCardTop}>
-        <View style={[styles.vendorAvatar, { backgroundColor: vendor.color }]}>
-          <Text style={styles.vendorInitials}>{vendor.initials}</Text>
+        <View style={[styles.vendorAvatar, { backgroundColor: vendor.color }, isMobile && styles.vendorAvatarSmall]}>
+          <Text style={[styles.vendorInitials, isMobile && { fontSize: 12 }]}>{vendor.initials}</Text>
         </View>
         <View style={styles.vendorMeta}>
-          <Text style={styles.vendorName}>{vendor.name}</Text>
+          <Text style={[styles.vendorName, isMobile && { fontSize: 14 }]} numberOfLines={2}>{vendor.name}</Text>
         </View>
-        <View style={styles.dragHandle}>
-          <GripVertical size={16} color="#C0C6CF" />
-        </View>
+        {!isMobile && (
+          <View style={styles.dragHandle}>
+            <GripVertical size={16} color="#C0C6CF" />
+          </View>
+        )}
       </View>
-      <Text style={styles.vendorDescription}>{vendor.description}</Text>
-      <View style={styles.vendorActions}>
+      <Text style={styles.vendorDescription} numberOfLines={isMobile ? 3 : undefined}>{vendor.description}</Text>
+      <View style={[styles.vendorActions, isMobile && { flexDirection: 'column' }]}>
         <TouchableOpacity style={styles.catalogBtn} onPress={() => openLink(vendor.catalogUrl)}>
           <BookOpen size={15} color="#fff" />
-          <Text style={styles.catalogBtnText}>View Catalog</Text>
+          <Text style={styles.catalogBtnText}>{isMobile ? 'Catalog' : 'View Catalog'}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.websiteBtn} onPress={() => openLink(vendor.websiteUrl)}>
+        <TouchableOpacity style={[styles.websiteBtn, isMobile && { justifyContent: 'center' }]} onPress={() => openLink(vendor.websiteUrl)}>
           <ExternalLink size={15} color={BRAND} />
           <Text style={styles.websiteBtnText}>Website</Text>
         </TouchableOpacity>
@@ -516,51 +529,82 @@ export default function CatalogsScreen() {
   const renderClientCatalogCard = (cat: ClientCatalog, idx: number) => {
     const color = getCategoryColor(cat.category);
     const initials = getCategoryInitials(cat);
+    const isMenuOpen = openMenuId === cat.id;
     return (
       <View
         key={cat.id}
-        style={[styles.clientCard, clientOver === idx && styles.dragOverCard]}
+        style={[
+          styles.clientCard,
+          clientOver === idx && styles.dragOverCard,
+          isMobile && { width: mobileCardWidth, minWidth: 0 },
+        ]}
         {...dragProps(idx, clientSrc, setClientOver, handleClientDrop)}
       >
+        {/* Card header row */}
         <View style={styles.clientCardTop}>
-          <View style={[styles.vendorAvatar, { backgroundColor: color }]}>
-            <Text style={styles.vendorInitials}>{initials}</Text>
+          <View style={[styles.vendorAvatar, { backgroundColor: color }, isMobile && styles.vendorAvatarSmall]}>
+            <Text style={[styles.vendorInitials, isMobile && { fontSize: 12 }]}>{initials}</Text>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.vendorName}>{cat.name}</Text>
-            {cat.vendorName ? <Text style={styles.clientCardVendor}>{cat.vendorName}</Text> : null}
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[styles.vendorName, isMobile && { fontSize: 14 }]} numberOfLines={2}>{cat.name}</Text>
+            <View style={[styles.categoryBadge, { backgroundColor: color + '18', alignSelf: 'flex-start', marginTop: 4 }]}>
+              <Text style={[styles.categoryBadgeText, { color }]}>{cat.category}</Text>
+            </View>
           </View>
-          <View style={[styles.categoryBadge, { backgroundColor: color + '18' }]}>
-            <Text style={[styles.categoryBadgeText, { color }]}>{cat.category}</Text>
-          </View>
-          <View style={styles.dragHandle}>
-            <GripVertical size={16} color="#C0C6CF" />
+          {/* Ellipsis menu */}
+          <View style={{ position: 'relative' }}>
+            <TouchableOpacity
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              onPress={() => setOpenMenuId(isMenuOpen ? null : cat.id)}
+              style={styles.ellipsisBtn}
+            >
+              <MoreVertical size={18} color={TEXT_LIGHT} />
+            </TouchableOpacity>
+            {isMenuOpen && (
+              <View style={styles.cardMenu}>
+                <TouchableOpacity
+                  style={styles.cardMenuItem}
+                  onPress={() => { setOpenMenuId(null); setEditing(null); setModalVisible(true); }}
+                >
+                  <Plus size={14} color={TEXT} />
+                  <Text style={styles.cardMenuItemText}>Add Vendor</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.cardMenuItem}
+                  onPress={() => { setOpenMenuId(null); setEditing(cat); setModalVisible(true); }}
+                >
+                  <Pencil size={14} color={TEXT} />
+                  <Text style={styles.cardMenuItemText}>Edit Catalog</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.cardMenuItem, { borderBottomWidth: 0 }]}
+                  onPress={() => { setOpenMenuId(null); handleDelete(cat); }}
+                  disabled={deletingId === cat.id}
+                >
+                  {deletingId === cat.id
+                    ? <ActivityIndicator size="small" color="#DC2626" />
+                    : <Trash2 size={14} color="#DC2626" />}
+                  <Text style={[styles.cardMenuItemText, { color: '#DC2626' }]}>Delete Catalog</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
-        {cat.description ? <Text style={styles.vendorDescription}>{cat.description}</Text> : null}
-        <View style={styles.vendorActions}>
+
+        {cat.description ? <Text style={styles.vendorDescription} numberOfLines={isMobile ? 3 : undefined}>{cat.description}</Text> : null}
+
+        {/* Action buttons — Open Catalog + Website only */}
+        <View style={[styles.vendorActions, isMobile && { flexDirection: 'column' }]}>
           <TouchableOpacity style={styles.catalogBtn} onPress={() => openLink(cat.catalogUrl)}>
             <BookOpen size={15} color="#fff" />
-            <Text style={styles.catalogBtnText}>Open Catalog</Text>
+            <Text style={styles.catalogBtnText}>{isMobile ? 'Catalog' : 'Open Catalog'}</Text>
           </TouchableOpacity>
           {cat.websiteUrl ? (
-            <TouchableOpacity style={styles.websiteBtn} onPress={() => openLink(cat.websiteUrl!)}>
+            <TouchableOpacity style={[styles.websiteBtn, isMobile && { justifyContent: 'center' }]} onPress={() => openLink(cat.websiteUrl!)}>
               <Globe size={15} color={BRAND} />
               <Text style={styles.websiteBtnText}>Website</Text>
             </TouchableOpacity>
           ) : null}
-          <TouchableOpacity style={styles.editBtn} onPress={() => { setEditing(cat); setModalVisible(true); }}>
-            <Pencil size={14} color={TEXT_LIGHT} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.deleteBtn, deletingId === cat.id && { opacity: 0.4 }]}
-            onPress={() => handleDelete(cat)}
-            disabled={deletingId === cat.id}
-          >
-            {deletingId === cat.id
-              ? <ActivityIndicator size="small" color="#DC2626" />
-              : <Trash2 size={14} color="#DC2626" />}
-          </TouchableOpacity>
         </View>
       </View>
     );
@@ -838,7 +882,7 @@ const styles = StyleSheet.create({
   sectionSubtitle: { fontSize: 12, color: TEXT_LIGHT, marginTop: 1 },
   sectionDivider: { height: 1, backgroundColor: BORDER, marginVertical: 28 },
 
-  vendorGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 16 },
+  vendorGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 16, overflow: 'visible' as const },
   vendorCard: {
     width: '31%' as any,
     minWidth: 260,
@@ -924,35 +968,48 @@ const styles = StyleSheet.create({
     minWidth: 260,
     backgroundColor: SURFACE,
     borderRadius: 14,
-    padding: 20,
+    padding: 16,
     borderWidth: 1,
     borderColor: BORDER,
     gap: 12,
+    overflow: 'visible' as const,
   },
   clientCardTop: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 12 },
   clientCardVendor: { fontSize: 12, color: TEXT_LIGHT, marginTop: 2 },
   categoryBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   categoryBadgeText: { fontSize: 11, fontWeight: '700' as const },
-  editBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 7,
+  vendorAvatarSmall: { width: 38, height: 38, borderRadius: 9 },
+
+  ellipsisBtn: {
+    padding: 4,
+    borderRadius: 6,
+  },
+  cardMenu: {
+    position: 'absolute' as const,
+    top: 28,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: BORDER,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 8,
+    zIndex: 1000,
+    minWidth: 170,
   },
-  deleteBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
+  cardMenuItem: {
+    flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    backgroundColor: '#FEF2F2',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
+  cardMenuItemText: { fontSize: 14, color: TEXT, fontWeight: '500' as const },
 
   loadingBox: { alignItems: 'center' as const, paddingVertical: 48, gap: 12 },
   loadingText: { fontSize: 14, color: TEXT_LIGHT },
