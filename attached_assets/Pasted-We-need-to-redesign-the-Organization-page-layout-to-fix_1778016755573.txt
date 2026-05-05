@@ -1,0 +1,232 @@
+We need to redesign the Organization page layout to fix dead space issues AND implement it safely so it can be toggled/reverted.
+
+======================================================================
+1. SAFE IMPLEMENTATION (REQUIRED FIRST)
+======================================================================
+
+Before making layout changes, implement a feature flag:
+
+Flag name: organization_layout_v2
+
+Behavior:
+- If flag = OFF → show current existing layout (OrganizationPageV1)
+- If flag = ON → show new layout (OrganizationPageV2)
+
+This allows instant rollback without breaking anything.
+
+Do NOT remove the existing layout.
+
+======================================================================
+2. PROBLEM
+======================================================================
+
+Tabs (Overview, Activity, Notes, Emails, Calls) are currently placed in the right column.
+
+This creates:
+- excessive dead space
+- poor visual balance
+- disconnected layout
+- inefficient use of screen space
+
+======================================================================
+3. REQUIRED LAYOUT CHANGE
+======================================================================
+
+Move tabs to a FULL-WIDTH HEADER.
+
+New structure:
+
+[ FULL WIDTH HEADER ]
+- Organization Name
+- Tabs:
+  Overview | Activity | Notes | Emails | Calls
+
+Tabs should:
+- span horizontally across the page
+- act as primary navigation
+- have clear active state styling
+- be visually prominent and easy to click
+
+======================================================================
+4. OVERVIEW TAB = COMMAND CENTER
+======================================================================
+
+Overview should remain the PRIMARY dashboard and must include:
+
+Top Section:
+- Organization header
+- Business Type
+- Address
+- Website
+- Primary Contact
+- Client Hub status
+
+Core Sections (ALWAYS visible, NOT moved into tabs):
+
+1. Client Legacy
+- total projects (completed)
+- total revenue
+- total profit
+- service breakdown %
+
+2. Active Projects
+- project status
+- order date
+- due date
+- project name
+- services
+- # pieces
+- total
+- markup
+- quick actions
+
+3. Submitted Quotes
+- status
+- quote date
+- project/quote name
+- services
+- # pieces
+- total
+- markup
+- quick actions
+
+4. Media Bin (Preview)
+- card/grid layout
+- artwork + mockups
+- upload button
+- quick preview
+
+IMPORTANT:
+These sections must stay on the Overview tab.
+Do NOT move them into separate tabs.
+
+======================================================================
+5. BODY LAYOUT OPTIONS
+======================================================================
+
+Preferred (Option A):
+
+[ HEADER + TABS ]
+
+[ 2 COLUMN BODY ]
+
+LEFT:
+- Organization details
+- Contacts
+- Client Hub section
+
+RIGHT:
+- Client Legacy
+- Active Projects
+- Submitted Quotes
+- Media
+
+Alternative (Option B - acceptable if cleaner):
+
+[ HEADER + TABS ]
+
+[ FULL WIDTH DASHBOARD ]
+- Client Legacy
+- Active Projects
+- Submitted Quotes
+- Media
+
+[ BELOW - 2 COLUMN ]
+LEFT: Organization details + Contacts  
+RIGHT: Supporting sections
+
+Choose the option that removes dead space and feels most balanced.
+
+======================================================================
+6. ACTIVITY TAB
+======================================================================
+
+Move existing Activity timeline into this tab.
+
+Include:
+- project events
+- quote events
+- invoice events
+- media uploads
+- emails
+- calls
+- notes
+
+Chronological timeline.
+
+======================================================================
+7. NOTES TAB
+======================================================================
+
+Internal notes system:
+
+- add/edit/delete
+- timestamp
+- author
+- optional note types
+
+======================================================================
+8. EMAILS TAB (GMAIL MVP)
+======================================================================
+
+- connect Gmail via OAuth
+- send emails from OS
+- log sent emails
+- display email threads tied to contacts
+- show subject, sender, recipient, date, snippet
+- allow opening full thread
+- log email activity into Activity tab
+
+Only sync emails tied to known contact emails.
+
+======================================================================
+9. CALLS TAB
+======================================================================
+
+Manual call logging:
+
+- contact
+- date/time
+- call type
+- notes
+- follow-up
+
+Also log calls into Activity tab.
+
+======================================================================
+10. DESIGN REQUIREMENTS
+======================================================================
+
+- Remove large empty/dead space
+- Layout must feel balanced and dense (not cluttered)
+- Tabs must be easy to use and clearly visible
+- Maintain strong visual hierarchy
+- Keep UI clean and professional
+
+Responsive:
+- desktop: full layout
+- tablet: adjust spacing / allow horizontal scroll if needed
+- mobile: stacked layout, readable, touch-friendly
+
+======================================================================
+11. UX PRINCIPLE
+======================================================================
+
+Overview = operational dashboard (high visibility, high frequency use)
+
+Tabs = supporting context (history, communication, notes)
+
+Do NOT turn this into a tab-heavy CRM like HubSpot.
+Keep key business data visible without extra clicks.
+
+======================================================================
+12. FINAL GOAL
+======================================================================
+
+The Organization page should feel like a true command center:
+
+- fast to scan
+- minimal clicks
+- no wasted space
+- clean, structured layout
+- strong balance between overview + deep data

@@ -84,6 +84,7 @@ import {
 } from '@/types/crm';
 
 import { formatCurrency } from '@/utils/quoteCalculations';
+import { FLAG_ORG_LAYOUT_V2 } from '@/constants/featureFlags';
 import { STATUS_CONFIG, getEffectiveStatus } from '@/types/quote';
 
 const LEGACY_SERVICES: { key: string; color: string }[] = [
@@ -1093,6 +1094,364 @@ export default function OrgProfileScreen() {
   const noteEntries = org.activityLog.filter((e) => e.type === 'note');
   const emailEntries = org.activityLog.filter((e) => e.type === 'email');
 
+  const overviewCards = (
+    <>
+      {/* Client Legacy card */}
+      <View style={styles.infoCard}>
+        <View style={styles.infoCardHeader}>
+          <View style={styles.infoCardHeaderLeft}>
+            <Award size={15} color="#fff" />
+            <Text style={styles.infoCardTitle}>Client Legacy</Text>
+            {legacyMetrics.totalProjects > 0 && (
+              <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{legacyMetrics.totalProjects}</Text></View>
+            )}
+          </View>
+        </View>
+        <View style={styles.revenueStatsRow}>
+          <View style={styles.revenueStatBox}>
+            <Text style={styles.revenueStatValue}>{legacyMetrics.totalProjects}</Text>
+            <Text style={styles.revenueStatLabel}>Completed</Text>
+          </View>
+          <View style={styles.revenueStatDivider} />
+          <View style={styles.revenueStatBox}>
+            <Text style={[styles.revenueStatValue, { color: Colors.light.success }]}>{formatCurrency(legacyMetrics.revenue)}</Text>
+            <Text style={styles.revenueStatLabel}>Revenue</Text>
+          </View>
+          <View style={styles.revenueStatDivider} />
+          <View style={styles.revenueStatBox}>
+            <Text style={[styles.revenueStatValue, { color: '#FF5A00' }]}>{formatCurrency(legacyMetrics.markup)}</Text>
+            <Text style={styles.revenueStatLabel}>Profit</Text>
+          </View>
+        </View>
+        <View style={styles.legacyDonutRow}>
+          {legacyMetrics.services.map((svc) => {
+            const deg = svc.pct * 3.6;
+            const gradient = svc.pct > 0
+              ? `conic-gradient(${svc.color} 0deg ${deg}deg, #E2E8F0 ${deg}deg 360deg)`
+              : 'conic-gradient(#E2E8F0 0deg 360deg)';
+            return (
+              <Pressable
+                key={svc.name}
+                style={styles.legacyDonutItem}
+                onHoverIn={() => setHoveredLegacyKey(svc.name)}
+                onHoverOut={() => setHoveredLegacyKey(null)}
+              >
+                <View style={[styles.legacyDonutOuter, { background: gradient } as any]}>
+                  <View style={styles.legacyDonutInner}>
+                    <Text style={styles.legacyDonutPct}>{svc.pct}%</Text>
+                    <Text style={styles.legacyDonutPcs}>{svc.pcs.toLocaleString()} pcs</Text>
+                  </View>
+                </View>
+                <Text style={[styles.legacyDonutLabel, { color: hoveredLegacyKey === svc.name ? svc.color : Colors.light.textSecondary }]}>
+                  {svc.name}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {(() => {
+          const hov = legacyMetrics.services.find((s) => s.name === hoveredLegacyKey);
+          if (!hov) return null;
+          const avg = hov.projectCount > 0 ? hov.revenue / hov.projectCount : 0;
+          return (
+            <View style={[styles.legacyTooltip, { borderLeftColor: hov.color }]}>
+              <Text style={[styles.legacyTooltipTitle, { color: hov.color }]}>{hov.name}</Text>
+              <View style={styles.legacyTooltipRow}>
+                <Text style={styles.legacyTooltipItem}>Revenue: <Text style={styles.legacyTooltipBold}>{formatCurrency(hov.revenue)}</Text></Text>
+                <Text style={styles.legacyTooltipItem}>Pieces: <Text style={styles.legacyTooltipBold}>{hov.pcs.toLocaleString()} pcs</Text></Text>
+                <Text style={styles.legacyTooltipItem}>Projects: <Text style={styles.legacyTooltipBold}>{hov.projectCount}</Text></Text>
+                {hov.projectCount > 0 && (
+                  <Text style={styles.legacyTooltipItem}>Avg Order: <Text style={styles.legacyTooltipBold}>{formatCurrency(avg)}</Text></Text>
+                )}
+              </View>
+            </View>
+          );
+        })()}
+      </View>
+
+      {/* Active Projects card */}
+      <View style={styles.infoCard}>
+        <View style={styles.infoCardHeader}>
+          <View style={styles.infoCardHeaderLeft}>
+            <ShoppingBag size={15} color="#fff" />
+            <Text style={styles.infoCardTitle}>Active Projects</Text>
+            {activeQuotes.length > 0 && (
+              <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{activeQuotes.length}</Text></View>
+            )}
+          </View>
+          <TouchableOpacity
+            style={styles.infoCardAction}
+            onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
+          >
+            <Plus size={13} color="#fff" />
+            <Text style={styles.infoCardActionText}>New Quote</Text>
+          </TouchableOpacity>
+        </View>
+        {activeQuotes.length > 0 && (
+          <View style={styles.revenueStatsRow}>
+            <View style={styles.revenueStatBox}>
+              <Text style={styles.revenueStatValue}>{activeQuotes.length}</Text>
+              <Text style={styles.revenueStatLabel}>Active</Text>
+            </View>
+            <View style={styles.revenueStatDivider} />
+            <View style={styles.revenueStatBox}>
+              <Text style={[styles.revenueStatValue, { color: Colors.light.success }]}>{formatCurrency(activeMetrics.revenue)}</Text>
+              <Text style={styles.revenueStatLabel}>Revenue</Text>
+            </View>
+            <View style={styles.revenueStatDivider} />
+            <View style={styles.revenueStatBox}>
+              <Text style={[styles.revenueStatValue, { color: '#FF5A00' }]}>{formatCurrency(activeMetrics.markup)}</Text>
+              <Text style={styles.revenueStatLabel}>Profit</Text>
+            </View>
+            <View style={styles.revenueStatDivider} />
+            <View style={styles.revenueStatBox}>
+              <Text style={styles.revenueStatValue}>{activeMetrics.pcs.toLocaleString()}</Text>
+              <Text style={styles.revenueStatLabel}>PCS</Text>
+            </View>
+          </View>
+        )}
+        {activeQuotes.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <ShoppingBag size={26} color={Colors.light.border} />
+            <Text style={styles.emptyCardText}>No active projects yet</Text>
+            <Text style={styles.emptyCardSub}>Tap New Quote to start a project for this client.</Text>
+          </View>
+        ) : (
+          activeQuotes.map((q) => {
+            const eff = getEffectiveStatus(q);
+            const cfg = STATUS_CONFIG[eff];
+            const qPcs = getPcs(q);
+            const services = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))];
+            return (
+              <TouchableOpacity key={q.id} style={styles.projectRowExpanded} onPress={() => router.push(`/quote/${q.id}` as any)}>
+                <View style={styles.projectRowExpandedTop}>
+                  <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+                    <Text style={[styles.projectRowBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
+                  </View>
+                  <Text style={styles.projectRowName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
+                  {q.invoiceNumber ? <Text style={styles.projectRowNum}>#{q.invoiceNumber}</Text> : null}
+                  <ChevronRight size={12} color={Colors.light.textSecondary} style={{ marginLeft: 'auto' as any }} />
+                </View>
+                <View style={styles.projectRowExpandedMeta}>
+                  <Text style={styles.projectMetaItem}>Order: {q.orderDate ? formatDate(q.orderDate) : '—'}</Text>
+                  <Text style={styles.projectMetaSep}>·</Text>
+                  <Text style={styles.projectMetaItem}>Due: {q.inHandsDate ? formatDate(q.inHandsDate) : '—'}</Text>
+                </View>
+                <View style={styles.projectRowExpandedBottom}>
+                  {services.length > 0 && (
+                    <Text style={styles.projectMetaService} numberOfLines={1}>{services.join(' · ')}</Text>
+                  )}
+                  <View style={styles.projectMetaNumbers}>
+                    {qPcs > 0 && <Text style={styles.projectMetaPcs}>{qPcs.toLocaleString()} pcs</Text>}
+                    <Text style={styles.projectMetaTotal}>{formatCurrency(q.calculations?.total ?? 0)}</Text>
+                    {(q.calculations?.markupAmount ?? 0) > 0 && (
+                      <Text style={styles.projectMetaMarkup}>+{formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
+                    )}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        )}
+      </View>
+
+      {/* Submitted Quotes card */}
+      <View style={styles.infoCard}>
+        <View style={styles.infoCardHeader}>
+          <View style={styles.infoCardHeaderLeft}>
+            <FileText size={15} color="#fff" />
+            <Text style={styles.infoCardTitle}>Submitted Quotes</Text>
+            {relatedQuotes.length > 0 && (
+              <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{relatedQuotes.length}</Text></View>
+            )}
+          </View>
+          <TouchableOpacity
+            style={styles.infoCardAction}
+            onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
+          >
+            <Plus size={13} color="#fff" />
+            <Text style={styles.infoCardActionText}>New Quote</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.revenueStatsRow}>
+          <View style={styles.revenueStatBox}>
+            <Text style={styles.revenueStatValue}>{relatedQuotes.length}</Text>
+            <Text style={styles.revenueStatLabel}>Total Quotes</Text>
+          </View>
+          <View style={styles.revenueStatDivider} />
+          <View style={styles.revenueStatBox}>
+            <Text style={[styles.revenueStatValue, { color: Colors.light.success }]}>{formatCurrency(quoteMetrics.revenue)}</Text>
+            <Text style={styles.revenueStatLabel}>Revenue</Text>
+          </View>
+          <View style={styles.revenueStatDivider} />
+          <View style={styles.revenueStatBox}>
+            <Text style={[styles.revenueStatValue, { color: '#FF5A00' }]}>{formatCurrency(quoteMetrics.markup)}</Text>
+            <Text style={styles.revenueStatLabel}>Profit</Text>
+          </View>
+          <View style={styles.revenueStatDivider} />
+          <View style={styles.revenueStatBox}>
+            <Text style={styles.revenueStatValue}>{quoteMetrics.pcs.toLocaleString()}</Text>
+            <Text style={styles.revenueStatLabel}>PCS</Text>
+          </View>
+        </View>
+        {relatedQuotes.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyCardText}>No quotes yet.</Text>
+            <Text style={styles.emptyCardSub}>Create a quote to link it to this organization.</Text>
+          </View>
+        ) : (
+          relatedQuotes.map((q) => {
+            const eff = getEffectiveStatus(q);
+            const cfg = STATUS_CONFIG[eff];
+            const qPcs = getPcs(q);
+            const services = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))];
+            return (
+              <TouchableOpacity key={q.id} style={styles.projectRowExpanded} onPress={() => router.push(`/quote/${q.id}` as any)}>
+                <View style={styles.projectRowExpandedTop}>
+                  <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+                    <Text style={[styles.projectRowBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
+                  </View>
+                  <Text style={styles.projectRowName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
+                  {q.invoiceNumber ? <Text style={styles.projectRowNum}>#{q.invoiceNumber}</Text> : null}
+                  <ChevronRight size={12} color={Colors.light.textSecondary} style={{ marginLeft: 'auto' as any }} />
+                </View>
+                <View style={styles.projectRowExpandedMeta}>
+                  <Text style={styles.projectMetaItem}>Order: {q.orderDate ? formatDate(q.orderDate) : '—'}</Text>
+                  <Text style={styles.projectMetaSep}>·</Text>
+                  <Text style={styles.projectMetaItem}>Due: {q.inHandsDate ? formatDate(q.inHandsDate) : '—'}</Text>
+                </View>
+                <View style={styles.projectRowExpandedBottom}>
+                  {services.length > 0 && (
+                    <Text style={styles.projectMetaService} numberOfLines={1}>{services.join(' · ')}</Text>
+                  )}
+                  <View style={styles.projectMetaNumbers}>
+                    {qPcs > 0 && <Text style={styles.projectMetaPcs}>{qPcs.toLocaleString()} pcs</Text>}
+                    <Text style={styles.projectMetaTotal}>{formatCurrency(q.calculations?.total ?? 0)}</Text>
+                    {(q.calculations?.markupAmount ?? 0) > 0 && (
+                      <Text style={styles.projectMetaMarkup}>+{formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
+                    )}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        )}
+      </View>
+
+      {/* Media Bin card */}
+      <View style={styles.infoCard}>
+        <View style={styles.infoCardHeader}>
+          <View style={styles.infoCardHeaderLeft}>
+            <Film size={15} color="#fff" />
+            <Text style={styles.infoCardTitle}>Media Bin</Text>
+            {orgFiles.length > 0 && (
+              <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{orgFiles.length}</Text></View>
+            )}
+          </View>
+          {Platform.OS === 'web' && (
+            <TouchableOpacity
+              style={[styles.infoCardAction, orgFilesUploading && { opacity: 0.6 }]}
+              disabled={orgFilesUploading}
+              onPress={() => {
+                if (typeof document === 'undefined') return;
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.ai,.svg,.png,.jpg,.jpeg,.pdf,.dst,.emb';
+                input.onchange = (e: any) => {
+                  const file = e.target?.files?.[0];
+                  if (file) handleOrgFileUpload(file);
+                };
+                input.click();
+              }}
+            >
+              <Upload size={13} color="#fff" />
+              <Text style={styles.infoCardActionText}>{orgFilesUploading ? 'Uploading…' : 'Upload'}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        {orgFiles.length === 0 ? (
+          <View
+            style={[styles.orgMediaEmptyBin, orgFilesDragOver && styles.orgMediaDropZoneActive]}
+            onDragOver={(e: any) => { e.preventDefault(); setOrgFilesDragOver(true); }}
+            onDragLeave={() => setOrgFilesDragOver(false)}
+            onDrop={(e: any) => {
+              e.preventDefault();
+              setOrgFilesDragOver(false);
+              const file = e.dataTransfer?.files?.[0];
+              if (file) handleOrgFileUpload(file);
+            }}
+          >
+            <View style={[styles.mediaDot, { top: 18, left: 28, width: 5, height: 5 }]} />
+            <View style={[styles.mediaDot, { top: 12, right: 60, width: 4, height: 4 }]} />
+            <View style={[styles.mediaDot, { top: 30, right: 32, width: 6, height: 6, opacity: 0.4 }]} />
+            <View style={[styles.mediaDot, { bottom: 44, left: 18, width: 4, height: 4, opacity: 0.35 }]} />
+            <View style={[styles.mediaDot, { bottom: 30, right: 20, width: 5, height: 5, opacity: 0.5 }]} />
+            <View style={styles.mediaBinIconRow}>
+              <View style={[styles.mediaBinCard, { transform: [{ rotate: '-10deg' }], marginRight: -12, zIndex: 1 }]}>
+                <LucideImage size={26} color="#888888" />
+              </View>
+              <View style={[styles.mediaBinCard, styles.mediaBinCardCenter, { zIndex: 3 }]}>
+                <Film size={26} color="#AAAAAA" />
+              </View>
+              <View style={[styles.mediaBinCard, { transform: [{ rotate: '10deg' }], marginLeft: -12, zIndex: 1 }]}>
+                <Music size={26} color="#888888" />
+              </View>
+            </View>
+            <Text style={styles.mediaBinEmptyText}>Drag and drop your media here</Text>
+            <Text style={styles.mediaBinEmptySub}>AI · SVG · PNG · JPG · PDF · DST · EMB</Text>
+          </View>
+        ) : (
+          <View
+            style={[styles.orgMediaGrid, orgFilesDragOver && { opacity: 0.7 }]}
+            onDragOver={(e: any) => { e.preventDefault(); setOrgFilesDragOver(true); }}
+            onDragLeave={() => setOrgFilesDragOver(false)}
+            onDrop={(e: any) => {
+              e.preventDefault();
+              setOrgFilesDragOver(false);
+              const file = e.dataTransfer?.files?.[0];
+              if (file) handleOrgFileUpload(file);
+            }}
+          >
+            {orgFiles.map((f: any) => {
+              const isImage = f.mimeType?.startsWith('image/');
+              const ext = (f.originalName || '').split('.').pop()?.toUpperCase() || 'FILE';
+              return (
+                <View key={f.id} style={styles.orgMediaItem}>
+                  {isImage ? (
+                    <Image
+                      source={{ uri: `/api/files/${f.id}?inline=true` }}
+                      style={styles.orgMediaThumb}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.orgMediaIcon}>
+                      <FileText size={18} color={Colors.light.tint} />
+                      <Text style={styles.orgMediaExt}>{ext}</Text>
+                    </View>
+                  )}
+                  <Text style={styles.orgMediaName} numberOfLines={1}>{f.originalName}</Text>
+                  <View style={styles.orgMediaActions}>
+                    {Platform.OS === 'web' && (
+                      <TouchableOpacity
+                        onPress={() => (typeof window !== 'undefined') && window.open(`/api/files/${f.id}?inline=true`, '_blank')}
+                        style={styles.orgMediaActionBtn}
+                      >
+                        <ExternalLink size={12} color={Colors.light.textSecondary} />
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity onPress={() => handleOrgFileDelete(f.id)} style={styles.orgMediaActionBtn}>
+                      <Trash2 size={12} color={Colors.light.error} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </View>
+    </>
+  );
+
   const rightPanel = (
     <View style={styles.rightPanel}>
       {/* Tab bar */}
@@ -1659,6 +2018,601 @@ export default function OrgProfileScreen() {
       )}
     </View>
   );
+
+  // ─── V2 LAYOUT ───────────────────────────────────────────────────────────────
+  if (FLAG_ORG_LAYOUT_V2) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ title: org.name, headerShown: false }} />
+
+        {/* ── V2: FULL-WIDTH HEADER ── */}
+        <View style={styles.v2Header}>
+          <View style={styles.v2HeaderTop}>
+            <OrgLogoUploader
+              orgId={org.id}
+              orgName={org.name}
+              currentLogoUrl={org.logoUrl}
+              onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })}
+              size={48}
+            />
+            <View style={styles.v2HeaderInfo}>
+              <View style={styles.v2HeaderNameRow}>
+                <Text style={styles.v2OrgName} numberOfLines={1}>{org.name}</Text>
+                <StatusBadge status={org.status} />
+              </View>
+              <Text style={styles.v2OrgMeta} numberOfLines={1}>
+                {[org.type, [org.city, org.state].filter(Boolean).join(', ')].filter(Boolean).join(' · ') || 'No details'}
+              </Text>
+            </View>
+            <View style={styles.v2HeaderActions}>
+              <TouchableOpacity
+                style={styles.v2NewQuoteBtn}
+                onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
+              >
+                <Plus size={14} color="#fff" />
+                <Text style={styles.v2NewQuoteBtnText}>New Quote</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.v2HeaderIconBtn} onPress={openEditOrg}>
+                <Edit3 size={15} color={Colors.light.textSecondary} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.v2HeaderIconBtn} onPress={() => setShowOrgMenu((v) => !v)}>
+                <MoreHorizontal size={15} color={Colors.light.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            {showOrgMenu && (
+              <>
+                <Pressable
+                  style={{ position: 'fixed' as any, top: 0, left: 0, right: 0, bottom: 0, zIndex: 98 }}
+                  onPress={() => setShowOrgMenu(false)}
+                />
+                <View style={[styles.orgMenuDropdown, styles.v2OrgMenuDropdown]}>
+                  <TouchableOpacity
+                    style={styles.orgMenuItem}
+                    onPress={() => { setShowOrgMenu(false); router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } }); }}
+                  >
+                    <Plus size={14} color={Colors.light.tint} />
+                    <Text style={styles.orgMenuItemText}>New Quote</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.orgMenuItem} onPress={() => { setShowOrgMenu(false); openEditOrg(); }}>
+                    <Edit3 size={14} color={Colors.light.text} />
+                    <Text style={styles.orgMenuItemText}>Edit Profile</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.orgMenuItem, styles.orgMenuItemDanger]} onPress={() => { setShowOrgMenu(false); handleDeleteOrg(); }}>
+                    <Trash2 size={14} color={Colors.light.error} />
+                    <Text style={[styles.orgMenuItemText, { color: Colors.light.error }]}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+
+          {/* Full-width tab bar */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.v2TabBar} contentContainerStyle={{ flexDirection: 'row' }}>
+            {TAB_CONFIG.map(({ id, label, count }) => (
+              <TouchableOpacity
+                key={id}
+                style={[styles.v2Tab, activeTab === id && styles.v2TabActive]}
+                onPress={() => setActiveTab(id as OrgTab)}
+              >
+                <Text style={[styles.v2TabText, activeTab === id && styles.v2TabTextActive]}>{label}</Text>
+                {count !== undefined && (
+                  <View style={[styles.v2TabBadge, activeTab === id && styles.v2TabBadgeActive]}>
+                    <Text style={[styles.v2TabBadgeText, activeTab === id && styles.v2TabBadgeTextActive]}>{count}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* ── V2: OVERVIEW TAB — 2-column body ── */}
+        {activeTab === 'overview' && (
+          isDesktop ? (
+            <View style={styles.v2Body}>
+              <ScrollView style={styles.v2LeftCol} contentContainerStyle={styles.v2LeftColContent} showsVerticalScrollIndicator={false}>
+                {leftPanel}
+                <View style={{ height: 32 }} />
+              </ScrollView>
+              <View style={styles.v2ColDivider} />
+              <ScrollView style={styles.v2RightCol} contentContainerStyle={styles.v2RightColContent} showsVerticalScrollIndicator={false}>
+                {overviewCards}
+                <View style={{ height: 32 }} />
+              </ScrollView>
+            </View>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.v2MobileContent}>
+              {leftPanel}
+              {overviewCards}
+              <View style={{ height: 32 }} />
+            </ScrollView>
+          )
+        )}
+
+        {/* ── V2: ACTIVITY TAB ── */}
+        {activeTab === 'activity' && (
+          <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
+            <View style={styles.tabContentHeader}>
+              <Text style={styles.tabContentTitle}>Activity Log</Text>
+              <TouchableOpacity style={styles.addItemBtn} onPress={() => setActivityModal(true)}>
+                <Plus size={13} color="#fff" /><Text style={styles.addItemBtnText}>Log Activity</Text>
+              </TouchableOpacity>
+            </View>
+            {org.activityLog.length === 0 ? (
+              <View style={styles.emptyTab}>
+                <Clock size={36} color={Colors.light.border} />
+                <Text style={styles.emptyTabText}>No activity logged yet</Text>
+                <Text style={styles.emptyTabSub}>Log a call, email, or note to start tracking interactions.</Text>
+              </View>
+            ) : (
+              org.activityLog.map((entry) => renderActivityEntry(entry))
+            )}
+            {(isLead || org.campaigns.length > 0) && (
+              <View style={[styles.infoCard, { marginTop: 16 }]}>
+                <View style={styles.infoCardHeader}>
+                  <View style={styles.infoCardHeaderLeft}>
+                    <TrendingUp size={15} color="#fff" />
+                    <Text style={styles.infoCardTitle}>Campaigns</Text>
+                    {org.campaigns.length > 0 && (
+                      <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{org.campaigns.length}</Text></View>
+                    )}
+                  </View>
+                  <TouchableOpacity style={styles.infoCardAction} onPress={() => setCampaignModal(true)}>
+                    <Plus size={13} color="#fff" /><Text style={styles.infoCardActionText}>Start Campaign</Text>
+                  </TouchableOpacity>
+                </View>
+                {org.campaigns.length === 0 ? (
+                  <View style={styles.emptyCard}>
+                    <Text style={styles.emptyCardText}>No campaigns yet.</Text>
+                    <Text style={styles.emptyCardSub}>Start a campaign to track your outreach steps.</Text>
+                  </View>
+                ) : (
+                  org.campaigns.map((campaign) => {
+                    const completedCount = campaign.steps.filter((s) => s.status !== 'pending').length;
+                    const totalCount = campaign.steps.length;
+                    const progress = totalCount > 0 ? completedCount / totalCount : 0;
+                    return (
+                      <View key={campaign.id} style={styles.campaignCard}>
+                        <View style={styles.campaignHeader}>
+                          <View style={styles.campaignHeaderLeft}>
+                            <Text style={styles.campaignName}>{campaign.templateName}</Text>
+                            <Text style={styles.campaignDate}>Started {formatDate(campaign.startedDate)}</Text>
+                          </View>
+                          <View style={styles.campaignProgress}>
+                            <Text style={styles.campaignProgressText}>{completedCount}/{totalCount}</Text>
+                            <View style={styles.campaignProgressBar}>
+                              <View style={[styles.campaignProgressFill, { width: `${progress * 100}%` as any }]} />
+                            </View>
+                          </View>
+                          <TouchableOpacity style={styles.campaignDelete} onPress={() => Alert.alert('Remove Campaign', 'Remove this campaign?', [{ text: 'Cancel', style: 'cancel' }, { text: 'Remove', style: 'destructive', onPress: () => deleteCampaign({ orgId: org.id, campaignId: campaign.id }) }])}>
+                            <Trash2 size={13} color={Colors.light.textSecondary} />
+                          </TouchableOpacity>
+                        </View>
+                        {campaign.steps.map((step) => (
+                          <View key={step.id} style={styles.campaignStep}>
+                            <View style={styles.campaignStepNum}><Text style={styles.campaignStepNumText}>{step.stepNumber}</Text></View>
+                            <View style={styles.campaignStepInfo}>
+                              <Text style={styles.campaignStepLabel}>{step.label}</Text>
+                              <View style={styles.campaignStepMeta}>
+                                <View style={[styles.campaignStepTypeBadge, { backgroundColor: (ACTIVITY_TYPE_CONFIG[step.type as ActivityType]?.color || '#6B7280') + '20' }]}>
+                                  <Text style={[styles.campaignStepTypeText, { color: ACTIVITY_TYPE_CONFIG[step.type as ActivityType]?.color || '#6B7280' }]}>{step.type.charAt(0).toUpperCase() + step.type.slice(1)}</Text>
+                                </View>
+                                {step.scheduledDate && <Text style={styles.campaignStepDate}>Due {formatDate(step.scheduledDate)}</Text>}
+                              </View>
+                            </View>
+                            <View style={styles.campaignStepStatus}>
+                              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                <View style={styles.stepStatusRow}>
+                                  {STEP_STATUSES.map((ss) => (
+                                    <TouchableOpacity key={ss} style={[styles.stepStatusBtn, step.status === ss && { backgroundColor: STEP_STATUS_CONFIG[ss].bg, borderColor: STEP_STATUS_CONFIG[ss].color }]} onPress={() => handleUpdateStepStatus(campaign, step, ss)}>
+                                      <Text style={[styles.stepStatusBtnText, step.status === ss && { color: STEP_STATUS_CONFIG[ss].color, fontWeight: '700' as const }]}>{STEP_STATUS_CONFIG[ss].label}</Text>
+                                    </TouchableOpacity>
+                                  ))}
+                                </View>
+                              </ScrollView>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+            )}
+            <View style={{ height: 24 }} />
+          </ScrollView>
+        )}
+
+        {/* ── V2: NOTES TAB ── */}
+        {activeTab === 'notes' && (
+          <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
+            <View style={styles.tabContentHeader}>
+              <Text style={styles.tabContentTitle}>Notes</Text>
+              <TouchableOpacity style={styles.addItemBtn} onPress={() => { setActivityForm((f) => ({ ...f, type: 'note' })); setActivityModal(true); }}>
+                <Plus size={13} color="#fff" /><Text style={styles.addItemBtnText}>Add Note</Text>
+              </TouchableOpacity>
+            </View>
+            {(org as any).notes ? (
+              <View style={styles.orgNotesCard}>
+                <Text style={styles.orgNotesLabel}>Organization Notes</Text>
+                <Text style={styles.orgNotesText}>{(org as any).notes}</Text>
+              </View>
+            ) : null}
+            {noteEntries.length === 0 ? (
+              <View style={styles.emptyTab}>
+                <FileText size={36} color={Colors.light.border} />
+                <Text style={styles.emptyTabText}>No notes yet</Text>
+                <Text style={styles.emptyTabSub}>Add a note to capture important information about this client.</Text>
+              </View>
+            ) : (
+              noteEntries.map((entry) => renderActivityEntry(entry))
+            )}
+            <View style={{ height: 24 }} />
+          </ScrollView>
+        )}
+
+        {/* ── V2: EMAILS TAB ── */}
+        {activeTab === 'emails' && (
+          <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
+            <View style={styles.tabContentHeader}>
+              <Text style={styles.tabContentTitle}>Emails</Text>
+              <TouchableOpacity style={styles.addItemBtn} onPress={() => { setActivityForm((f) => ({ ...f, type: 'email' })); setActivityModal(true); }}>
+                <Plus size={13} color="#fff" /><Text style={styles.addItemBtnText}>Log Email</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.gmailBanner}>
+              <Mail size={28} color="#4285F4" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.gmailBannerTitle}>Gmail Integration — Coming Soon</Text>
+                <Text style={styles.gmailBannerSub}>Connect your Gmail account to send emails and sync your inbox directly from here.</Text>
+              </View>
+            </View>
+            {emailEntries.length === 0 ? (
+              <View style={[styles.emptyTab, { paddingVertical: 32 }]}>
+                <Text style={styles.emptyTabText}>No emails logged yet</Text>
+                <Text style={styles.emptyTabSub}>Use "Log Email" to manually record email interactions.</Text>
+              </View>
+            ) : (
+              emailEntries.map((entry) => renderActivityEntry(entry))
+            )}
+            <View style={{ height: 24 }} />
+          </ScrollView>
+        )}
+
+        {/* ── V2: CALLS TAB ── */}
+        {activeTab === 'calls' && (
+          <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
+            <View style={styles.tabContentHeader}>
+              <Text style={styles.tabContentTitle}>Call Log</Text>
+              <TouchableOpacity style={styles.addItemBtn} onPress={() => { setActivityForm((f) => ({ ...f, type: 'call' })); setActivityModal(true); }}>
+                <Phone size={13} color="#fff" /><Text style={styles.addItemBtnText}>Log Call</Text>
+              </TouchableOpacity>
+            </View>
+            {callEntries.length === 0 ? (
+              <View style={styles.emptyTab}>
+                <PhoneCall size={36} color={Colors.light.border} />
+                <Text style={styles.emptyTabText}>No calls logged yet</Text>
+                <Text style={styles.emptyTabSub}>Log a call or text message to track your conversations.</Text>
+              </View>
+            ) : (
+              callEntries.map((entry) => renderActivityEntry(entry))
+            )}
+            <View style={{ height: 24 }} />
+          </ScrollView>
+        )}
+
+        {/* ── V2: Modals (shared state) ── */}
+        <Modal visible={editOrgModal} transparent animationType="fade" onRequestClose={() => setEditOrgModal(false)}>
+          <Pressable style={styles.modalOverlay} onPress={() => setEditOrgModal(false)}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
+              <Pressable style={styles.modalCard} onPress={() => {}}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Edit Profile</Text>
+                  <TouchableOpacity onPress={() => setEditOrgModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
+                </View>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <Text style={styles.fieldLabel}>Status</Text>
+                  <View style={styles.statusRow}>
+                    {(['Cold', 'Working', 'Active Client', 'Past Client'] as CrmStatus[]).map((s) => {
+                      const cfg = CRM_STATUS_CONFIG[s];
+                      const sel = orgForm.status === s;
+                      return (
+                        <TouchableOpacity key={s} style={[styles.statusChip, sel && { backgroundColor: cfg.bg, borderColor: cfg.border }]} onPress={() => setOrgForm((f) => ({ ...f, status: s }))}>
+                          <Text style={[styles.statusChipText, sel && { color: cfg.color, fontWeight: '700' as const }]}>{s}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <Text style={styles.fieldLabel}>Name *</Text>
+                  <TextInput style={styles.textInput} value={orgForm.name} onChangeText={(v) => setOrgForm((f) => ({ ...f, name: v }))} placeholder="Organization name" placeholderTextColor={Colors.light.textSecondary} />
+                  <Text style={styles.fieldLabel}>Type</Text>
+                  <TouchableOpacity style={styles.typePickerBtn} onPress={() => setShowOrgTypeDropdown((v) => !v)}>
+                    <Text style={orgForm.type ? styles.typePickerBtnText : styles.typePickerBtnPlaceholder}>{orgForm.type || 'Select type…'}</Text>
+                  </TouchableOpacity>
+                  {showOrgTypeDropdown && (
+                    <View style={styles.typeDropdown}>
+                      {ORG_TYPES.map((t) => (
+                        <TouchableOpacity key={t} style={styles.typeDropdownItem} onPress={() => { setOrgForm((f) => ({ ...f, type: t })); setShowOrgTypeDropdown(false); }}>
+                          <Text style={[styles.typeDropdownText, orgForm.type === t && styles.typeDropdownTextActive]}>{t}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                  <Text style={styles.fieldLabel}>City / State</Text>
+                  <View style={styles.rowInputs}>
+                    <TextInput style={[styles.textInput, { flex: 2 }]} value={orgForm.city} onChangeText={(v) => setOrgForm((f) => ({ ...f, city: v }))} placeholder="City" placeholderTextColor={Colors.light.textSecondary} />
+                    <TextInput style={[styles.textInput, { flex: 1 }]} value={orgForm.state} onChangeText={(v) => setOrgForm((f) => ({ ...f, state: v }))} placeholder="State" placeholderTextColor={Colors.light.textSecondary} />
+                  </View>
+                  <Text style={styles.fieldLabel}>Website</Text>
+                  <TextInput style={styles.textInput} value={orgForm.website} onChangeText={(v) => setOrgForm((f) => ({ ...f, website: v }))} placeholder="https://..." placeholderTextColor={Colors.light.textSecondary} autoCapitalize="none" />
+                  <Text style={styles.fieldLabel}>Notes</Text>
+                  <TextInput style={[styles.textInput, styles.notesInput]} value={orgForm.notes} onChangeText={(v) => setOrgForm((f) => ({ ...f, notes: v }))} placeholder="Notes…" placeholderTextColor={Colors.light.textSecondary} multiline numberOfLines={3} />
+                </ScrollView>
+                <View style={styles.modalActions}>
+                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditOrgModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
+                  <TouchableOpacity style={styles.saveBtn} onPress={handleSaveOrg}><Text style={styles.saveBtnText}>Save Changes</Text></TouchableOpacity>
+                </View>
+              </Pressable>
+            </KeyboardAvoidingView>
+          </Pressable>
+        </Modal>
+
+        <Modal visible={contactModal} transparent animationType="fade" onRequestClose={() => setContactModal(false)}>
+          <Pressable style={styles.modalOverlay} onPress={() => setContactModal(false)}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
+              <Pressable style={styles.modalCard} onPress={() => {}}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>{editingContact ? 'Edit Contact' : 'Add Contact'}</Text>
+                  <TouchableOpacity onPress={() => setContactModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
+                </View>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <View style={styles.rowInputs}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.fieldLabel}>First Name *</Text>
+                      <TextInput style={styles.textInput} value={contactForm.firstName} onChangeText={(v) => setContactForm((f) => ({ ...f, firstName: v }))} placeholder="First" placeholderTextColor={Colors.light.textSecondary} autoFocus />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.fieldLabel}>Last Name</Text>
+                      <TextInput style={styles.textInput} value={contactForm.lastName} onChangeText={(v) => setContactForm((f) => ({ ...f, lastName: v }))} placeholder="Last" placeholderTextColor={Colors.light.textSecondary} />
+                    </View>
+                  </View>
+                  <Text style={styles.fieldLabel}>Role</Text>
+                  <View style={styles.statusRow}>
+                    {CONTACT_ROLES.map((r) => (
+                      <TouchableOpacity key={r} style={[styles.statusChip, contactForm.role === r && styles.statusChipActive]} onPress={() => setContactForm((f) => ({ ...f, role: r }))}>
+                        <Text style={[styles.statusChipText, contactForm.role === r && styles.statusChipTextActive]}>{r}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <Text style={styles.fieldLabel}>Email</Text>
+                  <TextInput style={styles.textInput} value={contactForm.email} onChangeText={(v) => setContactForm((f) => ({ ...f, email: v }))} placeholder="email@example.com" placeholderTextColor={Colors.light.textSecondary} keyboardType="email-address" autoCapitalize="none" />
+                  <Text style={styles.fieldLabel}>Phone</Text>
+                  <TextInput style={styles.textInput} value={contactForm.phone} onChangeText={(v) => setContactForm((f) => ({ ...f, phone: v }))} placeholder="(555) 000-0000" placeholderTextColor={Colors.light.textSecondary} keyboardType="phone-pad" />
+                  <Text style={styles.fieldLabel}>Notes</Text>
+                  <TextInput style={[styles.textInput, styles.notesInput]} value={contactForm.notes} onChangeText={(v) => setContactForm((f) => ({ ...f, notes: v }))} placeholder="Notes about this contact…" placeholderTextColor={Colors.light.textSecondary} multiline numberOfLines={3} />
+                  {(org.departments || []).length > 0 && (
+                    <>
+                      <Text style={styles.fieldLabel}>Department</Text>
+                      <View style={styles.statusRow}>
+                        <TouchableOpacity style={[styles.statusChip, !contactForm.departmentId && styles.statusChipActive]} onPress={() => setContactForm((f) => ({ ...f, departmentId: '' }))}>
+                          <Text style={[styles.statusChipText, !contactForm.departmentId && styles.statusChipTextActive]}>None</Text>
+                        </TouchableOpacity>
+                        {(org.departments || []).map((d) => (
+                          <TouchableOpacity key={d.id} style={[styles.statusChip, contactForm.departmentId === d.id && styles.statusChipActive]} onPress={() => setContactForm((f) => ({ ...f, departmentId: d.id }))}>
+                            <Text style={[styles.statusChipText, contactForm.departmentId === d.id && styles.statusChipTextActive]}>{d.name}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </>
+                  )}
+                  {!!contactForm.email.trim() && (
+                    <TouchableOpacity style={styles.primaryToggle} onPress={() => setContactForm((f) => ({ ...f, hubAccess: !f.hubAccess }))}>
+                      {contactForm.hubAccess ? <CheckCircle size={18} color={Colors.light.tint} /> : <Circle size={18} color={Colors.light.textSecondary} />}
+                      <Text style={styles.primaryToggleText}>Enable Client Hub Access</Text>
+                    </TouchableOpacity>
+                  )}
+                </ScrollView>
+                <View style={styles.modalActions}>
+                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setContactModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
+                  <TouchableOpacity style={[styles.saveBtn, !contactForm.firstName.trim() && styles.saveBtnDisabled]} onPress={handleSaveContact} disabled={!contactForm.firstName.trim()}>
+                    <Text style={styles.saveBtnText}>{editingContact ? 'Save Changes' : 'Add Contact'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </Pressable>
+            </KeyboardAvoidingView>
+          </Pressable>
+        </Modal>
+
+        <Modal visible={activityModal} transparent animationType="fade" onRequestClose={() => setActivityModal(false)}>
+          <Pressable style={styles.modalOverlay} onPress={() => setActivityModal(false)}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
+              <Pressable style={styles.modalCard} onPress={() => {}}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Log Activity</Text>
+                  <TouchableOpacity onPress={() => setActivityModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
+                </View>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <Text style={styles.fieldLabel}>Type</Text>
+                  <View style={styles.statusRow}>
+                    {(['call', 'email', 'note', 'meeting', 'text'] as ActivityType[]).map((t) => {
+                      const cfg = ACTIVITY_TYPE_CONFIG[t];
+                      const sel = activityForm.type === t;
+                      return (
+                        <TouchableOpacity key={t} style={[styles.statusChip, sel && { backgroundColor: cfg.color + '20', borderColor: cfg.color }]} onPress={() => setActivityForm((f) => ({ ...f, type: t }))}>
+                          <Text style={[styles.statusChipText, sel && { color: cfg.color, fontWeight: '700' as const }]}>{cfg.label}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <Text style={styles.fieldLabel}>Date</Text>
+                  <TextInput style={styles.textInput} value={activityForm.date} onChangeText={(v) => setActivityForm((f) => ({ ...f, date: v }))} placeholder="YYYY-MM-DD" placeholderTextColor={Colors.light.textSecondary} />
+                  {org.contacts.length > 0 && (
+                    <>
+                      <Text style={styles.fieldLabel}>Contact (optional)</Text>
+                      <View style={styles.statusRow}>
+                        <TouchableOpacity style={[styles.statusChip, !activityForm.contactId && styles.statusChipActive]} onPress={() => setActivityForm((f) => ({ ...f, contactId: '' }))}>
+                          <Text style={[styles.statusChipText, !activityForm.contactId && styles.statusChipTextActive]}>Any</Text>
+                        </TouchableOpacity>
+                        {org.contacts.map((c) => (
+                          <TouchableOpacity key={c.id} style={[styles.statusChip, activityForm.contactId === c.id && styles.statusChipActive]} onPress={() => setActivityForm((f) => ({ ...f, contactId: c.id }))}>
+                            <Text style={[styles.statusChipText, activityForm.contactId === c.id && styles.statusChipTextActive]}>{c.firstName} {c.lastName}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </>
+                  )}
+                  <Text style={styles.fieldLabel}>Subject (optional)</Text>
+                  <TextInput style={styles.textInput} value={activityForm.subject} onChangeText={(v) => setActivityForm((f) => ({ ...f, subject: v }))} placeholder="Brief subject…" placeholderTextColor={Colors.light.textSecondary} />
+                  <Text style={styles.fieldLabel}>Notes *</Text>
+                  <TextInput style={[styles.textInput, styles.notesInput]} value={activityForm.body} onChangeText={(v) => setActivityForm((f) => ({ ...f, body: v }))} placeholder="What happened? What was discussed?" placeholderTextColor={Colors.light.textSecondary} multiline numberOfLines={4} autoFocus />
+                </ScrollView>
+                <View style={styles.modalActions}>
+                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setActivityModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
+                  <TouchableOpacity style={[styles.saveBtn, !activityForm.body.trim() && styles.saveBtnDisabled]} onPress={handleSaveActivity} disabled={!activityForm.body.trim()}>
+                    <Text style={styles.saveBtnText}>Log Activity</Text>
+                  </TouchableOpacity>
+                </View>
+              </Pressable>
+            </KeyboardAvoidingView>
+          </Pressable>
+        </Modal>
+
+        <Modal visible={deptModal} transparent animationType="fade" onRequestClose={() => setDeptModal(false)}>
+          <Pressable style={styles.modalOverlay} onPress={() => setDeptModal(false)}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
+              <Pressable style={styles.modalCard} onPress={() => {}}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>{editingDept ? 'Edit Department' : 'Add Department'}</Text>
+                  <TouchableOpacity onPress={() => setDeptModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
+                </View>
+                <Text style={styles.fieldLabel}>Department Name *</Text>
+                <TextInput style={styles.textInput} value={deptForm.name} onChangeText={(v) => setDeptForm((f) => ({ ...f, name: v }))} placeholder="e.g., Youth, Communications, Admin…" placeholderTextColor={Colors.light.textSecondary} autoFocus />
+                <Text style={styles.fieldLabel}>Description (optional)</Text>
+                <TextInput style={[styles.textInput, styles.notesInput]} value={deptForm.description} onChangeText={(v) => setDeptForm((f) => ({ ...f, description: v }))} placeholder="Brief description of this department…" placeholderTextColor={Colors.light.textSecondary} multiline numberOfLines={2} />
+                <View style={styles.modalActions}>
+                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setDeptModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
+                  <TouchableOpacity style={[styles.saveBtn, !deptForm.name.trim() && styles.saveBtnDisabled]} onPress={handleSaveDept} disabled={!deptForm.name.trim()}>
+                    <Text style={styles.saveBtnText}>{editingDept ? 'Save' : 'Add Department'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </Pressable>
+            </KeyboardAvoidingView>
+          </Pressable>
+        </Modal>
+
+        <Modal visible={campaignModal} transparent animationType="fade" onRequestClose={() => setCampaignModal(false)}>
+          <Pressable style={styles.modalOverlay} onPress={() => setCampaignModal(false)}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
+              <Pressable style={styles.modalCard} onPress={() => {}}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Start Campaign</Text>
+                  <TouchableOpacity onPress={() => setCampaignModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
+                </View>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <Text style={styles.fieldLabel}>Select a Campaign Template</Text>
+                  {templates.map((tpl) => (
+                    <TouchableOpacity key={tpl.id} style={[styles.templateOption, selectedTemplateId === tpl.id && styles.templateOptionActive]} onPress={() => setSelectedTemplateId(tpl.id)}>
+                      <View style={styles.templateOptionHeader}>
+                        <Text style={styles.templateOptionName}>{tpl.name}</Text>
+                        <View style={[styles.templateRadio, selectedTemplateId === tpl.id && styles.templateRadioActive]} />
+                      </View>
+                      {tpl.description && <Text style={styles.templateOptionDesc}>{tpl.description}</Text>}
+                      <Text style={styles.templateOptionSteps}>{tpl.steps.length} steps</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                <View style={styles.modalActions}>
+                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setCampaignModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.saveBtn, !selectedTemplateId && styles.saveBtnDisabled]}
+                    disabled={!selectedTemplateId}
+                    onPress={() => { assignCampaign({ orgId: org.id, templateId: selectedTemplateId }); setCampaignModal(false); setSelectedTemplateId(undefined); }}
+                  >
+                    <Text style={styles.saveBtnText}>Start Campaign</Text>
+                  </TouchableOpacity>
+                </View>
+              </Pressable>
+            </KeyboardAvoidingView>
+          </Pressable>
+        </Modal>
+
+        <Modal visible={addClientUserModal} transparent animationType="fade" onRequestClose={() => setAddClientUserModal(false)}>
+          <Pressable style={styles.modalOverlay} onPress={() => setAddClientUserModal(false)}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
+              <Pressable style={styles.modalCard} onPress={() => {}}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Invite Client User</Text>
+                  <TouchableOpacity onPress={() => setAddClientUserModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
+                </View>
+                <Text style={styles.fieldLabel}>Full Name</Text>
+                <TextInput style={styles.fieldInput} value={clientUserForm.name} onChangeText={(v) => setClientUserForm((f) => ({ ...f, name: v }))} placeholder="e.g. Jane Smith" placeholderTextColor={Colors.light.placeholder} />
+                <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Email Address</Text>
+                <TextInput style={styles.fieldInput} value={clientUserForm.email} onChangeText={(v) => setClientUserForm((f) => ({ ...f, email: v }))} placeholder="e.g. jane@client.com" placeholderTextColor={Colors.light.placeholder} keyboardType="email-address" autoCapitalize="none" />
+                <View style={styles.modalActions}>
+                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setAddClientUserModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
+                  <TouchableOpacity style={[styles.saveBtn, (!clientUserForm.name.trim() || !clientUserForm.email.trim() || clientUserSaving) && { opacity: 0.4 }]} onPress={handleAddClientUser} disabled={!clientUserForm.name.trim() || !clientUserForm.email.trim() || clientUserSaving}>
+                    <Text style={styles.saveBtnText}>{clientUserSaving ? 'Adding...' : 'Add Client'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </Pressable>
+            </KeyboardAvoidingView>
+          </Pressable>
+        </Modal>
+
+        <Modal visible={addMemberModal} transparent animationType="fade" onRequestClose={() => setAddMemberModal(false)}>
+          <Pressable style={styles.modalOverlay} onPress={() => setAddMemberModal(false)}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
+              <Pressable style={styles.modalCard} onPress={() => {}}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Add Member</Text>
+                  <TouchableOpacity onPress={() => setAddMemberModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
+                </View>
+                <Text style={styles.fieldLabel}>Select User</Text>
+                {availableUsers.length === 0 ? (
+                  <Text style={[styles.emptyTabSub, { marginBottom: 12 }]}>No users synced yet. Create a user in the app first.</Text>
+                ) : (
+                  <ScrollView style={{ maxHeight: 180 }} showsVerticalScrollIndicator={false}>
+                    {availableUsers.map((u) => {
+                      const selected = memberForm.userId === u.id;
+                      return (
+                        <TouchableOpacity key={u.id} style={[styles.userPickerRow, selected && styles.userPickerRowSelected]} onPress={() => setMemberForm((f) => ({ ...f, userId: u.id }))}>
+                          <View style={[styles.memberAvatar, { backgroundColor: u.avatarColor || '#FF5A00', width: 30, height: 30, borderRadius: 15 }]}>
+                            <Text style={[styles.memberAvatarText, { fontSize: 12 }]}>{(u.name || '?')[0].toUpperCase()}</Text>
+                          </View>
+                          <Text style={[styles.userPickerName, selected && { color: '#FF5A00', fontWeight: '600' as const }]}>{u.name}</Text>
+                          {selected && <CheckCircle size={16} color="#FF5A00" />}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                )}
+                <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Role</Text>
+                <TouchableOpacity style={[styles.typePickerBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]} onPress={() => setMemberRoleDropdown((v) => !v)}>
+                  <Text style={styles.typePickerBtnText}>{MEMBERSHIP_ROLE_LABELS[memberForm.role] || memberForm.role}</Text>
+                  <ChevronDown size={16} color={Colors.light.textSecondary} />
+                </TouchableOpacity>
+                {memberRoleDropdown && (
+                  <View style={styles.typeDropdown}>
+                    {MEMBERSHIP_ROLES.map((r) => (
+                      <TouchableOpacity key={r} style={styles.typeDropdownItem} onPress={() => { setMemberForm((f) => ({ ...f, role: r })); setMemberRoleDropdown(false); }}>
+                        <Text style={[styles.typeDropdownText, memberForm.role === r && styles.typeDropdownTextActive]}>{MEMBERSHIP_ROLE_LABELS[r]}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+                <View style={styles.modalActions}>
+                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setAddMemberModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
+                  <TouchableOpacity style={[styles.saveBtn, !memberForm.userId && { opacity: 0.4 }]} onPress={handleAddMember} disabled={!memberForm.userId}>
+                    <Text style={styles.saveBtnText}>Add Member</Text>
+                  </TouchableOpacity>
+                </View>
+              </Pressable>
+            </KeyboardAvoidingView>
+          </Pressable>
+        </Modal>
+      </View>
+    );
+  }
+  // ─── END V2 ──────────────────────────────────────────────────────────────────
 
   return (
     <View style={styles.container}>
@@ -2918,5 +3872,147 @@ const styles = StyleSheet.create({
   },
   orgMediaActionBtn: {
     padding: 3,
+  },
+
+  // ── V2 Layout ──────────────────────────────────────────────────────────────
+  v2Header: {
+    backgroundColor: Colors.light.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+    paddingTop: 8,
+  },
+  v2HeaderTop: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    gap: 12,
+  },
+  v2HeaderInfo: {
+    flex: 1,
+    gap: 2,
+    minWidth: 0,
+  },
+  v2HeaderNameRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    flexWrap: 'wrap' as const,
+  },
+  v2OrgName: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: Colors.light.text,
+    flexShrink: 1,
+  },
+  v2OrgMeta: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+  },
+  v2HeaderActions: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+  },
+  v2NewQuoteBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 5,
+    backgroundColor: Colors.light.tint,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  v2NewQuoteBtnText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#fff',
+  },
+  v2HeaderIconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: Colors.light.background,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  v2OrgMenuDropdown: {
+    position: 'absolute' as any,
+    top: 46,
+    right: 0,
+    zIndex: 99,
+  },
+  v2TabBar: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+  },
+  v2Tab: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    gap: 6,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  v2TabActive: {
+    borderBottomColor: Colors.light.tint,
+  },
+  v2TabText: {
+    fontSize: 14,
+    fontWeight: '500' as const,
+    color: Colors.light.textSecondary,
+  },
+  v2TabTextActive: {
+    color: Colors.light.tint,
+    fontWeight: '600' as const,
+  },
+  v2TabBadge: {
+    backgroundColor: Colors.light.border,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    minWidth: 18,
+    alignItems: 'center' as const,
+  },
+  v2TabBadgeActive: {
+    backgroundColor: Colors.light.tint + '22',
+  },
+  v2TabBadgeText: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: Colors.light.textSecondary,
+  },
+  v2TabBadgeTextActive: {
+    color: Colors.light.tint,
+  },
+  v2Body: {
+    flex: 1,
+    flexDirection: 'row' as const,
+  },
+  v2LeftCol: {
+    width: 320,
+    backgroundColor: Colors.light.surface,
+  },
+  v2LeftColContent: {
+    padding: 16,
+    gap: 14,
+  },
+  v2ColDivider: {
+    width: 1,
+    backgroundColor: Colors.light.border,
+  },
+  v2RightCol: {
+    flex: 1,
+  },
+  v2RightColContent: {
+    padding: 16,
+    gap: 14,
+  },
+  v2MobileContent: {
+    padding: 12,
+    gap: 14,
   },
 });
