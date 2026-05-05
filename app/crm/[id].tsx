@@ -285,6 +285,11 @@ export default function OrgProfileScreen() {
   const [clientUserForm, setClientUserForm] = useState({ name: '', email: '' });
   const [clientUserSaving, setClientUserSaving] = useState(false);
 
+  type OrgTab = 'overview' | 'activity' | 'notes' | 'emails' | 'calls';
+  const [activeTab, setActiveTab] = useState<OrgTab>('overview');
+  const [orgNotesText, setOrgNotesText] = useState('');
+  const [editingOrgNotes, setEditingOrgNotes] = useState(false);
+
 
   const { data: memberships = [], isLoading: membershipsLoading, refetch: refetchMemberships } = useQuery<OrgMembership[]>({
     queryKey: ['memberships', org?.id],
@@ -1036,8 +1041,77 @@ export default function OrgProfileScreen() {
     </View>
   );
 
+  const renderActivityEntry = (entry: ActivityEntry) => {
+    const typeCfg = ACTIVITY_TYPE_CONFIG[entry.type] ?? ACTIVITY_TYPE_CONFIG['note'];
+    const isSystemEvent = !!ACTIVITY_TYPE_CONFIG[entry.type]?.isSystem;
+    const iconColor = typeCfg.color;
+    const iconEl =
+      entry.type === 'call'             ? <PhoneCall size={14} color={iconColor} /> :
+      entry.type === 'email'            ? <Mail size={14} color={iconColor} /> :
+      entry.type === 'meeting'          ? <Users size={14} color={iconColor} /> :
+      entry.type === 'text'             ? <MessageSquare size={14} color={iconColor} /> :
+      entry.type === 'client_intake'    ? <Inbox size={14} color={iconColor} /> :
+      entry.type === 'client_cancel'    ? <XCircle size={14} color={iconColor} /> :
+      entry.type === 'quote_sent'       ? <Send size={14} color={iconColor} /> :
+      entry.type === 'quote_approved'   ? <CheckCircle size={14} color={iconColor} /> :
+      entry.type === 'invoice_sent'     ? <FileText size={14} color={iconColor} /> :
+      entry.type === 'payment_received' ? <DollarSign size={14} color={iconColor} /> :
+      entry.type === 'in_production'    ? <Package size={14} color={iconColor} /> :
+      entry.type === 'completed'        ? <CheckCircle size={14} color={iconColor} /> :
+      entry.type === 'hub_enabled'      ? <Shield size={14} color={iconColor} /> :
+      entry.type === 'member_added' || entry.type === 'member_removed' ? <User size={14} color={iconColor} /> :
+      entry.type === 'contact_added' || entry.type === 'contact_updated' ? <User size={14} color={iconColor} /> :
+      <FileText size={14} color={iconColor} />;
+    return (
+      <View key={entry.id} style={[styles.activityEntry, isSystemEvent && styles.activityEntrySystem]}>
+        <View style={[styles.activityIcon, { backgroundColor: typeCfg.color + '20' }]}>{iconEl}</View>
+        <View style={styles.activityBody}>
+          <View style={styles.activityHeaderRow}>
+            <Text style={styles.activityType}>{typeCfg.label}</Text>
+            {entry.contactName ? <Text style={styles.activityContact}>· {entry.contactName}</Text> : null}
+            <Text style={styles.activityDate}>{formatDate(entry.date)}</Text>
+          </View>
+          {entry.subject ? <Text style={styles.activitySubject}>{entry.subject}</Text> : null}
+          <Text style={styles.activityNote}>{entry.body}</Text>
+        </View>
+        <TouchableOpacity style={styles.activityDelete} onPress={() => deleteActivity({ orgId: org.id, entryId: entry.id })}>
+          <X size={13} color={Colors.light.textSecondary} />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const TAB_CONFIG: { id: OrgTab; label: string; count?: number }[] = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'activity', label: 'Activity', count: org.activityLog.length },
+    { id: 'notes', label: 'Notes', count: org.activityLog.filter((e) => e.type === 'note').length || undefined },
+    { id: 'emails', label: 'Emails', count: org.activityLog.filter((e) => e.type === 'email').length || undefined },
+    { id: 'calls', label: 'Calls', count: org.activityLog.filter((e) => e.type === 'call' || e.type === 'text').length || undefined },
+  ];
+
+  const callEntries = org.activityLog.filter((e) => e.type === 'call' || e.type === 'text');
+  const noteEntries = org.activityLog.filter((e) => e.type === 'note');
+  const emailEntries = org.activityLog.filter((e) => e.type === 'email');
+
   const rightPanel = (
-    <ScrollView style={styles.rightPanel} showsVerticalScrollIndicator={false} contentContainerStyle={styles.rightPanelContent}>
+    <View style={styles.rightPanel}>
+      {/* Tab bar */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar} contentContainerStyle={{ flexDirection: 'row' }}>
+        {TAB_CONFIG.map(({ id, label, count }) => (
+          <TouchableOpacity key={id} style={[styles.tab, activeTab === id && styles.tabActive]} onPress={() => setActiveTab(id)}>
+            <Text style={[styles.tabText, activeTab === id && styles.tabTextActive]}>{label}</Text>
+            {count !== undefined && (
+              <View style={[styles.tabBadge, activeTab === id && styles.tabBadgeActive]}>
+                <Text style={[styles.tabBadgeText, activeTab === id && styles.tabBadgeTextActive]}>{count}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* ── OVERVIEW TAB ── */}
+      {activeTab === 'overview' && (
+        <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
 
       {/* Client Legacy card */}
       <View style={styles.infoCard}>
@@ -1284,172 +1358,7 @@ export default function OrgProfileScreen() {
         )}
       </View>
 
-      {/* Activity card */}
-      <View style={styles.infoCard}>
-        <View style={styles.infoCardHeader}>
-          <View style={styles.infoCardHeaderLeft}>
-            <Clock size={15} color="#fff" />
-            <Text style={styles.infoCardTitle}>Activity</Text>
-            {org.activityLog.length > 0 && (
-              <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{org.activityLog.length}</Text></View>
-            )}
-          </View>
-          <TouchableOpacity style={styles.infoCardAction} onPress={() => setActivityModal(true)}>
-            <Plus size={13} color="#fff" />
-            <Text style={styles.infoCardActionText}>Log Activity</Text>
-          </TouchableOpacity>
-        </View>
-        {org.activityLog.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyCardText}>No activity logged yet.</Text>
-            <Text style={styles.emptyCardSub}>Log a call, email, or note to start tracking.</Text>
-          </View>
-        ) : (
-          org.activityLog.map((entry) => {
-                const typeCfg = ACTIVITY_TYPE_CONFIG[entry.type] ?? ACTIVITY_TYPE_CONFIG['note'];
-                const isSystemEvent = !!ACTIVITY_TYPE_CONFIG[entry.type]?.isSystem;
-                const iconColor = typeCfg.color;
-                const iconEl =
-                  entry.type === 'call'             ? <PhoneCall size={14} color={iconColor} /> :
-                  entry.type === 'email'            ? <Mail size={14} color={iconColor} /> :
-                  entry.type === 'meeting'          ? <Users size={14} color={iconColor} /> :
-                  entry.type === 'text'             ? <MessageSquare size={14} color={iconColor} /> :
-                  entry.type === 'client_intake'    ? <Inbox size={14} color={iconColor} /> :
-                  entry.type === 'client_cancel'    ? <XCircle size={14} color={iconColor} /> :
-                  entry.type === 'quote_sent'       ? <Send size={14} color={iconColor} /> :
-                  entry.type === 'quote_approved'   ? <CheckCircle size={14} color={iconColor} /> :
-                  entry.type === 'invoice_sent'     ? <FileText size={14} color={iconColor} /> :
-                  entry.type === 'payment_received' ? <DollarSign size={14} color={iconColor} /> :
-                  entry.type === 'in_production'    ? <Package size={14} color={iconColor} /> :
-                  entry.type === 'completed'        ? <CheckCircle size={14} color={iconColor} /> :
-                  entry.type === 'hub_enabled'      ? <Shield size={14} color={iconColor} /> :
-                  entry.type === 'member_added' || entry.type === 'member_removed' ? <User size={14} color={iconColor} /> :
-                  entry.type === 'contact_added' || entry.type === 'contact_updated' ? <User size={14} color={iconColor} /> :
-                  <FileText size={14} color={iconColor} />;
-            return (
-              <View key={entry.id} style={[styles.activityEntry, isSystemEvent && styles.activityEntrySystem]}>
-                <View style={[styles.activityIcon, { backgroundColor: typeCfg.color + '20' }]}>
-                  {iconEl}
-                </View>
-                <View style={styles.activityBody}>
-                  <View style={styles.activityHeaderRow}>
-                    <Text style={styles.activityType}>{typeCfg.label}</Text>
-                    {entry.contactName && (
-                      <Text style={styles.activityContact}>· {entry.contactName}</Text>
-                    )}
-                    <Text style={styles.activityDate}>{formatDate(entry.date)}</Text>
-                  </View>
-                  {entry.subject ? <Text style={styles.activitySubject}>{entry.subject}</Text> : null}
-                  <Text style={styles.activityNote}>{entry.body}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.activityDelete}
-                  onPress={() => deleteActivity({ orgId: org.id, entryId: entry.id })}
-                >
-                  <X size={13} color={Colors.light.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            );
-          })
-        )}
-      </View>
 
-      {/* Campaigns card */}
-      {(isLead || org.campaigns.length > 0) && (
-        <View style={styles.infoCard}>
-          <View style={styles.infoCardHeader}>
-            <View style={styles.infoCardHeaderLeft}>
-              <TrendingUp size={15} color="#fff" />
-              <Text style={styles.infoCardTitle}>Campaigns</Text>
-              {org.campaigns.length > 0 && (
-                <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{org.campaigns.length}</Text></View>
-              )}
-            </View>
-            <TouchableOpacity style={styles.infoCardAction} onPress={() => setCampaignModal(true)}>
-              <Plus size={13} color="#fff" />
-              <Text style={styles.infoCardActionText}>Start Campaign</Text>
-            </TouchableOpacity>
-          </View>
-          {org.campaigns.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyCardText}>No campaigns yet.</Text>
-              <Text style={styles.emptyCardSub}>Start a campaign to track your outreach steps.</Text>
-            </View>
-          ) : (
-            org.campaigns.map((campaign) => {
-              const completedCount = campaign.steps.filter((s) => s.status !== 'pending').length;
-              const totalCount = campaign.steps.length;
-              const progress = totalCount > 0 ? completedCount / totalCount : 0;
-              return (
-                <View key={campaign.id} style={styles.campaignCard}>
-                  <View style={styles.campaignHeader}>
-                    <View style={styles.campaignHeaderLeft}>
-                      <Text style={styles.campaignName}>{campaign.templateName}</Text>
-                      <Text style={styles.campaignDate}>Started {formatDate(campaign.startedDate)}</Text>
-                    </View>
-                    <View style={styles.campaignProgress}>
-                      <Text style={styles.campaignProgressText}>{completedCount}/{totalCount}</Text>
-                      <View style={styles.campaignProgressBar}>
-                        <View style={[styles.campaignProgressFill, { width: `${progress * 100}%` as any }]} />
-                      </View>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.campaignDelete}
-                      onPress={() => {
-                        Alert.alert('Remove Campaign', 'Remove this campaign from the contact?', [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Remove', style: 'destructive', onPress: () => deleteCampaign({ orgId: org.id, campaignId: campaign.id }) },
-                        ]);
-                      }}
-                    >
-                      <Trash2 size={13} color={Colors.light.textSecondary} />
-                    </TouchableOpacity>
-                  </View>
-                  {campaign.steps.map((step) => {
-                    return (
-                      <View key={step.id} style={styles.campaignStep}>
-                        <View style={styles.campaignStepNum}>
-                          <Text style={styles.campaignStepNumText}>{step.stepNumber}</Text>
-                        </View>
-                        <View style={styles.campaignStepInfo}>
-                          <Text style={styles.campaignStepLabel}>{step.label}</Text>
-                          <View style={styles.campaignStepMeta}>
-                            <View style={[styles.campaignStepTypeBadge, { backgroundColor: ACTIVITY_TYPE_CONFIG[step.type as ActivityType]?.color + '20' || '#F3F4F6' }]}>
-                              <Text style={[styles.campaignStepTypeText, { color: ACTIVITY_TYPE_CONFIG[step.type as ActivityType]?.color || '#6B7280' }]}>
-                                {step.type.charAt(0).toUpperCase() + step.type.slice(1)}
-                              </Text>
-                            </View>
-                            {step.scheduledDate && (
-                              <Text style={styles.campaignStepDate}>Due {formatDate(step.scheduledDate)}</Text>
-                            )}
-                          </View>
-                        </View>
-                        <View style={styles.campaignStepStatus}>
-                          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                            <View style={styles.stepStatusRow}>
-                              {STEP_STATUSES.map((ss) => (
-                                <TouchableOpacity
-                                  key={ss}
-                                  style={[styles.stepStatusBtn, step.status === ss && { backgroundColor: STEP_STATUS_CONFIG[ss].bg, borderColor: STEP_STATUS_CONFIG[ss].color }]}
-                                  onPress={() => handleUpdateStepStatus(campaign, step, ss)}
-                                >
-                                  <Text style={[styles.stepStatusBtnText, step.status === ss && { color: STEP_STATUS_CONFIG[ss].color, fontWeight: '700' as const }]}>
-                                    {STEP_STATUS_CONFIG[ss].label}
-                                  </Text>
-                                </TouchableOpacity>
-                              ))}
-                            </View>
-                          </ScrollView>
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              );
-            })
-          )}
-        </View>
-      )}
 
       {/* Media Bin card */}
       <View style={styles.infoCard}>
@@ -1565,8 +1474,190 @@ export default function OrgProfileScreen() {
         )}
       </View>
 
-      <View style={{ height: 40 }} />
-    </ScrollView>
+          <View style={{ height: 24 }} />
+        </ScrollView>
+      )}
+
+      {/* ── ACTIVITY TAB ── */}
+      {activeTab === 'activity' && (
+        <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
+          <View style={styles.tabContentHeader}>
+            <Text style={styles.tabContentTitle}>Activity Log</Text>
+            <TouchableOpacity style={styles.addItemBtn} onPress={() => setActivityModal(true)}>
+              <Plus size={13} color="#fff" /><Text style={styles.addItemBtnText}>Log Activity</Text>
+            </TouchableOpacity>
+          </View>
+          {org.activityLog.length === 0 ? (
+            <View style={styles.emptyTab}>
+              <Clock size={36} color={Colors.light.border} />
+              <Text style={styles.emptyTabText}>No activity logged yet</Text>
+              <Text style={styles.emptyTabSub}>Log a call, email, or note to start tracking interactions.</Text>
+            </View>
+          ) : (
+            org.activityLog.map((entry) => renderActivityEntry(entry))
+          )}
+
+          {/* Campaigns section (for leads) */}
+          {(isLead || org.campaigns.length > 0) && (
+            <View style={[styles.infoCard, { marginTop: 16 }]}>
+              <View style={styles.infoCardHeader}>
+                <View style={styles.infoCardHeaderLeft}>
+                  <TrendingUp size={15} color="#fff" />
+                  <Text style={styles.infoCardTitle}>Campaigns</Text>
+                  {org.campaigns.length > 0 && (
+                    <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{org.campaigns.length}</Text></View>
+                  )}
+                </View>
+                <TouchableOpacity style={styles.infoCardAction} onPress={() => setCampaignModal(true)}>
+                  <Plus size={13} color="#fff" /><Text style={styles.infoCardActionText}>Start Campaign</Text>
+                </TouchableOpacity>
+              </View>
+              {org.campaigns.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <Text style={styles.emptyCardText}>No campaigns yet.</Text>
+                  <Text style={styles.emptyCardSub}>Start a campaign to track your outreach steps.</Text>
+                </View>
+              ) : (
+                org.campaigns.map((campaign) => {
+                  const completedCount = campaign.steps.filter((s) => s.status !== 'pending').length;
+                  const totalCount = campaign.steps.length;
+                  const progress = totalCount > 0 ? completedCount / totalCount : 0;
+                  return (
+                    <View key={campaign.id} style={styles.campaignCard}>
+                      <View style={styles.campaignHeader}>
+                        <View style={styles.campaignHeaderLeft}>
+                          <Text style={styles.campaignName}>{campaign.templateName}</Text>
+                          <Text style={styles.campaignDate}>Started {formatDate(campaign.startedDate)}</Text>
+                        </View>
+                        <View style={styles.campaignProgress}>
+                          <Text style={styles.campaignProgressText}>{completedCount}/{totalCount}</Text>
+                          <View style={styles.campaignProgressBar}>
+                            <View style={[styles.campaignProgressFill, { width: `${progress * 100}%` as any }]} />
+                          </View>
+                        </View>
+                        <TouchableOpacity style={styles.campaignDelete} onPress={() => Alert.alert('Remove Campaign', 'Remove this campaign?', [{ text: 'Cancel', style: 'cancel' }, { text: 'Remove', style: 'destructive', onPress: () => deleteCampaign({ orgId: org.id, campaignId: campaign.id }) }])}>
+                          <Trash2 size={13} color={Colors.light.textSecondary} />
+                        </TouchableOpacity>
+                      </View>
+                      {campaign.steps.map((step) => (
+                        <View key={step.id} style={styles.campaignStep}>
+                          <View style={styles.campaignStepNum}><Text style={styles.campaignStepNumText}>{step.stepNumber}</Text></View>
+                          <View style={styles.campaignStepInfo}>
+                            <Text style={styles.campaignStepLabel}>{step.label}</Text>
+                            <View style={styles.campaignStepMeta}>
+                              <View style={[styles.campaignStepTypeBadge, { backgroundColor: (ACTIVITY_TYPE_CONFIG[step.type as ActivityType]?.color || '#6B7280') + '20' }]}>
+                                <Text style={[styles.campaignStepTypeText, { color: ACTIVITY_TYPE_CONFIG[step.type as ActivityType]?.color || '#6B7280' }]}>{step.type.charAt(0).toUpperCase() + step.type.slice(1)}</Text>
+                              </View>
+                              {step.scheduledDate && <Text style={styles.campaignStepDate}>Due {formatDate(step.scheduledDate)}</Text>}
+                            </View>
+                          </View>
+                          <View style={styles.campaignStepStatus}>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                              <View style={styles.stepStatusRow}>
+                                {STEP_STATUSES.map((ss) => (
+                                  <TouchableOpacity key={ss} style={[styles.stepStatusBtn, step.status === ss && { backgroundColor: STEP_STATUS_CONFIG[ss].bg, borderColor: STEP_STATUS_CONFIG[ss].color }]} onPress={() => handleUpdateStepStatus(campaign, step, ss)}>
+                                    <Text style={[styles.stepStatusBtnText, step.status === ss && { color: STEP_STATUS_CONFIG[ss].color, fontWeight: '700' as const }]}>{STEP_STATUS_CONFIG[ss].label}</Text>
+                                  </TouchableOpacity>
+                                ))}
+                              </View>
+                            </ScrollView>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          )}
+          <View style={{ height: 24 }} />
+        </ScrollView>
+      )}
+
+      {/* ── NOTES TAB ── */}
+      {activeTab === 'notes' && (
+        <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
+          <View style={styles.tabContentHeader}>
+            <Text style={styles.tabContentTitle}>Notes</Text>
+            <TouchableOpacity style={styles.addItemBtn} onPress={() => { setActivityForm((f) => ({ ...f, type: 'note' })); setActivityModal(true); }}>
+              <Plus size={13} color="#fff" /><Text style={styles.addItemBtnText}>Add Note</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Org-level notes */}
+          {(org as any).notes ? (
+            <View style={styles.orgNotesCard}>
+              <Text style={styles.orgNotesLabel}>Organization Notes</Text>
+              <Text style={styles.orgNotesText}>{(org as any).notes}</Text>
+            </View>
+          ) : null}
+
+          {noteEntries.length === 0 ? (
+            <View style={styles.emptyTab}>
+              <FileText size={36} color={Colors.light.border} />
+              <Text style={styles.emptyTabText}>No notes yet</Text>
+              <Text style={styles.emptyTabSub}>Add a note to capture important information about this client.</Text>
+            </View>
+          ) : (
+            noteEntries.map((entry) => renderActivityEntry(entry))
+          )}
+          <View style={{ height: 24 }} />
+        </ScrollView>
+      )}
+
+      {/* ── EMAILS TAB ── */}
+      {activeTab === 'emails' && (
+        <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
+          <View style={styles.tabContentHeader}>
+            <Text style={styles.tabContentTitle}>Emails</Text>
+            <TouchableOpacity style={styles.addItemBtn} onPress={() => { setActivityForm((f) => ({ ...f, type: 'email' })); setActivityModal(true); }}>
+              <Plus size={13} color="#fff" /><Text style={styles.addItemBtnText}>Log Email</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Gmail placeholder banner */}
+          <View style={styles.gmailBanner}>
+            <Mail size={28} color="#4285F4" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.gmailBannerTitle}>Gmail Integration — Coming Soon</Text>
+              <Text style={styles.gmailBannerSub}>Connect your Gmail account to send emails and sync your inbox directly from here.</Text>
+            </View>
+          </View>
+
+          {emailEntries.length === 0 ? (
+            <View style={[styles.emptyTab, { paddingVertical: 32 }]}>
+              <Text style={styles.emptyTabText}>No emails logged yet</Text>
+              <Text style={styles.emptyTabSub}>Use "Log Email" to manually record email interactions.</Text>
+            </View>
+          ) : (
+            emailEntries.map((entry) => renderActivityEntry(entry))
+          )}
+          <View style={{ height: 24 }} />
+        </ScrollView>
+      )}
+
+      {/* ── CALLS TAB ── */}
+      {activeTab === 'calls' && (
+        <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
+          <View style={styles.tabContentHeader}>
+            <Text style={styles.tabContentTitle}>Call Log</Text>
+            <TouchableOpacity style={styles.addItemBtn} onPress={() => { setActivityForm((f) => ({ ...f, type: 'call' })); setActivityModal(true); }}>
+              <Phone size={13} color="#fff" /><Text style={styles.addItemBtnText}>Log Call</Text>
+            </TouchableOpacity>
+          </View>
+          {callEntries.length === 0 ? (
+            <View style={styles.emptyTab}>
+              <PhoneCall size={36} color={Colors.light.border} />
+              <Text style={styles.emptyTabText}>No calls logged yet</Text>
+              <Text style={styles.emptyTabSub}>Log a call or text message to track your conversations.</Text>
+            </View>
+          ) : (
+            callEntries.map((entry) => renderActivityEntry(entry))
+          )}
+          <View style={{ height: 24 }} />
+        </ScrollView>
+      )}
+    </View>
   );
 
   return (
@@ -2092,6 +2183,24 @@ const styles = StyleSheet.create({
   emptyTab: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 50 },
   emptyTabText: { fontSize: 15, fontWeight: '600' as const, color: Colors.light.text },
   emptyTabSub: { fontSize: 13, color: Colors.light.textSecondary, textAlign: 'center' },
+
+  tabContentScroll: { flex: 1 },
+  tabContentPad: { padding: 16, gap: 0 },
+
+  orgNotesCard: {
+    backgroundColor: Colors.light.surface, borderRadius: 12, borderWidth: 1,
+    borderColor: Colors.light.border, padding: 14, marginBottom: 14,
+  },
+  orgNotesLabel: { fontSize: 11, fontWeight: '700' as const, color: Colors.light.textSecondary, textTransform: 'uppercase' as const, letterSpacing: 0.6, marginBottom: 6 },
+  orgNotesText: { fontSize: 14, color: Colors.light.text, lineHeight: 20 },
+
+  gmailBanner: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 14,
+    backgroundColor: '#EEF3FF', borderRadius: 12, borderWidth: 1,
+    borderColor: '#C7D7FC', padding: 16, marginBottom: 16,
+  },
+  gmailBannerTitle: { fontSize: 14, fontWeight: '700' as const, color: '#1D3BBC', marginBottom: 4 },
+  gmailBannerSub: { fontSize: 13, color: '#3B55CC', lineHeight: 18 },
 
   activityEntry: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 10,
