@@ -1,0 +1,143 @@
+We are updating the Organization page layout and tab structure.
+
+======================================================================
+1. TAB STRUCTURE
+======================================================================
+
+Tabs should ONLY include:
+
+- Overview
+- Activity
+- Notes
+- Emails
+- Calls
+
+Do NOT create tabs for:
+- Projects
+- Quotes
+- Media
+
+These should NOT be moved into tabs.
+
+======================================================================
+2. OVERVIEW TAB (PRIMARY DASHBOARD)
+======================================================================
+
+The Overview tab should act as a command center and must include:
+
+Top Section:
+- Organization header
+- Business Type
+- Address
+- Website
+- Primary Contact
+- Client Hub status
+
+Core Dashboard Sections (always visible):
+
+1. Client Legacy
+- total projects (completed)
+- total revenue
+- total profit
+- service breakdown percentages
+
+2. Active Projects
+- project status
+- order date
+- due date
+- project name
+- services
+- number of pieces
+- total
+- markup
+- quick actions
+
+3. Submitted Quotes
+- status
+- quote date
+- project/quote name
+- services
+- number of pieces
+- total
+- markup
+- quick actions
+
+4. Media Bin (Preview)
+- medium-sized card grid
+- artwork + mockups
+- upload button
+- quick view
+- link to full media view if needed
+
+These sections should remain visible on Overview at all times.
+
+Do NOT move them into separate tabs.
+
+======================================================================
+3. ACTIVITY TAB
+======================================================================
+
+Move existing Activity timeline into this tab.
+
+Show:
+- project activity
+- quote activity
+- invoice activity
+- media uploads
+- emails
+- calls
+- notes
+
+Chronological timeline.
+
+======================================================================
+4. NOTES TAB
+======================================================================
+
+Internal notes system.
+
+- add/edit/delete notes
+- timestamps
+- author
+- optional note types
+
+======================================================================
+5. EMAILS TAB
+======================================================================
+
+Gmail integration (MVP):
+
+- connect Gmail via OAuth
+- send email from OS
+- log sent emails
+- display email threads tied to contacts
+- show subject, sender, recipient, date, snippet
+- open full thread
+- log email activity in Activity tab
+
+Only sync emails related to known contacts.
+
+======================================================================
+6. CALLS TAB
+======================================================================
+
+Manual call logging:
+
+- contact
+- date/time
+- call type
+- notes
+- follow-up
+
+Also log calls in Activity tab.
+
+======================================================================
+7. UX PRINCIPLE
+======================================================================
+
+Overview = operational dashboard (high visibility, high frequency use)
+
+Tabs = supporting context (history, communication, notes)
+
+Do not turn this into a tab-heavy CRM like HubSpot.
+Keep key business data visible without extra clicks.
