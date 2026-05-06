@@ -1,0 +1,115 @@
+We are redesigning the Organization page layout to use a left-side anchored panel similar to modern CRM layouts.
+
+======================================================================
+1. LAYOUT STRUCTURE
+======================================================================
+
+Create a two-column layout:
+
+LEFT PANEL (fixed/sticky):
+- Organization information
+- Contacts section
+
+RIGHT PANEL (main workspace):
+- Tabs (Overview, Activity, Notes, Emails, Calls)
+- Tab content
+
+======================================================================
+2. LEFT PANEL (CONTEXT COLUMN)
+======================================================================
+
+Top section:
+- Organization logo
+- Organization name
+- Status badge (Active Client, etc.)
+- Business Type
+- Address
+- Website
+
+Below that:
+
+REPLACE "About This Contact" with:
+
+Contacts Section
+
+Show:
+- Contact name
+- Role (Primary, Member, etc.)
+- Phone number (formatted)
+- Email address
+- Quick actions (edit, delete)
+
+Include:
+- "+ Add Contact" button
+- Optional "View All" link if list exceeds visible space
+
+Limit visible contacts to 3–5 for clean UI.
+
+Left panel should:
+- have fixed width (~300–360px)
+- be slightly visually muted
+- remain sticky on scroll
+
+======================================================================
+3. RIGHT PANEL (MAIN WORKSPACE)
+======================================================================
+
+Top:
+Tabs:
+- Overview
+- Activity
+- Notes
+- Emails
+- Calls
+
+Tabs should span horizontally and act as primary navigation.
+
+======================================================================
+4. OVERVIEW TAB (RIGHT SIDE ONLY)
+======================================================================
+
+Overview should contain operational dashboard sections:
+
+1. Active Projects (primary section)
+2. Submitted Quotes
+3. Client Legacy
+4. Media preview
+
+Structure:
+- Active Projects full width
+- Submitted Quotes + Client Legacy in 2-column row
+- Media below as lighter section
+
+======================================================================
+5. UX PRINCIPLES
+======================================================================
+
+- Left panel = context (who the client is)
+- Right panel = actions (what we do with them)
+
+- Reduce clutter in main workspace
+- Keep key info always visible without scrolling
+- Maintain strong visual hierarchy
+
+======================================================================
+6. RESPONSIVE BEHAVIOR
+======================================================================
+
+Desktop:
+- left panel fixed
+- right panel fluid
+
+Tablet/Mobile:
+- left panel collapses into top section or accordion
+- content stacks cleanly
+
+======================================================================
+7. FINAL GOAL
+======================================================================
+
+The Organization page should feel like a modern CRM:
+
+- left side = identity + relationships
+- right side = workflow + operations
+
+Clean, structured, and easy to use without clutter.
