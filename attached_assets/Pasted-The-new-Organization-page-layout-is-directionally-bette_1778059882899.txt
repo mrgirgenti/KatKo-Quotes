@@ -1,0 +1,119 @@
+The new Organization page layout is directionally better, but the proportions are off.
+
+Current issues:
+- Left panel is too wide and takes up too much screen space
+- Right workspace feels squeezed even though it contains the main operational dashboard
+- Tabs float in a large empty area and feel disconnected from the content below
+- There is still too much dead space, especially around the tabs
+- The page feels split in half instead of like a focused CRM layout
+
+======================================================================
+1. FIX PAGE PROPORTIONS
+======================================================================
+
+Adjust the layout to use a narrower left context panel and wider right workspace.
+
+Preferred desktop layout:
+- Left panel: 320px–380px fixed width
+- Right workspace: remaining flexible width
+
+Do NOT make the left panel 50% width.
+
+The left panel should act as a compact context sidebar, not a full page column.
+
+======================================================================
+2. LEFT PANEL REFINEMENT
+======================================================================
+
+Left panel should include:
+- organization logo
+- organization name
+- status
+- business type
+- location
+- primary actions
+- contacts
+- notes
+
+But it should be compact.
+
+Reduce:
+- excessive spacing
+- oversized buttons
+- unnecessary full-width button dominance
+
+Suggested:
+- Keep “New Quote” as a strong primary button
+- Make “Edit Profile” and ellipsis secondary/compact
+- Contacts list should remain readable but not oversized
+
+======================================================================
+3. RIGHT WORKSPACE REFINEMENT
+======================================================================
+
+Right workspace is the main operating area.
+
+It should have:
+- tabs at the top
+- tab content directly beneath tabs
+- minimal empty space between tabs and content
+
+Tabs should feel attached to the content area, not floating in the middle of a blank panel.
+
+For Overview tab, show:
+- Active Projects full width
+- Submitted Quotes + Client Legacy in two columns beneath
+- Media preview if available
+
+======================================================================
+4. TAB POSITIONING
+======================================================================
+
+Move tabs closer to the top of the right workspace.
+
+There should not be a huge blank region above or below tabs.
+
+The tabs should be aligned with the top of the right content area and the active tab underline should connect visually with the content below.
+
+======================================================================
+5. VISUAL HIERARCHY
+======================================================================
+
+Right side should have priority.
+
+Active Projects should be the primary visual focus.
+
+Submitted Quotes and Client Legacy should be secondary cards.
+
+Left panel should be visually calmer and smaller.
+
+======================================================================
+6. RESPONSIVE BEHAVIOR
+======================================================================
+
+Desktop:
+- compact fixed left panel
+- wide right workspace
+
+Tablet:
+- left panel may reduce width or stack above
+
+Mobile:
+- stack organization info first
+- then tabs/content
+- no horizontal clipping
+
+======================================================================
+7. FINAL GOAL
+======================================================================
+
+The page should feel like:
+
+LEFT = compact client context
+RIGHT = main operational workspace
+
+Not:
+LEFT = half the page
+RIGHT = squeezed dashboard
+
+Please rebalance the layout and remove remaining tab dead space.

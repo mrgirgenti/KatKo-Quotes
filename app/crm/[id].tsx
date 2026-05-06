@@ -660,7 +660,7 @@ export default function OrgProfileScreen() {
     });
   }, [org, updateCampaignStep]);
 
-  if ((orgsLoading || directOrgLoading) && !org) {
+  if (directOrgLoading && !org) {
     return (
       <View style={styles.container}>
         <Stack.Screen options={{ title: 'Loading…' }} />

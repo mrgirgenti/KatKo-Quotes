@@ -1,0 +1,162 @@
+We need to refine the Organization page layout. The current version is directionally correct but has major spacing, proportion, and hierarchy issues.
+
+======================================================================
+1. CORE ISSUES
+======================================================================
+
+- Left panel is too wide and takes up too much space
+- Right workspace feels compressed even though it contains primary content
+- Tabs are floating with too much dead space around them
+- Layout feels split 50/50 instead of intentional
+- Left panel content is too vertically stacked and inefficient
+
+======================================================================
+2. FIX PAGE PROPORTIONS
+======================================================================
+
+Adjust layout to:
+
+- Left panel: 320px–380px fixed width
+- Right workspace: remaining flexible width
+
+DO NOT allow the left panel to take up half the page.
+
+The left panel should act as a compact context sidebar, not a main content column.
+
+======================================================================
+3. LEFT PANEL HEADER (SPLIT LAYOUT)
+======================================================================
+
+Redesign the top of the left panel into a horizontal split layout.
+
+Structure:
+
+LEFT SIDE:
+- Organization logo/photo
+
+RIGHT SIDE:
+- Organization name
+- Status badge (Active Client, etc.)
+- Business Type
+- Location (city/state)
+
+Below this header row (still within left panel):
+
+- Primary action: "+ New Quote" (prominent)
+- Secondary action: "Edit Profile" (less dominant)
+- Ellipsis/actions menu
+
+Important:
+- All organization identity + actions MUST stay inside the left panel
+- NONE of this should move into the right workspace
+- This replaces the current stacked vertical layout
+- This should reduce vertical space and improve readability
+
+Goal:
+Make the left panel feel like a compact profile card:
+[logo] [organization details + actions]
+
+======================================================================
+4. LEFT PANEL REFINEMENT
+======================================================================
+
+Left panel should include:
+
+- header (new split layout above)
+- contacts section
+- notes (lightweight)
+
+Refinements:
+- reduce excessive vertical spacing
+- avoid oversized buttons taking full width unnecessarily
+- keep content readable but compact
+- contacts list should show 3–5 entries max with "View All" option
+
+======================================================================
+5. RIGHT WORKSPACE STRUCTURE
+======================================================================
+
+Right side is the MAIN operational area.
+
+Top:
+Tabs:
+- Overview
+- Activity
+- Notes
+- Emails
+- Calls
+
+Tabs should:
+- sit at the top of the right panel
+- be tightly aligned with content below
+- NOT float in empty space
+
+Remove large blank space above/below tabs.
+
+======================================================================
+6. OVERVIEW TAB (RIGHT SIDE)
+======================================================================
+
+Overview should contain:
+
+PRIMARY SECTION:
+- Active Projects (full width, most prominent)
+
+SECONDARY ROW:
+- Submitted Quotes (left)
+- Client Legacy (right)
+
+TERTIARY:
+- Media preview (optional, lower emphasis)
+
+======================================================================
+7. TAB POSITIONING FIX
+======================================================================
+
+- Tabs must be visually attached to the content below
+- Reduce vertical spacing between tabs and content
+- Active tab underline should align with the top of the content section
+
+======================================================================
+8. VISUAL HIERARCHY
+======================================================================
+
+- Right panel = primary focus
+- Active Projects = strongest visual weight
+- Submitted Quotes + Client Legacy = secondary
+- Left panel = calmer, less dominant
+
+Reduce:
+- overly bold visuals on all sections
+- excessive spacing between sections
+
+======================================================================
+9. RESPONSIVE BEHAVIOR
+======================================================================
+
+Desktop:
+- fixed compact left panel
+- wide right workspace
+
+Tablet:
+- left panel may shrink or stack
+
+Mobile:
+- stack layout vertically
+- no horizontal overflow
+- maintain readability
+
+======================================================================
+10. FINAL GOAL
+======================================================================
+
+The page should feel like:
+
+LEFT = compact client profile (identity + contacts)
+RIGHT = main operational dashboard (projects, quotes, insights)
+
+NOT:
+LEFT = half the screen
+RIGHT = cramped content
+
+Eliminate dead space, improve balance, and create a clean, professional CRM-style layout.

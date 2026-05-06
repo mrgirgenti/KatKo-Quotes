@@ -123,7 +123,10 @@ export const [CrmProvider, useCrm] = createContextHook(() => {
   const orgs = orgsQuery.data || [];
   const templates = templatesQuery.data || DEFAULT_TEMPLATES;
 
-  const invalidateOrgs = () => queryClient.invalidateQueries({ queryKey: ['crm_orgs'] });
+  const invalidateOrgs = () => {
+    queryClient.invalidateQueries({ queryKey: ['crm_orgs'] });
+    queryClient.invalidateQueries({ queryKey: ['org_detail'] });
+  };
 
   const addOrgMutation = useMutation({
     mutationFn: async (data: Omit<Organization, 'id' | 'createdAt' | 'contacts' | 'activityLog' | 'campaigns' | 'departments'>) => {
