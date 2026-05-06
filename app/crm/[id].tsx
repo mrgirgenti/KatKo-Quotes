@@ -2078,16 +2078,19 @@ export default function OrgProfileScreen() {
                 </View>
               </View>
 
-              {/* Divider */}
-              <View style={styles.v2LPDivider} />
-
               {/* Contacts section */}
               <View style={styles.v2LPSection}>
-                <View style={styles.v2LPSectionHeader}>
-                  <Text style={styles.v2LPSectionTitle}>Contacts</Text>
-                  <TouchableOpacity style={styles.v2LPSectionAction} onPress={openAddContact}>
-                    <Plus size={13} color={Colors.light.tint} />
-                    <Text style={styles.v2LPSectionActionText}>Add</Text>
+                <View style={styles.infoCardHeader}>
+                  <View style={styles.infoCardHeaderLeft}>
+                    <Users size={13} color="#fff" />
+                    <Text style={styles.infoCardTitle}>Contacts</Text>
+                    {org.contacts.length > 0 && (
+                      <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{org.contacts.length}</Text></View>
+                    )}
+                  </View>
+                  <TouchableOpacity style={styles.infoCardAction} onPress={openAddContact}>
+                    <Plus size={13} color="#fff" />
+                    <Text style={styles.infoCardActionText}>Add</Text>
                   </TouchableOpacity>
                 </View>
                 {org.contacts.length === 0 ? (
@@ -2145,6 +2148,69 @@ export default function OrgProfileScreen() {
                   </View>
                 </>
               ) : null}
+
+              {/* Media Bin section */}
+              <View style={styles.v2LPDivider} />
+              <View style={styles.v2LPSection}>
+                <View style={styles.infoCardHeader}>
+                  <View style={styles.infoCardHeaderLeft}>
+                    <Film size={13} color="#fff" />
+                    <Text style={styles.infoCardTitle}>Media Bin</Text>
+                    {orgFiles.length > 0 && (
+                      <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{orgFiles.length}</Text></View>
+                    )}
+                  </View>
+                  {Platform.OS === 'web' && (
+                    <TouchableOpacity
+                      style={[styles.infoCardAction, orgFilesUploading && { opacity: 0.5 }]}
+                      disabled={orgFilesUploading}
+                      onPress={() => {
+                        if (typeof document === 'undefined') return;
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = '.ai,.svg,.png,.jpg,.jpeg,.pdf,.dst,.emb';
+                        input.onchange = (e: any) => {
+                          const file = e.target?.files?.[0];
+                          if (file) handleOrgFileUpload(file);
+                        };
+                        input.click();
+                      }}
+                    >
+                      <Upload size={12} color="#fff" />
+                      <Text style={styles.infoCardActionText}>{orgFilesUploading ? 'Uploading…' : 'Upload'}</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {orgFiles.length === 0 ? (
+                  <Text style={styles.v2LPNotesText}>No files uploaded yet.</Text>
+                ) : (
+                  <View style={styles.v2MediaGrid}>
+                    {orgFiles.slice(0, 6).map((f: any) => {
+                      const isImage = f.mimeType?.startsWith('image/');
+                      const ext = (f.originalName || '').split('.').pop()?.toUpperCase() || 'FILE';
+                      return (
+                        <TouchableOpacity
+                          key={f.id}
+                          style={styles.v2MediaItem}
+                          onPress={() => Platform.OS === 'web' && typeof window !== 'undefined' && window.open(`/api/files/${f.id}?inline=true`, '_blank')}
+                        >
+                          {isImage ? (
+                            <Image source={{ uri: `/api/files/${f.id}?inline=true` }} style={styles.v2MediaThumb} resizeMode="cover" />
+                          ) : (
+                            <View style={styles.v2MediaIcon}>
+                              <Text style={styles.v2MediaExt}>{ext}</Text>
+                            </View>
+                          )}
+                          <Text style={styles.v2MediaName} numberOfLines={1}>{f.originalName}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+                {orgFiles.length > 6 && (
+                  <Text style={styles.v2ViewAll}>+{orgFiles.length - 6} more files</Text>
+                )}
+              </View>
 
               <View style={{ height: 32 }} />
             </ScrollView>
@@ -2260,233 +2326,123 @@ export default function OrgProfileScreen() {
               )}
             </View>
 
-            {/* ── SECONDARY ROW: Submitted Quotes | Client Legacy ── */}
-            <View style={[styles.v2SecondaryRow, !isDesktop && { flexDirection: 'column' as const }]}>
-
-              {/* Submitted Quotes */}
-              <View style={[styles.infoCard, styles.v2SecondaryCard]}>
-                <View style={styles.infoCardHeader}>
-                  <View style={styles.infoCardHeaderLeft}>
-                    <FileText size={14} color="#fff" />
-                    <Text style={styles.infoCardTitle}>Submitted Quotes</Text>
-                    {relatedQuotes.length > 0 && (
-                      <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{relatedQuotes.length}</Text></View>
-                    )}
-                  </View>
-                </View>
-                <View style={styles.v2SecondaryStats}>
-                  <View style={styles.revenueStatBox}>
-                    <Text style={styles.v2SecondaryStatValue}>{relatedQuotes.length}</Text>
-                    <Text style={styles.revenueStatLabel}>Total</Text>
-                  </View>
-                  <View style={styles.revenueStatDivider} />
-                  <View style={styles.revenueStatBox}>
-                    <Text style={[styles.v2SecondaryStatValue, { color: Colors.light.success }]}>{formatCurrency(quoteMetrics.revenue)}</Text>
-                    <Text style={styles.revenueStatLabel}>Revenue</Text>
-                  </View>
-                  <View style={styles.revenueStatDivider} />
-                  <View style={styles.revenueStatBox}>
-                    <Text style={[styles.v2SecondaryStatValue, { color: '#FF5A00' }]}>{formatCurrency(quoteMetrics.markup)}</Text>
-                    <Text style={styles.revenueStatLabel}>Profit</Text>
-                  </View>
-                </View>
-                {relatedQuotes.length === 0 ? (
-                  <View style={styles.emptyCard}>
-                    <Text style={styles.emptyCardText}>No quotes yet.</Text>
-                  </View>
-                ) : (
-                  relatedQuotes.slice(0, 4).map((q) => {
-                    const eff = getEffectiveStatus(q);
-                    const cfg = STATUS_CONFIG[eff];
-                    return (
-                      <TouchableOpacity key={q.id} style={styles.v2CompactRow} onPress={() => router.push(`/quote/${q.id}` as any)}>
-                        <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
-                          <Text style={[styles.projectRowBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
-                        </View>
-                        <Text style={styles.v2CompactRowName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
-                        <Text style={styles.v2CompactRowVal}>{formatCurrency(q.calculations?.total ?? 0)}</Text>
-                        <ChevronRight size={11} color={Colors.light.textSecondary} />
-                      </TouchableOpacity>
-                    );
-                  })
-                )}
-                {relatedQuotes.length > 4 && (
-                  <Text style={styles.v2ViewAll}>+{relatedQuotes.length - 4} more quotes</Text>
-                )}
-              </View>
-
-              {/* Client Legacy — smaller donuts */}
-              <View style={[styles.infoCard, styles.v2SecondaryCard]}>
-                <View style={styles.infoCardHeader}>
-                  <View style={styles.infoCardHeaderLeft}>
-                    <Award size={14} color="#fff" />
-                    <Text style={styles.infoCardTitle}>Client Legacy</Text>
-                    {legacyMetrics.totalProjects > 0 && (
-                      <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{legacyMetrics.totalProjects}</Text></View>
-                    )}
-                  </View>
-                </View>
-                <View style={styles.v2SecondaryStats}>
-                  <View style={styles.revenueStatBox}>
-                    <Text style={styles.v2SecondaryStatValue}>{legacyMetrics.totalProjects}</Text>
-                    <Text style={styles.revenueStatLabel}>Done</Text>
-                  </View>
-                  <View style={styles.revenueStatDivider} />
-                  <View style={styles.revenueStatBox}>
-                    <Text style={[styles.v2SecondaryStatValue, { color: Colors.light.success }]}>{formatCurrency(legacyMetrics.revenue)}</Text>
-                    <Text style={styles.revenueStatLabel}>Revenue</Text>
-                  </View>
-                  <View style={styles.revenueStatDivider} />
-                  <View style={styles.revenueStatBox}>
-                    <Text style={[styles.v2SecondaryStatValue, { color: '#FF5A00' }]}>{formatCurrency(legacyMetrics.markup)}</Text>
-                    <Text style={styles.revenueStatLabel}>Profit</Text>
-                  </View>
-                </View>
-                <View style={styles.v2SmallDonutRow}>
-                  {legacyMetrics.services.map((svc) => {
-                    const deg = svc.pct * 3.6;
-                    const gradient = svc.pct > 0
-                      ? `conic-gradient(${svc.color} 0deg ${deg}deg, #E2E8F0 ${deg}deg 360deg)`
-                      : 'conic-gradient(#E2E8F0 0deg 360deg)';
-                    return (
-                      <Pressable
-                        key={svc.name}
-                        style={styles.v2SmallDonutItem}
-                        onHoverIn={() => setHoveredLegacyKey(svc.name)}
-                        onHoverOut={() => setHoveredLegacyKey(null)}
-                      >
-                        <View style={[styles.v2SmallDonutOuter, { background: gradient } as any]}>
-                          <View style={styles.v2SmallDonutInner}>
-                            <Text style={styles.v2SmallDonutPct}>{svc.pct}%</Text>
-                          </View>
-                        </View>
-                        <Text style={[styles.v2SmallDonutLabel, { color: hoveredLegacyKey === svc.name ? svc.color : Colors.light.textSecondary }]} numberOfLines={1}>
-                          {svc.name}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-                {(() => {
-                  const hov = legacyMetrics.services.find((s) => s.name === hoveredLegacyKey);
-                  if (!hov) return null;
-                  return (
-                    <View style={[styles.legacyTooltip, { borderLeftColor: hov.color }]}>
-                      <Text style={[styles.legacyTooltipTitle, { color: hov.color }]}>{hov.name}</Text>
-                      <View style={styles.legacyTooltipRow}>
-                        <Text style={styles.legacyTooltipItem}>Revenue: <Text style={styles.legacyTooltipBold}>{formatCurrency(hov.revenue)}</Text></Text>
-                        <Text style={styles.legacyTooltipItem}>Projects: <Text style={styles.legacyTooltipBold}>{hov.projectCount}</Text></Text>
-                      </View>
-                    </View>
-                  );
-                })()}
-              </View>
-            </View>
-
-            {/* ── TERTIARY ROW: Contacts preview | Media Bin ── */}
-            <View style={[styles.v2TertiaryRow, !isDesktop && { flexDirection: 'column' as const }]}>
-
-              {/* Contacts preview */}
-              <View style={[styles.v2TertiaryCard, { flex: 1 }]}>
-                <View style={styles.v2TertiaryHeader}>
-                  <View style={styles.v2TertiaryHeaderLeft}>
-                    <Users size={13} color={Colors.light.textSecondary} />
-                    <Text style={styles.v2TertiaryTitle}>Contacts</Text>
-                    {org.contacts.length > 0 && (
-                      <View style={styles.v2TertiaryBadge}><Text style={styles.v2TertiaryBadgeText}>{org.contacts.length}</Text></View>
-                    )}
-                  </View>
-                  <TouchableOpacity style={styles.v2TertiaryAction} onPress={openAddContact}>
-                    <Plus size={12} color={Colors.light.tint} />
-                    <Text style={styles.v2TertiaryActionText}>Add</Text>
-                  </TouchableOpacity>
-                </View>
-                {org.contacts.length === 0 ? (
-                  <Text style={styles.v2TertiaryEmpty}>No contacts yet.</Text>
-                ) : (
-                  org.contacts.slice(0, 5).map((c) => (
-                    <View key={c.id} style={styles.v2ContactRow}>
-                      <View style={styles.v2ContactAvatar}>
-                        <Text style={styles.v2ContactAvatarText}>{(c.firstName?.[0] ?? '') + (c.lastName?.[0] ?? '')}</Text>
-                      </View>
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={styles.v2ContactName} numberOfLines={1}>{c.firstName} {c.lastName}</Text>
-                        {c.role ? <Text style={styles.v2ContactRole} numberOfLines={1}>{c.role}</Text> : null}
-                      </View>
-                      {c.email ? (
-                        <TouchableOpacity onPress={() => typeof window !== 'undefined' && (window.location.href = `mailto:${c.email}`)}>
-                          <Mail size={13} color={Colors.light.textSecondary} />
-                        </TouchableOpacity>
-                      ) : null}
-                    </View>
-                  ))
-                )}
-                {org.contacts.length > 5 && (
-                  <Text style={styles.v2ViewAll}>+{org.contacts.length - 5} more contacts</Text>
-                )}
-              </View>
-
-              {/* Media Bin preview */}
-              <View style={[styles.v2TertiaryCard, { flex: 1 }]}>
-                <View style={styles.v2TertiaryHeader}>
-                  <View style={styles.v2TertiaryHeaderLeft}>
-                    <Film size={13} color={Colors.light.textSecondary} />
-                    <Text style={styles.v2TertiaryTitle}>Media Bin</Text>
-                    {orgFiles.length > 0 && (
-                      <View style={styles.v2TertiaryBadge}><Text style={styles.v2TertiaryBadgeText}>{orgFiles.length}</Text></View>
-                    )}
-                  </View>
-                  {Platform.OS === 'web' && (
-                    <TouchableOpacity
-                      style={[styles.v2TertiaryAction, orgFilesUploading && { opacity: 0.5 }]}
-                      disabled={orgFilesUploading}
-                      onPress={() => {
-                        if (typeof document === 'undefined') return;
-                        const input = document.createElement('input');
-                        input.type = 'file';
-                        input.accept = '.ai,.svg,.png,.jpg,.jpeg,.pdf,.dst,.emb';
-                        input.onchange = (e: any) => {
-                          const file = e.target?.files?.[0];
-                          if (file) handleOrgFileUpload(file);
-                        };
-                        input.click();
-                      }}
-                    >
-                      <Upload size={12} color={Colors.light.tint} />
-                      <Text style={styles.v2TertiaryActionText}>{orgFilesUploading ? 'Uploading…' : 'Upload'}</Text>
-                    </TouchableOpacity>
+            {/* ── Client Legacy ── */}
+            <View style={styles.infoCard}>
+              <View style={styles.infoCardHeader}>
+                <View style={styles.infoCardHeaderLeft}>
+                  <Award size={14} color="#fff" />
+                  <Text style={styles.infoCardTitle}>Client Legacy</Text>
+                  {legacyMetrics.totalProjects > 0 && (
+                    <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{legacyMetrics.totalProjects}</Text></View>
                   )}
                 </View>
-                {orgFiles.length === 0 ? (
-                  <Text style={styles.v2TertiaryEmpty}>No files uploaded yet. Drop files or tap Upload.</Text>
-                ) : (
-                  <View style={styles.v2MediaGrid}>
-                    {orgFiles.slice(0, 6).map((f: any) => {
-                      const isImage = f.mimeType?.startsWith('image/');
-                      const ext = (f.originalName || '').split('.').pop()?.toUpperCase() || 'FILE';
-                      return (
-                        <TouchableOpacity
-                          key={f.id}
-                          style={styles.v2MediaItem}
-                          onPress={() => Platform.OS === 'web' && typeof window !== 'undefined' && window.open(`/api/files/${f.id}?inline=true`, '_blank')}
-                        >
-                          {isImage ? (
-                            <Image source={{ uri: `/api/files/${f.id}?inline=true` }} style={styles.v2MediaThumb} resizeMode="cover" />
-                          ) : (
-                            <View style={styles.v2MediaIcon}>
-                              <Text style={styles.v2MediaExt}>{ext}</Text>
-                            </View>
-                          )}
-                          <Text style={styles.v2MediaName} numberOfLines={1}>{f.originalName}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                )}
-                {orgFiles.length > 6 && (
-                  <Text style={styles.v2ViewAll}>+{orgFiles.length - 6} more files</Text>
-                )}
               </View>
+              <View style={styles.v2SecondaryStats}>
+                <View style={styles.revenueStatBox}>
+                  <Text style={styles.v2SecondaryStatValue}>{legacyMetrics.totalProjects}</Text>
+                  <Text style={styles.revenueStatLabel}>Done</Text>
+                </View>
+                <View style={styles.revenueStatDivider} />
+                <View style={styles.revenueStatBox}>
+                  <Text style={[styles.v2SecondaryStatValue, { color: Colors.light.success }]}>{formatCurrency(legacyMetrics.revenue)}</Text>
+                  <Text style={styles.revenueStatLabel}>Revenue</Text>
+                </View>
+                <View style={styles.revenueStatDivider} />
+                <View style={styles.revenueStatBox}>
+                  <Text style={[styles.v2SecondaryStatValue, { color: '#FF5A00' }]}>{formatCurrency(legacyMetrics.markup)}</Text>
+                  <Text style={styles.revenueStatLabel}>Profit</Text>
+                </View>
+              </View>
+              <View style={styles.v2SmallDonutRow}>
+                {legacyMetrics.services.map((svc) => {
+                  const deg = svc.pct * 3.6;
+                  const gradient = svc.pct > 0
+                    ? `conic-gradient(${svc.color} 0deg ${deg}deg, #E2E8F0 ${deg}deg 360deg)`
+                    : 'conic-gradient(#E2E8F0 0deg 360deg)';
+                  return (
+                    <Pressable
+                      key={svc.name}
+                      style={styles.v2SmallDonutItem}
+                      onHoverIn={() => setHoveredLegacyKey(svc.name)}
+                      onHoverOut={() => setHoveredLegacyKey(null)}
+                    >
+                      <View style={[styles.v2SmallDonutOuter, { background: gradient } as any]}>
+                        <View style={styles.v2SmallDonutInner}>
+                          <Text style={styles.v2SmallDonutPct}>{svc.pct}%</Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.v2SmallDonutLabel, { color: hoveredLegacyKey === svc.name ? svc.color : Colors.light.textSecondary }]} numberOfLines={1}>
+                        {svc.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {(() => {
+                const hov = legacyMetrics.services.find((s) => s.name === hoveredLegacyKey);
+                if (!hov) return null;
+                return (
+                  <View style={[styles.legacyTooltip, { borderLeftColor: hov.color }]}>
+                    <Text style={[styles.legacyTooltipTitle, { color: hov.color }]}>{hov.name}</Text>
+                    <View style={styles.legacyTooltipRow}>
+                      <Text style={styles.legacyTooltipItem}>Revenue: <Text style={styles.legacyTooltipBold}>{formatCurrency(hov.revenue)}</Text></Text>
+                      <Text style={styles.legacyTooltipItem}>Projects: <Text style={styles.legacyTooltipBold}>{hov.projectCount}</Text></Text>
+                    </View>
+                  </View>
+                );
+              })()}
+            </View>
+
+            {/* ── Submitted Quotes ── */}
+            <View style={styles.infoCard}>
+              <View style={styles.infoCardHeader}>
+                <View style={styles.infoCardHeaderLeft}>
+                  <FileText size={14} color="#fff" />
+                  <Text style={styles.infoCardTitle}>Submitted Quotes</Text>
+                  {relatedQuotes.length > 0 && (
+                    <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{relatedQuotes.length}</Text></View>
+                  )}
+                </View>
+              </View>
+              <View style={styles.v2SecondaryStats}>
+                <View style={styles.revenueStatBox}>
+                  <Text style={styles.v2SecondaryStatValue}>{relatedQuotes.length}</Text>
+                  <Text style={styles.revenueStatLabel}>Total</Text>
+                </View>
+                <View style={styles.revenueStatDivider} />
+                <View style={styles.revenueStatBox}>
+                  <Text style={[styles.v2SecondaryStatValue, { color: Colors.light.success }]}>{formatCurrency(quoteMetrics.revenue)}</Text>
+                  <Text style={styles.revenueStatLabel}>Revenue</Text>
+                </View>
+                <View style={styles.revenueStatDivider} />
+                <View style={styles.revenueStatBox}>
+                  <Text style={[styles.v2SecondaryStatValue, { color: '#FF5A00' }]}>{formatCurrency(quoteMetrics.markup)}</Text>
+                  <Text style={styles.revenueStatLabel}>Profit</Text>
+                </View>
+              </View>
+              {relatedQuotes.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <Text style={styles.emptyCardText}>No quotes yet.</Text>
+                </View>
+              ) : (
+                relatedQuotes.slice(0, 4).map((q) => {
+                  const eff = getEffectiveStatus(q);
+                  const cfg = STATUS_CONFIG[eff];
+                  return (
+                    <TouchableOpacity key={q.id} style={styles.v2CompactRow} onPress={() => router.push(`/quote/${q.id}` as any)}>
+                      <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+                        <Text style={[styles.projectRowBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
+                      </View>
+                      <Text style={styles.v2CompactRowName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
+                      <Text style={styles.v2CompactRowVal}>{formatCurrency(q.calculations?.total ?? 0)}</Text>
+                      <ChevronRight size={11} color={Colors.light.textSecondary} />
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+              {relatedQuotes.length > 4 && (
+                <Text style={styles.v2ViewAll}>+{relatedQuotes.length - 4} more quotes</Text>
+              )}
             </View>
 
                   <View style={{ height: 32 }} />
@@ -4720,7 +4676,7 @@ const styles = StyleSheet.create({
 
   // Left panel
   v2LeftPanel: {
-    width: 340,
+    width: 240,
     backgroundColor: Colors.light.surface,
     borderRightWidth: 1,
     borderRightColor: Colors.light.border,
