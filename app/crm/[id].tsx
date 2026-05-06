@@ -161,7 +161,7 @@ function ContactCard({ contact: c, onEdit, onDelete, hubAccessEnabled, onEnableH
             </View>
           )}
         </View>
-        {c.role && <Text style={styles.contactRole}>{c.role}</Text>}
+        {c.role ? <Text style={styles.contactRole}>{c.role}</Text> : null}
         <View style={styles.contactDetails}>
           {c.phone && (
             <View style={styles.contactDetailRow}>
@@ -866,7 +866,7 @@ export default function OrgProfileScreen() {
                         style={styles.deptAddBtn}
                         onPress={() => {
                           setEditingContact(null);
-                          setContactForm({ firstName: '', lastName: '', role: 'Primary Contact', email: '', phone: '', notes: '', isPrimary: false, departmentId: dept.id });
+                          setContactForm({ firstName: '', lastName: '', role: 'Primary Contact', email: '', phone: '', notes: '', isPrimary: false, departmentId: dept.id, hubAccess: false });
                           setContactModal(true);
                         }}
                       >
@@ -1084,7 +1084,7 @@ export default function OrgProfileScreen() {
 
   const TAB_CONFIG: { id: OrgTab; label: string; count?: number }[] = [
     { id: 'overview', label: 'Overview' },
-    { id: 'activity', label: 'Activity', count: org.activityLog.length },
+    { id: 'activity', label: 'Activity', count: org.activityLog.length || undefined },
     { id: 'notes', label: 'Notes', count: org.activityLog.filter((e) => e.type === 'note').length || undefined },
     { id: 'emails', label: 'Emails', count: org.activityLog.filter((e) => e.type === 'email').length || undefined },
     { id: 'calls', label: 'Calls', count: org.activityLog.filter((e) => e.type === 'call' || e.type === 'text').length || undefined },
