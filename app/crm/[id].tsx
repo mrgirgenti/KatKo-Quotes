@@ -286,7 +286,7 @@ export default function OrgProfileScreen() {
   const [clientUserForm, setClientUserForm] = useState({ name: '', email: '' });
   const [clientUserSaving, setClientUserSaving] = useState(false);
 
-  type OrgTab = 'overview' | 'activity' | 'notes' | 'emails' | 'calls';
+  type OrgTab = 'overview' | 'activity' | 'notes' | 'comms';
   const [activeTab, setActiveTab] = useState<OrgTab>('overview');
   const [orgNotesText, setOrgNotesText] = useState('');
   const [editingOrgNotes, setEditingOrgNotes] = useState(false);
@@ -1086,8 +1086,7 @@ export default function OrgProfileScreen() {
     { id: 'overview', label: 'Overview' },
     { id: 'activity', label: 'Activity', count: org.activityLog.length || undefined },
     { id: 'notes', label: 'Notes', count: org.activityLog.filter((e) => e.type === 'note').length || undefined },
-    { id: 'emails', label: 'Emails', count: org.activityLog.filter((e) => e.type === 'email').length || undefined },
-    { id: 'calls', label: 'Calls', count: org.activityLog.filter((e) => e.type === 'call' || e.type === 'text').length || undefined },
+    { id: 'comms', label: 'Communications', count: org.activityLog.filter((e) => e.type === 'email' || e.type === 'call' || e.type === 'text').length || undefined },
   ];
 
   const callEntries = org.activityLog.filter((e) => e.type === 'call' || e.type === 'text');
@@ -1964,8 +1963,8 @@ export default function OrgProfileScreen() {
         </ScrollView>
       )}
 
-      {/* ── EMAILS TAB ── */}
-      {activeTab === 'emails' && (
+      {/* ── COMMUNICATIONS TAB (V1 dead-code path) ── */}
+      {activeTab === 'comms' && (
         <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
           <View style={styles.tabContentHeader}>
             <Text style={styles.tabContentTitle}>Emails</Text>
@@ -1973,33 +1972,16 @@ export default function OrgProfileScreen() {
               <Plus size={13} color="#fff" /><Text style={styles.addItemBtnText}>Log Email</Text>
             </TouchableOpacity>
           </View>
-
-          {/* Gmail placeholder banner */}
-          <View style={styles.gmailBanner}>
-            <Mail size={28} color="#4285F4" />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.gmailBannerTitle}>Gmail Integration — Coming Soon</Text>
-              <Text style={styles.gmailBannerSub}>Connect your Gmail account to send emails and sync your inbox directly from here.</Text>
-            </View>
-          </View>
-
           {emailEntries.length === 0 ? (
             <View style={[styles.emptyTab, { paddingVertical: 32 }]}>
               <Text style={styles.emptyTabText}>No emails logged yet</Text>
-              <Text style={styles.emptyTabSub}>Use "Log Email" to manually record email interactions.</Text>
             </View>
           ) : (
             emailEntries.map((entry) => renderActivityEntry(entry))
           )}
-          <View style={{ height: 24 }} />
-        </ScrollView>
-      )}
-
-      {/* ── CALLS TAB ── */}
-      {activeTab === 'calls' && (
-        <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
+          <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 14 }} />
           <View style={styles.tabContentHeader}>
-            <Text style={styles.tabContentTitle}>Call Log</Text>
+            <Text style={styles.tabContentTitle}>Calls & Texts</Text>
             <TouchableOpacity style={styles.addItemBtn} onPress={() => { setActivityForm((f) => ({ ...f, type: 'call' })); setActivityModal(true); }}>
               <Phone size={13} color="#fff" /><Text style={styles.addItemBtnText}>Log Call</Text>
             </TouchableOpacity>
@@ -2008,7 +1990,6 @@ export default function OrgProfileScreen() {
             <View style={styles.emptyTab}>
               <PhoneCall size={36} color={Colors.light.border} />
               <Text style={styles.emptyTabText}>No calls logged yet</Text>
-              <Text style={styles.emptyTabSub}>Log a call or text message to track your conversations.</Text>
             </View>
           ) : (
             callEntries.map((entry) => renderActivityEntry(entry))
@@ -2172,7 +2153,7 @@ export default function OrgProfileScreen() {
             <View style={styles.v2RightPanel}>
 
               {/* Tab bar */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.v2TabBar} contentContainerStyle={{ flexDirection: 'row' }}>
+              <View style={[styles.v2TabBar, { flexDirection: 'row' }]}>
                 {TAB_CONFIG.map(({ id, label, count }) => (
                   <TouchableOpacity
                     key={id}
@@ -2187,7 +2168,7 @@ export default function OrgProfileScreen() {
                     )}
                   </TouchableOpacity>
                 ))}
-              </ScrollView>
+              </View>
 
               {/* Overview tab */}
               {activeTab === 'overview' && (
@@ -2634,9 +2615,10 @@ export default function OrgProfileScreen() {
                 </ScrollView>
               )}
 
-              {/* Emails tab */}
-              {activeTab === 'emails' && (
+              {/* Communications tab (Emails + Calls) */}
+              {activeTab === 'comms' && (
                 <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
+                  {/* Emails section */}
                   <View style={styles.tabContentHeader}>
                     <Text style={styles.tabContentTitle}>Emails</Text>
                     <TouchableOpacity style={styles.addItemBtn} onPress={() => { setActivityForm((f) => ({ ...f, type: 'email' })); setActivityModal(true); }}>
@@ -2651,28 +2633,26 @@ export default function OrgProfileScreen() {
                     </View>
                   </View>
                   {emailEntries.length === 0 ? (
-                    <View style={[styles.emptyTab, { paddingVertical: 32 }]}>
+                    <View style={[styles.emptyTab, { paddingVertical: 24 }]}>
                       <Text style={styles.emptyTabText}>No emails logged yet</Text>
                       <Text style={styles.emptyTabSub}>Use "Log Email" to manually record email interactions.</Text>
                     </View>
                   ) : (
                     emailEntries.map((entry) => renderActivityEntry(entry))
                   )}
-                  <View style={{ height: 24 }} />
-                </ScrollView>
-              )}
 
-              {/* Calls tab */}
-              {activeTab === 'calls' && (
-                <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
+                  {/* Divider */}
+                  <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 16 }} />
+
+                  {/* Calls section */}
                   <View style={styles.tabContentHeader}>
-                    <Text style={styles.tabContentTitle}>Call Log</Text>
+                    <Text style={styles.tabContentTitle}>Calls & Texts</Text>
                     <TouchableOpacity style={styles.addItemBtn} onPress={() => { setActivityForm((f) => ({ ...f, type: 'call' })); setActivityModal(true); }}>
                       <Phone size={13} color="#fff" /><Text style={styles.addItemBtnText}>Log Call</Text>
                     </TouchableOpacity>
                   </View>
                   {callEntries.length === 0 ? (
-                    <View style={styles.emptyTab}>
+                    <View style={[styles.emptyTab, { paddingVertical: 24 }]}>
                       <PhoneCall size={36} color={Colors.light.border} />
                       <Text style={styles.emptyTabText}>No calls logged yet</Text>
                       <Text style={styles.emptyTabSub}>Log a call or text message to track your conversations.</Text>
@@ -2719,6 +2699,7 @@ export default function OrgProfileScreen() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
+            
             {/* Mobile overview */}
             {activeTab === 'overview' && (
               <View style={styles.v2OverviewContent}>
@@ -2735,14 +2716,23 @@ export default function OrgProfileScreen() {
                 {noteEntries.length === 0 ? <View style={styles.emptyTab}><FileText size={36} color={Colors.light.border} /><Text style={styles.emptyTabText}>No notes yet</Text></View> : noteEntries.map((entry) => renderActivityEntry(entry))}
               </View>
             )}
-            {activeTab === 'emails' && (
+            {activeTab === 'comms' && (
               <View style={styles.tabContentPad}>
-                {emailEntries.length === 0 ? <View style={styles.emptyTab}><Text style={styles.emptyTabText}>No emails yet</Text></View> : emailEntries.map((entry) => renderActivityEntry(entry))}
-              </View>
-            )}
-            {activeTab === 'calls' && (
-              <View style={styles.tabContentPad}>
-                {callEntries.length === 0 ? <View style={styles.emptyTab}><PhoneCall size={36} color={Colors.light.border} /><Text style={styles.emptyTabText}>No calls yet</Text></View> : callEntries.map((entry) => renderActivityEntry(entry))}
+                <View style={styles.tabContentHeader}>
+                  <Text style={styles.tabContentTitle}>Emails</Text>
+                  <TouchableOpacity style={styles.addItemBtn} onPress={() => { setActivityForm((f) => ({ ...f, type: 'email' })); setActivityModal(true); }}>
+                    <Plus size={13} color="#fff" /><Text style={styles.addItemBtnText}>Log Email</Text>
+                  </TouchableOpacity>
+                </View>
+                {emailEntries.length === 0 ? <View style={[styles.emptyTab, { paddingVertical: 20 }]}><Text style={styles.emptyTabText}>No emails yet</Text></View> : emailEntries.map((entry) => renderActivityEntry(entry))}
+                <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 14 }} />
+                <View style={styles.tabContentHeader}>
+                  <Text style={styles.tabContentTitle}>Calls & Texts</Text>
+                  <TouchableOpacity style={styles.addItemBtn} onPress={() => { setActivityForm((f) => ({ ...f, type: 'call' })); setActivityModal(true); }}>
+                    <Phone size={13} color="#fff" /><Text style={styles.addItemBtnText}>Log Call</Text>
+                  </TouchableOpacity>
+                </View>
+                {callEntries.length === 0 ? <View style={[styles.emptyTab, { paddingVertical: 20 }]}><PhoneCall size={36} color={Colors.light.border} /><Text style={styles.emptyTabText}>No calls yet</Text></View> : callEntries.map((entry) => renderActivityEntry(entry))}
               </View>
             )}
             <View style={{ height: 40 }} />
@@ -4468,7 +4458,7 @@ const styles = StyleSheet.create({
 
   // ── V2 Hierarchical Overview ─────────────────────────────────────────────
   v2OverviewScroll: { flex: 1 },
-  v2OverviewContent: { padding: 12, gap: 8 },
+  v2OverviewContent: { padding: 12, gap: 8, flexGrow: 1 },
 
   v2PrimaryCard: {
     backgroundColor: Colors.light.surface,
