@@ -2038,56 +2038,43 @@ export default function OrgProfileScreen() {
                 <Text style={styles.v2LPBackText}>Organizations</Text>
               </TouchableOpacity>
 
-              {/* Logo + Name + Status */}
-              <View style={styles.v2LPIdentity}>
+              {/* Header: [Logo | Info column] */}
+              <View style={styles.v2LPHeader}>
                 <OrgLogoUploader
                   orgId={org.id}
                   orgName={org.name}
                   currentLogoUrl={org.logoUrl}
                   onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })}
-                  size={56}
+                  size={52}
                 />
-                <Text style={styles.v2LPName}>{org.name}</Text>
-                <StatusBadge status={org.status} />
+                <View style={styles.v2LPHeaderInfo}>
+                  <Text style={styles.v2LPName} numberOfLines={2}>{org.name}</Text>
+                  <StatusBadge status={org.status} />
+                  {(org.type || org.city || org.state) ? (
+                    <Text style={styles.v2LPHeaderMetaLine} numberOfLines={1}>
+                      {[org.type, [org.city, org.state].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
+                    </Text>
+                  ) : null}
+                  {org.website ? (
+                    <TouchableOpacity onPress={() => typeof window !== 'undefined' && window.open(org.website!.startsWith('http') ? org.website! : `https://${org.website}`, '_blank')}>
+                      <Text style={styles.v2LPHeaderWebsite} numberOfLines={1}>{org.website}</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
               </View>
 
-              {/* Meta info */}
-              <View style={styles.v2LPMeta}>
-                {org.type ? (
-                  <View style={styles.v2LPMetaRow}>
-                    <Building2 size={12} color={Colors.light.textSecondary} />
-                    <Text style={styles.v2LPMetaText}>{org.type}</Text>
-                  </View>
-                ) : null}
-                {(org.city || org.state) ? (
-                  <View style={styles.v2LPMetaRow}>
-                    <MapPin size={12} color={Colors.light.textSecondary} />
-                    <Text style={styles.v2LPMetaText}>{[org.city, org.state].filter(Boolean).join(', ')}</Text>
-                  </View>
-                ) : null}
-                {org.website ? (
-                  <TouchableOpacity
-                    style={styles.v2LPMetaRow}
-                    onPress={() => typeof window !== 'undefined' && window.open(org.website!.startsWith('http') ? org.website! : `https://${org.website}`, '_blank')}
-                  >
-                    <Globe size={12} color={Colors.light.tint} />
-                    <Text style={[styles.v2LPMetaText, { color: Colors.light.tint }]} numberOfLines={1}>{org.website}</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-
-              {/* Actions */}
-              <TouchableOpacity
-                style={styles.v2LPNewQuoteBtn}
-                onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
-              >
-                <Plus size={14} color="#fff" />
-                <Text style={styles.v2LPNewQuoteBtnText}>New Quote</Text>
-              </TouchableOpacity>
-              <View style={styles.v2LPSecondaryActions}>
-                <TouchableOpacity style={styles.v2LPSecondaryBtn} onPress={openEditOrg}>
+              {/* Action row: [New Quote (flex)] [Edit] [···] */}
+              <View style={styles.v2LPActionRow}>
+                <TouchableOpacity
+                  style={styles.v2LPNewQuoteBtn}
+                  onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
+                >
+                  <Plus size={13} color="#fff" />
+                  <Text style={styles.v2LPNewQuoteBtnText}>New Quote</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.v2LPEditBtn} onPress={openEditOrg}>
                   <Edit3 size={13} color={Colors.light.text} />
-                  <Text style={styles.v2LPSecondaryBtnText}>Edit Profile</Text>
+                  <Text style={styles.v2LPEditBtnText}>Edit</Text>
                 </TouchableOpacity>
                 <View style={{ position: 'relative' as any }}>
                   <TouchableOpacity style={styles.v2LPIconBtn} onPress={() => setShowOrgMenu((v) => !v)}>
@@ -2129,7 +2116,7 @@ export default function OrgProfileScreen() {
                     <Text style={styles.v2LPEmptySub}>Tap Add to add your first contact</Text>
                   </TouchableOpacity>
                 ) : (
-                  org.contacts.slice(0, 5).map((c) => {
+                  org.contacts.slice(0, 4).map((c) => {
                     const initials = ((c.firstName?.[0] ?? '') + (c.lastName?.[0] ?? '')).toUpperCase();
                     return (
                       <View key={c.id} style={styles.v2LPContactCard}>
@@ -2162,8 +2149,8 @@ export default function OrgProfileScreen() {
                     );
                   })
                 )}
-                {org.contacts.length > 5 && (
-                  <Text style={styles.v2ViewAll}>+{org.contacts.length - 5} more contacts</Text>
+                {org.contacts.length > 4 && (
+                  <Text style={styles.v2ViewAll}>View all {org.contacts.length} contacts</Text>
                 )}
               </View>
 
@@ -4412,15 +4399,18 @@ const styles = StyleSheet.create({
   v2TabBar: {
     borderTopWidth: 1,
     borderTopColor: Colors.light.border,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
   },
   v2Tab: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 5,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
+    marginBottom: -1,
   },
   v2TabActive: {
     borderBottomColor: Colors.light.tint,
@@ -4483,7 +4473,7 @@ const styles = StyleSheet.create({
 
   // ── V2 Hierarchical Overview ─────────────────────────────────────────────
   v2OverviewScroll: { flex: 1 },
-  v2OverviewContent: { padding: 14, gap: 10 },
+  v2OverviewContent: { padding: 12, gap: 8 },
 
   v2PrimaryCard: {
     backgroundColor: Colors.light.surface,
@@ -4744,20 +4734,20 @@ const styles = StyleSheet.create({
 
   // Left panel
   v2LeftPanel: {
-    width: 300,
+    width: 340,
     backgroundColor: Colors.light.surface,
     flexShrink: 0,
   },
   v2LeftPanelContent: {
-    padding: 16,
-    paddingBottom: 32,
+    padding: 14,
+    paddingBottom: 24,
   },
 
   v2LPBack: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     gap: 4,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   v2LPBackText: {
     fontSize: 13,
@@ -4765,62 +4755,59 @@ const styles = StyleSheet.create({
     fontWeight: '500' as const,
   },
 
-  v2LPIdentity: {
+  v2LPHeader: {
+    flexDirection: 'row' as const,
     alignItems: 'flex-start' as const,
+    gap: 10,
+    marginBottom: 10,
+  },
+  v2LPHeaderInfo: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3,
+  },
+  v2LPHeaderMetaLine: {
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+    marginTop: 1,
+  },
+  v2LPHeaderWebsite: {
+    fontSize: 11,
+    color: Colors.light.tint,
+  },
+  v2LPName: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: Colors.light.text,
+    lineHeight: 20,
+  },
+
+  v2LPActionRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
     gap: 6,
     marginBottom: 12,
   },
-  v2LPName: {
-    fontSize: 17,
-    fontWeight: '700' as const,
-    color: Colors.light.text,
-    lineHeight: 22,
-  },
-
-  v2LPMeta: {
-    gap: 5,
-    marginBottom: 14,
-  },
-  v2LPMetaRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 6,
-  },
-  v2LPMetaText: {
-    fontSize: 12,
-    color: Colors.light.textSecondary,
-    flex: 1,
-  },
-
   v2LPNewQuoteBtn: {
+    flex: 1,
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    gap: 6,
+    gap: 5,
     backgroundColor: Colors.light.tint,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    marginBottom: 8,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
   v2LPNewQuoteBtnText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600' as const,
     color: '#fff',
   },
-
-  v2LPSecondaryActions: {
+  v2LPEditBtn: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    gap: 8,
-    marginBottom: 16,
-  },
-  v2LPSecondaryBtn: {
-    flex: 1,
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: 5,
+    gap: 4,
     backgroundColor: Colors.light.background,
     borderRadius: 8,
     paddingVertical: 8,
@@ -4828,8 +4815,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.light.border,
   },
-  v2LPSecondaryBtnText: {
-    fontSize: 13,
+  v2LPEditBtnText: {
+    fontSize: 12,
     fontWeight: '500' as const,
     color: Colors.light.text,
   },
@@ -4862,7 +4849,7 @@ const styles = StyleSheet.create({
   v2LPDivider: {
     height: 1,
     backgroundColor: Colors.light.border,
-    marginVertical: 14,
+    marginVertical: 10,
   },
 
   v2LPSection: {
