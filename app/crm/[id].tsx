@@ -2168,9 +2168,6 @@ export default function OrgProfileScreen() {
               <View style={{ height: 32 }} />
             </ScrollView>
 
-            {/* Panel divider */}
-            <View style={styles.v2PanelDivider} />
-
             {/* ── RIGHT PANEL: Tabs + Content ── */}
             <View style={styles.v2RightPanel}>
 
@@ -4397,8 +4394,7 @@ const styles = StyleSheet.create({
     zIndex: 99,
   },
   v2TabBar: {
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.border,
+    backgroundColor: Colors.light.surface,
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.border,
   },
@@ -4410,7 +4406,6 @@ const styles = StyleSheet.create({
     gap: 5,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
-    marginBottom: -1,
   },
   v2TabActive: {
     borderBottomColor: Colors.light.tint,
@@ -4730,12 +4725,15 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row' as const,
     overflow: 'hidden' as const,
+    backgroundColor: Colors.light.background,
   },
 
   // Left panel
   v2LeftPanel: {
     width: 340,
     backgroundColor: Colors.light.surface,
+    borderRightWidth: 1,
+    borderRightColor: Colors.light.border,
     flexShrink: 0,
   },
   v2LeftPanelContent: {
@@ -4960,16 +4958,11 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
 
-  // Right panel + divider
-  v2PanelDivider: {
-    width: 1,
-    backgroundColor: Colors.light.border,
-    flexShrink: 0,
-  },
   v2RightPanel: {
     flex: 1,
     flexDirection: 'column' as const,
     overflow: 'hidden' as const,
+    backgroundColor: Colors.light.background,
   },
 
   // Mobile header

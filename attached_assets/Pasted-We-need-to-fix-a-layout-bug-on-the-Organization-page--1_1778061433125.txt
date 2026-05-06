@@ -1,0 +1,96 @@
+We need to fix a layout bug on the Organization page.
+
+======================================================================
+1. ISSUE
+======================================================================
+
+There is a large vertical gap/divider between the left panel and the right workspace.
+
+This appears to be:
+- an unintended grid column
+- a spacer div
+- or excessive margin/padding
+
+This is causing:
+- wasted space
+- disconnected layout
+- right content being pushed too far right
+- tabs appearing detached
+
+======================================================================
+2. REQUIRED FIX
+======================================================================
+
+Remove the middle gap completely.
+
+The layout should be:
+
+[ LEFT PANEL ][ RIGHT WORKSPACE ]
+
+With minimal spacing between them (16px–24px max).
+
+There should be NO large empty column or divider.
+
+======================================================================
+3. GRID / FLEX FIX
+======================================================================
+
+Check layout implementation:
+
+If using grid:
+- remove any extra column like:
+  grid-template-columns: left / spacer / right
+- update to:
+  grid-template-columns: auto 1fr
+
+If using flex:
+- remove unnecessary wrappers or margins
+- ensure:
+  display: flex;
+  gap: 16px–24px;
+
+Remove:
+- spacer divs
+- unnecessary margins
+- placeholder containers
+
+======================================================================
+4. TAB ALIGNMENT FIX
+======================================================================
+
+After removing the gap:
+
+- Tabs should align directly with the right workspace content
+- Tabs should sit at the top of the right panel
+- Remove excessive top padding above tabs
+- Tabs should feel visually connected to the content below
+
+======================================================================
+5. FINAL LAYOUT
+======================================================================
+
+LEFT PANEL:
+- fixed width (~320–360px)
+- contains org info + contacts
+
+RIGHT PANEL:
+- full flexible width
+- contains tabs + dashboard content
+
+Spacing between panels:
+- tight and intentional (16px–24px)
+
+======================================================================
+6. FINAL GOAL
+======================================================================
+
+The page should feel like a tight, cohesive layout:
+
+NOT:
+[ left ][ huge gap ][ right ]
+
+BUT:
+[ left ][ right ]
+
+No wasted space.
+Clean, professional, and connected UI.
