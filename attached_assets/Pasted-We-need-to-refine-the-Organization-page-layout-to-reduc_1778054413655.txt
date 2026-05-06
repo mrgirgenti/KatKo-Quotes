@@ -1,0 +1,131 @@
+We need to refine the Organization page layout to reduce visual clutter and improve hierarchy.
+
+The current layout feels too busy because all sections have equal visual weight.
+
+======================================================================
+1. CORE ISSUE
+======================================================================
+
+There is no clear visual hierarchy.
+
+Sections like:
+- Client Legacy
+- Active Projects
+- Submitted Quotes
+- Contacts
+- Media
+
+are all competing for attention equally.
+
+We need to introduce clear prioritization.
+
+======================================================================
+2. NEW LAYOUT STRUCTURE
+======================================================================
+
+Top (Full Width):
+- Organization header
+- Tabs (Overview, Activity, Notes, Emails, Calls)
+- Keep this clean and tight (reduce spacing)
+
+----------------------------------------------------------------------
+PRIMARY SECTION (FULL WIDTH)
+----------------------------------------------------------------------
+
+Active Projects should be the primary focus.
+
+- Largest card on page
+- Strongest visual weight
+- Most spacing
+- Most prominent
+
+----------------------------------------------------------------------
+SECONDARY SECTION (2 COLUMNS)
+----------------------------------------------------------------------
+
+Row below Active Projects:
+
+LEFT:
+- Submitted Quotes
+
+RIGHT:
+- Client Legacy
+
+These should:
+- be medium-sized cards
+- have less visual weight than Active Projects
+- still be clearly readable
+
+----------------------------------------------------------------------
+TERTIARY SECTION (LOW PRIORITY)
+----------------------------------------------------------------------
+
+Below secondary row:
+
+- Contacts (preview)
+- Media Bin (preview)
+
+These should:
+- have lighter styling
+- reduced padding
+- smaller footprint
+- optional “View All” actions
+
+======================================================================
+3. VISUAL HIERARCHY RULES
+======================================================================
+
+- Only ONE primary section (Active Projects)
+- Secondary sections should be clearly smaller
+- Tertiary sections should feel lightweight
+
+Reduce:
+- excessive bold colors
+- large graphic elements
+- oversized percentage visuals
+
+Client Legacy:
+- reduce dominance of percentage circles
+- shrink visual size slightly
+
+======================================================================
+4. SPACING + DENSITY
+======================================================================
+
+- reduce excessive vertical padding between sections
+- tighten spacing between header and tabs
+- ensure content feels structured, not crowded
+
+Goal:
+Balanced density, not empty and not cluttered
+
+======================================================================
+5. KEEP THESE
+======================================================================
+
+- Tabs remain full-width at the top
+- Overview still contains:
+  - Active Projects
+  - Submitted Quotes
+  - Client Legacy
+  - Contacts
+  - Media
+
+We are NOT removing sections, only reorganizing visual importance
+
+======================================================================
+6. FINAL GOAL
+======================================================================
+
+The page should feel:
+
+- calm
+- structured
+- easy to scan
+- focused on action
+
+Instead of:
+"everything is important"
+
+It should feel like:
+"I immediately know where to look and what to do"
