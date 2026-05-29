@@ -695,6 +695,10 @@ export default function ProjectsScreen() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.title}>Projects</Text>
+          <TouchableOpacity style={styles.startProjectBtn} onPress={() => router.push('/')}>
+            <FolderPlus size={15} color="#fff" />
+            <Text style={styles.startProjectBtnText}>Start Project</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Stats Bar */}
@@ -773,10 +777,6 @@ export default function ProjectsScreen() {
 
         {/* Search + Filter Row */}
         <View style={styles.searchRow}>
-          <TouchableOpacity style={styles.startProjectBtn} onPress={() => router.push('/')}>
-            <FolderPlus size={15} color="#fff" />
-            <Text style={styles.startProjectBtnText}>Start Project</Text>
-          </TouchableOpacity>
           <View style={styles.searchBox}>
             <Search size={15} color={Colors.light.textSecondary} />
             <TextInput
@@ -1040,7 +1040,7 @@ export default function ProjectsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.light.background },
   header: { backgroundColor: Colors.light.surface, borderBottomWidth: 1, borderBottomColor: Colors.light.border, paddingTop: Platform.OS === 'web' ? 0 : 48 },
-  headerTop: { flexDirection: 'row', alignItems: 'baseline', gap: 10, paddingHorizontal: DS.spacing.xl, paddingTop: DS.spacing.xl, paddingBottom: DS.spacing.md },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: DS.spacing.xl, paddingTop: DS.spacing.xl, paddingBottom: DS.spacing.md },
   title: { fontSize: 24, fontWeight: '800', color: Colors.light.text },
   statsBar: { flexDirection: 'row' as const, alignItems: 'center' as const, marginHorizontal: DS.spacing.lg, marginBottom: DS.spacing.md, backgroundColor: Colors.light.background, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, paddingVertical: 10, paddingHorizontal: 6 },
   statItem: { flex: 1, alignItems: 'center' as const },

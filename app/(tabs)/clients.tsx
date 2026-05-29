@@ -235,6 +235,7 @@ export default function ClientsScreen() {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [importModalVisible, setImportModalVisible] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const [addStep, setAddStep] = useState<AddStep>('choose');
   const [addMode, setAddMode] = useState<AddMode>('org');
   const [orgForm, setOrgForm] = useState(EMPTY_ORG_FORM);
@@ -405,6 +406,40 @@ export default function ClientsScreen() {
       <View style={styles.pageHeader}>
         <View style={styles.headerTop}>
           <Text style={styles.pageTitle}>Contacts</Text>
+          <View style={styles.headerBtns}>
+            <View style={{ position: 'relative' }}>
+              <TouchableOpacity
+                style={styles.actionsBtn}
+                onPress={() => setActionsOpen(v => !v)}
+              >
+                <Text style={styles.actionsBtnText}>Actions</Text>
+                <ChevronDown size={14} color={Colors.light.textSecondary} />
+              </TouchableOpacity>
+              {actionsOpen && (
+                <View style={styles.actionsMenu}>
+                  <TouchableOpacity style={styles.actionsMenuItem} onPress={() => { setActionsOpen(false); setImportModalVisible(true); }}>
+                    <Upload size={14} color={Colors.light.text} />
+                    <Text style={styles.actionsMenuItemText}>Import Contacts</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.actionsMenuItem} onPress={() => setActionsOpen(false)}>
+                    <FileText size={14} color={Colors.light.text} />
+                    <Text style={styles.actionsMenuItemText}>Export CSV</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.actionsMenuItem} onPress={() => setActionsOpen(false)}>
+                    <Edit3 size={14} color={Colors.light.text} />
+                    <Text style={styles.actionsMenuItemText}>Bulk Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.actionsMenuItem, { borderBottomWidth: 0 }]} onPress={() => setActionsOpen(false)}>
+                    <Trash2 size={14} color="#DC2626" />
+                    <Text style={[styles.actionsMenuItemText, { color: '#DC2626' }]}>Bulk Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+            <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
+              <Plus size={15} color="#fff" /><Text style={styles.addBtnText}>Add Contact</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.statsBar}>
@@ -444,12 +479,6 @@ export default function ClientsScreen() {
         </ScrollView>
 
         <View style={styles.searchRow}>
-          <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
-            <Plus size={16} color="#fff" /><Text style={styles.addBtnText}>Add Contact</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.importBtn} onPress={() => setImportModalVisible(true)}>
-            <Upload size={14} color={Colors.light.tint} /><Text style={styles.importBtnText}>Import</Text>
-          </TouchableOpacity>
           <View style={styles.searchBox}>
             <Search size={15} color={Colors.light.textSecondary} />
             <TextInput style={styles.searchInput} placeholder="Search org, contact, type…" placeholderTextColor={Colors.light.textSecondary} value={search} onChangeText={setSearch} />
@@ -758,7 +787,7 @@ export default function ClientsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.light.background },
   pageHeader: { backgroundColor: Colors.light.surface, borderBottomWidth: 1, borderBottomColor: Colors.light.border, paddingTop: Platform.OS === 'web' ? 0 : 48 },
-  headerTop: { flexDirection: 'row', alignItems: 'baseline', gap: 10, paddingHorizontal: DS.spacing.xl, paddingTop: DS.spacing.xl, paddingBottom: DS.spacing.md },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: DS.spacing.xl, paddingTop: DS.spacing.xl, paddingBottom: DS.spacing.md },
   pageTitle: { fontSize: 24, fontWeight: '800' as const, color: Colors.light.text },
 
   statsBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: DS.spacing.lg, marginBottom: DS.spacing.md, backgroundColor: Colors.light.background, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, paddingVertical: 10, paddingHorizontal: 6 },
@@ -781,6 +810,12 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 14, color: Colors.light.text, outlineStyle: 'none' as any },
   importBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1.5, borderColor: Colors.light.tint, paddingHorizontal: 14, borderRadius: DS.radius.md, height: 40, backgroundColor: Colors.light.surface },
   importBtnText: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.tint },
+  headerBtns: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8 },
+  actionsBtn: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6, paddingHorizontal: 12, paddingVertical: 9, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: Colors.light.surface },
+  actionsBtnText: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.text },
+  actionsMenu: { position: 'absolute' as const, top: 42, right: 0, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: Colors.light.border, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 8, zIndex: 1000, minWidth: 185 },
+  actionsMenuItem: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 10, paddingHorizontal: 14, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  actionsMenuItemText: { fontSize: 13, color: Colors.light.text, fontWeight: '500' as const },
   addBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.light.tint, paddingHorizontal: 16, borderRadius: DS.radius.md, height: 40 },
   addBtnText: { fontSize: 14, fontWeight: '700' as const, color: '#fff' },
   toolBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: Colors.light.surface, height: 40 },
