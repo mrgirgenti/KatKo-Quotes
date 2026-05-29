@@ -1,0 +1,570 @@
+Katalyst OS – Mobile UX, Production Workflow, Catalog Management & Design System Overhaul
+
+Objective
+
+We have reached a point where individual features are working, but the overall system lacks consistency across mobile, tablet, and desktop experiences.
+
+The goal of this project is NOT to add more features immediately.
+
+The goal is to establish a unified design system, improve operational workflows, eliminate UI inconsistencies, and create scalable management systems that can support future growth without introducing additional technical debt.
+
+This project should be completed in phases in the order listed below.
+
+⸻
+
+PHASE 1 – DESIGN SYSTEM & RESPONSIVE UX STANDARDIZATION
+
+Goal
+
+Create a unified design language across the entire OS.
+
+Currently:
+
+* Contacts looks different from Projects
+* Projects looks different from Catalogs
+* Client Hub differs from Backend
+* Mobile layouts feel cramped
+* Cards, buttons, filters, headers, and metrics all use different sizing rules
+
+We need a reusable design system.
+
+⸻
+
+Create Global Standards For
+
+Typography
+
+Define standard sizing for:
+
+* Page Titles
+* Section Headers
+* Card Titles
+* Labels
+* Body Text
+* Helper Text
+* Status Pills
+
+These standards should apply consistently across:
+
+* Contacts
+* Projects
+* Quotes
+* Production
+* Catalogs
+* Client Hubs
+* Future Modules
+
+⸻
+
+Spacing
+
+Define global spacing rules:
+
+* Card padding
+* Section spacing
+* Header spacing
+* Filter spacing
+* Mobile spacing
+* Tablet spacing
+* Desktop spacing
+
+Avoid:
+
+* cramped layouts
+* excessive whitespace
+* inconsistent margins
+
+⸻
+
+Buttons
+
+Standardize:
+
+Primary Action
+Examples:
+
+* New Quote
+* Add Contact
+* Submit Project
+
+Secondary Action
+Examples:
+
+* Edit
+* View
+* Export
+
+Danger Action
+Examples:
+
+* Delete
+
+Button heights and widths should be consistent throughout the application.
+
+⸻
+
+Status Pills
+
+Standardize:
+
+* Active Client
+* Cold
+* Working
+* Quoted
+* In Production
+* Completed
+* Paid
+* Client Hub Live
+
+Consistent:
+
+* sizing
+* spacing
+* typography
+* colors
+
+⸻
+
+Cards
+
+Create reusable card standards:
+
+* Contact Cards
+* Project Cards
+* Vendor Cards
+* Quote Cards
+* Media Cards
+
+All cards should share:
+
+* border radius
+* padding
+* spacing
+* typography hierarchy
+
+⸻
+
+Headers
+
+Introduce stronger visual hierarchy.
+
+Mobile currently suffers from too much white-on-white layout.
+
+Add stronger separation between:
+
+* Page Header
+* Filters
+* Content
+
+Recommendation:
+
+Use black header bars with white text for:
+
+* Contacts Table Header
+* Projects Header
+* Catalog Sections
+* Media Sections
+
+This creates visual separation and improves readability.
+
+⸻
+
+PHASE 2 – CONTACTS & PROJECTS MOBILE UX OVERHAUL
+
+Goal
+
+Contacts and Projects should feel like sister pages.
+
+Different data.
+Same design language.
+
+⸻
+
+Contacts Improvements
+
+Improve Mobile Readability
+
+Current issues:
+
+* filters feel cramped
+* search bar squeezed
+* cards too tall
+* metrics disconnected from content
+
+Improve:
+
+* spacing
+* filter layout
+* card sizing
+* typography
+
+⸻
+
+Card Layout
+
+Keep:
+
+* Organization Logo
+* Organization Name
+* Status Badge
+
+Improve:
+
+* spacing
+* alignment
+* hierarchy
+
+⸻
+
+Phone Formatting
+
+Always display:
+
+(###) ###-####
+
+Regardless of input format.
+
+Examples:
+
+6236925062
+623-692-5062
+(623)6925062
+623.692.5062
+
+Should all become:
+
+(623) 692-5062
+
+Apply everywhere in OS and Client Hub.
+
+⸻
+
+Projects Improvements
+
+Match Contacts styling.
+
+Use same:
+
+* spacing
+* card sizing
+* filter styles
+* metric styles
+* typography
+
+Projects and Contacts should feel like part of the same application.
+
+⸻
+
+PHASE 3 – PRODUCTION WORKFLOW OVERHAUL
+
+Goal
+
+Improve production navigation for invoices containing multiple line items.
+
+⸻
+
+Current Problem
+
+Production is unclear when:
+
+Invoice contains:
+
+* Item 1
+* Item 2
+* Item 3
+
+Users cannot quickly move between production items.
+
+⸻
+
+New Production Navigation
+
+Display:
+
+Production Item X of Y
+
+Examples:
+
+Production Item 1 of 3
+Production Item 2 of 3
+Production Item 3 of 3
+
+⸻
+
+Navigation Controls
+
+Desktop:
+
+Previous
+Next
+
+Mobile/Tablet:
+
+Swipe support
+
+Users should be able to:
+
+* swipe between production items
+* move forward
+* move backward
+
+without returning to Projects.
+
+⸻
+
+Completion Logic
+
+Single Item:
+
+Complete
+→ Return to Projects
+
+Multiple Items:
+
+Complete Item
+→ Automatically advance to next item
+
+Final Item:
+
+Complete Item
+→ Return to Projects page
+
+⸻
+
+Visual Progress
+
+Show:
+
+Production Item 2 of 3
+
+and optionally:
+
+Progress indicator
+
+This should make it obvious where the user is in the production sequence.
+
+⸻
+
+PHASE 4 – CATALOG MANAGEMENT REDESIGN
+
+Goal
+
+Remove duplicate vendor management.
+
+⸻
+
+Current Problem
+
+We currently manage:
+
+* Wholesale Vendors
+* Client Facing Vendors
+
+This creates duplicate maintenance.
+
+⸻
+
+New Structure
+
+One Vendor Record
+
+Example:
+
+SanMar
+
+Contains:
+
+* Vendor Name
+* Description
+* Website URL
+* Catalog URL
+* Logo
+* Category
+
+Flags:
+
+* Visible In Client Hub
+* Featured Vendor
+
+⸻
+
+Client Hub Catalog Logic
+
+Client Hub automatically displays:
+
+Visible In Client Hub = TRUE
+
+No duplicate vendor records.
+
+⸻
+
+Vendor Management Actions
+
+Add top-level actions:
+
+* Add Vendor
+
+Actions Menu (…)
+
+Containing:
+
+* Import Vendors
+* Export Vendors
+* Bulk Edit
+* Bulk Delete
+* Download Template
+
+⸻
+
+Bulk Upload
+
+Support:
+
+* CSV
+* XLSX
+
+⸻
+
+Download Template
+
+Generate current upload template.
+
+Headers:
+
+Vendor Name
+Category
+Description
+Website URL
+Catalog URL
+Client Hub Visible
+Featured
+Logo URL
+
+Template should automatically stay updated if requirements change.
+
+⸻
+
+Vendor Export
+
+Allow export to:
+
+CSV
+XLSX
+
+Include:
+
+* vendor name
+* description
+* website URL
+* catalog URL
+* visibility status
+* featured status
+
+⸻
+
+Mobile Catalog Redesign
+
+Current vendor cards:
+
+* too tall
+* text wraps awkwardly
+* buttons oversized
+
+New Vendor Card:
+
+Logo
+
+Vendor Name
+
+Description
+(max 2 lines)
+
+[ Catalog ] [ Website ]
+
+Equal heights.
+Consistent spacing.
+Improved readability.
+
+⸻
+
+PHASE 5 – RESPONSIVE VALIDATION SYSTEM
+
+Goal
+
+Prevent future UI degradation.
+
+⸻
+
+Create Validation Checklist
+
+For every page:
+
+Desktop
+Tablet
+Mobile
+
+Verify:
+
+* card sizing
+* typography
+* spacing
+* filters
+* buttons
+* search bars
+* tabs
+* status pills
+
+⸻
+
+Required Pages
+
+Contacts
+Projects
+Quotes
+Production
+Catalogs
+Organizations
+Client Hubs
+Media Bin
+
+⸻
+
+Create Reusable Audit Process
+
+Add:
+
+npm run verify
+
+Checks:
+
+* build
+* lint
+* types
+* responsive layout validation
+* broken imports
+* unused files
+* duplicate code detection
+
+⸻
+
+FINAL OBJECTIVE
+
+Create a professional, scalable operating system that feels consistent across:
+
+* Desktop
+* Tablet
+* Mobile
+
+Every page should feel like it belongs to the same application.
+
+Prioritize:
+
+1. Consistency
+2. Readability
+3. Operational speed
+4. Mobile usability
+5. Long-term maintainability
+
+Do not simply patch individual screens.
+
+Establish reusable systems, components, and standards that future modules automatically inherit.
