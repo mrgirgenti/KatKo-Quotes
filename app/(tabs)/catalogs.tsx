@@ -12,8 +12,13 @@ import {
   Alert,
   Platform,
   useWindowDimensions,
+  Switch,
 } from 'react-native';
-import { ExternalLink, BookOpen, Tag, Plus, Pencil, Trash2, X, Globe, ChevronDown, GripVertical, MoreVertical } from 'lucide-react-native';
+import {
+  BookOpen, Plus, Pencil, Trash2, X, Globe,
+  ChevronDown, MoreVertical, Eye, EyeOff, Star,
+  Download, Upload, FileText, CheckSquare, ChevronUp,
+} from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
 const BRAND = Colors.light.tint;
@@ -21,164 +26,9 @@ const TEXT = Colors.light.text;
 const TEXT_LIGHT = Colors.light.textSecondary;
 const BORDER = Colors.light.border;
 const SURFACE = Colors.light.surface;
-
-interface Vendor {
-  id: string;
-  name: string;
-  description: string;
-  catalogUrl: string;
-  websiteUrl: string;
-  color: string;
-  initials: string;
-}
-
-interface ClientCatalog {
-  id: string;
-  name: string;
-  description: string | null;
-  vendorName: string | null;
-  category: string;
-  catalogUrl: string;
-  websiteUrl: string | null;
-  coverImageUrl: string | null;
-  isActive: boolean;
-  sortOrder: number;
-  createdAt: string;
-}
+const BG = Colors.light.background;
 
 const CATEGORIES = ['Apparel', 'Promotional', 'Accessories', 'Signage', 'Other'];
-
-const APPAREL_VENDORS: Vendor[] = [
-  {
-    id: 'sanmar',
-    name: 'SanMar',
-    description: 'Leading wholesale supplier of imprintable apparel, bags and caps. Extensive catalog including Port & Company, Sport-Tek, and more.',
-    catalogUrl: 'https://www.sanmar.com/catalog',
-    websiteUrl: 'https://www.sanmar.com',
-    color: '#C41230',
-    initials: 'SM',
-  },
-  {
-    id: 'ssactivewear',
-    name: 'S&S Activewear',
-    description: 'National wholesale distributor of imprintable sportswear and activewear. Wide selection of top brands and the best prices in the industry.',
-    catalogUrl: 'https://www.ssactivewear.com/category/Catalog',
-    websiteUrl: 'https://www.ssactivewear.com',
-    color: '#003087',
-    initials: 'SS',
-  },
-  {
-    id: 'mccreary',
-    name: "McCreary's",
-    description: 'Regional apparel and promotional products supplier. Reliable source for a wide variety of blank garments and promotional items.',
-    catalogUrl: 'https://www.mccrearyspromoproducts.com',
-    websiteUrl: 'https://www.mccrearyspromoproducts.com',
-    color: '#1A6B3C',
-    initials: 'MC',
-  },
-  {
-    id: 'laapparel',
-    name: 'LA Apparel',
-    description: 'Premium basics made in the USA. Known for high quality, heavyweight garments with a fashion-forward fit. Great for retail and premium print projects.',
-    catalogUrl: 'https://laapparel.com/pages/catalog',
-    websiteUrl: 'https://laapparel.com',
-    color: '#111111',
-    initials: 'LA',
-  },
-  {
-    id: 'independenttrading',
-    name: 'Independent Trading Co.',
-    description: 'Premium fleece and lifestyle apparel brand. Known for high-quality hoodies, crewnecks, and streetwear-inspired blanks at competitive wholesale prices.',
-    catalogUrl: 'https://www.independenttrading.com/catalog',
-    websiteUrl: 'https://www.independenttrading.com',
-    color: '#1C3557',
-    initials: 'ITC',
-  },
-  {
-    id: 'shakawear',
-    name: 'Shaka Wear',
-    description: 'Heavyweight, high-quality basics built for decorating. Popular for oversized and streetwear aesthetics with exceptional value for high-volume orders.',
-    catalogUrl: 'https://shakawear.com/pages/catalog',
-    websiteUrl: 'https://shakawear.com',
-    color: '#E05A00',
-    initials: 'SW',
-  },
-  {
-    id: 'augusta',
-    name: 'Augusta Sportswear',
-    description: 'Industry leader in performance and team sportswear. Extensive selection of sublimated and moisture-wicking apparel for teams and organizations.',
-    catalogUrl: 'https://www.augustasportswear.com/catalog',
-    websiteUrl: 'https://www.augustasportswear.com',
-    color: '#004B8D',
-    initials: 'AS',
-  },
-];
-
-const PROMO_VENDORS: Vendor[] = [
-  {
-    id: 'katalystpromo',
-    name: 'Katalyst Ko Promo',
-    description: 'Our in-house promotional products line. Custom branded merchandise, giveaways, and corporate swag sourced and decorated by Katalyst Ko.',
-    catalogUrl: 'https://katalystko.com',
-    websiteUrl: 'https://katalystko.com',
-    color: '#FF5A00',
-    initials: 'KK',
-  },
-  {
-    id: 'sinalite',
-    name: 'Sinalite',
-    description: 'Wholesale trade printer specializing in large-format printing, banners, signs, and display graphics. Fast turnaround for trade-only orders.',
-    catalogUrl: 'https://www.sinalite.com/catalog',
-    websiteUrl: 'https://www.sinalite.com',
-    color: '#0066CC',
-    initials: 'SL',
-  },
-  {
-    id: 'bestofsigns',
-    name: 'Best of Signs',
-    description: 'Online print supplier for banners, signs, trade show displays, and vehicle graphics. Competitive pricing with a wide range of custom print products.',
-    catalogUrl: 'https://www.bestofsigns.com',
-    websiteUrl: 'https://www.bestofsigns.com',
-    color: '#C8002D',
-    initials: 'BS',
-  },
-  {
-    id: 'signsdotcom',
-    name: 'Signs.com',
-    description: 'Custom sign printing made easy — banners, yard signs, window decals, and more. Instant online pricing with fast production and shipping.',
-    catalogUrl: 'https://www.signs.com/signs',
-    websiteUrl: 'https://www.signs.com',
-    color: '#007A33',
-    initials: 'SC',
-  },
-  {
-    id: '4allpromos',
-    name: '4 All Promos',
-    description: 'Full-service promotional products distributor. Pens, drinkware, bags, tech accessories, and thousands of customizable items for any campaign.',
-    catalogUrl: 'https://www.4allpromos.com',
-    websiteUrl: 'https://www.4allpromos.com',
-    color: '#6A1F8E',
-    initials: '4A',
-  },
-  {
-    id: 'jpplus',
-    name: 'JP Plus',
-    description: 'Promotional products and incentive merchandise. Specializing in custom-branded giveaways, awards, and recognition items for corporate clients.',
-    catalogUrl: 'https://www.jpplus.com',
-    websiteUrl: 'https://www.jpplus.com',
-    color: '#8B4513',
-    initials: 'JP',
-  },
-  {
-    id: 'jdsindustries',
-    name: 'JDS Industries',
-    description: 'Wholesale supplier of awards, trophies, plaques, and recognition products. Extensive sublimation blanks and laser-engravable merchandise.',
-    catalogUrl: 'https://www.jdsindustries.com/catalog',
-    websiteUrl: 'https://www.jdsindustries.com',
-    color: '#2D5016',
-    initials: 'JDS',
-  },
-];
 
 const CATEGORY_COLORS: Record<string, string> = {
   Apparel: '#4F46E5',
@@ -188,31 +38,61 @@ const CATEGORY_COLORS: Record<string, string> = {
   Other: '#6B7280',
 };
 
-function reorderArr<T>(arr: T[], from: number, to: number): T[] {
-  const next = [...arr];
-  const [moved] = next.splice(from, 1);
-  next.splice(to, 0, moved);
-  return next;
+interface Vendor {
+  id: string;
+  name: string;
+  description: string | null;
+  vendorName: string | null;
+  category: string;
+  catalogUrl: string | null;
+  websiteUrl: string | null;
+  coverImageUrl: string | null;
+  logoColor: string | null;
+  logoInitials: string | null;
+  isActive: boolean;
+  showInClientHub: boolean;
+  isFeatured: boolean;
+  sortOrder: number;
+  createdAt: string;
 }
 
-function getCategoryInitials(cat: ClientCatalog): string {
-  return (cat.vendorName || cat.name).split(' ').map(w => w[0]).join('').slice(0, 3).toUpperCase();
+const EMPTY_FORM = {
+  name: '',
+  description: '',
+  vendorName: '',
+  category: 'Apparel',
+  catalogUrl: '',
+  websiteUrl: '',
+  logoColor: '',
+  logoInitials: '',
+  showInClientHub: false,
+  isFeatured: false,
+};
+
+function getCatColor(cat: string): string {
+  return CATEGORY_COLORS[cat] || '#6B7280';
 }
 
-function getCategoryColor(category: string): string {
-  return CATEGORY_COLORS[category] || '#6B7280';
+function getInitials(v: Vendor): string {
+  if (v.logoInitials) return v.logoInitials;
+  return (v.vendorName || v.name).split(' ').map(w => w[0]).join('').slice(0, 3).toUpperCase();
 }
 
-const EMPTY_FORM = { name: '', description: '', vendorName: '', category: 'Apparel', catalogUrl: '', websiteUrl: '' };
+function getLogoColor(v: Vendor): string {
+  if (v.logoColor) return v.logoColor;
+  return getCatColor(v.category);
+}
 
-function CatalogFormModal({
+// ─── Form Modal ──────────────────────────────────────────────────────────────
+
+function VendorFormModal({
   visible,
   initial,
   onClose,
   onSave,
 }: {
   visible: boolean;
-  initial: Partial<typeof EMPTY_FORM> | null;
+  initial: (Partial<typeof EMPTY_FORM> & { id?: string }) | null;
   onClose: () => void;
   onSave: (data: typeof EMPTY_FORM) => Promise<void>;
 }) {
@@ -230,18 +110,18 @@ function CatalogFormModal({
     }
   }, [visible, initial]);
 
-  const upd = (k: keyof typeof EMPTY_FORM, v: string) => setForm(f => ({ ...f, [k]: v }));
+  const upd = <K extends keyof typeof EMPTY_FORM>(k: K, v: typeof EMPTY_FORM[K]) =>
+    setForm(f => ({ ...f, [k]: v }));
 
   const handleSave = async () => {
-    if (!form.name.trim()) { setError('Catalog name is required.'); return; }
-    if (!form.catalogUrl.trim()) { setError('Catalog URL is required.'); return; }
+    if (!form.name.trim()) { setError('Vendor name is required.'); return; }
     setError('');
     setSaving(true);
     try {
       await onSave(form);
       onClose();
     } catch (e: any) {
-      setError(e.message || 'Failed to save catalog.');
+      setError(e.message || 'Failed to save vendor.');
     } finally {
       setSaving(false);
     }
@@ -252,29 +132,29 @@ function CatalogFormModal({
       <TouchableOpacity style={fm.overlay} activeOpacity={1} onPress={onClose}>
         <TouchableOpacity activeOpacity={1} style={fm.sheet} onPress={() => setShowCatDrop(false)}>
           <View style={fm.header}>
-            <Text style={fm.title}>{initial ? 'Edit Catalog' : 'Add Client Catalog'}</Text>
+            <Text style={fm.title}>{initial?.id ? 'Edit Vendor' : 'Add Vendor'}</Text>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <X size={20} color={TEXT_LIGHT} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={fm.body} keyboardShouldPersistTaps="handled">
+          <ScrollView style={fm.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             {!!error && (
               <View style={fm.errorBox}>
                 <Text style={fm.errorText}>{error}</Text>
               </View>
             )}
 
-            <Text style={fm.label}>Catalog Name <Text style={{ color: BRAND }}>*</Text></Text>
+            <Text style={fm.label}>Vendor Name <Text style={{ color: BRAND }}>*</Text></Text>
             <TextInput
               style={fm.input}
               value={form.name}
               onChangeText={v => upd('name', v)}
-              placeholder="e.g. Spring 2026 Apparel"
+              placeholder="e.g. SanMar"
               placeholderTextColor="#9CA3AF"
             />
 
-            <Text style={fm.label}>Vendor / Brand Name</Text>
+            <Text style={fm.label}>Display Name / Brand</Text>
             <TextInput
               style={fm.input}
               value={form.vendorName}
@@ -285,7 +165,10 @@ function CatalogFormModal({
 
             <Text style={fm.label}>Category</Text>
             <TouchableOpacity style={fm.select} onPress={() => setShowCatDrop(d => !d)}>
-              <Text style={fm.selectText}>{form.category}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: getCatColor(form.category) }} />
+                <Text style={fm.selectText}>{form.category}</Text>
+              </View>
               <ChevronDown size={16} color={TEXT_LIGHT} />
             </TouchableOpacity>
             {showCatDrop && (
@@ -296,6 +179,7 @@ function CatalogFormModal({
                     style={[fm.dropOption, form.category === cat && fm.dropOptionActive]}
                     onPress={() => { upd('category', cat); setShowCatDrop(false); }}
                   >
+                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: getCatColor(cat) }} />
                     <Text style={[fm.dropOptionText, form.category === cat && fm.dropOptionTextActive]}>{cat}</Text>
                   </TouchableOpacity>
                 ))}
@@ -307,12 +191,12 @@ function CatalogFormModal({
               style={[fm.input, { minHeight: 72, textAlignVertical: 'top' }]}
               value={form.description}
               onChangeText={v => upd('description', v)}
-              placeholder="Brief description of the catalog"
+              placeholder="Brief description of this vendor"
               placeholderTextColor="#9CA3AF"
               multiline
             />
 
-            <Text style={fm.label}>Catalog URL <Text style={{ color: BRAND }}>*</Text></Text>
+            <Text style={fm.label}>Catalog URL</Text>
             <TextInput
               style={fm.input}
               value={form.catalogUrl}
@@ -334,7 +218,54 @@ function CatalogFormModal({
               keyboardType="url"
             />
 
-            <View style={{ height: 20 }} />
+            <Text style={fm.label}>Logo Color (hex)</Text>
+            <TextInput
+              style={fm.input}
+              value={form.logoColor}
+              onChangeText={v => upd('logoColor', v)}
+              placeholder="e.g. #C41230"
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="none"
+            />
+
+            <Text style={fm.label}>Logo Initials</Text>
+            <TextInput
+              style={fm.input}
+              value={form.logoInitials}
+              onChangeText={v => upd('logoInitials', v.toUpperCase().slice(0, 3))}
+              placeholder="e.g. SM"
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="characters"
+              maxLength={3}
+            />
+
+            <View style={fm.toggleRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={fm.toggleLabel}>Show in Client Hub</Text>
+                <Text style={fm.toggleSub}>Clients can view this vendor's catalog</Text>
+              </View>
+              <Switch
+                value={form.showInClientHub}
+                onValueChange={v => upd('showInClientHub', v)}
+                trackColor={{ false: '#E5E7EB', true: BRAND + '55' }}
+                thumbColor={form.showInClientHub ? BRAND : '#9CA3AF'}
+              />
+            </View>
+
+            <View style={[fm.toggleRow, { borderBottomWidth: 0, marginBottom: 8 }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={fm.toggleLabel}>Featured</Text>
+                <Text style={fm.toggleSub}>Highlight this vendor at the top</Text>
+              </View>
+              <Switch
+                value={form.isFeatured}
+                onValueChange={v => upd('isFeatured', v)}
+                trackColor={{ false: '#E5E7EB', true: '#F59E0B55' }}
+                thumbColor={form.isFeatured ? '#F59E0B' : '#9CA3AF'}
+              />
+            </View>
+
+            <View style={{ height: 12 }} />
           </ScrollView>
 
           <View style={fm.footer}>
@@ -342,7 +273,9 @@ function CatalogFormModal({
               <Text style={fm.cancelBtnText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[fm.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
-              {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={fm.saveBtnText}>Save Catalog</Text>}
+              {saving
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={fm.saveBtnText}>Save Vendor</Text>}
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -351,52 +284,59 @@ function CatalogFormModal({
   );
 }
 
+// ─── Main Screen ─────────────────────────────────────────────────────────────
+
 export default function CatalogsScreen() {
-  const [activeTab, setActiveTab] = useState<'wholesale' | 'client'>('wholesale');
-  const [clientCatalogs, setClientCatalogs] = useState<ClientCatalog[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const [editing, setEditing] = useState<ClientCatalog | null>(null);
+  const [editing, setEditing] = useState<Vendor | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const { width: screenWidth } = useWindowDimensions();
   const isMobile = screenWidth < 768;
-  // 2-column card width for mobile: (screen - 2×24 padding - 16 gap) / 2
-  const mobileCardWidth = Math.floor((screenWidth - 48 - 16) / 2);
+  const isTablet = screenWidth >= 768 && screenWidth < 1100;
 
-  // Vendor order (local only)
-  const [apparelVendors, setApparelVendors] = useState([...APPAREL_VENDORS]);
-  const [promoVendors, setPromoVendors] = useState([...PROMO_VENDORS]);
+  // Card width: 2-col on mobile, 3-col on desktop
+  const HORIZ_PAD = 24;
+  const CARD_GAP = 12;
+  const cols = isMobile ? 2 : isTablet ? 2 : 3;
+  const cardWidth = Math.floor((screenWidth - HORIZ_PAD * 2 - CARD_GAP * (cols - 1)) / cols);
 
-  // Drag state
-  const apparelSrc = useRef(-1);
-  const [apparelOver, setApparelOver] = useState(-1);
-  const promoSrc = useRef(-1);
-  const [promoOver, setPromoOver] = useState(-1);
-  const clientSrc = useRef(-1);
-  const [clientOver, setClientOver] = useState(-1);
-
-  const fetchClientCatalogs = useCallback(async (includeInactive = true) => {
+  const fetchVendors = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch('/api/client-catalogs');
       const data = await res.json();
-      if (Array.isArray(data)) {
-        setClientCatalogs(includeInactive ? data : data.filter((c: ClientCatalog) => c.isActive));
-      }
+      if (Array.isArray(data)) setVendors(data);
     } catch (e) {
-      console.error('Failed to load client catalogs', e);
+      console.error('Failed to load vendors', e);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    if (activeTab === 'client') fetchClientCatalogs();
-  }, [activeTab, fetchClientCatalogs]);
+  useEffect(() => { fetchVendors(); }, [fetchVendors]);
 
-  const openLink = (url: string) => Linking.openURL(url);
+  // Close menus when tapping elsewhere
+  const closeMenus = () => { setOpenMenuId(null); setActionsOpen(false); };
+
+  const filtered = vendors.filter(v => {
+    const q = search.toLowerCase();
+    const matchesSearch = !q || v.name.toLowerCase().includes(q) || (v.vendorName || '').toLowerCase().includes(q) || v.category.toLowerCase().includes(q);
+    const matchesCat = !activeCategory || v.category === activeCategory;
+    return matchesSearch && matchesCat;
+  });
+
+  const hubVisible = vendors.filter(v => v.showInClientHub).length;
+  const featured = vendors.filter(v => v.isFeatured).length;
 
   const handleSave = async (form: typeof EMPTY_FORM) => {
     if (editing) {
@@ -414,17 +354,18 @@ export default function CatalogsScreen() {
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Failed to create');
     }
-    await fetchClientCatalogs();
+    await fetchVendors();
   };
 
-  const handleDelete = (cat: ClientCatalog) => {
+  const handleDelete = (v: Vendor) => {
+    closeMenus();
     if (Platform.OS === 'web') {
-      if (!window.confirm(`Delete "${cat.name}"? This cannot be undone.`)) return;
-      doDelete(cat.id);
+      if (!window.confirm(`Delete "${v.name}"? This cannot be undone.`)) return;
+      doDelete(v.id);
     } else {
-      Alert.alert('Delete Catalog', `Delete "${cat.name}"? This cannot be undone.`, [
+      Alert.alert('Delete Vendor', `Delete "${v.name}"? This cannot be undone.`, [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => doDelete(cat.id) },
+        { text: 'Delete', style: 'destructive', onPress: () => doDelete(v.id) },
       ]);
     }
   };
@@ -433,7 +374,7 @@ export default function CatalogsScreen() {
     setDeletingId(id);
     try {
       await fetch(`/api/client-catalogs/${id}`, { method: 'DELETE' });
-      setClientCatalogs(prev => prev.filter(c => c.id !== id));
+      setVendors(prev => prev.filter(v => v.id !== id));
     } catch (e) {
       console.error('Delete failed', e);
     } finally {
@@ -441,168 +382,241 @@ export default function CatalogsScreen() {
     }
   };
 
-  const handleApparelDrop = (toIdx: number) => {
-    const from = apparelSrc.current;
-    if (from < 0 || from === toIdx) return;
-    setApparelVendors(v => reorderArr(v, from, toIdx));
-  };
-
-  const handlePromoDrop = (toIdx: number) => {
-    const from = promoSrc.current;
-    if (from < 0 || from === toIdx) return;
-    setPromoVendors(v => reorderArr(v, from, toIdx));
-  };
-
-  const handleClientDrop = (toIdx: number) => {
-    const from = clientSrc.current;
-    if (from < 0 || from === toIdx) return;
-    setClientCatalogs(prev => {
-      const reordered = reorderArr(prev, from, toIdx);
-      reordered.forEach((cat, idx) => {
-        fetch(`/api/client-catalogs/${cat.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sortOrder: idx }),
-        }).catch(console.error);
+  const toggleField = async (vendor: Vendor, field: 'showInClientHub' | 'isFeatured') => {
+    closeMenus();
+    setTogglingId(vendor.id + field);
+    try {
+      const res = await fetch(`/api/client-catalogs/${vendor.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: !vendor[field] }),
       });
-      return reordered;
-    });
+      if (res.ok) {
+        const updated = await res.json();
+        setVendors(prev => prev.map(v => v.id === vendor.id ? { ...v, ...updated } : v));
+      }
+    } catch (e) {
+      console.error('Toggle failed', e);
+    } finally {
+      setTogglingId(null);
+    }
   };
 
-  const dragProps = (
-    idx: number,
-    srcRef: React.MutableRefObject<number>,
-    setOver: (i: number) => void,
-    onDrop: (i: number) => void,
-  ) => Platform.OS === 'web' ? ({
-    draggable: true,
-    onDragStart: () => { srcRef.current = idx; },
-    onDragOver: (e: any) => { e.preventDefault(); setOver(idx); },
-    onDrop: (e: any) => { e.preventDefault(); onDrop(idx); },
-    onDragEnd: () => { srcRef.current = -1; setOver(-1); },
-  } as any) : {};
+  // ── CSV Export ──
+  const handleExport = () => {
+    closeMenus();
+    const headers = ['name', 'vendorName', 'category', 'catalogUrl', 'websiteUrl', 'description', 'logoColor', 'logoInitials', 'showInClientHub', 'isFeatured'];
+    const rows = vendors.map(v =>
+      headers.map(h => {
+        const val = (v as any)[h];
+        if (val === null || val === undefined) return '';
+        if (typeof val === 'boolean') return val ? 'true' : 'false';
+        return `"${String(val).replace(/"/g, '""')}"`;
+      }).join(',')
+    );
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'vendors.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
-  const renderVendorCard = (
-    vendor: Vendor,
-    idx: number,
-    overIdx: number,
-    srcRef: React.MutableRefObject<number>,
-    setOver: (i: number) => void,
-    onDrop: (i: number) => void,
-  ) => (
-    <View
-      key={vendor.id}
-      style={[
-        styles.vendorCard,
-        overIdx === idx && styles.dragOverCard,
-        isMobile && { width: mobileCardWidth, minWidth: 0 },
-      ]}
-      {...dragProps(idx, srcRef, setOver, onDrop)}
-    >
-      <View style={styles.vendorCardTop}>
-        <View style={[styles.vendorAvatar, { backgroundColor: vendor.color }, isMobile && styles.vendorAvatarSmall]}>
-          <Text style={[styles.vendorInitials, isMobile && { fontSize: 12 }]}>{vendor.initials}</Text>
-        </View>
-        <View style={styles.vendorMeta}>
-          <Text style={[styles.vendorName, isMobile && { fontSize: 14 }]} numberOfLines={2}>{vendor.name}</Text>
-        </View>
-        {!isMobile && (
-          <View style={styles.dragHandle}>
-            <GripVertical size={16} color="#C0C6CF" />
-          </View>
-        )}
-      </View>
-      <Text style={styles.vendorDescription} numberOfLines={isMobile ? 3 : undefined}>{vendor.description}</Text>
-      <View style={[styles.vendorActions, isMobile && { flexDirection: 'column' }]}>
-        <TouchableOpacity style={styles.catalogBtn} onPress={() => openLink(vendor.catalogUrl)}>
-          <BookOpen size={15} color="#fff" />
-          <Text style={styles.catalogBtnText}>{isMobile ? 'Catalog' : 'View Catalog'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.websiteBtn, isMobile && { justifyContent: 'center' }]} onPress={() => openLink(vendor.websiteUrl)}>
-          <ExternalLink size={15} color={BRAND} />
-          <Text style={styles.websiteBtnText}>Website</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+  // ── CSV Template Download ──
+  const handleDownloadTemplate = () => {
+    closeMenus();
+    const headers = 'name,vendorName,category,catalogUrl,websiteUrl,description,logoColor,logoInitials,showInClientHub,isFeatured';
+    const example = '"SanMar","SanMar","Apparel","https://www.sanmar.com/catalog","https://www.sanmar.com","Leading wholesale supplier","#C41230","SM","false","false"';
+    const csv = [headers, example].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'vendor-import-template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
-  const renderClientCatalogCard = (cat: ClientCatalog, idx: number) => {
-    const color = getCategoryColor(cat.category);
-    const initials = getCategoryInitials(cat);
-    const isMenuOpen = openMenuId === cat.id;
+  // ── CSV Import ──
+  const handleImportClick = () => {
+    closeMenus();
+    if (Platform.OS !== 'web') return;
+    if (!fileInputRef.current) {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.csv';
+      input.onchange = async (e: any) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        await processImportFile(file);
+      };
+      fileInputRef.current = input as any;
+    }
+    (fileInputRef.current as any).click();
+  };
+
+  const processImportFile = async (file: File) => {
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const lines = text.trim().split('\n');
+      if (lines.length < 2) { alert('CSV file is empty or has no data rows.'); return; }
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+      let count = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const vals = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+        const row: Record<string, any> = {};
+        headers.forEach((h, idx) => { row[h] = vals[idx] || ''; });
+        if (!row.name) continue;
+        const payload = {
+          name: row.name,
+          vendorName: row.vendorName || row.name,
+          category: CATEGORIES.includes(row.category) ? row.category : 'Apparel',
+          catalogUrl: row.catalogUrl || null,
+          websiteUrl: row.websiteUrl || null,
+          description: row.description || null,
+          logoColor: row.logoColor || null,
+          logoInitials: row.logoInitials || null,
+          showInClientHub: row.showInClientHub === 'true',
+          isFeatured: row.isFeatured === 'true',
+        };
+        await fetch('/api/client-catalogs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        count++;
+      }
+      await fetchVendors();
+      if (Platform.OS === 'web') alert(`Imported ${count} vendor(s) successfully.`);
+    } catch (e) {
+      console.error('Import failed', e);
+      if (Platform.OS === 'web') alert('Import failed. Please check the file format.');
+    } finally {
+      setImporting(false);
+      fileInputRef.current = null;
+    }
+  };
+
+  const openEdit = (v: Vendor) => {
+    closeMenus();
+    setEditing(v);
+    setModalVisible(true);
+  };
+
+  // ── Card ──
+  const renderCard = (vendor: Vendor) => {
+    const color = getLogoColor(vendor);
+    const initials = getInitials(vendor);
+    const isMenuOpen = openMenuId === vendor.id;
+    const isDeleting = deletingId === vendor.id;
+
     return (
-      <View
-        key={cat.id}
-        style={[
-          styles.clientCard,
-          clientOver === idx && styles.dragOverCard,
-          isMobile && { width: mobileCardWidth, minWidth: 0 },
-        ]}
-        {...dragProps(idx, clientSrc, setClientOver, handleClientDrop)}
-      >
-        {/* Card header row */}
-        <View style={styles.clientCardTop}>
-          <View style={[styles.vendorAvatar, { backgroundColor: color }, isMobile && styles.vendorAvatarSmall]}>
-            <Text style={[styles.vendorInitials, isMobile && { fontSize: 12 }]}>{initials}</Text>
+      <View key={vendor.id} style={[s.card, { width: cardWidth }]}>
+        {/* Header row */}
+        <View style={s.cardTop}>
+          <View style={[s.avatar, { backgroundColor: color }]}>
+            <Text style={s.avatarText}>{initials}</Text>
           </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={[styles.vendorName, isMobile && { fontSize: 14 }]} numberOfLines={2}>{cat.name}</Text>
-            <View style={[styles.categoryBadge, { backgroundColor: color + '18', alignSelf: 'flex-start', marginTop: 4 }]}>
-              <Text style={[styles.categoryBadgeText, { color }]}>{cat.category}</Text>
+          <View style={s.cardMeta}>
+            <Text style={s.vendorName} numberOfLines={1}>{vendor.name}</Text>
+            <View style={[s.catBadge, { backgroundColor: getCatColor(vendor.category) + '18' }]}>
+              <Text style={[s.catBadgeText, { color: getCatColor(vendor.category) }]}>{vendor.category}</Text>
             </View>
           </View>
-          {/* Ellipsis menu */}
+          {/* ⋮ menu */}
           <View style={{ position: 'relative' }}>
             <TouchableOpacity
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              onPress={() => setOpenMenuId(isMenuOpen ? null : cat.id)}
-              style={styles.ellipsisBtn}
+              onPress={() => setOpenMenuId(isMenuOpen ? null : vendor.id)}
+              style={s.ellipsisBtn}
             >
-              <MoreVertical size={18} color={TEXT_LIGHT} />
+              <MoreVertical size={17} color={TEXT_LIGHT} />
             </TouchableOpacity>
             {isMenuOpen && (
-              <View style={styles.cardMenu}>
-                <TouchableOpacity
-                  style={styles.cardMenuItem}
-                  onPress={() => { setOpenMenuId(null); setEditing(null); setModalVisible(true); }}
-                >
-                  <Plus size={14} color={TEXT} />
-                  <Text style={styles.cardMenuItemText}>Add Vendor</Text>
+              <View style={s.cardMenu}>
+                <TouchableOpacity style={s.menuItem} onPress={() => openEdit(vendor)}>
+                  <Pencil size={13} color={TEXT} />
+                  <Text style={s.menuItemText}>Edit Vendor</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.menuItem} onPress={() => toggleField(vendor, 'showInClientHub')}>
+                  {vendor.showInClientHub
+                    ? <EyeOff size={13} color={TEXT} />
+                    : <Eye size={13} color={TEXT} />}
+                  <Text style={s.menuItemText}>
+                    {vendor.showInClientHub ? 'Hide from Client Hub' : 'Show in Client Hub'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.menuItem} onPress={() => toggleField(vendor, 'isFeatured')}>
+                  <Star size={13} color={vendor.isFeatured ? '#F59E0B' : TEXT} fill={vendor.isFeatured ? '#F59E0B' : 'none'} />
+                  <Text style={[s.menuItemText, vendor.isFeatured && { color: '#F59E0B' }]}>
+                    {vendor.isFeatured ? 'Remove Featured' : 'Mark as Featured'}
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.cardMenuItem}
-                  onPress={() => { setOpenMenuId(null); setEditing(cat); setModalVisible(true); }}
+                  style={[s.menuItem, { borderBottomWidth: 0 }]}
+                  onPress={() => handleDelete(vendor)}
+                  disabled={isDeleting}
                 >
-                  <Pencil size={14} color={TEXT} />
-                  <Text style={styles.cardMenuItemText}>Edit Catalog</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.cardMenuItem, { borderBottomWidth: 0 }]}
-                  onPress={() => { setOpenMenuId(null); handleDelete(cat); }}
-                  disabled={deletingId === cat.id}
-                >
-                  {deletingId === cat.id
+                  {isDeleting
                     ? <ActivityIndicator size="small" color="#DC2626" />
-                    : <Trash2 size={14} color="#DC2626" />}
-                  <Text style={[styles.cardMenuItemText, { color: '#DC2626' }]}>Delete Catalog</Text>
+                    : <Trash2 size={13} color="#DC2626" />}
+                  <Text style={[s.menuItemText, { color: '#DC2626' }]}>Delete Vendor</Text>
                 </TouchableOpacity>
               </View>
             )}
           </View>
         </View>
 
-        {cat.description ? <Text style={styles.vendorDescription} numberOfLines={isMobile ? 3 : undefined}>{cat.description}</Text> : null}
+        {/* Status badges */}
+        <View style={s.statusRow}>
+          {vendor.showInClientHub && (
+            <View style={s.hubBadge}>
+              <Eye size={10} color="#fff" />
+              <Text style={s.hubBadgeText}>Client Hub</Text>
+            </View>
+          )}
+          {vendor.isFeatured && (
+            <View style={s.featuredBadge}>
+              <Star size={10} color="#fff" fill="#fff" />
+              <Text style={s.featuredBadgeText}>Featured</Text>
+            </View>
+          )}
+        </View>
 
-        {/* Action buttons — Open Catalog + Website only */}
-        <View style={[styles.vendorActions, isMobile && { flexDirection: 'column' }]}>
-          <TouchableOpacity style={styles.catalogBtn} onPress={() => openLink(cat.catalogUrl)}>
-            <BookOpen size={15} color="#fff" />
-            <Text style={styles.catalogBtnText}>{isMobile ? 'Catalog' : 'Open Catalog'}</Text>
-          </TouchableOpacity>
-          {cat.websiteUrl ? (
-            <TouchableOpacity style={[styles.websiteBtn, isMobile && { justifyContent: 'center' }]} onPress={() => openLink(cat.websiteUrl!)}>
-              <Globe size={15} color={BRAND} />
-              <Text style={styles.websiteBtnText}>Website</Text>
+        {/* Description */}
+        {vendor.description ? (
+          <Text style={s.description} numberOfLines={2}>{vendor.description}</Text>
+        ) : (
+          <Text style={s.noDesc}>No description</Text>
+        )}
+
+        {/* Action buttons */}
+        <View style={s.cardActions}>
+          {vendor.catalogUrl ? (
+            <TouchableOpacity
+              style={s.catalogBtn}
+              onPress={() => Linking.openURL(vendor.catalogUrl!)}
+            >
+              <BookOpen size={13} color="#fff" />
+              <Text style={s.catalogBtnText} numberOfLines={1}>
+                {isMobile ? 'Catalog' : 'Open Catalog'}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={[s.catalogBtn, { opacity: 0.35 }]}>
+              <BookOpen size={13} color="#fff" />
+              <Text style={s.catalogBtnText}>No URL</Text>
+            </View>
+          )}
+          {vendor.websiteUrl ? (
+            <TouchableOpacity
+              style={s.websiteBtn}
+              onPress={() => Linking.openURL(vendor.websiteUrl!)}
+            >
+              <Globe size={13} color={BRAND} />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -611,129 +625,191 @@ export default function CatalogsScreen() {
   };
 
   return (
-    <>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.pageHeader}>
-          <View>
-            <Text style={styles.pageTitle}>Catalogs</Text>
-            <Text style={styles.pageSubtitle}>Manage wholesale vendor references and client-facing catalogs</Text>
+    <TouchableOpacity activeOpacity={1} style={{ flex: 1 }} onPress={closeMenus}>
+      <ScrollView
+        style={s.container}
+        contentContainerStyle={s.content}
+        showsVerticalScrollIndicator={false}
+        onScrollBeginDrag={closeMenus}
+      >
+        {/* Page Header */}
+        <View style={s.pageHeader}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.pageTitle}>Vendor Management</Text>
+            <Text style={s.pageSubtitle}>Manage wholesale vendors and client-facing catalog visibility</Text>
+          </View>
+          <View style={s.headerActions}>
+            {/* Actions dropdown */}
+            <View style={{ position: 'relative' }}>
+              <TouchableOpacity
+                style={s.actionsBtn}
+                onPress={() => { setOpenMenuId(null); setActionsOpen(v => !v); }}
+              >
+                <Text style={s.actionsBtnText}>Actions</Text>
+                {actionsOpen
+                  ? <ChevronUp size={15} color={TEXT_LIGHT} />
+                  : <ChevronDown size={15} color={TEXT_LIGHT} />}
+              </TouchableOpacity>
+              {actionsOpen && (
+                <View style={s.actionsMenu}>
+                  <TouchableOpacity style={s.actionsMenuItem} onPress={handleImportClick} disabled={importing}>
+                    {importing
+                      ? <ActivityIndicator size="small" color={BRAND} />
+                      : <Upload size={14} color={TEXT} />}
+                    <Text style={s.actionsMenuItemText}>Import from CSV</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={s.actionsMenuItem} onPress={handleExport}>
+                    <Download size={14} color={TEXT} />
+                    <Text style={s.actionsMenuItemText}>Export to CSV</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[s.actionsMenuItem, { borderBottomWidth: 0 }]} onPress={handleDownloadTemplate}>
+                    <FileText size={14} color={TEXT} />
+                    <Text style={s.actionsMenuItemText}>Download Template</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* Add Vendor */}
+            <TouchableOpacity
+              style={s.addBtn}
+              onPress={() => { closeMenus(); setEditing(null); setModalVisible(true); }}
+            >
+              <Plus size={15} color="#fff" />
+              <Text style={s.addBtnText}>{isMobile ? 'Add' : 'Add Vendor'}</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.tabRow}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'wholesale' && styles.tabActive]}
-            onPress={() => setActiveTab('wholesale')}
-          >
-            <BookOpen size={15} color={activeTab === 'wholesale' ? BRAND : TEXT_LIGHT} />
-            <Text style={[styles.tabText, activeTab === 'wholesale' && styles.tabTextActive]}>Wholesale Vendors</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'client' && styles.tabActive]}
-            onPress={() => setActiveTab('client')}
-          >
-            <Tag size={15} color={activeTab === 'client' ? BRAND : TEXT_LIGHT} />
-            <Text style={[styles.tabText, activeTab === 'client' && styles.tabTextActive]}>Client-Facing Catalogs</Text>
-          </TouchableOpacity>
+        {/* Stats Bar */}
+        <View style={s.statsBar}>
+          <View style={s.statItem}>
+            <Text style={s.statValue}>{vendors.length}</Text>
+            <Text style={s.statLabel}>Total Vendors</Text>
+          </View>
+          <View style={s.statDivider} />
+          <View style={s.statItem}>
+            <Text style={[s.statValue, { color: BRAND }]}>{hubVisible}</Text>
+            <Text style={s.statLabel}>In Client Hub</Text>
+          </View>
+          <View style={s.statDivider} />
+          <View style={s.statItem}>
+            <Text style={[s.statValue, { color: '#F59E0B' }]}>{featured}</Text>
+            <Text style={s.statLabel}>Featured</Text>
+          </View>
+          <View style={s.statDivider} />
+          <View style={s.statItem}>
+            <Text style={s.statValue}>{CATEGORIES.filter(c => vendors.some(v => v.category === c)).length}</Text>
+            <Text style={s.statLabel}>Categories</Text>
+          </View>
         </View>
 
-        {activeTab === 'wholesale' && (
-          <>
-            <View style={styles.sectionHeader}>
-              <View style={[styles.sectionIconBg, { backgroundColor: '#EEF2FF' }]}>
-                <BookOpen size={16} color="#4F46E5" />
-              </View>
-              <View>
-                <Text style={styles.sectionTitle}>Apparel Vendors</Text>
-                <Text style={styles.sectionSubtitle}>{APPAREL_VENDORS.length} suppliers</Text>
-              </View>
-            </View>
-            <View style={styles.vendorGrid}>
-              {apparelVendors.map((v, i) => renderVendorCard(v, i, apparelOver, apparelSrc, setApparelOver, handleApparelDrop))}
-            </View>
-            <View style={styles.sectionDivider} />
-            <View style={styles.sectionHeader}>
-              <View style={[styles.sectionIconBg, { backgroundColor: '#FFF7ED' }]}>
-                <Tag size={16} color={BRAND} />
-              </View>
-              <View>
-                <Text style={styles.sectionTitle}>Promotional Vendors</Text>
-                <Text style={styles.sectionSubtitle}>{promoVendors.length} suppliers</Text>
-              </View>
-            </View>
-            <View style={styles.vendorGrid}>
-              {promoVendors.map((v, i) => renderVendorCard(v, i, promoOver, promoSrc, setPromoOver, handlePromoDrop))}
-            </View>
-            <View style={styles.addVendorNote}>
-              <BookOpen size={20} color={TEXT_LIGHT} />
-              <Text style={styles.addVendorText}>
-                These are your internal wholesale references. Client-facing catalogs are managed separately under the Client-Facing Catalogs tab.
-              </Text>
-            </View>
-          </>
-        )}
+        {/* Search + Category Filters */}
+        <View style={s.filterRow}>
+          <View style={s.searchBox}>
+            <TextInput
+              style={s.searchInput}
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search vendors…"
+              placeholderTextColor="#9CA3AF"
+            />
+            {search ? (
+              <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <X size={15} color={TEXT_LIGHT} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
 
-        {activeTab === 'client' && (
-          <>
-            <View style={styles.clientHeader}>
-              <View>
-                <Text style={styles.sectionTitle}>Client-Facing Catalogs</Text>
-                <Text style={styles.pageSubtitle}>These catalogs appear in every client hub</Text>
-              </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.catFilters}
+          style={{ marginBottom: 20 }}
+        >
+          <TouchableOpacity
+            style={[s.catChip, !activeCategory && s.catChipActive]}
+            onPress={() => setActiveCategory(null)}
+          >
+            <Text style={[s.catChipText, !activeCategory && s.catChipTextActive]}>All</Text>
+          </TouchableOpacity>
+          {CATEGORIES.map(cat => {
+            const count = vendors.filter(v => v.category === cat).length;
+            if (count === 0) return null;
+            return (
               <TouchableOpacity
-                style={styles.addBtn}
+                key={cat}
+                style={[s.catChip, activeCategory === cat && s.catChipActive, activeCategory === cat && { borderColor: getCatColor(cat) }]}
+                onPress={() => setActiveCategory(activeCategory === cat ? null : cat)}
+              >
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: getCatColor(cat) }} />
+                <Text style={[s.catChipText, activeCategory === cat && { color: getCatColor(cat), fontWeight: '700' }]}>
+                  {cat}
+                </Text>
+                <View style={s.catCount}>
+                  <Text style={s.catCountText}>{count}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Vendor Grid */}
+        {loading ? (
+          <View style={s.loadingBox}>
+            <ActivityIndicator color={BRAND} />
+            <Text style={s.loadingText}>Loading vendors…</Text>
+          </View>
+        ) : filtered.length === 0 ? (
+          <View style={s.emptyBox}>
+            <BookOpen size={40} color="#D1D5DB" />
+            <Text style={s.emptyTitle}>{vendors.length === 0 ? 'No vendors yet' : 'No results found'}</Text>
+            <Text style={s.emptySub}>
+              {vendors.length === 0
+                ? 'Add your first vendor to get started.'
+                : 'Try a different search or category filter.'}
+            </Text>
+            {vendors.length === 0 && (
+              <TouchableOpacity
+                style={[s.addBtn, { marginTop: 16 }]}
                 onPress={() => { setEditing(null); setModalVisible(true); }}
               >
-                <Plus size={16} color="#fff" />
-                <Text style={styles.addBtnText}>Add Catalog</Text>
+                <Plus size={15} color="#fff" />
+                <Text style={s.addBtnText}>Add First Vendor</Text>
               </TouchableOpacity>
-            </View>
-
-            {loading ? (
-              <View style={styles.loadingBox}>
-                <ActivityIndicator color={BRAND} />
-                <Text style={styles.loadingText}>Loading catalogs…</Text>
-              </View>
-            ) : clientCatalogs.length === 0 ? (
-              <View style={styles.emptyBox}>
-                <BookOpen size={40} color="#D1D5DB" />
-                <Text style={styles.emptyTitle}>No client catalogs yet</Text>
-                <Text style={styles.emptySub}>
-                  Add your first retail catalog — it will appear in all client hubs automatically.
-                </Text>
-                <TouchableOpacity
-                  style={[styles.addBtn, { marginTop: 16 }]}
-                  onPress={() => { setEditing(null); setModalVisible(true); }}
-                >
-                  <Plus size={16} color="#fff" />
-                  <Text style={styles.addBtnText}>Add First Catalog</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.vendorGrid}>
-                {clientCatalogs.map((cat, i) => renderClientCatalogCard(cat, i))}
-              </View>
             )}
-          </>
+          </View>
+        ) : (
+          <View style={s.grid}>
+            {filtered.map(v => renderCard(v))}
+          </View>
         )}
       </ScrollView>
 
-      <CatalogFormModal
+      <VendorFormModal
         visible={modalVisible}
         initial={editing ? {
+          id: editing.id,
           name: editing.name,
           description: editing.description || '',
           vendorName: editing.vendorName || '',
           category: editing.category,
-          catalogUrl: editing.catalogUrl,
+          catalogUrl: editing.catalogUrl || '',
           websiteUrl: editing.websiteUrl || '',
+          logoColor: editing.logoColor || '',
+          logoInitials: editing.logoInitials || '',
+          showInClientHub: editing.showInClientHub,
+          isFeatured: editing.isFeatured,
         } : null}
         onClose={() => setModalVisible(false)}
         onSave={handleSave}
       />
-    </>
+    </TouchableOpacity>
   );
 }
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const fm = StyleSheet.create({
   overlay: {
@@ -765,7 +841,7 @@ const fm = StyleSheet.create({
     borderBottomColor: BORDER,
   },
   title: { fontSize: 16, fontWeight: '700', color: TEXT },
-  body: { paddingHorizontal: 20, paddingTop: 16, maxHeight: 480 },
+  body: { paddingHorizontal: 20, paddingTop: 16, maxHeight: 500 },
   label: { fontSize: 12, fontWeight: '600', color: TEXT_LIGHT, marginBottom: 6, marginTop: 12 },
   input: {
     borderWidth: 1,
@@ -797,10 +873,29 @@ const fm = StyleSheet.create({
     backgroundColor: '#fff',
     overflow: 'hidden',
   },
-  dropOption: { paddingHorizontal: 12, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  dropOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
   dropOptionActive: { backgroundColor: '#FFF7ED' },
   dropOptionText: { fontSize: 14, color: TEXT },
   dropOptionTextActive: { color: BRAND, fontWeight: '600' },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    marginTop: 10,
+    gap: 12,
+  },
+  toggleLabel: { fontSize: 14, fontWeight: '600', color: TEXT },
+  toggleSub: { fontSize: 12, color: TEXT_LIGHT, marginTop: 2 },
   footer: {
     flexDirection: 'row',
     gap: 10,
@@ -836,156 +931,197 @@ const fm = StyleSheet.create({
   errorText: { fontSize: 13, color: '#B91C1C' },
 });
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.light.background },
-  content: { paddingHorizontal: 24, paddingVertical: 24, paddingBottom: 40 },
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: BG },
+  content: { paddingHorizontal: 24, paddingVertical: 24, paddingBottom: 48 },
+
   pageHeader: {
-    flexDirection: 'row' as const,
-    justifyContent: 'space-between' as const,
-    alignItems: 'flex-start' as const,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
     marginBottom: 20,
+    gap: 12,
   },
-  pageTitle: { fontSize: 26, fontWeight: '800' as const, color: TEXT },
+  pageTitle: { fontSize: 26, fontWeight: '800', color: TEXT },
   pageSubtitle: { fontSize: 14, color: TEXT_LIGHT, marginTop: 4 },
 
-  tabRow: {
-    flexDirection: 'row' as const,
-    gap: 4,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: BORDER,
-    borderRadius: 10,
-    padding: 4,
-    backgroundColor: SURFACE,
-    alignSelf: 'flex-start' as const,
-  },
-  tab: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 },
+
+  actionsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 7,
-  },
-  tabActive: { backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
-  tabText: { fontSize: 13, fontWeight: '600' as const, color: TEXT_LIGHT },
-  tabTextActive: { color: BRAND },
-
-  sectionHeader: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 12,
-    marginBottom: 16,
-  },
-  sectionIconBg: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center' as const, alignItems: 'center' as const },
-  sectionTitle: { fontSize: 17, fontWeight: '700' as const, color: TEXT },
-  sectionSubtitle: { fontSize: 12, color: TEXT_LIGHT, marginTop: 1 },
-  sectionDivider: { height: 1, backgroundColor: BORDER, marginVertical: 28 },
-
-  vendorGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 16, overflow: 'visible' as const },
-  vendorCard: {
-    width: '31%' as any,
-    minWidth: 260,
-    backgroundColor: SURFACE,
-    borderRadius: 14,
-    padding: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: BORDER,
-    gap: 14,
+    backgroundColor: SURFACE,
   },
-  dragOverCard: {
-    borderColor: BRAND,
-    borderWidth: 2,
-    backgroundColor: '#FFF7ED',
+  actionsBtnText: { fontSize: 13, fontWeight: '600', color: TEXT },
+  actionsMenu: {
+    position: 'absolute',
+    top: 40,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: BORDER,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 8,
+    zIndex: 1000,
+    minWidth: 185,
   },
-  dragHandle: {
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    paddingLeft: 4,
+  actionsMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  vendorCardTop: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 14 },
-  vendorAvatar: { width: 52, height: 52, borderRadius: 12, justifyContent: 'center' as const, alignItems: 'center' as const, flexShrink: 0 },
-  vendorInitials: { fontSize: 15, fontWeight: '800' as const, color: '#fff', letterSpacing: 0.5 },
-  vendorMeta: { flex: 1 },
-  vendorName: { fontSize: 17, fontWeight: '700' as const, color: TEXT },
-  vendorDescription: { fontSize: 13, color: TEXT_LIGHT, lineHeight: 19 },
-  vendorActions: { flexDirection: 'row' as const, gap: 8, alignItems: 'center' as const },
+  actionsMenuItemText: { fontSize: 13, color: TEXT, fontWeight: '500' },
+
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: BRAND,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 8,
+  },
+  addBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+
+  statsBar: {
+    flexDirection: 'row',
+    backgroundColor: SURFACE,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: BORDER,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  statItem: { flex: 1, alignItems: 'center' },
+  statValue: { fontSize: 20, fontWeight: '800', color: TEXT },
+  statLabel: { fontSize: 11, color: TEXT_LIGHT, marginTop: 2 },
+  statDivider: { width: 1, height: 32, backgroundColor: BORDER },
+
+  filterRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  searchBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: SURFACE,
+  },
+  searchInput: { flex: 1, fontSize: 14, color: TEXT, minHeight: 0 },
+
+  catFilters: { flexDirection: 'row', gap: 8, paddingBottom: 2 },
+  catChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: BORDER,
+    backgroundColor: SURFACE,
+  },
+  catChipActive: { backgroundColor: '#FFF7ED', borderColor: BRAND },
+  catChipText: { fontSize: 13, fontWeight: '500', color: TEXT_LIGHT },
+  catChipTextActive: { color: BRAND, fontWeight: '700' },
+  catCount: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  catCountText: { fontSize: 11, color: TEXT_LIGHT, fontWeight: '600' },
+
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+
+  card: {
+    backgroundColor: SURFACE,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: BORDER,
+    gap: 10,
+    overflow: 'visible',
+  },
+  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  avatar: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  avatarText: { fontSize: 13, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
+  cardMeta: { flex: 1, minWidth: 0 },
+  vendorName: { fontSize: 14, fontWeight: '700', color: TEXT },
+  catBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, alignSelf: 'flex-start', marginTop: 3 },
+  catBadgeText: { fontSize: 10, fontWeight: '700' },
+
+  statusRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', minHeight: 0 },
+  hubBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: BRAND,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  hubBadgeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
+  featuredBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  featuredBadgeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
+
+  description: { fontSize: 12, color: TEXT_LIGHT, lineHeight: 17 },
+  noDesc: { fontSize: 12, color: '#D1D5DB', fontStyle: 'italic' },
+
+  cardActions: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   catalogBtn: {
     flex: 1,
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
     backgroundColor: BRAND,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingVertical: 8,
+    borderRadius: 7,
+    minHeight: 34,
   },
-  catalogBtnText: { fontSize: 13, fontWeight: '600' as const, color: '#fff' },
+  catalogBtnText: { fontSize: 12, fontWeight: '600', color: '#fff' },
   websiteBtn: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: BRAND,
-  },
-  websiteBtnText: { fontSize: 13, fontWeight: '600' as const, color: BRAND },
-  addVendorNote: {
-    flexDirection: 'row' as const,
-    alignItems: 'flex-start' as const,
-    gap: 10,
-    backgroundColor: SURFACE,
-    borderRadius: 10,
-    padding: 16,
-    marginTop: 8,
+    width: 34,
+    height: 34,
+    borderRadius: 7,
     borderWidth: 1,
     borderColor: BORDER,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
   },
-  addVendorText: { flex: 1, fontSize: 13, color: TEXT_LIGHT, lineHeight: 18 },
 
-  clientHeader: {
-    flexDirection: 'row' as const,
-    justifyContent: 'space-between' as const,
-    alignItems: 'center' as const,
-    marginBottom: 20,
-  },
-  addBtn: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 6,
-    backgroundColor: BRAND,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  addBtnText: { fontSize: 13, fontWeight: '700' as const, color: '#fff' },
-
-  clientCard: {
-    width: '31%' as any,
-    minWidth: 260,
-    backgroundColor: SURFACE,
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: BORDER,
-    gap: 12,
-    overflow: 'visible' as const,
-  },
-  clientCardTop: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 12 },
-  clientCardVendor: { fontSize: 12, color: TEXT_LIGHT, marginTop: 2 },
-  categoryBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  categoryBadgeText: { fontSize: 11, fontWeight: '700' as const },
-  vendorAvatarSmall: { width: 38, height: 38, borderRadius: 9 },
-
-  ellipsisBtn: {
-    padding: 4,
-    borderRadius: 6,
-  },
+  ellipsisBtn: { padding: 4, borderRadius: 6 },
   cardMenu: {
-    position: 'absolute' as const,
+    position: 'absolute',
     top: 28,
     right: 0,
     backgroundColor: '#fff',
@@ -998,32 +1134,32 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
     zIndex: 1000,
-    minWidth: 170,
+    minWidth: 185,
   },
-  cardMenuItem: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
     paddingHorizontal: 14,
-    paddingVertical: 11,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
-  cardMenuItemText: { fontSize: 14, color: TEXT, fontWeight: '500' as const },
+  menuItemText: { fontSize: 13, color: TEXT, fontWeight: '500' },
 
-  loadingBox: { alignItems: 'center' as const, paddingVertical: 48, gap: 12 },
+  loadingBox: { alignItems: 'center', paddingVertical: 48, gap: 12 },
   loadingText: { fontSize: 14, color: TEXT_LIGHT },
   emptyBox: {
-    alignItems: 'center' as const,
+    alignItems: 'center',
     paddingVertical: 60,
     gap: 8,
     backgroundColor: SURFACE,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: BORDER,
-    borderStyle: 'dashed' as const,
+    borderStyle: 'dashed',
     paddingHorizontal: 32,
   },
-  emptyTitle: { fontSize: 16, fontWeight: '700' as const, color: TEXT, marginTop: 8 },
-  emptySub: { fontSize: 14, color: TEXT_LIGHT, textAlign: 'center' as const, lineHeight: 20 },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: TEXT, marginTop: 8 },
+  emptySub: { fontSize: 14, color: TEXT_LIGHT, textAlign: 'center', lineHeight: 20 },
 });

@@ -1,0 +1,181 @@
+CATALOG MANAGEMENT REFACTOR
+
+The current architecture of Catalogs is incorrect.
+
+Wholesale Vendors and Client-Facing Catalogs should NOT exist as separate pages or tabs.
+
+They are the same vendors.
+
+The difference is only whether a catalog is visible inside Client Hubs.
+
+--------------------------------------------------
+REMOVE
+--------------------------------------------------
+
+Remove:
+
+- Wholesale Vendors tab
+- Client-Facing Catalogs tab
+
+Replace with:
+
+Single Catalog Management page.
+
+--------------------------------------------------
+NEW VENDOR STRUCTURE
+--------------------------------------------------
+
+Each vendor record should contain:
+
+- Vendor Name
+- Description
+- Category
+- Logo
+- Website URL
+- Catalog URL
+
+Visibility Settings:
+
+- Visible In Client Hub (toggle)
+- Featured Vendor (toggle)
+
+When Visible In Client Hub is ON:
+
+Show Catalog URL inside all Client Hubs.
+
+When OFF:
+
+Vendor remains internal only.
+
+No duplicate vendor records should exist.
+
+--------------------------------------------------
+MOBILE LAYOUT FIXES
+--------------------------------------------------
+
+Current mobile layout has significant dead space on the right side.
+
+Maintain:
+
+- 2-column layout
+
+Fix:
+
+- Remove unused right-side space
+- Stretch cards evenly across available width
+- Use full container width
+
+Target:
+
+48% card width
+4% gap
+48% card width
+
+Cards should fill available space.
+
+--------------------------------------------------
+CARD REDESIGN
+--------------------------------------------------
+
+Current issues:
+
+- Vendor names wrap incorrectly
+- Buttons are clipped
+- Icons are clipped
+- Cards are too tall
+
+Update cards:
+
+Logo
+Vendor Name
+Description (max 2 lines)
+
+Visible In Client Hub badge
+
+Buttons:
+
+[ Catalog ] [ Website ]
+
+Requirements:
+
+- Both buttons same width
+- Icons fully visible
+- Text fully visible
+- Buttons no wider than 50% of card width
+- Equal card heights
+
+Vendor name should always take priority over description text.
+
+Description should truncate before vendor names do.
+
+--------------------------------------------------
+TOP ACTIONS
+--------------------------------------------------
+
+Add top-right actions area:
+
++ Add Vendor
+
+Actions Menu
+
+Actions Menu contains:
+
+- Import Vendors
+- Export Vendors
+- Bulk Edit
+- Bulk Delete
+- Download Template
+
+--------------------------------------------------
+IMPORT / EXPORT
+--------------------------------------------------
+
+Support:
+
+- CSV
+- XLSX
+
+Download Template should generate:
+
+Vendor Name
+Category
+Description
+Website URL
+Catalog URL
+Visible In Client Hub
+Featured Vendor
+Logo URL
+
+Export should include all fields.
+
+--------------------------------------------------
+CLIENT HUB INTEGRATION
+--------------------------------------------------
+
+Client Hubs should automatically display:
+
+All vendors where:
+
+Visible In Client Hub = TRUE
+
+Only Catalog URLs should be visible to clients.
+
+Website URLs remain internal to Katalyst Ko users.
+
+--------------------------------------------------
+RESPONSIVE REQUIREMENT
+--------------------------------------------------
+
+Verify Desktop
+Verify Tablet
+Verify Mobile
+
+No dead space.
+
+No clipped buttons.
+
+No clipped text.
+
+No wrapping vendor names.
+
+No duplicate catalog management.

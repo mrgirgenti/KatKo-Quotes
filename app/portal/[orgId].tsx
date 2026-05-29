@@ -985,7 +985,7 @@ export default function ClientPortal() {
   useEffect(() => {
     if (activeView !== 'catalogs') return;
     setCatalogsLoading(true);
-    fetch('/api/client-catalogs')
+    fetch('/api/client-catalogs?clientHub=1')
       .then(r => r.ok ? r.json() : [])
       .then(data => setClientCatalogs(Array.isArray(data) ? data : []))
       .catch(() => setClientCatalogs([]))
