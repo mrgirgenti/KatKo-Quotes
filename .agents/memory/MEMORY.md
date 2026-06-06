@@ -1,0 +1,1 @@
+- [freeport-async IPv6 fix](freeport-async-ipv6-fix.md) — Expo hangs on startup (DIDNT_OPEN_A_PORT) because bun can't bind IPv6 wildcard; patch node_modules/freeport-async/index.js after every bun install.
