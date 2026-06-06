@@ -151,22 +151,27 @@ export default function DashboardScreen() {
       </View>
 
       {/* Stat cards — 2 per row on mobile, 4 on larger screens */}
-      <View style={[styles.statsGrid, isMobile && styles.statsGridMobile]}>
-        {statCards.map((card) => {
-          const IconComponent = card.icon;
+      <View style={styles.statsGrid}>
+        {Array.from({ length: Math.ceil(statCards.length / (isMobile ? 2 : 4)) }, (_, rowIdx) => {
+          const perRow = isMobile ? 2 : 4;
+          const rowItems = statCards.slice(rowIdx * perRow, rowIdx * perRow + perRow);
           return (
-            <View
-              key={card.label}
-              style={[styles.statCard, isMobile && styles.statCardMobile]}
-            >
-              <View style={[styles.statIconWrap, { backgroundColor: card.bg }]}>
-                <IconComponent size={20} color={card.color} />
-              </View>
-              <Text style={[styles.statValue, isMobile && styles.statValueMobile]}>
-                {card.value}
-              </Text>
-              <Text style={styles.statLabel}>{card.label}</Text>
-              <Text style={styles.statSub}>{card.sub}</Text>
+            <View key={rowIdx} style={styles.statsRow}>
+              {rowItems.map((card) => {
+                const IconComponent = card.icon;
+                return (
+                  <View key={card.label} style={[styles.statCard, isMobile && styles.statCardMobile]}>
+                    <View style={[styles.statIconWrap, { backgroundColor: card.bg }]}>
+                      <IconComponent size={20} color={card.color} />
+                    </View>
+                    <Text style={[styles.statValue, isMobile && styles.statValueMobile]}>
+                      {card.value}
+                    </Text>
+                    <Text style={styles.statLabel}>{card.label}</Text>
+                    <Text style={styles.statSub}>{card.sub}</Text>
+                  </View>
+                );
+              })}
             </View>
           );
         })}
@@ -178,18 +183,26 @@ export default function DashboardScreen() {
           <Text style={styles.sectionTitle}>Completed by Service</Text>
           <Text style={styles.sectionSub}>Completed projects only</Text>
         </View>
-        <View style={[styles.serviceGrid, isMobile && styles.serviceGridMobile]}>
-          {serviceBreakdown.map(({ label, count }) => {
-            const cfg = SERVICE_ICON_CONFIG[label];
-            const IconComponent = cfg.icon;
+        <View style={styles.serviceGrid}>
+          {Array.from({ length: Math.ceil(serviceBreakdown.length / (isMobile ? 2 : 4)) }, (_, rowIdx) => {
+            const perRow = isMobile ? 2 : 4;
+            const rowItems = serviceBreakdown.slice(rowIdx * perRow, rowIdx * perRow + perRow);
             return (
-              <View key={label} style={[styles.serviceCard, isMobile && styles.serviceCardMobile]}>
-                <View style={[styles.serviceIconWrap, { backgroundColor: cfg.bg }]}>
-                  <IconComponent size={20} color={cfg.color} />
-                </View>
-                <Text style={styles.serviceCount}>{count}</Text>
-                <Text style={styles.serviceLabel}>{label}</Text>
-                <Text style={styles.serviceSub}>{count === 1 ? 'project' : 'projects'}</Text>
+              <View key={rowIdx} style={styles.statsRow}>
+                {rowItems.map(({ label, count }) => {
+                  const cfg = SERVICE_ICON_CONFIG[label];
+                  const IconComponent = cfg.icon;
+                  return (
+                    <View key={label} style={[styles.serviceCard, isMobile && styles.serviceCardMobile]}>
+                      <View style={[styles.serviceIconWrap, { backgroundColor: cfg.bg }]}>
+                        <IconComponent size={20} color={cfg.color} />
+                      </View>
+                      <Text style={styles.serviceCount}>{count}</Text>
+                      <Text style={styles.serviceLabel}>{label}</Text>
+                      <Text style={styles.serviceSub}>{count === 1 ? 'project' : 'projects'}</Text>
+                    </View>
+                  );
+                })}
               </View>
             );
           })}
@@ -312,17 +325,15 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 12,
     marginBottom: 28,
   },
-  statsGridMobile: {
-    gap: 10,
+  statsRow: {
+    flexDirection: 'row',
+    gap: 12,
   },
   statCard: {
     flex: 1,
-    minWidth: 180,
     backgroundColor: Colors.light.surface,
     borderRadius: 14,
     padding: 18,
@@ -330,7 +341,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.border,
   },
   statCardMobile: {
-    minWidth: '45%' as any,
     padding: 14,
     borderRadius: 12,
   },
@@ -385,16 +395,10 @@ const styles = StyleSheet.create({
     color: Colors.light.textSecondary,
   },
   serviceGrid: {
-    flexDirection: 'row',
     gap: 12,
-  },
-  serviceGridMobile: {
-    flexWrap: 'wrap',
-    gap: 10,
   },
   serviceCard: {
     flex: 1,
-    minWidth: 120,
     backgroundColor: Colors.light.surface,
     borderRadius: 14,
     padding: 16,
@@ -403,7 +407,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   serviceCardMobile: {
-    minWidth: '44%' as any,
     padding: 12,
   },
   serviceIconWrap: {

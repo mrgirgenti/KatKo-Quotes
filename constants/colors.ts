@@ -3,7 +3,7 @@ const Colors = {
     primary: "#FF5A00",
     text: "#000000",
     textSecondary: "#4a4a4a",
-    background: "#f5f5f5",
+    background: "#ffffff",
     surface: "#ffffff",
     tint: "#FF5A00",
     accent: "#FF5A00",
