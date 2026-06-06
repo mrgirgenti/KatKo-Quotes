@@ -73,6 +73,9 @@ function RootLayoutNav() {
 export default function RootLayout() {
   useEffect(() => {
     SplashScreen.hideAsync();
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.zoom = '0.9';
+    }
   }, []);
 
   return (
