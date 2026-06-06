@@ -514,7 +514,7 @@ export default function CatalogsScreen() {
     const isDeleting = deletingId === vendor.id;
 
     return (
-      <View key={vendor.id} style={s.card}>
+      <View key={vendor.id} style={[s.card, isMenuOpen && { zIndex: 10 }]}>
         {/* Header row */}
         <View style={s.cardTop}>
           <View style={[s.avatar, { backgroundColor: color }]}>
@@ -522,12 +522,20 @@ export default function CatalogsScreen() {
           </View>
           <View style={s.cardMeta}>
             <Text style={s.vendorName} numberOfLines={1}>{vendor.name}</Text>
-            <View style={[s.catBadge, { backgroundColor: getCatColor(vendor.category) + '18' }]}>
-              <Text style={[s.catBadgeText, { color: getCatColor(vendor.category) }]}>{vendor.category}</Text>
+            <View style={s.metaBadgeRow}>
+              <View style={[s.catBadge, { backgroundColor: getCatColor(vendor.category) + '18' }]}>
+                <Text style={[s.catBadgeText, { color: getCatColor(vendor.category) }]}>{vendor.category}</Text>
+              </View>
+              {vendor.showInClientHub && (
+                <View style={s.hubBadge}>
+                  <Eye size={10} color="#fff" />
+                  <Text style={s.hubBadgeText}>Client Hub</Text>
+                </View>
+              )}
             </View>
           </View>
           {/* ⋮ menu */}
-          <View style={{ position: 'relative' }}>
+          <View style={{ position: 'relative', zIndex: 1000 }}>
             <TouchableOpacity
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               onPress={() => setOpenMenuId(isMenuOpen ? null : vendor.id)}
@@ -571,20 +579,14 @@ export default function CatalogsScreen() {
         </View>
 
         {/* Status badges */}
-        <View style={s.statusRow}>
-          {vendor.showInClientHub && (
-            <View style={s.hubBadge}>
-              <Eye size={10} color="#fff" />
-              <Text style={s.hubBadgeText}>Client Hub</Text>
-            </View>
-          )}
-          {vendor.isFeatured && (
+        {vendor.isFeatured && (
+          <View style={s.statusRow}>
             <View style={s.featuredBadge}>
               <Star size={10} color="#fff" fill="#fff" />
               <Text style={s.featuredBadgeText}>Featured</Text>
             </View>
-          )}
-        </View>
+          </View>
+        )}
 
         {/* Description */}
         {vendor.description ? (
@@ -1079,7 +1081,8 @@ const s = StyleSheet.create({
   avatarText: { fontSize: 12, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
   cardMeta: { flex: 1, minWidth: 0 },
   vendorName: { fontSize: 13, fontWeight: '700', color: TEXT },
-  catBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 20, alignSelf: 'flex-start', marginTop: 2 },
+  metaBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap', marginTop: 2 },
+  catBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 20, alignSelf: 'flex-start' },
   catBadgeText: { fontSize: 10, fontWeight: '700' },
 
   statusRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', minHeight: 0 },
