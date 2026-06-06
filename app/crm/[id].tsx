@@ -286,7 +286,7 @@ export default function OrgProfileScreen() {
   const [clientUserForm, setClientUserForm] = useState({ name: '', email: '' });
   const [clientUserSaving, setClientUserSaving] = useState(false);
 
-  type OrgTab = 'overview' | 'activity' | 'notes' | 'comms';
+  type OrgTab = 'overview' | 'contacts' | 'activity' | 'notes' | 'comms';
   const [activeTab, setActiveTab] = useState<OrgTab>('overview');
   const [orgNotesText, setOrgNotesText] = useState('');
   const [editingOrgNotes, setEditingOrgNotes] = useState(false);
@@ -1084,6 +1084,7 @@ export default function OrgProfileScreen() {
 
   const TAB_CONFIG: { id: OrgTab; label: string; count?: number }[] = [
     { id: 'overview', label: 'Overview' },
+    { id: 'contacts', label: 'Contacts', count: org.contacts.length || undefined },
     { id: 'activity', label: 'Activity', count: org.activityLog.length || undefined },
     { id: 'notes', label: 'Notes', count: org.activityLog.filter((e) => e.type === 'note').length || undefined },
     { id: 'comms', label: 'Communications', count: org.activityLog.filter((e) => e.type === 'email' || e.type === 'call' || e.type === 'text').length || undefined },
@@ -2660,6 +2661,89 @@ export default function OrgProfileScreen() {
             {activeTab === 'overview' && (
               <View style={styles.v2OverviewContent}>
                 {overviewCards}
+              </View>
+            )}
+            {activeTab === 'contacts' && (
+              <View style={styles.tabContentPad}>
+                <View style={styles.infoCard}>
+                  <View style={styles.infoCardHeader}>
+                    <View style={styles.infoCardHeaderLeft}>
+                      <Users size={15} color="#fff" />
+                      <Text style={styles.infoCardTitle}>Contacts</Text>
+                      {org.contacts.length > 0 && (
+                        <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{org.contacts.length}</Text></View>
+                      )}
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TouchableOpacity style={styles.infoCardActionSecondary} onPress={openAddDept}>
+                        <Plus size={12} color="#fff" />
+                        <Text style={styles.infoCardActionSecondaryText}>Dept</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.infoCardAction} onPress={openAddContact}>
+                        <Plus size={13} color="#fff" />
+                        <Text style={styles.infoCardActionText}>Add Contact</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  {org.contacts.length === 0 && (org.departments || []).length === 0 ? (
+                    <View style={styles.emptyCard}>
+                      <Text style={styles.emptyCardText}>No contacts yet.</Text>
+                      <Text style={styles.emptyCardSub}>Add departments to organize people by team, then add contacts.</Text>
+                    </View>
+                  ) : (
+                    <>
+                      {(org.departments || []).map((dept) => {
+                        const deptContacts = org.contacts.filter((c) => c.departmentId === dept.id);
+                        return (
+                          <View key={dept.id} style={styles.deptSection}>
+                            <View style={styles.deptHeader}>
+                              <View style={styles.deptHeaderLeft}>
+                                <Users size={13} color={Colors.light.tint} />
+                                <Text style={styles.deptName}>{dept.name}</Text>
+                                <Text style={styles.deptCount}>{deptContacts.length} contact{deptContacts.length !== 1 ? 's' : ''}</Text>
+                              </View>
+                              <View style={styles.deptHeaderActions}>
+                                <TouchableOpacity style={styles.deptAddBtn} onPress={() => { setEditingContact(null); setContactForm({ firstName: '', lastName: '', role: 'Primary Contact', email: '', phone: '', notes: '', isPrimary: false, departmentId: dept.id, hubAccess: false }); setContactModal(true); }}>
+                                  <Plus size={12} color={Colors.light.tint} />
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.deptActionBtn} onPress={() => openEditDept(dept)}>
+                                  <Edit3 size={12} color={Colors.light.textSecondary} />
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.deptActionBtn} onPress={() => Alert.alert('Delete Department', `Remove "${dept.name}"? Contacts in this department will become unassigned.`, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => deleteDepartment({ orgId: org.id, deptId: dept.id }) }])}>
+                                  <Trash2 size={12} color={Colors.light.error} />
+                                </TouchableOpacity>
+                              </View>
+                            </View>
+                            {deptContacts.length === 0 ? (
+                              <Text style={styles.deptEmpty}>No contacts in this department yet.</Text>
+                            ) : (
+                              deptContacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={!!(c.email && memberships.some((m) => (m as any).userType === 'CLIENT' && m.userEmail === c.email))} onEnableHub={() => handleEnableHubFromCard(c)} />)
+                            )}
+                          </View>
+                        );
+                      })}
+                      {(() => {
+                        const unassigned = org.contacts.filter((c) => !c.departmentId || !(org.departments || []).find((d) => d.id === c.departmentId));
+                        if ((org.departments || []).length === 0) {
+                          return org.contacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={!!(c.email && memberships.some((m) => (m as any).userType === 'CLIENT' && m.userEmail === c.email))} onEnableHub={() => handleEnableHubFromCard(c)} />);
+                        }
+                        if (unassigned.length === 0) return null;
+                        return (
+                          <View style={styles.deptSection}>
+                            <View style={styles.deptHeader}>
+                              <View style={styles.deptHeaderLeft}>
+                                <User size={13} color={Colors.light.textSecondary} />
+                                <Text style={[styles.deptName, { color: Colors.light.textSecondary }]}>Unassigned</Text>
+                                <Text style={styles.deptCount}>{unassigned.length}</Text>
+                              </View>
+                            </View>
+                            {unassigned.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={!!(c.email && memberships.some((m) => (m as any).userType === 'CLIENT' && m.userEmail === c.email))} onEnableHub={() => handleEnableHubFromCard(c)} />)}
+                          </View>
+                        );
+                      })()}
+                    </>
+                  )}
+                </View>
               </View>
             )}
             {activeTab === 'activity' && (
