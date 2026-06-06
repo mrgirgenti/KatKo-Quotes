@@ -514,7 +514,7 @@ export default function CatalogsScreen() {
     const isDeleting = deletingId === vendor.id;
 
     return (
-      <View key={vendor.id} style={[s.card, { width: cardWidth }]}>
+      <View key={vendor.id} style={s.card}>
         {/* Header row */}
         <View style={s.cardTop}>
           <View style={[s.avatar, { backgroundColor: color }]}>
@@ -636,7 +636,6 @@ export default function CatalogsScreen() {
         <View style={s.pageHeader}>
           <View style={{ flex: 1 }}>
             <Text style={s.pageTitle}>Vendor Management</Text>
-            <Text style={s.pageSubtitle}>Manage wholesale vendors and client-facing catalog visibility</Text>
           </View>
           <View style={s.headerActions}>
             {/* Actions dropdown */}
@@ -782,7 +781,17 @@ export default function CatalogsScreen() {
           </View>
         ) : (
           <View style={s.grid}>
-            {filtered.map(v => renderCard(v))}
+            {Array.from({ length: Math.ceil(filtered.length / cols) }, (_, rowIdx) => {
+              const rowItems = filtered.slice(rowIdx * cols, rowIdx * cols + cols);
+              return (
+                <View key={rowIdx} style={s.gridRow}>
+                  {rowItems.map(v => renderCard(v))}
+                  {rowItems.length < cols && Array.from({ length: cols - rowItems.length }).map((_, i) => (
+                    <View key={`ph-${i}`} style={s.cardPlaceholder} />
+                  ))}
+                </View>
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -932,7 +941,7 @@ const fm = StyleSheet.create({
 });
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
+  container: { flex: 1, backgroundColor: SURFACE },
   content: { paddingHorizontal: 24, paddingVertical: 24, paddingBottom: 48 },
 
   pageHeader: {
@@ -1051,9 +1060,12 @@ const s = StyleSheet.create({
   },
   catCountText: { fontSize: 11, color: TEXT_LIGHT, fontWeight: '600' },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  grid: { gap: 12 },
+  gridRow: { flexDirection: 'row', gap: 12 },
+  cardPlaceholder: { flex: 1 },
 
   card: {
+    flex: 1,
     backgroundColor: SURFACE,
     borderRadius: 12,
     padding: 14,
