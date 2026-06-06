@@ -20,6 +20,7 @@ export type ActivityType =
   | 'in_production' | 'completed'
   // Account / access
   | 'hub_enabled' | 'member_added' | 'member_removed'
+  | 'hub_invite_sent' | 'hub_user_disabled' | 'hub_user_enabled'
   // Contact changes
   | 'contact_added' | 'contact_updated';
 
@@ -92,11 +93,13 @@ export interface OrgMembership {
   canPayInvoices: boolean;
   canApproveQuotes: boolean;
   createdAt: string;
+  inviteSentAt?: string | null;
   userName?: string;
   userEmail?: string;
   userAvatarColor?: string;
   userType?: 'INTERNAL' | 'CLIENT';
   userStatus?: 'INVITED' | 'ACTIVE' | 'DISABLED';
+  hasPassword?: boolean;
 }
 
 export interface Organization {
@@ -181,9 +184,12 @@ export const ACTIVITY_TYPE_CONFIG: Record<ActivityType, { label: string; color: 
   in_production:   { label: 'In Production',    color: '#FF5A00', icon: 'package',       isSystem: true },
   completed:       { label: 'Completed',        color: '#16A34A', icon: 'check-circle',  isSystem: true },
   // Account / access
-  hub_enabled:     { label: 'Hub Enabled',      color: '#0891B2', icon: 'shield',        isSystem: true },
-  member_added:    { label: 'Member Added',     color: '#4B5563', icon: 'user',          isSystem: true },
-  member_removed:  { label: 'Member Removed',   color: '#9CA3AF', icon: 'user',          isSystem: true },
+  hub_enabled:        { label: 'Hub Enabled',        color: '#0891B2', icon: 'shield',     isSystem: true },
+  member_added:       { label: 'Member Added',       color: '#4B5563', icon: 'user',       isSystem: true },
+  member_removed:     { label: 'Member Removed',     color: '#9CA3AF', icon: 'user',       isSystem: true },
+  hub_invite_sent:    { label: 'Hub Invite Sent',    color: '#6366F1', icon: 'mail',       isSystem: true },
+  hub_user_disabled:  { label: 'Hub User Disabled',  color: '#DC2626', icon: 'user',       isSystem: true },
+  hub_user_enabled:   { label: 'Hub User Enabled',   color: '#16A34A', icon: 'user',       isSystem: true },
   // Contact changes
   contact_added:   { label: 'Contact Added',    color: '#2563EB', icon: 'user',          isSystem: true },
   contact_updated: { label: 'Contact Updated',  color: '#6B7280', icon: 'user',          isSystem: true },

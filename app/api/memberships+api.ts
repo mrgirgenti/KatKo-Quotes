@@ -14,12 +14,14 @@ function toFrontendMembership(m: any) {
     canViewInvoices: m.canViewInvoices ?? false,
     canPayInvoices: m.canPayInvoices ?? false,
     canApproveQuotes: m.canApproveQuotes ?? false,
+    inviteSentAt: m.inviteSentAt ? new Date(m.inviteSentAt).toISOString() : null,
     createdAt: new Date(m.createdAt).toISOString(),
     userName: m.userName || undefined,
     userEmail: email.endsWith('@noemail.internal') ? '' : email,
     userAvatarColor: m.userAvatarColor || undefined,
     userType: m.userType || 'INTERNAL',
     userStatus: m.userStatus || 'ACTIVE',
+    hasPassword: !!(m.passwordHash),
   };
 }
 
@@ -30,7 +32,8 @@ async function fetchMembershipWithUser(membershipId: string) {
        u.email AS "userEmail",
        u."avatarColor" AS "userAvatarColor",
        u."userType" AS "userType",
-       u.status AS "userStatus"
+       u.status AS "userStatus",
+       u."passwordHash" AS "passwordHash"
      FROM "OrganizationMembership" om
      JOIN "User" u ON om."userId" = u.id
      WHERE om.id = $1`,
@@ -51,7 +54,8 @@ export async function GET(request: Request) {
          u.email AS "userEmail",
          u."avatarColor" AS "userAvatarColor",
          u."userType" AS "userType",
-         u.status AS "userStatus"
+         u.status AS "userStatus",
+         u."passwordHash" AS "passwordHash"
        FROM "OrganizationMembership" om
        JOIN "User" u ON om."userId" = u.id
        WHERE om."organizationId" = $1

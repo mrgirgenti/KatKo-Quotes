@@ -1,0 +1,325 @@
+We need to improve backend Client Hub management from the Organization / Client page.
+
+The Client Hub already exists. This is NOT a rebuild of the Client Hub.
+
+The goal is to make Client Hub activation, access, invites, users, links, and password support manageable directly from the backend Organization page.
+
+======================================================================
+1. ADD CLIENT HUB SECTION TO ORGANIZATION PAGE
+======================================================================
+
+Add a new section called:
+
+CLIENT HUB
+
+Location:
+- below Contacts
+- above Media Bin
+
+Use the same black section header style as Contacts and Media Bin.
+
+Header should include:
+- CLIENT HUB
+- status pill/count if useful
+- quick action button when appropriate
+
+======================================================================
+2. CLIENT HUB STATUS DISPLAY
+======================================================================
+
+Inside the Client Hub section, show whether this organization has an active hub.
+
+Possible statuses:
+- Not Enabled
+- Active
+- Invites Sent
+- Needs Setup
+- Disabled
+
+Display clearly:
+- Hub Status
+- Hub URL
+- Organization linked to hub
+- Number of Hub Users
+- Last Invite Sent, if available
+
+If no hub exists:
+- show empty state:
+  “Client Hub is not enabled for this organization.”
+- primary button:
+  “Activate Client Hub”
+
+======================================================================
+3. ACTIVATE CLIENT HUB
+======================================================================
+
+Add an “Activate Client Hub” button.
+
+When clicked:
+- create/enable the client hub for this organization
+- generate hub link if one does not exist
+- set status to Active
+- show the hub URL immediately
+- allow copying/sharing/inviting users
+
+Do not require leaving the Organization page.
+
+======================================================================
+4. HUB LINK + COPY BUTTON
+======================================================================
+
+When hub is active, show:
+
+- Hub Link
+- Square icon button to copy link
+- Optional “Open Hub” button
+
+Copy behavior:
+- clicking copy icon copies the hub URL
+- show small success state/toast:
+  “Hub link copied”
+
+The copy button should be compact and visually similar to other icon buttons in the OS.
+
+======================================================================
+5. INVITE CLIENTS TO HUB
+======================================================================
+
+Add invite functionality inside the Client Hub section.
+
+Invite options:
+
+A. Send Email Invite
+- select existing contact
+- or enter email manually
+- send branded invite email
+- include hub link
+- include setup/login instructions
+
+B. Copy Invite Message
+- generates a plain text invite message
+- copies to clipboard
+- intended for texting or manual sending
+
+Example copy text:
+“Hi [Name], your Katalyst Ko Client Hub is ready. You can access it here: [Hub Link]”
+
+C. Resend Invite
+- allow resend to existing hub users or pending invited users
+
+Track:
+- invite sent date
+- invited email
+- invite status:
+  - Pending
+  - Accepted
+  - Expired
+  - Revoked, if applicable
+
+======================================================================
+6. CLIENT HUB USERS LIST
+======================================================================
+
+Inside the Client Hub section, show users associated with this organization’s hub.
+
+Show each user:
+- name
+- email
+- role
+- status
+- password status
+- last login if available
+- invite status if pending
+
+Roles:
+- Organization Admin
+- Member
+- View Only, if supported
+- Katalyst Ko Rep, if applicable
+
+User statuses:
+- Active
+- Invited
+- Pending Setup
+- Disabled
+
+Password status:
+- Password Set
+- No Password Set
+- Reset Sent
+
+Important:
+Do NOT display actual passwords.
+Only show whether a password has been set.
+
+======================================================================
+7. USER ACTIONS
+======================================================================
+
+Each hub user row should have actions:
+
+- Send Invite
+- Resend Invite
+- Copy Invite
+- Trigger Password Reset
+- Disable Access
+- Remove From Hub, if permitted
+- Edit Role, if permitted
+
+Access rules:
+- Katalyst Ko backend users can manage all hub users
+- Organization Admins may manage users if this permission exists
+- Standard users should not manage other users
+
+======================================================================
+8. PASSWORD RESET SUPPORT
+======================================================================
+
+Client Hub login should include a clear:
+
+“Forgot Password?”
+
+flow.
+
+When clicked:
+- user enters email
+- system sends password reset email if account exists
+- do not reveal whether the email exists publicly
+- reset link expires after reasonable time
+
+Backend Organization page should also allow Katalyst Ko users to trigger password resets.
+
+Button:
+“Send Password Reset”
+
+Behavior:
+- sends reset email to selected hub user
+- updates password status to “Reset Sent”
+- logs activity
+
+======================================================================
+9. CLIENT HUB USER MANAGEMENT FROM CONTACTS
+======================================================================
+
+Client Hub access should tie into organization contacts.
+
+From Contacts:
+- contacts can be enabled for Client Hub access
+- enabled users appear in the Client Hub section
+- disabled users remain contacts but do not have hub access
+
+In Edit Contact:
+- keep checkbox/toggle:
+  “Enable Client Hub Access”
+
+On Organization page contact cards:
+- show small Client Hub access indicator
+- do not allow accidental removal from the contact row unless confirmed or done through edit
+
+======================================================================
+10. ACTIVITY LOGGING
+======================================================================
+
+All Client Hub management actions should create activity entries.
+
+Log:
+- Hub activated
+- Hub disabled
+- Invite sent
+- Invite resent
+- Invite accepted
+- User added
+- User removed
+- Password reset sent
+- Hub link copied, optional
+- Role changed
+
+These should appear in the Organization Activity tab.
+
+======================================================================
+11. EMAILS
+======================================================================
+
+Create branded emails for:
+
+A. Hub Invite
+Subject:
+“Your Katalyst Ko Client Hub is ready”
+
+Includes:
+- organization name
+- hub link
+- login/setup instructions
+- support contact
+
+B. Password Reset
+Subject:
+“Reset your Katalyst Ko Client Hub password”
+
+Includes:
+- secure reset link
+- expiration notice
+
+C. Invite Accepted, optional internal notification
+Send to Katalyst Ko admin or rep if useful.
+
+======================================================================
+12. SECURITY REQUIREMENTS
+======================================================================
+
+- Do not expose actual passwords
+- Password reset links must be secure and time-limited
+- Users can only access their own organization’s hub
+- Hub links should not bypass authentication
+- Copying a hub link should not grant access without login unless explicitly intended
+- Client Hub access must respect organization/user permissions
+
+======================================================================
+13. UI DESIGN REQUIREMENTS
+======================================================================
+
+Client Hub section should feel consistent with Contacts and Media Bin.
+
+Recommended layout:
+
+If active:
+
+CLIENT HUB
+[Status: Active] [Open Hub] [Copy Link]
+
+Hub Link:
+[input-style URL field] [copy icon]
+
+Users:
+- user rows/cards with name, email, role, password status, actions
+
+Invite:
+[Send Invite] [Copy Invite Message]
+
+If inactive:
+
+CLIENT HUB
+Client Hub is not enabled for this organization.
+
+[Activate Client Hub]
+
+Keep the section clean and compact.
+Do not overbuild this into a separate page unless needed later.
+
+======================================================================
+14. FINAL GOAL
+======================================================================
+
+From an Organization page, I should be able to:
+
+- see whether the Client Hub is active
+- activate the hub
+- copy/open the hub link
+- invite contacts/users
+- copy invite text for texting
+- see who has access
+- see whether users have passwords set
+- trigger password reset emails
+- manage access without leaving the organization page
+
+This is a backend control panel for Client Hub access and user management.

@@ -58,6 +58,9 @@ import {
   Wifi,
   WifiOff,
   Award,
+  RotateCcw,
+  UserX,
+  UserCheck,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { OrgLogoUploader } from '@/components/OrgLogoUploader';
@@ -286,6 +289,13 @@ export default function OrgProfileScreen() {
   const [clientUserForm, setClientUserForm] = useState({ name: '', email: '' });
   const [clientUserSaving, setClientUserSaving] = useState(false);
 
+  const [inviteModal, setInviteModal] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ name: '', email: '' });
+  const [inviteSending, setInviteSending] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [disablingId, setDisablingId] = useState<string | null>(null);
+  const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
+
   type OrgTab = 'overview' | 'contacts' | 'activity' | 'notes' | 'comms';
   const [activeTab, setActiveTab] = useState<OrgTab>('overview');
   const [orgNotesText, setOrgNotesText] = useState('');
@@ -408,6 +418,97 @@ export default function OrgProfileScreen() {
       setClientUserSaving(false);
     }
   }, [org, clientUserForm, createMembershipAsync, refetchMemberships]);
+
+  const handleSendHubInvite = useCallback(async () => {
+    if (!org || !inviteForm.name.trim() || !inviteForm.email.trim()) return;
+    setInviteSending(true);
+    try {
+      const portalUrl = Platform.OS === 'web' && typeof window !== 'undefined'
+        ? `${window.location.origin}/portal/${org.id}`
+        : `/portal/${org.id}`;
+      const res = await fetch('/api/hub-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orgId: org.id,
+          name: inviteForm.name.trim(),
+          email: inviteForm.email.trim(),
+          orgName: org.name,
+          portalUrl,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || 'Failed to send invite');
+      }
+      setInviteModal(false);
+      setInviteForm({ name: '', email: '' });
+      refetchMemberships();
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to send invite.');
+    } finally {
+      setInviteSending(false);
+    }
+  }, [org, inviteForm, refetchMemberships]);
+
+  const handleResendInvite = useCallback(async (m: OrgMembership) => {
+    if (!org || !m.userEmail || !m.userName) return;
+    setResendingId(m.id);
+    try {
+      const portalUrl = Platform.OS === 'web' && typeof window !== 'undefined'
+        ? `${window.location.origin}/portal/${org.id}`
+        : `/portal/${org.id}`;
+      const res = await fetch('/api/hub-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orgId: org.id, name: m.userName, email: m.userEmail, orgName: org.name, portalUrl }),
+      });
+      if (!res.ok) throw new Error('Failed to resend invite');
+      refetchMemberships();
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to resend invite.');
+    } finally {
+      setResendingId(null);
+    }
+  }, [org, refetchMemberships]);
+
+  const handleCopyInviteText = useCallback(() => {
+    if (!org || Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const portalUrl = `${window.location.origin}/portal/${org.id}`;
+    const text = `Hi! You've been invited to the ${org.name} client hub by Katalyst Ko Printshop.\n\nAccess your portal here: ${portalUrl}\n\nThrough your portal you can submit print requests, review quotes, and track project status.\n\nQuestions? Email us at jobs@katalystko.com`;
+    navigator.clipboard.writeText(text);
+    setInviteLinkCopied(true);
+    setTimeout(() => setInviteLinkCopied(false), 2000);
+  }, [org]);
+
+  const handleToggleClientUserStatus = useCallback(async (m: OrgMembership) => {
+    if (!m.userId) return;
+    const newStatus = m.userStatus === 'DISABLED' ? 'ACTIVE' : 'DISABLED';
+    setDisablingId(m.id);
+    try {
+      await fetch(`/api/users/${m.userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (org) {
+        const actType = newStatus === 'DISABLED' ? 'hub_user_disabled' : 'hub_user_enabled';
+        const actSummary = newStatus === 'DISABLED'
+          ? `Hub access disabled for ${m.userName || m.userEmail}`
+          : `Hub access re-enabled for ${m.userName || m.userEmail}`;
+        await fetch('/api/activity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orgId: org.id, type: actType, date: new Date().toISOString().slice(0, 10), body: actSummary }),
+        }).catch(() => {});
+      }
+      refetchMemberships();
+    } catch {
+      Alert.alert('Error', 'Could not update user status.');
+    } finally {
+      setDisablingId(null);
+    }
+  }, [org, refetchMemberships]);
 
   const relatedQuotes = useMemo(() => {
     if (!org) return [];
@@ -924,50 +1025,65 @@ export default function OrgProfileScreen() {
             <Shield size={15} color="#fff" />
             <Text style={styles.infoCardTitle}>Client Hub</Text>
           </View>
-          <TouchableOpacity
-            style={styles.hubToggleBtn}
-            onPress={handleHubToggle}
-            activeOpacity={0.7}
-          >
+          <TouchableOpacity style={styles.hubToggleBtn} onPress={handleHubToggle} activeOpacity={0.7}>
             <Text style={[styles.hubToggleBtnText, localHubEnabled && styles.hubToggleBtnTextOn]}>
               {localHubEnabled ? 'On' : 'Off'}
             </Text>
             {localHubEnabled
               ? <ToggleRight size={26} color="#FF5A00" />
-              : <ToggleLeft size={26} color={Colors.light.border} />
-            }
+              : <ToggleLeft size={26} color={Colors.light.border} />}
           </TouchableOpacity>
         </View>
-        {localHubEnabled && (
-          <View style={styles.portalPanel}>
-            <View style={styles.portalUrlRow}>
-              <Globe size={11} color={Colors.light.textSecondary} />
-              <Text style={styles.portalUrlText} numberOfLines={1}>
-                {Platform.OS === 'web' && typeof window !== 'undefined'
-                  ? `${window.location.origin}/portal/${org.id}`
-                  : `/portal/${org.id}`}
-              </Text>
-            </View>
-            <View style={styles.portalActions}>
-              <TouchableOpacity
-                style={styles.portalVisitBtn}
-                onPress={() => { if (Platform.OS === 'web') { (window as any).open(`/portal/${org.id}`, '_blank'); } }}
-              >
-                <ExternalLink size={13} color="#fff" />
-                <Text style={styles.portalVisitBtnText}>Visit Hub</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.portalIconBtn} onPress={handleCopyHubLink}>
-                {hubLinkCopied
-                  ? <CheckCircle2 size={16} color="#16A34A" />
-                  : <Copy size={16} color={Colors.light.textSecondary} />}
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.portalIconBtn} onPress={() => router.push(`/hub/${org.id}` as any)}>
-                <Settings size={16} color={Colors.light.textSecondary} />
-              </TouchableOpacity>
-            </View>
+
+        {!localHubEnabled ? (
+          <View style={styles.hubDisabledBanner}>
+            <Text style={styles.hubDisabledText}>Client Hub is off. Toggle on to give this client a branded portal.</Text>
           </View>
+        ) : (
+          <>
+            <View style={styles.portalPanel}>
+              <View style={styles.portalUrlRow}>
+                <Globe size={11} color={Colors.light.textSecondary} />
+                <Text style={styles.portalUrlText} numberOfLines={1}>
+                  {Platform.OS === 'web' && typeof window !== 'undefined'
+                    ? `${window.location.origin}/portal/${org.id}`
+                    : `/portal/${org.id}`}
+                </Text>
+              </View>
+              <View style={styles.portalActions}>
+                <TouchableOpacity
+                  style={styles.portalVisitBtn}
+                  onPress={() => { if (Platform.OS === 'web') { (window as any).open(`/portal/${org.id}`, '_blank'); } }}
+                >
+                  <ExternalLink size={13} color="#fff" />
+                  <Text style={styles.portalVisitBtnText}>Visit Hub</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.portalIconBtn} onPress={handleCopyHubLink}>
+                  {hubLinkCopied ? <CheckCircle2 size={16} color="#16A34A" /> : <Copy size={16} color={Colors.light.textSecondary} />}
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.portalIconBtn} onPress={() => router.push(`/hub/${org.id}` as any)}>
+                  <Settings size={16} color={Colors.light.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View style={styles.hubInviteRow}>
+              <TouchableOpacity style={styles.hubInviteBtn} onPress={() => { setInviteForm({ name: '', email: '' }); setInviteModal(true); }}>
+                <Mail size={13} color="#FF5A00" />
+                <Text style={styles.hubInviteBtnText}>Send Invite Email</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.hubCopyInviteBtn} onPress={handleCopyInviteText}>
+                {inviteLinkCopied
+                  ? <CheckCircle2 size={13} color="#16A34A" />
+                  : <Copy size={13} color={Colors.light.textSecondary} />}
+                <Text style={[styles.hubCopyInviteBtnText, inviteLinkCopied && { color: '#16A34A' }]}>
+                  {inviteLinkCopied ? 'Copied!' : 'Copy Invite Text'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
         )}
-        <View style={styles.infoCardSubHeader}>
+
+        <View style={[styles.infoCardSubHeader, { marginTop: 10 }]}>
           <Text style={styles.infoCardSubTitle}>Katalyst Ko Rep</Text>
           <TouchableOpacity onPress={() => { setMemberForm({ userId: '', role: 'MEMBER' }); setAddMemberModal(true); }}>
             <Plus size={16} color={Colors.light.tint} />
@@ -1004,35 +1120,71 @@ export default function OrgProfileScreen() {
             </View>
           ))
         )}
+
         <View style={[styles.infoCardSubHeader, { marginTop: 12 }]}>
           <Text style={styles.infoCardSubTitle}>Client Hub Users</Text>
-          <TouchableOpacity onPress={() => { setClientUserForm({ name: '', email: '' }); setAddClientUserModal(true); }}>
+          <TouchableOpacity onPress={() => { setInviteForm({ name: '', email: '' }); setInviteModal(true); }}>
             <Plus size={16} color={Colors.light.tint} />
           </TouchableOpacity>
         </View>
         {membershipsLoading ? (
           <Text style={styles.emptyCardSub}>Loading...</Text>
         ) : memberships.filter((m) => m.userType === 'CLIENT').length === 0 ? (
-          <Text style={[styles.emptyCardSub, { marginTop: 4 }]}>No client users yet. Invite a client to give them portal access.</Text>
+          <Text style={[styles.emptyCardSub, { marginTop: 4 }]}>
+            No client users yet.{localHubEnabled ? ' Invite a contact to give them portal access.' : ''}
+          </Text>
         ) : (
           memberships.filter((m) => m.userType === 'CLIENT').map((m) => (
-            <View key={m.id} style={styles.memberRow}>
-              <View style={[styles.memberAvatar, { backgroundColor: '#6366F1' }]}>
+            <View key={m.id} style={styles.clientUserRow}>
+              <View style={[styles.memberAvatar, { backgroundColor: m.userStatus === 'DISABLED' ? '#9CA3AF' : '#6366F1' }]}>
                 <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
               </View>
-              <View style={styles.memberInfo}>
-                <Text style={styles.memberName}>{m.userName || 'Unknown User'}</Text>
+              <View style={styles.clientUserInfo}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' as const }}>
+                  <Text style={[styles.memberName, m.userStatus === 'DISABLED' && { color: Colors.light.textSecondary }]}>
+                    {m.userName || 'Unknown User'}
+                  </Text>
+                  {m.userStatus === 'INVITED' && <View style={styles.statusBadgeInvited}><Text style={styles.statusBadgeText}>Invited</Text></View>}
+                  {m.userStatus === 'ACTIVE' && <View style={styles.statusBadgeActive}><Text style={styles.statusBadgeText}>Active</Text></View>}
+                  {m.userStatus === 'DISABLED' && <View style={styles.statusBadgeDisabled}><Text style={styles.statusBadgeText}>Disabled</Text></View>}
+                  {m.hasPassword && <View style={styles.pwSetBadge}><Text style={styles.statusBadgeText}>PW Set</Text></View>}
+                </View>
                 <Text style={styles.memberRole}>{m.userEmail || 'No email'}</Text>
+                {m.inviteSentAt && <Text style={styles.inviteSentAt}>Invited {formatDate(m.inviteSentAt)}</Text>}
               </View>
-              <TouchableOpacity
-                style={styles.memberDelete}
-                onPress={() => Alert.alert('Remove Client', `Remove ${m.userName || 'this client'}?`, [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Remove', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
-                ])}
-              >
-                <X size={13} color={Colors.light.textSecondary} />
-              </TouchableOpacity>
+              <View style={styles.clientUserActions}>
+                {m.userStatus !== 'DISABLED' && (
+                  <TouchableOpacity
+                    style={styles.clientUserActionBtn}
+                    onPress={() => handleResendInvite(m)}
+                    disabled={resendingId === m.id}
+                  >
+                    {resendingId === m.id
+                      ? <ActivityIndicator size={12} color="#FF5A00" />
+                      : <RotateCcw size={13} color="#FF5A00" />}
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={styles.clientUserActionBtn}
+                  onPress={() => handleToggleClientUserStatus(m)}
+                  disabled={disablingId === m.id}
+                >
+                  {disablingId === m.id
+                    ? <ActivityIndicator size={12} color={Colors.light.textSecondary} />
+                    : m.userStatus === 'DISABLED'
+                      ? <UserCheck size={13} color="#16A34A" />
+                      : <UserX size={13} color="#DC2626" />}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.memberDelete}
+                  onPress={() => Alert.alert('Remove Client', `Remove ${m.userName || 'this client'} from the hub?`, [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Remove', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
+                  ])}
+                >
+                  <X size={13} color={Colors.light.textSecondary} />
+                </TouchableOpacity>
+              </View>
             </View>
           ))
         )}
@@ -1060,6 +1212,9 @@ export default function OrgProfileScreen() {
       entry.type === 'in_production'    ? <Package size={14} color={iconColor} /> :
       entry.type === 'completed'        ? <CheckCircle size={14} color={iconColor} /> :
       entry.type === 'hub_enabled'      ? <Shield size={14} color={iconColor} /> :
+      entry.type === 'hub_invite_sent'  ? <Mail size={14} color={iconColor} /> :
+      entry.type === 'hub_user_disabled' ? <UserX size={14} color={iconColor} /> :
+      entry.type === 'hub_user_enabled'  ? <UserCheck size={14} color={iconColor} /> :
       entry.type === 'member_added' || entry.type === 'member_removed' ? <User size={14} color={iconColor} /> :
       entry.type === 'contact_added' || entry.type === 'contact_updated' ? <User size={14} color={iconColor} /> :
       <FileText size={14} color={iconColor} />;
@@ -3014,22 +3169,46 @@ export default function OrgProfileScreen() {
           </Pressable>
         </Modal>
 
-        <Modal visible={addClientUserModal} transparent animationType="fade" onRequestClose={() => setAddClientUserModal(false)}>
-          <Pressable style={styles.modalOverlay} onPress={() => setAddClientUserModal(false)}>
+        <Modal visible={inviteModal} transparent animationType="fade" onRequestClose={() => setInviteModal(false)}>
+          <Pressable style={styles.modalOverlay} onPress={() => setInviteModal(false)}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
               <Pressable style={styles.modalCard} onPress={() => {}}>
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalTitle}>Invite Client User</Text>
-                  <TouchableOpacity onPress={() => setAddClientUserModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
+                  <TouchableOpacity onPress={() => setInviteModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
                 </View>
-                <Text style={styles.fieldLabel}>Full Name</Text>
-                <TextInput style={styles.fieldInput} value={clientUserForm.name} onChangeText={(v) => setClientUserForm((f) => ({ ...f, name: v }))} placeholder="e.g. Jane Smith" placeholderTextColor={Colors.light.placeholder} />
+                {org.contacts.filter((c) => c.email).length > 0 && (
+                  <>
+                    <Text style={styles.fieldLabel}>Quick fill from contact</Text>
+                    <ScrollView style={{ maxHeight: 130 }} showsVerticalScrollIndicator={false}>
+                      {org.contacts.filter((c) => c.email).map((c) => (
+                        <TouchableOpacity
+                          key={c.id}
+                          style={[styles.userPickerRow, inviteForm.email === c.email && styles.userPickerRowSelected]}
+                          onPress={() => setInviteForm({ name: `${c.firstName} ${c.lastName}`.trim(), email: c.email! })}
+                        >
+                          <Text style={[styles.userPickerName, inviteForm.email === c.email && { color: '#FF5A00', fontWeight: '600' as const }]}>
+                            {c.firstName} {c.lastName}
+                          </Text>
+                          <Text style={[styles.memberRole, { flex: 1, textAlign: 'right' as const }]}>{c.email}</Text>
+                          {inviteForm.email === c.email && <CheckCircle size={14} color="#FF5A00" />}
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </>
+                )}
+                <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Full Name</Text>
+                <TextInput style={styles.fieldInput} value={inviteForm.name} onChangeText={(v) => setInviteForm((f) => ({ ...f, name: v }))} placeholder="e.g. Jane Smith" placeholderTextColor={Colors.light.placeholder} />
                 <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Email Address</Text>
-                <TextInput style={styles.fieldInput} value={clientUserForm.email} onChangeText={(v) => setClientUserForm((f) => ({ ...f, email: v }))} placeholder="e.g. jane@client.com" placeholderTextColor={Colors.light.placeholder} keyboardType="email-address" autoCapitalize="none" />
+                <TextInput style={styles.fieldInput} value={inviteForm.email} onChangeText={(v) => setInviteForm((f) => ({ ...f, email: v }))} placeholder="e.g. jane@client.com" placeholderTextColor={Colors.light.placeholder} keyboardType="email-address" autoCapitalize="none" />
+                <View style={styles.inviteEmailNote}>
+                  <Mail size={12} color="#6366F1" />
+                  <Text style={styles.inviteEmailNoteText}>An invite email will be sent to this address.</Text>
+                </View>
                 <View style={styles.modalActions}>
-                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setAddClientUserModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
-                  <TouchableOpacity style={[styles.saveBtn, (!clientUserForm.name.trim() || !clientUserForm.email.trim() || clientUserSaving) && { opacity: 0.4 }]} onPress={handleAddClientUser} disabled={!clientUserForm.name.trim() || !clientUserForm.email.trim() || clientUserSaving}>
-                    <Text style={styles.saveBtnText}>{clientUserSaving ? 'Adding...' : 'Add Client'}</Text>
+                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setInviteModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
+                  <TouchableOpacity style={[styles.saveBtn, (!inviteForm.name.trim() || !inviteForm.email.trim() || inviteSending) && { opacity: 0.4 }]} onPress={handleSendHubInvite} disabled={!inviteForm.name.trim() || !inviteForm.email.trim() || inviteSending}>
+                    <Text style={styles.saveBtnText}>{inviteSending ? 'Sending...' : 'Send Invite'}</Text>
                   </TouchableOpacity>
                 </View>
               </Pressable>
@@ -3390,42 +3569,66 @@ export default function OrgProfileScreen() {
       </Modal>
 
       {/* Invite Client User Modal */}
-      <Modal visible={addClientUserModal} transparent animationType="fade" onRequestClose={() => setAddClientUserModal(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setAddClientUserModal(false)}>
+      <Modal visible={inviteModal} transparent animationType="fade" onRequestClose={() => setInviteModal(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setInviteModal(false)}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
             <Pressable style={styles.modalCard} onPress={() => {}}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Invite Client User</Text>
-                <TouchableOpacity onPress={() => setAddClientUserModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
+                <TouchableOpacity onPress={() => setInviteModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
               </View>
-              <Text style={styles.fieldLabel}>Full Name</Text>
+              {org.contacts.filter((c) => c.email).length > 0 && (
+                <>
+                  <Text style={styles.fieldLabel}>Quick fill from contact</Text>
+                  <ScrollView style={{ maxHeight: 130 }} showsVerticalScrollIndicator={false}>
+                    {org.contacts.filter((c) => c.email).map((c) => (
+                      <TouchableOpacity
+                        key={c.id}
+                        style={[styles.userPickerRow, inviteForm.email === c.email && styles.userPickerRowSelected]}
+                        onPress={() => setInviteForm({ name: `${c.firstName} ${c.lastName}`.trim(), email: c.email! })}
+                      >
+                        <Text style={[styles.userPickerName, inviteForm.email === c.email && { color: '#FF5A00', fontWeight: '600' as const }]}>
+                          {c.firstName} {c.lastName}
+                        </Text>
+                        <Text style={[styles.memberRole, { flex: 1, textAlign: 'right' as const }]}>{c.email}</Text>
+                        {inviteForm.email === c.email && <CheckCircle size={14} color="#FF5A00" />}
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </>
+              )}
+              <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Full Name</Text>
               <TextInput
                 style={styles.fieldInput}
-                value={clientUserForm.name}
-                onChangeText={(v) => setClientUserForm((f) => ({ ...f, name: v }))}
+                value={inviteForm.name}
+                onChangeText={(v) => setInviteForm((f) => ({ ...f, name: v }))}
                 placeholder="e.g. Jane Smith"
                 placeholderTextColor={Colors.light.placeholder}
               />
               <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Email Address</Text>
               <TextInput
                 style={styles.fieldInput}
-                value={clientUserForm.email}
-                onChangeText={(v) => setClientUserForm((f) => ({ ...f, email: v }))}
+                value={inviteForm.email}
+                onChangeText={(v) => setInviteForm((f) => ({ ...f, email: v }))}
                 placeholder="e.g. jane@client.com"
                 placeholderTextColor={Colors.light.placeholder}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
+              <View style={styles.inviteEmailNote}>
+                <Mail size={12} color="#6366F1" />
+                <Text style={styles.inviteEmailNoteText}>An invite email will be sent to this address.</Text>
+              </View>
               <View style={styles.modalActions}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => setAddClientUserModal(false)}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setInviteModal(false)}>
                   <Text style={styles.cancelBtnText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.saveBtn, (!clientUserForm.name.trim() || !clientUserForm.email.trim() || clientUserSaving) && { opacity: 0.4 }]}
-                  onPress={handleAddClientUser}
-                  disabled={!clientUserForm.name.trim() || !clientUserForm.email.trim() || clientUserSaving}
+                  style={[styles.saveBtn, (!inviteForm.name.trim() || !inviteForm.email.trim() || inviteSending) && { opacity: 0.4 }]}
+                  onPress={handleSendHubInvite}
+                  disabled={!inviteForm.name.trim() || !inviteForm.email.trim() || inviteSending}
                 >
-                  <Text style={styles.saveBtnText}>{clientUserSaving ? 'Adding...' : 'Add Client'}</Text>
+                  <Text style={styles.saveBtnText}>{inviteSending ? 'Sending...' : 'Send Invite'}</Text>
                 </TouchableOpacity>
               </View>
             </Pressable>
@@ -5020,5 +5223,141 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700' as const,
     color: Colors.light.text,
+  },
+
+  hubDisabledBanner: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 8,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
+  hubDisabledText: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    lineHeight: 17,
+  },
+  hubInviteRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    marginTop: 10,
+    marginBottom: 2,
+  },
+  hubInviteBtn: {
+    flex: 1,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 5,
+    borderWidth: 1,
+    borderColor: '#FF5A00',
+    borderRadius: 7,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    backgroundColor: '#FFF5F0',
+  },
+  hubInviteBtnText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#FF5A00',
+  },
+  hubCopyInviteBtn: {
+    flex: 1,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 5,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 7,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    backgroundColor: Colors.light.surface,
+  },
+  hubCopyInviteBtnText: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    color: Colors.light.textSecondary,
+  },
+  clientUserRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    gap: 8,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    marginTop: 2,
+  },
+  clientUserInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  clientUserActions: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+    marginTop: 2,
+  },
+  clientUserActionBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    backgroundColor: Colors.light.surface,
+  },
+  statusBadgeInvited: {
+    backgroundColor: '#EEF2FF',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  statusBadgeActive: {
+    backgroundColor: '#DCFCE7',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  statusBadgeDisabled: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  pwSetBadge: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '600' as const,
+    color: '#374151',
+  },
+  inviteSentAt: {
+    fontSize: 10,
+    color: Colors.light.textSecondary,
+    marginTop: 2,
+  },
+  inviteEmailNote: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 7,
+    padding: 9,
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  inviteEmailNoteText: {
+    fontSize: 12,
+    color: '#4338CA',
+    flex: 1,
   },
 });
