@@ -296,7 +296,7 @@ export default function OrgProfileScreen() {
   const [disablingId, setDisablingId] = useState<string | null>(null);
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
 
-  type OrgTab = 'overview' | 'contacts' | 'activity' | 'notes' | 'comms';
+  type OrgTab = 'overview' | 'contacts' | 'media' | 'activity' | 'notes' | 'comms';
   const [activeTab, setActiveTab] = useState<OrgTab>('overview');
   const [orgNotesText, setOrgNotesText] = useState('');
   const [editingOrgNotes, setEditingOrgNotes] = useState(false);
@@ -1237,9 +1237,18 @@ export default function OrgProfileScreen() {
     );
   };
 
+  // Desktop right-panel tabs — Contacts lives in the left panel, so omit it here
+  const DESKTOP_TAB_CONFIG: { id: OrgTab; label: string; count?: number }[] = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'activity', label: 'Activity', count: org.activityLog.length || undefined },
+    { id: 'notes', label: 'Notes', count: org.activityLog.filter((e) => e.type === 'note').length || undefined },
+    { id: 'comms', label: 'Communications', count: org.activityLog.filter((e) => e.type === 'email' || e.type === 'call' || e.type === 'text').length || undefined },
+  ];
+  // Mobile/tablet tabs — left panel is hidden, so include Contacts + Media here
   const TAB_CONFIG: { id: OrgTab; label: string; count?: number }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'contacts', label: 'Contacts', count: org.contacts.length || undefined },
+    { id: 'media', label: 'Media', count: orgFiles.length || undefined },
     { id: 'activity', label: 'Activity', count: org.activityLog.length || undefined },
     { id: 'notes', label: 'Notes', count: org.activityLog.filter((e) => e.type === 'note').length || undefined },
     { id: 'comms', label: 'Communications', count: org.activityLog.filter((e) => e.type === 'email' || e.type === 'call' || e.type === 'text').length || undefined },
@@ -2374,9 +2383,9 @@ export default function OrgProfileScreen() {
             {/* ── RIGHT PANEL: Tabs + Content ── */}
             <View style={styles.v2RightPanel}>
 
-              {/* Tab bar */}
+              {/* Tab bar — desktop only shows Overview/Activity/Notes/Comms; Contacts lives in left panel */}
               <View style={[styles.v2TabBar, { flexDirection: 'row' }]}>
-                {TAB_CONFIG.map(({ id, label, count }) => (
+                {DESKTOP_TAB_CONFIG.map(({ id, label, count }) => (
                   <TouchableOpacity
                     key={id}
                     style={[styles.v2Tab, activeTab === id && styles.v2TabActive]}
@@ -2897,6 +2906,81 @@ export default function OrgProfileScreen() {
                         );
                       })()}
                     </>
+                  )}
+                </View>
+              </View>
+            )}
+            {activeTab === 'media' && (
+              <View style={styles.tabContentPad}>
+                <View style={styles.infoCard}>
+                  <View style={styles.infoCardHeader}>
+                    <View style={styles.infoCardHeaderLeft}>
+                      <Film size={15} color="#fff" />
+                      <Text style={styles.infoCardTitle}>Media Bin</Text>
+                      {orgFiles.length > 0 && (
+                        <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{orgFiles.length}</Text></View>
+                      )}
+                    </View>
+                    {Platform.OS === 'web' && (
+                      <TouchableOpacity
+                        style={[styles.infoCardAction, orgFilesUploading && { opacity: 0.6 }]}
+                        disabled={orgFilesUploading}
+                        onPress={() => {
+                          if (typeof document === 'undefined') return;
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = '.ai,.svg,.png,.jpg,.jpeg,.pdf,.dst,.emb';
+                          input.onchange = (e: any) => {
+                            const file = e.target?.files?.[0];
+                            if (file) handleOrgFileUpload(file);
+                          };
+                          input.click();
+                        }}
+                      >
+                        <Upload size={13} color="#fff" />
+                        <Text style={styles.infoCardActionText}>{orgFilesUploading ? 'Uploading…' : 'Upload'}</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  {orgFiles.length === 0 ? (
+                    <View style={styles.orgMediaEmptyBin}>
+                      <View style={styles.mediaBinIconRow}>
+                        <View style={[styles.mediaBinCard, { transform: [{ rotate: '-10deg' }], marginRight: -12, zIndex: 1 }]}>
+                          <LucideImage size={26} color="#888888" />
+                        </View>
+                        <View style={[styles.mediaBinCard, styles.mediaBinCardCenter, { zIndex: 3 }]}>
+                          <Film size={26} color="#AAAAAA" />
+                        </View>
+                        <View style={[styles.mediaBinCard, { transform: [{ rotate: '10deg' }], marginLeft: -12, zIndex: 1 }]}>
+                          <Music size={26} color="#888888" />
+                        </View>
+                      </View>
+                      <Text style={styles.mediaBinEmptyText}>No media files yet</Text>
+                      <Text style={styles.mediaBinEmptySub}>AI · SVG · PNG · JPG · PDF · DST · EMB</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.orgMediaGrid}>
+                      {orgFiles.map((f: any) => {
+                        const isImage = f.mimeType?.startsWith('image/');
+                        const ext = (f.originalName || '').split('.').pop()?.toUpperCase() || 'FILE';
+                        return (
+                          <TouchableOpacity
+                            key={f.id}
+                            style={styles.orgMediaItem}
+                            onPress={() => Platform.OS === 'web' && typeof window !== 'undefined' && window.open(`/api/files/${f.id}?inline=true`, '_blank')}
+                          >
+                            {isImage ? (
+                              <Image source={{ uri: `/api/files/${f.id}?inline=true` }} style={styles.orgMediaThumb} resizeMode="cover" />
+                            ) : (
+                              <View style={styles.orgMediaIcon}>
+                                <Text style={styles.orgMediaExt}>{ext}</Text>
+                              </View>
+                            )}
+                            <Text style={styles.orgMediaName} numberOfLines={1}>{f.originalName}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
                   )}
                 </View>
               </View>
