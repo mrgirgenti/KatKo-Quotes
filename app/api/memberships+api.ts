@@ -22,6 +22,7 @@ function toFrontendMembership(m: any) {
     userType: m.userType || 'INTERNAL',
     userStatus: m.userStatus || 'ACTIVE',
     hasPassword: !!(m.passwordHash),
+    lastLoginAt: m.lastLoginAt ? new Date(m.lastLoginAt).toISOString() : null,
   };
 }
 
@@ -55,7 +56,8 @@ export async function GET(request: Request) {
          u."avatarColor" AS "userAvatarColor",
          u."userType" AS "userType",
          u.status AS "userStatus",
-         u."passwordHash" AS "passwordHash"
+         u."passwordHash" AS "passwordHash",
+         u."lastLoginAt" AS "lastLoginAt"
        FROM "OrganizationMembership" om
        JOIN "User" u ON om."userId" = u.id
        WHERE om."organizationId" = $1

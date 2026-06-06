@@ -1,0 +1,368 @@
+```text
+# CLIENT HUB MANAGEMENT REFINEMENT
+
+The Client Hub section is now appearing correctly, but it needs a major UX cleanup before we continue building on top of it.
+
+IMPORTANT:
+
+Do NOT move the Client Hub section from its current location.
+
+It should remain:
+
+Contacts
+→ Client Hub
+→ Media Bin
+
+We are only refining the Client Hub experience and reducing wasted space.
+
+---
+
+## REMOVE KATALYST KO REP FROM CLIENT HUB
+
+The Katalyst Ko Rep section does not belong inside Client Hub management.
+
+Remove:
+
+- Katalyst Ko Rep header
+- Assigned rep display
+- Member count
+- Any related controls
+
+Move this information into the Organization Details/Profile area instead.
+
+The Client Hub should only manage Hub-related functions.
+
+---
+
+## REDUCE CLIENT HUB HEIGHT
+
+The current Client Hub card is consuming too much vertical space.
+
+Goal:
+
+Make the entire section much more compact and management-focused.
+
+---
+
+## REBUILD TOP SECTION
+
+Current:
+
+- Large URL field
+- Huge Visit Hub button
+- Copy button
+- Settings button
+
+Replace with:
+
+### Hub URL Row
+
+Display:
+
+Hub URL
+
+Then inline actions on the same row:
+
+- Open Hub
+- Copy Link
+- Settings
+
+Example:
+
+https://portal.clienthub.com/battlestar
+
+[Open] [Copy] [Settings]
+
+Do NOT use a giant orange Visit Hub button.
+
+Everything should fit on a single row.
+
+---
+
+## ADD CLIENT HUB METRICS
+
+Directly below the URL row add a compact metrics strip.
+
+Display:
+
+Users
+Active
+Pending Invites
+
+Example:
+
+3 | 2 | 1
+
+Use the same metric style used elsewhere in the system.
+
+Keep height minimal.
+
+---
+
+## HUB USERS SECTION
+
+Create:
+
+### HUB USERS (X)
+
+Collapsible section.
+
+Expanded by default.
+
+Each user card should display:
+
+- Name
+- Role (Admin / Member)
+- Status (Active / Disabled / Pending)
+- Last Login
+- Password Status (Set / Not Set)
+
+Example:
+
+Josh Girgenti
+Admin
+Active
+
+Last Login:
+Jun 5, 2026
+
+Password:
+Set
+
+---
+
+## USER ACTIONS
+
+Each user should have a proper Actions menu.
+
+Actions:
+
+- Reset Password
+- Resend Invite
+- Disable Access
+- Enable Access
+- Remove User
+- Promote to Admin
+- Demote to Member
+
+Use a dropdown menu instead of multiple icon buttons.
+
+---
+
+## PENDING INVITATIONS SECTION
+
+Create:
+
+### PENDING INVITATIONS (X)
+
+Collapsible section.
+
+Display:
+
+- Email
+- Invited Date
+- Status
+
+Example:
+
+john@email.com
+
+Invited:
+Jun 6, 2026
+
+Pending
+
+Actions:
+
+- Resend Invite
+- Cancel Invite
+
+---
+
+## INVITE USER
+
+Replace:
+
+- Send Invite Email button
+- Copy Invite Text button
+
+with a single button:
+
++ Invite User
+
+Clicking opens a modal.
+
+Modal options:
+
+### Email Invite
+
+Enter email
+
+Send invitation
+
+---
+
+### Copy Invite Link
+
+Copies:
+
+Hub URL with invite token
+
+---
+
+### Copy Invite Message
+
+Generates pre-written message:
+
+"You're invited to join the Battlestar Coffee Co Client Hub.
+
+Create your account here:
+
+[link]"
+
+Copies automatically.
+
+---
+
+## PASSWORD MANAGEMENT
+
+Add proper password support.
+
+Each Hub User should track:
+
+- Password Set (Boolean)
+- Last Password Reset
+- Password Reset Requested
+
+---
+
+## FORGOT PASSWORD FLOW
+
+Users should be able to:
+
+Login Page
+→ Forgot Password
+
+System sends reset email.
+
+User creates new password.
+
+Update:
+
+Password Set = Yes
+
+Last Password Reset = Date
+
+---
+
+## ADMIN RESET PASSWORD
+
+Inside Hub User Actions:
+
+Reset Password
+
+System immediately:
+
+- Sends reset email
+OR
+- Generates reset link
+
+Admins should never see passwords.
+
+---
+
+## HUB STATUS
+
+Keep current On/Off toggle.
+
+When Off:
+
+- Hub URL disabled
+- Invites disabled
+- Login blocked
+
+Display:
+
+Inactive
+
+When On:
+
+Display:
+
+Active
+
+---
+
+## VISUAL CLEANUP
+
+Reduce overall Client Hub section height by at least 35%.
+
+Avoid:
+
+- Large empty rows
+- Oversized buttons
+- Multiple action rows
+
+Use:
+
+- Compact action buttons
+- Collapsible sections
+- Inline controls
+
+Goal:
+
+The Client Hub section should feel like a lightweight management console, not a landing page.
+
+---
+
+## ORGANIZATION PROFILE ADDITION
+
+Since the Katalyst Ko Rep section is being removed from Client Hub, add it to the Organization Profile area.
+
+Display:
+
+### Katalyst Ko Rep
+
+Assigned Rep Name
+
+Rep Email
+
+Rep Phone
+
+Actions:
+
+- Change Rep
+
+This should be treated as an Organization attribute, not a Hub attribute.
+
+---
+
+## VALIDATION
+
+After implementation verify:
+
+- Hub status toggle works
+- Open Hub works
+- Copy Link works
+- Invite User works
+- Password Reset works
+- Forgot Password works
+- User roles save correctly
+- User status saves correctly
+- Pending invites display correctly
+- Assigned Rep saves correctly
+- No dead code remains
+- No duplicate Hub management components exist
+
+Provide a completion report showing:
+
+- Files modified
+- Components modified
+- Dead code removed
+- Validation results
+- Remaining Hub-related technical debt (if any)
+
+Do not stop after UI changes.
+
+Fully verify functionality before marking complete.
+```

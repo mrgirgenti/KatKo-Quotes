@@ -20,7 +20,7 @@ export type ActivityType =
   | 'in_production' | 'completed'
   // Account / access
   | 'hub_enabled' | 'member_added' | 'member_removed'
-  | 'hub_invite_sent' | 'hub_user_disabled' | 'hub_user_enabled'
+  | 'hub_invite_sent' | 'hub_user_disabled' | 'hub_user_enabled' | 'hub_password_reset'
   // Contact changes
   | 'contact_added' | 'contact_updated';
 
@@ -100,6 +100,7 @@ export interface OrgMembership {
   userType?: 'INTERNAL' | 'CLIENT';
   userStatus?: 'INVITED' | 'ACTIVE' | 'DISABLED';
   hasPassword?: boolean;
+  lastLoginAt?: string | null;
 }
 
 export interface Organization {
@@ -190,6 +191,7 @@ export const ACTIVITY_TYPE_CONFIG: Record<ActivityType, { label: string; color: 
   hub_invite_sent:    { label: 'Hub Invite Sent',    color: '#6366F1', icon: 'mail',       isSystem: true },
   hub_user_disabled:  { label: 'Hub User Disabled',  color: '#DC2626', icon: 'user',       isSystem: true },
   hub_user_enabled:   { label: 'Hub User Enabled',   color: '#16A34A', icon: 'user',       isSystem: true },
+  hub_password_reset: { label: 'Password Reset Sent', color: '#7C3AED', icon: 'shield',    isSystem: true },
   // Contact changes
   contact_added:   { label: 'Contact Added',    color: '#2563EB', icon: 'user',          isSystem: true },
   contact_updated: { label: 'Contact Updated',  color: '#6B7280', icon: 'user',          isSystem: true },

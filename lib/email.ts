@@ -459,6 +459,54 @@ export function buildNewRequestAdminEmail(opts: {
   return { subject, html, text };
 }
 
+export function buildPasswordResetEmail(opts: {
+  clientName: string;
+  resetUrl: string;
+}): { subject: string; html: string; text: string } {
+  const { clientName, resetUrl } = opts;
+  const subject = `Reset your Katalyst Ko Hub password`;
+  const text = [
+    `Hi ${clientName},`,
+    '',
+    `A password reset was requested for your Katalyst Ko Hub account.`,
+    '',
+    `Set a new password here:`,
+    `  ${resetUrl}`,
+    '',
+    `This link expires in 24 hours. If you didn't request this, you can safely ignore this email.`,
+    '',
+    `Questions? Reach us at ${KO_JOBS_EMAIL}`,
+    '',
+    `— Katalyst Ko Printshop`,
+  ].join('\n');
+
+  const html = emailWrapper(`
+    <tr><td style="padding:32px;">
+      <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111;">Reset your password</h1>
+      <p style="margin:0 0 24px;font-size:15px;color:#555;line-height:1.6;">
+        Hi ${clientName}, a password reset was requested for your Katalyst Ko Hub account.
+        Click the button below to set a new password.
+      </p>
+      <table cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+        <tr><td style="background:#FF5A00;border-radius:8px;">
+          <a href="${resetUrl}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#fff;text-decoration:none;">
+            Set New Password →
+          </a>
+        </td></tr>
+      </table>
+      <p style="margin:0 0 8px;font-size:13px;color:#888;">
+        This link expires in 24 hours. If you didn't request this reset, you can safely ignore this email —
+        your password won't change until you use the link above.
+      </p>
+      <p style="margin:8px 0 0;font-size:13px;color:#888;">
+        Questions? Reply to this email or reach us at
+        <a href="mailto:${KO_JOBS_EMAIL}" style="color:#FF5A00;text-decoration:none;">${KO_JOBS_EMAIL}</a>
+      </p>
+    </td></tr>`);
+
+  return { subject, html, text };
+}
+
 export function buildQuoteApprovedNotificationEmail(opts: {
   projectName: string;
   orgName: string;

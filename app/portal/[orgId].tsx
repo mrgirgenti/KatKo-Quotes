@@ -903,6 +903,8 @@ export default function ClientPortal() {
   const [email, setEmail] = useState('');
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
+  const [forgotSending, setForgotSending] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
 
   const [projectName, setProjectName] = useState('');
   const [orderType, setOrderType] = useState('New Order');
@@ -1233,6 +1235,21 @@ export default function ClientPortal() {
     }).start();
     setSidebarCollapsed(c => !c);
   }, [sidebarCollapsed, sidebarWidthAnim]);
+
+  const handleForgotPassword = useCallback(async () => {
+    const trimmed = email.trim();
+    if (!trimmed) { setEmailError('Enter your email address first, then click Forgot password.'); return; }
+    setForgotSending(true);
+    try {
+      await fetch('/api/portal/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmed, orgId }),
+      });
+      setForgotSent(true);
+    } catch {}
+    setForgotSending(false);
+  }, [email, orgId]);
 
   const handleEmailSubmit = useCallback(async () => {
     const trimmed = email.trim();
@@ -3110,8 +3127,18 @@ export default function ClientPortal() {
                   />
                 </View>
                 {emailError ? <View style={styles.errorBox}><Text style={styles.errorText}>{emailError}</Text></View> : null}
+                {forgotSent ? (
+                  <View style={[styles.errorBox, { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }]}>
+                    <Text style={[styles.errorText, { color: '#065F46' }]}>Check your email — a password reset link has been sent.</Text>
+                  </View>
+                ) : null}
                 <TouchableOpacity style={[styles.btn, emailLoading && styles.btnDisabled]} onPress={handleEmailSubmit} disabled={emailLoading}>
                   {emailLoading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.btnText}>Access Portal</Text>}
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleForgotPassword} disabled={forgotSending} style={{ marginTop: 10, alignSelf: 'center' as const }}>
+                  <Text style={[styles.helpText, { color: BRAND, textDecorationLine: 'underline' as const }]}>
+                    {forgotSending ? 'Sending reset link…' : 'Forgot your password?'}
+                  </Text>
                 </TouchableOpacity>
                 <Text style={styles.helpText}>Don't have an account? Contact Katalyst Ko to get set up.</Text>
               </View>

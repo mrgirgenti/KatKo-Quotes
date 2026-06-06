@@ -156,8 +156,11 @@ model User {
   status            UserStatus   @default(ACTIVE)
   authProvider      String?
   authProviderUserId String?
-  passwordHash      String?
-  internalRole      InternalRole @default(SALES)
+  passwordHash            String?
+  passwordResetToken      String?   @unique
+  passwordResetExpiry     DateTime?
+  lastLoginAt             DateTime?
+  internalRole            InternalRole @default(SALES)
   avatarColor       String?
   avatarUri         String?
   createdAt         DateTime     @default(now())
