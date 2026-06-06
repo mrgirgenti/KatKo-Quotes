@@ -641,7 +641,7 @@ export default function ClientsScreen() {
       ) : isDesktop ? (
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
           <ScrollView horizontal showsHorizontalScrollIndicator={true} contentContainerStyle={{ flexGrow: 1 }}>
-            <View>
+            <View style={{ minWidth: '100%' }}>
               {tableHeaderRow}
               <View style={styles.tableBody}>
                 {filtered.map((org, idx) => (
