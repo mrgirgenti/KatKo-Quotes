@@ -52,9 +52,10 @@ type HubSortField = 'name' | 'type' | 'contact' | 'status';
 const CHECKBOX_W = 36;
 
 // ── Desktop/tablet table row ──
-function HubRow({ org, onPress, onCopyLink, copied, onToggle, enabling, hideContact, isSelected, onToggleSelect }: {
+function HubRow({ org, onPress, onOpenHub, onCopyLink, copied, onToggle, enabling, hideContact, isSelected, onToggleSelect }: {
   org: Organization;
   onPress: () => void;
+  onOpenHub: () => void;
   onCopyLink: () => void;
   copied: boolean;
   onToggle: () => void;
@@ -125,7 +126,7 @@ function HubRow({ org, onPress, onCopyLink, copied, onToggle, enabling, hideCont
       <View style={styles.colActions}>
         {org.hubEnabled ? (
           <>
-            <TouchableOpacity style={styles.actionPrimary} onPress={onPress} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.actionPrimary} onPress={onOpenHub} activeOpacity={0.8}>
               <ExternalLink size={12} color="#fff" />
               <Text style={styles.actionPrimaryText}>Open</Text>
             </TouchableOpacity>
@@ -152,9 +153,10 @@ function HubRow({ org, onPress, onCopyLink, copied, onToggle, enabling, hideCont
 }
 
 // ── Mobile card ──
-function HubCard({ org, onPress, onCopyLink, copied, onToggle, enabling }: {
+function HubCard({ org, onPress, onOpenHub, onCopyLink, copied, onToggle, enabling }: {
   org: Organization;
   onPress: () => void;
+  onOpenHub: () => void;
   onCopyLink: () => void;
   copied: boolean;
   onToggle: () => void;
@@ -203,7 +205,7 @@ function HubCard({ org, onPress, onCopyLink, copied, onToggle, enabling }: {
       )}
       {org.hubEnabled && (
         <View style={styles.cardActions}>
-          <TouchableOpacity style={[styles.actionPrimary, { flex: 1 }]} onPress={onPress} activeOpacity={0.8}>
+          <TouchableOpacity style={[styles.actionPrimary, { flex: 1 }]} onPress={onOpenHub} activeOpacity={0.8}>
             <ExternalLink size={12} color="#fff" />
             <Text style={styles.actionPrimaryText}>Open Hub</Text>
           </TouchableOpacity>
@@ -519,6 +521,7 @@ export default function ClientHubsScreen() {
                       key={org.id}
                       org={org}
                       onPress={() => router.push(`/crm/${org.id}` as any)}
+                      onOpenHub={() => { if (Platform.OS === 'web' && typeof window !== 'undefined') window.open(`/portal/${org.id}`, '_blank'); else router.push(`/portal/${org.id}` as any); }}
                       onCopyLink={() => handleCopyLink(org)}
                       copied={copiedId === org.id}
                       onToggle={() => handleToggleHub(org)}
@@ -554,6 +557,7 @@ export default function ClientHubsScreen() {
                         <HubRow
                           org={org}
                           onPress={() => router.push(`/crm/${org.id}` as any)}
+                          onOpenHub={() => { if (Platform.OS === 'web' && typeof window !== 'undefined') window.open(`/portal/${org.id}`, '_blank'); else router.push(`/portal/${org.id}` as any); }}
                           onCopyLink={() => handleCopyLink(org)}
                           copied={copiedId === org.id}
                           onToggle={() => handleToggleHub(org)}
