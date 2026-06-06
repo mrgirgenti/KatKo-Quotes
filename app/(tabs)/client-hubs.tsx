@@ -22,6 +22,10 @@ import {
   AlertCircle,
   ToggleLeft,
   ToggleRight,
+  ArrowUpDown,
+  Check,
+  X,
+  Trash2,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
@@ -44,8 +48,11 @@ function getStatusStyle(status: string) {
   return STATUS_COLORS[status] ?? { bg: '#F3F4F6', text: '#6B7280', dot: '#9CA3AF' };
 }
 
+type HubSortField = 'name' | 'type' | 'contact' | 'status';
+const CHECKBOX_W = 36;
+
 // ── Desktop/tablet table row ──
-function HubRow({ org, onPress, onCopyLink, copied, onToggle, enabling, hideContact }: {
+function HubRow({ org, onPress, onCopyLink, copied, onToggle, enabling, hideContact, isSelected, onToggleSelect }: {
   org: Organization;
   onPress: () => void;
   onCopyLink: () => void;
@@ -53,6 +60,8 @@ function HubRow({ org, onPress, onCopyLink, copied, onToggle, enabling, hideCont
   onToggle: () => void;
   enabling: boolean;
   hideContact?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   const primaryContact = getPrimaryContact(org);
   const contactName = primaryContact
@@ -63,7 +72,12 @@ function HubRow({ org, onPress, onCopyLink, copied, onToggle, enabling, hideCont
   const hasLogo = !!org.logoUrl;
 
   return (
-    <TouchableOpacity style={[styles.tableRow, !org.hubEnabled && styles.tableRowOff]} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity style={[styles.tableRow, !org.hubEnabled && styles.tableRowOff, isSelected && styles.tableRowSelected]} onPress={onPress} activeOpacity={0.7}>
+      <TouchableOpacity style={styles.colCheckbox} onPress={(e) => { e.stopPropagation?.(); onToggleSelect?.(); }} activeOpacity={0.7}>
+        <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
+          {isSelected && <Check size={11} color="#fff" />}
+        </View>
+      </TouchableOpacity>
       <View style={styles.colAvatar}>
         <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={36} shape="circle" />
       </View>
@@ -233,6 +247,7 @@ function AddOrgRow({
 
   return (
     <TouchableOpacity style={styles.tableRow} onPress={onEnable} activeOpacity={0.7}>
+      <View style={styles.colCheckbox} />
       <View style={styles.colAvatar}>
         <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={36} shape="circle" />
       </View>
@@ -324,19 +339,31 @@ export default function ClientHubsScreen() {
   const [togglingOrgId, setTogglingOrgId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [sortField, setSortField] = useState<HubSortField>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const selectionMode = selectedIds.size > 0;
 
   const q = search.toLowerCase().trim();
 
-  const allHubs = useMemo(
-    () =>
-      orgs
-        .filter((o) => (showAll || o.hubEnabled) && (!q || o.name.toLowerCase().includes(q)))
-        .sort((a, b) => {
-          if (a.hubEnabled !== b.hubEnabled) return a.hubEnabled ? -1 : 1;
-          return a.name.localeCompare(b.name);
-        }),
-    [orgs, q, showAll],
-  );
+  const allHubs = useMemo(() => {
+    const list = orgs.filter((o) => (showAll || o.hubEnabled) && (!q || o.name.toLowerCase().includes(q)));
+    return [...list].sort((a, b) => {
+      let cmp = 0;
+      if (sortField === 'name') cmp = a.name.localeCompare(b.name);
+      else if (sortField === 'type') cmp = (a.type || '').localeCompare(b.type || '');
+      else if (sortField === 'contact') {
+        const ca = a.contacts.find(c => c.isPrimary) || a.contacts[0];
+        const cb = b.contacts.find(c => c.isPrimary) || b.contacts[0];
+        cmp = (`${ca?.lastName}${ca?.firstName}` || '').localeCompare(`${cb?.lastName}${cb?.firstName}` || '');
+      } else if (sortField === 'status') {
+        cmp = a.status.localeCompare(b.status);
+      }
+      const sorted = sortDir === 'asc' ? cmp : -cmp;
+      if (sorted !== 0) return sorted;
+      return a.hubEnabled !== b.hubEnabled ? (a.hubEnabled ? -1 : 1) : 0;
+    });
+  }, [orgs, q, showAll, sortField, sortDir]);
 
   const noLogoCount = useMemo(() => orgs.filter((o) => o.hubEnabled && !o.logoUrl).length, [orgs]);
 
@@ -370,6 +397,26 @@ export default function ClientHubsScreen() {
     setCopiedId(org.id);
     setTimeout(() => setCopiedId(null), 2000);
   }, []);
+
+  const toggleSort = useCallback((field: HubSortField) => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('asc'); }
+  }, [sortField]);
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }, []);
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+  const toggleSelectAll = useCallback(() => {
+    if (selectedIds.size === allHubs.length && allHubs.length > 0) clearSelection();
+    else setSelectedIds(new Set(allHubs.map(o => o.id)));
+  }, [allHubs, selectedIds, clearSelection]);
+
+  const SortBtn = ({ field, label }: { field: HubSortField; label: string }) => (
+    <TouchableOpacity style={styles.sortBtn} onPress={() => toggleSort(field)}>
+      <Text style={[styles.sortBtnText, sortField === field && styles.sortBtnTextActive]}>{label}</Text>
+      <ArrowUpDown size={11} color={sortField === field ? Colors.light.tint : 'rgba(255,255,255,0.35)'} />
+    </TouchableOpacity>
+  );
 
   const useCardLayout = isMobile;
   const hideContact = isTablet;
@@ -424,6 +471,31 @@ export default function ClientHubsScreen() {
         </View>
       </View>
 
+      {/* ── Bulk action bar ── */}
+      {selectionMode && !useCardLayout && (
+        <View style={styles.bulkBar}>
+          <View style={styles.bulkBarLeft}>
+            <TouchableOpacity style={styles.bulkClearBtn} onPress={clearSelection}>
+              <X size={12} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.bulkCount}>{selectedIds.size} selected</Text>
+          </View>
+          <View style={styles.bulkActionsRow}>
+            <TouchableOpacity
+              style={styles.bulkAction}
+              onPress={() => {
+                const toToggle = allHubs.filter(o => selectedIds.has(o.id));
+                const allEnabled = toToggle.every(o => o.hubEnabled);
+                toToggle.forEach(o => updateOrgHubEnabled({ orgId: o.id, enabled: !allEnabled }));
+                clearSelection();
+              }}
+            >
+              <Text style={styles.bulkActionText}>{allHubs.filter(o => selectedIds.has(o.id)).every(o => o.hubEnabled) ? 'Disable Hubs' : 'Enable Hubs'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator color={Colors.light.tint} size="large" />
@@ -457,12 +529,23 @@ export default function ClientHubsScreen() {
               ) : (
                 <>
                   <View style={styles.tableHeader}>
+                    <TouchableOpacity
+                      style={styles.colCheckbox}
+                      onPress={toggleSelectAll}
+                    >
+                      <View style={[styles.checkbox,
+                        selectedIds.size > 0 && selectedIds.size === allHubs.length && styles.checkboxChecked,
+                        selectedIds.size > 0 && selectedIds.size < allHubs.length && styles.checkboxIndeterminate,
+                      ]}>
+                        {selectedIds.size > 0 && <Check size={11} color="#fff" />}
+                      </View>
+                    </TouchableOpacity>
                     <View style={styles.colAvatar} />
-                    <Text style={[styles.thText, styles.colOrg]}>ORGANIZATION</Text>
-                    <Text style={[styles.thText, styles.colBizType]}>BUSINESS TYPE</Text>
-                    {!hideContact && <Text style={[styles.thText, styles.colContactName]}>PRIMARY CONTACT</Text>}
-                    {!hideContact && <Text style={[styles.thText, styles.colEmail]}>CONTACT EMAIL</Text>}
-                    <Text style={[styles.thText, styles.colStatus]}>STATUS / HUB</Text>
+                    <View style={styles.colOrg}><SortBtn field="name" label="Organization" /></View>
+                    <View style={styles.colBizType}><SortBtn field="type" label="Business Type" /></View>
+                    {!hideContact && <View style={styles.colContactName}><SortBtn field="contact" label="Primary Contact" /></View>}
+                    {!hideContact && <View style={styles.colEmail}><Text style={styles.sortBtnText}>Contact Email</Text></View>}
+                    <View style={styles.colStatus}><SortBtn field="status" label="Status / Hub" /></View>
                     <Text style={[styles.thText, styles.colActionsHeader]}>ACTIONS</Text>
                   </View>
                   <View style={styles.tableBody}>
@@ -476,6 +559,8 @@ export default function ClientHubsScreen() {
                           onToggle={() => handleToggleHub(org)}
                           enabling={togglingOrgId === org.id}
                           hideContact={hideContact}
+                          isSelected={selectedIds.has(org.id)}
+                          onToggleSelect={() => toggleSelect(org.id)}
                         />
                         {idx < allHubs.length - 1 && <View style={styles.tableDivider} />}
                       </View>
@@ -614,17 +699,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 10,
     backgroundColor: '#000000',
-    minHeight: 48,
   },
   thText: {
     fontSize: 11,
     fontWeight: '700' as const,
     color: '#FFFFFF',
     textTransform: 'uppercase' as const,
-    letterSpacing: 0.4,
+    letterSpacing: 0.5,
   },
+  sortBtn: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4 },
+  sortBtnText: { fontSize: 11, fontWeight: '700' as const, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: 0.5 },
+  sortBtnTextActive: { color: Colors.light.tint },
+  colCheckbox: { width: 36, justifyContent: 'center' as const, alignItems: 'center' as const },
+  checkbox: { width: 18, height: 18, borderRadius: 4, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)', alignItems: 'center' as const, justifyContent: 'center' as const, backgroundColor: 'transparent' as const },
+  checkboxChecked: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
+  checkboxIndeterminate: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
+  tableRowSelected: { backgroundColor: '#FFF9F6' },
+  bulkBar: { flexDirection: 'row' as const, alignItems: 'center' as const, backgroundColor: '#1C1C1E', paddingVertical: 8, paddingHorizontal: 16, gap: 12, borderBottomWidth: 1, borderBottomColor: '#333' },
+  bulkBarLeft: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, minWidth: 100 },
+  bulkCount: { fontSize: 13, fontWeight: '700' as const, color: '#fff' },
+  bulkClearBtn: { width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center' as const, justifyContent: 'center' as const },
+  bulkActionsRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4 },
+  bulkAction: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.12)' },
+  bulkActionText: { fontSize: 12, fontWeight: '600' as const, color: 'rgba(255,255,255,0.9)' },
   tableBody: { backgroundColor: Colors.light.surface },
   tableRowOff: {
     opacity: 0.55,

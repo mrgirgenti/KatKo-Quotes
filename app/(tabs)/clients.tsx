@@ -35,10 +35,12 @@ const EMPTY_FILTERS: FilterState = { org: '', bizType: [], contact: '', phone: '
 const FILTER_TABS: (CrmStatus | 'All')[] = ['All', 'Cold', 'Working', 'Active Client', 'Past Client'];
 
 const AVATAR_W = 48;
+const CHECKBOX_W = 36;
 const COL_WIDTHS: Record<ColId, number> = {
   org: 192, bizType: 120, contact: 150, phone: 130,
   email: 170, status: 132, hub: 110, campaign: 130, actions: 110,
 };
+const COL_FLEX: Partial<Record<ColId, number>> = { org: 2.0, bizType: 1.5, contact: 1.5 };
 
 const TOGGLEABLE_COLS: { id: ColId; label: string }[] = [
   { id: 'org', label: 'Organization' },
@@ -67,9 +69,9 @@ function StatusBadge({ status }: { status: CrmStatus }) {
 }
 
 // ── OrgRow ─────────────────────────────────────────────────────────────────────
-interface OrgRowProps { org: Organization; onPress: () => void; onDelete: () => void; visibleCols: ColId[]; }
+interface OrgRowProps { org: Organization; onPress: () => void; onDelete: () => void; visibleCols: ColId[]; isSelected: boolean; onToggleSelect: () => void; selectionMode: boolean; }
 
-function OrgRow({ org, onPress, onDelete, visibleCols }: OrgRowProps) {
+function OrgRow({ org, onPress, onDelete, visibleCols, isSelected, onToggleSelect }: OrgRowProps) {
   const router = useRouter();
   const primaries = org.contacts.filter((c) => c.isPrimary);
   const primaryContact = primaries[0] || org.contacts[0];
@@ -97,12 +99,18 @@ function OrgRow({ org, onPress, onDelete, visibleCols }: OrgRowProps) {
 
   const col = (id: ColId, content: React.ReactNode) => {
     if (!visibleCols.includes(id)) return null;
-    return <View style={{ width: COL_WIDTHS[id] }}>{content}</View>;
+    const style: any = COL_FLEX[id] != null ? { flex: COL_FLEX[id] } : { width: COL_WIDTHS[id] };
+    return <View style={style}>{content}</View>;
   };
 
   return (
     <>
-      <TouchableOpacity style={styles.tableRow} onPress={onPress} activeOpacity={0.7}>
+      <TouchableOpacity style={[styles.tableRow, isSelected && styles.tableRowSelected]} onPress={onPress} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.colCheckbox} onPress={(e) => { e.stopPropagation?.(); onToggleSelect(); }} activeOpacity={0.7}>
+          <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
+            {isSelected && <Check size={11} color="#fff" />}
+          </View>
+        </TouchableOpacity>
         <View style={{ width: AVATAR_W }}>
           <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={36} shape="circle" />
         </View>
@@ -246,6 +254,13 @@ export default function ClientsScreen() {
   const [personOrgStatus, setPersonOrgStatus] = useState<CrmStatus>('Active Client');
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
 
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const selectionMode = selectedIds.size > 0;
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }, []);
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
   const activeFilterCount = useMemo(() => {
     let n = 0;
     if (colFilters.org) n++;
@@ -300,6 +315,11 @@ export default function ClientsScreen() {
       return sortDir === 'asc' ? cmp : -cmp;
     });
   }, [orgs, filter, search, sortField, sortDir, colFilters]);
+
+  const toggleSelectAll = useCallback(() => {
+    if (selectedIds.size === filtered.length && filtered.length > 0) clearSelection();
+    else setSelectedIds(new Set(filtered.map(o => o.id)));
+  }, [filtered, selectedIds, clearSelection]);
 
   const counts = useMemo(() => ({
     All: orgs.length, Cold: orgs.filter((o) => o.status === 'Cold').length,
@@ -381,19 +401,33 @@ export default function ClientsScreen() {
 
   const tableHeaderRow = (
     <View style={styles.tableHeader}>
-      <View style={{ width: AVATAR_W }} />
-      {TOGGLEABLE_COLS.filter((c) => visibleCols.includes(c.id)).map((col) => (
-        <View key={col.id} style={{ width: COL_WIDTHS[col.id] }}>
-          {col.id === 'org' && <SortBtn field="name" label="Organization" />}
-          {col.id === 'bizType' && <SortBtn field="type" label="Business Type" />}
-          {col.id === 'contact' && <SortBtn field="contact" label="Contact" />}
-          {col.id === 'phone' && <Text style={styles.sortBtnText}>Phone</Text>}
-          {col.id === 'email' && <Text style={styles.sortBtnText}>Email</Text>}
-          {col.id === 'status' && <SortBtn field="status" label="Status" />}
-          {col.id === 'hub' && <SortBtn field="hub" label="Client Hub" />}
-          {col.id === 'campaign' && <SortBtn field="campaign" label="Campaign" />}
+      <TouchableOpacity
+        style={styles.colCheckbox}
+        onPress={toggleSelectAll}
+      >
+        <View style={[styles.checkbox,
+          selectedIds.size > 0 && selectedIds.size === filtered.length && styles.checkboxChecked,
+          selectedIds.size > 0 && selectedIds.size < filtered.length && styles.checkboxIndeterminate,
+        ]}>
+          {selectedIds.size > 0 && <Check size={11} color="#fff" />}
         </View>
-      ))}
+      </TouchableOpacity>
+      <View style={{ width: AVATAR_W }} />
+      {TOGGLEABLE_COLS.filter((c) => visibleCols.includes(c.id)).map((col) => {
+        const colStyle: any = COL_FLEX[col.id] != null ? { flex: COL_FLEX[col.id] } : { width: COL_WIDTHS[col.id] };
+        return (
+          <View key={col.id} style={colStyle}>
+            {col.id === 'org' && <SortBtn field="name" label="Organization" />}
+            {col.id === 'bizType' && <SortBtn field="type" label="Business Type" />}
+            {col.id === 'contact' && <SortBtn field="contact" label="Contact" />}
+            {col.id === 'phone' && <Text style={styles.sortBtnText}>Phone</Text>}
+            {col.id === 'email' && <Text style={styles.sortBtnText}>Email</Text>}
+            {col.id === 'status' && <SortBtn field="status" label="Status" />}
+            {col.id === 'hub' && <SortBtn field="hub" label="Client Hub" />}
+            {col.id === 'campaign' && <SortBtn field="campaign" label="Campaign" />}
+          </View>
+        );
+      })}
       <View style={{ width: COL_WIDTHS.actions, alignItems: 'flex-end' }}>
         <Text style={styles.sortBtnText}>ACTIONS</Text>
       </View>
@@ -569,6 +603,33 @@ export default function ClientsScreen() {
         </View>
       )}
 
+      {/* ── Bulk action bar ── */}
+      {selectionMode && isDesktop && (
+        <View style={styles.bulkBar}>
+          <View style={styles.bulkBarLeft}>
+            <TouchableOpacity style={styles.bulkClearBtn} onPress={clearSelection}>
+              <X size={12} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.bulkCount}>{selectedIds.size} selected</Text>
+          </View>
+          <View style={styles.bulkActionsRow}>
+            <TouchableOpacity
+              style={[styles.bulkAction, styles.bulkActionDanger]}
+              onPress={() => {
+                const toDelete = filtered.filter(o => selectedIds.has(o.id));
+                if (Platform.OS !== 'web' || window.confirm(`Delete ${toDelete.length} contact(s)? This cannot be undone.`)) {
+                  toDelete.forEach(o => deleteOrg(o.id));
+                  clearSelection();
+                }
+              }}
+            >
+              <Trash2 size={12} color="#ef4444" />
+              <Text style={[styles.bulkActionText, { color: '#ef4444' }]}>Delete Selected</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* ── Content ── */}
       {filtered.length === 0 ? (
         <View style={styles.emptyState}>
@@ -590,6 +651,9 @@ export default function ClientsScreen() {
                       onPress={() => router.push(`/crm/${org.id}` as any)}
                       onDelete={() => { if (typeof window === 'undefined' || window.confirm(`Delete ${org.name}? This cannot be undone.`)) deleteOrg(org.id); }}
                       visibleCols={visibleCols}
+                      isSelected={selectedIds.has(org.id)}
+                      onToggleSelect={() => toggleSelect(org.id)}
+                      selectionMode={selectionMode}
                     />
                     {idx < filtered.length - 1 && <View style={styles.tableDivider} />}
                   </View>
@@ -849,7 +913,20 @@ const styles = StyleSheet.create({
   tableHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: DS.spacing.lg, paddingVertical: 10, backgroundColor: '#000000' },
   tableBody: { paddingBottom: 40 },
   tableRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: DS.spacing.lg, paddingVertical: 12, backgroundColor: Colors.light.surface },
+  tableRowSelected: { backgroundColor: '#FFF9F6' },
   tableDivider: { height: 1, backgroundColor: Colors.light.border, marginLeft: DS.spacing.lg },
+  colCheckbox: { width: CHECKBOX_W, justifyContent: 'center' as const, alignItems: 'center' as const },
+  checkbox: { width: 18, height: 18, borderRadius: 4, borderWidth: 1.5, borderColor: Colors.light.border, alignItems: 'center' as const, justifyContent: 'center' as const, backgroundColor: Colors.light.surface },
+  checkboxChecked: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
+  checkboxIndeterminate: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
+  bulkBar: { flexDirection: 'row' as const, alignItems: 'center' as const, backgroundColor: '#1C1C1E', paddingVertical: 8, paddingHorizontal: DS.spacing.lg, gap: 12, borderBottomWidth: 1, borderBottomColor: '#333' },
+  bulkBarLeft: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, minWidth: 100 },
+  bulkCount: { fontSize: 13, fontWeight: '700' as const, color: '#fff' },
+  bulkClearBtn: { width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center' as const, justifyContent: 'center' as const },
+  bulkActionsRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4 },
+  bulkAction: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.1)' },
+  bulkActionDanger: { backgroundColor: 'rgba(239,68,68,0.15)' },
+  bulkActionText: { fontSize: 12, fontWeight: '600' as const, color: 'rgba(255,255,255,0.9)' },
   tableOrgName: { fontSize: 14, fontWeight: '600' as const, color: Colors.light.text },
   tableCell: { fontSize: 13, color: Colors.light.textSecondary },
   tableDim: { fontSize: 13, color: Colors.light.border },
