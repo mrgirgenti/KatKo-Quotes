@@ -1,0 +1,124 @@
+Yes, move the Client Hub section into the V2 layout.
+
+However, before implementing, please follow these placement requirements.
+
+DESKTOP (V2)
+
+The Client Hub section should appear in the LEFT PANEL.
+
+Current order:
+
+* Organization Header
+* Actions
+* Contacts
+* Notes
+* Media Bin
+
+New order:
+
+* Organization Header
+* Actions
+* Contacts
+* Notes
+* Client Hub
+* Media Bin
+
+Reason:
+Client Hub is organization management functionality, not media.
+
+It belongs with Contacts and Organization management.
+
+Do NOT place Client Hub below Media Bin.
+
+Do NOT place Client Hub inside the Overview tab.
+
+Do NOT place Client Hub in the right panel.
+
+Keep it permanently visible in the left panel.
+
+====================================================
+
+MOBILE / TABLET (V2)
+
+Add a dedicated tab:
+
+Overview
+Contacts
+Hub
+Media
+Activity
+Notes
+Communications
+
+The Hub tab should contain:
+
+CLIENT HUB
+
+Status
+
+Hub URL
+[Copy]
+
+[Open Hub]
+
+Hub Users
+
+Invite User
+
+Password Reset Actions
+
+Activation Controls
+
+Do NOT combine Hub into Contacts.
+
+Do NOT combine Hub into Communications.
+
+Hub should be its own destination.
+
+====================================================
+
+IMPLEMENTATION CHECK
+
+After moving the section:
+
+Verify:
+
+1. Client Hub section renders on Desktop
+2. Client Hub section renders on Tablet
+3. Client Hub section renders on Mobile
+4. Hub status displays correctly
+5. Hub activation works
+6. Copy Hub Link works
+7. Open Hub works
+8. Existing Hub Users display correctly
+
+====================================================
+
+CODE CLEANUP
+
+After moving the Client Hub section into V2:
+
+Remove the dead implementation from the old leftPanel layout.
+
+We do not want:
+
+* duplicate Client Hub components
+* orphaned Client Hub code
+* unused rendering logic
+
+Please identify the original dead Client Hub implementation and either:
+
+* migrate it completely into V2
+
+or
+
+* delete the dead version after migration
+
+so there is only one Client Hub implementation in the codebase.
+
+Provide a summary of:
+
+* files modified
+* old code removed
+* new code added
+* verification results

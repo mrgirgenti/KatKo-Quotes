@@ -296,7 +296,7 @@ export default function OrgProfileScreen() {
   const [disablingId, setDisablingId] = useState<string | null>(null);
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
 
-  type OrgTab = 'overview' | 'contacts' | 'media' | 'activity' | 'notes' | 'comms';
+  type OrgTab = 'overview' | 'contacts' | 'hub' | 'media' | 'activity' | 'notes' | 'comms';
   const [activeTab, setActiveTab] = useState<OrgTab>('overview');
   const [orgNotesText, setOrgNotesText] = useState('');
   const [editingOrgNotes, setEditingOrgNotes] = useState(false);
@@ -793,6 +793,180 @@ export default function OrgProfileScreen() {
   const primaryContact = org.contacts.find((c) => c.isPrimary) || org.contacts[0] || null;
   const accountRep = memberships.find((m) => m.userType !== 'CLIENT' && m.role === 'ORG_ADMIN') || memberships.find((m) => m.userType !== 'CLIENT') || null;
 
+  // ── Shared Client Hub content (used in V2 left panel + mobile Hub tab) ──
+  const clientHubInner = (
+    <>
+      <View style={styles.infoCardHeader}>
+        <View style={styles.infoCardHeaderLeft}>
+          <Shield size={15} color="#fff" />
+          <Text style={styles.infoCardTitle}>Client Hub</Text>
+        </View>
+        <TouchableOpacity style={styles.hubToggleBtn} onPress={handleHubToggle} activeOpacity={0.7}>
+          <Text style={[styles.hubToggleBtnText, localHubEnabled && styles.hubToggleBtnTextOn]}>
+            {localHubEnabled ? 'On' : 'Off'}
+          </Text>
+          {localHubEnabled
+            ? <ToggleRight size={26} color="#FF5A00" />
+            : <ToggleLeft size={26} color={Colors.light.border} />}
+        </TouchableOpacity>
+      </View>
+
+      {!localHubEnabled ? (
+        <View style={styles.hubDisabledBanner}>
+          <Text style={styles.hubDisabledText}>Client Hub is off. Toggle on to give this client a branded portal.</Text>
+        </View>
+      ) : (
+        <>
+          <View style={styles.portalPanel}>
+            <View style={styles.portalUrlRow}>
+              <Globe size={11} color={Colors.light.textSecondary} />
+              <Text style={styles.portalUrlText} numberOfLines={1}>
+                {Platform.OS === 'web' && typeof window !== 'undefined'
+                  ? `${window.location.origin}/portal/${org.id}`
+                  : `/portal/${org.id}`}
+              </Text>
+            </View>
+            <View style={styles.portalActions}>
+              <TouchableOpacity
+                style={styles.portalVisitBtn}
+                onPress={() => { if (Platform.OS === 'web') { (window as any).open(`/portal/${org.id}`, '_blank'); } }}
+              >
+                <ExternalLink size={13} color="#fff" />
+                <Text style={styles.portalVisitBtnText}>Visit Hub</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.portalIconBtn} onPress={handleCopyHubLink}>
+                {hubLinkCopied ? <CheckCircle2 size={16} color="#16A34A" /> : <Copy size={16} color={Colors.light.textSecondary} />}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.portalIconBtn} onPress={() => router.push(`/hub/${org.id}` as any)}>
+                <Settings size={16} color={Colors.light.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+          <View style={styles.hubInviteRow}>
+            <TouchableOpacity style={styles.hubInviteBtn} onPress={() => { setInviteForm({ name: '', email: '' }); setInviteModal(true); }}>
+              <Mail size={13} color="#FF5A00" />
+              <Text style={styles.hubInviteBtnText}>Send Invite Email</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.hubCopyInviteBtn} onPress={handleCopyInviteText}>
+              {inviteLinkCopied
+                ? <CheckCircle2 size={13} color="#16A34A" />
+                : <Copy size={13} color={Colors.light.textSecondary} />}
+              <Text style={[styles.hubCopyInviteBtnText, inviteLinkCopied && { color: '#16A34A' }]}>
+                {inviteLinkCopied ? 'Copied!' : 'Copy Invite Text'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+
+      <View style={[styles.infoCardSubHeader, { marginTop: 10 }]}>
+        <Text style={styles.infoCardSubTitle}>Katalyst Ko Rep</Text>
+        <TouchableOpacity onPress={() => { setMemberForm({ userId: '', role: 'MEMBER' }); setAddMemberModal(true); }}>
+          <Plus size={16} color={Colors.light.tint} />
+        </TouchableOpacity>
+      </View>
+      {membershipsLoading ? (
+        <Text style={styles.emptyCardSub}>Loading...</Text>
+      ) : memberships.filter((m) => m.userType !== 'CLIENT').length === 0 ? (
+        <Text style={styles.emptyCardSub}>No internal team members assigned.</Text>
+      ) : (
+        memberships.filter((m) => m.userType !== 'CLIENT').map((m) => (
+          <View key={m.id} style={[styles.memberRow, m.role === 'ORG_ADMIN' && styles.memberRowAdmin]}>
+            <View style={[styles.memberAvatar, { backgroundColor: m.userAvatarColor || '#FF5A00' }]}>
+              <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
+            </View>
+            <View style={styles.memberInfo}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.memberName}>{m.userName || 'Unknown User'}</Text>
+                {m.role === 'ORG_ADMIN' && (
+                  <View style={styles.adminBadge}><Text style={styles.adminBadgeText}>Admin</Text></View>
+                )}
+              </View>
+              <Text style={styles.memberRole}>{MEMBERSHIP_ROLE_LABELS[m.role] || m.role}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.memberDelete}
+              onPress={() => Alert.alert('Remove Member', `Remove ${m.userName || 'this member'}?`, [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Remove', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
+              ])}
+            >
+              <X size={13} color={Colors.light.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        ))
+      )}
+
+      <View style={[styles.infoCardSubHeader, { marginTop: 12 }]}>
+        <Text style={styles.infoCardSubTitle}>Client Hub Users</Text>
+        <TouchableOpacity onPress={() => { setInviteForm({ name: '', email: '' }); setInviteModal(true); }}>
+          <Plus size={16} color={Colors.light.tint} />
+        </TouchableOpacity>
+      </View>
+      {membershipsLoading ? (
+        <Text style={styles.emptyCardSub}>Loading...</Text>
+      ) : memberships.filter((m) => m.userType === 'CLIENT').length === 0 ? (
+        <Text style={[styles.emptyCardSub, { marginTop: 4 }]}>
+          No client users yet.{localHubEnabled ? ' Invite a contact to give them portal access.' : ''}
+        </Text>
+      ) : (
+        memberships.filter((m) => m.userType === 'CLIENT').map((m) => (
+          <View key={m.id} style={styles.clientUserRow}>
+            <View style={[styles.memberAvatar, { backgroundColor: m.userStatus === 'DISABLED' ? '#9CA3AF' : '#6366F1' }]}>
+              <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
+            </View>
+            <View style={styles.clientUserInfo}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' as const }}>
+                <Text style={[styles.memberName, m.userStatus === 'DISABLED' && { color: Colors.light.textSecondary }]}>
+                  {m.userName || 'Unknown User'}
+                </Text>
+                {m.userStatus === 'INVITED' && <View style={styles.statusBadgeInvited}><Text style={styles.statusBadgeText}>Invited</Text></View>}
+                {m.userStatus === 'ACTIVE' && <View style={styles.statusBadgeActive}><Text style={styles.statusBadgeText}>Active</Text></View>}
+                {m.userStatus === 'DISABLED' && <View style={styles.statusBadgeDisabled}><Text style={styles.statusBadgeText}>Disabled</Text></View>}
+                {m.hasPassword && <View style={styles.pwSetBadge}><Text style={styles.statusBadgeText}>PW Set</Text></View>}
+              </View>
+              <Text style={styles.memberRole}>{m.userEmail || 'No email'}</Text>
+              {m.inviteSentAt && <Text style={styles.inviteSentAt}>Invited {formatDate(m.inviteSentAt)}</Text>}
+            </View>
+            <View style={styles.clientUserActions}>
+              {m.userStatus !== 'DISABLED' && (
+                <TouchableOpacity
+                  style={styles.clientUserActionBtn}
+                  onPress={() => handleResendInvite(m)}
+                  disabled={resendingId === m.id}
+                >
+                  {resendingId === m.id
+                    ? <ActivityIndicator size={12} color="#FF5A00" />
+                    : <RotateCcw size={13} color="#FF5A00" />}
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={styles.clientUserActionBtn}
+                onPress={() => handleToggleClientUserStatus(m)}
+                disabled={disablingId === m.id}
+              >
+                {disablingId === m.id
+                  ? <ActivityIndicator size={12} color={Colors.light.textSecondary} />
+                  : m.userStatus === 'DISABLED'
+                    ? <UserCheck size={13} color="#16A34A" />
+                    : <UserX size={13} color="#DC2626" />}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.memberDelete}
+                onPress={() => Alert.alert('Remove Client', `Remove ${m.userName || 'this client'} from the hub?`, [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Remove', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
+                ])}
+              >
+                <X size={13} color={Colors.light.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))
+      )}
+    </>
+  );
+
   const leftPanel = (
     <View style={styles.leftPanel}>
       {/* Identity card */}
@@ -1018,178 +1192,6 @@ export default function OrgProfileScreen() {
         )}
       </View>
 
-      {/* Client Hub card */}
-      <View style={styles.infoCard}>
-        <View style={styles.infoCardHeader}>
-          <View style={styles.infoCardHeaderLeft}>
-            <Shield size={15} color="#fff" />
-            <Text style={styles.infoCardTitle}>Client Hub</Text>
-          </View>
-          <TouchableOpacity style={styles.hubToggleBtn} onPress={handleHubToggle} activeOpacity={0.7}>
-            <Text style={[styles.hubToggleBtnText, localHubEnabled && styles.hubToggleBtnTextOn]}>
-              {localHubEnabled ? 'On' : 'Off'}
-            </Text>
-            {localHubEnabled
-              ? <ToggleRight size={26} color="#FF5A00" />
-              : <ToggleLeft size={26} color={Colors.light.border} />}
-          </TouchableOpacity>
-        </View>
-
-        {!localHubEnabled ? (
-          <View style={styles.hubDisabledBanner}>
-            <Text style={styles.hubDisabledText}>Client Hub is off. Toggle on to give this client a branded portal.</Text>
-          </View>
-        ) : (
-          <>
-            <View style={styles.portalPanel}>
-              <View style={styles.portalUrlRow}>
-                <Globe size={11} color={Colors.light.textSecondary} />
-                <Text style={styles.portalUrlText} numberOfLines={1}>
-                  {Platform.OS === 'web' && typeof window !== 'undefined'
-                    ? `${window.location.origin}/portal/${org.id}`
-                    : `/portal/${org.id}`}
-                </Text>
-              </View>
-              <View style={styles.portalActions}>
-                <TouchableOpacity
-                  style={styles.portalVisitBtn}
-                  onPress={() => { if (Platform.OS === 'web') { (window as any).open(`/portal/${org.id}`, '_blank'); } }}
-                >
-                  <ExternalLink size={13} color="#fff" />
-                  <Text style={styles.portalVisitBtnText}>Visit Hub</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.portalIconBtn} onPress={handleCopyHubLink}>
-                  {hubLinkCopied ? <CheckCircle2 size={16} color="#16A34A" /> : <Copy size={16} color={Colors.light.textSecondary} />}
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.portalIconBtn} onPress={() => router.push(`/hub/${org.id}` as any)}>
-                  <Settings size={16} color={Colors.light.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-            <View style={styles.hubInviteRow}>
-              <TouchableOpacity style={styles.hubInviteBtn} onPress={() => { setInviteForm({ name: '', email: '' }); setInviteModal(true); }}>
-                <Mail size={13} color="#FF5A00" />
-                <Text style={styles.hubInviteBtnText}>Send Invite Email</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.hubCopyInviteBtn} onPress={handleCopyInviteText}>
-                {inviteLinkCopied
-                  ? <CheckCircle2 size={13} color="#16A34A" />
-                  : <Copy size={13} color={Colors.light.textSecondary} />}
-                <Text style={[styles.hubCopyInviteBtnText, inviteLinkCopied && { color: '#16A34A' }]}>
-                  {inviteLinkCopied ? 'Copied!' : 'Copy Invite Text'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
-
-        <View style={[styles.infoCardSubHeader, { marginTop: 10 }]}>
-          <Text style={styles.infoCardSubTitle}>Katalyst Ko Rep</Text>
-          <TouchableOpacity onPress={() => { setMemberForm({ userId: '', role: 'MEMBER' }); setAddMemberModal(true); }}>
-            <Plus size={16} color={Colors.light.tint} />
-          </TouchableOpacity>
-        </View>
-        {membershipsLoading ? (
-          <Text style={styles.emptyCardSub}>Loading...</Text>
-        ) : memberships.filter((m) => m.userType !== 'CLIENT').length === 0 ? (
-          <Text style={styles.emptyCardSub}>No internal team members assigned.</Text>
-        ) : (
-          memberships.filter((m) => m.userType !== 'CLIENT').map((m) => (
-            <View key={m.id} style={[styles.memberRow, m.role === 'ORG_ADMIN' && styles.memberRowAdmin]}>
-              <View style={[styles.memberAvatar, { backgroundColor: m.userAvatarColor || '#FF5A00' }]}>
-                <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
-              </View>
-              <View style={styles.memberInfo}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={styles.memberName}>{m.userName || 'Unknown User'}</Text>
-                  {m.role === 'ORG_ADMIN' && (
-                    <View style={styles.adminBadge}><Text style={styles.adminBadgeText}>Admin</Text></View>
-                  )}
-                </View>
-                <Text style={styles.memberRole}>{MEMBERSHIP_ROLE_LABELS[m.role] || m.role}</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.memberDelete}
-                onPress={() => Alert.alert('Remove Member', `Remove ${m.userName || 'this member'}?`, [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Remove', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
-                ])}
-              >
-                <X size={13} color={Colors.light.textSecondary} />
-              </TouchableOpacity>
-            </View>
-          ))
-        )}
-
-        <View style={[styles.infoCardSubHeader, { marginTop: 12 }]}>
-          <Text style={styles.infoCardSubTitle}>Client Hub Users</Text>
-          <TouchableOpacity onPress={() => { setInviteForm({ name: '', email: '' }); setInviteModal(true); }}>
-            <Plus size={16} color={Colors.light.tint} />
-          </TouchableOpacity>
-        </View>
-        {membershipsLoading ? (
-          <Text style={styles.emptyCardSub}>Loading...</Text>
-        ) : memberships.filter((m) => m.userType === 'CLIENT').length === 0 ? (
-          <Text style={[styles.emptyCardSub, { marginTop: 4 }]}>
-            No client users yet.{localHubEnabled ? ' Invite a contact to give them portal access.' : ''}
-          </Text>
-        ) : (
-          memberships.filter((m) => m.userType === 'CLIENT').map((m) => (
-            <View key={m.id} style={styles.clientUserRow}>
-              <View style={[styles.memberAvatar, { backgroundColor: m.userStatus === 'DISABLED' ? '#9CA3AF' : '#6366F1' }]}>
-                <Text style={styles.memberAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
-              </View>
-              <View style={styles.clientUserInfo}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' as const }}>
-                  <Text style={[styles.memberName, m.userStatus === 'DISABLED' && { color: Colors.light.textSecondary }]}>
-                    {m.userName || 'Unknown User'}
-                  </Text>
-                  {m.userStatus === 'INVITED' && <View style={styles.statusBadgeInvited}><Text style={styles.statusBadgeText}>Invited</Text></View>}
-                  {m.userStatus === 'ACTIVE' && <View style={styles.statusBadgeActive}><Text style={styles.statusBadgeText}>Active</Text></View>}
-                  {m.userStatus === 'DISABLED' && <View style={styles.statusBadgeDisabled}><Text style={styles.statusBadgeText}>Disabled</Text></View>}
-                  {m.hasPassword && <View style={styles.pwSetBadge}><Text style={styles.statusBadgeText}>PW Set</Text></View>}
-                </View>
-                <Text style={styles.memberRole}>{m.userEmail || 'No email'}</Text>
-                {m.inviteSentAt && <Text style={styles.inviteSentAt}>Invited {formatDate(m.inviteSentAt)}</Text>}
-              </View>
-              <View style={styles.clientUserActions}>
-                {m.userStatus !== 'DISABLED' && (
-                  <TouchableOpacity
-                    style={styles.clientUserActionBtn}
-                    onPress={() => handleResendInvite(m)}
-                    disabled={resendingId === m.id}
-                  >
-                    {resendingId === m.id
-                      ? <ActivityIndicator size={12} color="#FF5A00" />
-                      : <RotateCcw size={13} color="#FF5A00" />}
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity
-                  style={styles.clientUserActionBtn}
-                  onPress={() => handleToggleClientUserStatus(m)}
-                  disabled={disablingId === m.id}
-                >
-                  {disablingId === m.id
-                    ? <ActivityIndicator size={12} color={Colors.light.textSecondary} />
-                    : m.userStatus === 'DISABLED'
-                      ? <UserCheck size={13} color="#16A34A" />
-                      : <UserX size={13} color="#DC2626" />}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.memberDelete}
-                  onPress={() => Alert.alert('Remove Client', `Remove ${m.userName || 'this client'} from the hub?`, [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Remove', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
-                  ])}
-                >
-                  <X size={13} color={Colors.light.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))
-        )}
-      </View>
-
       <Text style={styles.memberSince}>Added {formatDate(org.createdAt)}</Text>
     </View>
   );
@@ -1244,10 +1246,11 @@ export default function OrgProfileScreen() {
     { id: 'notes', label: 'Notes', count: org.activityLog.filter((e) => e.type === 'note').length || undefined },
     { id: 'comms', label: 'Communications', count: org.activityLog.filter((e) => e.type === 'email' || e.type === 'call' || e.type === 'text').length || undefined },
   ];
-  // Mobile/tablet tabs — left panel is hidden, so include Contacts + Media here
+  // Mobile/tablet tabs — left panel is hidden, so include Contacts + Hub + Media here
   const TAB_CONFIG: { id: OrgTab; label: string; count?: number }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'contacts', label: 'Contacts', count: org.contacts.length || undefined },
+    { id: 'hub', label: 'Hub' },
     { id: 'media', label: 'Media', count: orgFiles.length || undefined },
     { id: 'activity', label: 'Activity', count: org.activityLog.length || undefined },
     { id: 'notes', label: 'Notes', count: org.activityLog.filter((e) => e.type === 'note').length || undefined },
@@ -2314,6 +2317,12 @@ export default function OrgProfileScreen() {
                 </>
               ) : null}
 
+              {/* Client Hub section — lives here in left panel, between Notes and Media Bin */}
+              <View style={styles.v2LPDivider} />
+              <View style={styles.v2LPSection}>
+                {clientHubInner}
+              </View>
+
               {/* Media Bin section */}
               <View style={styles.v2LPDivider} />
               <View style={styles.v2LPSection}>
@@ -2907,6 +2916,13 @@ export default function OrgProfileScreen() {
                       })()}
                     </>
                   )}
+                </View>
+              </View>
+            )}
+            {activeTab === 'hub' && (
+              <View style={styles.tabContentPad}>
+                <View style={styles.infoCard}>
+                  {clientHubInner}
                 </View>
               </View>
             )}
