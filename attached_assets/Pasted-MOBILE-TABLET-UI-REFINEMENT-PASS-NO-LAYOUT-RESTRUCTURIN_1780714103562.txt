@@ -1,0 +1,371 @@
+MOBILE + TABLET UI REFINEMENT PASS (NO LAYOUT RESTRUCTURING)
+
+IMPORTANT: Before making any changes, understand this requirement:
+
+DO NOT redesign these pages.
+DO NOT move modules.
+DO NOT hide metrics.
+DO NOT place metrics into drawers.
+DO NOT collapse sections.
+DO NOT move search bars.
+DO NOT move filters.
+DO NOT change workflow.
+DO NOT change page architecture.
+
+The current page structure is intentional.
+
+The goal is NOT to redesign the application.
+
+The goal is to improve:
+
+* Mobile usability
+* Tablet usability
+* Visual hierarchy
+* Spacing
+* Typography
+* Card sizing
+* Density
+* Readability
+* Touch interaction
+
+while preserving the exact existing structure and workflow.
+
+====================================================
+GLOBAL DESIGN RULES
+
+All pages must maintain the same order:
+
+Page Title
+Actions
+Metrics
+Filters
+Search
+Sort
+Content
+
+Do not change this order.
+
+The design language should be consistent across:
+
+* Projects
+* Contacts
+* Vendors/Catalogs
+* Client Hub
+* Production
+
+Reduce excessive whitespace.
+
+Reduce unnecessary padding.
+
+Increase information density.
+
+Maintain touch-friendly controls.
+
+All buttons must remain accessible and readable.
+
+====================================================
+PROJECTS PAGE
+
+Keep existing structure exactly as-is.
+
+Current Issues:
+
+1. Metrics section is too tall.
+2. Filter pills are too tall.
+3. Sort section blends into page.
+4. Project cards waste vertical space.
+5. Too much whitespace between sections.
+
+Changes:
+
+METRICS BAR
+
+Reduce height by approximately 25-35%.
+
+Keep:
+
+* Completed
+* In Production
+* Active Projects
+* Quoted
+* Needs Review
+
+Do not remove.
+
+Do not relocate.
+
+Do not hide.
+
+Keep horizontal layout.
+
+FILTER PILLS
+
+Reduce:
+
+* vertical padding
+* badge padding
+* overall pill height
+
+Keep all functionality.
+
+SEARCH BAR
+
+Leave directly above content.
+
+Do not move.
+
+SORT ROW
+
+Current sort row blends into surrounding content.
+
+Add visual separation.
+
+Make sort row:
+
+* black background
+* white labels
+* active sort remains orange
+
+Example:
+
+SORT:
+Status | Order Date | Due Date | Client | Project
+
+This should act as a visual divider between controls and content.
+
+PROJECT CARDS
+
+Keep same information.
+
+Improve hierarchy:
+
+Largest:
+
+* Organization Name
+
+Medium:
+
+* Project Name
+
+Small:
+
+* Dates
+
+Small:
+
+* Service Information
+
+Price remains bold and right aligned.
+
+Reduce excessive vertical padding.
+
+Allow more project cards to appear without scrolling.
+
+====================================================
+CONTACTS PAGE
+
+Keep existing layout exactly as-is.
+
+Do not move metrics.
+
+Do not move filters.
+
+Do not move search.
+
+Do not move sorting.
+
+Current Issues:
+
+1. Metrics are oversized.
+2. Filters consume too much height.
+3. Contact cards have excess padding.
+4. Search/filter area feels disconnected.
+
+Changes:
+
+METRICS
+
+Reduce overall height.
+
+Maintain current placement.
+
+FILTER PILLS
+
+Reduce padding and height.
+
+Keep current appearance.
+
+SEARCH BAR
+
+Maintain current placement.
+
+CONTACT CARDS
+
+Reduce card height.
+
+Tighten spacing between:
+
+* organization
+* business type
+* primary contact
+* phone
+* email
+
+Preserve readability.
+
+Improve density.
+
+====================================================
+CATALOG / VENDOR PAGE
+
+Current Issues:
+
+1. Cards waste space.
+2. Buttons inconsistent.
+3. Vendor names wrap unnecessarily.
+4. Dead space exists inside cards.
+5. Mobile layout feels oversized.
+
+DO NOT return to separate Wholesale Vendor and Client-Facing Vendor pages.
+
+Maintain the unified catalog approach.
+
+Vendor management should continue to exist on a single page.
+
+CATALOG CARDS
+
+Keep 2-column mobile layout.
+
+Use available width better.
+
+Requirements:
+
+Vendor Name:
+
+* larger
+* maximum 2 lines
+
+Category badge:
+
+* compact
+
+Description:
+
+* maximum 2 lines
+* truncate after 2 lines
+
+BUTTONS
+
+Catalog button and Website button:
+
+* identical height
+* identical width
+* text fully visible
+* icon fully visible
+
+Buttons should not exceed approximately 50% of card width.
+
+CLIENT HUB ENABLED TAG
+
+Keep visible.
+
+Should not dominate card.
+
+Use compact badge.
+
+ACTIONS MENU
+
+Maintain current actions menu.
+
+====================================================
+MOBILE RESPONSIVENESS AUDIT
+
+Run a complete audit across:
+
+Projects
+Contacts
+Catalogs
+Production
+Organizations
+Client Hub
+
+Check:
+
+* overflowing text
+* wrapped buttons
+* cut off icons
+* truncated labels
+* overlapping elements
+* inconsistent spacing
+* inconsistent card heights
+* touch target sizing
+* horizontal scrolling
+* tablet breakpoints
+* landscape orientation
+
+Fix all issues discovered.
+
+====================================================
+PRODUCTION PAGE
+
+Keep existing workflow.
+
+For projects with multiple production items:
+
+Create clear navigation between items.
+
+Requirements:
+
+If invoice contains multiple items:
+
+Show previous / next item controls.
+
+Example:
+
+[ Previous Item ] [ Next Item ]
+
+Include item numbering.
+
+Example:
+
+Item 2 of 5
+
+On mobile:
+
+Allow swipe gestures between items.
+
+When final item is completed:
+
+Return user to Projects page.
+
+If only one production item exists:
+
+Completing production should return directly to Projects page.
+
+====================================================
+FINAL REQUIREMENT
+
+After all UI changes:
+
+Run a full code audit.
+
+Verify:
+
+* no duplicate components
+* no orphaned components
+* no unused layouts
+* no dead code
+* no duplicated styles
+* no duplicate responsive logic
+* no obsolete files from previous iterations
+
+Refactor where necessary.
+
+The objective is:
+
+Cleaner.
+Denser.
+More readable.
+More professional.
+
+WITHOUT changing page structure, workflow, module placement, or information architecture.
