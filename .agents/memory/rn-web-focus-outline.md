@@ -25,8 +25,17 @@ to individual styles, because *focusable descendants you don't control* (the RN-
 `ScrollView`, and other rendered `<div>`s) still drew the browser default ring. Per-element
 style fixes only cover the elements you remember to tag.
 
-**Fix that works:** tag the subtree root with a dataset attribute (e.g. `data-kk-sidebar`
-via `KK_SIDEBAR_DATASET`) and inject ONE web CSS block resetting `outline:none` +
-`box-shadow:none` on `[data-kk-sidebar] *:focus, [data-kk-sidebar] *:focus-visible`.
-**How to apply:** when a focus ring persists despite per-style fixes, stop whack-a-mole —
-scope a single descendant CSS reset to the container subtree instead.
+A subtree-scoped reset (`[data-kk-sidebar] *:focus`) STILL wasn't enough — the blue ring
+kept recurring because focusable elements outside the tagged subtree also draw it.
+
+**Definitive fix (use this):** inject ONE GLOBAL web CSS block at the root layout
+(`app/_layout.tsx`, in the existing web-only `useEffect`) resetting
+`*:focus,*:focus-visible{outline:none !important;}` (plus `box-shadow:none` on
+a/button/[tabindex]). Style id `kk-global-focus-reset`. This guarantees no stray ring
+anywhere. The app's inputs use border styling for focus, so global outline removal is safe.
+
+**Critical debugging note:** the blue ring only appears AFTER a real click/keyboard focus.
+A fresh page load (and therefore the screenshot tool, which loads fresh) shows NO ring —
+you CANNOT reproduce it via screenshot. Don't conclude "it's fixed" from a clean
+fresh-load screenshot; reason about the CSS instead. The user's screenshot showing an
+active/clicked nav item is the real signal.

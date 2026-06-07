@@ -75,6 +75,29 @@ export default function RootLayout() {
     SplashScreen.hideAsync();
     if (typeof document !== 'undefined') {
       document.documentElement.style.zoom = '0.9';
+
+      // Web-only, app-wide: strip the browser's default blue focus ring / tap
+      // highlight from EVERY element. RN-web puts a default outline on focusable
+      // containers (ScrollViews, Pressables, the nav) that only appears AFTER a
+      // click/keyboard focus — which is why it never shows on a fresh load and
+      // a sidebar-scoped reset kept missing it. This global reset guarantees no
+      // stray blue outline anywhere. Inputs in this app rely on their own border
+      // styling for focus, so removing the default outline is safe.
+      const STYLE_ID = 'kk-global-focus-reset';
+      const CSS =
+        '*{-webkit-tap-highlight-color:transparent;}' +
+        '*:focus,*:focus-visible{outline:none !important;}' +
+        'a:focus,a:focus-visible,button:focus,button:focus-visible,' +
+        '[tabindex]:focus,[tabindex]:focus-visible{outline:none !important;box-shadow:none !important;}';
+      const existing = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
+      if (existing) {
+        existing.textContent = CSS;
+      } else {
+        const el = document.createElement('style');
+        el.id = STYLE_ID;
+        el.textContent = CSS;
+        document.head.appendChild(el);
+      }
     }
   }, []);
 
