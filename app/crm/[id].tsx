@@ -1504,7 +1504,7 @@ export default function OrgProfileScreen() {
               <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{activeQuotes.length}</Text></View>
             )}
           </View>
-          <TouchableOpacity onPress={() => setActiveTab('projects')}>
+          <TouchableOpacity onPress={() => { setActiveTab('projects'); setProjectsSubTab('active'); }}>
             <Text style={styles.infoCardViewAll}>View All Active Projects →</Text>
           </TouchableOpacity>
         </View>
@@ -1595,7 +1595,7 @@ export default function OrgProfileScreen() {
               <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{relatedQuotes.length}</Text></View>
             )}
           </View>
-          <TouchableOpacity onPress={() => setActiveTab('projects')}>
+          <TouchableOpacity onPress={() => { setActiveTab('projects'); setProjectsSubTab('quotes'); }}>
             <Text style={styles.infoCardViewAll}>View All Quotes →</Text>
           </TouchableOpacity>
         </View>
@@ -1893,7 +1893,7 @@ export default function OrgProfileScreen() {
               <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{activeQuotes.length}</Text></View>
             )}
           </View>
-          <TouchableOpacity onPress={() => setActiveTab('projects')}>
+          <TouchableOpacity onPress={() => { setActiveTab('projects'); setProjectsSubTab('active'); }}>
             <Text style={styles.infoCardViewAll}>View All Active Projects →</Text>
           </TouchableOpacity>
         </View>
@@ -1984,7 +1984,7 @@ export default function OrgProfileScreen() {
               <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{relatedQuotes.length}</Text></View>
             )}
           </View>
-          <TouchableOpacity onPress={() => setActiveTab('projects')}>
+          <TouchableOpacity onPress={() => { setActiveTab('projects'); setProjectsSubTab('quotes'); }}>
             <Text style={styles.infoCardViewAll}>View All Quotes →</Text>
           </TouchableOpacity>
         </View>
@@ -2618,7 +2618,7 @@ export default function OrgProfileScreen() {
                     <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{activeQuotes.length}</Text></View>
                   )}
                 </View>
-                <TouchableOpacity onPress={() => router.push('/(tabs)/projects' as any)}>
+                <TouchableOpacity onPress={() => { setActiveTab('projects'); setProjectsSubTab('active'); }}>
                   <Text style={styles.infoCardViewAll}>View All Active Projects →</Text>
                 </TouchableOpacity>
               </View>
@@ -2784,7 +2784,7 @@ export default function OrgProfileScreen() {
                     <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{relatedQuotes.length}</Text></View>
                   )}
                 </View>
-                <TouchableOpacity onPress={() => router.push('/(tabs)/projects' as any)}>
+                <TouchableOpacity onPress={() => { setActiveTab('projects'); setProjectsSubTab('quotes'); }}>
                   <Text style={styles.infoCardViewAll}>View All Quotes →</Text>
                 </TouchableOpacity>
               </View>
@@ -3081,7 +3081,12 @@ export default function OrgProfileScreen() {
                   {/* Cards */}
                   {(() => {
                     const pool = projectsSubTab === 'active' ? activeQuotes : projectsSubTab === 'completed' ? relatedQuotes.filter(q => q.status === 'completed') : relatedQuotes;
-                    const filtered = pool.filter(q => {
+                    const sorted = [...pool].sort((a, b) => {
+                      const da = a.orderDate ? new Date(a.orderDate.replace(/-/g, '/')).getTime() : 0;
+                      const db = b.orderDate ? new Date(b.orderDate.replace(/-/g, '/')).getTime() : 0;
+                      return da - db;
+                    });
+                    const filtered = sorted.filter(q => {
                       const pNum = ((q as any).projectNumber || q.invoiceNumber || '').toLowerCase();
                       const name = (q.projectName || q.personOrganization || '').toLowerCase();
                       const svcs = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))].join(' ').toLowerCase();
@@ -3094,36 +3099,14 @@ export default function OrgProfileScreen() {
                         <Text style={styles.emptyCardText}>{projectsSearch ? 'No matches' : 'No projects yet'}</Text>
                       </View>
                     );
-                    return filtered.map((q) => {
-                      const eff = getEffectiveStatus(q);
-                      const cfg = STATUS_CONFIG[eff];
-                      const qPcs = getPcs(q);
-                      const services = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))];
-                      const pNum = (q as any).projectNumber || q.invoiceNumber;
-                      return (
-                        <TouchableOpacity key={q.id} style={styles.p16Card} onPress={() => router.push(`/quote/${q.id}` as any)}>
-                          <View style={styles.p16CardTop}>
-                            {pNum ? <Text style={styles.p16CardNum}>#{pNum}</Text> : null}
-                            <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
-                              <Text style={[styles.projectRowBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
-                            </View>
-                            <ChevronRight size={12} color={Colors.light.textSecondary} style={{ marginLeft: 'auto' as any }} />
-                          </View>
-                          <Text style={styles.p16CardName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
-                          <View style={styles.p16CardDates}>
-                            <Text style={styles.p16CardDateItem}>Order: {q.orderDate ? formatDate(q.orderDate) : '—'}</Text>
-                            <Text style={styles.p16CardDateSep}>·</Text>
-                            <Text style={styles.p16CardDateItem}>Due: {q.inHandsDate ? formatDate(q.inHandsDate) : '—'}</Text>
-                          </View>
-                          {services.length > 0 && <Text style={styles.p16CardService} numberOfLines={1}>Service: {services.join(' · ')}</Text>}
-                          <View style={styles.p16CardBottom}>
-                            <Text style={styles.p16CardBottomItem}>Qty: {qPcs > 0 ? `${qPcs.toLocaleString()} pcs` : '—'}</Text>
-                            <Text style={styles.p16CardBottomItem}>Total: {formatCurrency(q.calculations?.total ?? 0)}</Text>
-                            <Text style={styles.p16CardProfit}>Profit: {formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    });
+                    return filtered.map((q, idx) => (
+                      <ProjectCard
+                        key={q.id}
+                        queue={idx + 1}
+                        quote={q}
+                        onPress={() => router.push(`/quote/${q.id}` as any)}
+                      />
+                    ));
                   })()}
                   <View style={{ height: 24 }} />
                 </ScrollView>
@@ -3202,7 +3185,12 @@ export default function OrgProfileScreen() {
                 </View>
                 {(() => {
                   const pool = projectsSubTab === 'active' ? activeQuotes : projectsSubTab === 'completed' ? relatedQuotes.filter(q => q.status === 'completed') : relatedQuotes;
-                  const filtered = pool.filter(q => {
+                  const sorted = [...pool].sort((a, b) => {
+                    const da = a.orderDate ? new Date(a.orderDate.replace(/-/g, '/')).getTime() : 0;
+                    const db = b.orderDate ? new Date(b.orderDate.replace(/-/g, '/')).getTime() : 0;
+                    return da - db;
+                  });
+                  const filtered = sorted.filter(q => {
                     const pNum = ((q as any).projectNumber || q.invoiceNumber || '').toLowerCase();
                     const name = (q.projectName || q.personOrganization || '').toLowerCase();
                     const svcs = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))].join(' ').toLowerCase();
@@ -3215,36 +3203,14 @@ export default function OrgProfileScreen() {
                       <Text style={styles.emptyCardText}>{projectsSearch ? 'No matches' : 'No projects yet'}</Text>
                     </View>
                   );
-                  return filtered.map((q) => {
-                    const eff = getEffectiveStatus(q);
-                    const cfg = STATUS_CONFIG[eff];
-                    const qPcs = getPcs(q);
-                    const services = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))];
-                    const pNum = (q as any).projectNumber || q.invoiceNumber;
-                    return (
-                      <TouchableOpacity key={q.id} style={styles.p16Card} onPress={() => router.push(`/quote/${q.id}` as any)}>
-                        <View style={styles.p16CardTop}>
-                          {pNum ? <Text style={styles.p16CardNum}>#{pNum}</Text> : null}
-                          <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
-                            <Text style={[styles.projectRowBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
-                          </View>
-                          <ChevronRight size={12} color={Colors.light.textSecondary} style={{ marginLeft: 'auto' as any }} />
-                        </View>
-                        <Text style={styles.p16CardName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
-                        <View style={styles.p16CardDates}>
-                          <Text style={styles.p16CardDateItem}>Order: {q.orderDate ? formatDate(q.orderDate) : '—'}</Text>
-                          <Text style={styles.p16CardDateSep}>·</Text>
-                          <Text style={styles.p16CardDateItem}>Due: {q.inHandsDate ? formatDate(q.inHandsDate) : '—'}</Text>
-                        </View>
-                        {services.length > 0 && <Text style={styles.p16CardService} numberOfLines={1}>Service: {services.join(' · ')}</Text>}
-                        <View style={styles.p16CardBottom}>
-                          <Text style={styles.p16CardBottomItem}>Qty: {qPcs > 0 ? `${qPcs.toLocaleString()} pcs` : '—'}</Text>
-                          <Text style={styles.p16CardBottomItem}>Total: {formatCurrency(q.calculations?.total ?? 0)}</Text>
-                          <Text style={styles.p16CardProfit}>Profit: {formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  });
+                  return filtered.map((q, idx) => (
+                    <ProjectCard
+                      key={q.id}
+                      queue={idx + 1}
+                      quote={q}
+                      onPress={() => router.push(`/quote/${q.id}` as any)}
+                    />
+                  ));
                 })()}
               </View>
             )}

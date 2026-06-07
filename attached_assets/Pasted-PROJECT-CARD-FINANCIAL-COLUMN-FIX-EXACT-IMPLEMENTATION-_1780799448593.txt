@@ -1,0 +1,236 @@
+PROJECT CARD FINANCIAL COLUMN FIX — EXACT IMPLEMENTATION REQUIRED
+
+The Total and Profit layout is still not matching the requested design.
+
+Do NOT reinterpret this.
+Do NOT create a separate financial row.
+Do NOT stack Total and Profit vertically.
+Do NOT push Total and Profit into the far-right corner as isolated values.
+
+The goal is to replicate the approved reference layout exactly.
+
+==================================================
+CURRENT PROBLEM
+==================================================
+
+Total and Profit are still being treated like a separate right-side block.
+
+This creates too much visual separation and does not match the intended layout.
+
+The financial values need to sit inline with the main project information as two columns.
+
+==================================================
+APPROVED CARD STRUCTURE
+==================================================
+
+Each card must use this exact horizontal structure:
+
+LEFT SIDE:
+- Order Date
+- Project Number
+- Status
+- Project Name
+- Due Date
+- Service + Qty
+
+CENTER-RIGHT:
+- TOTAL label
+- Total amount
+
+RIGHT:
+- PROFIT label
+- Profit amount
+
+Example visual structure:
+
+Order: Apr 23, 2025     P-1007     [Completed]        TOTAL          PROFIT
+
+Test Spring Shirts                                      $650.07        $120.00
+
+Due: May 15, 2025
+
+Screen Printing • 60 pcs
+
+==================================================
+GRID REQUIREMENT
+==================================================
+
+Implement the card body as a grid.
+
+Recommended desktop/tablet grid:
+
+grid-template-columns:
+1fr 140px 140px 24px
+
+Column 1:
+Project information
+
+Column 2:
+Total
+
+Column 3:
+Profit
+
+Column 4:
+Chevron
+
+Total and Profit must be side-by-side columns.
+
+They must NOT be stacked.
+
+They must NOT be positioned as a tiny vertical group in the far corner.
+
+==================================================
+LEFT PROJECT INFO COLUMN
+==================================================
+
+Inside Column 1:
+
+Line 1:
+Order: Apr 23, 2025     P-1007     [Completed]
+
+Line 2:
+Test Spring Shirts
+
+Line 3:
+Due: May 15, 2025
+
+Line 4:
+Screen Printing • 60 pcs
+
+Requirements:
+- Project Number is black
+- Project Number is medium-bold
+- Status pill sits inline with Project Number
+- Order Date appears before Project Number
+- Service and Qty remain together
+
+==================================================
+TOTAL COLUMN
+==================================================
+
+Column 2:
+
+TOTAL
+$650.07
+
+Requirements:
+- TOTAL label uppercase
+- label visible and larger than tiny metadata text
+- amount bold
+- amount larger than body text
+- align vertically near the middle of the card
+- do not stack with Profit
+
+==================================================
+PROFIT COLUMN
+==================================================
+
+Column 3:
+
+PROFIT
+$120.00
+
+Requirements:
+- PROFIT label uppercase
+- label visible and larger than tiny metadata text
+- amount bold
+- amount larger than body text
+- profit amount green
+- align vertically with Total
+- do not stack under Total
+
+==================================================
+CHEVRON COLUMN
+==================================================
+
+Column 4:
+
+>
+
+Requirements:
+- Chevron remains at far right
+- Vertically centered
+- Does not interfere with Total or Profit columns
+
+==================================================
+QUEUE NUMBER
+==================================================
+
+Queue number remains outside the card on the left.
+
+Examples:
+
+#1
+#2
+#3
+
+Requirements:
+- Black text
+- Outside card boundary
+- Vertically centered with card
+- Not inside card content
+
+==================================================
+APPLY EVERYWHERE
+==================================================
+
+This exact component must be used in:
+
+- Active Projects
+- Submitted Quotes
+- Projects tab
+
+Do not create separate versions.
+
+Build one reusable component and reuse it.
+
+==================================================
+HEADER LINKS
+==================================================
+
+Keep:
+
+ACTIVE PROJECTS                         View All Active Projects →
+
+SUBMITTED QUOTES                        View All Quotes →
+
+inside the black section headers.
+
+Remove the duplicate New Quote button from Active Projects section header.
+
+The only New Quote button should remain in the Organization header.
+
+==================================================
+MOBILE BEHAVIOR
+==================================================
+
+On mobile, preserve the same relationship:
+
+Project info first.
+
+Total and Profit side-by-side below or beside it depending on width.
+
+Do NOT stack Total above Profit.
+
+Acceptable mobile structure:
+
+Project info
+
+TOTAL        PROFIT
+$650.07      $120.00
+
+But Total and Profit must remain side-by-side.
+
+==================================================
+VALIDATION
+==================================================
+
+Before marking complete, provide screenshots proving:
+
+1. Submitted Quotes card shows Total and Profit side-by-side.
+2. Active Projects card shows Total and Profit side-by-side.
+3. Projects tab card shows Total and Profit side-by-side.
+4. Queue numbers are outside the card and black.
+5. Project number is black.
+6. One reusable component is used across all three sections.

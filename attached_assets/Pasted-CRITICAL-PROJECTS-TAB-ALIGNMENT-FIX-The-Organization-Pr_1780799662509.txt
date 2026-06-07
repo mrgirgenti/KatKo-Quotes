@@ -1,0 +1,242 @@
+CRITICAL PROJECTS TAB ALIGNMENT FIX
+
+The Organization Projects tab is currently being treated as a separate implementation.
+
+This is incorrect.
+
+The Projects tab, Active Projects section, and Submitted Quotes section are all displaying the same underlying project/quote records and therefore must use the exact same UI component system.
+
+==================================================
+CURRENT PROBLEM
+==================================================
+
+Active Projects:
+- Has metrics
+- Has search
+- Has filters
+- Has queue ordering
+
+Submitted Quotes:
+- Has metrics
+- Has search
+- Has filters
+- Has queue ordering
+
+Projects Tab:
+- Different layout
+- Different spacing
+- Missing queue numbering
+- Missing financial layout
+- Missing matching filters
+- Missing matching search behavior
+
+This creates three different experiences for the same data.
+
+That is not acceptable.
+
+==================================================
+REQUIRED ARCHITECTURE
+==================================================
+
+Build ONE reusable component system.
+
+Reusable components:
+
+1. ProjectCard
+2. ProjectSearchBar
+3. ProjectFilterRow
+4. ProjectMetricsRow
+5. QueueNumber
+
+Use these everywhere.
+
+Do not maintain separate implementations.
+
+==================================================
+PROJECTS TAB REQUIREMENTS
+==================================================
+
+The Projects tab must use:
+
+- Same card layout
+- Same queue numbering
+- Same Project Number styling
+- Same Total / Profit layout
+- Same search component
+- Same filter component
+- Same typography
+- Same spacing
+
+as Active Projects and Submitted Quotes.
+
+The Projects tab should feel like an expanded version of those sections.
+
+Not a different page.
+
+==================================================
+QUEUE NUMBERING
+==================================================
+
+Add queue numbering to Projects tab.
+
+Examples:
+
+#1
+#2
+#3
+
+Requirements:
+
+- Black text
+- Outside card
+- Same styling used in Submitted Quotes
+- Same styling used in Active Projects
+
+==================================================
+PROJECTS TAB FILTERS
+==================================================
+
+Keep existing filters:
+
+Active
+All Quotes
+Completed
+
+Add the same secondary filtering controls used elsewhere:
+
+Search:
+Search project #, name, service...
+
+Filters:
+
+Status
+Service
+Date
+
+These should behave consistently across all project views.
+
+==================================================
+OVERVIEW LINK ROUTING
+==================================================
+
+The Overview links should route to the Organization Projects tab.
+
+NOT the global Projects page.
+
+NOT the CRM Projects module.
+
+NOT the Production page.
+
+==================================================
+ACTIVE PROJECTS LINK
+==================================================
+
+Current link:
+
+View All Active Projects →
+
+Required behavior:
+
+Navigate to:
+
+Organization Detail
+→ Projects Tab
+
+Automatically select:
+
+Active
+
+Example:
+
+Projects Tab
+Active (selected)
+
+Search + Filters preserved
+
+==================================================
+SUBMITTED QUOTES LINK
+==================================================
+
+Current link:
+
+View All Quotes →
+
+Required behavior:
+
+Navigate to:
+
+Organization Detail
+→ Projects Tab
+
+Automatically select:
+
+All Quotes
+
+Example:
+
+Projects Tab
+All Quotes (selected)
+
+Search + Filters preserved
+
+==================================================
+DO NOT ROUTE TO GLOBAL PROJECTS
+==================================================
+
+These links are contextual to the organization.
+
+The user expects:
+
+Battlestar Coffee Co
+→ Projects
+
+NOT
+
+Entire CRM
+→ Projects
+
+The organization context must remain active.
+
+==================================================
+PROJECTS TAB END STATE
+==================================================
+
+Overview:
+
+Active Projects
+→ View All Active Projects
+
+Submitted Quotes
+→ View All Quotes
+
+Projects Tab:
+
+Active
+All Quotes
+Completed
+
+All three views use:
+
+- identical card component
+- identical queue numbering
+- identical financial layout
+- identical search
+- identical filters
+
+The only thing changing is the dataset being displayed.
+
+Everything else should remain visually identical.
+
+==================================================
+VALIDATION
+==================================================
+
+Provide screenshots showing:
+
+1. Overview → Active Projects
+2. Overview → Submitted Quotes
+3. Projects Tab → Active
+4. Projects Tab → All Quotes
+5. Projects Tab → Completed
+
+Confirm all five views use the same reusable card component and queue numbering system.
