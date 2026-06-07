@@ -15,8 +15,7 @@ import { SB, SidebarNav, ProfileFooter, NewQuoteButton } from '@/components/Side
 import { useUser } from '@/contexts/UserContext';
 
 const DRAWER_W = 280;
-const FALLBACK_LOGO_URI =
-  'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/4xwcbfcj6r2usqk7tds89';
+const FALLBACK_LOGO_URI = '/katalyst-logo.png';
 
 const SAFE_TOP = Platform.OS === 'web' ? 12 : 44;
 

@@ -16,8 +16,7 @@ const EXPANDED_WIDTH = 240;
 const COLLAPSED_WIDTH = 64;
 const LOGO_AVAILABLE_W = EXPANDED_WIDTH - 32; // 16px padding each side
 
-const FALLBACK_LOGO_URI =
-  'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/4xwcbfcj6r2usqk7tds89';
+const FALLBACK_LOGO_URI = '/katalyst-logo.png';
 
 const SIDEBAR_STORAGE_KEY = 'kk_sidebar_collapsed';
 

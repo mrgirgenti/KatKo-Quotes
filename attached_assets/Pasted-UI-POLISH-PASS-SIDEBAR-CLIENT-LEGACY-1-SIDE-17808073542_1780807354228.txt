@@ -1,0 +1,214 @@
+UI POLISH PASS — SIDEBAR & CLIENT LEGACY
+
+==================================================
+1. SIDEBAR BLUE HOVER / FOCUS OUTLINE BUG
+==================================================
+
+There is still a blue outline / focus box appearing in the sidebar navigation.
+
+This was previously reduced but has not been fully eliminated.
+
+Current behavior:
+
+- Blue vertical line appears
+- Blue focus box appears
+- Sometimes visible during hover
+- Sometimes visible during keyboard focus
+- Sometimes remains after navigation
+
+This does not match the platform design language.
+
+==================================================
+REQUIREMENT
+==================================================
+
+Remove all unintended browser focus styling from sidebar navigation.
+
+Inspect:
+
+- hover states
+- active states
+- focus states
+- focus-visible states
+- keyboard navigation states
+
+Check for:
+
+outline
+border
+box-shadow
+focus ring
+focus-visible ring
+
+Likely causes:
+
+outline: auto
+outline: blue
+focus-visible
+default browser accessibility ring
+native button focus styles
+
+==================================================
+APPROVED SIDEBAR BEHAVIOR
+==================================================
+
+Hover:
+- subtle background change only
+
+Active:
+- orange indicator
+- orange highlight
+
+Focus:
+- use platform styling
+- no blue browser ring
+
+There should never be a blue line or blue box visible.
+
+==================================================
+VALIDATION
+==================================================
+
+Test:
+
+- mouse hover
+- keyboard navigation
+- tab navigation
+- page refresh
+- route changes
+
+Provide screenshot showing sidebar with no blue artifacts.
+
+==================================================
+2. CLIENT LEGACY REDESIGN
+==================================================
+
+Current Client Legacy hover behavior is not scalable.
+
+Currently:
+
+Hover donut
+→ Pop-down appears
+→ Additional information shown
+
+I do not want hidden information that requires hover.
+
+This will not work well:
+
+- mobile
+- tablet
+- touch devices
+- future growth
+
+==================================================
+GOAL
+==================================================
+
+All important Client Legacy information should be visible by default.
+
+No hover dependency.
+
+==================================================
+CURRENT METRICS
+==================================================
+
+Client Legacy currently shows:
+
+Done
+Revenue
+Profit
+
+Plus service breakdown:
+
+Screen Print
+Embroidery
+Promotional
+Direct to Film
+
+==================================================
+PROPOSED REDESIGN
+==================================================
+
+Keep donut visualization.
+
+Remove hover pop-down behavior entirely.
+
+Instead display the information directly underneath each donut.
+
+Example:
+
+SCREEN PRINT
+
+100%
+
+Projects: 2
+Revenue: $650.67
+PCS: 97
+
+--------------------------------------------------
+
+EMBROIDERY
+
+0%
+
+Projects: 0
+Revenue: $0
+PCS: 0
+
+==================================================
+ALTERNATIVE OPTION
+==================================================
+
+If the above becomes too visually heavy:
+
+Show:
+
+100%
+
+Screen Print
+
+2 Projects
+
+$650.67 Revenue
+
+97 PCS
+
+directly below each donut.
+
+==================================================
+PRINCIPLE
+==================================================
+
+No hidden information.
+
+No hover-only information.
+
+No tooltip dependency.
+
+Everything important should be visible without interaction.
+
+==================================================
+DO NOT CHANGE
+==================================================
+
+Keep:
+
+- black header
+- Client Legacy title
+- metric row
+- donut visualization
+
+Only replace the hover interaction.
+
+==================================================
+VALIDATION
+==================================================
+
+Provide mockup/screenshot before implementation.
+
+Show:
+
+1. Existing Client Legacy
+2. Proposed Client Legacy
+
+Demonstrate how service-level metrics will remain visible without hover interactions.

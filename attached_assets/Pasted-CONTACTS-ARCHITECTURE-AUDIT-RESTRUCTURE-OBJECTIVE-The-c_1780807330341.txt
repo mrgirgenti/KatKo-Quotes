@@ -1,0 +1,262 @@
+CONTACTS ARCHITECTURE AUDIT & RESTRUCTURE
+
+OBJECTIVE
+
+The current Contacts page appears to be duplicating information already shown in Organizations.
+
+Before implementing changes, audit the current architecture and then restructure Contacts into a true people directory.
+
+==================================================
+CURRENT CONCERN
+==================================================
+
+Organizations should represent:
+
+Companies
+Schools
+Churches
+Teams
+Nonprofits
+Businesses
+
+Examples:
+
+Battlestar Coffee Co
+Grace AZ
+Riverside High School
+
+Contacts should represent:
+
+Actual people
+
+Examples:
+
+Josh Girgenti
+Jane Doe
+Karla Widger
+Mike Smith
+
+Currently the Contacts page appears to be organization-centric instead of person-centric.
+
+This creates duplication between Organizations and Contacts.
+
+==================================================
+STEP 1 — AUDIT CURRENT CONTACTS ARCHITECTURE
+==================================================
+
+Verify:
+
+1. What data source powers Organizations?
+2. What data source powers Contacts?
+3. Are Contacts actually individual people?
+4. Are Contacts currently organization records?
+5. Is there already a relationship between:
+   Organization → Contacts?
+6. Are Client Hub users stored separately?
+7. Are portal users already linked to contacts?
+8. Are there duplicate records being created?
+
+Provide findings before making assumptions.
+
+==================================================
+STEP 2 — DEFINE CONTACTS AS PEOPLE
+==================================================
+
+Contacts should become the master directory of every person in the ecosystem.
+
+Examples:
+
+Josh Girgenti
+Jane Doe
+Karla Widger
+Mike Smith
+
+A Contact belongs to an Organization.
+
+Example:
+
+Josh Girgenti
+Organization: Battlestar Coffee Co
+
+Karla Widger
+Organization: Grace AZ
+
+==================================================
+STEP 3 — CLIENT HUB USERS
+==================================================
+
+Do NOT create a separate people database.
+
+Client Hub users should be treated as Contacts.
+
+A Contact may or may not have Hub access.
+
+Examples:
+
+Josh Girgenti
+Hub Access: Active
+
+Jane Smith
+Hub Access: Invited
+
+Mike Jones
+Hub Access: No Access
+
+All remain Contacts.
+
+==================================================
+STEP 4 — CONTACTS PAGE REDESIGN
+==================================================
+
+Convert Contacts into a people directory.
+
+Columns / fields should include:
+
+Name
+
+Organization
+
+Title / Role
+
+Email
+
+Phone
+
+Hub Status
+
+Last Login
+
+Status
+
+==================================================
+HUB STATUS FIELD
+==================================================
+
+Supported values:
+
+No Access
+
+Invited
+
+Active
+
+Disabled
+
+This should allow users to quickly identify portal users.
+
+==================================================
+FILTERS
+==================================================
+
+Add filters:
+
+All Contacts
+
+Portal Users
+
+Non-Portal Users
+
+Active Contacts
+
+Inactive Contacts
+
+By Organization
+
+By Role
+
+==================================================
+METRICS ROW
+==================================================
+
+Replace organization-style metrics with people metrics.
+
+Examples:
+
+Total Contacts
+
+Portal Users
+
+Invited
+
+Organizations Represented
+
+==================================================
+CLIENT HUB RELATIONSHIP
+==================================================
+
+The Client Hub page remains.
+
+However:
+
+Client Hubs become an administrative management view.
+
+Example:
+
+Battlestar Coffee
+3 Users
+
+Grace AZ
+1 User
+
+Riverside High School
+5 Users
+
+This page manages hubs.
+
+The Contacts page manages people.
+
+==================================================
+ORGANIZATION RECORDS
+==================================================
+
+Organizations continue to display:
+
+Contacts section
+
+Client Hub section
+
+Projects
+
+Quotes
+
+Activity
+
+Notes
+
+Media
+
+No changes needed here.
+
+==================================================
+DATA MODEL REQUIREMENT
+==================================================
+
+Verify and maintain:
+
+Organization
+    ↓
+Contacts (many)
+
+Contact
+    ↓
+Optional Client Hub Access
+
+Avoid creating duplicate people records.
+
+A single Contact should be the source of truth.
+
+==================================================
+DELIVERABLE
+==================================================
+
+Provide:
+
+1. Audit report of current Contacts architecture
+2. Recommended data model changes (if needed)
+3. Proposed Contacts page structure
+4. Migration plan if Contacts currently contain organization-level data
+5. Screenshots/mockups before implementation
+
+Do not blindly rebuild Contacts.
+
+Audit first and then implement the correct CRM architecture.
