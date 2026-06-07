@@ -53,15 +53,79 @@ function injectFocusReset() {
     };
     document.addEventListener('focus', (e) => {
       const t = e.target as HTMLElement | null;
+      if (!t) return;
+      // DEBUG: log focused element so we can identify the blue-ring source
+      if (typeof console !== 'undefined') {
+        const cs = window.getComputedStyle(t);
+        console.log('[KK-FOCUS]', t.tagName, t.className || '(no-class)', 'outline:', cs.outline, 'tabIndex:', t.tabIndex, 'size:', t.offsetWidth + 'x' + t.offsetHeight);
+      }
+      // Strip outline immediately + via rAF for async RN Web injection
       kkStripFocus(t);
       requestAnimationFrame(() => kkStripFocus(t));
+      // Nuclear: blur any non-form element so no focus state can exist.
+      // setTimeout(0) defers until after press/click handlers have fired,
+      // so tap actions complete before focus is removed.
+      const tag = (t.tagName || '').toLowerCase();
+      if (tag !== 'input' && tag !== 'textarea' && tag !== 'select' && !t.isContentEditable) {
+        setTimeout(() => {
+          if (document.activeElement === t) t.blur();
+        }, 0);
+      }
     }, true);
   }
-  // Layer 3: MutationObserver — catches ANY style mutation that adds an outline,
-  // regardless of how or when it's applied (sync, rAF, setTimeout, etc.).
-  if (!(window as any).__kkMutationObserverBound) {
-    (window as any).__kkMutationObserverBound = true;
-    const kkObserver = new MutationObserver((mutations) => {
+  // Layer 3: MutationObserver — strips tabIndex="0" from any non-form element
+  // the moment it appears in the DOM. Without tabIndex, the browser has no
+  // programmatic way to give these elements keyboard focus; combined with the
+  // blur listener above, this makes stray focus rings impossible.
+  if (!(window as any).__kkTabIndexObserverBound) {
+    (window as any).__kkTabIndexObserverBound = true;
+    const FORM_TAGS = new Set(['input', 'textarea', 'select', 'button', 'a']);
+    const kkStripTabIndex = (node: Element) => {
+      const el = node as HTMLElement;
+      if (!el.tagName) return;
+      const tag = el.tagName.toLowerCase();
+      if (!FORM_TAGS.has(tag) && el.getAttribute('tabindex') === '0') {
+        el.setAttribute('tabindex', '-1');
+      }
+      // Also handle all descendants
+      el.querySelectorAll?.('[tabindex="0"]').forEach((child: Element) => {
+        const childTag = child.tagName.toLowerCase();
+        if (!FORM_TAGS.has(childTag)) {
+          child.setAttribute('tabindex', '-1');
+        }
+      });
+    };
+    const tabMO = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        for (const node of m.addedNodes) {
+          if (node.nodeType === 1) kkStripTabIndex(node as Element);
+        }
+        // Also handle attribute changes (RN Web may add tabIndex after initial render)
+        if (m.type === 'attributes' && m.attributeName === 'tabindex') {
+          kkStripTabIndex(m.target as Element);
+        }
+      }
+    });
+    const startTabMO = () => {
+      // Strip existing elements immediately
+      document.querySelectorAll('[tabindex="0"]').forEach(kkStripTabIndex);
+      tabMO.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['tabindex'],
+      });
+    };
+    if (document.body) {
+      startTabMO();
+    } else {
+      document.addEventListener('DOMContentLoaded', startTabMO);
+    }
+  }
+  // Layer 4: style MutationObserver — catches any inline outline added after render.
+  if (!(window as any).__kkStyleObserverBound) {
+    (window as any).__kkStyleObserverBound = true;
+    const styleObserver = new MutationObserver((mutations) => {
       for (const m of mutations) {
         const el = m.target as HTMLElement;
         if (el.style) {
@@ -73,15 +137,13 @@ function injectFocusReset() {
         }
       }
     });
-    const startObserving = () => {
-      if (document.body) {
-        kkObserver.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['style'] });
-      }
+    const startStyleMO = () => {
+      styleObserver.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['style'] });
     };
     if (document.body) {
-      startObserving();
+      startStyleMO();
     } else {
-      document.addEventListener('DOMContentLoaded', startObserving);
+      document.addEventListener('DOMContentLoaded', startStyleMO);
     }
   }
 }
