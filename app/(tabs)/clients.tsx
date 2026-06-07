@@ -601,8 +601,8 @@ function OrganizationsScreen() {
           {!search && <TouchableOpacity style={styles.emptyAddBtn} onPress={openAddModal}><Plus size={15} color="#fff" /><Text style={styles.emptyAddBtnText}>Add Contact</Text></TouchableOpacity>}
         </View>
       ) : (
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={true} contentContainerStyle={{ flexGrow: 1 }}>
+        <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={true} contentContainerStyle={{ flexGrow: 1 }} style={{ outlineStyle: 'none' } as any}>
             <View style={{ minWidth: 1200, flexGrow: 1 }}>
               {tableHeaderRow}
               <View style={styles.tableBody}>

@@ -64,7 +64,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           <Animated.View style={[styles.scrim, { opacity: scrim }]}>
             <Pressable style={StyleSheet.absoluteFill as any} onPress={closeDrawer} />
           </Animated.View>
-          <Animated.View style={[styles.drawer, { transform: [{ translateX: tx }] }]}>
+          <Animated.View style={[styles.drawer, { transform: [{ translateX: tx }] }]} {...KK_SIDEBAR_DATASET}>
             <View style={styles.drawerHeader}>
               <Image source={{ uri: logoUri }} style={styles.drawerLogo} resizeMode="contain" />
               <TouchableOpacity onPress={closeDrawer} style={styles.closeBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -155,6 +155,7 @@ const styles = StyleSheet.create({
   },
   navScroll: {
     flex: 1,
+    outlineStyle: 'none' as any,
   },
   navScrollContent: {
     paddingVertical: 8,

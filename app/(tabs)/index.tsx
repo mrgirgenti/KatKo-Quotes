@@ -811,6 +811,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    outlineStyle: 'none' as any,
   },
   content: {
     paddingHorizontal: 24,

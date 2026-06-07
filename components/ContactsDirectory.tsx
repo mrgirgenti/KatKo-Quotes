@@ -404,8 +404,8 @@ export default function ContactsDirectory() {
           <Text style={styles.emptyText}>{search || orgFilter || roleFilter ? 'Try adjusting your filters or search.' : 'Add contacts from an organization to see them here.'}</Text>
         </View>
       ) : (
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-          <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
+        <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
+          <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }} style={{ outlineStyle: 'none' } as any}>
             <View style={{ minWidth: 1156, flexGrow: 1 }}>
               {tableHeader}
               <View style={styles.tableBody}>

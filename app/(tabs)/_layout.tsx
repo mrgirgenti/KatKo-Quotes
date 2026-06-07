@@ -44,5 +44,6 @@ const styles = StyleSheet.create({
   webContent: {
     flex: 1,
     overflow: 'hidden' as any,
+    outlineStyle: 'none' as any,
   },
 });

@@ -494,11 +494,11 @@ export default function ClientHubsScreen() {
         </View>
       ) : (
         <ScrollView
-          style={styles.list}
+          style={[styles.list, { outlineStyle: 'none' } as any]}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.light.tint} />}
         >
-          <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }} style={{ outlineStyle: 'none' } as any}>
             <View style={{ minWidth: TABLE_MIN_W, flexGrow: 1 }}>
               {tableHeader}
               <View style={styles.tableBody}>

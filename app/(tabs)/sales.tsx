@@ -810,8 +810,8 @@ export default function SalesScreen() {
           </Text>
         </View>
       ) : (
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-          <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
+        <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
+          <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }} style={{ outlineStyle: 'none' } as any}>
             <View style={{ minWidth: 1180, flexGrow: 1 }}>
               <View style={styles.tableHeader}>
                 <View style={styles.colCheckbox}>

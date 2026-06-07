@@ -292,6 +292,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.light.background,
+    outlineStyle: 'none' as any,
   },
   content: {
     paddingHorizontal: 24,

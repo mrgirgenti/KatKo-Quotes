@@ -3077,7 +3077,7 @@ export default function OrgProfileScreen() {
 
         ) : (
           /* ── MOBILE: stacked layout ── */
-          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+          <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
             {/* Mobile header */}
             <View style={styles.v2MobileHeader}>
               <View style={styles.v2MobileHeaderTop}>

@@ -800,8 +800,8 @@ export default function ProjectsScreen() {
           </Text>
         </View>
       ) : (
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-          <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
+        <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
+          <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }} style={{ outlineStyle: 'none' } as any}>
             <View style={{ minWidth: 1320, flexGrow: 1 }}>
               <View style={styles.tableHeader}>
                 <View style={styles.colCheckbox}>
