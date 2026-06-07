@@ -1,0 +1,361 @@
+```text
+UI STANDARDIZATION + ORGANIZATION DETAIL REFINEMENT
+
+We have approved two UI patterns that now need to become the official standard throughout the CRM.
+
+IMPORTANT:
+Do not redesign layouts.
+Do not move modules around.
+Do not introduce new visual systems.
+
+The goal is consistency and refinement, not reinvention.
+
+==================================================
+PART 1 — ORGANIZATION DETAIL PAGE STANDARD
+==================================================
+
+Use the current Organization Detail layout as the standard.
+
+Keep:
+
+- Back navigation in top-left
+- Organization logo
+- Organization name
+- Status pill
+- Business type
+- Location
+- New Quote button
+- Actions dropdown
+- Contacts section
+- Client Hub section
+- Media Bin section
+
+Do NOT rearrange any of these sections.
+
+--------------------------------------------------
+HEADER REFINEMENTS
+--------------------------------------------------
+
+Increase organization logo size approximately 15–20%.
+
+Current size feels slightly small.
+
+Do NOT increase more than 20%.
+
+Keep organization name, status pill, business type, and location positioned exactly as they are now.
+
+--------------------------------------------------
+ACTION BUTTONS
+--------------------------------------------------
+
+Keep:
+
+Primary:
++ New Quote
+
+Secondary:
+Actions ▼
+
+Do not return to oversized full-width buttons.
+
+Current sizing and positioning is approved.
+
+Actions dropdown should become the home for future organization actions such as:
+
+- New Project
+- Send Email
+- Create Task
+- Generate Invoice
+- Invite Hub User
+- Export Organization
+- Archive Organization
+
+Do not implement all of these yet.
+Just maintain the structure.
+
+--------------------------------------------------
+SECTION HEADERS
+--------------------------------------------------
+
+The following sections should all use the same visual pattern:
+
+CONTACTS
+CLIENT HUB
+MEDIA BIN
+
+Requirements:
+
+- Black header background
+- White text
+- Consistent height
+- Consistent spacing
+- Consistent typography
+
+This becomes the section-header standard for future modules.
+
+==================================================
+PART 2 — PROJECT / QUOTE CARD STANDARD
+==================================================
+
+The newest card design is approved and should become the reusable standard.
+
+This applies to:
+
+- Active Projects (Overview tab)
+- Submitted Quotes (Overview tab)
+- Projects tab
+- Future main Projects page
+
+Build ONE reusable component.
+
+Use it everywhere.
+
+Do not maintain multiple card versions.
+
+==================================================
+CARD CONTENT REQUIREMENTS
+==================================================
+
+Each card must display:
+
+- Queue Number
+- Order Date
+- Project Number
+- Status
+- Project Name
+- Due Date
+- Service
+- Qty
+- Total
+- Profit
+
+==================================================
+QUEUE NUMBERING
+==================================================
+
+Examples:
+
+#1
+#2
+#3
+
+Requirements:
+
+- Outside the card
+- Left side of card
+- Vertically centered
+- Black text
+- Large enough to quickly identify order
+
+Do NOT place queue numbers inside the card.
+
+Do NOT use gray.
+
+Do NOT use orange.
+
+Queue numbers represent list position only.
+
+==================================================
+SORTING
+==================================================
+
+Default sorting:
+
+ORDER DATE ASCENDING
+
+Oldest submitted first.
+
+This applies to:
+
+- Active Projects
+- Submitted Quotes
+- Projects Tab
+
+We process work FIFO.
+
+Due date remains visible but does NOT control default order.
+
+==================================================
+PROJECT NUMBER
+==================================================
+
+Examples:
+
+P-1007
+P-1008
+P-1009
+
+Requirements:
+
+- Black text
+- Medium-bold weight
+- Not orange
+- Not styled as a pill
+- Searchable
+- Filterable
+
+Project Number should be visually stronger than Order Date.
+
+==================================================
+APPROVED CARD LAYOUT
+==================================================
+
+Structure should resemble:
+
+Order: Apr 23, 2025     P-1007    [Completed]
+
+Test Spring Shirts
+
+Due: May 15, 2025
+
+Screen Printing • 60 pcs
+
+TOTAL         PROFIT
+
+$650.07       $120.00
+
+HOWEVER:
+
+Do not stack Total and Profit vertically in the far corner.
+
+Use the available horizontal space.
+
+Desired layout:
+
+Order: Apr 23, 2025    P-1007    [Completed]
+
+Test Spring Shirts
+
+Due: May 15, 2025            TOTAL         PROFIT
+                              $650.07       $120.00
+
+Screen Printing • 60 pcs
+
+The financial data should occupy the center-right area of the card and help fill dead space.
+
+==================================================
+TOTAL + PROFIT
+==================================================
+
+Display:
+
+TOTAL
+$650.07
+
+PROFIT
+$120.00
+
+Requirements:
+
+- Larger typography
+- Bold values
+- Highly scannable
+- Consistent placement
+
+Do not stack them vertically.
+
+Keep them side-by-side.
+
+==================================================
+SERVICE + QTY
+==================================================
+
+Keep together.
+
+Examples:
+
+Screen Printing • 60 pcs
+
+Direct to Film • 37 pcs
+
+Do not separate quantity into another area.
+
+==================================================
+SEARCH + FILTERS
+==================================================
+
+Keep the new filter structure.
+
+Search:
+
+Search project #, name, service...
+
+Filters:
+
+Status
+Service
+Date
+
+Apply to:
+
+- Active Projects
+- Submitted Quotes
+- Projects Tab
+
+==================================================
+VIEW ALL LINKS
+==================================================
+
+Keep:
+
+View All Active Projects →
+
+View All Quotes →
+
+These should route into the Projects tab.
+
+==================================================
+PROJECTS TAB
+==================================================
+
+The Projects tab must use the exact same reusable card component.
+
+No alternate layout.
+
+No simplified layout.
+
+No separate implementation.
+
+The same component should render:
+
+- Active Projects
+- Submitted Quotes
+- Projects Tab
+
+==================================================
+VALIDATION REQUIRED
+==================================================
+
+Before marking complete provide screenshots of:
+
+1. Organization Detail page
+   - Updated logo size
+   - New Quote button
+   - Actions button
+   - Contacts section
+   - Client Hub section
+   - Media Bin section
+
+2. Active Projects
+   - Queue numbering
+   - Project Number
+   - Order Date
+   - Due Date
+   - Service
+   - Qty
+   - Total
+   - Profit
+
+3. Submitted Quotes
+   - Same card layout
+   - Same spacing
+   - Same typography
+
+4. Projects Tab
+   - Same reusable card component
+   - Same numbering system
+   - Same filters
+   - Same search behavior
+
+Confirm that all project and quote views use the same reusable component.
+```

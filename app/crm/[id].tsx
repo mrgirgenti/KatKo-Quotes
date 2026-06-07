@@ -1180,7 +1180,7 @@ export default function OrgProfileScreen() {
             orgName={org.name}
             currentLogoUrl={org.logoUrl}
             onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })}
-            size={104}
+            size={120}
           />
         </View>
 
@@ -1504,12 +1504,8 @@ export default function OrgProfileScreen() {
               <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{activeQuotes.length}</Text></View>
             )}
           </View>
-          <TouchableOpacity
-            style={styles.infoCardAction}
-            onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
-          >
-            <Plus size={13} color="#fff" />
-            <Text style={styles.infoCardActionText}>New Quote</Text>
+          <TouchableOpacity onPress={() => setActiveTab('projects')}>
+            <Text style={styles.infoCardViewAll}>View All Active Projects →</Text>
           </TouchableOpacity>
         </View>
         {activeQuotes.length > 0 && (
@@ -1587,11 +1583,6 @@ export default function OrgProfileScreen() {
             />
           ))
         )}
-        {activeQuotes.length > 0 && (
-          <TouchableOpacity style={styles.p16ViewAll} onPress={() => setActiveTab('projects')}>
-            <Text style={styles.p16ViewAllText}>View All Active Projects →</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* Submitted Quotes card */}
@@ -1604,12 +1595,8 @@ export default function OrgProfileScreen() {
               <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{relatedQuotes.length}</Text></View>
             )}
           </View>
-          <TouchableOpacity
-            style={styles.infoCardAction}
-            onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
-          >
-            <Plus size={13} color="#fff" />
-            <Text style={styles.infoCardActionText}>New Quote</Text>
+          <TouchableOpacity onPress={() => setActiveTab('projects')}>
+            <Text style={styles.infoCardViewAll}>View All Quotes →</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.revenueStatsRow}>
@@ -1683,11 +1670,6 @@ export default function OrgProfileScreen() {
               onPress={() => router.push(`/quote/${q.id}` as any)}
             />
           ))
-        )}
-        {relatedQuotes.length > 0 && (
-          <TouchableOpacity style={styles.p16ViewAll} onPress={() => setActiveTab('projects')}>
-            <Text style={styles.p16ViewAllText}>View All Quotes →</Text>
-          </TouchableOpacity>
         )}
       </View>
 
@@ -1911,12 +1893,8 @@ export default function OrgProfileScreen() {
               <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{activeQuotes.length}</Text></View>
             )}
           </View>
-          <TouchableOpacity
-            style={styles.infoCardAction}
-            onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
-          >
-            <Plus size={13} color="#fff" />
-            <Text style={styles.infoCardActionText}>New Quote</Text>
+          <TouchableOpacity onPress={() => setActiveTab('projects')}>
+            <Text style={styles.infoCardViewAll}>View All Active Projects →</Text>
           </TouchableOpacity>
         </View>
         {activeQuotes.length > 0 && (
@@ -1994,11 +1972,6 @@ export default function OrgProfileScreen() {
             />
           ))
         )}
-        {activeQuotes.length > 0 && (
-          <TouchableOpacity style={styles.p16ViewAll} onPress={() => setActiveTab('projects')}>
-            <Text style={styles.p16ViewAllText}>View All Active Projects →</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* Submitted Quotes card */}
@@ -2011,12 +1984,8 @@ export default function OrgProfileScreen() {
               <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{relatedQuotes.length}</Text></View>
             )}
           </View>
-          <TouchableOpacity
-            style={styles.infoCardAction}
-            onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
-          >
-            <Plus size={13} color="#fff" />
-            <Text style={styles.infoCardActionText}>New Quote</Text>
+          <TouchableOpacity onPress={() => setActiveTab('projects')}>
+            <Text style={styles.infoCardViewAll}>View All Quotes →</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.revenueStatsRow}>
@@ -2649,12 +2618,8 @@ export default function OrgProfileScreen() {
                     <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{activeQuotes.length}</Text></View>
                   )}
                 </View>
-                <TouchableOpacity
-                  style={styles.infoCardAction}
-                  onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
-                >
-                  <Plus size={13} color="#fff" />
-                  <Text style={styles.infoCardActionText}>New Quote</Text>
+                <TouchableOpacity onPress={() => router.push('/(tabs)/projects' as any)}>
+                  <Text style={styles.infoCardViewAll}>View All Active Projects →</Text>
                 </TouchableOpacity>
               </View>
               {activeQuotes.length > 0 && (
@@ -2740,11 +2705,6 @@ export default function OrgProfileScreen() {
                   />
                 ))
               )}
-              {activeQuotes.length > 0 && (
-                <TouchableOpacity style={styles.viewAllLink} onPress={() => router.push('/(tabs)/projects' as any)}>
-                  <Text style={styles.viewAllLinkText}>View All Active Projects →</Text>
-                </TouchableOpacity>
-              )}
             </View>
 
             {/* ── Client Legacy ── */}
@@ -2824,6 +2784,9 @@ export default function OrgProfileScreen() {
                     <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{relatedQuotes.length}</Text></View>
                   )}
                 </View>
+                <TouchableOpacity onPress={() => router.push('/(tabs)/projects' as any)}>
+                  <Text style={styles.infoCardViewAll}>View All Quotes →</Text>
+                </TouchableOpacity>
               </View>
               <View style={styles.v2SecondaryStats}>
                 <View style={styles.revenueStatBox}>
@@ -2898,11 +2861,6 @@ export default function OrgProfileScreen() {
                     onPress={() => router.push(`/quote/${q.id}` as any)}
                   />
                 ))
-              )}
-              {relatedQuotes.length > 0 && (
-                <TouchableOpacity style={styles.viewAllLink} onPress={() => router.push('/(tabs)/projects' as any)}>
-                  <Text style={styles.viewAllLinkText}>View All Quotes →</Text>
-                </TouchableOpacity>
               )}
             </View>
 
@@ -4886,6 +4844,11 @@ const styles = StyleSheet.create({
     minWidth: 18, alignItems: 'center' as const,
   },
   infoCardBadgeText: { fontSize: 11, fontWeight: '700' as const, color: '#fff' },
+  infoCardViewAll: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.light.primary,
+  },
   infoCardAction: {
     flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4,
     paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8,

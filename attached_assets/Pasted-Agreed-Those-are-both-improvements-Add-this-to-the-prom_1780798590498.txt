@@ -1,0 +1,104 @@
+Agreed. Those are both improvements.
+
+Add this to the prompt:
+
+---
+
+## OVERVIEW TAB HEADER REFINEMENT
+
+The latest implementation of the section headers is approved.
+
+Keep:
+
+```text
+ACTIVE PROJECTS                                   View All Active Projects →
+```
+
+and
+
+```text
+SUBMITTED QUOTES                                  View All Quotes →
+```
+
+inside the black section headers.
+
+### Requirements
+
+* Keep links in the header row
+* Right-aligned
+* Orange text
+* Same vertical alignment as section title
+* Same styling in both sections
+* Same spacing in both sections
+
+These links feel much cleaner and more discoverable than placing them at the bottom of the cards.
+
+---
+
+## REMOVE REDUNDANT NEW QUOTE BUTTON
+
+Remove:
+
+```text
++ New Quote
+```
+
+from the Active Projects section header.
+
+Reason:
+
+The Organization Detail page already has a primary:
+
+```text
++ New Quote
+```
+
+button at the top.
+
+Having another New Quote button inside Active Projects creates duplicate actions and visual clutter.
+
+### Approved Header Layout
+
+Active Projects:
+
+```text
+ACTIVE PROJECTS (3)                 View All Active Projects →
+```
+
+Submitted Quotes:
+
+```text
+SUBMITTED QUOTES (5)                View All Quotes →
+```
+
+No action buttons inside these section headers.
+
+The only primary New Quote action should remain in the Organization Header area.
+
+---
+
+## OVERVIEW TAB PRINCIPLE
+
+Overview should function as a dashboard summary.
+
+Users should:
+
+* Review project status
+* Review quote status
+* Review client history
+* Review hub activity
+
+Users should NOT primarily create records from Overview.
+
+Creation actions belong in:
+
+* Organization Header
+* Global Navigation
+* Projects Page
+* Quotes Page
+
+This keeps the Overview tab focused on visibility instead of actions.
+
+---
+
+I'd actually consider this a stronger UX decision than the previous version. The Organization Header becomes the command center, while the Overview becomes the information center. That separation is cleaner and more scalable as the CRM/ERP grows.
