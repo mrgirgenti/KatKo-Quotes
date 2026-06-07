@@ -1,0 +1,137 @@
+OVERNIGHT TASK #1 — PLATFORM STABILIZATION & UX STANDARDIZATION
+
+PRIORITY: CRITICAL
+
+Before any new modules are built, stabilize the platform foundation.
+
+==================================================
+
+1. SIDEBAR BLUE LINE BUG
+   ==================================================
+
+P0 bug.
+
+A blue line / focus artifact continues to appear inside the sidebar.
+
+Do not reduce it.
+
+Do not restyle it.
+
+Remove it completely.
+
+Investigate:
+
+* focus styles
+* focus-visible
+* outlines
+* box shadows
+* active indicators
+* pseudo-elements
+* sidebar state management
+
+Provide root cause.
+
+==================================================
+2. PLATFORM BACK NAVIGATION
+===========================
+
+Create one shared PageBackHeader component.
+
+Reference:
+
+← Back    Quote Details
+
+← Back    Production Mode
+
+Apply platform-wide.
+
+Do not redesign.
+
+Standardize.
+
+==================================================
+3. DROPDOWN / OVERLAY LAYERING
+==============================
+
+Current actions menus render behind content.
+
+Audit:
+
+* z-index
+* overflow
+* stacking contexts
+* popovers
+* dropdowns
+
+Create one overlay system.
+
+No clipping.
+
+No hidden menus.
+
+==================================================
+4. CONTACTS PAGE
+================
+
+Make Contacts match Organizations and Projects.
+
+Required:
+
+* Header row #000000
+* Sortable columns
+* Filterable columns
+
+Columns:
+
+Name
+Organization
+Role
+Email
+Phone
+Hub Status
+Last Login
+Status
+
+All sortable.
+
+==================================================
+5. ORGANIZATION DETAIL PAGE
+===========================
+
+Verify:
+
+* Client Legacy above Active Projects
+* Active Projects complete
+* Submitted Quotes complete
+* Project numbering working
+* View All routing working
+
+==================================================
+6. ORDER DATE VALIDATION
+========================
+
+Verify every quote receives an Order Date.
+
+Rules:
+
+If user provides Order Date:
+Use it.
+
+If no Order Date exists:
+Auto-populate current date.
+
+No quote may exist without an Order Date.
+
+Provide validation report.
+
+==================================================
+DELIVERABLE
+===========
+
+Provide screenshots.
+
+Provide validation report.
+
+Provide unresolved issues list.
+
+Do not begin new feature development.
