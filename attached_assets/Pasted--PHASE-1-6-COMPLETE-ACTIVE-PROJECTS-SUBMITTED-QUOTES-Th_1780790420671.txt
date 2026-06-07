@@ -1,0 +1,235 @@
+# PHASE 1.6 – COMPLETE ACTIVE PROJECTS & SUBMITTED QUOTES
+
+The Active Projects and Submitted Quotes redesign is NOT complete.
+
+Recent verification confirmed that the implementation does not match the approved UX direction.
+
+Do NOT move to Navigation Restructure until this work is completed.
+
+======================================================================
+GOAL
+====
+
+Active Projects and Submitted Quotes should use the SAME visual structure.
+
+The purpose is:
+
+* Better scanability
+* Consistent spacing
+* Better project visibility
+* Faster client review
+
+Current implementation uses two different layouts.
+
+This must be corrected.
+
+======================================================================
+ACTIVE PROJECTS
+===============
+
+Each project card must display:
+
+Project Number
+
+Status
+
+Project Name
+
+Order Date
+
+Due Date
+
+Service
+
+Qty
+
+Total
+
+Profit
+
+Example:
+
+#P-1001
+
+[In Production]
+
+Team Shirts
+
+Order Date: Apr 12, 2026
+Due Date: Apr 30, 2026
+
+Service: Direct to Film
+Qty: 37 pcs
+
+Total: $511.45
+Profit: $74.00
+
+======================================================================
+SUBMITTED QUOTES
+================
+
+Use the EXACT SAME CARD STRUCTURE.
+
+Display:
+
+Project Number
+
+Status
+
+Project Name
+
+Order Date
+
+Due Date
+
+Service
+
+Qty
+
+Total
+
+Profit
+
+Current one-line compact row implementation should be removed.
+
+Both sections should use the same layout system.
+
+======================================================================
+PROJECT NUMBERS
+===============
+
+Current implementation is incomplete.
+
+projectNumber exists but is not functioning.
+
+Implement:
+
+Automatic generation.
+
+Examples:
+
+P-1001
+P-1002
+P-1003
+
+Requirements:
+
+* Generate automatically
+* Unique
+* Backfill existing projects
+* Display everywhere
+
+Display in:
+
+* Active Projects
+* Submitted Quotes
+* Projects Tab
+* Project Detail Page
+* Search Results
+
+Project Number becomes primary identifier.
+
+======================================================================
+PROFIT DISPLAY
+==============
+
+Always display Profit.
+
+Do not hide when value is 0.
+
+Examples:
+
+Profit: $0.00
+
+Profit: $74.00
+
+Profit: $125.00
+
+Consistency is more important than conditional hiding.
+
+======================================================================
+SEARCH
+======
+
+Add search to both sections.
+
+Search:
+
+* Project Number
+* Project Name
+* Service
+
+======================================================================
+FILTERS
+=======
+
+Add:
+
+Status Filter
+
+Service Filter
+
+For both:
+
+Active Projects
+
+Submitted Quotes
+
+Use existing filter styling used elsewhere in the OS.
+
+======================================================================
+VIEW ALL
+========
+
+Add:
+
+View All Active Projects →
+
+Add:
+
+View All Quotes →
+
+These should route to the Projects tab.
+
+Do not use plain text.
+
+Use clickable navigation.
+
+======================================================================
+LAYOUT CONSISTENCY
+==================
+
+Requirements:
+
+* Same card structure
+* Same spacing
+* Same typography
+* Same status badge placement
+* Same field ordering
+
+A user should immediately recognize both sections as related.
+
+======================================================================
+VALIDATION
+==========
+
+Provide:
+
+1. Screenshot of Active Projects
+
+2. Screenshot of Submitted Quotes
+
+3. Screenshot of Projects Tab
+
+4. Example project displaying all required fields
+
+5. Example quote displaying all required fields
+
+6. Confirmation of:
+
+   * Search
+   * Filters
+   * View All routing
+   * Project Number generation
+
+Do not mark complete until all fields are visible and both sections use the same layout structure.

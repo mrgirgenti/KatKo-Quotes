@@ -106,6 +106,7 @@ export interface Quote {
   orderDate: string;
   inHandsDate: string;
   invoiceNumber: string;
+  projectNumber?: string;
   lineItems: LineItem[];
   markupEach: number;
   hasOnlineFee: boolean;

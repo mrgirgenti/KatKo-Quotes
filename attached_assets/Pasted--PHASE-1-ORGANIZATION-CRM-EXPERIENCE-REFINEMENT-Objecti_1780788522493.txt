@@ -1,0 +1,342 @@
+# PHASE 1 — ORGANIZATION / CRM EXPERIENCE REFINEMENT
+
+Objective:
+
+Improve the Organization experience, CRM usability, Client Hub management, project visibility, and navigation consistency without redesigning the platform.
+
+IMPORTANT:
+
+Do NOT redesign the platform.
+
+Do NOT create a new design language.
+
+Do NOT move major sections around unnecessarily.
+
+Preserve the existing structure and styling language already established throughout the OS.
+
+======================================================================
+ORGANIZATION HEADER REFINEMENT
+==============================
+
+The Organization header currently feels oversized and inefficient.
+
+Changes:
+
+1. Increase organization profile/logo image approximately 30%.
+
+2. Reduce size of:
+
+* Active Client pill
+* New Quote button
+
+3. Replace current Organization action controls with a cleaner pattern similar to:
+
+* Contacts page
+* Vendors page
+
+Desired actions:
+
+New Quote
+
+Actions ▼
+
+Actions menu:
+
+* Edit Organization
+* Add Contact
+* Invite Hub User
+* Upload Media
+* View Client Hub
+* Generate Invoice
+* View Activity
+* Divider
+* Delete Organization
+
+Keep visual styling consistent with existing pages.
+
+======================================================================
+SIDEBAR PERSISTENCE
+===================
+
+Currently it is difficult to move between areas when inside:
+
+* Organization
+* Contact
+* Project
+* Client Hub
+
+The main OS sidebar should remain available throughout these views.
+
+Users should never feel trapped inside a record.
+
+Maintain current sidebar styling.
+
+Do not redesign.
+
+Simply make navigation accessible throughout deeper pages.
+
+======================================================================
+ORGANIZATION PAGE TABS
+======================
+
+Maintain:
+
+* Overview
+* Activity
+* Notes
+* Communications
+
+Add:
+
+* Projects
+
+Do NOT remove existing tabs.
+
+======================================================================
+OVERVIEW TAB
+============
+
+Keep:
+
+* Organization Details
+* Contacts
+* Client Hub
+* Media Bin
+* Active Projects
+* Client Legacy
+* Submitted Quotes
+
+These remain dashboard sections.
+
+Do NOT move them to other tabs.
+
+======================================================================
+ACTIVE PROJECTS REDESIGN
+========================
+
+Current Active Projects cards are difficult to scan.
+
+Replace with compact project cards.
+
+Display:
+
+* Project Number
+* Status
+* Project Name
+* Order Date
+* Due Date
+* Service
+* Qty
+* Total
+* Profit
+
+Use consistent spacing.
+
+Status pills should align uniformly.
+
+All cards should match.
+
+Add:
+
+Search Active Projects
+
+Filters:
+
+* Status
+* Service
+
+Add:
+
+View All Active Projects
+
+======================================================================
+SUBMITTED QUOTES REDESIGN
+=========================
+
+Use same compact card design as Active Projects.
+
+Display:
+
+* Project Number
+* Status
+* Project Name
+* Order Date
+* Due Date
+* Service
+* Qty
+* Total
+* Profit
+
+Add:
+
+Search Quotes
+
+Filters:
+
+* Status
+* Service
+
+Add:
+
+View All Quotes
+
+Spacing and status alignment must be consistent.
+
+======================================================================
+PROJECT NUMBERING
+=================
+
+Every project should display:
+
+Examples:
+
+#P-1001
+#P-1002
+#P-1003
+
+This improves scanning when multiple projects exist.
+
+======================================================================
+PROJECTS TAB
+============
+
+Create dedicated Projects tab.
+
+Sub-tabs:
+
+* Active
+* Quotes
+* Completed
+
+Purpose:
+
+Full project history for the organization.
+
+Search:
+
+* Project Name
+* Project Number
+* Invoice Number
+* Status
+* Service
+
+Filters:
+
+* Status
+* Service
+* Date Range
+
+======================================================================
+CLIENT HUB REFINEMENT
+=====================
+
+Maintain current placement:
+
+Contacts
+Client Hub
+Media Bin
+
+Remove:
+
+* Katalyst Rep section
+
+Move rep assignment to Organization Details.
+
+Client Hub should focus only on:
+
+* Status
+* Users
+* Invites
+* Access Management
+* Password Management
+
+Replace oversized Visit Hub button with:
+
+Hub URL
+[Open]
+[Copy]
+[Settings]
+
+all inline.
+
+Add compact metrics:
+
+* Users
+* Active
+* Pending Invites
+
+Add collapsible:
+
+Hub Users
+
+Pending Invitations
+
+Add proper user actions:
+
+* Reset Password
+* Resend Invite
+* Disable Access
+* Remove User
+* Promote to Admin
+
+======================================================================
+CLIENT LEGACY ENHANCEMENTS
+==========================
+
+Maintain current layout.
+
+Future-proof for:
+
+* Lifetime Revenue
+* Lifetime Profit
+* Invoice Count
+* Average Order Value
+* Outstanding Balance
+
+Do not build finance integration yet.
+
+Only prepare layout.
+
+======================================================================
+ACTIVITY FOUNDATION
+===================
+
+Activity tab should become the central audit trail.
+
+Examples:
+
+* Contact Added
+* Quote Created
+* Quote Approved
+* Project Started
+* Project Completed
+* Artwork Uploaded
+* Hub User Added
+* Password Reset Sent
+
+Each entry:
+
+* Action
+* User
+* Date
+* Time
+* Description
+
+======================================================================
+COMMUNICATIONS FOUNDATION
+=========================
+
+Maintain Communications tab.
+
+Structure:
+
+Emails
+
+Calls
+
+Future:
+Messages
+
+No Gmail integration yet.
+
+Only establish structure.

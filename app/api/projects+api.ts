@@ -28,6 +28,7 @@ function toFrontendQuote(p: any): Quote {
     orderDate: p.orderDate || '',
     inHandsDate: p.inHandsDate || '',
     invoiceNumber: p.invoiceNumber || '',
+    projectNumber: p.projectNumber || undefined,
     lineItems: (p.lineItemsData as Quote['lineItems'] | null) || [],
     hasOnlineFee: p.hasOnlineFee ?? true,
     hasSalesTax: p.hasSalesTax ?? false,
@@ -80,12 +81,14 @@ export async function POST(request: Request) {
     const result = await pool.query(
       `INSERT INTO "Project" (
         id, title, "clientName", "organizationId", "orderType", "orderDate", "inHandsDate",
-        "invoiceNumber", "hasOnlineFee", "hasSalesTax", "hasCardFee",
+        "invoiceNumber", "projectNumber", "hasOnlineFee", "hasSalesTax", "hasCardFee",
         calculations, "salesData", "lineItemsData", "frontendStatus", status,
         "createdByUserId", "activeDate", "isLocked", "lockedDate",
         "exportedToSheets", "exportedToSheetsDate", "createdAt", "updatedAt"
       ) VALUES (
-        gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+        gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7,
+        'P-' || LPAD((COALESCE((SELECT MAX(CAST(SUBSTRING("projectNumber" FROM 3) AS INTEGER)) FROM "Quote" WHERE "projectNumber" ~ '^P-[0-9]+$'), 1000) + 1)::TEXT, 4, '0'),
+        $8, $9, $10,
         $11::jsonb, $12::jsonb, $13::jsonb, $14, $15::"ProjectStatus",
         $16, $17, $18, $19, $20, $21, NOW(), NOW()
       ) RETURNING *`,

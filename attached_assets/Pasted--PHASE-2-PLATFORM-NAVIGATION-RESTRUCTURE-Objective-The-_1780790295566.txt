@@ -1,0 +1,134 @@
+# PHASE 2 — PLATFORM NAVIGATION RESTRUCTURE
+
+Objective:
+
+The platform has outgrown the current navigation.
+
+We are NOT redesigning functionality.
+
+We are organizing the platform into logical business departments.
+
+======================================================================
+NEW SIDEBAR STRUCTURE
+=====================
+
+Dashboard
+
+SALES
+
+* Organizations
+* Contacts
+* Quotes
+
+OPERATIONS
+
+* Projects
+* Production
+* Media
+* Catalogs
+
+FINANCE
+
+* Invoices
+* Payments
+* Reports
+
+SETTINGS
+
+======================================================================
+IMPORTANT
+=========
+
+Do NOT redesign pages.
+
+Do NOT change page functionality.
+
+This is primarily a navigation and routing improvement.
+
+======================================================================
+ORGANIZATIONS
+=============
+
+Organizations become the central CRM object.
+
+Organizations contain:
+
+* Contacts
+* Quotes
+* Projects
+* Communications
+* Notes
+* Activity
+* Client Hub
+* Media
+* Finance History
+
+Future:
+
+* Web Stores
+
+======================================================================
+PRODUCTION
+==========
+
+Create dedicated Production area.
+
+Production is an operational queue.
+
+Metrics:
+
+* In Production
+* Waiting
+* Completed Today
+* Completed This Week
+
+Maintain existing project styling.
+
+======================================================================
+MEDIA
+=====
+
+Prepare Media as a future centralized asset management area.
+
+Media eventually contains:
+
+* Artwork
+* Logos
+* Mockups
+* Production Files
+
+Do not remove Media Bin from Organizations.
+
+======================================================================
+REPORTS
+=======
+
+Create Reports area.
+
+Metrics:
+
+* Revenue
+* Profit
+* Projects
+* Service Mix
+* Clients
+
+Use existing metric card styling.
+
+======================================================================
+WEB STORE PLACEHOLDER
+=====================
+
+DO NOT BUILD WEB STORES.
+
+Only reserve architecture.
+
+Inside Organizations:
+
+WEB STORES
+
+No Active Stores
+
+[Create Store]
+
+Placeholder only.
