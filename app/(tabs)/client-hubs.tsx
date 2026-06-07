@@ -31,6 +31,7 @@ import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
 import { Organization, Contact } from '@/types/crm';
 import { OrgAvatar } from '@/components/OrgAvatar';
+import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 function getPrimaryContact(org: Organization): Contact | undefined {
@@ -632,9 +633,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 6,
   },
-  statItem: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: 18, fontWeight: '800' as const, color: Colors.light.text },
-  statLabel: { fontSize: 10, color: Colors.light.textSecondary, fontWeight: '500' as const, marginTop: 1 },
+  statItem: { flex: 1, alignItems: 'center', gap: 3 },
+  // Aliases of the shared metric typography (components/Metric.tsx).
+  statValue: { ...metricValueStyle },
+  statLabel: { ...metricLabelStyle },
   statDivider: { width: 1, height: 32, backgroundColor: Colors.light.border },
 
   // Search

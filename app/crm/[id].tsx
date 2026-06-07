@@ -67,6 +67,7 @@ import {
 import Colors from '@/constants/colors';
 import { OrgLogoUploader } from '@/components/OrgLogoUploader';
 import { ProjectCard } from '@/components/ProjectCard';
+import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
 import { Sidebar } from '@/components/Sidebar';
 import { useCrm } from '@/contexts/CrmContext';
 import { useQuotes } from '@/contexts/QuotesContext';
@@ -4925,9 +4926,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.background, borderRadius: 10,
     padding: 12, marginBottom: 12,
   },
-  revenueStatBox: { flex: 1, alignItems: 'center' as const, gap: 2 },
-  revenueStatValue: { fontSize: 18, fontWeight: '800' as const, color: Colors.light.text },
-  revenueStatLabel: { fontSize: 11, color: Colors.light.textSecondary, fontWeight: '500' as const },
+  revenueStatBox: { flex: 1, alignItems: 'center' as const, gap: 3 },
+  // Metric typography is standardized app-wide — keep these as aliases of the
+  // shared constants in components/Metric.tsx so sections never drift.
+  revenueStatValue: { ...metricValueStyle },
+  revenueStatLabel: { ...metricLabelStyle },
   revenueStatDivider: { width: 1, height: 32, backgroundColor: Colors.light.border },
 
   portalPanel: {
@@ -5275,11 +5278,7 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 10,
   },
-  v2SecondaryStatValue: {
-    fontSize: 15,
-    fontWeight: '700' as const,
-    color: Colors.light.text,
-  },
+  v2SecondaryStatValue: { ...metricValueStyle },
 
   v2CompactRow: {
     flexDirection: 'row' as const,

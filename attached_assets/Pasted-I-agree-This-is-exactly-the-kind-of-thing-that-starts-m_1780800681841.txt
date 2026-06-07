@@ -1,0 +1,255 @@
+I agree. This is exactly the kind of thing that starts making a system feel polished.
+
+Right now you have **4 different metric styles** floating around:
+
+### Active Projects
+
+```text
+$511.45
+$74.00
+37
+```
+
+These are currently the strongest metrics on the page.
+
+---
+
+### Submitted Quotes
+
+```text
+3
+$1162.12
+$194.00
+```
+
+Slightly smaller.
+
+---
+
+### Client Legacy
+
+```text
+2
+$650.67
+$120.00
+```
+
+Slightly different sizing.
+
+---
+
+### Client Hub
+
+```text
+1
+1
+0
+```
+
+Smaller again.
+
+---
+
+## What I Would Standardize
+
+Create a single reusable metric component.
+
+### Metric Value
+
+```text
+28px
+Semi-Bold
+```
+
+Examples:
+
+```text
+37
+$511.45
+$74.00
+3
+$1162.12
+$194.00
+1
+0
+```
+
+ALL of these should use the exact same size.
+
+---
+
+### Metric Label
+
+```text
+12px
+Medium
+```
+
+Examples:
+
+```text
+Revenue
+Profit
+PCS
+Users
+Active
+Pending
+Total
+Done
+```
+
+ALL of these should use the exact same size.
+
+---
+
+## Why
+
+When users scan a CRM/ERP:
+
+They should instantly know:
+
+```text
+Large Number = Metric
+
+Small Text = Description
+```
+
+Right now every section is teaching the eye a different rule.
+
+---
+
+## Replit Prompt
+
+```text
+METRIC STANDARDIZATION PASS
+
+We need a single metric design system across the entire CRM.
+
+==================================================
+GOAL
+==================================================
+
+All metric values throughout the platform should use the same typography.
+
+Users should instantly recognize:
+
+Large Number = Metric Value
+
+Small Text = Metric Label
+
+==================================================
+CREATE A SHARED COMPONENT
+==================================================
+
+Create:
+
+MetricCard
+MetricValue
+MetricLabel
+
+Use everywhere.
+
+==================================================
+METRIC VALUE
+==================================================
+
+Standardize all metric values.
+
+Examples:
+
+$511.45
+$74.00
+37
+
+3
+$1162.12
+$194.00
+
+2
+$650.67
+$120.00
+
+1
+1
+0
+
+Requirements:
+
+- Same font size everywhere
+- Same font weight everywhere
+- Same vertical spacing everywhere
+
+Use the Active Projects metric values as the approved reference size.
+
+All other metric sections should match this exact size.
+
+==================================================
+METRIC LABEL
+==================================================
+
+Examples:
+
+Revenue
+Profit
+PCS
+
+Total
+
+Done
+
+Users
+
+Active
+
+Pending
+
+Requirements:
+
+- Same font size everywhere
+- Same weight everywhere
+- Same spacing everywhere
+
+==================================================
+SECTIONS TO UPDATE
+==================================================
+
+Active Projects
+
+Submitted Quotes
+
+Client Legacy
+
+Client Hub
+
+Any future metric row should reuse the same component.
+
+==================================================
+DO NOT CHANGE
+==================================================
+
+Do not change:
+
+- Colors
+- Layout
+- Card placement
+- Section order
+
+This task is typography standardization only.
+
+==================================================
+VALIDATION
+==================================================
+
+Provide screenshots showing:
+
+1. Active Projects metrics
+2. Submitted Quotes metrics
+3. Client Legacy metrics
+4. Client Hub metrics
+
+Confirm all metric values use the same typography component.
+
+Confirm all metric labels use the same typography component.
+```
+
+This is the kind of refinement that users won't consciously notice, but it dramatically increases the perceived quality of the platform. You're getting to the point where consistency matters more than new features on these screens.

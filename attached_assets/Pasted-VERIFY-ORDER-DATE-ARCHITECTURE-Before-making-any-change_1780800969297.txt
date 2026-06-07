@@ -1,0 +1,188 @@
+VERIFY ORDER DATE ARCHITECTURE
+
+Before making any changes, perform a full audit of how Order Date is currently handled throughout the platform.
+
+DO NOT implement anything yet.
+
+Provide a verification report first.
+
+==================================================
+OBJECTIVE
+=========
+
+We need to determine whether Order Date is already functioning correctly throughout the CRM/ERP.
+
+Order Date is critical because:
+
+* Active Projects are processed FIFO
+* Submitted Quotes are processed FIFO
+* Production Queue will be processed FIFO
+* Queue numbering depends on Order Date
+* Reporting depends on Order Date
+
+Before we make changes, confirm what currently exists.
+
+==================================================
+VERIFY DATABASE
+===============
+
+Inspect all relevant models.
+
+Determine:
+
+1. Does Quote have an Order Date field?
+2. Does Project have an Order Date field?
+3. Is Order Date nullable?
+4. Is Order Date required?
+5. What is the field name exactly?
+6. Does the database provide a default value?
+7. Does Prisma provide a default value?
+8. Are any records currently missing Order Dates?
+
+Provide findings.
+
+==================================================
+VERIFY QUOTE CREATION
+=====================
+
+Inspect every quote creation path.
+
+Determine:
+
+1. When a quote is created, is Order Date automatically populated?
+2. If populated, where does the value come from?
+3. Does it use:
+
+   * current date
+   * createdAt
+   * user input
+   * another source
+4. What happens if the user leaves Order Date blank?
+5. Can a quote be saved without Order Date?
+
+Provide exact code locations.
+
+==================================================
+VERIFY PROJECT CONVERSION
+=========================
+
+Inspect quote → project conversion.
+
+Determine:
+
+1. Is Order Date copied from Quote to Project?
+2. Is it preserved during conversion?
+3. Is it overwritten?
+4. Is a new Order Date generated?
+5. Can Project Order Date differ from Quote Order Date?
+
+Provide exact code locations.
+
+==================================================
+VERIFY UI
+=========
+
+Inspect:
+
+* Active Projects
+* Submitted Quotes
+* Projects Tab
+* Production Views
+
+Determine:
+
+1. Which date is currently displayed?
+2. Is it Order Date?
+3. Is it Created Date?
+4. Is it Due Date?
+5. Is it another field entirely?
+
+Provide exact field mappings.
+
+==================================================
+VERIFY QUEUE ORDERING
+=====================
+
+Determine how records are currently sorted.
+
+For:
+
+* Active Projects
+* Submitted Quotes
+* Projects Tab
+
+Identify:
+
+1. Current sort field
+2. Ascending or descending
+3. Whether Order Date is being used
+4. Whether Due Date is being used
+5. Whether Created Date is being used
+
+Provide exact code locations.
+
+==================================================
+VERIFY IMPORTS
+==============
+
+Inspect:
+
+* CSV imports
+* Bulk uploads
+* API endpoints
+* Automation flows
+
+Determine:
+
+1. Can records be created without Order Date?
+2. If yes, where?
+3. What fallback behavior exists?
+
+==================================================
+VERIFY EXISTING DATA
+====================
+
+Run checks against existing records.
+
+Provide counts:
+
+Quotes:
+
+* Total records
+* Records missing Order Date
+
+Projects:
+
+* Total records
+* Records missing Order Date
+
+==================================================
+DELIVERABLE
+===========
+
+Provide a report with:
+
+SECTION 1:
+Current database architecture
+
+SECTION 2:
+Current quote creation behavior
+
+SECTION 3:
+Current project conversion behavior
+
+SECTION 4:
+Current UI behavior
+
+SECTION 5:
+Current sorting behavior
+
+SECTION 6:
+Existing data audit
+
+SECTION 7:
+Recommended fixes (if any)
+
+Do NOT implement changes yet.
+
+Verification only.
