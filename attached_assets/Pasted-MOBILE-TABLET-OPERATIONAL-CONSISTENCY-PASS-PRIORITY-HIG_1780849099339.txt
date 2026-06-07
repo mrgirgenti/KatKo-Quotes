@@ -1,0 +1,329 @@
+MOBILE & TABLET OPERATIONAL CONSISTENCY PASS
+
+PRIORITY: HIGH
+
+This is NOT a styling request.
+
+This is NOT a responsive rendering request.
+
+This is an operational workflow request.
+
+Desktop, tablet, and mobile must support the same workflow and mental model.
+
+==================================================
+PROBLEM
+
+The desktop versions of Projects and Quotes have evolved into a column-driven operational system.
+
+Desktop users can immediately understand:
+
+Status
+
+Order Date
+
+Due Date
+
+Client
+
+Project
+
+Quote #
+
+Service
+
+PCS
+
+Revenue
+
+Profit
+
+because those fields are explicitly labeled and sortable.
+
+On mobile and tablet, those same records have been converted into generic cards.
+
+The data still exists, but the column context has been lost.
+
+Users can no longer immediately identify:
+
+Is this Order Date or Due Date?
+
+Is this the Client or Project?
+
+Is this a Service or Applicator?
+
+Which fields correspond to sortable desktop columns?
+
+This creates a completely different operational experience.
+
+==================================================
+REQUIREMENT
+
+Mobile and tablet should preserve the meaning of desktop columns.
+
+Users should not have to remember what each value represents.
+
+Every sortable/filterable desktop field should remain identifiable on mobile.
+
+==================================================
+DO NOT
+
+Do not simply make prettier cards.
+
+Do not optimize for aesthetics over operations.
+
+Do not hide important field labels.
+
+Do not create a separate mobile workflow.
+
+==================================================
+GOAL
+
+A production employee using a phone or tablet should process jobs using the exact same information hierarchy as a desktop user.
+
+The layout can change.
+
+The workflow cannot.
+
+==================================================
+PROJECTS PAGE
+
+Current mobile implementation is visually attractive but loses desktop context.
+
+Redesign project cards to preserve desktop column meaning.
+
+Example:
+
+CURRENT
+
+Team Shirts
+
+Apr 18, 2026
+
+Direct to Film
+
+37 pcs
+
+$511.45
+
+$74.00
+
+APPROVED DIRECTION
+
+#2   P-1008
+
+PROJECT
+Team Shirts
+
+CLIENT
+Joshy G
+
+ORDER DATE
+Apr 18, 2026
+
+DUE DATE
+Apr 30, 2026
+
+SERVICE
+Direct to Film
+
+PCS
+37
+
+TOTAL
+$511.45
+
+PROFIT
+$74.00
+
+==================================================
+QUOTE PAGE
+
+Apply the same approach.
+
+Mobile quotes should mirror desktop quotes.
+
+Required fields should remain identifiable:
+
+Status
+
+Order Date
+
+Due Date
+
+Client
+
+Project
+
+Quote #
+
+Service
+
+PCS
+
+Revenue
+
+Profit
+
+==================================================
+SEARCH & FILTER CONSISTENCY
+
+Desktop search and filters are based on:
+
+Status
+
+Order Date
+
+Due Date
+
+Client
+
+Project
+
+Quote #
+
+Service
+
+PCS
+
+Revenue
+
+Profit
+
+Mobile cards should visually expose those same fields.
+
+A user should immediately understand WHY a search result appeared.
+
+==================================================
+NUMBERED PROCESSING QUEUE
+
+Maintain queue numbering.
+
+Example:
+
+#1
+
+#2
+
+#3
+
+#4
+
+These numbers are important because production processes orders by order date.
+
+Queue numbering should remain visible on:
+
+Projects
+
+Quotes
+
+Organization-level Project Lists
+
+Organization-level Quote Lists
+
+==================================================
+TABLET REQUIREMENTS
+
+Tablet is a primary production environment.
+
+Do NOT treat tablet as a stretched mobile view.
+
+Evaluate whether tablets should retain more desktop-style structure.
+
+Potentially display:
+
+Order Date
+
+Due Date
+
+Client
+
+Project
+
+Service
+
+PCS
+
+Total
+
+Profit
+
+in a denser format than phones.
+
+==================================================
+DESIGN STANDARD
+
+Desktop
+
+Tablet
+
+Mobile
+
+must all answer:
+
+What order is this?
+
+Who is it for?
+
+When was it submitted?
+
+When is it due?
+
+What service is being performed?
+
+How many pieces?
+
+How much revenue?
+
+How much profit?
+
+without requiring interpretation.
+
+==================================================
+VALIDATION
+
+Provide screenshots for:
+
+Projects Desktop
+
+Projects Tablet
+
+Projects Mobile
+
+Quotes Desktop
+
+Quotes Tablet
+
+Quotes Mobile
+
+For each screenshot, identify:
+
+Status
+
+Order Date
+
+Due Date
+
+Client
+
+Project
+
+Quote #
+
+Service
+
+PCS
+
+Revenue
+
+Profit
+
+and demonstrate that each field remains visible and identifiable.
+
+==================================================
+SUCCESS CRITERIA
+
+The mobile and tablet experiences should not simply display the same data.
+
+They should preserve the same operational workflow and information hierarchy as desktop.
+
+Production staff should be able to process jobs from a phone or tablet with the same confidence and efficiency as someone working from the desktop interface.
