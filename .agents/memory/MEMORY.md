@@ -1,1 +1,2 @@
 - [RN-web dataSet prop TS workaround](rn-web-dataset-prop.md) — spread an `any`-typed `{dataSet:{...}}` to add data-* hooks on RN Touchables without tsc errors.
+- [RN-web ScrollView eats flex-row width](rn-web-scrollview-flexgrow.md) — a fixed-width ScrollView column still grows ~50%+ in a flex row; pin flexGrow:0 (base style ships flexGrow:1).

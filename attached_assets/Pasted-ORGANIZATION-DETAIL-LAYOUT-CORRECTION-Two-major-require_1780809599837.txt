@@ -1,0 +1,120 @@
+ORGANIZATION DETAIL LAYOUT CORRECTION
+
+Two major requirements remain unimplemented.
+
+Please review the current screenshot before proceeding.
+
+==================================================
+
+1. HEADER REFINEMENT NOT COMPLETE
+   ==================================================
+
+Still missing:
+
+* Larger organization logo (+30%)
+* Smaller New Quote button
+* Smaller Actions button
+* Tighter spacing between:
+
+  * Organization Name
+  * Status
+  * Business Information
+* Reduced overall header height
+
+Current header still consumes too much vertical space.
+
+==================================================
+2. COLUMN WIDTH REBALANCE NOT IMPLEMENTED
+=========================================
+
+This is easy to verify from the screenshot.
+
+The divider remains near the center of the page.
+
+Current layout appears approximately:
+
+LEFT COLUMN: 55%
+RIGHT COLUMN: 45%
+
+This is not the intended layout.
+
+==================================================
+TARGET LAYOUT
+=============
+
+Desktop:
+
+LEFT COLUMN:
+35–40%
+
+RIGHT COLUMN:
+60–65%
+
+The right side should visibly become larger.
+
+==================================================
+REASON
+======
+
+The right column now contains:
+
+* Client Legacy
+* Active Projects
+* Submitted Quotes
+* Projects Tab
+* Activity
+* Notes
+* Communications
+
+This is where most of the operational information lives.
+
+The left column contains:
+
+* Contacts
+* Client Hub
+* Media Bin
+
+These sections do not require equal width.
+
+==================================================
+EXPECTED RESULT
+===============
+
+After implementation:
+
+* Client Legacy cards become wider
+* Active Project cards become wider
+* Submitted Quote cards become wider
+* Project tab cards become wider
+* Financial metrics have more room
+* Search/filter controls have more room
+
+The page should feel right-side dominant.
+
+==================================================
+VALIDATION
+==========
+
+Provide:
+
+1. Current column width percentages
+2. New column width percentages
+3. Before/After screenshot
+
+Confirm:
+
+* Header compacted
+* Logo enlarged
+* New Quote button reduced
+* Actions button reduced
+* Left column reduced
+* Right column expanded
+
+```
+
+The easiest way to verify success afterward is simple:
+
+If the divider line is still near the center of the page, they didn't do it.
+
+If the divider shifts noticeably left and the right-side cards suddenly feel much roomier, they did.
+```

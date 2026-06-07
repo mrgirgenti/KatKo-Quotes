@@ -5544,24 +5544,31 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.background,
   },
 
-  // Left panel
+  // Left panel — RN-web ScrollView ships flexGrow:1 in its base style, so we MUST
+  // pin flexGrow:0 here or the panel grows and eats ~58% of the row. Basis 36%
+  // (clamped) keeps the identity/contacts column at ~35-40% so the operational
+  // right panel (Client Legacy / Active Projects / Submitted Quotes) dominates.
   v2LeftPanel: {
-    width: 240,
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: '36%',
+    minWidth: 320,
+    maxWidth: 480,
     backgroundColor: Colors.light.surface,
     borderRightWidth: 1,
     borderRightColor: Colors.light.border,
-    flexShrink: 0,
   },
   v2LeftPanelContent: {
     padding: 14,
     paddingBottom: 24,
+    gap: 14,
   },
 
   v2LPBack: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     gap: 4,
-    marginBottom: 12,
+    marginBottom: 2,
   },
   v2LPBackText: {
     fontSize: 13,
@@ -5571,14 +5578,14 @@ const styles = StyleSheet.create({
 
   v2LPHeader: {
     flexDirection: 'row' as const,
-    alignItems: 'flex-start' as const,
-    gap: 10,
-    marginBottom: 10,
+    alignItems: 'center' as const,
+    gap: 12,
+    marginBottom: 2,
   },
   v2LPHeaderInfo: {
     flex: 1,
     minWidth: 0,
-    gap: 3,
+    gap: 2,
   },
   v2LPHeaderMetaLine: {
     fontSize: 11,
@@ -5600,7 +5607,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     gap: 6,
-    marginBottom: 12,
+    marginBottom: 2,
   },
   v2LPNewQuoteBtn: {
     flex: 1,
