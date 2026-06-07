@@ -17,6 +17,26 @@ export const SB = {
   sectionLabel: '#5b626e',
 };
 
+// Web-only: strip the browser's default blue focus ring / tap highlight from
+// every interactive sidebar element. Scoped via the data-kk-nav attribute so it
+// never affects the rest of the app's accessibility focus styling.
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'kk-nav-focus-reset';
+  if (!document.getElementById(STYLE_ID)) {
+    const el = document.createElement('style');
+    el.id = STYLE_ID;
+    el.textContent =
+      '[data-kk-nav]{-webkit-tap-highlight-color:transparent;}' +
+      '[data-kk-nav]:focus,[data-kk-nav]:focus-visible{outline:none !important;box-shadow:none !important;}';
+    document.head.appendChild(el);
+  }
+}
+
+// Spread onto interactive sidebar elements: renders data-kk-nav="" on web so the
+// focus-reset CSS above applies. Typed as any because RN's TouchableOpacity props
+// don't declare the web-only `dataSet` attribute.
+export const KK_NAV_DATASET: any = { dataSet: { kkNav: '' } };
+
 interface NavProps {
   collapsed?: boolean;
   onNavigate?: () => void;
@@ -51,6 +71,7 @@ export function SidebarNav({ collapsed = false, onNavigate }: NavProps) {
             return (
               <TouchableOpacity
                 key={item.label}
+                {...KK_NAV_DATASET}
                 style={[
                   styles.navItem,
                   active && styles.navItemActive,
@@ -102,6 +123,7 @@ export function ProfileFooter({ collapsed = false, onNavigate }: NavProps) {
 
   return (
     <TouchableOpacity
+      {...KK_NAV_DATASET}
       style={[styles.navItem, active && styles.navItemActive, collapsed && styles.navItemCollapsed]}
       onPress={go}
       activeOpacity={0.7}
@@ -136,6 +158,7 @@ export function NewQuoteButton({ collapsed = false, onNavigate }: NavProps) {
   return (
     <View style={[styles.ctaWrap, collapsed && styles.ctaWrapCollapsed]}>
       <TouchableOpacity
+        {...KK_NAV_DATASET}
         style={[styles.ctaBtn, collapsed && styles.ctaBtnCollapsed]}
         onPress={go}
         activeOpacity={0.85}

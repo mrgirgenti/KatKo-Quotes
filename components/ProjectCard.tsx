@@ -129,7 +129,6 @@ const styles = StyleSheet.create({
     // Matches the shared platform metric typography (components/Metric.tsx):
     // same size + weight as every metric value, so "#1" reads as a peer indicator.
     ...metricValueStyle,
-    opacity: 0.85,
     width: 36,
     textAlign: 'right' as const,
     flexShrink: 0,

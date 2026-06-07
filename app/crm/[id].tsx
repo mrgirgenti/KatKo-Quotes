@@ -95,19 +95,34 @@ import { formatCurrency } from '@/utils/quoteCalculations';
 import { FLAG_ORG_LAYOUT_V2 } from '@/constants/featureFlags';
 import { STATUS_CONFIG, getEffectiveStatus, QuoteStatus } from '@/types/quote';
 
+// Baseline services that always appear in Client Legacy (even at 0%). Any other
+// service type found in project history is rendered dynamically alongside these.
 const LEGACY_SERVICES: { key: string; color: string }[] = [
-  { key: 'Direct to Film', color: '#FF5A00' },
   { key: 'Screen Print',   color: '#1C1C1E' },
   { key: 'Embroidery',     color: '#1E3A8A' },
+  { key: 'Direct to Film', color: '#FF5A00' },
   { key: 'Promotional',    color: '#0E7490' },
 ];
 
-function normalizeLegacyService(raw: string): string {
-  const s = raw.toLowerCase();
+// Fallback accent colors for service types discovered in history that aren't
+// part of the baseline set.
+const LEGACY_FALLBACK_COLORS = ['#7C3AED', '#0891B2', '#CA8A04', '#DC2626', '#2563EB', '#DB2777'];
+
+function legacyServiceColor(key: string, index: number): string {
+  const known = LEGACY_SERVICES.find((s) => s.key === key);
+  return known ? known.color : LEGACY_FALLBACK_COLORS[index % LEGACY_FALLBACK_COLORS.length];
+}
+
+// Map a raw service value onto a canonical baseline name when recognised;
+// otherwise keep the raw value so brand-new service types surface automatically.
+function normalizeLegacyService(raw: string): string | null {
+  const s = (raw || '').toLowerCase().trim();
+  if (!s) return null;
   if (s.includes('film') || s.includes('dtf')) return 'Direct to Film';
   if (s.includes('screen')) return 'Screen Print';
   if (s.includes('embroid')) return 'Embroidery';
-  return 'Promotional';
+  if (s.includes('promo')) return 'Promotional';
+  return raw.trim();
 }
 
 const MEMBERSHIP_ROLE_LABELS: Record<string, string> = {
@@ -225,7 +240,7 @@ export default function OrgProfileScreen() {
     deleteMembership,
   } = useCrm();
   const { quotes } = useQuotes();
-  const { isDesktop } = useBreakpoint();
+  const { isDesktop, isTablet } = useBreakpoint();
 
   const { data: directOrg, isLoading: directOrgLoading } = useQuery<Organization>({
     queryKey: ['org_detail', id],
@@ -678,6 +693,7 @@ export default function OrgProfileScreen() {
     const totalMarkup = completedQuotes.reduce((s, q) => s + (q.calculations?.markupAmount ?? 0), 0);
 
     const svcMap: Record<string, { revenue: number; pcs: number; projectIds: Set<string> }> = {};
+    // Seed the baseline services so they always render (even at 0%).
     LEGACY_SERVICES.forEach(({ key }) => {
       svcMap[key] = { revenue: 0, pcs: 0, projectIds: new Set() };
     });
@@ -685,6 +701,9 @@ export default function OrgProfileScreen() {
     completedQuotes.forEach((q) => {
       (q.lineItems || []).forEach((li: any) => {
         const key = normalizeLegacyService(li.serviceStyle || li.service || '');
+        if (!key) return;
+        // Service types not in the baseline set surface automatically.
+        if (!svcMap[key]) svcMap[key] = { revenue: 0, pcs: 0, projectIds: new Set() };
         const pcs = Object.values(li.sizes || {}).reduce((ps: number, v: any) => ps + (Number(v) || 0), 0);
         const liRevenue = ((li.productCostEach || 0) + (li.serviceCostEach || 0) + (li.serviceFeeEach || 0) + (li.markupEach || 0)) * Math.max(pcs, 0);
         svcMap[key].revenue += liRevenue;
@@ -695,10 +714,10 @@ export default function OrgProfileScreen() {
 
     const totalSvcRevenue = Object.values(svcMap).reduce((s, v) => s + v.revenue, 0);
 
-    const services = LEGACY_SERVICES.map(({ key, color }) => {
+    const services = Object.keys(svcMap).map((key, idx) => {
       const d = svcMap[key];
       const pct = totalSvcRevenue > 0 ? Math.round((d.revenue / totalSvcRevenue) * 100) : 0;
-      return { name: key, color, revenue: d.revenue, pcs: d.pcs, pct, projectCount: d.projectIds.size };
+      return { name: key, color: legacyServiceColor(key, idx), revenue: d.revenue, pcs: d.pcs, pct, projectCount: d.projectIds.size };
     });
 
     return { totalProjects: completedQuotes.length, revenue: totalRevenue, markup: totalMarkup, services };
@@ -1420,80 +1439,71 @@ export default function OrgProfileScreen() {
   const noteEntries = org.activityLog.filter((e) => e.type === 'note');
   const emailEntries = org.activityLog.filter((e) => e.type === 'email');
 
-  const overviewCards = (
-    <>
-      {/* Client Legacy card */}
+  // Shared Client Legacy card — KPI cards (no donuts/hover). Responsive grid:
+  // 4 per row on desktop, 2 on tablet, 1 on mobile. Service types render
+  // dynamically from project history.
+  const renderClientLegacy = () => {
+    const cols = isDesktop ? 4 : isTablet ? 2 : 1;
+    const cardBasis = cols === 4 ? '23%' : cols === 2 ? '48%' : '100%';
+    return (
       <View style={styles.infoCard}>
         <View style={styles.infoCardHeader}>
           <View style={styles.infoCardHeaderLeft}>
-            <Award size={15} color="#fff" />
+            <Award size={14} color="#fff" />
             <Text style={styles.infoCardTitle}>Client Legacy</Text>
             {legacyMetrics.totalProjects > 0 && (
               <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{legacyMetrics.totalProjects}</Text></View>
             )}
           </View>
         </View>
-        <View style={styles.revenueStatsRow}>
+        <View style={styles.v2SecondaryStats}>
           <View style={styles.revenueStatBox}>
-            <Text style={styles.revenueStatValue}>{legacyMetrics.totalProjects}</Text>
-            <Text style={styles.revenueStatLabel}>Completed</Text>
+            <Text style={styles.v2SecondaryStatValue}>{legacyMetrics.totalProjects}</Text>
+            <Text style={styles.revenueStatLabel}>Done</Text>
           </View>
           <View style={styles.revenueStatDivider} />
           <View style={styles.revenueStatBox}>
-            <Text style={[styles.revenueStatValue, { color: Colors.light.success }]}>{formatCurrency(legacyMetrics.revenue)}</Text>
+            <Text style={[styles.v2SecondaryStatValue, { color: Colors.light.success }]}>{formatCurrency(legacyMetrics.revenue)}</Text>
             <Text style={styles.revenueStatLabel}>Revenue</Text>
           </View>
           <View style={styles.revenueStatDivider} />
           <View style={styles.revenueStatBox}>
-            <Text style={[styles.revenueStatValue, { color: '#FF5A00' }]}>{formatCurrency(legacyMetrics.markup)}</Text>
+            <Text style={[styles.v2SecondaryStatValue, { color: '#FF5A00' }]}>{formatCurrency(legacyMetrics.markup)}</Text>
             <Text style={styles.revenueStatLabel}>Profit</Text>
           </View>
         </View>
-        <View style={styles.legacyDonutRow}>
-          {legacyMetrics.services.map((svc) => {
-            const deg = svc.pct * 3.6;
-            const gradient = svc.pct > 0
-              ? `conic-gradient(${svc.color} 0deg ${deg}deg, #E2E8F0 ${deg}deg 360deg)`
-              : 'conic-gradient(#E2E8F0 0deg 360deg)';
-            return (
-              <Pressable
-                key={svc.name}
-                style={styles.legacyDonutItem}
-                onHoverIn={() => setHoveredLegacyKey(svc.name)}
-                onHoverOut={() => setHoveredLegacyKey(null)}
-              >
-                <View style={[styles.legacyDonutOuter, { background: gradient } as any]}>
-                  <View style={styles.legacyDonutInner}>
-                    <Text style={styles.legacyDonutPct}>{svc.pct}%</Text>
-                    <Text style={styles.legacyDonutPcs}>{svc.pcs.toLocaleString()} pcs</Text>
-                  </View>
+        <View style={styles.legacyKpiGrid}>
+          {legacyMetrics.services.map((svc) => (
+            <View key={svc.name} style={[styles.legacyKpiCard, { flexBasis: cardBasis as any }]}>
+              <View style={styles.legacyKpiHead}>
+                <View style={[styles.legacyKpiDot, { backgroundColor: svc.color }]} />
+                <Text style={styles.legacyKpiName} numberOfLines={1}>{svc.name}</Text>
+              </View>
+              <Text style={styles.legacyKpiPct}>{svc.pct}%</Text>
+              <View style={styles.legacyKpiStats}>
+                <View style={styles.legacyKpiStatRow}>
+                  <Text style={styles.legacyKpiStatLabel}>Projects</Text>
+                  <Text style={styles.legacyKpiStatVal}>{svc.projectCount}</Text>
                 </View>
-                <Text style={[styles.legacyDonutLabel, { color: hoveredLegacyKey === svc.name ? svc.color : Colors.light.textSecondary }]}>
-                  {svc.name}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        {(() => {
-          const hov = legacyMetrics.services.find((s) => s.name === hoveredLegacyKey);
-          if (!hov) return null;
-          const avg = hov.projectCount > 0 ? hov.revenue / hov.projectCount : 0;
-          return (
-            <View style={[styles.legacyTooltip, { borderLeftColor: hov.color }]}>
-              <Text style={[styles.legacyTooltipTitle, { color: hov.color }]}>{hov.name}</Text>
-              <View style={styles.legacyTooltipRow}>
-                <Text style={styles.legacyTooltipItem}>Revenue: <Text style={styles.legacyTooltipBold}>{formatCurrency(hov.revenue)}</Text></Text>
-                <Text style={styles.legacyTooltipItem}>Pieces: <Text style={styles.legacyTooltipBold}>{hov.pcs.toLocaleString()} pcs</Text></Text>
-                <Text style={styles.legacyTooltipItem}>Projects: <Text style={styles.legacyTooltipBold}>{hov.projectCount}</Text></Text>
-                {hov.projectCount > 0 && (
-                  <Text style={styles.legacyTooltipItem}>Avg Order: <Text style={styles.legacyTooltipBold}>{formatCurrency(avg)}</Text></Text>
-                )}
+                <View style={styles.legacyKpiStatRow}>
+                  <Text style={styles.legacyKpiStatLabel}>Revenue</Text>
+                  <Text style={styles.legacyKpiStatVal}>{formatCurrency(svc.revenue)}</Text>
+                </View>
+                <View style={styles.legacyKpiStatRow}>
+                  <Text style={styles.legacyKpiStatLabel}>PCS</Text>
+                  <Text style={styles.legacyKpiStatVal}>{svc.pcs.toLocaleString()}</Text>
+                </View>
               </View>
             </View>
-          );
-        })()}
+          ))}
+        </View>
       </View>
+    );
+  };
+
+  const overviewCards = (
+    <>
+      {renderClientLegacy()}
 
       {/* Active Projects card */}
       <View style={styles.infoCard}>
@@ -2378,7 +2388,7 @@ export default function OrgProfileScreen() {
                   orgName={org.name}
                   currentLogoUrl={org.logoUrl}
                   onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })}
-                  size={68}
+                  size={88}
                 />
                 <View style={styles.v2LPHeaderInfo}>
                   <Text style={styles.v2LPName} numberOfLines={2}>{org.name}</Text>
@@ -2609,6 +2619,8 @@ export default function OrgProfileScreen() {
               {activeTab === 'overview' && (
                 <ScrollView style={styles.v2OverviewScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.v2OverviewContent}>
 
+            {renderClientLegacy()}
+
             {/* ── PRIMARY: Active Projects ── */}
             <View style={styles.v2PrimaryCard}>
               <View style={[styles.infoCardHeader, styles.v2PrimaryHeader]}>
@@ -2706,73 +2718,6 @@ export default function OrgProfileScreen() {
                   />
                 ))
               )}
-            </View>
-
-            {/* ── Client Legacy ── */}
-            <View style={styles.infoCard}>
-              <View style={styles.infoCardHeader}>
-                <View style={styles.infoCardHeaderLeft}>
-                  <Award size={14} color="#fff" />
-                  <Text style={styles.infoCardTitle}>Client Legacy</Text>
-                  {legacyMetrics.totalProjects > 0 && (
-                    <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{legacyMetrics.totalProjects}</Text></View>
-                  )}
-                </View>
-              </View>
-              <View style={styles.v2SecondaryStats}>
-                <View style={styles.revenueStatBox}>
-                  <Text style={styles.v2SecondaryStatValue}>{legacyMetrics.totalProjects}</Text>
-                  <Text style={styles.revenueStatLabel}>Done</Text>
-                </View>
-                <View style={styles.revenueStatDivider} />
-                <View style={styles.revenueStatBox}>
-                  <Text style={[styles.v2SecondaryStatValue, { color: Colors.light.success }]}>{formatCurrency(legacyMetrics.revenue)}</Text>
-                  <Text style={styles.revenueStatLabel}>Revenue</Text>
-                </View>
-                <View style={styles.revenueStatDivider} />
-                <View style={styles.revenueStatBox}>
-                  <Text style={[styles.v2SecondaryStatValue, { color: '#FF5A00' }]}>{formatCurrency(legacyMetrics.markup)}</Text>
-                  <Text style={styles.revenueStatLabel}>Profit</Text>
-                </View>
-              </View>
-              <View style={styles.v2SmallDonutRow}>
-                {legacyMetrics.services.map((svc) => {
-                  const deg = svc.pct * 3.6;
-                  const gradient = svc.pct > 0
-                    ? `conic-gradient(${svc.color} 0deg ${deg}deg, #E2E8F0 ${deg}deg 360deg)`
-                    : 'conic-gradient(#E2E8F0 0deg 360deg)';
-                  return (
-                    <Pressable
-                      key={svc.name}
-                      style={styles.v2SmallDonutItem}
-                      onHoverIn={() => setHoveredLegacyKey(svc.name)}
-                      onHoverOut={() => setHoveredLegacyKey(null)}
-                    >
-                      <View style={[styles.v2SmallDonutOuter, { background: gradient } as any]}>
-                        <View style={styles.v2SmallDonutInner}>
-                          <Text style={styles.v2SmallDonutPct}>{svc.pct}%</Text>
-                        </View>
-                      </View>
-                      <Text style={[styles.v2SmallDonutLabel, { color: hoveredLegacyKey === svc.name ? svc.color : Colors.light.textSecondary }]} numberOfLines={1}>
-                        {svc.name}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              {(() => {
-                const hov = legacyMetrics.services.find((s) => s.name === hoveredLegacyKey);
-                if (!hov) return null;
-                return (
-                  <View style={[styles.legacyTooltip, { borderLeftColor: hov.color }]}>
-                    <Text style={[styles.legacyTooltipTitle, { color: hov.color }]}>{hov.name}</Text>
-                    <View style={styles.legacyTooltipRow}>
-                      <Text style={styles.legacyTooltipItem}>Revenue: <Text style={styles.legacyTooltipBold}>{formatCurrency(hov.revenue)}</Text></Text>
-                      <Text style={styles.legacyTooltipItem}>Projects: <Text style={styles.legacyTooltipBold}>{hov.projectCount}</Text></Text>
-                    </View>
-                  </View>
-                );
-              })()}
             </View>
 
             {/* ── Submitted Quotes ── */}
@@ -3125,7 +3070,7 @@ export default function OrgProfileScreen() {
                 <TouchableOpacity onPress={() => router.back()} style={styles.v2MobilBack}>
                   <ChevronRight size={16} color={Colors.light.textSecondary} style={{ transform: [{ rotate: '180deg' }] as any }} />
                 </TouchableOpacity>
-                <OrgLogoUploader orgId={org.id} orgName={org.name} currentLogoUrl={org.logoUrl} onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })} size={40} />
+                <OrgLogoUploader orgId={org.id} orgName={org.name} currentLogoUrl={org.logoUrl} onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })} size={52} />
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.v2MobileOrgName} numberOfLines={1}>{org.name}</Text>
                   <StatusBadge status={org.status} />
@@ -4314,7 +4259,7 @@ const styles = StyleSheet.create({
   deleteOrgBtnText: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.error },
   memberSince: { fontSize: 11, color: Colors.light.textSecondary, marginTop: 10 },
 
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, borderWidth: 1, marginTop: 8 },
+  badge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, borderWidth: 1, marginTop: 8 },
   badgeDot: { width: 6, height: 6, borderRadius: 3 },
   badgeText: { fontSize: 11, fontWeight: '700' as const },
 
@@ -4877,6 +4822,46 @@ const styles = StyleSheet.create({
   projectMetaTotal: { fontSize: 13, fontWeight: '700' as const, color: Colors.light.text },
   projectMetaMarkup: { fontSize: 12, fontWeight: '600' as const, color: '#FF5A00' },
 
+  legacyKpiGrid: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    gap: 10,
+    paddingTop: 4,
+  },
+  legacyKpiCard: {
+    flexGrow: 1,
+    minWidth: 0,
+    backgroundColor: Colors.light.background,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    padding: 12,
+    gap: 8,
+  },
+  legacyKpiHead: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+  },
+  legacyKpiDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  legacyKpiName: {
+    flex: 1,
+    fontSize: 11,
+    fontWeight: '700' as const,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase' as const,
+    color: Colors.light.textSecondary,
+  },
+  legacyKpiPct: { ...metricValueStyle },
+  legacyKpiStats: { gap: 4 },
+  legacyKpiStatRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    gap: 8,
+  },
+  legacyKpiStatLabel: { fontSize: 11, color: Colors.light.textSecondary },
+  legacyKpiStatVal: { fontSize: 12, fontWeight: '700' as const, color: Colors.light.text },
   legacyDonutRow: {
     flexDirection: 'row' as const, justifyContent: 'space-around' as const,
     alignItems: 'flex-start' as const, paddingVertical: 12, paddingHorizontal: 4,
@@ -5624,8 +5609,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center' as const,
     gap: 5,
     backgroundColor: Colors.light.tint,
-    borderRadius: 8,
-    paddingVertical: 8,
+    borderRadius: 7,
+    paddingVertical: 6,
     paddingHorizontal: 12,
   },
   v2LPNewQuoteBtnText: {
