@@ -1,0 +1,209 @@
+PLATFORM UX STANDARDIZATION — NAVIGATION & OVERLAY SYSTEMS
+
+OBJECTIVE
+
+Establish platform-wide standards for:
+
+1. Back Navigation
+2. Dropdown / Popover Layering
+
+These should become global platform behaviors.
+
+Do not implement page-specific fixes.
+
+Create shared standards.
+
+==================================================
+PART 1 — PLATFORM BACK NAVIGATION STANDARD
+==========================================
+
+We already have approved examples:
+
+Quote Details
+
+Production Mode
+
+Use these as the source of truth.
+
+==================================================
+DESIGN STANDARD
+===============
+
+All detail pages should begin with:
+
+← Back     Page Title
+
+Examples:
+
+← Back     Organization Details
+
+← Back     Contact Details
+
+← Back     Quote Details
+
+← Back     Project Details
+
+← Back     Invoice Details
+
+← Back     Client Hub
+
+← Back     Task Details
+
+==================================================
+ORGANIZATION DETAILS
+====================
+
+Replace:
+
+Organizations
+
+with:
+
+← Back     Organization Details
+
+The current implementation is confusing and does not clearly communicate navigation.
+
+==================================================
+CREATE SHARED COMPONENT
+=======================
+
+Create a reusable component.
+
+Example:
+
+PageBackHeader
+
+Use everywhere.
+
+Do not create custom implementations per page.
+
+==================================================
+BEHAVIOR
+========
+
+Back button should:
+
+Return user to previous page.
+
+Preserve:
+
+* filters
+* search state
+* scroll position
+
+when possible.
+
+==================================================
+AUDIT
+=====
+
+Find all detail pages missing back navigation.
+
+Provide list before implementation.
+
+==================================================
+PART 2 — PLATFORM OVERLAY / DROPDOWN SYSTEM
+===========================================
+
+Current behavior:
+
+Dropdowns and action menus are rendering behind page content.
+
+Example:
+
+Organization Actions menu.
+
+Menu appears beneath:
+
+* headers
+* cards
+* content containers
+
+This is a platform-level bug.
+
+==================================================
+REQUIREMENT
+===========
+
+Create a consistent overlay layering system.
+
+Audit:
+
+* Actions menus
+* Status dropdowns
+* Filters
+* Date pickers
+* Popovers
+* Context menus
+* Future dropdown components
+
+==================================================
+STACKING ORDER
+==============
+
+Required hierarchy:
+
+Modals
+
+Dropdowns / Popovers
+
+Page Content
+
+Nothing should render above a dropdown except a modal.
+
+==================================================
+INVESTIGATE
+===========
+
+Review:
+
+* z-index
+* stacking contexts
+* overflow hidden containers
+* relative positioning
+* portal rendering
+
+Fix root cause.
+
+Do not apply one-off z-index patches.
+
+==================================================
+VALIDATION
+==========
+
+Provide screenshots showing:
+
+1. Organization Detail page
+2. Actions menu open
+3. Dropdown fully visible
+4. No clipping
+5. No overlap issues
+
+Also provide screenshots showing:
+
+Organization Details
+
+Contact Details
+
+Quote Details
+
+Project Details
+
+Production
+
+Client Hub
+
+Confirm all use the shared back-navigation component.
+
+==================================================
+SUCCESS CRITERIA
+================
+
+Platform has:
+
+* One back-navigation standard
+* One overlay/dropdown system
+* No blue focus artifacts
+* No dropdown clipping
+* No hidden action menus
+* Consistent navigation across all detail pages
