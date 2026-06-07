@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Menu } from 'lucide-react-native';
 import { useUser } from '@/contexts/UserContext';
-import { SB, SidebarNav, ProfileFooter } from '@/components/SidebarContent';
+import { SB, SidebarNav, ProfileFooter, NewQuoteButton } from '@/components/SidebarContent';
 
 const EXPANDED_WIDTH = 240;
 const COLLAPSED_WIDTH = 64;
@@ -99,6 +99,8 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
           />
         </View>
       )}
+
+      <NewQuoteButton collapsed={collapsed} />
 
       <View style={styles.divider} />
 

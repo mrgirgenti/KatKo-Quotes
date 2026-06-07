@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useRouter, usePathname, useGlobalSearchParams } from 'expo-router';
-import { User } from 'lucide-react-native';
+import { User, Plus } from 'lucide-react-native';
 import { NAV_GROUPS, isItemActive, NavItem } from '@/components/navConfig';
 import { useUser } from '@/contexts/UserContext';
 
@@ -127,6 +127,26 @@ export function ProfileFooter({ collapsed = false, onNavigate }: NavProps) {
   );
 }
 
+export function NewQuoteButton({ collapsed = false, onNavigate }: NavProps) {
+  const router = useRouter();
+  const go = () => {
+    router.push('/' as any);
+    onNavigate?.();
+  };
+  return (
+    <View style={[styles.ctaWrap, collapsed && styles.ctaWrapCollapsed]}>
+      <TouchableOpacity
+        style={[styles.ctaBtn, collapsed && styles.ctaBtnCollapsed]}
+        onPress={go}
+        activeOpacity={0.85}
+      >
+        <Plus size={18} color="#fff" />
+        {!collapsed && <Text style={styles.ctaText}>New Quote</Text>}
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   group: {
     marginBottom: 2,
@@ -217,5 +237,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700' as const,
     color: '#fff',
+  },
+  ctaWrap: {
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  ctaWrapCollapsed: {
+    alignItems: 'center',
+  },
+  ctaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: SB.activeBg,
+    height: 42,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+  },
+  ctaBtnCollapsed: {
+    width: 40,
+    height: 40,
+    paddingHorizontal: 0,
+  },
+  ctaText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700' as const,
   },
 });

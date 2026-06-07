@@ -11,7 +11,7 @@ import {
   Image,
 } from 'react-native';
 import { Menu, X } from 'lucide-react-native';
-import { SB, SidebarNav, ProfileFooter } from '@/components/SidebarContent';
+import { SB, SidebarNav, ProfileFooter, NewQuoteButton } from '@/components/SidebarContent';
 import { useUser } from '@/contexts/UserContext';
 
 const DRAWER_W = 280;
@@ -72,6 +72,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
                 <X size={22} color={SB.headerText} />
               </TouchableOpacity>
             </View>
+            <NewQuoteButton collapsed={false} onNavigate={closeDrawer} />
             <View style={styles.divider} />
             <ScrollView
               style={styles.navScroll}
