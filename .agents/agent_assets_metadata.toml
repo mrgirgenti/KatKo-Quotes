@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "R91ACvL1TDgqpf05x4nCF"
+uri = "file://docs/production-module-architecture.md"
+type = "text"
+title = "Katalyst Production — Module Architecture Plan"
