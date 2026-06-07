@@ -1,0 +1,182 @@
+I agree completely.
+
+What you're looking at in that screenshot is effectively a **duplicate project management interface** that has evolved separately from the Organization Detail implementation you've been refining.
+
+There should be two very different experiences:
+
+### Global Projects (Sidebar → Projects)
+
+This is your operational command center.
+
+Purpose:
+
+* View all projects across all clients
+* Production queue management
+* Search entire company workload
+* Sort by Order Date
+* Filter by status
+* Filter by service
+* Filter by salesperson
+* Filter by production status
+* Manage workflow
+
+The screenshot you attached belongs here.
+
+---
+
+### Organization → Projects Tab
+
+This is client-specific.
+
+Purpose:
+
+* Show only projects for that client
+* Show only quotes for that client
+* Quick review of history
+* Quick access to project records
+* Navigate into project details
+
+This should use the card design you've been perfecting:
+
+```text
+#1
+
+Order: Apr 23, 2025     P-1007     Completed
+
+Test Spring Shirts
+
+Due: May 15, 2025
+
+Screen Printing • 60 pcs
+
+TOTAL      PROFIT
+$650.07    $120.00
+```
+
+Compact.
+
+Client-focused.
+
+Relationship-focused.
+
+Not operational.
+
+---
+
+## What I Would Tell Replit
+
+```text
+PROJECTS PAGE ARCHITECTURE CORRECTION
+
+We have two different project experiences.
+
+They serve different purposes.
+
+They should not use the same UI.
+
+==================================================
+GLOBAL PROJECTS PAGE
+==================================================
+
+Sidebar:
+
+Projects
+
+Purpose:
+
+Company-wide operational management.
+
+This page should display:
+
+- All projects
+- All organizations
+- All active production
+- Queue ordering
+- Production workflow
+
+The current tablet/mobile layout shown in the screenshot belongs here.
+
+Keep:
+
+- Metrics row
+- Status filters
+- Search
+- Sort controls
+- Queue numbering
+- Large project cards
+
+This is our operational command center.
+
+==================================================
+ORGANIZATION PROJECTS TAB
+==================================================
+
+Organization Detail
+→ Projects Tab
+
+Purpose:
+
+Client-specific project history.
+
+This is NOT the operational queue.
+
+This is a relationship-management view.
+
+Use the approved Organization Project Card design.
+
+Features:
+
+- Active Projects
+- Quotes
+- Completed Projects
+
+Same card system used in:
+
+- Active Projects Overview section
+- Submitted Quotes Overview section
+- Organization Projects Tab
+
+These three views must remain identical.
+
+==================================================
+DO NOT SHARE UI
+==================================================
+
+The Organization Projects Tab should NOT inherit:
+
+- Global Projects filters
+- Global Projects layout
+- Global Projects workflow controls
+- Global Projects management UI
+
+Those belong only in the sidebar Projects page.
+
+==================================================
+SOURCE OF TRUTH
+==================================================
+
+Global Projects:
+
+Operations-focused
+
+Organization Projects:
+
+Client-focused
+
+Treat them as separate experiences with separate objectives.
+
+==================================================
+VALIDATION
+==================================================
+
+Provide screenshots showing:
+
+1. Sidebar → Projects
+2. Organization → Projects Tab
+
+Confirm they use different layouts and different purposes.
+
+Confirm Organization Projects matches the approved card design already established in Overview.
+```
+
+This distinction becomes even more important when Production, Tasks, and Reporting are added. The global Projects page becomes an operations tool, while the Organization Projects tab remains a customer relationship tool. Those should not converge into the same interface.
