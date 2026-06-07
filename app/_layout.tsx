@@ -13,6 +13,39 @@ import { CrmProvider } from '@/contexts/CrmContext';
 
 SplashScreen.preventAutoHideAsync();
 
+// Web-only, app-wide: eliminate every browser-drawn focus artifact. RN-web renders
+// containers (ScrollViews, Pressables, the nav) as focusable <div>s; on focus the
+// browser paints a blue ring — via `outline` AND, on some container/scroll <div>s,
+// via `box-shadow`. The ring only appears AFTER a click/keyboard focus, so it never
+// shows on a fresh load (or in screenshots) but is highly visible to users; on an
+// element that overflows the viewport (e.g. a horizontal-scroll table whose content
+// is wider/taller than the screen) only the ring's LEFT edge is visible — i.e. a
+// stray vertical blue line. Earlier resets only stripped box-shadow from
+// a/button/[tabindex], leaving plain scroll <div>s uncovered. This strips outline
+// AND box-shadow from EVERY focus state, app-wide. Injected at module scope so it
+// applies before first paint (not just inside an effect). Inputs rely on their own
+// border styling for focus, so removing the default ring is safe.
+const KK_FOCUS_RESET_CSS =
+  '*{-webkit-tap-highlight-color:transparent;}' +
+  '*:focus,*:focus-visible{outline:none !important;box-shadow:none !important;}' +
+  '::-moz-focus-inner{border:0 !important;}';
+
+function injectFocusReset() {
+  if (typeof document === 'undefined') return;
+  const STYLE_ID = 'kk-global-focus-reset';
+  const existing = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
+  if (existing) {
+    existing.textContent = KK_FOCUS_RESET_CSS;
+  } else {
+    const el = document.createElement('style');
+    el.id = STYLE_ID;
+    el.textContent = KK_FOCUS_RESET_CSS;
+    document.head.appendChild(el);
+  }
+}
+
+injectFocusReset();
+
 function HeaderBackButton() {
   const router = useRouter();
   return (
@@ -75,29 +108,9 @@ export default function RootLayout() {
     SplashScreen.hideAsync();
     if (typeof document !== 'undefined') {
       document.documentElement.style.zoom = '0.9';
-
-      // Web-only, app-wide: strip the browser's default blue focus ring / tap
-      // highlight from EVERY element. RN-web puts a default outline on focusable
-      // containers (ScrollViews, Pressables, the nav) that only appears AFTER a
-      // click/keyboard focus — which is why it never shows on a fresh load and
-      // a sidebar-scoped reset kept missing it. This global reset guarantees no
-      // stray blue outline anywhere. Inputs in this app rely on their own border
-      // styling for focus, so removing the default outline is safe.
-      const STYLE_ID = 'kk-global-focus-reset';
-      const CSS =
-        '*{-webkit-tap-highlight-color:transparent;}' +
-        '*:focus,*:focus-visible{outline:none !important;}' +
-        'a:focus,a:focus-visible,button:focus,button:focus-visible,' +
-        '[tabindex]:focus,[tabindex]:focus-visible{outline:none !important;box-shadow:none !important;}';
-      const existing = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
-      if (existing) {
-        existing.textContent = CSS;
-      } else {
-        const el = document.createElement('style');
-        el.id = STYLE_ID;
-        el.textContent = CSS;
-        document.head.appendChild(el);
-      }
+      // Re-assert the focus-artifact reset after hydration (idempotent; the same
+      // block is also injected at module scope above so it covers first paint).
+      injectFocusReset();
     }
   }, []);
 

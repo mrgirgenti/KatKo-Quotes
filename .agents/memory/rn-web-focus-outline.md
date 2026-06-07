@@ -29,10 +29,23 @@ A subtree-scoped reset (`[data-kk-sidebar] *:focus`) STILL wasn't enough — the
 kept recurring because focusable elements outside the tagged subtree also draw it.
 
 **Definitive fix (use this):** inject ONE GLOBAL web CSS block at the root layout
-(`app/_layout.tsx`, in the existing web-only `useEffect`) resetting
-`*:focus,*:focus-visible{outline:none !important;}` (plus `box-shadow:none` on
-a/button/[tabindex]). Style id `kk-global-focus-reset`. This guarantees no stray ring
-anywhere. The app's inputs use border styling for focus, so global outline removal is safe.
+(`app/_layout.tsx`) resetting BOTH `outline:none` AND `box-shadow:none` on
+`*:focus,*:focus-visible` (style id `kk-global-focus-reset`), injected at MODULE scope
+(runs before first paint) and re-asserted in the `useEffect`. The app's inputs use border
+styling for focus, so removing the default ring is safe.
+
+**Box-shadow gap (important):** an earlier version stripped `box-shadow` only from
+`a/button/[tabindex]:focus`, NOT from plain `<div>`s. RN-web renders ScrollViews/containers
+as focusable plain `<div>`s, and some browsers paint the focus ring via box-shadow on those
+— so the blue ring survived. On a container that OVERFLOWS the viewport (e.g. the
+horizontal-scroll tables, inner content wider/taller than the screen) only the ring's LEFT
+edge is visible → it reads as a stray FULL-HEIGHT VERTICAL BLUE LINE, not a box. Fix = apply
+`box-shadow:none !important` to EVERY `*:focus`, not just a/button/[tabindex].
+**Ruling out non-focus causes first:** grep the whole repo for blue (hex/rgba/borders/
+shadows/bg), thin tall Views (`width:1-4`+blue), `position:fixed` overlays, and resize/
+dnd/split-pane libs. If none exist AND a fresh-load screenshot is clean, it's the focus ring
+(or, if it still shows after the global reset + hard refresh, an external browser extension/
+overlay — there is no blue anywhere in this app's styles).
 
 **Critical debugging note:** the blue ring only appears AFTER a real click/keyboard focus.
 A fresh page load (and therefore the screenshot tool, which loads fresh) shows NO ring —
