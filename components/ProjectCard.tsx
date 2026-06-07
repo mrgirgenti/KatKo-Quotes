@@ -5,7 +5,7 @@ import { getEffectiveStatus, STATUS_CONFIG } from '@/types/quote';
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
 import Colors from '@/constants/colors';
-import { metricValueStyle } from '@/components/Metric';
+import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
 
 interface ProjectCardProps {
   queue: number;
@@ -233,17 +233,14 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   finLabel: {
-    fontSize: 11,
-    fontWeight: '600' as const,
-    color: '#6B7280',
-    letterSpacing: 1,
+    // Shared platform metric label typography (components/Metric.tsx).
+    ...metricLabelStyle,
     textTransform: 'uppercase' as const,
   },
   finValue: {
-    fontSize: 22,
-    fontWeight: '800' as const,
-    color: '#111827',
-    lineHeight: 26,
+    // Shared platform metric value typography — identical to every metric
+    // value and the queue numbers. Single source of truth.
+    ...metricValueStyle,
   },
   profitValue: {
     color: '#059669',

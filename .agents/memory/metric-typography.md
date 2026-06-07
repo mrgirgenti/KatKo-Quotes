@@ -21,3 +21,13 @@ label 12px/500.
 never hardcode a new font size/weight. Keep alias styles as `{ ...metricValueStyle }` /
 `{ ...metricLabelStyle }` to prevent drift. Color overrides go via the style array
 (`[base, { color }]`) or the `color` prop — never by redefining size/weight.
+
+This also covers non-header metric-like text: the project-card financials (`finValue`/`finLabel`
+in `components/ProjectCard.tsx`) and the queue numbers spread the same shared constants. The
+profit value keeps its green via a separate override applied AFTER the spread
+(`[finValue, profitValue]`), so the override wins over `metricValueStyle.color`.
+
+**Capture-session gotcha:** the live preview/screenshot session often renders the empty/loading
+state for data-backed views (Dashboard, Projects, CRM) even when `/api/projects` returns rows —
+the React Query data doesn't resolve in the headless capture. Validate metric/card typography at
+the code level (shared-constant usage) rather than relying on a populated screenshot.

@@ -3940,7 +3940,7 @@ const mbStyles = StyleSheet.create({
     flexDirection: 'row', flexWrap: 'wrap', gap: 3,
   },
   visualCard: {
-    width: 'calc(20% - 3px)' as any,
+    width: 'calc(26% - 3px)' as any,
     backgroundColor: '#fff',
     borderRadius: 6,
     borderWidth: 1,
