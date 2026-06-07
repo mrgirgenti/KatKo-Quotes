@@ -26,35 +26,63 @@ SplashScreen.preventAutoHideAsync();
 // applies before first paint (not just inside an effect). Inputs rely on their own
 // border styling for focus, so removing the default ring is safe.
 const KK_FOCUS_RESET_CSS =
-  '*{-webkit-tap-highlight-color:transparent;}' +
-  '*:focus,*:focus-visible{outline:none !important;box-shadow:none !important;}' +
-  '::-moz-focus-inner{border:0 !important;}';
+  '*{-webkit-tap-highlight-color:transparent!important;outline:none!important;}' +
+  '*:focus,*:focus-visible,*:focus-within{outline:none!important;box-shadow:none!important;}' +
+  '::-moz-focus-inner{border:0!important;}' +
+  'html,body{outline:none!important;}';
 
 function injectFocusReset() {
   if (typeof document === 'undefined') return;
-  // Layer 1: CSS rule — handles UA-stylesheet focus rings
+  // Layer 1: CSS rule — always remove & re-append so our tag is LAST in <head>,
+  // guaranteeing it wins over any RN Web stylesheets injected before us.
   const STYLE_ID = 'kk-global-focus-reset';
-  const existing = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
-  if (existing) {
-    existing.textContent = KK_FOCUS_RESET_CSS;
-  } else {
-    const el = document.createElement('style');
-    el.id = STYLE_ID;
-    el.textContent = KK_FOCUS_RESET_CSS;
-    document.head.appendChild(el);
-  }
-  // Layer 2: JS event listener — handles focus rings applied as inline styles by RN Web.
-  // element.style.setProperty with 'important' creates an inline !important rule that
-  // beats everything, including RN Web's own inline style injection.
+  const existing = document.getElementById(STYLE_ID);
+  if (existing) existing.remove();
+  const el = document.createElement('style');
+  el.id = STYLE_ID;
+  el.textContent = KK_FOCUS_RESET_CSS;
+  document.head.appendChild(el);
+  // Layer 2: focus event listener — immediate removal + deferred removal via rAF
+  // to catch RN Web handlers that apply inline outline AFTER the focus event fires.
   if (!(window as any).__kkFocusListenerBound) {
     (window as any).__kkFocusListenerBound = true;
+    const kkStripFocus = (el: HTMLElement | null) => {
+      if (!el || !el.style) return;
+      el.style.setProperty('outline', 'none', 'important');
+      el.style.setProperty('box-shadow', 'none', 'important');
+    };
     document.addEventListener('focus', (e) => {
-      const el = e.target as HTMLElement | null;
-      if (el && el.style) {
-        el.style.setProperty('outline', 'none', 'important');
-        el.style.setProperty('box-shadow', 'none', 'important');
+      const t = e.target as HTMLElement | null;
+      kkStripFocus(t);
+      requestAnimationFrame(() => kkStripFocus(t));
+    }, true);
+  }
+  // Layer 3: MutationObserver — catches ANY style mutation that adds an outline,
+  // regardless of how or when it's applied (sync, rAF, setTimeout, etc.).
+  if (!(window as any).__kkMutationObserverBound) {
+    (window as any).__kkMutationObserverBound = true;
+    const kkObserver = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        const el = m.target as HTMLElement;
+        if (el.style) {
+          const o = el.style.getPropertyValue('outline');
+          if (o && o !== 'none') {
+            el.style.setProperty('outline', 'none', 'important');
+            el.style.setProperty('box-shadow', 'none', 'important');
+          }
+        }
       }
-    }, true /* capture phase — fires before RN Web handlers */);
+    });
+    const startObserving = () => {
+      if (document.body) {
+        kkObserver.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['style'] });
+      }
+    };
+    if (document.body) {
+      startObserving();
+    } else {
+      document.addEventListener('DOMContentLoaded', startObserving);
+    }
   }
 }
 
