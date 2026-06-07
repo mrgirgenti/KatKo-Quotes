@@ -179,8 +179,9 @@ export function NewQuoteButton({ collapsed = false, onNavigate }: NavProps) {
         onPress={go}
         activeOpacity={0.85}
       >
-        <Plus size={18} color="#fff" />
-        {!collapsed && <Text style={styles.ctaText}>New Quote</Text>}
+        {collapsed
+          ? <Plus size={18} color="#fff" />
+          : <Text style={styles.ctaText}>New Quote</Text>}
       </TouchableOpacity>
     </View>
   );
