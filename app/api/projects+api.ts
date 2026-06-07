@@ -28,7 +28,7 @@ function toFrontendQuote(p: any): Quote {
     orderDate: p.orderDate || '',
     inHandsDate: p.inHandsDate || '',
     invoiceNumber: p.invoiceNumber || '',
-    projectNumber: p.projectNumber || undefined,
+    projectNumber: p.projectNumber ?? undefined,
     lineItems: (p.lineItemsData as Quote['lineItems'] | null) || [],
     hasOnlineFee: p.hasOnlineFee ?? true,
     hasSalesTax: p.hasSalesTax ?? false,
@@ -65,8 +65,56 @@ function frontendStatusToDbStatus(s: string) {
   }
 }
 
+async function generateProjectNumber(db: Pool): Promise<string> {
+  const result = await db.query(
+    `SELECT "projectNumber" FROM "Project" WHERE "projectNumber" IS NOT NULL ORDER BY "projectNumber" DESC LIMIT 1`
+  );
+  let next = 1001;
+  if (result.rows.length > 0) {
+    const last = result.rows[0].projectNumber as string;
+    const num = parseInt(last.replace('P-', ''), 10);
+    if (!isNaN(num)) next = num + 1;
+  }
+  return `P-${next}`;
+}
+
+let backfillRan = false;
+async function runBackfillOnce(db: Pool): Promise<void> {
+  if (backfillRan) return;
+  backfillRan = true;
+  try {
+    const nullRows = await db.query(
+      `SELECT id FROM "Project" WHERE "projectNumber" IS NULL ORDER BY "createdAt" ASC`
+    );
+    if (nullRows.rows.length === 0) return;
+
+    const maxRow = await db.query(
+      `SELECT "projectNumber" FROM "Project" WHERE "projectNumber" IS NOT NULL ORDER BY "projectNumber" DESC LIMIT 1`
+    );
+    let next = 1001;
+    if (maxRow.rows.length > 0) {
+      const last = maxRow.rows[0].projectNumber as string;
+      const num = parseInt(last.replace('P-', ''), 10);
+      if (!isNaN(num)) next = num + 1;
+    }
+
+    for (const row of nullRows.rows) {
+      await db.query(
+        `UPDATE "Project" SET "projectNumber" = $1 WHERE id = $2 AND "projectNumber" IS NULL`,
+        [`P-${next}`, row.id]
+      );
+      next++;
+    }
+    console.log(`[backfill] Assigned project numbers to ${nullRows.rows.length} projects`);
+  } catch (err) {
+    console.error('[backfill] Failed to backfill project numbers:', err);
+    backfillRan = false;
+  }
+}
+
 export async function GET() {
   try {
+    runBackfillOnce(pool).catch(() => {});
     const result = await pool.query(`SELECT * FROM "Project" ORDER BY "createdAt" DESC`);
     return Response.json(result.rows.map(toFrontendQuote));
   } catch (err) {
@@ -78,6 +126,8 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body: Quote = await request.json();
+    const projectNumber = await generateProjectNumber(pool);
+
     const result = await pool.query(
       `INSERT INTO "Project" (
         id, title, "clientName", "organizationId", "orderType", "orderDate", "inHandsDate",
@@ -86,11 +136,9 @@ export async function POST(request: Request) {
         "createdByUserId", "activeDate", "isLocked", "lockedDate",
         "exportedToSheets", "exportedToSheetsDate", "createdAt", "updatedAt"
       ) VALUES (
-        gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7,
-        'P-' || LPAD((COALESCE((SELECT MAX(CAST(SUBSTRING("projectNumber" FROM 3) AS INTEGER)) FROM "Quote" WHERE "projectNumber" ~ '^P-[0-9]+$'), 1000) + 1)::TEXT, 4, '0'),
-        $8, $9, $10,
-        $11::jsonb, $12::jsonb, $13::jsonb, $14, $15::"ProjectStatus",
-        $16, $17, $18, $19, $20, $21, NOW(), NOW()
+        gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+        $12::jsonb, $13::jsonb, $14::jsonb, $15, $16::"ProjectStatus",
+        $17, $18, $19, $20, $21, $22, NOW(), NOW()
       ) RETURNING *`,
       [
         body.projectName || 'Untitled',
@@ -100,6 +148,7 @@ export async function POST(request: Request) {
         new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
         body.inHandsDate || null,
         body.invoiceNumber || null,
+        projectNumber,
         body.hasOnlineFee ?? true,
         body.hasSalesTax ?? false,
         body.hasCardFee ?? true,
@@ -108,7 +157,7 @@ export async function POST(request: Request) {
         JSON.stringify(body.lineItems ?? []),
         body.status || 'quoted',
         frontendStatusToDbStatus(body.status || 'quoted'),
-        await resolveUserId(pool, (body as any).userId), // createdByUserId: verified FK
+        await resolveUserId(pool, (body as any).userId),
         (body as any).activeDate ?? null,
         (body as any).isLocked ?? false,
         (body as any).lockedDate ?? null,

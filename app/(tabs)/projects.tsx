@@ -161,7 +161,7 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
           <Text style={styles.tableProject} numberOfLines={1}>{quote.projectName}</Text>
         </View>
         <View style={styles.colInvoice}>
-          <Text style={styles.tableInvoice} numberOfLines={1}>{quote.invoiceNumber || '—'}</Text>
+          <Text style={styles.tableInvoice} numberOfLines={1}>{quote.projectNumber || quote.invoiceNumber || '—'}</Text>
         </View>
         <View style={styles.colApplicator}>
           <Text style={styles.tableApplicator} numberOfLines={2}>
@@ -435,7 +435,8 @@ export default function ProjectsScreen() {
       list = list.filter(({ quote }) =>
         quote.personOrganization.toLowerCase().includes(q) ||
         quote.projectName.toLowerCase().includes(q) ||
-        (quote.invoiceNumber || '').toLowerCase().includes(q)
+        (quote.invoiceNumber || '').toLowerCase().includes(q) ||
+        (quote.projectNumber || '').toLowerCase().includes(q)
       );
     }
 

@@ -724,16 +724,12 @@ export default function QuoteDetailScreen() {
               <Text style={styles.orderTypeBadgeText}>{quote.orderType}</Text>
             </View>
           </View>
-          {(quote as any).projectNumber ? (
-            <View style={[styles.invoiceBadge, { backgroundColor: '#FF5A000D', borderColor: '#FF5A0040' }]}>
-              <FileText size={12} color="#FF5A00" />
-              <Text style={[styles.invoiceText, { color: '#FF5A00', fontWeight: '700' }]}>{(quote as any).projectNumber}</Text>
-            </View>
-          ) : null}
-          {quote.invoiceNumber ? (
+          {(quote.projectNumber || quote.invoiceNumber) ? (
             <View style={styles.invoiceBadge}>
               <FileText size={12} color={Colors.light.tint} />
-              <Text style={styles.invoiceText}>#{quote.invoiceNumber}</Text>
+              <Text style={styles.invoiceText}>
+                {quote.projectNumber ? quote.projectNumber : `#${quote.invoiceNumber}`}
+              </Text>
             </View>
           ) : null}
         </View>

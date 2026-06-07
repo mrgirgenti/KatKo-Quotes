@@ -63,7 +63,6 @@ import {
   UserX,
   UserCheck,
   Search,
-  Filter,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { OrgLogoUploader } from '@/components/OrgLogoUploader';
@@ -92,7 +91,7 @@ import {
 
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { FLAG_ORG_LAYOUT_V2 } from '@/constants/featureFlags';
-import { STATUS_CONFIG, getEffectiveStatus } from '@/types/quote';
+import { STATUS_CONFIG, getEffectiveStatus, QuoteStatus } from '@/types/quote';
 
 const LEGACY_SERVICES: { key: string; color: string }[] = [
   { key: 'Direct to Film', color: '#FF5A00' },
@@ -308,10 +307,6 @@ export default function OrgProfileScreen() {
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [activeSearch, setActiveSearch] = useState('');
   const [activeServiceFilter, setActiveServiceFilter] = useState('');
-  const [activeStatusFilter, setActiveStatusFilter] = useState('');
-  const [quotesSearch, setQuotesSearch] = useState('');
-  const [quotesServiceFilter, setQuotesServiceFilter] = useState('');
-  const [quotesStatusFilter, setQuotesStatusFilter] = useState('');
   const [projectsSubTab, setProjectsSubTab] = useState<'active' | 'quotes' | 'completed'>('active');
   const [projectsSearch, setProjectsSearch] = useState('');
 
@@ -356,6 +351,13 @@ export default function OrgProfileScreen() {
   const [orgFilesUploading, setOrgFilesUploading] = useState(false);
   const [orgFilesDragOver, setOrgFilesDragOver] = useState(false);
   const [hoveredLegacyKey, setHoveredLegacyKey] = useState<string | null>(null);
+
+  const [activeProjectSearch, setActiveProjectSearch] = useState('');
+  const [activeProjectStatusFilter, setActiveProjectStatusFilter] = useState<'all' | QuoteStatus>('all');
+  const [activeProjectServiceFilter, setActiveProjectServiceFilter] = useState<string>('all');
+  const [quotesSearch, setQuotesSearch] = useState('');
+  const [quotesStatusFilter, setQuotesStatusFilter] = useState<'all' | QuoteStatus>('all');
+  const [quotesServiceFilter, setQuotesServiceFilter] = useState<string>('all');
 
   const handleOrgFileUpload = useCallback(async (file: File) => {
     if (!org) return;
@@ -587,32 +589,6 @@ export default function OrgProfileScreen() {
       });
   }, [relatedQuotes]);
 
-  const filteredActiveQuotes = useMemo(() => {
-    return activeQuotes.filter((q) => {
-      const pNum = ((q as any).projectNumber || q.invoiceNumber || '').toLowerCase();
-      const name = (q.projectName || q.personOrganization || '').toLowerCase();
-      const svcs = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))].join(' ').toLowerCase();
-      const s = activeSearch.toLowerCase();
-      if (s && !pNum.includes(s) && !name.includes(s) && !svcs.includes(s)) return false;
-      if (activeServiceFilter && !svcs.includes(activeServiceFilter.toLowerCase())) return false;
-      if (activeStatusFilter && q.status !== activeStatusFilter) return false;
-      return true;
-    });
-  }, [activeQuotes, activeSearch, activeServiceFilter, activeStatusFilter]);
-
-  const filteredRelatedQuotes = useMemo(() => {
-    return relatedQuotes.filter((q) => {
-      const pNum = ((q as any).projectNumber || q.invoiceNumber || '').toLowerCase();
-      const name = (q.projectName || q.personOrganization || '').toLowerCase();
-      const svcs = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))].join(' ').toLowerCase();
-      const s = quotesSearch.toLowerCase();
-      if (s && !pNum.includes(s) && !name.includes(s) && !svcs.includes(s)) return false;
-      if (quotesServiceFilter && !svcs.includes(quotesServiceFilter.toLowerCase())) return false;
-      if (quotesStatusFilter && q.status !== quotesStatusFilter) return false;
-      return true;
-    });
-  }, [relatedQuotes, quotesSearch, quotesServiceFilter, quotesStatusFilter]);
-
   const totalSpent = useMemo(() => {
     return relatedQuotes
       .filter((q) => q.status === 'completed')
@@ -643,6 +619,56 @@ export default function OrgProfileScreen() {
     const pcs = relatedQuotes.reduce((s, q) => s + getPcs(q), 0);
     return { revenue, markup, pcs };
   }, [relatedQuotes]);
+
+  const activeProjectServices = useMemo(() => {
+    const svcs = new Set<string>();
+    activeQuotes.forEach((q) => (q.lineItems || []).forEach((li: any) => { if (li.serviceStyle) svcs.add(li.serviceStyle); }));
+    return Array.from(svcs);
+  }, [activeQuotes]);
+
+  const filteredActiveQuotes = useMemo(() => {
+    let list = activeQuotes;
+    if (activeProjectStatusFilter !== 'all') {
+      list = list.filter((q) => getEffectiveStatus(q) === activeProjectStatusFilter);
+    }
+    if (activeProjectServiceFilter !== 'all') {
+      list = list.filter((q) => (q.lineItems || []).some((li: any) => li.serviceStyle === activeProjectServiceFilter));
+    }
+    if (activeProjectSearch.trim()) {
+      const s = activeProjectSearch.toLowerCase();
+      list = list.filter((q) =>
+        (q.projectNumber || '').toLowerCase().includes(s) ||
+        (q.projectName || '').toLowerCase().includes(s) ||
+        (q.lineItems || []).some((li: any) => (li.serviceStyle || '').toLowerCase().includes(s))
+      );
+    }
+    return list;
+  }, [activeQuotes, activeProjectStatusFilter, activeProjectServiceFilter, activeProjectSearch]);
+
+  const relatedQuoteServices = useMemo(() => {
+    const svcs = new Set<string>();
+    relatedQuotes.forEach((q) => (q.lineItems || []).forEach((li: any) => { if (li.serviceStyle) svcs.add(li.serviceStyle); }));
+    return Array.from(svcs);
+  }, [relatedQuotes]);
+
+  const filteredRelatedQuotes = useMemo(() => {
+    let list = relatedQuotes;
+    if (quotesStatusFilter !== 'all') {
+      list = list.filter((q) => getEffectiveStatus(q) === quotesStatusFilter);
+    }
+    if (quotesServiceFilter !== 'all') {
+      list = list.filter((q) => (q.lineItems || []).some((li: any) => li.serviceStyle === quotesServiceFilter));
+    }
+    if (quotesSearch.trim()) {
+      const s = quotesSearch.toLowerCase();
+      list = list.filter((q) =>
+        (q.projectNumber || '').toLowerCase().includes(s) ||
+        (q.projectName || '').toLowerCase().includes(s) ||
+        (q.lineItems || []).some((li: any) => (li.serviceStyle || '').toLowerCase().includes(s))
+      );
+    }
+    return list;
+  }, [relatedQuotes, quotesStatusFilter, quotesServiceFilter, quotesSearch]);
 
   const legacyMetrics = useMemo(() => {
     const totalRevenue = completedQuotes.reduce((s, q) => s + (q.calculations?.total ?? 0), 0);
@@ -2764,20 +2790,46 @@ export default function OrgProfileScreen() {
                   </View>
                 </View>
               )}
-              {/* Search row */}
               {activeQuotes.length > 0 && (
-                <View style={styles.p16SearchRow}>
-                  <View style={styles.p16SearchBox}>
-                    <Search size={13} color={Colors.light.textSecondary} />
-                    <TextInput
-                      style={styles.p16SearchInput}
-                      placeholder="Search by name, number, service…"
-                      placeholderTextColor={Colors.light.textSecondary}
-                      value={activeSearch}
-                      onChangeText={setActiveSearch}
-                    />
+                <>
+                  <View style={styles.crmSearchRow}>
+                    <View style={styles.crmSearchBox}>
+                      <Search size={13} color={Colors.light.textSecondary} />
+                      <TextInput
+                        style={styles.crmSearchInput}
+                        placeholder="Search project #, name, service…"
+                        placeholderTextColor={Colors.light.textSecondary}
+                        value={activeProjectSearch}
+                        onChangeText={setActiveProjectSearch}
+                      />
+                      {activeProjectSearch ? (
+                        <TouchableOpacity onPress={() => setActiveProjectSearch('')}>
+                          <X size={13} color={Colors.light.textSecondary} />
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
                   </View>
-                </View>
+                  {activeProjectServices.length > 0 && (
+                    <View style={styles.crmFilterPillsRow}>
+                      <TouchableOpacity
+                        style={[styles.crmFilterPill, activeProjectServiceFilter === 'all' && styles.crmFilterPillActive]}
+                        onPress={() => setActiveProjectServiceFilter('all')}
+                      >
+                        <Text style={[styles.crmFilterPillText, activeProjectServiceFilter === 'all' && styles.crmFilterPillTextActive]}>All</Text>
+                      </TouchableOpacity>
+                      {activeProjectServices.map((svc) => (
+                        <TouchableOpacity
+                          key={svc}
+                          style={[styles.crmFilterPill, activeProjectServiceFilter === svc && styles.crmFilterPillActive]}
+                          onPress={() => setActiveProjectServiceFilter(svc)}
+                        >
+                          <Text style={[styles.crmFilterPillText, activeProjectServiceFilter === svc && styles.crmFilterPillTextActive]}>{svc}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </>
+              )}
               )}
               {activeQuotes.length === 0 ? (
                 <View style={styles.emptyCard}>
@@ -2786,7 +2838,9 @@ export default function OrgProfileScreen() {
                   <Text style={styles.emptyCardSub}>Tap New Quote to start a project for this client.</Text>
                 </View>
               ) : filteredActiveQuotes.length === 0 ? (
-                <View style={styles.emptyCard}><Text style={styles.emptyCardText}>No matches</Text></View>
+                <View style={styles.emptyCard}>
+                  <Text style={styles.emptyCardText}>No projects match your filters.</Text>
+                </View>
               ) : (
                 filteredActiveQuotes.map((q, _idx) => {
                   const eff = getEffectiveStatus(q);
@@ -2795,27 +2849,26 @@ export default function OrgProfileScreen() {
                   const services = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))];
                   const pNum = (q as any).projectNumber || q.invoiceNumber;
                   return (
-                    <View key={q.id} style={styles.p16ListRow}>
-                      <Text style={styles.p16ListNum}>#{_idx + 1}</Text>
-                    <TouchableOpacity style={[styles.p16Card, { flex: 1 }]} onPress={() => router.push(`/quote/${q.id}` as any)}>
-                      <View style={styles.p16CardTop}>
-                        {pNum ? <Text style={styles.p16CardNum}>#{pNum}</Text> : null}
+                    <TouchableOpacity key={q.id} style={styles.projectRowExpanded} onPress={() => router.push(`/quote/${q.id}` as any)}>
+                      <View style={styles.projectRowExpandedTop}>
+                        {q.projectNumber ? (
+                          <Text style={styles.projectNumChip}>{q.projectNumber}</Text>
+                        ) : null}
                         <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
                           <Text style={[styles.projectRowBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
                         </View>
+                        <Text style={styles.projectRowName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
                         <ChevronRight size={12} color={Colors.light.textSecondary} style={{ marginLeft: 'auto' as any }} />
                       </View>
-                      <Text style={styles.p16CardName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
-                      <View style={styles.p16CardDates}>
-                        <Text style={styles.p16CardDateItem}>Order: {q.orderDate ? formatDate(q.orderDate) : '—'}</Text>
-                        <Text style={styles.p16CardDateSep}>·</Text>
-                        <Text style={styles.p16CardDateItem}>Due: {q.inHandsDate ? formatDate(q.inHandsDate) : '—'}</Text>
-                      </View>
-                      {services.length > 0 && <Text style={styles.p16CardService} numberOfLines={1}>Service: {services.join(' · ')}</Text>}
-                      <View style={styles.p16CardBottom}>
-                        <Text style={styles.p16CardBottomItem}>Qty: {qPcs > 0 ? `${qPcs.toLocaleString()} pcs` : '—'}</Text>
-                        <Text style={styles.p16CardBottomItem}>Total: {formatCurrency(q.calculations?.total ?? 0)}</Text>
-                        <Text style={styles.p16CardProfit}>Profit: {formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
+                      <View style={styles.projectRowExpandedBottom}>
+                        <Text style={styles.projectMetaService} numberOfLines={1}>
+                          {services.length > 0 ? services.join(' · ') : '—'}
+                        </Text>
+                        <View style={styles.projectMetaNumbers}>
+                          <Text style={styles.projectMetaPcs}>{qPcs.toLocaleString()} pcs</Text>
+                          <Text style={styles.projectMetaTotal}>{formatCurrency(q.calculations?.total ?? 0)}</Text>
+                          <Text style={styles.projectMetaMarkup}>{formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
+                        </View>
                       </View>
                     </TouchableOpacity>
                     </View>
@@ -2823,8 +2876,8 @@ export default function OrgProfileScreen() {
                 })
               )}
               {activeQuotes.length > 0 && (
-                <TouchableOpacity style={styles.p16ViewAll} onPress={() => setActiveTab('projects')}>
-                  <Text style={styles.p16ViewAllText}>View All Active Projects →</Text>
+                <TouchableOpacity style={styles.viewAllLink} onPress={() => router.push('/(tabs)/projects' as any)}>
+                  <Text style={styles.viewAllLinkText}>View All Active Projects →</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -2923,56 +2976,87 @@ export default function OrgProfileScreen() {
                   <Text style={styles.revenueStatLabel}>Profit</Text>
                 </View>
               </View>
-              {/* Search row */}
               {relatedQuotes.length > 0 && (
-                <View style={styles.p16SearchRow}>
-                  <View style={styles.p16SearchBox}>
-                    <Search size={13} color={Colors.light.textSecondary} />
-                    <TextInput
-                      style={styles.p16SearchInput}
-                      placeholder="Search by name, number, service…"
-                      placeholderTextColor={Colors.light.textSecondary}
-                      value={quotesSearch}
-                      onChangeText={setQuotesSearch}
-                    />
+                <>
+                  <View style={styles.crmSearchRow}>
+                    <View style={styles.crmSearchBox}>
+                      <Search size={13} color={Colors.light.textSecondary} />
+                      <TextInput
+                        style={styles.crmSearchInput}
+                        placeholder="Search project #, name, service…"
+                        placeholderTextColor={Colors.light.textSecondary}
+                        value={quotesSearch}
+                        onChangeText={setQuotesSearch}
+                      />
+                      {quotesSearch ? (
+                        <TouchableOpacity onPress={() => setQuotesSearch('')}>
+                          <X size={13} color={Colors.light.textSecondary} />
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
                   </View>
-                </View>
+                  {relatedQuoteServices.length > 0 && (
+                    <View style={styles.crmFilterPillsRow}>
+                      <TouchableOpacity
+                        style={[styles.crmFilterPill, quotesServiceFilter === 'all' && styles.crmFilterPillActive]}
+                        onPress={() => setQuotesServiceFilter('all')}
+                      >
+                        <Text style={[styles.crmFilterPillText, quotesServiceFilter === 'all' && styles.crmFilterPillTextActive]}>All</Text>
+                      </TouchableOpacity>
+                      {relatedQuoteServices.map((svc) => (
+                        <TouchableOpacity
+                          key={svc}
+                          style={[styles.crmFilterPill, quotesServiceFilter === svc && styles.crmFilterPillActive]}
+                          onPress={() => setQuotesServiceFilter(svc)}
+                        >
+                          <Text style={[styles.crmFilterPillText, quotesServiceFilter === svc && styles.crmFilterPillTextActive]}>{svc}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </>
+              )}
               )}
               {relatedQuotes.length === 0 ? (
                 <View style={styles.emptyCard}>
                   <Text style={styles.emptyCardText}>No quotes yet.</Text>
                 </View>
               ) : filteredRelatedQuotes.length === 0 ? (
-                <View style={styles.emptyCard}><Text style={styles.emptyCardText}>No matches</Text></View>
+                <View style={styles.emptyCard}>
+                  <Text style={styles.emptyCardText}>No quotes match your filters.</Text>
+                </View>
               ) : (
                 filteredRelatedQuotes.map((q, _idx) => {
                   const eff = getEffectiveStatus(q);
                   const cfg = STATUS_CONFIG[eff];
                   const qPcs = getPcs(q);
                   const services = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))];
-                  const pNum = (q as any).projectNumber || q.invoiceNumber;
                   return (
-                    <View key={q.id} style={styles.p16ListRow}>
-                      <Text style={styles.p16ListNum}>#{_idx + 1}</Text>
-                    <TouchableOpacity style={[styles.p16Card, { flex: 1 }]} onPress={() => router.push(`/quote/${q.id}` as any)}>
-                      <View style={styles.p16CardTop}>
-                        {pNum ? <Text style={styles.p16CardNum}>#{pNum}</Text> : null}
+                    <TouchableOpacity key={q.id} style={styles.projectRowExpanded} onPress={() => router.push(`/quote/${q.id}` as any)}>
+                      <View style={styles.projectRowExpandedTop}>
+                        {q.projectNumber ? (
+                          <Text style={styles.projectNumChip}>{q.projectNumber}</Text>
+                        ) : null}
                         <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
                           <Text style={[styles.projectRowBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
                         </View>
+                        <Text style={styles.projectRowName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
                         <ChevronRight size={12} color={Colors.light.textSecondary} style={{ marginLeft: 'auto' as any }} />
                       </View>
-                      <Text style={styles.p16CardName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
-                      <View style={styles.p16CardDates}>
-                        <Text style={styles.p16CardDateItem}>Order: {q.orderDate ? formatDate(q.orderDate) : '—'}</Text>
-                        <Text style={styles.p16CardDateSep}>·</Text>
-                        <Text style={styles.p16CardDateItem}>Due: {q.inHandsDate ? formatDate(q.inHandsDate) : '—'}</Text>
+                      <View style={styles.projectRowExpandedMeta}>
+                        <Text style={styles.projectMetaItem}>Order: {q.orderDate ? formatDate(q.orderDate) : '—'}</Text>
+                        <Text style={styles.projectMetaSep}>·</Text>
+                        <Text style={styles.projectMetaItem}>Due: {q.inHandsDate ? formatDate(q.inHandsDate) : '—'}</Text>
                       </View>
-                      {services.length > 0 && <Text style={styles.p16CardService} numberOfLines={1}>Service: {services.join(' · ')}</Text>}
-                      <View style={styles.p16CardBottom}>
-                        <Text style={styles.p16CardBottomItem}>Qty: {qPcs > 0 ? `${qPcs.toLocaleString()} pcs` : '—'}</Text>
-                        <Text style={styles.p16CardBottomItem}>Total: {formatCurrency(q.calculations?.total ?? 0)}</Text>
-                        <Text style={styles.p16CardProfit}>Profit: {formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
+                      <View style={styles.projectRowExpandedBottom}>
+                        <Text style={styles.projectMetaService} numberOfLines={1}>
+                          {services.length > 0 ? services.join(' · ') : '—'}
+                        </Text>
+                        <View style={styles.projectMetaNumbers}>
+                          <Text style={styles.projectMetaPcs}>{qPcs.toLocaleString()} pcs</Text>
+                          <Text style={styles.projectMetaTotal}>{formatCurrency(q.calculations?.total ?? 0)}</Text>
+                          <Text style={styles.projectMetaMarkup}>{formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
+                        </View>
                       </View>
                     </TouchableOpacity>
                     </View>
@@ -2980,8 +3064,8 @@ export default function OrgProfileScreen() {
                 })
               )}
               {relatedQuotes.length > 0 && (
-                <TouchableOpacity style={styles.p16ViewAll} onPress={() => setActiveTab('projects')}>
-                  <Text style={styles.p16ViewAllText}>View All Quotes →</Text>
+                <TouchableOpacity style={styles.viewAllLink} onPress={() => router.push('/(tabs)/projects' as any)}>
+                  <Text style={styles.viewAllLinkText}>View All Quotes →</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -5457,6 +5541,74 @@ const styles = StyleSheet.create({
     fontWeight: '500' as const,
     paddingTop: 8,
     textAlign: 'center' as const,
+  },
+
+  crmSearchRow: {
+    marginBottom: 8,
+  },
+  crmSearchBox: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 7,
+    backgroundColor: Colors.light.background,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    paddingHorizontal: 10,
+    height: 34,
+  },
+  crmSearchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.light.text,
+    outlineStyle: 'none' as any,
+  },
+  crmFilterPillsRow: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    gap: 6,
+    marginBottom: 6,
+  },
+  crmFilterPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: Colors.light.background,
+  },
+  crmFilterPillActive: {
+    borderColor: Colors.light.tint,
+    backgroundColor: '#FFF4EE',
+  },
+  crmFilterPillText: {
+    fontSize: 11,
+    fontWeight: '500' as const,
+    color: Colors.light.textSecondary,
+  },
+  crmFilterPillTextActive: {
+    color: Colors.light.tint,
+    fontWeight: '700' as const,
+  },
+  projectNumChip: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: Colors.light.tint,
+    backgroundColor: '#FFF4EE',
+    borderWidth: 1,
+    borderColor: Colors.light.tint + '44',
+    borderRadius: 5,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  viewAllLink: {
+    paddingTop: 10,
+    alignItems: 'center' as const,
+  },
+  viewAllLinkText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.light.tint,
   },
 
   v2SmallDonutRow: {
