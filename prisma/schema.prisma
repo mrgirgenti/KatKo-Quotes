@@ -211,6 +211,7 @@ model Contact {
   role           String?
   notes          String?
   isPrimary      Boolean   @default(false)
+  status         String    @default("active")
   linkedUserId   String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt

@@ -3,8 +3,9 @@ import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput,
   Modal, KeyboardAvoidingView, Platform, Pressable,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useGlobalSearchParams } from 'expo-router';
 import { OrgAvatar } from '@/components/OrgAvatar';
+import ContactsDirectory from '@/components/ContactsDirectory';
 import {
   Plus, Search, X, Users, Building2, User, ChevronRight, TrendingUp,
   Thermometer, Star, Archive, Upload, ChevronDown, Check, ArrowUpDown,
@@ -228,6 +229,12 @@ function OrgCard({ org, onPress }: { org: Organization; onPress: () => void }) {
 
 // ── Main screen ────────────────────────────────────────────────────────────────
 export default function ClientsScreen() {
+  const { view } = useGlobalSearchParams<{ view?: string }>();
+  if (view === 'contacts') return <ContactsDirectory />;
+  return <OrganizationsScreen />;
+}
+
+function OrganizationsScreen() {
   const router = useRouter();
   const { orgs, addOrg, addOrgWithContact, addContact, deleteOrg } = useCrm();
   const { isDesktop } = useBreakpoint();
@@ -440,7 +447,7 @@ export default function ClientsScreen() {
       {/* ── Page Header ── */}
       <View style={styles.pageHeader}>
         <View style={styles.headerTop}>
-          <Text style={styles.pageTitle}>Contacts</Text>
+          <Text style={styles.pageTitle}>Organizations</Text>
           <View style={styles.headerBtns}>
             <View style={{ position: 'relative' }}>
               <TouchableOpacity

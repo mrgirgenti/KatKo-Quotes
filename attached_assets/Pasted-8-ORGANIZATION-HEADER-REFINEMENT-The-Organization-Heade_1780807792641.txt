@@ -1,0 +1,118 @@
+8. ORGANIZATION HEADER REFINEMENT
+
+The Organization Header redesign discussed previously has not yet been implemented.
+
+==================================================
+OBJECTIVE
+==================================================
+
+Reduce vertical space.
+
+Increase information density.
+
+Allow more room for Client Legacy, Active Projects, Submitted Quotes, and future CRM content.
+
+==================================================
+LOGO
+==================================================
+
+Increase logo/avatar size approximately 30%.
+
+The logo should become a stronger visual identifier.
+
+==================================================
+REMOVE OVERSIZED STATUS BAR
+==================================================
+
+Remove the large full-width orange status ribbon.
+
+Replace with a compact status pill.
+
+Example:
+
+Active Client
+
+The status should sit beneath or beside the organization name.
+
+==================================================
+HEADER CONTENT
+==================================================
+
+Approved structure:
+
+← Organizations
+
+[Logo]
+
+Battlestar Coffee Co
+
+Active Client
+
+Business • Mesa, AZ
+
+[New Quote] [Actions]
+
+==================================================
+BUTTONS
+==================================================
+
+Reduce height of:
+
+New Quote
+
+Actions
+
+Match the sizing already established on:
+
+Contacts page
+
+Projects page
+
+Vendor page
+
+==================================================
+DESKTOP COLUMN WIDTH
+==================================================
+
+Current layout allocates too much width to the Organization Details column.
+
+Reduce left column width.
+
+Target:
+
+35–40% left column
+
+60–65% right column
+
+This creates more room for:
+
+Client Legacy
+
+Active Projects
+
+Submitted Quotes
+
+Activity
+
+Communications
+
+==================================================
+VALIDATION
+==================================================
+
+Provide before/after screenshots.
+
+Show:
+
+Current layout width percentages
+
+New layout width percentages
+
+Confirm:
+
+- larger logo
+- smaller header
+- no full-width orange status bar
+- reduced button height
+- narrower left column
+- more space allocated to right-side content

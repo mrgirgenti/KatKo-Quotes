@@ -1,3 +1,5 @@
 - [SSR responsive shell](ssr-responsive-shell.md) — useBreakpoint reports width 0 on server; gate responsive layout branching on a mounted flag or you get a desktop "mobile shell" flash + hydration risk.
 - [Admin sidebar scope](admin-sidebar-scope.md) — the persistent sidebar only wraps `app/(tabs)` routes; top-level destinations must live there, client portal/detail pages are intentionally excluded.
 - [Static image assets](static-assets-expo-web.md) — Image.resolveAssetSource is undefined in web SSR (500s); serve images from `public/` and reference by URL path string.
+- [Prisma db push drift](prisma-dbpush-drift.md) — db push wants to drop unrelated drifted columns (data loss); add additive columns via raw SQL ALTER instead. `npx` absent — use `bun run node_modules/.bin/prisma`.
+- [Contacts vs Organizations views](contacts-org-views.md) — `/clients` serves both; `view=contacts` global param renders the people directory, else the org table. Hub status derived from linked CLIENT User.

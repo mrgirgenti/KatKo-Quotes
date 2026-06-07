@@ -74,7 +74,10 @@ export interface Contact {
   phone?: string;
   notes?: string;
   isPrimary?: boolean;
+  status?: 'active' | 'inactive';
   linkedUserId?: string;
+  hubStatus?: 'No Access' | 'Invited' | 'Active' | 'Disabled';
+  lastLoginAt?: string | null;
   createdAt: string;
 }
 

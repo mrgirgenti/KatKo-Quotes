@@ -1,0 +1,332 @@
+PHASE 1 FINAL UI REFINEMENT PASS
+
+OBJECTIVE
+
+This is a refinement pass only.
+
+Do not redesign the Organization Detail page.
+
+Do not change the visual language.
+
+Do not introduce new design systems.
+
+Only implement the refinements below.
+
+==================================================
+
+1. SIDEBAR FOCUS / HOVER BUG
+   ==================================================
+
+A blue outline / focus box is still appearing in the sidebar navigation.
+
+Remove all unintended browser focus styling.
+
+Audit:
+
+* hover
+* focus
+* focus-visible
+* keyboard navigation
+* route transitions
+
+Remove:
+
+* blue outlines
+* blue borders
+* blue focus rings
+* browser default focus states
+
+Approved behavior:
+
+Hover:
+
+* subtle background change
+
+Active:
+
+* orange active state
+
+Focus:
+
+* platform styling only
+
+No blue artifacts should ever appear.
+
+==================================================
+2. CLIENT LEGACY SECTION ORDER
+==============================
+
+Move:
+
+Client Legacy
+
+above
+
+Active Projects
+
+inside the Organization Overview tab.
+
+New order:
+
+Client Legacy
+
+Active Projects
+
+Submitted Quotes
+
+Reason:
+
+Client Legacy provides higher-value relationship intelligence.
+
+Users should see:
+
+* historical value
+* revenue
+* profitability
+* service mix
+
+before reviewing current work.
+
+==================================================
+3. CLIENT LEGACY REDESIGN
+=========================
+
+Remove:
+
+* donut charts
+* hover tooltips
+* hover popovers
+* hidden hover information
+
+The current interaction does not scale and does not work well on mobile.
+
+==================================================
+NEW CLIENT LEGACY LAYOUT
+========================
+
+Keep:
+
+Header
+
+Client Legacy
+
+Top metrics row:
+
+Done
+
+Revenue
+
+Profit
+
+Keep exactly as-is.
+
+==================================================
+REPLACE DONUTS WITH KPI CARDS
+=============================
+
+Replace donut section with service KPI cards.
+
+Example:
+
+SCREEN PRINT
+
+100%
+
+Projects: 2
+
+Revenue: $650.67
+
+PCS: 97
+
+---
+
+EMBROIDERY
+
+0%
+
+Projects: 0
+
+Revenue: $0
+
+PCS: 0
+
+---
+
+DIRECT TO FILM
+
+0%
+
+Projects: 0
+
+Revenue: $0
+
+PCS: 0
+
+---
+
+PROMOTIONAL
+
+0%
+
+Projects: 0
+
+Revenue: $0
+
+PCS: 0
+
+==================================================
+GRID REQUIREMENTS
+=================
+
+Desktop:
+4 cards per row
+
+Tablet:
+2 cards per row
+
+Mobile:
+1 card per row
+
+==================================================
+SERVICE TYPES
+=============
+
+Do not hardcode services.
+
+Render dynamically from project history.
+
+Future service types should automatically appear.
+
+==================================================
+4. METRIC TYPOGRAPHY STANDARDIZATION
+====================================
+
+Use one shared metric system everywhere.
+
+Metric Values:
+
+Use the exact same size, weight, spacing, and hierarchy as:
+
+Active Projects metrics
+
+Examples:
+
+37
+
+$511.45
+
+$74.00
+
+All metric values throughout the platform should match.
+
+Apply to:
+
+Active Projects
+
+Submitted Quotes
+
+Client Legacy
+
+Client Hub
+
+Projects Tab
+
+Future metric rows
+
+==================================================
+5. QUEUE NUMBER TYPOGRAPHY
+==========================
+
+Queue numbers:
+
+#1
+
+#2
+
+#3
+
+must use the same typography scale as the platform metric values.
+
+Requirements:
+
+* black
+* same font size as metric values
+* same weight as metric values
+* outside card boundary
+* vertically centered with card
+
+Treat "#1" as a single visual unit.
+
+==================================================
+6. ORGANIZATION PROJECT CARD SYSTEM
+===================================
+
+Maintain the approved project card design.
+
+Do not regress.
+
+Keep:
+
+* queue numbering
+* order date
+* project number
+* status pill
+* project name
+* due date
+* service
+* qty
+* financial section
+* divider line
+
+==================================================
+7. GLOBAL PROJECTS VS ORGANIZATION PROJECTS
+===========================================
+
+Maintain separation.
+
+Global Projects page:
+
+Operations-focused
+
+Organization Projects tab:
+
+Client-focused
+
+Do not merge layouts.
+
+Do not share workflows.
+
+Keep them as distinct experiences.
+
+==================================================
+VALIDATION
+==========
+
+Provide screenshots showing:
+
+1. Sidebar without blue focus artifacts
+
+2. Client Legacy above Active Projects
+
+3. New KPI-card-based Client Legacy
+
+4. Active Projects
+
+5. Submitted Quotes
+
+6. Organization Projects Tab
+
+7. Desktop
+
+8. Tablet
+
+9. Mobile
+
+Confirm:
+
+* donuts removed
+* hover interactions removed
+* metric typography standardized
+* queue typography standardized
+* Client Legacy moved above Active Projects
+* no sidebar blue outline remains
