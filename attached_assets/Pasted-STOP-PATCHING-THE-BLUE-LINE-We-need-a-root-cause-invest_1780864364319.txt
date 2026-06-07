@@ -1,0 +1,104 @@
+STOP PATCHING THE BLUE LINE.
+
+We need a root-cause investigation.
+
+The blue vertical line continues to reappear in different locations despite previous fixes.
+
+This is no longer a component styling issue.
+
+==================================================
+INVESTIGATION REQUIRED
+==================================================
+
+Identify the exact DOM element creating the blue line.
+
+Use browser inspection tools and determine:
+
+- Element name
+- Component source
+- CSS class
+- Parent container
+- Positioning method
+- Z-index
+- Width
+- Height
+
+Do not hide it.
+
+Do not mask it.
+
+Do not add more CSS overrides.
+
+Find the actual source element.
+
+==================================================
+VERIFY WHETHER IT IS:
+==================================================
+
+- Focus ring
+- Keyboard navigation indicator
+- Drag/drop guide
+- Resize guide
+- Debug overlay
+- Development helper
+- Selection indicator
+- Radix UI artifact
+- Shadcn artifact
+- Motion/animation artifact
+- Sidebar artifact
+- Mobile menu artifact
+- Pseudo-element (::before / ::after)
+
+==================================================
+MOBILE SPECIFIC TESTING
+==================================================
+
+The issue appears primarily in:
+
+- Mobile view
+- Tablet view
+- Sidebar open state
+
+Test:
+
+iPhone widths
+Tablet widths
+Desktop widths
+
+Sidebar open
+Sidebar closed
+
+Touch interactions
+Hover interactions
+
+Keyboard navigation
+
+==================================================
+DELIVERABLE
+==================================================
+
+Do not submit a fix first.
+
+First provide:
+
+1. Exact DOM element causing the line
+2. Screenshot from DevTools highlighting the element
+3. CSS responsible
+4. Why previous fixes failed
+5. Proposed permanent fix
+
+Only after identifying the source should a fix be implemented.
+
+==================================================
+SUCCESS CRITERIA
+==================================================
+
+The blue line is permanently removed because the source element was eliminated.
+
+Not hidden.
+
+Not covered.
+
+Not overridden.
+
+Removed at the root cause.

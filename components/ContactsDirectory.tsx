@@ -432,18 +432,18 @@ export default function ContactsDirectory() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.light.background },
-  pageHeader: { paddingHorizontal: 20, paddingTop: DS.spacing.xl, paddingBottom: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: Colors.light.border },
-  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pageHeader: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: Colors.light.border },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: DS.spacing.xl, paddingTop: DS.spacing.xl, paddingBottom: DS.spacing.md },
   pageTitle: { fontSize: 24, fontWeight: '800' as const, color: Colors.light.text },
 
-  statsBar: { flexDirection: 'row', alignItems: 'center', marginTop: 12, paddingVertical: 12, paddingHorizontal: 16, backgroundColor: '#FAFAFA', borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border },
+  statsBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: DS.spacing.lg, marginBottom: DS.spacing.md, paddingVertical: 12, paddingHorizontal: 16, backgroundColor: '#FAFAFA', borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border },
   statItem: { flex: 1, alignItems: 'center' },
   statValue: { ...metricValueStyle },
   statLabel: { ...metricLabelStyle, marginTop: 2 },
   statDivider: { width: 1, height: 28, backgroundColor: Colors.light.border },
 
-  pillsScroll: { marginTop: 14, flexGrow: 0 },
-  pillsRow: { flexDirection: 'row', gap: 8, paddingRight: 20 },
+  pillsScroll: { maxHeight: 44 },
+  pillsRow: { flexDirection: 'row', gap: DS.spacing.sm, paddingHorizontal: DS.spacing.xl, paddingBottom: DS.spacing.md },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: '#fff' },
   pillActive: { backgroundColor: '#FFF4EE', borderColor: Colors.light.tint },
   pillText: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.textSecondary },
@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
   pillCountText: { fontSize: 11, fontWeight: '700' as const, color: Colors.light.textSecondary },
   pillCountTextActive: { color: '#fff' },
 
-  searchRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
+  searchRow: { flexDirection: 'row', alignItems: 'center', gap: DS.spacing.sm, paddingHorizontal: DS.spacing.xl, paddingBottom: DS.spacing.md },
   searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, height: 40, backgroundColor: '#F5F5F5', borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border },
   searchInput: { flex: 1, fontSize: 14, color: Colors.light.text, outlineStyle: 'none' as any },
   toolBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, height: 40, maxWidth: 200, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: '#fff' },
