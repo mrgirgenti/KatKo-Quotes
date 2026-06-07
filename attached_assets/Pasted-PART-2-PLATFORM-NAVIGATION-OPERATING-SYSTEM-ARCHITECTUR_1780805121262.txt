@@ -1,0 +1,400 @@
+PART 2 — PLATFORM NAVIGATION & OPERATING SYSTEM ARCHITECTURE
+
+OBJECTIVE
+
+We are moving from CRM refinement into platform architecture.
+
+This is NOT a redesign.
+
+This is a navigation and information architecture project.
+
+All new pages must continue using the same visual language already established throughout:
+
+- Organizations
+- Contacts
+- Projects
+- Client Records
+
+No new design systems.
+
+No new visual directions.
+
+Everything must feel like part of the same platform.
+
+==================================================
+PRIMARY GOAL
+==================================================
+
+Implement a persistent platform navigation structure that supports future growth.
+
+This navigation should exist on:
+
+Desktop
+Tablet
+Mobile
+
+and remain consistent throughout the platform.
+
+==================================================
+SIDEBAR STRUCTURE
+==================================================
+
+Create the following navigation hierarchy:
+
+DASHBOARD
+
+CRM
+- Organizations
+- Contacts
+
+SALES
+- Quotes
+
+OPERATIONS
+- Projects
+- Production
+
+FINANCE
+- Invoices
+- Payments
+
+CLIENT EXPERIENCE
+- Client Hubs
+
+SYSTEM
+- Tasks
+- Reports
+- Catalogs
+- Settings
+
+==================================================
+WEB STORES
+==================================================
+
+DO NOT BUILD WEB STORES.
+
+DO NOT ADD WEB STORE MANAGEMENT.
+
+However:
+
+Reserve a future placeholder architecture location.
+
+Future:
+
+CLIENT EXPERIENCE
+- Client Hubs
+- Web Stores
+
+Placeholder only.
+
+No implementation required.
+
+==================================================
+SIDEBAR BEHAVIOR
+==================================================
+
+Desktop:
+
+Expanded by default.
+
+Allow collapse.
+
+Remember collapsed state.
+
+Persist state across refreshes.
+
+Tablet:
+
+Collapsed by default.
+
+Expandable.
+
+Mobile:
+
+Drawer style navigation.
+
+Accessible from all pages.
+
+==================================================
+CONSISTENCY REQUIREMENT
+==================================================
+
+Sidebar must exist throughout:
+
+Dashboard
+
+Organizations
+
+Contacts
+
+Quotes
+
+Projects
+
+Production
+
+Invoices
+
+Payments
+
+Tasks
+
+Reports
+
+Settings
+
+Client Hub Admin
+
+Any future modules
+
+Users should never feel trapped inside a screen.
+
+Navigation should always be available.
+
+==================================================
+PAGE ARCHITECTURE
+==================================================
+
+Every primary page should use:
+
+Page Title
+
+Primary Action Button
+
+Metrics Row
+
+Filters
+
+Search
+
+Content
+
+The layout language already established in:
+
+Projects
+
+Contacts
+
+Organizations
+
+should become the platform standard.
+
+==================================================
+PROJECTS PAGE
+==================================================
+
+Sidebar Projects becomes:
+
+Company-wide project management.
+
+Purpose:
+
+- All projects
+- All organizations
+- Production queue visibility
+- Operational management
+
+This remains separate from:
+
+Organization → Projects Tab
+
+Do not merge these experiences.
+
+==================================================
+PRODUCTION PAGE
+==================================================
+
+Create placeholder Production page.
+
+No production workflow yet.
+
+Create structure only.
+
+Page title:
+
+Production
+
+Metrics row
+
+Search
+
+Filters
+
+Empty state
+
+"Production workflow coming next"
+
+Use existing platform design language.
+
+==================================================
+TASKS PAGE
+==================================================
+
+Create placeholder Tasks page.
+
+Purpose:
+
+Future internal task management.
+
+Page title:
+
+Tasks
+
+Metrics row
+
+Search
+
+Filters
+
+Empty state
+
+"Task management coming next"
+
+==================================================
+INVOICES PAGE
+==================================================
+
+Create placeholder Invoices page.
+
+Purpose:
+
+Wave-connected invoice visibility.
+
+Page title:
+
+Invoices
+
+Metrics row
+
+Search
+
+Filters
+
+Empty state
+
+"Wave invoice integration coming next"
+
+==================================================
+PAYMENTS PAGE
+==================================================
+
+Create placeholder Payments page.
+
+Purpose:
+
+Payment tracking.
+
+Not accounting.
+
+Operational visibility only.
+
+Page title:
+
+Payments
+
+Metrics row
+
+Search
+
+Filters
+
+Empty state
+
+"Payment tracking coming next"
+
+==================================================
+REPORTS PAGE
+==================================================
+
+Create placeholder Reports page.
+
+Purpose:
+
+Revenue
+Profit
+Production
+Client performance
+
+Create framework only.
+
+==================================================
+CLIENT HUBS PAGE
+==================================================
+
+Create Client Hubs management page.
+
+Show:
+
+Organization
+
+Hub Status
+
+Users
+
+Last Activity
+
+Hub Link
+
+Actions
+
+Use same card/table language used elsewhere.
+
+==================================================
+WAVE ACCOUNTING ARCHITECTURE
+==================================================
+
+IMPORTANT
+
+Wave remains source of truth for invoicing.
+
+Katalyst does NOT replace Wave.
+
+Future workflow:
+
+Quote Approved
+→ Create Invoice in Wave
+
+Wave Invoice Paid
+→ Update Katalyst
+
+Wave Invoice Viewed
+→ Update Katalyst
+
+Wave Invoice Overdue
+→ Update Katalyst
+
+Do not implement now.
+
+Prepare architecture only.
+
+==================================================
+VALIDATION
+==================================================
+
+Provide screenshots of:
+
+Expanded Sidebar
+
+Collapsed Sidebar
+
+Desktop Layout
+
+Tablet Layout
+
+Mobile Drawer
+
+Projects Page
+
+Production Placeholder
+
+Tasks Placeholder
+
+Invoices Placeholder
+
+Payments Placeholder
+
+Reports Placeholder
+
+Client Hubs Page
+
+Confirm all pages use the same design language already established throughout the platform.

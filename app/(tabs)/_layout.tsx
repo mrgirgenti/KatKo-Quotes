@@ -1,24 +1,27 @@
-import { Tabs, Slot, useRouter } from 'expo-router';
-import {
-  LayoutDashboard,
-  FilePlus,
-  FolderKanban,
-  Users,
-  BookOpen,
-} from 'lucide-react-native';
-import React from 'react';
+import { Slot } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import { View, Platform, StyleSheet } from 'react-native';
-import Colors from '@/constants/colors';
 import { Sidebar } from '@/components/Sidebar';
+import { MobileShell } from '@/components/MobileDrawer';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 export default function TabLayout() {
   const { isMobile, isTablet } = useBreakpoint();
+  const [mounted, setMounted] = useState(false);
 
-  if (Platform.OS === 'web' && !isMobile) {
+  useEffect(() => setMounted(true), []);
+
+  // SSR and the first client render must be identical to avoid a hydration
+  // mismatch. On the server `useBreakpoint` reports width 0 (which would look
+  // "mobile"), so until we have mounted on the client we deterministically use
+  // the desktop sidebar on web. After mount we apply the real breakpoint.
+  const useMobileShell = mounted ? isMobile : Platform.OS !== 'web';
+
+  if (!useMobileShell) {
     return (
       <View style={styles.webLayout}>
-        <Sidebar defaultCollapsed={isTablet} />
+        {/* Remount once after hydration so tablet's default-collapsed applies. */}
+        <Sidebar key={mounted ? 'sidebar' : 'sidebar-init'} defaultCollapsed={isTablet} />
         <View style={styles.webContent}>
           <Slot />
         </View>
@@ -27,62 +30,9 @@ export default function TabLayout() {
   }
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors.light.tint,
-        tabBarInactiveTintColor: Colors.light.tabIconDefault,
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: Colors.light.surface,
-          borderTopColor: Colors.light.border,
-          height: 60,
-          paddingBottom: 8,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '500',
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="dashboard"
-        options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color, size }) => <LayoutDashboard size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'New Quote',
-          tabBarIcon: ({ color, size }) => <FilePlus size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="projects"
-        options={{
-          title: 'Projects',
-          tabBarIcon: ({ color, size }) => <FolderKanban size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="clients"
-        options={{
-          title: 'Contacts',
-          tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="catalogs"
-        options={{
-          title: 'Catalogs',
-          tabBarIcon: ({ color, size }) => <BookOpen size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen name="client-hubs" options={{ href: null }} />
-      <Tabs.Screen name="history" options={{ href: null }} />
-      <Tabs.Screen name="sales" options={{ href: null }} />
-    </Tabs>
+    <MobileShell>
+      <Slot />
+    </MobileShell>
   );
 }
 

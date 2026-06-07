@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Stack } from 'expo-router';
 import {
   Download,
   Filter,
@@ -153,14 +152,6 @@ export default function ReportsScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      <Stack.Screen
-        options={{
-          title: 'Reports',
-          headerStyle: { backgroundColor: Colors.light.headerBg },
-          headerTintColor: '#fff',
-        }}
-      />
-
       <Toast
         visible={toastVisible}
         message={toastMessage}
@@ -174,6 +165,7 @@ export default function ReportsScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        <Text style={{ fontSize: 26, fontWeight: '800', color: Colors.light.text, marginBottom: 16 }}>Reports</Text>
         <TouchableOpacity 
           style={styles.filterToggle}
           onPress={() => setShowFilters(!showFilters)}

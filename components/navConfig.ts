@@ -1,0 +1,108 @@
+import {
+  LayoutDashboard,
+  Building2,
+  Users,
+  FileText,
+  FolderKanban,
+  Factory,
+  Receipt,
+  CreditCard,
+  Globe,
+  Store,
+  ListTodo,
+  BarChart3,
+  BookOpen,
+  Settings,
+} from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
+
+export interface NavItem {
+  label: string;
+  icon: LucideIcon;
+  href: string;
+  disabled?: boolean;
+  soon?: boolean;
+}
+
+export interface NavGroup {
+  title?: string;
+  items: NavItem[];
+}
+
+export const NAV_GROUPS: NavGroup[] = [
+  {
+    items: [{ label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' }],
+  },
+  {
+    title: 'CRM',
+    items: [
+      { label: 'Organizations', icon: Building2, href: '/clients' },
+      { label: 'Contacts', icon: Users, href: '/clients?view=contacts' },
+    ],
+  },
+  {
+    title: 'Sales',
+    items: [{ label: 'Quotes', icon: FileText, href: '/sales' }],
+  },
+  {
+    title: 'Operations',
+    items: [
+      { label: 'Projects', icon: FolderKanban, href: '/projects' },
+      { label: 'Production', icon: Factory, href: '/production' },
+    ],
+  },
+  {
+    title: 'Finance',
+    items: [
+      { label: 'Invoices', icon: Receipt, href: '/invoices' },
+      { label: 'Payments', icon: CreditCard, href: '/payments' },
+    ],
+  },
+  {
+    title: 'Client Experience',
+    items: [
+      { label: 'Client Hubs', icon: Globe, href: '/client-hubs' },
+      // Reserved future module — placeholder only, no implementation.
+      { label: 'Web Stores', icon: Store, href: '#', disabled: true, soon: true },
+    ],
+  },
+  {
+    title: 'System',
+    items: [
+      { label: 'Tasks', icon: ListTodo, href: '/tasks' },
+      { label: 'Reports', icon: BarChart3, href: '/reports' },
+      { label: 'Catalogs', icon: BookOpen, href: '/catalogs' },
+      { label: 'Settings', icon: Settings, href: '/settings' },
+    ],
+  },
+];
+
+export function baseHref(href: string): string {
+  return href.split('?')[0];
+}
+
+function viewOf(href: string): string | null {
+  const q = href.split('?')[1];
+  if (!q) return null;
+  const m = q.match(/view=([^&]+)/);
+  return m ? m[1] : null;
+}
+
+/**
+ * Determines whether a nav item should be highlighted as active.
+ * Handles the /clients split between Organizations (no view) and Contacts (?view=contacts).
+ */
+export function isItemActive(
+  href: string,
+  pathname: string,
+  currentView: string | null,
+): boolean {
+  const base = baseHref(href);
+  if (base === '#') return false;
+  if (base === '/') return pathname === '/' || pathname === '/index';
+  if (!pathname.startsWith(base)) return false;
+  if (base === '/clients') {
+    return (viewOf(href) || null) === (currentView || null);
+  }
+  return true;
+}

@@ -61,7 +61,6 @@ function RootLayoutNav() {
       <Stack.Screen name="quote/edit" options={{ title: 'Edit Quote' }} />
       <Stack.Screen name="quote/sales-tracking" options={{ title: 'Sales Tracking' }} />
       <Stack.Screen name="profile" options={{ title: 'Profile', presentation: 'modal' }} />
-      <Stack.Screen name="reports" options={{ title: 'Reports' }} />
       <Stack.Screen name="clients/[id]" options={{ title: 'Client Profile' }} />
       <Stack.Screen name="crm/[id]" options={{ title: 'Organization' }} />
       <Stack.Screen name="hub/[id]" options={{ title: 'Hub Management' }} />
