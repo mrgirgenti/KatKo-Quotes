@@ -1,1 +1,2 @@
 - [Screenshot load gate](screenshot-load-gate.md) — the app's global "Loading…" (UserContext) gate often blocks the screenshot tool on this SSR Expo web app; verify via code + tsc instead.
+- [Operational table pages](operational-table-pages.md) — Quotes (`sales.tsx`) & Projects (`projects.tsx`) are sibling operational tables; keep in sync. Bulk selection must derive from full dataset; row menu must flip/clamp.

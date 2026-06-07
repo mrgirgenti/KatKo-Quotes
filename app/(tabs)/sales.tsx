@@ -1,190 +1,637 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   TextInput,
-  Share,
+  Alert,
   Modal,
-  Pressable,
+  ScrollView,
+  Platform,
+  Share,
 } from 'react-native';
+import { DS } from '@/constants/designSystem';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useRouter } from 'expo-router';
-import { 
-  Search, 
-  Trash2, 
-  FileText, 
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  Download,
-  CheckCircle,
+import {
+  Search,
+  X,
+  SlidersHorizontal,
+  Trash2,
+  FileText,
   RotateCcw,
-  MoreVertical,
+  ArrowUpDown,
+  ChevronDown,
   Edit3,
-  FileDown,
+  Download,
   Printer,
-  BarChart3,
+  Sheet,
+  Check,
+  Minus,
   Lock,
   Unlock,
-  Sheet,
-  CheckSquare,
-  Square,
-  X,
+  BarChart3,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
 import { useQuotes } from '@/contexts/QuotesContext';
-import { Quote, LineItem } from '@/types/quote';
+import { useUser } from '@/contexts/UserContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { Quote, QuoteStatus, getEffectiveStatus, STATUS_CONFIG } from '@/types/quote';
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
-import { useUser } from '@/contexts/UserContext';
 import { generateAndSharePDF, printQuote } from '@/utils/pdfGenerator';
 import { exportSingleSaleToSheets } from '@/utils/googleSheetsExport';
 
+type SortField = 'date' | 'client' | 'revenue' | 'status' | 'inHands' | 'project' | 'invoice' | 'services' | 'pcs' | 'profit';
+type SortDir = 'asc' | 'desc';
+type MobileListDataItem =
+  | { type: 'header'; key: string; label: string }
+  | { type: 'item'; quote: Quote; effectiveStatus: QuoteStatus; queueIndex: number };
+
+const STATUS_PILLS: { key: 'all' | QuoteStatus; label: string }[] = [
+  { key: 'all',                label: 'All'             },
+  { key: 'needs_review',       label: 'Needs Review'    },
+  { key: 'quoting',            label: 'Quoting'         },
+  { key: 'quoted',             label: 'Quoted'          },
+  { key: 'invoice_sent',       label: 'Invoice Sent'    },
+  { key: 'paid',               label: 'Paid'            },
+  { key: 'active',             label: 'In Production'   },
+  { key: 'production_started', label: 'In Production'   },
+  { key: 'completed',          label: 'Completed'       },
+  { key: 'expired',            label: 'Expired'         },
+];
+
+function getSalesRevenue(sale: Quote): number {
+  return sale.salesData?.amountCollected || sale.calculations.total;
+}
+
+function getSalesProfit(sale: Quote): number {
+  if (!sale.salesData) return sale.calculations.markupAmount;
+  const serviceFeesCost = sale.salesData.actualServiceFeesCost ?? 0;
+  const serviceFeesProfit = sale.salesData.actualServiceFeesProfit ?? 0;
+  const onlineFee = sale.salesData.actualOnlineFee ?? 0;
+  const salesTax = sale.salesData.actualSalesTax ?? 0;
+  const cardFee = sale.salesData.actualCardFee ?? 0;
+
+  const actualCOG = sale.salesData.actualProductCost + sale.salesData.actualServiceCost +
+                    serviceFeesCost + sale.salesData.actualOtherCosts;
+  const actualTotalWithFees = actualCOG + onlineFee + salesTax + cardFee;
+
+  const quotedFees = sale.calculations.serviceFeeTotal;
+  const feesDifference = quotedFees - serviceFeesCost;
+
+  return sale.salesData.amountCollected - actualTotalWithFees + serviceFeesProfit + feesDifference;
+}
+
+function getPcs(quote: Quote): number {
+  return quote.lineItems.reduce((s: number, li: any) =>
+    s + Object.values(li.sizes || {}).reduce((ps: number, v: any) => ps + (Number(v) || 0), 0), 0);
+}
+
+function StatusBadge({ status }: { status: QuoteStatus }) {
+  const cfg = STATUS_CONFIG[status];
+  return (
+    <View style={[styles.badge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+      <Text style={[styles.badgeText, { color: cfg.color }]}>{cfg.label}</Text>
+    </View>
+  );
+}
+
+function Checkbox({ checked, indeterminate, onToggle }: { checked: boolean; indeterminate?: boolean; onToggle: () => void }) {
+  const filled = checked || indeterminate;
+  return (
+    <TouchableOpacity onPress={onToggle} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+      <View style={[styles.checkbox, filled && styles.checkboxChecked]}>
+        {checked && !indeterminate && <Check size={11} color="#fff" strokeWidth={3} />}
+        {indeterminate && <Minus size={11} color="#fff" strokeWidth={3} />}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function parseDate(str: string): Date | null {
+  if (!str) return null;
+  const d = new Date(str.replace(/-/g, '/'));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+interface SaleRowProps {
+  quote: Quote;
+  effectiveStatus: QuoteStatus;
+  index: number;
+  onPress: () => void;
+  onTrack: () => void;
+  onDelete: () => void;
+  onRevert: () => void;
+  onEdit: () => void;
+  onLock: () => void;
+  onUnlock: () => void;
+  onExportPDF: () => void;
+  onExportSheets: () => void;
+  onPrint: () => void;
+  isDesktop: boolean;
+  isSelected: boolean;
+  onToggleSelect: () => void;
+  selectionMode: boolean;
+}
+
+function SaleRow({ quote, effectiveStatus, index, onPress, onTrack, onDelete, onRevert, onEdit, onLock, onUnlock, onExportPDF, onExportSheets, onPrint, isDesktop, isSelected, onToggleSelect, selectionMode }: SaleRowProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+  const menuBtnRef = useRef<View>(null);
+  const lineItemServices = quote.lineItems.map(i => i.serviceStyle);
+  const lineItemPcs = quote.lineItems.map(i =>
+    Object.values(i.sizes || {}).reduce((s: number, v: any) => s + (Number(v) || 0), 0)
+  );
+  const revenue = getSalesRevenue(quote);
+  const profit = getSalesProfit(quote);
+  const profitPositive = profit >= 0;
+  const isLocked = quote.isLocked === true;
+
+  const openMenu = () => {
+    menuBtnRef.current?.measure((_fx, _fy, width, height, px, py) => {
+      const winW = typeof window !== 'undefined' ? window.innerWidth : 400;
+      const winH = typeof window !== 'undefined' ? window.innerHeight : 800;
+      const estH = isLocked ? 210 : 320;
+      const below = py + height + 4;
+      const flipUp = below + estH > winH - 8;
+      setMenuPos({
+        top: flipUp ? Math.max(8, py - estH - 4) : below,
+        right: Math.max(8, winW - px - width),
+      });
+      setMenuOpen(true);
+    });
+  };
+
+  const menuModal = (
+    <Modal
+      visible={menuOpen}
+      transparent
+      animationType="none"
+      onRequestClose={() => setMenuOpen(false)}
+    >
+      <TouchableOpacity
+        style={styles.modalBackdrop}
+        activeOpacity={1}
+        onPress={() => setMenuOpen(false)}
+      >
+        <View style={[styles.dropdownMenu, { position: 'absolute', top: menuPos.top, right: menuPos.right }]}>
+          {isLocked ? (
+            <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onUnlock(); }}>
+              <Unlock size={14} color={Colors.light.success} />
+              <Text style={[styles.dropdownItemText, { color: Colors.light.success, fontWeight: '700' }]}>Unlock Sale</Text>
+            </TouchableOpacity>
+          ) : (
+            <>
+              <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onEdit(); }}>
+                <Edit3 size={14} color={Colors.light.text} />
+                <Text style={styles.dropdownItemText}>Edit Quote</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onLock(); }}>
+                <Lock size={14} color={Colors.light.tint} />
+                <Text style={[styles.dropdownItemText, { color: Colors.light.tint }]}>Save & Lock</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onRevert(); }}>
+                <RotateCcw size={14} color={Colors.light.textSecondary} />
+                <Text style={styles.dropdownItemText}>Revert Back</Text>
+              </TouchableOpacity>
+            </>
+          )}
+          <View style={styles.dropdownSeparator} />
+          <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onExportSheets(); }}>
+            <Sheet size={14} color={Colors.light.success} />
+            <Text style={[styles.dropdownItemText, { color: Colors.light.success }]}>Export to Sheets</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onExportPDF(); }}>
+            <Download size={14} color={Colors.light.text} />
+            <Text style={styles.dropdownItemText}>Export to PDF</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuOpen(false); onPrint(); }}>
+            <Printer size={14} color={Colors.light.text} />
+            <Text style={styles.dropdownItemText}>Print</Text>
+          </TouchableOpacity>
+          {!isLocked && (
+            <>
+              <View style={styles.dropdownSeparator} />
+              <TouchableOpacity style={[styles.dropdownItem, styles.dropdownItemLast]} onPress={() => { setMenuOpen(false); onDelete(); }}>
+                <Trash2 size={14} color="#EF4444" />
+                <Text style={[styles.dropdownItemText, { color: '#EF4444' }]}>Delete</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+
+  if (isDesktop) {
+    return (
+      <TouchableOpacity
+        style={[styles.tableRow, isSelected && styles.tableRowSelected, isLocked && styles.tableRowLocked]}
+        onPress={selectionMode ? onToggleSelect : onPress}
+        activeOpacity={0.7}
+      >
+        <View style={styles.colCheckbox}>
+          <Checkbox checked={isSelected} onToggle={onToggleSelect} />
+        </View>
+        <View style={styles.colStatus}>
+          <StatusBadge status={effectiveStatus} />
+          <View style={styles.statusIcons}>
+            {isLocked && <Lock size={11} color={Colors.light.textSecondary} />}
+            {quote.exportedToSheets && <Sheet size={11} color={Colors.light.success} />}
+          </View>
+        </View>
+        <View style={styles.colOrderDate}>
+          <Text style={styles.tableDate}>{formatDate(quote.orderDate)}</Text>
+        </View>
+        <View style={styles.colDueDate}>
+          <Text style={styles.tableDate}>{quote.inHandsDate ? formatDate(quote.inHandsDate) : '—'}</Text>
+        </View>
+        <View style={styles.colClient}>
+          <Text style={styles.tableClient} numberOfLines={1}>{quote.personOrganization}</Text>
+        </View>
+        <View style={styles.colProject}>
+          <Text style={styles.tableProject} numberOfLines={1}>{quote.projectName}</Text>
+        </View>
+        <View style={styles.colQuote}>
+          <Text style={styles.tableInvoice} numberOfLines={1}>{quote.invoiceNumber || quote.projectNumber || '—'}</Text>
+        </View>
+        <View style={styles.colServices}>
+          <Text style={styles.tableServices}>
+            {lineItemServices.length > 0 ? lineItemServices.join('\n') : '—'}
+          </Text>
+        </View>
+        <View style={styles.colPcs}>
+          <Text style={styles.tablePcs}>
+            {lineItemPcs.map(n => n > 0 ? `${n} pcs` : '—').join('\n')}
+          </Text>
+        </View>
+        <View style={styles.colRevenue}>
+          <Text style={styles.tableTotal}>{formatCurrency(revenue)}</Text>
+        </View>
+        <View style={styles.colProfit}>
+          <Text style={[styles.tableProfit, !profitPositive && styles.tableProfitNeg]}>{formatCurrency(profit)}</Text>
+        </View>
+        <View style={styles.colActions}>
+          {!isLocked && (
+            <TouchableOpacity style={styles.trackBtn} onPress={onTrack}>
+              <BarChart3 size={12} color="#fff" />
+              <Text style={styles.trackBtnText}>Track</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.viewBtn} onPress={onPress}>
+            <Text style={styles.viewBtnText}>View</Text>
+          </TouchableOpacity>
+          <View ref={menuBtnRef} collapsable={false}>
+            <TouchableOpacity style={styles.menuBtn} onPress={openMenu}>
+              <ChevronDown size={14} color={Colors.light.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {menuModal}
+      </TouchableOpacity>
+    );
+  }
+
+  // Mobile card
+  return (
+    <TouchableOpacity
+      style={[styles.card, isSelected && styles.cardSelected, isLocked && styles.cardLocked]}
+      onPress={selectionMode ? onToggleSelect : onPress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.cardHeader}>
+        <View style={styles.cardHeaderLeft}>
+          {selectionMode && <Checkbox checked={isSelected} onToggle={onToggleSelect} />}
+          <StatusBadge status={effectiveStatus} />
+          {isLocked && <Lock size={12} color={Colors.light.textSecondary} />}
+          {quote.exportedToSheets && <Sheet size={12} color={Colors.light.success} />}
+        </View>
+        <View style={styles.cardHeaderRight}>
+          <Text style={styles.cardInvoice}>{quote.invoiceNumber || quote.projectNumber || '—'}</Text>
+          <View ref={menuBtnRef} collapsable={false}>
+            <TouchableOpacity style={styles.menuBtn} onPress={openMenu}>
+              <ChevronDown size={14} color={Colors.light.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+      <Text style={styles.cardClient} numberOfLines={1}>{quote.personOrganization}</Text>
+      <Text style={styles.cardProject} numberOfLines={1}>{quote.projectName}</Text>
+      <View style={styles.cardMeta}>
+        <View style={styles.cardMetaLeft}>
+          <Text style={styles.cardMetaText}>{formatDate(quote.orderDate)}</Text>
+          <Text style={styles.cardMetaSep}>•</Text>
+          <Text style={styles.cardMetaText}>{getPcs(quote)} pcs</Text>
+        </View>
+        <View style={styles.cardAmounts}>
+          <Text style={styles.cardTotal}>{formatCurrency(revenue)}</Text>
+          <Text style={[styles.cardProfit, !profitPositive && styles.tableProfitNeg]}>{formatCurrency(profit)} profit</Text>
+        </View>
+      </View>
+      <View style={styles.cardFooter}>
+        <Text style={styles.cardServiceStyles} numberOfLines={1}>
+          {[...new Set(lineItemServices)].join(', ') || 'No services'}
+        </Text>
+        {!isLocked && (
+          <TouchableOpacity style={styles.trackBtn} onPress={onTrack}>
+            <BarChart3 size={12} color="#fff" />
+            <Text style={styles.trackBtnText}>Track</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      {menuModal}
+    </TouchableOpacity>
+  );
+}
+
+function BulkActionBar({
+  count,
+  onClear,
+  onExportPDF,
+  onExportSheets,
+  onPrint,
+  onDelete,
+}: {
+  count: number;
+  onClear: () => void;
+  onExportPDF: () => void;
+  onExportSheets: () => void;
+  onPrint: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <View style={styles.bulkBar}>
+      <View style={styles.bulkBarLeft}>
+        <Text style={styles.bulkCount}>{count} selected</Text>
+        <TouchableOpacity onPress={onClear} style={styles.bulkClearBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+          <X size={13} color={Colors.light.textSecondary} />
+        </TouchableOpacity>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bulkActionsRow}>
+        <TouchableOpacity style={styles.bulkAction} onPress={onExportSheets}>
+          <Sheet size={14} color={Colors.light.success} />
+          <Text style={[styles.bulkActionText, { color: Colors.light.success }]}>Export Sheets</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.bulkAction} onPress={onExportPDF}>
+          <Download size={14} color={Colors.light.text} />
+          <Text style={styles.bulkActionText}>Export PDF</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.bulkAction} onPress={onPrint}>
+          <Printer size={14} color={Colors.light.text} />
+          <Text style={styles.bulkActionText}>Print</Text>
+        </TouchableOpacity>
+        <View style={styles.bulkDivider} />
+        <TouchableOpacity style={[styles.bulkAction, styles.bulkActionDanger]} onPress={onDelete}>
+          <Trash2 size={14} color="#EF4444" />
+          <Text style={[styles.bulkActionText, { color: '#EF4444' }]}>Delete</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
+}
+
 export default function SalesScreen() {
   const router = useRouter();
-  const { sales, isLoading, deleteQuote, convertToQuote, unlockSale, lockSale, markExportedToSheets } = useQuotes();
+  const { sales, deleteQuote, convertToQuote, unlockSale, lockSale, markExportedToSheets, isLoading } = useQuotes();
   const { currentUser, orgAdmin } = useUser();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [unlockModalVisible, setUnlockModalVisible] = useState(false);
+  const { isDesktop } = useBreakpoint();
+
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | QuoteStatus>('all');
+  const [showFilters, setShowFilters] = useState(false);
+  const [sortField, setSortField] = useState<SortField>('date');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [minTotal, setMinTotal] = useState('');
+  const [maxTotal, setMaxTotal] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<Quote | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteVisible, setBulkDeleteVisible] = useState(false);
+  const [unlockTarget, setUnlockTarget] = useState<Quote | null>(null);
   const [unlockPassword, setUnlockPassword] = useState('');
-  const [selectedUnlockId, setSelectedUnlockId] = useState<string | null>(null);
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedSales, setSelectedSales] = useState<Set<string>>(new Set());
-  const [isBulkExporting, setIsBulkExporting] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    title: string;
+    message: string;
+    confirmText: string;
+    destructive?: boolean;
+    onConfirm: () => void;
+  } | null>(null);
 
-  const filteredSales = useMemo(() => {
-    if (!searchQuery.trim()) return sales;
-    const query = searchQuery.toLowerCase();
-    return sales.filter(
-      (q) =>
-        q.personOrganization.toLowerCase().includes(query) ||
-        q.projectName.toLowerCase().includes(query) ||
-        q.invoiceNumber.toLowerCase().includes(query)
-    );
-  }, [sales, searchQuery]);
+  const selectionMode = selectedIds.size > 0;
 
-  const openSales = useMemo(() => {
-    return filteredSales.filter(s => !s.exportedToSheets);
-  }, [filteredSales]);
-
-  const archivedSales = useMemo(() => {
-    return filteredSales.filter(s => s.exportedToSheets);
-  }, [filteredSales]);
-
-  const [activeTab, setActiveTab] = useState<'open' | 'archived'>('open');
-  const displayedSales = activeTab === 'open' ? openSales : archivedSales;
-
-  const getSalesProfit = useCallback((sale: Quote) => {
-    if (!sale.salesData) return sale.calculations.markupAmount;
-    const serviceFeesCost = sale.salesData.actualServiceFeesCost ?? 0;
-    const serviceFeesProfit = sale.salesData.actualServiceFeesProfit ?? 0;
-    const onlineFee = sale.salesData.actualOnlineFee ?? 0;
-    const salesTax = sale.salesData.actualSalesTax ?? 0;
-    const cardFee = sale.salesData.actualCardFee ?? 0;
-    
-    const actualCOG = sale.salesData.actualProductCost + sale.salesData.actualServiceCost + 
-                      serviceFeesCost + sale.salesData.actualOtherCosts;
-    const actualTotalWithFees = actualCOG + onlineFee + salesTax + cardFee;
-    
-    const quotedFees = sale.calculations.serviceFeeTotal;
-    const feesDifference = quotedFees - serviceFeesCost;
-    
-    return sale.salesData.amountCollected - actualTotalWithFees + serviceFeesProfit + feesDifference;
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   }, []);
 
-  const totalStats = useMemo(() => {
-    const totalRevenue = sales.reduce((sum, s) => sum + (s.salesData?.amountCollected || s.calculations.total), 0);
-    const totalProfit = sales.reduce((sum, s) => sum + getSalesProfit(s), 0);
-    return { totalRevenue, totalProfit };
-  }, [sales, getSalesProfit]);
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
-  
+  const resolvedSales = useMemo(() =>
+    sales.map(q => ({ quote: q, effectiveStatus: getEffectiveStatus(q) })),
+    [sales]
+  );
 
-  const handleConvertToQuote = useCallback((quote: Quote) => {
-    setOpenMenuId(null);
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: resolvedSales.length };
+    resolvedSales.forEach(({ effectiveStatus }) => {
+      counts[effectiveStatus] = (counts[effectiveStatus] || 0) + 1;
+    });
+    return counts;
+  }, [resolvedSales]);
+
+  const totals = useMemo(() => {
+    const revenue = sales.reduce((sum, s) => sum + getSalesRevenue(s), 0);
+    const profit = sales.reduce((sum, s) => sum + getSalesProfit(s), 0);
+    return { revenue, profit };
+  }, [sales]);
+
+  const visiblePills = useMemo(
+    () => STATUS_PILLS.filter(p => p.key === 'all' || (statusCounts[p.key] ?? 0) > 0),
+    [statusCounts]
+  );
+
+  const filtered = useMemo(() => {
+    let list = resolvedSales;
+
+    if (statusFilter !== 'all') {
+      list = list.filter(({ effectiveStatus }) => effectiveStatus === statusFilter);
+    }
+
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(({ quote }) =>
+        quote.personOrganization.toLowerCase().includes(q) ||
+        quote.projectName.toLowerCase().includes(q) ||
+        (quote.invoiceNumber || '').toLowerCase().includes(q) ||
+        (quote.projectNumber || '').toLowerCase().includes(q)
+      );
+    }
+
+    if (minTotal) {
+      const min = parseFloat(minTotal);
+      if (!isNaN(min)) list = list.filter(({ quote }) => getSalesRevenue(quote) >= min);
+    }
+    if (maxTotal) {
+      const max = parseFloat(maxTotal);
+      if (!isNaN(max)) list = list.filter(({ quote }) => getSalesRevenue(quote) <= max);
+    }
+
+    list = [...list].sort((a, b) => {
+      let cmp = 0;
+      if (sortField === 'date') {
+        cmp = (parseDate(a.quote.orderDate)?.getTime() ?? 0) - (parseDate(b.quote.orderDate)?.getTime() ?? 0);
+      } else if (sortField === 'inHands') {
+        cmp = (parseDate(a.quote.inHandsDate)?.getTime() ?? 0) - (parseDate(b.quote.inHandsDate)?.getTime() ?? 0);
+      } else if (sortField === 'client') {
+        cmp = a.quote.personOrganization.localeCompare(b.quote.personOrganization);
+      } else if (sortField === 'revenue') {
+        cmp = getSalesRevenue(a.quote) - getSalesRevenue(b.quote);
+      } else if (sortField === 'profit') {
+        cmp = getSalesProfit(a.quote) - getSalesProfit(b.quote);
+      } else if (sortField === 'status') {
+        cmp = a.effectiveStatus.localeCompare(b.effectiveStatus);
+      } else if (sortField === 'project') {
+        cmp = (a.quote.projectName || '').localeCompare(b.quote.projectName || '');
+      } else if (sortField === 'invoice') {
+        cmp = (a.quote.invoiceNumber || '').localeCompare(b.quote.invoiceNumber || '');
+      } else if (sortField === 'services') {
+        const sa = [...new Set(a.quote.lineItems.map((i: any) => i.serviceStyle))].join(' ');
+        const sb = [...new Set(b.quote.lineItems.map((i: any) => i.serviceStyle))].join(' ');
+        cmp = sa.localeCompare(sb);
+      } else if (sortField === 'pcs') {
+        cmp = getPcs(a.quote) - getPcs(b.quote);
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+
+    return list;
+  }, [resolvedSales, statusFilter, search, minTotal, maxTotal, sortField, sortDir]);
+
+  const toggleSort = useCallback((field: SortField) => {
+    if (sortField === field) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('desc');
+    }
+  }, [sortField]);
+
+  const mobileListData = useMemo((): MobileListDataItem[] => {
+    if (isDesktop) return [];
+    const needsHeaders = sortField === 'client' || sortField === 'status';
+    if (!needsHeaders) {
+      return filtered.map(({ quote, effectiveStatus }, i) => ({ type: 'item' as const, quote, effectiveStatus, queueIndex: i }));
+    }
+    const result: MobileListDataItem[] = [];
+    let lastKey = '';
+    let itemCount = 0;
+    for (const { quote, effectiveStatus } of filtered) {
+      const groupKey = sortField === 'client' ? (quote.personOrganization || 'Unknown') : effectiveStatus;
+      const label = sortField === 'client'
+        ? (quote.personOrganization || 'Unknown')
+        : (STATUS_CONFIG[effectiveStatus]?.label ?? effectiveStatus);
+      if (groupKey !== lastKey) {
+        result.push({ type: 'header', key: `hdr-${groupKey}`, label });
+        lastKey = groupKey;
+      }
+      result.push({ type: 'item', quote, effectiveStatus, queueIndex: itemCount++ });
+    }
+    return result;
+  }, [filtered, isDesktop, sortField]);
+
+  const selectedSales = useMemo(() =>
+    sales.filter(q => selectedIds.has(q.id)),
+    [sales, selectedIds]
+  );
+
+  const toggleSelectAll = useCallback(() => {
+    if (selectedIds.size === filtered.length && filtered.length > 0) {
+      clearSelection();
+    } else {
+      setSelectedIds(new Set(filtered.map(f => f.quote.id)));
+    }
+  }, [filtered, selectedIds, clearSelection]);
+
+  // ── Row actions ──
+  const handleView = useCallback((quote: Quote) => {
+    router.push(`/quote/${quote.id}`);
+  }, [router]);
+
+  const handleTrack = useCallback((quote: Quote) => {
+    if (quote.isLocked) {
+      Alert.alert('Sale Locked', 'This sale is locked and cannot be edited.');
+      return;
+    }
+    router.push({ pathname: '/quote/sales-tracking', params: { id: quote.id } });
+  }, [router]);
+
+  const handleEdit = useCallback((quote: Quote) => {
+    if (quote.isLocked) {
+      Alert.alert('Sale Locked', 'This sale is locked. Unlock it first to edit.');
+      return;
+    }
+    router.push({ pathname: '/quote/edit', params: { id: quote.id } });
+  }, [router]);
+
+  const handleLock = useCallback((quote: Quote) => {
+    setPendingConfirm({
+      title: 'Save & Lock',
+      message: `Lock "${quote.projectName}"? You will need an admin password to unlock it later.`,
+      confirmText: 'Lock',
+      onConfirm: () => lockSale(quote.id),
+    });
+  }, [lockSale]);
+
+  const handleRevert = useCallback((quote: Quote) => {
     if (quote.isLocked) {
       Alert.alert('Sale Locked', 'This sale is locked. Unlock it first to revert.');
       return;
     }
-    Alert.alert(
-      'Revert to Quote',
-      `Are you sure you want to revert "${quote.projectName}" back to a pending quote?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Revert',
-          onPress: () => convertToQuote(quote.id),
-        },
-      ]
-    );
+    setPendingConfirm({
+      title: 'Revert Back',
+      message: `Revert "${quote.projectName}" back to a pending quote?`,
+      confirmText: 'Revert',
+      destructive: true,
+      onConfirm: () => convertToQuote(quote.id),
+    });
   }, [convertToQuote]);
 
-  const handleUnlockSale = useCallback((quote: Quote) => {
-    setOpenMenuId(null);
-    setSelectedUnlockId(quote.id);
+  const handleUnlock = useCallback((quote: Quote) => {
+    setUnlockTarget(quote);
     setUnlockPassword('');
-    setUnlockModalVisible(true);
   }, []);
 
-  const handleSaveAndLock = useCallback((quote: Quote) => {
-    setOpenMenuId(null);
-    Alert.alert(
-      'Save & Lock',
-      `Are you sure you want to lock "${quote.projectName}"? You will need an admin password to unlock it later.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Lock',
-          onPress: () => {
-            lockSale(quote.id);
-            Alert.alert('Success', 'Sale has been locked.');
-          },
-        },
-      ]
-    );
-  }, [lockSale]);
-
   const confirmUnlock = useCallback(() => {
-    if (!selectedUnlockId) return;
+    if (!unlockTarget) return;
     if (!orgAdmin?.adminPassword) {
       Alert.alert('Error', 'No admin password has been set. The organization admin must set a password in their profile first.');
       return;
     }
     if (unlockPassword === orgAdmin.adminPassword) {
-      unlockSale(selectedUnlockId);
-      setUnlockModalVisible(false);
+      unlockSale(unlockTarget.id);
+      setUnlockTarget(null);
       setUnlockPassword('');
-      setSelectedUnlockId(null);
-      Alert.alert('Success', 'Sale unlocked successfully');
     } else {
       Alert.alert('Error', 'Invalid admin password');
     }
-  }, [selectedUnlockId, unlockPassword, orgAdmin, unlockSale]);
+  }, [unlockTarget, unlockPassword, orgAdmin, unlockSale]);
 
-  const [isExporting, setIsExporting] = useState(false);
-
-  const handleExportToSheets = useCallback(async (sale: Quote) => {
-    setOpenMenuId(null);
-    
+  const handleExportSheets = useCallback(async (quote: Quote) => {
     if (!currentUser?.googleSheetsUrl) {
-      Alert.alert(
-        'Setup Required',
-        'Please set up your Google Sheets Web App URL in Profile settings first. Tap "How to set up Google Sheets integration" for instructions.',
-        [{ text: 'OK' }]
-      );
+      Alert.alert('Setup Required', 'Please set up your Google Sheets Web App URL in Profile settings first.');
       return;
     }
-
-    setIsExporting(true);
     try {
-      const result = await exportSingleSaleToSheets(currentUser.googleSheetsUrl, sale);
-      
+      const result = await exportSingleSaleToSheets(currentUser.googleSheetsUrl, quote);
       if (result.success) {
-        markExportedToSheets(sale.id);
+        markExportedToSheets(quote.id);
         Alert.alert('Success', result.message);
       } else {
         Alert.alert('Export Failed', result.message);
@@ -192,611 +639,425 @@ export default function SalesScreen() {
     } catch (error) {
       console.log('Error exporting to sheets:', error);
       Alert.alert('Error', 'Failed to export to Google Sheets. Please try again.');
-    } finally {
-      setIsExporting(false);
     }
   }, [currentUser?.googleSheetsUrl, markExportedToSheets]);
 
-  
-
-  const handleEditSale = useCallback((sale: Quote) => {
-    setOpenMenuId(null);
-    if (sale.isLocked) {
-      Alert.alert('Sale Locked', 'This sale is locked. Unlock it first to edit.');
-      return;
-    }
-    router.push({
-      pathname: '/quote/edit',
-      params: { id: sale.id },
-    });
-  }, [router]);
-
-  const handleExportPDF = useCallback(async (sale: Quote) => {
-    setOpenMenuId(null);
+  const handleExportPDF = useCallback(async (quote: Quote) => {
     try {
-      await generateAndSharePDF(sale, currentUser);
-    } catch (error) {
-      console.log('Error exporting PDF:', error);
-      Alert.alert('Error', 'Failed to export PDF');
+      await generateAndSharePDF(quote, currentUser);
+    } catch (e) {
+      Alert.alert('Error', 'Could not export PDF.');
     }
   }, [currentUser]);
 
-  const handlePrint = useCallback(async (sale: Quote) => {
-    setOpenMenuId(null);
+  const handlePrint = useCallback(async (quote: Quote) => {
     try {
-      await printQuote(sale, currentUser);
-    } catch (error) {
-      console.log('Error printing:', error);
-      Alert.alert('Error', 'Failed to print');
+      await printQuote(quote, currentUser);
+    } catch (e) {
+      Alert.alert('Error', 'Could not print.');
     }
   }, [currentUser]);
 
-  const handleDeleteFromMenu = useCallback((quote: Quote) => {
-    setOpenMenuId(null);
-    Alert.alert(
-      'Delete Sale',
-      `Are you sure you want to delete "${quote.projectName}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => deleteQuote(quote.id),
-        },
-      ]
-    );
-  }, [deleteQuote]);
-
-  const toggleMenu = useCallback((id: string, e: any) => {
-    e.stopPropagation();
-    setOpenMenuId(prev => prev === id ? null : id);
+  const handleDelete = useCallback((quote: Quote) => {
+    setDeleteTarget(quote);
   }, []);
 
-  const closeMenu = useCallback(() => {
-    setOpenMenuId(null);
-  }, []);
-
-  const toggleSelection = useCallback((id: string) => {
-    setSelectedSales(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
-
-  const toggleSelectAll = useCallback(() => {
-    if (selectedSales.size === displayedSales.length) {
-      setSelectedSales(new Set());
-    } else {
-      setSelectedSales(new Set(displayedSales.map(s => s.id)));
-    }
-  }, [displayedSales, selectedSales.size]);
-
-  const exitSelectionMode = useCallback(() => {
-    setSelectionMode(false);
-    setSelectedSales(new Set());
-  }, []);
-
-  const handleBulkExportToSheets = useCallback(async () => {
-    if (selectedSales.size === 0) {
-      Alert.alert('No Selection', 'Please select at least one sale to export.');
-      return;
-    }
-
+  // ── Bulk actions ──
+  const handleBulkExportSheets = useCallback(async () => {
     if (!currentUser?.googleSheetsUrl) {
-      Alert.alert(
-        'Setup Required',
-        'Please set up your Google Sheets Web App URL in Profile settings first.',
-        [{ text: 'OK' }]
-      );
+      Alert.alert('Setup Required', 'Please set up your Google Sheets Web App URL in Profile settings first.');
       return;
     }
-
-    setIsBulkExporting(true);
-    let successCount = 0;
-    let failCount = 0;
-
-    const salesToExport = sales.filter(s => selectedSales.has(s.id));
-
-    for (const sale of salesToExport) {
+    let ok = 0, fail = 0;
+    for (const sale of selectedSales) {
       try {
         const result = await exportSingleSaleToSheets(currentUser.googleSheetsUrl, sale);
-        if (result.success) {
-          markExportedToSheets(sale.id);
-          successCount++;
-        } else {
-          failCount++;
-        }
-      } catch (error) {
-        console.log('Error exporting sale:', sale.id, error);
-        failCount++;
-      }
+        if (result.success) { markExportedToSheets(sale.id); ok++; } else { fail++; }
+      } catch { fail++; }
     }
+    clearSelection();
+    Alert.alert(fail === 0 ? 'Success' : 'Partial Success', `Exported ${ok} sale${ok !== 1 ? 's' : ''}${fail ? `, ${fail} failed` : ''}.`);
+  }, [selectedSales, currentUser?.googleSheetsUrl, markExportedToSheets, clearSelection]);
 
-    setIsBulkExporting(false);
-    exitSelectionMode();
-
-    if (failCount === 0) {
-      Alert.alert('Success', `Successfully exported ${successCount} sale${successCount > 1 ? 's' : ''} to Google Sheets.`);
-    } else {
-      Alert.alert('Partial Success', `Exported ${successCount} sale${successCount > 1 ? 's' : ''}, ${failCount} failed.`);
+  const handleBulkExportPDF = useCallback(async () => {
+    try {
+      for (const q of selectedSales) await generateAndSharePDF(q, currentUser);
+    } catch {
+      Alert.alert('Error', 'Could not export one or more PDFs.');
     }
-  }, [selectedSales, currentUser?.googleSheetsUrl, sales, markExportedToSheets, exitSelectionMode]);
+  }, [selectedSales, currentUser]);
 
-  const handleSalePress = useCallback((sale: Quote) => {
-    router.push({
-      pathname: '/quote/[id]',
-      params: { id: sale.id },
-    });
-  }, [router]);
-
-  const handleTrackSales = useCallback((sale: Quote, e: any) => {
-    e.stopPropagation();
-    if (sale.isLocked) {
-      Alert.alert('Sale Locked', 'This sale is locked and cannot be edited.');
-      return;
+  const handleBulkPrint = useCallback(async () => {
+    if (selectedSales.length > 1) {
+      Alert.alert('Print', `Print ${selectedSales.length} sales one at a time?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Print All', onPress: async () => { for (const q of selectedSales) await printQuote(q, currentUser); } },
+      ]);
+    } else if (selectedSales.length === 1) {
+      await printQuote(selectedSales[0], currentUser);
     }
-    router.push({
-      pathname: '/quote/sales-tracking',
-      params: { id: sale.id },
-    });
-  }, [router]);
+  }, [selectedSales, currentUser]);
 
-  const generateExportCSV = useCallback(() => {
+  const handleBulkDelete = useCallback(() => setBulkDeleteVisible(true), []);
+
+  const confirmBulkDelete = useCallback(() => {
+    const deletable = selectedSales.filter(q => !q.isLocked);
+    const lockedCount = selectedSales.length - deletable.length;
+    deletable.forEach(q => deleteQuote(q.id));
+    clearSelection();
+    setBulkDeleteVisible(false);
+    if (lockedCount > 0) {
+      Alert.alert('Some Sales Skipped', `${lockedCount} locked sale${lockedCount !== 1 ? 's were' : ' was'} not deleted. Unlock them first.`);
+    }
+  }, [selectedSales, deleteQuote, clearSelection]);
+
+  const selectedLockedCount = useMemo(() => selectedSales.filter(q => q.isLocked).length, [selectedSales]);
+
+  // ── CSV export (header button) ──
+  const handleExportCSV = useCallback(async () => {
     if (sales.length === 0) {
       Alert.alert('No Data', 'No sales to export.');
       return;
     }
-
-    let csv = 'Invoice #,Client,Project,Service Type,Order Date,Completed Date,Quantity,Quoted Total,Amount Collected,Actual Product Cost,Vendor(s),Actual Service Cost,Applicator,Service Fee Cost,Service Fee Profit,Other Costs,Online Fee,Sales Tax,Card Fee,Actual COG,Profit,Notes\n';
-    
+    let csv = 'Invoice #,Client,Project,Order Date,Quantity,Revenue,Profit\n';
     sales.forEach(sale => {
-      const serviceFeesCost = sale.salesData?.actualServiceFeesCost ?? 0;
-      const serviceFeesProfit = sale.salesData?.actualServiceFeesProfit ?? 0;
-      const onlineFee = sale.salesData?.actualOnlineFee ?? 0;
-      const salesTax = sale.salesData?.actualSalesTax ?? 0;
-      const cardFee = sale.salesData?.actualCardFee ?? 0;
-      const actualCOG = sale.salesData 
-        ? sale.salesData.actualProductCost + sale.salesData.actualServiceCost + serviceFeesCost + sale.salesData.actualOtherCosts + onlineFee + salesTax + cardFee
-        : sale.calculations.cogTotal;
-      const collected = sale.salesData?.amountCollected || sale.calculations.total;
-      const profit = collected - actualCOG + serviceFeesProfit;
-      
       const row = [
         sale.invoiceNumber || 'N/A',
         `"${sale.personOrganization}"`,
         `"${sale.projectName}"`,
-        sale.lineItems[0]?.serviceStyle || 'N/A',
         sale.orderDate,
-        sale.salesData?.completedDate || 'N/A',
-        sale.calculations.totalQuantity,
-        sale.calculations.total.toFixed(2),
-        collected.toFixed(2),
-        (sale.salesData?.actualProductCost || sale.calculations.productCostTotal).toFixed(2),
-        `"${sale.salesData?.productVendors?.join(', ') || ''}"`,
-        (sale.salesData?.actualServiceCost || sale.calculations.serviceCostTotal).toFixed(2),
-        `"${sale.salesData?.applicator || ''}"`,
-        serviceFeesCost.toFixed(2),
-        serviceFeesProfit.toFixed(2),
-        (sale.salesData?.actualOtherCosts || 0).toFixed(2),
-        onlineFee.toFixed(2),
-        salesTax.toFixed(2),
-        cardFee.toFixed(2),
-        actualCOG.toFixed(2),
-        profit.toFixed(2),
-        `"${sale.salesData?.notes || ''}"`,
+        getPcs(sale),
+        getSalesRevenue(sale).toFixed(2),
+        getSalesProfit(sale).toFixed(2),
       ].join(',');
       csv += row + '\n';
     });
-
-    return csv;
-  }, [sales]);
-
-  const handleExport = useCallback(async () => {
-    const csv = generateExportCSV();
-    if (!csv) return;
-
     try {
-      await Share.share({
-        message: csv,
-        title: 'Sales Export',
-      });
+      await Share.share({ message: csv, title: 'Sales Export' });
     } catch (error) {
       console.log('Error exporting:', error);
       Alert.alert('Error', 'Failed to export sales data');
     }
-  }, [generateExportCSV]);
+  }, [sales]);
 
-  
+  const activeFilterCount = [minTotal, maxTotal].filter(Boolean).length;
 
-  const getLineItemStats = (item: LineItem) => {
-    const quantity = Object.values(item.sizes).reduce((sum, val) => sum + val, 0);
-    const markupTotal = item.markupEach * quantity;
-    const productCost = item.productCostEach * quantity;
-    const serviceCost = item.serviceCostEach * quantity;
-    const serviceFee = item.serviceFeeEach * quantity;
-    const cogTotal = productCost + serviceCost + serviceFee;
-    const subtotal = cogTotal + markupTotal;
-    const perPiece = quantity > 0 ? subtotal / quantity : 0;
-    return { quantity, markupTotal, perPiece, subtotal };
-  };
-
-  const renderSaleItem = useCallback(({ item }: { item: Quote }) => {
-    const profit = getSalesProfit(item);
-    const isPositive = profit >= 0;
-    const isLocked = item.isLocked === true;
-    const isSelected = selectedSales.has(item.id);
-    
-    
-    return (
-      <TouchableOpacity 
-        style={[styles.saleCard, isLocked && styles.saleCardLocked, isSelected && styles.saleCardSelected]}
-        onPress={() => selectionMode ? toggleSelection(item.id) : handleSalePress(item)}
-        onLongPress={() => {
-          if (!selectionMode) {
-            setSelectionMode(true);
-            setSelectedSales(new Set([item.id]));
-          }
-        }}
-        activeOpacity={0.7}
-      >
-        <View style={styles.cardHeader}>
-          <View style={styles.headerLeft}>
-            {selectionMode && (
-              <View style={styles.checkboxContainer}>
-                {isSelected ? (
-                  <CheckSquare size={22} color={Colors.light.tint} />
-                ) : (
-                  <Square size={22} color={Colors.light.border} />
-                )}
-              </View>
-            )}
-            {isLocked ? (
-              <View style={styles.lockedBadge}>
-                <Lock size={12} color="#fff" />
-                <Text style={styles.lockedBadgeText}>LOCKED</Text>
-              </View>
-            ) : (
-              <View style={styles.saleBadge}>
-                <CheckCircle size={12} color="#fff" />
-                <Text style={styles.saleBadgeText}>SALE</Text>
-              </View>
-            )}
-            <View style={styles.invoiceBadge}>
-              <FileText size={12} color={Colors.light.tint} />
-              <Text style={styles.invoiceText}>#{item.invoiceNumber || 'PENDING'}</Text>
-            </View>
-            {item.exportedToSheets && (
-              <View style={styles.sheetsBadge}>
-                <Sheet size={10} color={Colors.light.success} />
-              </View>
-            )}
-          </View>
-          <View style={styles.headerRight}>
-            {!isLocked && (
-              <TouchableOpacity
-                style={styles.trackSalesBtn}
-                onPress={(e) => handleTrackSales(item, e)}
-              >
-                <BarChart3 size={12} color="#fff" />
-                <Text style={styles.trackSalesBtnText}>Track</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={styles.menuBtn}
-              onPress={(e) => toggleMenu(item.id, e)}
-            >
-              <MoreVertical size={18} color={Colors.light.textSecondary} />
-            </TouchableOpacity>
-          </View>
-          {openMenuId === item.id && (
-            <View style={styles.menuOverlay}>
-              {isLocked ? (
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  onPress={() => handleUnlockSale(item)}
-                >
-                  <Unlock size={16} color={Colors.light.success} />
-                  <Text style={[styles.menuItemText, { color: Colors.light.success }]}>Unlock Sale</Text>
-                </TouchableOpacity>
-              ) : (
-                <>
-                  <TouchableOpacity
-                    style={styles.menuItem}
-                    onPress={() => handleEditSale(item)}
-                  >
-                    <Edit3 size={16} color={Colors.light.text} />
-                    <Text style={styles.menuItemText}>Edit Quote</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.menuItem}
-                    onPress={() => handleSaveAndLock(item)}
-                  >
-                    <Lock size={16} color={Colors.light.tint} />
-                    <Text style={[styles.menuItemText, { color: Colors.light.tint }]}>Save & Lock</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.menuItem}
-                    onPress={() => handleConvertToQuote(item)}
-                  >
-                    <RotateCcw size={16} color={Colors.light.textSecondary} />
-                    <Text style={[styles.menuItemText, { color: Colors.light.textSecondary }]}>Revert Back</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-              <TouchableOpacity
-                style={[styles.menuItem, isExporting && styles.menuItemDisabled]}
-                onPress={() => handleExportToSheets(item)}
-                disabled={isExporting}
-              >
-                <Sheet size={16} color={Colors.light.success} />
-                <Text style={[styles.menuItemText, { color: Colors.light.success }]}>
-                  {isExporting ? 'Exporting...' : 'Export to Sheets'}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => handleExportPDF(item)}
-              >
-                <FileDown size={16} color={Colors.light.text} />
-                <Text style={styles.menuItemText}>Export PDF</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => handlePrint(item)}
-              >
-                <Printer size={16} color={Colors.light.text} />
-                <Text style={styles.menuItemText}>Print</Text>
-              </TouchableOpacity>
-              {!isLocked && (
-                <TouchableOpacity
-                  style={[styles.menuItem, styles.menuItemLast]}
-                  onPress={() => handleDeleteFromMenu(item)}
-                >
-                  <Trash2 size={16} color={Colors.light.error} />
-                  <Text style={[styles.menuItemText, { color: Colors.light.error }]}>Delete</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-        </View>
-
-        <Text style={styles.projectName}>{item.projectName}</Text>
-        <Text style={styles.clientDateLine} numberOfLines={1}>
-          <Text style={styles.clientName}>{item.personOrganization}</Text>
-          <Text style={styles.dateSeparator}> • </Text>
-          <Text style={styles.dateText}>{formatDate(item.orderDate)}</Text>
-        </Text>
-
-        <View style={styles.lineItemsContainer}>
-          {item.lineItems.map((lineItem, index) => {
-            const stats = getLineItemStats(lineItem);
-            const showBadge = item.lineItems.length > 1;
-            
-            return (
-              <View key={lineItem.id} style={[
-                styles.lineItemRow,
-                index > 0 && styles.lineItemRowBorder
-              ]}>
-                <View style={styles.lineItemHeader}>
-                  {showBadge && (
-                    <View style={styles.lineIndexBadge}>
-                      <Text style={styles.lineIndexText}>{index + 1}</Text>
-                    </View>
-                  )}
-                  <View style={styles.lineItemInfo}>
-                    <Text style={styles.lineItemDesignName} numberOfLines={1}>
-                      {lineItem.designName || 'Untitled Design'}
-                    </Text>
-                    <Text style={styles.applicatorService}>
-                      {lineItem.applicator || 'No Applicator'} <Text style={styles.serviceDot}>•</Text> {lineItem.serviceStyle}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.lineItemStats}>
-                  <View style={styles.lineStatItem}>
-                    <Text style={styles.lineStatLabel}>Qty</Text>
-                    <Text style={styles.lineStatValue}>{stats.quantity}</Text>
-                  </View>
-                  <View style={styles.lineStatItem}>
-                    <Text style={styles.lineStatLabel}>Markup</Text>
-                    <Text style={styles.lineStatValueMarkup}>{formatCurrency(stats.markupTotal)}</Text>
-                  </View>
-                  <View style={styles.lineStatItem}>
-                    <Text style={styles.lineStatLabel}>Per Piece</Text>
-                    <Text style={styles.lineStatValue}>{formatCurrency(stats.perPiece)}</Text>
-                  </View>
-                  <View style={styles.lineStatItem}>
-                    <Text style={styles.lineStatLabel}>Total</Text>
-                    <Text style={styles.lineStatValueTotal}>{formatCurrency(stats.subtotal)}</Text>
-                  </View>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-
-        <View style={styles.cardFooter}>
-          <View style={styles.footerStats}>
-            <View style={styles.footerStatItem}>
-              <Text style={styles.footerStatLabel}>Total Qty</Text>
-              <Text style={styles.footerStatValue}>{item.calculations.totalQuantity}</Text>
-            </View>
-            <View style={styles.footerStatItem}>
-              <Text style={styles.footerStatLabel}>Collected</Text>
-              <Text style={styles.footerStatValue}>{formatCurrency(item.salesData?.amountCollected || item.calculations.total)}</Text>
-            </View>
-          </View>
-          <View style={[styles.profitBox, !isPositive && styles.profitBoxNegative]}>
-            <Text style={styles.profitLabel}>Profit</Text>
-            <View style={styles.profitRow}>
-              {isPositive ? (
-                <TrendingUp size={14} color="#fff" />
-              ) : (
-                <TrendingDown size={14} color="#fff" />
-              )}
-              <Text style={styles.profitValue}>{formatCurrency(profit)}</Text>
-            </View>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  }, [handleSalePress, getSalesProfit, handleConvertToQuote, handleEditSale, handleExportPDF, handleDeleteFromMenu, toggleMenu, openMenuId, handleTrackSales, handleUnlockSale, handleExportToSheets, handleSaveAndLock, selectionMode, selectedSales, toggleSelection]);
-
-  const renderEmptyList = () => (
-    <View style={styles.emptyContainer}>
-      <DollarSign size={48} color={Colors.light.border} />
-      <Text style={styles.emptyTitle}>No Sales Yet</Text>
-      <Text style={styles.emptyText}>
-        Convert quotes to sales from the Quote Details page to track actual costs and profits.
-      </Text>
-    </View>
+  const SortBtn = ({ field, label }: { field: SortField; label: string }) => (
+    <TouchableOpacity style={styles.sortBtn} onPress={() => toggleSort(field)}>
+      <Text style={[styles.sortBtnText, sortField === field && styles.sortBtnTextActive]}>{label}</Text>
+      <ArrowUpDown size={11} color={sortField === field ? Colors.light.tint : 'rgba(255,255,255,0.35)'} />
+    </TouchableOpacity>
   );
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading sales...</Text>
-      </View>
-    );
-  }
-
   return (
-    <Pressable style={styles.container} onPress={closeMenu}>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <Text style={styles.title}>Quotes</Text>
+          <TouchableOpacity style={styles.startProjectBtn} onPress={handleExportCSV}>
+            <Download size={15} color="#fff" />
+            <Text style={styles.startProjectBtnText}>Export CSV</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Stats Bar */}
+        <View style={styles.statsBar}>
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: '#16A34A' }]} numberOfLines={1}>
+              {formatCurrency(totals.revenue)}
+            </Text>
+            <Text style={styles.statLabel}>Revenue</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: totals.profit >= 0 ? Colors.light.tint : '#DC2626' }]} numberOfLines={1}>
+              {formatCurrency(totals.profit)}
+            </Text>
+            <Text style={styles.statLabel}>Profit</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: Colors.light.text }]}>
+              {resolvedSales.length}
+            </Text>
+            <Text style={styles.statLabel}>Total Sales</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: Colors.light.tint }]}>
+              {(statusCounts['active'] ?? 0) + (statusCounts['production_started'] ?? 0)}
+            </Text>
+            <Text style={styles.statLabel}>In Production</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: '#16A34A' }]}>
+              {statusCounts['completed'] ?? 0}
+            </Text>
+            <Text style={styles.statLabel}>Completed</Text>
+          </View>
+        </View>
+
+        {/* Status Pills */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.pillsScroll}
+          contentContainerStyle={styles.pillsRow}
+        >
+          {visiblePills.map(pill => {
+            const count = statusCounts[pill.key] ?? 0;
+            const active = statusFilter === pill.key;
+            const cfg = pill.key !== 'all' ? STATUS_CONFIG[pill.key as QuoteStatus] : null;
+            return (
+              <TouchableOpacity
+                key={pill.key}
+                style={[
+                  styles.pill,
+                  active && styles.pillActive,
+                  active && cfg ? { backgroundColor: cfg.bg, borderColor: cfg.borderColor } : null,
+                ]}
+                onPress={() => setStatusFilter(pill.key as any)}
+              >
+                <Text style={[
+                  styles.pillText,
+                  active && styles.pillTextActive,
+                  active && cfg ? { color: cfg.color } : null,
+                ]}>
+                  {pill.label}
+                </Text>
+                <View style={[styles.pillCount, active && cfg ? { backgroundColor: cfg.borderColor } : null]}>
+                  <Text style={[styles.pillCountText, active && cfg ? { color: cfg.color } : null]}>{count}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Search + Filter Row */}
+        <View style={styles.searchRow}>
+          <View style={styles.searchBox}>
+            <Search size={15} color={Colors.light.textSecondary} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search client, quote, project, invoice…"
+              placeholderTextColor={Colors.light.textSecondary}
+              value={search}
+              onChangeText={setSearch}
+              clearButtonMode="while-editing"
+            />
+            {search ? (
+              <TouchableOpacity onPress={() => setSearch('')}>
+                <X size={15} color={Colors.light.textSecondary} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+          <TouchableOpacity
+            style={[styles.filterBtn, showFilters && styles.filterBtnActive]}
+            onPress={() => setShowFilters(v => !v)}
+          >
+            <SlidersHorizontal size={16} color={showFilters ? Colors.light.tint : Colors.light.textSecondary} />
+            {activeFilterCount > 0 ? (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+              </View>
+            ) : null}
+          </TouchableOpacity>
+        </View>
+
+        {/* Advanced Filters Panel */}
+        {showFilters && (
+          <View style={styles.filtersPanel}>
+            <Text style={styles.filtersPanelTitle}>ADVANCED FILTERS</Text>
+            <View style={styles.filtersRow}>
+              <View style={styles.filterField}>
+                <Text style={styles.filterLabel}>Min Revenue ($)</Text>
+                <TextInput
+                  style={styles.filterInput}
+                  placeholder="0"
+                  placeholderTextColor={Colors.light.textSecondary}
+                  value={minTotal}
+                  onChangeText={setMinTotal}
+                  keyboardType="numeric"
+                />
+              </View>
+              <View style={styles.filterField}>
+                <Text style={styles.filterLabel}>Max Revenue ($)</Text>
+                <TextInput
+                  style={styles.filterInput}
+                  placeholder="No limit"
+                  placeholderTextColor={Colors.light.textSecondary}
+                  value={maxTotal}
+                  onChangeText={setMaxTotal}
+                  keyboardType="numeric"
+                />
+              </View>
+              <TouchableOpacity
+                style={styles.clearFiltersBtn}
+                onPress={() => { setMinTotal(''); setMaxTotal(''); }}
+              >
+                <Text style={styles.clearFiltersBtnText}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Desktop: Table header */}
+        {isDesktop && (
+          <View style={styles.tableHeader}>
+            <View style={styles.colCheckbox}>
+              <Checkbox
+                checked={selectedIds.size > 0 && selectedIds.size === filtered.length}
+                indeterminate={selectedIds.size > 0 && selectedIds.size < filtered.length}
+                onToggle={toggleSelectAll}
+              />
+            </View>
+            <View style={styles.colStatus}><SortBtn field="status" label="Status" /></View>
+            <View style={styles.colOrderDate}><SortBtn field="date" label="Order Date" /></View>
+            <View style={styles.colDueDate}><SortBtn field="inHands" label="Due Date" /></View>
+            <View style={styles.colClient}><SortBtn field="client" label="Client" /></View>
+            <View style={styles.colProject}><SortBtn field="project" label="Project" /></View>
+            <View style={styles.colQuote}><SortBtn field="invoice" label="Quote #" /></View>
+            <View style={styles.colServices}><SortBtn field="services" label="Service(s)" /></View>
+            <View style={styles.colPcs}><SortBtn field="pcs" label="# PCS" /></View>
+            <View style={styles.colRevenue}><SortBtn field="revenue" label="Revenue" /></View>
+            <View style={styles.colProfit}><SortBtn field="profit" label="Profit" /></View>
+            <View style={styles.colActions}><Text style={styles.thText}>Actions</Text></View>
+          </View>
+        )}
+      </View>
+
+      {/* Bulk action bar */}
       {selectionMode && (
-        <View style={styles.selectionBar}>
-          <View style={styles.selectionBarLeft}>
-            <TouchableOpacity style={styles.closeSelectionBtn} onPress={exitSelectionMode}>
-              <X size={20} color={Colors.light.text} />
-            </TouchableOpacity>
-            <Text style={styles.selectionCount}>{selectedSales.size} selected</Text>
-          </View>
-          <View style={styles.selectionBarRight}>
-            <TouchableOpacity style={styles.selectAllBtn} onPress={toggleSelectAll}>
-              <Text style={styles.selectAllText}>
-                {selectedSales.size === filteredSales.length ? 'Deselect All' : 'Select All'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.bulkExportBtn, (isBulkExporting || selectedSales.size === 0) && styles.bulkExportBtnDisabled]} 
-              onPress={handleBulkExportToSheets}
-              disabled={isBulkExporting || selectedSales.size === 0}
-            >
-              <Sheet size={16} color="#fff" />
-              <Text style={styles.bulkExportText}>
-                {isBulkExporting ? 'Exporting...' : 'Export'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      <View style={styles.searchContainer}>
-        <Search size={20} color={Colors.light.textSecondary} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search by client, project, or invoice..."
-          placeholderTextColor={Colors.light.textSecondary}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
+        <BulkActionBar
+          count={selectedIds.size}
+          onClear={clearSelection}
+          onExportPDF={handleBulkExportPDF}
+          onExportSheets={handleBulkExportSheets}
+          onPrint={handleBulkPrint}
+          onDelete={handleBulkDelete}
         />
-      </View>
-
-      <View style={styles.statsBar}>
-        <View style={styles.statsItem}>
-          <Text style={styles.statsValue}>{sales.length}</Text>
-          <Text style={styles.statsLabel}>Total Sales</Text>
-        </View>
-        <View style={styles.statsBarDivider} />
-        <View style={styles.statsItem}>
-          <Text style={styles.statsValue}>{formatCurrency(totalStats.totalRevenue)}</Text>
-          <Text style={styles.statsLabel}>Revenue</Text>
-        </View>
-        <View style={styles.statsBarDivider} />
-        <View style={styles.statsItem}>
-          <Text style={[styles.statsValue, totalStats.totalProfit >= 0 ? styles.profitText : styles.lossText]}>
-            {formatCurrency(totalStats.totalProfit)}
-          </Text>
-          <Text style={styles.statsLabel}>Profit</Text>
-        </View>
-      </View>
-
-      {sales.length > 0 && (
-        <TouchableOpacity style={styles.exportButton} onPress={handleExport}>
-          <Download size={16} color="#fff" />
-          <Text style={styles.exportButtonText}>Export Sales Data</Text>
-        </TouchableOpacity>
       )}
 
-      <View style={styles.tabsContainer}>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'open' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('open')}
-        >
-          <Text style={[styles.tabButtonText, activeTab === 'open' && styles.tabButtonTextActive]}>
-            Open ({openSales.length})
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'archived' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('archived')}
-        >
-          <Text style={[styles.tabButtonText, activeTab === 'archived' && styles.tabButtonTextActive]}>
-            Archived ({archivedSales.length})
-          </Text>
-        </TouchableOpacity>
-      </View>
+      {/* Mobile sort bar */}
+      {!isDesktop && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mobileSortScroll} contentContainerStyle={styles.mobileSortRow}>
+          <Text style={styles.mobileSortLabel}>Sort:</Text>
+          {(['status', 'date', 'inHands', 'client', 'project', 'invoice', 'services', 'pcs', 'revenue', 'profit'] as SortField[]).map(f => (
+            <TouchableOpacity key={f} style={[styles.mobileSortBtn, sortField === f && styles.mobileSortBtnActive]} onPress={() => toggleSort(f)}>
+              <Text style={[styles.mobileSortBtnText, sortField === f && styles.mobileSortBtnTextActive]}>
+                {f === 'date' ? 'Order Date' : f === 'inHands' ? 'Due Date' : f === 'client' ? 'Client' : f === 'project' ? 'Project' : f === 'invoice' ? 'Quote #' : f === 'services' ? 'Service(s)' : f === 'pcs' ? '# PCS' : f === 'revenue' ? 'Revenue' : f === 'profit' ? 'Profit' : 'Status'}
+                {sortField === f ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
 
-      <FlatList
-        data={displayedSales}
-        keyExtractor={(item) => item.id}
-        renderItem={renderSaleItem}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={renderEmptyList}
-      />
+      {isLoading ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyText}>Loading sales…</Text>
+        </View>
+      ) : filtered.length === 0 ? (
+        <View style={styles.emptyState}>
+          <FileText size={36} color={Colors.light.border} />
+          <Text style={styles.emptyTitle}>No sales found</Text>
+          <Text style={styles.emptyText}>
+            {search || statusFilter !== 'all' || minTotal || maxTotal
+              ? 'Try adjusting your filters.'
+              : 'Convert a quote to a sale to see it here.'}
+          </Text>
+        </View>
+      ) : isDesktop ? (
+        <FlatList
+          data={filtered}
+          keyExtractor={({ quote }) => quote.id}
+          contentContainerStyle={styles.tableBody}
+          ItemSeparatorComponent={() => <View style={styles.tableDivider} />}
+          renderItem={({ item: { quote, effectiveStatus }, index: _rowIndex }) => (
+            <SaleRow
+              quote={quote}
+              effectiveStatus={effectiveStatus}
+              index={_rowIndex}
+              onPress={() => handleView(quote)}
+              onTrack={() => handleTrack(quote)}
+              onDelete={() => handleDelete(quote)}
+              onRevert={() => handleRevert(quote)}
+              onEdit={() => handleEdit(quote)}
+              onLock={() => handleLock(quote)}
+              onUnlock={() => handleUnlock(quote)}
+              onExportPDF={() => handleExportPDF(quote)}
+              onExportSheets={() => handleExportSheets(quote)}
+              onPrint={() => handlePrint(quote)}
+              isDesktop={true}
+              isSelected={selectedIds.has(quote.id)}
+              onToggleSelect={() => toggleSelect(quote.id)}
+              selectionMode={selectionMode}
+            />
+          )}
+        />
+      ) : (
+        <FlatList
+          data={mobileListData}
+          keyExtractor={(item) => item.type === 'header' ? item.key : item.quote.id}
+          contentContainerStyle={styles.cardList}
+          renderItem={({ item }) => {
+            if (item.type === 'header') {
+              return (
+                <View style={styles.mobileSectionHeader}>
+                  <Text style={styles.mobileSectionHeaderText}>{item.label}</Text>
+                </View>
+              );
+            }
+            const { quote, effectiveStatus, queueIndex } = item;
+            return (
+              <SaleRow
+                quote={quote}
+                effectiveStatus={effectiveStatus}
+                index={queueIndex}
+                onPress={() => handleView(quote)}
+                onTrack={() => handleTrack(quote)}
+                onDelete={() => handleDelete(quote)}
+                onRevert={() => handleRevert(quote)}
+                onEdit={() => handleEdit(quote)}
+                onLock={() => handleLock(quote)}
+                onUnlock={() => handleUnlock(quote)}
+                onExportPDF={() => handleExportPDF(quote)}
+                onExportSheets={() => handleExportSheets(quote)}
+                onPrint={() => handlePrint(quote)}
+                isDesktop={false}
+                isSelected={selectedIds.has(quote.id)}
+                onToggleSelect={() => toggleSelect(quote.id)}
+                selectionMode={selectionMode}
+              />
+            );
+          }}
+        />
+      )}
 
-      <Modal
-        visible={unlockModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setUnlockModalVisible(false)}
-      >
+      {/* Unlock password modal */}
+      <Modal visible={!!unlockTarget} transparent animationType="fade" onRequestClose={() => setUnlockTarget(null)}>
         <View style={styles.unlockModalOverlay}>
           <View style={styles.unlockModalContent}>
             <View style={styles.unlockModalIcon}>
-              <Lock size={32} color={Colors.light.tint} />
+              <Lock size={28} color={Colors.light.tint} />
             </View>
             <Text style={styles.unlockModalTitle}>Unlock Sale</Text>
-            <Text style={styles.unlockModalMessage}>
-              Enter organization admin password to unlock this sale.
-            </Text>
+            <Text style={styles.unlockModalMessage}>Enter the admin password to unlock this sale for editing.</Text>
             <TextInput
               style={styles.unlockPasswordInput}
-              value={unlockPassword}
-              onChangeText={setUnlockPassword}
-              placeholder="Admin Password"
+              placeholder="Admin password"
               placeholderTextColor={Colors.light.textSecondary}
               secureTextEntry
+              value={unlockPassword}
+              onChangeText={setUnlockPassword}
+              autoFocus
             />
             <View style={styles.unlockModalButtons}>
-              <TouchableOpacity
-                style={styles.unlockCancelBtn}
-                onPress={() => {
-                  setUnlockModalVisible(false);
-                  setUnlockPassword('');
-                }}
-              >
+              <TouchableOpacity style={styles.unlockCancelBtn} onPress={() => setUnlockTarget(null)}>
                 <Text style={styles.unlockCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.unlockConfirmBtn}
-                onPress={confirmUnlock}
-              >
+              <TouchableOpacity style={styles.unlockConfirmBtn} onPress={confirmUnlock}>
                 <Unlock size={16} color="#fff" />
                 <Text style={styles.unlockConfirmText}>Unlock</Text>
               </TouchableOpacity>
@@ -804,569 +1065,192 @@ export default function SalesScreen() {
           </View>
         </View>
       </Modal>
-    </Pressable>
+
+      <ConfirmDialog
+        visible={!!pendingConfirm}
+        title={pendingConfirm?.title ?? ''}
+        message={pendingConfirm?.message ?? ''}
+        confirmText={pendingConfirm?.confirmText ?? 'Confirm'}
+        cancelText="Cancel"
+        confirmDestructive={pendingConfirm?.destructive}
+        onConfirm={() => { pendingConfirm?.onConfirm(); setPendingConfirm(null); }}
+        onCancel={() => setPendingConfirm(null)}
+      />
+
+      <ConfirmDialog
+        visible={!!deleteTarget}
+        title="Are you sure?"
+        message={deleteTarget ? `Delete "${deleteTarget.projectName}"? This cannot be undone.` : ''}
+        confirmText="Yes, Delete"
+        cancelText="No"
+        confirmDestructive
+        onConfirm={() => {
+          if (deleteTarget) deleteQuote(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
+      <ConfirmDialog
+        visible={bulkDeleteVisible}
+        title="Delete Selected Sales?"
+        message={`Permanently delete ${selectedIds.size - selectedLockedCount} sale${(selectedIds.size - selectedLockedCount) !== 1 ? 's' : ''}? This cannot be undone.${selectedLockedCount > 0 ? ` (${selectedLockedCount} locked sale${selectedLockedCount !== 1 ? 's' : ''} will be skipped.)` : ''}`}
+        confirmText="Delete All"
+        cancelText="Cancel"
+        confirmDestructive
+        onConfirm={confirmBulkDelete}
+        onCancel={() => setBulkDeleteVisible(false)}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.light.background,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: Colors.light.textSecondary,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.light.surface,
-    marginHorizontal: 16,
-    marginTop: 16,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    fontSize: 15,
-    color: Colors.light.text,
-  },
-  statsBar: {
-    flexDirection: 'row',
-    backgroundColor: Colors.light.surface,
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 14,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-  },
-  statsItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statsBarDivider: {
-    width: 1,
-    backgroundColor: Colors.light.border,
-    marginHorizontal: 8,
-  },
-  statsValue: {
-    fontSize: 16,
-    fontWeight: '700' as const,
-    color: Colors.light.tint,
-  },
-  statsLabel: {
-    fontSize: 11,
-    color: Colors.light.textSecondary,
-    marginTop: 2,
-  },
-  profitText: {
-    color: Colors.light.success,
-  },
-  lossText: {
-    color: Colors.light.error,
-  },
-  exportButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.light.tint,
-    marginHorizontal: 16,
-    marginTop: 12,
-    paddingVertical: 12,
-    borderRadius: 10,
-    gap: 8,
-  },
-  exportButtonText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: '#fff',
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  saleCard: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  saleBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.light.success,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 5,
-    gap: 4,
-  },
-  saleBadgeText: {
-    fontSize: 10,
-    fontWeight: '700' as const,
-    color: '#fff',
-  },
-  invoiceBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.light.highlightBg,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 5,
-    gap: 4,
-  },
-  invoiceText: {
-    fontSize: 11,
-    fontWeight: '600' as const,
-    color: Colors.light.tint,
-  },
-  trackSalesBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.light.tint,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 5,
-    gap: 4,
-  },
-  trackSalesBtnText: {
-    fontSize: 11,
-    fontWeight: '600' as const,
-    color: '#fff',
-  },
-  menuBtn: {
-    padding: 6,
-  },
-  menuOverlay: {
-    position: 'absolute',
-    top: 36,
-    right: 30,
-    backgroundColor: Colors.light.surface,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    zIndex: 100,
-    minWidth: 160,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    gap: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-  },
-  menuItemLast: {
-    borderBottomWidth: 0,
-  },
-  menuItemText: {
-    fontSize: 14,
-    fontWeight: '500' as const,
-    color: Colors.light.text,
-  },
-  menuItemDisabled: {
-    opacity: 0.5,
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginTop: 12,
-    backgroundColor: Colors.light.surface,
-    borderRadius: 10,
-    padding: 4,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 8,
-  },
-  tabButtonActive: {
-    backgroundColor: Colors.light.tint,
-  },
-  tabButtonText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.light.textSecondary,
-  },
-  tabButtonTextActive: {
-    color: '#fff',
-  },
-  projectName: {
-    fontSize: 17,
-    fontWeight: '700' as const,
-    color: Colors.light.text,
-    marginBottom: 4,
-  },
-  clientDateLine: {
-    fontSize: 14,
-    color: Colors.light.text,
-    fontWeight: '700' as const,
-    marginBottom: 12,
-  },
-  clientName: {
-    fontSize: 14,
-    color: Colors.light.text,
-    fontWeight: '700' as const,
-  },
-  dateSeparator: {
-    fontSize: 14,
-    color: Colors.light.border,
-    fontWeight: '700' as const,
-  },
-  dateText: {
-    fontSize: 13,
-    color: Colors.light.text,
-    fontWeight: '700' as const,
-  },
-  lineItemsContainer: {
-    backgroundColor: Colors.light.background,
-    borderRadius: 8,
-    marginBottom: 12,
-    overflow: 'hidden',
-  },
-  lineItemRow: {
-    padding: 10,
-  },
-  lineItemRowBorder: {
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.border,
-  },
-  lineItemHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  lineIndexBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.light.tint,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  lineIndexText: {
-    fontSize: 14,
-    fontWeight: '700' as const,
-    color: '#fff',
-  },
-  lineItemInfo: {
-    flex: 1,
-  },
-  lineItemDesignName: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    color: Colors.light.text,
-    marginBottom: 2,
-  },
-  applicatorService: {
-    fontSize: 13,
-    color: Colors.light.tint,
-    fontWeight: '600' as const,
-  },
-  serviceDot: {
-    color: Colors.light.textSecondary,
-  },
-  lineItemStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  lineStatItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  lineStatLabel: {
-    fontSize: 9,
-    color: Colors.light.textSecondary,
-    textTransform: 'uppercase',
-    marginBottom: 2,
-  },
-  lineStatValue: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-    color: Colors.light.text,
-  },
-  lineStatValueMarkup: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-    color: Colors.light.success,
-  },
-  lineStatValueTotal: {
-    fontSize: 12,
-    fontWeight: '700' as const,
-    color: Colors.light.tint,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.border,
-  },
-  footerStats: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  footerStatItem: {
-    alignItems: 'flex-start',
-  },
-  footerStatLabel: {
-    fontSize: 9,
-    color: Colors.light.textSecondary,
-    textTransform: 'uppercase',
-    marginBottom: 2,
-  },
-  footerStatValue: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    color: Colors.light.text,
-  },
-  profitBox: {
-    alignItems: 'center',
-    backgroundColor: Colors.light.success,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-  },
-  profitBoxNegative: {
-    backgroundColor: Colors.light.error,
-  },
-  profitLabel: {
-    fontSize: 9,
-    color: 'rgba(255,255,255,0.8)',
-    textTransform: 'uppercase',
-  },
-  profitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  profitValue: {
-    fontSize: 14,
-    fontWeight: '700' as const,
-    color: '#fff',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 80,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600' as const,
-    color: Colors.light.text,
-    marginTop: 16,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: Colors.light.textSecondary,
-    textAlign: 'center',
-    marginTop: 4,
-    paddingHorizontal: 40,
-  },
-  saleCardLocked: {
-    backgroundColor: '#f0f0f0',
-    borderColor: '#d0d0d0',
-    opacity: 0.85,
-  },
-  saleCardSelected: {
-    borderColor: Colors.light.tint,
-    borderWidth: 2,
-    backgroundColor: Colors.light.highlightBg,
-  },
-  checkboxContainer: {
-    marginRight: 8,
-  },
-  selectionBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: Colors.light.surface,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-  },
-  selectionBarLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  selectionBarRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  closeSelectionBtn: {
-    padding: 4,
-  },
-  selectionCount: {
-    fontSize: 15,
-    fontWeight: '600' as const,
-    color: Colors.light.text,
-  },
-  selectAllBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  selectAllText: {
-    fontSize: 14,
-    fontWeight: '500' as const,
-    color: Colors.light.tint,
-  },
-  bulkExportBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.light.success,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 6,
-  },
-  bulkExportBtnDisabled: {
-    backgroundColor: Colors.light.border,
-  },
-  bulkExportText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: '#fff',
-  },
-  lockedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#6b7280',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 5,
-    gap: 4,
-  },
-  lockedBadgeText: {
-    fontSize: 10,
-    fontWeight: '700' as const,
-    color: '#fff',
-  },
-  sheetsBadge: {
-    backgroundColor: 'rgba(5, 150, 105, 0.1)',
-    padding: 4,
-    borderRadius: 4,
-  },
-  unlockModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  unlockModalContent: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 320,
-    alignItems: 'center',
-  },
-  unlockModalIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: Colors.light.highlightBg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  unlockModalTitle: {
-    fontSize: 18,
-    fontWeight: '700' as const,
-    color: Colors.light.text,
-    marginBottom: 8,
-  },
-  unlockModalMessage: {
-    fontSize: 14,
-    color: Colors.light.textSecondary,
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  unlockPasswordInput: {
-    width: '100%',
-    backgroundColor: Colors.light.background,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    padding: 14,
-    fontSize: 16,
-    color: Colors.light.text,
-    marginBottom: 16,
-  },
-  unlockModalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    width: '100%',
-  },
-  unlockCancelBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    alignItems: 'center',
-  },
-  unlockCancelText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.light.textSecondary,
-  },
-  unlockConfirmBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: Colors.light.success,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  unlockConfirmText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: '#fff',
-  },
+  container: { flex: 1, backgroundColor: Colors.light.background },
+  header: { backgroundColor: Colors.light.surface, borderBottomWidth: 1, borderBottomColor: Colors.light.border, paddingTop: Platform.OS === 'web' ? 0 : 48 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: DS.spacing.xl, paddingTop: DS.spacing.xl, paddingBottom: DS.spacing.md },
+  title: { fontSize: 24, fontWeight: '800', color: Colors.light.text },
+  statsBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: DS.spacing.lg, marginBottom: DS.spacing.md, backgroundColor: Colors.light.background, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, paddingVertical: 6, paddingHorizontal: 6 },
+  statItem: { flex: 1, alignItems: 'center' },
+  statValue: { ...metricValueStyle },
+  statLabel: { ...metricLabelStyle, marginTop: 1 },
+  statDivider: { width: 1, height: 24, backgroundColor: Colors.light.border },
+
+  pillsScroll: { maxHeight: 44 },
+  pillsRow: { flexDirection: 'row', gap: DS.spacing.sm, paddingHorizontal: DS.spacing.xl, paddingBottom: DS.spacing.md },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: DS.spacing.md, paddingVertical: 4, borderRadius: DS.radius.pill, borderWidth: 1.5, borderColor: Colors.light.border, backgroundColor: Colors.light.background },
+  pillActive: { borderColor: Colors.light.tint, backgroundColor: '#FFF4EE' },
+  pillText: { fontSize: 13, fontWeight: '500', color: Colors.light.textSecondary },
+  pillTextActive: { color: Colors.light.tint, fontWeight: '700' },
+  pillCount: { backgroundColor: Colors.light.border, borderRadius: 10, minWidth: 16, height: 16, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
+  pillCountText: { fontSize: 10, fontWeight: '700', color: Colors.light.textSecondary },
+
+  searchRow: { flexDirection: 'row', gap: DS.spacing.sm, paddingHorizontal: DS.spacing.xl, paddingBottom: DS.spacing.md, alignItems: 'center' },
+  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.light.background, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, paddingHorizontal: 12, height: 40 },
+  searchInput: { flex: 1, fontSize: 14, color: Colors.light.text, outlineStyle: 'none' as any },
+  startProjectBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.light.tint, paddingHorizontal: 16, borderRadius: DS.radius.md, height: 40 },
+  startProjectBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  filterBtn: { width: 40, height: 40, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: Colors.light.background, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  filterBtnActive: { borderColor: Colors.light.tint, backgroundColor: '#FFF4EE' },
+  filterBadge: { position: 'absolute', top: -4, right: -4, width: 15, height: 15, borderRadius: 8, backgroundColor: Colors.light.tint, alignItems: 'center', justifyContent: 'center' },
+  filterBadgeText: { fontSize: 9, color: '#fff', fontWeight: '700' },
+
+  filtersPanel: { marginHorizontal: DS.spacing.xl, marginBottom: DS.spacing.md, padding: 14, backgroundColor: Colors.light.background, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, gap: 10 },
+  filtersPanelTitle: { fontSize: 11, fontWeight: '700', color: Colors.light.textSecondary, letterSpacing: 0.6, textTransform: 'uppercase' },
+  filtersRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' },
+  filterField: { flex: 1, minWidth: 100, gap: 4 },
+  filterLabel: { fontSize: 11, color: Colors.light.textSecondary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4 },
+  filterInput: { borderWidth: 1, borderColor: Colors.light.border, borderRadius: DS.radius.sm, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: Colors.light.text, backgroundColor: Colors.light.surface, outlineStyle: 'none' as any },
+  clearFiltersBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: DS.radius.sm, borderWidth: 1, borderColor: Colors.light.border },
+  clearFiltersBtnText: { fontSize: 13, color: Colors.light.textSecondary },
+
+  tableHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: DS.spacing.xl, paddingVertical: 10, backgroundColor: '#000000' },
+  thText: { fontSize: 11, fontWeight: '700', color: '#ffffff', textTransform: 'uppercase', letterSpacing: 0.5 },
+  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  sortBtnText: { fontSize: 11, fontWeight: '700', color: '#ffffff', textTransform: 'uppercase', letterSpacing: 0.5 },
+  sortBtnTextActive: { color: Colors.light.tint },
+
+  mobileSortScroll: { backgroundColor: '#000000', borderBottomWidth: 1, borderBottomColor: '#222222' },
+  mobileSortRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: DS.spacing.lg, paddingVertical: 8 },
+  mobileSortLabel: { fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: '600' },
+  mobileSortBtn: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: DS.radius.pill, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.07)' },
+  mobileSortBtnActive: { borderColor: Colors.light.tint, backgroundColor: 'rgba(255,90,0,0.22)' },
+  mobileSortBtnText: { fontSize: 13, color: 'rgba(255,255,255,0.7)' },
+  mobileSortBtnTextActive: { color: Colors.light.tint, fontWeight: '700' },
+  mobileSectionHeader: { paddingHorizontal: DS.spacing.lg, paddingTop: DS.spacing.lg, paddingBottom: 6 },
+  mobileSectionHeaderText: { fontSize: 11, fontWeight: '700', color: Colors.light.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8 },
+
+  tableBody: { paddingBottom: 40 },
+  tableDivider: { height: 1, backgroundColor: Colors.light.border, marginHorizontal: DS.spacing.xl },
+
+  tableRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: DS.spacing.xl, paddingVertical: 12, backgroundColor: Colors.light.surface },
+  tableRowSelected: { backgroundColor: '#FFF4EE' },
+  tableRowLocked: { backgroundColor: '#FAFAFA' },
+  colCheckbox: { width: 36, alignItems: 'center', justifyContent: 'center' },
+  colStatus:    { width: 110, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statusIcons:  { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  colOrderDate: { width: 110 },
+  colDueDate:   { width: 100 },
+  colClient:    { flex: 1.2 },
+  colProject:   { flex: 1.2 },
+  colQuote:     { width: 90 },
+  colServices:  { flex: 1.0 },
+  colPcs:       { width: 72 },
+  colRevenue:   { width: 95, alignItems: 'flex-end' },
+  colProfit:    { width: 95, alignItems: 'flex-end' },
+  colActions:   { width: 160, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
+
+  tableDate:    { fontSize: 13, color: Colors.light.text },
+  tableClient:  { fontSize: 13, fontWeight: '700', color: Colors.light.text },
+  tableProject: { fontSize: 13, color: Colors.light.text },
+  tableInvoice: { fontSize: 13, color: Colors.light.textSecondary },
+  tableServices:{ fontSize: 12, color: Colors.light.tint, fontWeight: '600', lineHeight: 18 },
+  tablePcs:     { fontSize: 12, color: Colors.light.text, lineHeight: 18 },
+  tableTotal:   { fontSize: 14, fontWeight: '700', color: Colors.light.text },
+  tableProfit:  { fontSize: 13, fontWeight: '700', color: '#16A34A' },
+  tableProfitNeg: { color: '#DC2626' },
+
+  trackBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: DS.radius.sm, backgroundColor: '#1C1C1E', height: 30, justifyContent: 'center' },
+  trackBtnText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  viewBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: DS.radius.sm, backgroundColor: Colors.light.tint, height: 30, justifyContent: 'center', alignItems: 'center' },
+  viewBtnText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  menuBtn: { width: 30, height: 30, borderRadius: DS.radius.sm, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: Colors.light.surface, alignItems: 'center', justifyContent: 'center' },
+  modalBackdrop: { flex: 1 },
+  dropdownMenu: { backgroundColor: Colors.light.surface, borderRadius: DS.radius.lg, borderWidth: 1, borderColor: Colors.light.border, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 16, elevation: 12, minWidth: 190, overflow: 'hidden' },
+  dropdownItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: Colors.light.border },
+  dropdownItemLast: { borderBottomWidth: 0 },
+  dropdownSeparator: { height: 1, backgroundColor: Colors.light.border, marginVertical: 2 },
+  dropdownItemText: { fontSize: 13, color: Colors.light.text, fontWeight: '500' },
+
+  cardList: { padding: DS.spacing.lg, gap: 8, paddingBottom: 40 },
+  card: { backgroundColor: Colors.light.surface, borderRadius: DS.radius.lg, padding: 12, borderWidth: 1, borderColor: Colors.light.border, gap: 4 },
+  cardSelected: { borderColor: Colors.light.tint, backgroundColor: '#FFF9F6' },
+  cardLocked: { backgroundColor: '#FAFAFA' },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 },
+  cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  cardHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  cardInvoice: { fontSize: 12, color: Colors.light.textSecondary },
+  cardClient: { fontSize: 15, fontWeight: '800', color: Colors.light.text },
+  cardProject: { fontSize: 13, color: Colors.light.textSecondary },
+  cardMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
+  cardMetaLeft: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
+  cardMetaSep: { color: Colors.light.textSecondary, fontSize: 12 },
+  cardMetaText: { fontSize: 12, color: Colors.light.textSecondary },
+  cardAmounts: { alignItems: 'flex-end' },
+  cardTotal: { fontSize: 15, fontWeight: '800', color: Colors.light.text },
+  cardProfit: { fontSize: 11, fontWeight: '700', color: '#16A34A', marginTop: 1 },
+  cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 },
+  cardServiceStyles: { fontSize: 12, color: Colors.light.textSecondary, flex: 1 },
+
+  badge: { alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 3, borderRadius: DS.radius.pill, borderWidth: 1 },
+  badgeText: { fontSize: 11, fontWeight: '700' },
+
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 40 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.light.text },
+  emptyText: { fontSize: 14, color: Colors.light.textSecondary, textAlign: 'center' },
+
+  checkbox: { width: 18, height: 18, borderRadius: 4, borderWidth: 1.5, borderColor: Colors.light.border, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.light.surface },
+  checkboxChecked: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
+
+  bulkBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1C1C1E', paddingVertical: 8, paddingHorizontal: DS.spacing.lg, gap: 12, borderBottomWidth: 1, borderBottomColor: '#333' },
+  bulkBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 100 },
+  bulkCount: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  bulkClearBtn: { width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  bulkActionsRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  bulkAction: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: DS.radius.sm, backgroundColor: 'rgba(255,255,255,0.1)' },
+  bulkActionDanger: { backgroundColor: 'rgba(239,68,68,0.15)' },
+  bulkActionText: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.9)' },
+  bulkDivider: { width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.2)', marginHorizontal: 4 },
+
+  unlockModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  unlockModalContent: { backgroundColor: Colors.light.surface, borderRadius: 16, padding: 24, width: '100%', maxWidth: 340, alignItems: 'center' },
+  unlockModalIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#FFF4EE', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  unlockModalTitle: { fontSize: 18, fontWeight: '700', color: Colors.light.text, marginBottom: 8 },
+  unlockModalMessage: { fontSize: 14, color: Colors.light.textSecondary, textAlign: 'center', marginBottom: 16 },
+  unlockPasswordInput: { width: '100%', backgroundColor: Colors.light.background, borderRadius: 10, borderWidth: 1, borderColor: Colors.light.border, padding: 14, fontSize: 16, color: Colors.light.text, marginBottom: 16, outlineStyle: 'none' as any },
+  unlockModalButtons: { flexDirection: 'row', gap: 12, width: '100%' },
+  unlockCancelBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: Colors.light.border, alignItems: 'center' },
+  unlockCancelText: { fontSize: 14, fontWeight: '600', color: Colors.light.textSecondary },
+  unlockConfirmBtn: { flex: 1, flexDirection: 'row', paddingVertical: 12, borderRadius: 8, backgroundColor: Colors.light.tint, alignItems: 'center', justifyContent: 'center', gap: 6 },
+  unlockConfirmText: { fontSize: 14, fontWeight: '600', color: '#fff' },
 });
