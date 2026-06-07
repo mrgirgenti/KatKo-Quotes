@@ -34,3 +34,19 @@ match the Projects design.
   template does NOT (latent bug there).
 - Lock gating must be enforced in BOTH the single-row action and bulk delete — locked
   sales should be skipped, not deleted.
+
+## Quotes header parity (matches Projects)
+- CTA is **"New Quote"** (Plus icon) → `router.push('/')` (the index/New Quote page),
+  the sales-side analog of Projects' "Start Project". No CSV-export CTA.
+- KPI/stats bar shows **status COUNT tiles** (Needs Review, Quoted, Invoice Sent, Paid,
+  Expired) — not financial aggregates — to mirror the Projects KPI style.
+- Status pills render the full `STATUS_PILLS` list always (not just nonzero) like Projects.
+- Search matches client/org (`personOrganization`), project, quote# (`invoiceNumber`/
+  `projectNumber`), AND line-item `serviceStyle`.
+
+## "Approved" is NOT a real status
+There is no `approved` member in `QuoteStatus` (`types/quote.ts`): members are draft,
+needs_review, quoting, quoted, invoice_sent, paid, active, production_started, completed,
+expired. Specs sometimes list "Approved" — do NOT add it ad hoc for one page; it would
+need type + STATUS_CONFIG + STATUS_HIERARCHY + getEffectiveStatus + DB changes.
+**Why:** scoped UI work should use the existing taxonomy, not invent statuses.

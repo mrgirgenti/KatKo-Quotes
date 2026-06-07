@@ -10,7 +10,6 @@ import {
   Modal,
   ScrollView,
   Platform,
-  Share,
 } from 'react-native';
 import { DS } from '@/constants/designSystem';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -33,6 +32,7 @@ import {
   Lock,
   Unlock,
   BarChart3,
+  Plus,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
@@ -446,17 +446,6 @@ export default function SalesScreen() {
     return counts;
   }, [resolvedSales]);
 
-  const totals = useMemo(() => {
-    const revenue = sales.reduce((sum, s) => sum + getSalesRevenue(s), 0);
-    const profit = sales.reduce((sum, s) => sum + getSalesProfit(s), 0);
-    return { revenue, profit };
-  }, [sales]);
-
-  const visiblePills = useMemo(
-    () => STATUS_PILLS.filter(p => p.key === 'all' || (statusCounts[p.key] ?? 0) > 0),
-    [statusCounts]
-  );
-
   const filtered = useMemo(() => {
     let list = resolvedSales;
 
@@ -470,7 +459,8 @@ export default function SalesScreen() {
         quote.personOrganization.toLowerCase().includes(q) ||
         quote.projectName.toLowerCase().includes(q) ||
         (quote.invoiceNumber || '').toLowerCase().includes(q) ||
-        (quote.projectNumber || '').toLowerCase().includes(q)
+        (quote.projectNumber || '').toLowerCase().includes(q) ||
+        quote.lineItems.some((li: any) => (li.serviceStyle || '').toLowerCase().includes(q))
       );
     }
 
@@ -713,33 +703,6 @@ export default function SalesScreen() {
 
   const selectedLockedCount = useMemo(() => selectedSales.filter(q => q.isLocked).length, [selectedSales]);
 
-  // ── CSV export (header button) ──
-  const handleExportCSV = useCallback(async () => {
-    if (sales.length === 0) {
-      Alert.alert('No Data', 'No sales to export.');
-      return;
-    }
-    let csv = 'Invoice #,Client,Project,Order Date,Quantity,Revenue,Profit\n';
-    sales.forEach(sale => {
-      const row = [
-        sale.invoiceNumber || 'N/A',
-        `"${sale.personOrganization}"`,
-        `"${sale.projectName}"`,
-        sale.orderDate,
-        getPcs(sale),
-        getSalesRevenue(sale).toFixed(2),
-        getSalesProfit(sale).toFixed(2),
-      ].join(',');
-      csv += row + '\n';
-    });
-    try {
-      await Share.share({ message: csv, title: 'Sales Export' });
-    } catch (error) {
-      console.log('Error exporting:', error);
-      Alert.alert('Error', 'Failed to export sales data');
-    }
-  }, [sales]);
-
   const activeFilterCount = [minTotal, maxTotal].filter(Boolean).length;
 
   const SortBtn = ({ field, label }: { field: SortField; label: string }) => (
@@ -754,47 +717,47 @@ export default function SalesScreen() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.title}>Quotes</Text>
-          <TouchableOpacity style={styles.startProjectBtn} onPress={handleExportCSV}>
-            <Download size={15} color="#fff" />
-            <Text style={styles.startProjectBtnText}>Export CSV</Text>
+          <TouchableOpacity style={styles.startProjectBtn} onPress={() => router.push('/')}>
+            <Plus size={15} color="#fff" />
+            <Text style={styles.startProjectBtnText}>New Quote</Text>
           </TouchableOpacity>
         </View>
 
         {/* Stats Bar */}
         <View style={styles.statsBar}>
           <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: '#16A34A' }]} numberOfLines={1}>
-              {formatCurrency(totals.revenue)}
+            <Text style={[styles.statValue, { color: '#DC2626' }]}>
+              {statusCounts['needs_review'] ?? 0}
             </Text>
-            <Text style={styles.statLabel}>Revenue</Text>
+            <Text style={styles.statLabel}>Needs Review</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: totals.profit >= 0 ? Colors.light.tint : '#DC2626' }]} numberOfLines={1}>
-              {formatCurrency(totals.profit)}
+            <Text style={[styles.statValue, { color: '#2563EB' }]}>
+              {statusCounts['quoted'] ?? 0}
             </Text>
-            <Text style={styles.statLabel}>Profit</Text>
+            <Text style={styles.statLabel}>Quoted</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: Colors.light.text }]}>
-              {resolvedSales.length}
+            <Text style={[styles.statValue, { color: '#6D28D9' }]}>
+              {statusCounts['invoice_sent'] ?? 0}
             </Text>
-            <Text style={styles.statLabel}>Total Sales</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: Colors.light.tint }]}>
-              {(statusCounts['active'] ?? 0) + (statusCounts['production_started'] ?? 0)}
-            </Text>
-            <Text style={styles.statLabel}>In Production</Text>
+            <Text style={styles.statLabel}>Invoice Sent</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={[styles.statValue, { color: '#16A34A' }]}>
-              {statusCounts['completed'] ?? 0}
+              {statusCounts['paid'] ?? 0}
             </Text>
-            <Text style={styles.statLabel}>Completed</Text>
+            <Text style={styles.statLabel}>Paid</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: '#9CA3AF' }]}>
+              {statusCounts['expired'] ?? 0}
+            </Text>
+            <Text style={styles.statLabel}>Expired</Text>
           </View>
         </View>
 
@@ -805,7 +768,7 @@ export default function SalesScreen() {
           style={styles.pillsScroll}
           contentContainerStyle={styles.pillsRow}
         >
-          {visiblePills.map(pill => {
+          {STATUS_PILLS.map(pill => {
             const count = statusCounts[pill.key] ?? 0;
             const active = statusFilter === pill.key;
             const cfg = pill.key !== 'all' ? STATUS_CONFIG[pill.key as QuoteStatus] : null;
@@ -840,7 +803,7 @@ export default function SalesScreen() {
             <Search size={15} color={Colors.light.textSecondary} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search client, quote, project, invoice…"
+              placeholder="Search client, quote, project, service…"
               placeholderTextColor={Colors.light.textSecondary}
               value={search}
               onChangeText={setSearch}
