@@ -32,6 +32,7 @@ const KK_FOCUS_RESET_CSS =
 
 function injectFocusReset() {
   if (typeof document === 'undefined') return;
+  // Layer 1: CSS rule — handles UA-stylesheet focus rings
   const STYLE_ID = 'kk-global-focus-reset';
   const existing = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
   if (existing) {
@@ -41,6 +42,19 @@ function injectFocusReset() {
     el.id = STYLE_ID;
     el.textContent = KK_FOCUS_RESET_CSS;
     document.head.appendChild(el);
+  }
+  // Layer 2: JS event listener — handles focus rings applied as inline styles by RN Web.
+  // element.style.setProperty with 'important' creates an inline !important rule that
+  // beats everything, including RN Web's own inline style injection.
+  if (!(window as any).__kkFocusListenerBound) {
+    (window as any).__kkFocusListenerBound = true;
+    document.addEventListener('focus', (e) => {
+      const el = e.target as HTMLElement | null;
+      if (el && el.style) {
+        el.style.setProperty('outline', 'none', 'important');
+        el.style.setProperty('box-shadow', 'none', 'important');
+      }
+    }, true /* capture phase — fires before RN Web handlers */);
   }
 }
 

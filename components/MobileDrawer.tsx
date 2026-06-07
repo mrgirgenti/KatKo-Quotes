@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
-  Pressable,
   ScrollView,
   Platform,
   Image,
@@ -62,7 +61,11 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       {mounted && (
         <View style={StyleSheet.absoluteFill as any} pointerEvents="box-none">
           <Animated.View style={[styles.scrim, { opacity: scrim }]}>
-            <Pressable style={[StyleSheet.absoluteFill, { outlineStyle: 'none' } as any]} onPress={closeDrawer} />
+            <View
+              style={StyleSheet.absoluteFill as any}
+              onStartShouldSetResponder={() => true}
+              onResponderRelease={closeDrawer}
+            />
           </Animated.View>
           <Animated.View style={[styles.drawer, { transform: [{ translateX: tx }] }]} {...KK_SIDEBAR_DATASET}>
             <View style={styles.drawerHeader}>

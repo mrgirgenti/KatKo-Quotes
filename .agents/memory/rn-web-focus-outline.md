@@ -1,54 +1,54 @@
 ---
-name: RN-Web focus outline (blue box)
-description: Why a blue box appears around pressables on web and how to remove it
+name: RN Web focus outline suppression
+description: How to reliably suppress all blue focus rings in this Expo web app — CSS alone is not enough.
 ---
 
-# React-Native-Web focus outline
+# React-Native-Web focus outline (blue line artifact)
 
-react-native-web renders `TouchableOpacity`/`Pressable` (and some containers) as
-focusable `<div>`s. On web the browser draws its default focus ring — a blue
-rectangle — when they receive focus (click, tab, or hover-then-focus). Users
-perceive this as a stray "blue box".
+RN Web renders `<ScrollView>`, `<Pressable>`, and other interactive components as `<div tabIndex="0">`. On focus the browser paints a blue `outline`. When the element overflows the viewport, only one edge is visible — a "vertical blue line" artifact. A full-screen element (like a scrim Pressable) shows both left AND right edges.
 
-**Fix:** add `outlineStyle: 'none' as any` to the offending element's StyleSheet
-entry (web-only style; ignored on native, no crash). Applied to the Sidebar
-container, hamburger, and navItem styles in `components/Sidebar.tsx`.
+## Why CSS-only approaches fail
 
-**Why / tradeoff:** removing the outline drops the visible keyboard-focus
-indicator. Acceptable here because the user explicitly disliked it; if keyboard
-a11y matters later, replace with a custom `:focus-visible` style instead of a
-blanket removal.
+`outlineStyle: 'none'` as a React Native inline style prop translates to `outline-style: none` on the DOM element's `style` attribute. **RN Web (react-native-web) internally applies focus styles via JavaScript (`element.style.outline = ...`) after the component renders, overwriting our prop.** A stylesheet rule with `!important` does NOT override a JS-set inline style (inline styles always win over stylesheet rules regardless of `!important`).
 
-## Per-style `outlineStyle:'none'` is NOT enough for a whole subtree
-A persistent blue line in the sidebar survived even after adding `outlineStyle:'none'`
-to individual styles, because *focusable descendants you don't control* (the RN-web nav
-`ScrollView`, and other rendered `<div>`s) still drew the browser default ring. Per-element
-style fixes only cover the elements you remember to tag.
+**Why `*:focus { outline: none !important }` in a `<style>` tag also fails in some cases:** A stylesheet `!important` rule overrides a UA-stylesheet rule, but NOT an inline style set directly via `element.style`. JS-applied inline styles beat stylesheet rules.
 
-A subtree-scoped reset (`[data-kk-sidebar] *:focus`) STILL wasn't enough — the blue ring
-kept recurring because focusable elements outside the tagged subtree also draw it.
+## The correct three-layer fix
 
-**Definitive fix (use this):** inject ONE GLOBAL web CSS block at the root layout
-(`app/_layout.tsx`) resetting BOTH `outline:none` AND `box-shadow:none` on
-`*:focus,*:focus-visible` (style id `kk-global-focus-reset`), injected at MODULE scope
-(runs before first paint) and re-asserted in the `useEffect`. The app's inputs use border
-styling for focus, so removing the default ring is safe.
+### Layer 1 — CSS rule (handles UA-stylesheet rings)
+```js
+'*:focus,*:focus-visible{outline:none !important;box-shadow:none !important;}'
+```
+Injected via `document.createElement('style')` at module scope in `app/_layout.tsx`.
 
-**Box-shadow gap (important):** an earlier version stripped `box-shadow` only from
-`a/button/[tabindex]:focus`, NOT from plain `<div>`s. RN-web renders ScrollViews/containers
-as focusable plain `<div>`s, and some browsers paint the focus ring via box-shadow on those
-— so the blue ring survived. On a container that OVERFLOWS the viewport (e.g. the
-horizontal-scroll tables, inner content wider/taller than the screen) only the ring's LEFT
-edge is visible → it reads as a stray FULL-HEIGHT VERTICAL BLUE LINE, not a box. Fix = apply
-`box-shadow:none !important` to EVERY `*:focus`, not just a/button/[tabindex].
-**Ruling out non-focus causes first:** grep the whole repo for blue (hex/rgba/borders/
-shadows/bg), thin tall Views (`width:1-4`+blue), `position:fixed` overlays, and resize/
-dnd/split-pane libs. If none exist AND a fresh-load screenshot is clean, it's the focus ring
-(or, if it still shows after the global reset + hard refresh, an external browser extension/
-overlay — there is no blue anywhere in this app's styles).
+### Layer 2 — JS event listener (handles RN Web inline-style rings)
+```js
+document.addEventListener('focus', (e) => {
+  const el = e.target;
+  if (el && el.style) {
+    el.style.setProperty('outline', 'none', 'important');
+    el.style.setProperty('box-shadow', 'none', 'important');
+  }
+}, true /* capture phase */);
+```
+`setProperty(prop, value, 'important')` sets an **inline** `!important` rule — the highest possible CSS priority. Fires in capture phase so it runs before any RN Web post-focus handlers. Guard with `window.__kkFocusListenerBound` to prevent duplicate listeners on hot-reload.
 
-**Critical debugging note:** the blue ring only appears AFTER a real click/keyboard focus.
-A fresh page load (and therefore the screenshot tool, which loads fresh) shows NO ring —
-you CANNOT reproduce it via screenshot. Don't conclude "it's fixed" from a clean
-fresh-load screenshot; reason about the CSS instead. The user's screenshot showing an
-active/clicked nav item is the real signal.
+### Layer 3 — Replace focusable dismiss targets with non-focusable Views
+A scrim `<Pressable>` (full-screen absoluteFill) used as "tap outside to close" gets `tabIndex="0"` and is the #1 source of the full-screen border artifact. Replace with a plain `<View>` using the responder system:
+```jsx
+<View
+  style={StyleSheet.absoluteFill}
+  onStartShouldSetResponder={() => true}
+  onResponderRelease={onClose}
+/>
+```
+`View` never gets `tabIndex="0"` so it can never receive browser focus.
+
+## Common pitfalls
+- **Missing import:** If `KK_SIDEBAR_DATASET` (or any dataset spread) is used without being imported, the spread is a no-op (spreading undefined = `{}`), so `data-kk-sidebar` is never applied and scoped CSS never fires. Always verify imports match usage.
+- **Fresh load looks clean:** The blue ring only appears after a real click/keyboard focus. Fresh-load screenshots show no ring — don't conclude "fixed" from a clean screenshot.
+- **Box-shadow gap:** Some browsers paint the focus ring via `box-shadow` on plain `<div>`s, not `outline`. Always reset BOTH.
+
+**Why:** Per-element `outlineStyle:'none'` in JSX style prop applies only to the element's initial inline style; RN Web may overwrite it post-render via JS. The JS event listener with `setProperty(..., 'important')` cannot be overridden by anything.
+
+**How to apply:** Whenever adding a full-screen or viewport-spanning interactive overlay (drawer scrim, modal backdrop), use `View` + responder instead of `Pressable`. Always include the JS event listener layer in `injectFocusReset()`.
