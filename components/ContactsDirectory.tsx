@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { OrgAvatar } from '@/components/OrgAvatar';
 import {
   Search, X, Users, ChevronRight, ChevronDown, Check,
-  Wifi, ShieldCheck, Mail, Ban, MinusCircle, Building2,
+  Wifi, ShieldCheck, Mail, Ban, MinusCircle, Building2, ArrowUpDown,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { DS } from '@/constants/designSystem';
@@ -51,6 +51,10 @@ function fmtLastLogin(iso?: string | null) {
   if (isNaN(d.getTime())) return null;
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
+
+const HUB_RANK: Record<HubStatus, number> = { 'Active': 0, 'Invited': 1, 'Disabled': 2, 'No Access': 3 };
+
+type SortDir = 'asc' | 'desc';
 
 // ── Desktop row ──
 function PersonRow({ person, onPress }: { person: Person; onPress: () => void }) {
@@ -126,6 +130,8 @@ export default function ContactsDirectory() {
   const [roleFilter, setRoleFilter] = useState<string>('');
   const [orgDropOpen, setOrgDropOpen] = useState(false);
   const [roleDropOpen, setRoleDropOpen] = useState(false);
+  const [sortField, setSortField] = useState<ColId>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   const people = useMemo<Person[]>(() =>
     orgs.flatMap((o) =>
@@ -175,26 +181,73 @@ export default function ContactsDirectory() {
       }
       return true;
     });
-    return list.sort((a, b) =>
-      `${a.lastName}${a.firstName}`.toLowerCase().localeCompare(`${b.lastName}${b.firstName}`.toLowerCase())
-    );
-  }, [people, tab, search, orgFilter, roleFilter]);
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const nameKey = (p: Person) => `${p.lastName}${p.firstName}`.toLowerCase().trim();
+    return list.sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case 'name': cmp = nameKey(a).localeCompare(nameKey(b)); break;
+        case 'org': cmp = a.orgName.toLowerCase().localeCompare(b.orgName.toLowerCase()); break;
+        case 'role': cmp = (a.role || '').toLowerCase().localeCompare((b.role || '').toLowerCase()); break;
+        case 'email': cmp = (a.email || '').toLowerCase().localeCompare((b.email || '').toLowerCase()); break;
+        case 'phone': cmp = (a.phone || '').localeCompare(b.phone || ''); break;
+        case 'hub': cmp = HUB_RANK[a.hubStatus || 'No Access'] - HUB_RANK[b.hubStatus || 'No Access']; break;
+        case 'lastLogin': {
+          const ta = a.lastLoginAt ? new Date(a.lastLoginAt).getTime() : 0;
+          const tb = b.lastLoginAt ? new Date(b.lastLoginAt).getTime() : 0;
+          cmp = ta - tb;
+          break;
+        }
+        case 'status': {
+          const sa = a.status === 'inactive' ? 1 : 0;
+          const sb = b.status === 'inactive' ? 1 : 0;
+          cmp = sa - sb;
+          break;
+        }
+      }
+      if (cmp === 0) cmp = nameKey(a).localeCompare(nameKey(b));
+      return cmp * dir;
+    });
+  }, [people, tab, search, orgFilter, roleFilter, sortField, sortDir]);
 
   const goToPerson = useCallback((p: Person) => router.push(`/crm/${p.orgId}` as any), [router]);
 
   const orgName = orgFilter ? orgs.find((o) => o.id === orgFilter)?.name : null;
 
+  const toggleSort = useCallback((field: ColId) => {
+    if (sortField === field) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortField(field); setSortDir('asc'); }
+  }, [sortField]);
+
+  const SortBtn = ({ field, label }: { field: ColId; label: string }) => (
+    <TouchableOpacity style={styles.sortBtn} onPress={() => toggleSort(field)} activeOpacity={0.7}>
+      <Text style={[styles.headText, sortField === field && styles.headTextActive]} numberOfLines={1}>{label}</Text>
+      <ArrowUpDown size={11} color={sortField === field ? Colors.light.tint : 'rgba(255,255,255,0.35)'} />
+    </TouchableOpacity>
+  );
+
+  const SORT_FIELDS: { field: ColId; label: string }[] = [
+    { field: 'name', label: 'Name' },
+    { field: 'org', label: 'Organization' },
+    { field: 'role', label: 'Role' },
+    { field: 'email', label: 'Email' },
+    { field: 'phone', label: 'Phone' },
+    { field: 'hub', label: 'Hub Status' },
+    { field: 'lastLogin', label: 'Last Login' },
+    { field: 'status', label: 'Status' },
+  ];
+
   const tableHeader = (
     <View style={styles.tableHeader}>
       <View style={{ width: 44 }} />
-      <View style={COL_FLEX.name != null ? { flex: COL_FLEX.name } : { width: COL_WIDTHS.name }}><Text style={styles.headText}>Name</Text></View>
-      <View style={COL_FLEX.org != null ? { flex: COL_FLEX.org } : { width: COL_WIDTHS.org }}><Text style={styles.headText}>Organization</Text></View>
-      <View style={{ width: COL_WIDTHS.role }}><Text style={styles.headText}>Title / Role</Text></View>
-      <View style={COL_FLEX.email != null ? { flex: COL_FLEX.email } : { width: COL_WIDTHS.email }}><Text style={styles.headText}>Email</Text></View>
-      <View style={{ width: COL_WIDTHS.phone }}><Text style={styles.headText}>Phone</Text></View>
-      <View style={{ width: COL_WIDTHS.hub }}><Text style={styles.headText}>Hub Status</Text></View>
-      <View style={{ width: COL_WIDTHS.lastLogin }}><Text style={styles.headText}>Last Login</Text></View>
-      <View style={{ width: COL_WIDTHS.status }}><Text style={styles.headText}>Status</Text></View>
+      <View style={COL_FLEX.name != null ? { flex: COL_FLEX.name } : { width: COL_WIDTHS.name }}><SortBtn field="name" label="Name" /></View>
+      <View style={COL_FLEX.org != null ? { flex: COL_FLEX.org } : { width: COL_WIDTHS.org }}><SortBtn field="org" label="Organization" /></View>
+      <View style={{ width: COL_WIDTHS.role }}><SortBtn field="role" label="Title / Role" /></View>
+      <View style={COL_FLEX.email != null ? { flex: COL_FLEX.email } : { width: COL_WIDTHS.email }}><SortBtn field="email" label="Email" /></View>
+      <View style={{ width: COL_WIDTHS.phone }}><SortBtn field="phone" label="Phone" /></View>
+      <View style={{ width: COL_WIDTHS.hub }}><SortBtn field="hub" label="Hub Status" /></View>
+      <View style={{ width: COL_WIDTHS.lastLogin }}><SortBtn field="lastLogin" label="Last Login" /></View>
+      <View style={{ width: COL_WIDTHS.status }}><SortBtn field="status" label="Status" /></View>
     </View>
   );
 
@@ -337,10 +390,21 @@ export default function ContactsDirectory() {
           <View style={{ height: 40 }} />
         </ScrollView>
       ) : (
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-          {filtered.map((p) => <PersonCard key={p.id} person={p} onPress={() => goToPerson(p)} />)}
-          <View style={{ height: 40 }} />
-        </ScrollView>
+        <>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mobileSortBar} contentContainerStyle={styles.mobileSortRow}>
+            {SORT_FIELDS.map(({ field, label }) => (
+              <TouchableOpacity key={field} style={[styles.mobileSortBtn, sortField === field && styles.mobileSortBtnActive]} onPress={() => toggleSort(field)} activeOpacity={0.7}>
+                <Text style={[styles.mobileSortBtnText, sortField === field && styles.mobileSortBtnTextActive]}>
+                  {label}{sortField === field ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+            {filtered.map((p) => <PersonCard key={p.id} person={p} onPress={() => goToPerson(p)} />)}
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </>
       )}
     </View>
   );
@@ -377,8 +441,16 @@ const styles = StyleSheet.create({
   toolBtnText: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.textSecondary, maxWidth: 130 },
   toolBtnTextActive: { color: Colors.light.tint },
 
-  tableHeader: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 20, backgroundColor: '#1F2430' },
+  tableHeader: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 20, backgroundColor: '#000000' },
   headText: { fontSize: 11, fontWeight: '700' as const, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' as const, letterSpacing: 0.4 },
+  headTextActive: { color: '#fff' },
+  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  mobileSortBar: { flexGrow: 0, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: Colors.light.border },
+  mobileSortRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
+  mobileSortBtn: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: '#fff' },
+  mobileSortBtnActive: { borderColor: Colors.light.tint, backgroundColor: '#FFF4EE' },
+  mobileSortBtnText: { fontSize: 13, color: Colors.light.textSecondary },
+  mobileSortBtnTextActive: { color: Colors.light.tint, fontWeight: '700' as const },
   tableBody: { backgroundColor: '#fff' },
   tableRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20 },
   divider: { height: 1, backgroundColor: Colors.light.border, marginHorizontal: 20 },

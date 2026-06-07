@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Menu } from 'lucide-react-native';
 import { useUser } from '@/contexts/UserContext';
-import { SB, SidebarNav, ProfileFooter, NewQuoteButton, KK_NAV_DATASET } from '@/components/SidebarContent';
+import { SB, SidebarNav, ProfileFooter, NewQuoteButton, KK_NAV_DATASET, KK_SIDEBAR_DATASET } from '@/components/SidebarContent';
 
 const EXPANDED_WIDTH = 240;
 const COLLAPSED_WIDTH = 64;
@@ -77,7 +77,7 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
   };
 
   return (
-    <Animated.View style={[styles.sidebar, { width: widthAnim }]}>
+    <Animated.View style={[styles.sidebar, { width: widthAnim }]} {...KK_SIDEBAR_DATASET}>
       <View style={styles.header}>
         <TouchableOpacity onPress={toggle} style={styles.hamburger} {...KK_NAV_DATASET}>
           <Menu size={22} color={SB.headerText} />
@@ -158,6 +158,7 @@ const styles = StyleSheet.create({
   },
   navScroll: {
     flex: 1,
+    outlineStyle: 'none' as any,
   },
   navScrollContent: {
     paddingVertical: 8,

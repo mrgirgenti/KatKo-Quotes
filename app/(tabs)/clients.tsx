@@ -6,6 +6,7 @@ import {
 import { useRouter, useGlobalSearchParams } from 'expo-router';
 import { OrgAvatar } from '@/components/OrgAvatar';
 import ContactsDirectory from '@/components/ContactsDirectory';
+import OverlayMenu from '@/components/OverlayMenu';
 import {
   Plus, Search, X, Users, Building2, User, ChevronRight, TrendingUp,
   Thermometer, Star, Archive, Upload, ChevronDown, Check, ArrowUpDown,
@@ -251,7 +252,6 @@ function OrganizationsScreen() {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [importModalVisible, setImportModalVisible] = useState(false);
-  const [actionsOpen, setActionsOpen] = useState(false);
   const [addStep, setAddStep] = useState<AddStep>('choose');
   const [addMode, setAddMode] = useState<AddMode>('org');
   const [orgForm, setOrgForm] = useState(EMPTY_ORG_FORM);
@@ -449,35 +449,37 @@ function OrganizationsScreen() {
         <View style={styles.headerTop}>
           <Text style={styles.pageTitle}>Organizations</Text>
           <View style={styles.headerBtns}>
-            <View style={{ position: 'relative' }}>
-              <TouchableOpacity
-                style={styles.actionsBtn}
-                onPress={() => setActionsOpen(v => !v)}
-              >
-                <Text style={styles.actionsBtnText}>Actions</Text>
-                <ChevronDown size={14} color={Colors.light.textSecondary} />
-              </TouchableOpacity>
-              {actionsOpen && (
-                <View style={styles.actionsMenu}>
-                  <TouchableOpacity style={styles.actionsMenuItem} onPress={() => { setActionsOpen(false); setImportModalVisible(true); }}>
+            <OverlayMenu
+              align="right"
+              menuWidth={185}
+              trigger={({ open }) => (
+                <TouchableOpacity style={styles.actionsBtn} onPress={open}>
+                  <Text style={styles.actionsBtnText}>Actions</Text>
+                  <ChevronDown size={14} color={Colors.light.textSecondary} />
+                </TouchableOpacity>
+              )}
+            >
+              {({ close }) => (
+                <>
+                  <TouchableOpacity style={styles.actionsMenuItem} onPress={() => { close(); setImportModalVisible(true); }}>
                     <Upload size={14} color={Colors.light.text} />
                     <Text style={styles.actionsMenuItemText}>Import Contacts</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.actionsMenuItem} onPress={() => setActionsOpen(false)}>
+                  <TouchableOpacity style={styles.actionsMenuItem} onPress={close}>
                     <FileText size={14} color={Colors.light.text} />
                     <Text style={styles.actionsMenuItemText}>Export CSV</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.actionsMenuItem} onPress={() => setActionsOpen(false)}>
+                  <TouchableOpacity style={styles.actionsMenuItem} onPress={close}>
                     <Edit3 size={14} color={Colors.light.text} />
                     <Text style={styles.actionsMenuItemText}>Bulk Edit</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.actionsMenuItem, { borderBottomWidth: 0 }]} onPress={() => setActionsOpen(false)}>
+                  <TouchableOpacity style={[styles.actionsMenuItem, { borderBottomWidth: 0 }]} onPress={close}>
                     <Trash2 size={14} color="#DC2626" />
                     <Text style={[styles.actionsMenuItemText, { color: '#DC2626' }]}>Bulk Delete</Text>
                   </TouchableOpacity>
-                </View>
+                </>
               )}
-            </View>
+            </OverlayMenu>
             <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
               <Plus size={15} color="#fff" /><Text style={styles.addBtnText}>Add Contact</Text>
             </TouchableOpacity>

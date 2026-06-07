@@ -22,12 +22,24 @@ export const SB = {
 // never affects the rest of the app's accessibility focus styling.
 if (typeof document !== 'undefined') {
   const STYLE_ID = 'kk-nav-focus-reset';
-  if (!document.getElementById(STYLE_ID)) {
+  const CSS =
+    // Per-element reset for tagged interactive controls.
+    '[data-kk-nav]{-webkit-tap-highlight-color:transparent;}' +
+    '[data-kk-nav]:focus,[data-kk-nav]:focus-visible{outline:none !important;box-shadow:none !important;}' +
+    // Subtree reset: the sidebar root is tagged data-kk-sidebar, and EVERY focusable
+    // descendant (including the RN-web ScrollView, which receives a default blue
+    // focus ring) has its outline/box-shadow stripped. This is the root-cause fix
+    // for the stray blue line — the previous reset only covered data-kk-nav nodes.
+    '[data-kk-sidebar],[data-kk-sidebar] *{-webkit-tap-highlight-color:transparent;}' +
+    '[data-kk-sidebar]:focus,[data-kk-sidebar]:focus-visible,' +
+    '[data-kk-sidebar] *:focus,[data-kk-sidebar] *:focus-visible{outline:none !important;box-shadow:none !important;}';
+  const existing = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
+  if (existing) {
+    existing.textContent = CSS;
+  } else {
     const el = document.createElement('style');
     el.id = STYLE_ID;
-    el.textContent =
-      '[data-kk-nav]{-webkit-tap-highlight-color:transparent;}' +
-      '[data-kk-nav]:focus,[data-kk-nav]:focus-visible{outline:none !important;box-shadow:none !important;}';
+    el.textContent = CSS;
     document.head.appendChild(el);
   }
 }
@@ -36,6 +48,10 @@ if (typeof document !== 'undefined') {
 // focus-reset CSS above applies. Typed as any because RN's TouchableOpacity props
 // don't declare the web-only `dataSet` attribute.
 export const KK_NAV_DATASET: any = { dataSet: { kkNav: '' } };
+
+// Spread onto the sidebar root container so the subtree focus-reset above applies
+// to every descendant (web-only).
+export const KK_SIDEBAR_DATASET: any = { dataSet: { kkSidebar: '' } };
 
 interface NavProps {
   collapsed?: boolean;

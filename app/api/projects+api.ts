@@ -145,7 +145,11 @@ export async function POST(request: Request) {
         body.personOrganization || '',
         body.orgId ?? null,
         body.orderType || 'New',
-        new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+        // Order Date rule: respect a user-provided value; otherwise auto-populate
+        // today's date so no quote is ever created without an Order Date.
+        (typeof body.orderDate === 'string' && body.orderDate.trim())
+          ? body.orderDate.trim()
+          : new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
         body.inHandsDate || null,
         body.invoiceNumber || null,
         projectNumber,
