@@ -56,7 +56,7 @@ import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { formatCurrency, calculateLineItemSubtotal, getTotalQuantity } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
-import { LineItem, SIZE_LABELS, GarmentVariant } from '@/types/quote';
+import { LineItem, SIZE_LABELS, GarmentVariant, STATUS_CONFIG, QuoteStatus } from '@/types/quote';
 import { useUser } from '@/contexts/UserContext';
 import { useCrm } from '@/contexts/CrmContext';
 import { generateAndSharePDF, printQuote, generateWorkOrderPDFs } from '@/utils/pdfGenerator';
@@ -709,109 +709,104 @@ export default function QuoteDetailScreen() {
     );
   };
 
-  const renderOrderInfo = () => (
-    <View style={styles.section}>
-      <View style={styles.card}>
-        {/* Badges row */}
-        <View style={styles.orderHeaderRow}>
-          <View style={styles.orderHeaderLeft}>
-            {(quote.status === 'active' || quote.status === 'completed') && (
-              <View style={[styles.saleBadge, { backgroundColor: quote.status === 'completed' ? '#16A34A' : '#FF5A00' }]}>
-                <CheckCircle size={12} color="#fff" />
-                <Text style={styles.saleBadgeText}>{quote.status === 'completed' ? 'COMPLETED' : 'ACTIVE'}</Text>
-              </View>
-            )}
-            <View style={styles.orderTypeBadge}>
-              <Text style={styles.orderTypeBadgeText}>{quote.orderType}</Text>
-            </View>
-          </View>
-          {(quote.projectNumber || quote.invoiceNumber) ? (
-            <View style={styles.invoiceBadge}>
-              <FileText size={12} color={Colors.light.tint} />
-              <Text style={styles.invoiceText}>
-                {quote.projectNumber ? quote.projectNumber : `#${quote.invoiceNumber}`}
-              </Text>
-            </View>
-          ) : null}
-        </View>
+  const renderOrderInfo = () => {
+    const statusMeta = STATUS_CONFIG[quote.status as QuoteStatus];
+    const statusColor = statusMeta
+      ? (statusMeta.color.toUpperCase() === '#FFFFFF' ? statusMeta.bg : statusMeta.color)
+      : undefined;
+    const quoteNum = quote.projectNumber || (quote.invoiceNumber ? `#${quote.invoiceNumber}` : null);
+    const orgName = linkedOrg?.name || quote.personOrganization;
+    const location = linkedOrg
+      ? [linkedOrg.address, [linkedOrg.city, linkedOrg.state].filter(Boolean).join(', ')]
+          .filter(Boolean)
+          .join('\n')
+      : '';
+    const showContactCard = !!(linkedContact || (linkedOrg && location));
 
-        {/* Body: left info + optional right CRM panel */}
-        <View style={[styles.orderBodyRow, linkedOrg ? styles.orderBodySplit : null]}>
-          {/* Left column */}
-          <View style={linkedOrg ? styles.orderBodyLeft : null}>
-            {linkedOrg ? (
-              <TouchableOpacity
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}
-                onPress={() => router.push(`/crm/${linkedOrg.id}` as any)}
-              >
-                <Text style={[styles.orderClientName, { color: Colors.light.tint, textDecorationLine: 'underline' }]}>{quote.personOrganization}</Text>
-                <ExternalLink size={14} color={Colors.light.tint} />
-              </TouchableOpacity>
-            ) : (
-              <Text style={styles.orderClientName}>{quote.personOrganization}</Text>
-            )}
-            <Text style={styles.orderProjectName}>{quote.projectName}</Text>
-            <View style={styles.orderDivider} />
-            <View style={styles.infoRow}>
-              <Calendar size={15} color={Colors.light.textSecondary} />
-              <Text style={styles.infoLabel}>Order Date:</Text>
-              <Text style={styles.infoValue}>{formatDate(quote.orderDate)}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Calendar size={15} color={Colors.light.textSecondary} />
-              <Text style={styles.infoLabel}>In-Hands:</Text>
-              <Text style={styles.infoValue}>{formatDate(quote.inHandsDate) || 'N/A'}</Text>
-            </View>
-          </View>
-
-          {/* Right column — CRM contact card */}
-          {linkedOrg && (
-            <View style={styles.orderContactPanel}>
-              <TouchableOpacity
-                style={styles.orderContactOrgLink}
-                onPress={() => router.push(`/crm/${linkedOrg.id}` as any)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.orderContactOrgName}>{linkedOrg.name}</Text>
-                <ExternalLink size={12} color={Colors.light.tint} />
-              </TouchableOpacity>
-              {linkedContact && (
-                <>
-                  <Text style={styles.orderContactName}>
-                    {linkedContact.firstName} {linkedContact.lastName}
-                    {linkedContact.role ? ` · ${linkedContact.role}` : ''}
+    return (
+      <View style={styles.section}>
+        <View style={[styles.identityRow, isDesktop && showContactCard && styles.identityRowDesktop]}>
+          {/* Quote Information card */}
+          <View style={[styles.card, styles.identityCard]}>
+            <Text style={styles.identityProjectName} numberOfLines={2}>
+              {quote.projectName || 'Untitled Project'}
+            </Text>
+            {orgName ? (
+              linkedOrg ? (
+                <TouchableOpacity
+                  style={styles.identityOrgLink}
+                  onPress={() => router.push(`/crm/${linkedOrg.id}` as any)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.identityOrgName, { color: Colors.light.tint }]} numberOfLines={1}>
+                    {orgName}
                   </Text>
-                  {linkedContact.phone ? (
-                    <View style={styles.orderContactRow}>
-                      <Phone size={12} color={Colors.light.textSecondary} />
-                      <Text style={styles.orderContactInfo}>{linkedContact.phone}</Text>
-                    </View>
-                  ) : null}
-                  {linkedContact.email ? (
-                    <View style={styles.orderContactRow}>
-                      <Mail size={12} color={Colors.light.textSecondary} />
-                      <Text style={styles.orderContactInfo}>{linkedContact.email}</Text>
-                    </View>
-                  ) : null}
-                </>
-              )}
-              {(linkedOrg.address || linkedOrg.city || linkedOrg.state) ? (
+                  <ExternalLink size={14} color={Colors.light.tint} />
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.identityOrgName} numberOfLines={1}>{orgName}</Text>
+              )
+            ) : null}
+            {(quoteNum || statusMeta) ? (
+              <View style={styles.identityMetaRow}>
+                {quoteNum ? <Text style={styles.identityQuoteNum}>{quoteNum}</Text> : null}
+                {quoteNum && statusMeta ? <Text style={styles.identityMetaDot}>•</Text> : null}
+                {statusMeta ? (
+                  <Text style={[styles.identityStatus, { color: statusColor }]}>{statusMeta.label}</Text>
+                ) : null}
+              </View>
+            ) : null}
+            <View style={styles.orderDivider} />
+            <View style={styles.identityDatesRow}>
+              <View style={styles.identityDateBlock}>
+                <Text style={styles.identityDateLabel}>ORDER DATE</Text>
+                <Text style={styles.identityDateValue}>{formatDate(quote.orderDate) || 'N/A'}</Text>
+              </View>
+              <View style={styles.identityDateBlock}>
+                <Text style={styles.identityDateLabel}>DUE DATE</Text>
+                <Text style={styles.identityDateValue}>{formatDate(quote.inHandsDate) || 'N/A'}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Primary Contact card */}
+          {showContactCard && (
+            <View style={[styles.card, styles.contactCard, isDesktop && styles.contactCardDesktop]}>
+              <Text style={styles.contactCardLabel}>PRIMARY CONTACT</Text>
+              {linkedContact ? (
                 <>
-                  <View style={styles.orderContactDivider} />
-                  <View style={styles.orderContactRow}>
-                    <MapPin size={12} color={Colors.light.textSecondary} />
-                    <Text style={styles.orderContactInfo}>
-                      {[linkedOrg.address, [linkedOrg.city, linkedOrg.state].filter(Boolean).join(', ')].filter(Boolean).join('\n')}
-                    </Text>
-                  </View>
+                  <Text style={styles.contactCardName}>
+                    {linkedContact.firstName} {linkedContact.lastName}
+                  </Text>
+                  <Text style={styles.contactCardRole}>{linkedContact.role || 'Primary Contact'}</Text>
                 </>
+              ) : (
+                <Text style={[styles.contactCardName, { marginBottom: 10 }]}>{orgName}</Text>
+              )}
+              {linkedContact?.phone ? (
+                <View style={styles.contactCardRow}>
+                  <Phone size={14} color={Colors.light.textSecondary} />
+                  <Text style={styles.contactCardInfo}>{linkedContact.phone}</Text>
+                </View>
+              ) : null}
+              {linkedContact?.email ? (
+                <View style={styles.contactCardRow}>
+                  <Mail size={14} color={Colors.light.textSecondary} />
+                  <Text style={styles.contactCardInfo}>{linkedContact.email}</Text>
+                </View>
+              ) : null}
+              {location ? (
+                <View style={styles.contactCardRow}>
+                  <MapPin size={14} color={Colors.light.textSecondary} />
+                  <Text style={styles.contactCardInfo}>{location}</Text>
+                </View>
               ) : null}
             </View>
           )}
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderLineItems = () => {
     const totalItems = quote.lineItems.reduce((sum, item) => sum + getItemQuantity(item), 0);
@@ -1721,108 +1716,116 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600' as const,
   },
-  orderHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  orderHeaderLeft: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  orderBodyRow: {
-    flexDirection: 'column' as const,
-  },
-  orderBodySplit: {
-    flexDirection: 'row' as const,
-    gap: 16,
-  },
-  orderBodyLeft: {
-    flex: 1,
-  },
-  orderContactPanel: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    padding: 12,
-    alignSelf: 'flex-start' as const,
-    minWidth: 180,
-  },
-  orderContactOrgLink: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 4,
-    marginBottom: 2,
-  },
-  orderContactOrgName: {
-    fontSize: 13,
-    fontWeight: '700' as const,
-    color: Colors.light.text,
-  },
-  orderContactName: {
-    fontSize: 12,
-    color: Colors.light.textSecondary,
-    marginBottom: 6,
-  },
-  orderContactRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'flex-start' as const,
-    gap: 6,
-    marginTop: 3,
-  },
-  orderContactInfo: {
-    fontSize: 12,
-    color: Colors.light.textSecondary,
-    flex: 1,
-    lineHeight: 17,
-  },
-  orderContactDivider: {
-    height: 1,
-    backgroundColor: Colors.light.border,
-    marginVertical: 8,
-  },
-  orderTypeBadge: {
-    backgroundColor: Colors.light.highlightBg,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  orderTypeBadgeText: {
-    color: Colors.light.tint,
-    fontSize: 12,
-    fontWeight: '600' as const,
-  },
-  invoiceBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.light.highlightBg,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
-  },
-  invoiceText: {
-    fontSize: 12,
-    color: Colors.light.tint,
-    fontWeight: '600' as const,
-  },
-  orderClientName: {
-    fontSize: 20,
-    fontWeight: '700' as const,
-    color: Colors.light.text,
-  },
-  orderProjectName: {
-    fontSize: 15,
-    color: Colors.light.textSecondary,
-    marginTop: 2,
-  },
   orderDivider: {
     height: 1,
     backgroundColor: Colors.light.border,
     marginVertical: 12,
+  },
+  identityRow: {
+    flexDirection: 'column' as const,
+    gap: 12,
+  },
+  identityRowDesktop: {
+    flexDirection: 'row' as const,
+    alignItems: 'stretch' as const,
+  },
+  identityCard: {
+    flex: 1,
+    minWidth: 0,
+  },
+  identityProjectName: {
+    fontSize: 22,
+    fontWeight: '700' as const,
+    color: Colors.light.text,
+    lineHeight: 28,
+  },
+  identityOrgLink: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 5,
+    marginTop: 4,
+    alignSelf: 'flex-start' as const,
+  },
+  identityOrgName: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.light.text,
+    marginTop: 4,
+  },
+  identityMetaRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    flexWrap: 'wrap' as const,
+    gap: 8,
+    marginTop: 8,
+  },
+  identityQuoteNum: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: Colors.light.textSecondary,
+  },
+  identityMetaDot: {
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+  },
+  identityStatus: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+  },
+  identityDatesRow: {
+    flexDirection: 'row' as const,
+    gap: 36,
+  },
+  identityDateBlock: {},
+  identityDateLabel: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    letterSpacing: 0.5,
+    marginBottom: 3,
+  },
+  identityDateValue: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.light.text,
+  },
+  contactCard: {
+    alignSelf: 'stretch' as const,
+  },
+  contactCardDesktop: {
+    width: 280,
+    flexShrink: 0,
+    alignSelf: 'flex-start' as const,
+  },
+  contactCardLabel: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  contactCardName: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: Colors.light.text,
+  },
+  contactCardRole: {
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+    marginTop: 2,
+    marginBottom: 10,
+  },
+  contactCardRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    gap: 8,
+    marginTop: 6,
+  },
+  contactCardInfo: {
+    fontSize: 13,
+    color: Colors.light.text,
+    flex: 1,
+    lineHeight: 18,
   },
   section: {
     marginBottom: 16,
@@ -1839,21 +1842,6 @@ const styles = StyleSheet.create({
     padding: 14,
     borderWidth: 1,
     borderColor: Colors.light.border,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 6,
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: Colors.light.textSecondary,
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.light.text,
   },
   sectionHeaderRow: {
     marginBottom: 10,
@@ -2571,20 +2559,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: 'rgba(255,255,255,0.8)',
     marginTop: 4,
-  },
-  saleBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.light.success,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
-  },
-  saleBadgeText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700' as const,
   },
   profitBox: {
     backgroundColor: Colors.light.success,

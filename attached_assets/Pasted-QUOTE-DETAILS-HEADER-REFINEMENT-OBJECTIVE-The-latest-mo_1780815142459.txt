@@ -1,0 +1,247 @@
+QUOTE DETAILS HEADER REFINEMENT
+
+OBJECTIVE
+
+The latest mockup direction is approved.
+
+Do NOT redesign the Quote Details page.
+
+Do NOT modify Pricing Summary.
+
+Do NOT modify Sales Tracking.
+
+Do NOT modify Line Items.
+
+Only refine the top-left identity area and create a proper two-card layout above the Line Items section.
+
+==================================================
+CRITICAL REQUIREMENT
+====================
+
+Pricing Summary and Sales Tracking are already correct.
+
+Treat the entire right sidebar as locked.
+
+Do not redesign it.
+
+Do not move it.
+
+Do not restyle it.
+
+Do not replace Sales Tracking with a new widget.
+
+Use the existing implementation exactly as-is.
+
+==================================================
+LAYOUT STRUCTURE
+================
+
+Maintain the current page architecture:
+
+LEFT CONTENT COLUMN
+
+* Quote Information Card
+* Primary Contact Card
+* Line Items
+
+RIGHT SIDEBAR
+
+* Pricing Summary
+* Sales Tracking
+
+The right sidebar remains unchanged.
+
+==================================================
+QUOTE INFORMATION CARD
+======================
+
+Create a dedicated Quote Information card above Line Items.
+
+Approved hierarchy:
+
+← Back    Quote Details
+
+Project Name
+
+Organization Name
+
+Quote Number + Status
+
+Order Date
+
+Due Date
+
+==================================================
+EXAMPLE
+=======
+
+← Back    Quote Details
+
+Test Spring Shirts
+
+Battlestar Coffee Co
+
+P-1007 • Completed
+
+ORDER DATE
+Apr 23, 2026
+
+DUE DATE
+May 15, 2026
+
+==================================================
+VISUAL HIERARCHY
+================
+
+Primary:
+Project Name
+
+Secondary:
+Organization Name
+
+Tertiary:
+Quote Number
+Status
+
+Supporting:
+Order Date
+Due Date
+
+Project Name should be the largest element.
+
+Organization Name should be visually prominent but smaller than the project name.
+
+Quote Number and Status should sit beneath.
+
+==================================================
+REMOVE DUPLICATION
+==================
+
+Remove duplicated client information from the Quote Information card.
+
+Do NOT show:
+
+* Contact Name
+* Phone
+* Email
+* Location
+
+inside the Quote Information card.
+
+That information belongs only in the Primary Contact card.
+
+==================================================
+PRIMARY CONTACT CARD
+====================
+
+Create a dedicated Primary Contact card.
+
+Place it to the right of the Quote Information card.
+
+It should sit above Line Items.
+
+It should NOT move into the right sidebar.
+
+It should remain inside the left content area.
+
+==================================================
+PRIMARY CONTACT CARD CONTENT
+============================
+
+PRIMARY CONTACT
+
+Josh Girgenti
+
+Primary Contact
+
+Phone
+
+Email
+
+Location
+
+Use actual record data.
+
+==================================================
+CARD LAYOUT
+===========
+
+Desktop:
+
+[ Quote Information ] [ Primary Contact ]
+
+Both cards should align horizontally.
+
+Both cards should terminate above the Line Items section.
+
+The Line Items section should begin directly below both cards.
+
+==================================================
+DO NOT MODIFY
+=============
+
+Leave unchanged:
+
+Pricing Summary
+
+Sales Tracking
+
+Line Items
+
+Cost Tracking
+
+Production Mode button
+
+Sales Tracking layout
+
+Sales Tracking metrics
+
+Pricing Summary structure
+
+The current sidebar implementation is approved and should remain exactly as-is.
+
+==================================================
+BACK NAVIGATION
+===============
+
+Use the new platform-standard back navigation component.
+
+Match:
+
+← Back    Quote Details
+
+used elsewhere in the platform.
+
+==================================================
+GOAL
+====
+
+The page should immediately answer:
+
+What quote am I looking at?
+
+Who is the client?
+
+Who is the primary contact?
+
+When is it due?
+
+without duplicating information.
+
+==================================================
+VALIDATION
+==========
+
+Provide before/after screenshots.
+
+Confirm:
+
+* Project Name is primary element
+* Organization Name displayed in Quote Information card
+* Contact information removed from Quote Information card
+* Primary Contact card added
+* Pricing Summary unchanged
+* Sales Tracking unchanged
+* Line Items unchanged
+* Right sidebar unchanged
+* New layout matches approved mockup direction
