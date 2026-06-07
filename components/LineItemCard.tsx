@@ -156,8 +156,11 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   const isPromotional = item.serviceStyle === 'Promotional';
   const isDTF = item.serviceStyle === 'Direct to Film';
   const isEmbroidery = item.serviceStyle === 'Embroidery';
+  const isDTFTransfers = item.serviceStyle === 'DTF Transfers';
+  const isDesignWork = item.serviceStyle === 'Design Work';
   const hasSecondLocation = !!(item.location2 && item.location2.length > 0);
-  const quantity = getTotalQuantity(item.sizes, isPromotional);
+  // Design Work has no garment sizes; treat it the same as Promotional for qty calc.
+  const quantity = getTotalQuantity(item.sizes, isPromotional || isDesignWork);
   const lineItemCalcs = calculateLineItemSubtotal(item);
 
   // ── Garment variants ──

@@ -1,0 +1,241 @@
+```text
+CLIENT LEGACY EXPANSION + NEW SERVICE CATEGORIES
+
+PRIORITY: HIGH
+
+We are expanding service offerings and need Client Legacy, Dashboard reporting, and service architecture updated accordingly.
+
+==================================================
+NEW SERVICE CATEGORIES
+==================================================
+
+Add the following as first-class services:
+
+DTF Transfers
+
+Design Work
+
+These must behave exactly like existing services and be available throughout the platform.
+
+==================================================
+MASTER SERVICE ORDER
+==================================================
+
+Use this exact service order everywhere:
+
+1. Direct To Film
+2. Screen Print
+3. Embroidery
+4. Promotional
+5. DTF Transfers
+6. Design Work
+
+This order must be centralized and reusable.
+
+Do NOT hardcode service ordering in individual components.
+
+Create a shared service-order configuration used by:
+
+- Dashboard
+- Client Legacy
+- Reporting
+- Filters
+- Analytics
+- Future service widgets
+
+==================================================
+CLIENT LEGACY
+==================================================
+
+Add:
+
+DTF Transfers
+
+Design Work
+
+to Client Legacy calculations.
+
+Track:
+
+Projects
+Revenue
+Profit
+
+and PCS where applicable.
+
+==================================================
+DESKTOP LAYOUT
+==================================================
+
+Client Legacy should display all six service cards on a single row.
+
+Required order:
+
+[Direct To Film] [Screen Print] [Embroidery] [Promotional] [DTF Transfers] [Design Work]
+
+Do NOT wrap.
+
+Do NOT create a second row.
+
+Do NOT introduce horizontal scrolling.
+
+Cards should scale responsively to fit.
+
+==================================================
+TABLET LAYOUT
+==================================================
+
+Display as:
+
+[Direct To Film] [Screen Print] [Embroidery]
+
+[Promotional] [DTF Transfers] [Design Work]
+
+3 columns x 2 rows
+
+==================================================
+MOBILE LAYOUT
+==================================================
+
+Replace the current single-column stack.
+
+Display as:
+
+[Direct To Film] [Screen Print]
+
+[Embroidery] [Promotional]
+
+[DTF Transfers] [Design Work]
+
+2 columns x 3 rows
+
+This reduces excessive vertical space and scales properly as service offerings grow.
+
+==================================================
+DASHBOARD
+==================================================
+
+Update "Completed By Service".
+
+Include:
+
+Direct To Film
+Screen Print
+Embroidery
+Promotional
+DTF Transfers
+Design Work
+
+Desktop:
+
+All six services displayed on a single row.
+
+Tablet:
+
+3 columns x 2 rows.
+
+Mobile:
+
+2 columns x 3 rows.
+
+Maintain the same service order everywhere.
+
+==================================================
+QUOTE SYSTEM
+==================================================
+
+Add service options:
+
+DTF Transfers
+Design Work
+
+These services must be:
+
+Selectable
+Searchable
+Filterable
+Reportable
+
+==================================================
+PROJECT SYSTEM
+==================================================
+
+Add project filtering and categorization support for:
+
+DTF Transfers
+Design Work
+
+Projects using these services must appear correctly in reporting and dashboards.
+
+==================================================
+REPORTING
+==================================================
+
+Include DTF Transfers and Design Work in:
+
+Revenue by Service
+
+Profit by Service
+
+Projects by Service
+
+Completed by Service
+
+Client Legacy metrics
+
+Dashboard metrics
+
+==================================================
+DESIGN WORK SPECIAL HANDLING
+==================================================
+
+Design Work is a service, not a production method.
+
+Evaluate whether PCS should apply.
+
+If PCS is not applicable:
+
+Track only:
+
+Projects
+Revenue
+Profit
+
+Do not force artificial PCS values.
+
+==================================================
+VALIDATION
+==================================================
+
+Provide screenshots showing:
+
+Desktop Client Legacy
+
+Tablet Client Legacy
+
+Mobile Client Legacy
+
+Desktop Dashboard Completed By Service
+
+Tablet Dashboard Completed By Service
+
+Mobile Dashboard Completed By Service
+
+Quote Service Selector
+
+Project Filters
+
+Confirm:
+
+All six services exist.
+
+Service order is consistent.
+
+Desktop = single row.
+
+Tablet = 3x2 grid.
+
+Mobile = 2x3 grid.
+
+No horizontal scrolling is introduced.
+```

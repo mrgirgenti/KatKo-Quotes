@@ -1,0 +1,307 @@
+PLATFORM DESIGN SYSTEM STANDARDIZATION
+
+PRIORITY: HIGH
+
+We are seeing visual inconsistencies between Organizations, Contacts, Projects, Quotes, Client Hubs, and other management pages.
+
+This is no longer a page-level issue.
+
+This is a platform design system issue.
+
+==================================================
+STANDARDIZATION BOUNDARY
+========================
+
+Everything ABOVE the data table/grid and DOWN TO the black column header bar must be standardized.
+
+This includes:
+
+Page Title
+
+Metrics Row
+
+Action Buttons
+
+Primary CTA Buttons
+
+Filter Pills
+
+Search Bar
+
+Search Controls
+
+Column Sort Bar
+
+Spacing Between Sections
+
+Typography
+
+Colors
+
+Borders
+
+Heights
+
+Padding
+
+==================================================
+METRICS ROW
+===========
+
+Use Contacts page metrics container as the master reference.
+
+Standardize:
+
+Container Height
+
+Border Radius
+
+Background Color
+
+Padding
+
+Divider Styling
+
+Metric Value Font Size
+
+Metric Label Font Size
+
+Vertical Alignment
+
+All pages should use the same metrics row dimensions.
+
+==================================================
+ACTION AREA
+===========
+
+Top-right action area must be consistent.
+
+Pattern:
+
+[Actions ▼] [Primary CTA]
+
+Button heights must match.
+
+Button padding must match.
+
+Button typography must match.
+
+==================================================
+FILTER PILLS
+============
+
+All filter pills across the platform must use:
+
+Same Height
+
+Same Border Radius
+
+Same Font Size
+
+Same Font Weight
+
+Same Vertical Padding
+
+Same Horizontal Padding
+
+Same Active State
+
+Same Hover State
+
+Same Badge Count Styling
+
+Current pages have visibly different pill heights and typography.
+
+Eliminate these inconsistencies.
+
+==================================================
+SEARCH BAR
+==========
+
+All management pages should use:
+
+Same Search Height
+
+Same Search Icon Size
+
+Same Input Font Size
+
+Same Border Radius
+
+Same Padding
+
+Same Vertical Alignment
+
+==================================================
+COLUMN SORT BAR
+===============
+
+The black column/sort bar is currently inconsistent between pages.
+
+Standardize:
+
+Background Color = #000000
+
+Font Color
+
+Font Weight
+
+Font Size
+
+Chip Height
+
+Chip Padding
+
+Chip Border Radius
+
+Chip Spacing
+
+Divider Spacing
+
+Hover States
+
+Selected States
+
+==================================================
+TEXT COLOR ISSUE
+================
+
+Contacts currently uses a different text treatment than other pages.
+
+Observed issue:
+
+Unselected sort chips appear grey.
+
+Selected chips appear white/orange.
+
+This does not match the rest of the platform.
+
+Apply one consistent styling system everywhere.
+
+==================================================
+TYPOGRAPHY
+==========
+
+Standardize:
+
+Page Titles
+
+Metric Values
+
+Metric Labels
+
+Filter Pills
+
+Sort Chips
+
+Search Inputs
+
+Buttons
+
+Column Headers
+
+Do not allow page-specific typography unless absolutely necessary.
+
+==================================================
+SPACING SYSTEM
+==============
+
+Spacing currently changes from page to page.
+
+Standardize:
+
+Title → Metrics Row
+
+Metrics Row → Filters
+
+Filters → Search
+
+Search → Column Header Bar
+
+Column Header Bar → Table
+
+All pages should visually align when switching between sections.
+
+==================================================
+MASTER REFERENCE PAGES
+======================
+
+Use the best implementation from existing pages.
+
+Target visual consistency across:
+
+Organizations
+
+Contacts
+
+Projects
+
+Quotes
+
+Client Hubs
+
+Invoices
+
+Payments
+
+Production
+
+Tasks
+
+==================================================
+SUCCESS CRITERIA
+================
+
+When navigating between management pages:
+
+Organizations
+
+Contacts
+
+Projects
+
+Quotes
+
+Client Hubs
+
+the user should feel like they are using the same screen with different data.
+
+No visible differences should exist in:
+
+Heights
+
+Typography
+
+Colors
+
+Spacing
+
+Pill Styling
+
+Sort Chip Styling
+
+Search Styling
+
+Metrics Styling
+
+Button Styling
+
+except where operationally required.
+
+==================================================
+VALIDATION
+==========
+
+Provide side-by-side screenshots of:
+
+Organizations
+
+Contacts
+
+Projects
+
+Quotes
+
+Client Hubs
+
+and confirm all shared UI elements use the same design tokens, dimensions, spacing, and typography.

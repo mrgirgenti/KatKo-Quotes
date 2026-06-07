@@ -17,6 +17,8 @@ import {
   Shirt,
   Scissors,
   Gift,
+  Zap,
+  Pencil,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useQuotes } from '@/contexts/QuotesContext';
@@ -31,6 +33,8 @@ export default function DashboardScreen() {
   const { orgs } = useCrm();
   const { isMobile, isTablet } = useBreakpoint();
   const cardsPerRow = isMobile ? 2 : isTablet ? 2 : 4;
+  // Service breakdown grid: desktop = 6 on one row, tablet = 3×2, mobile = 2×3.
+  const serviceCardsPerRow = isMobile ? 2 : isTablet ? 3 : 6;
 
   const stats = useMemo(() => {
     const salesList = quotes.filter((q) => q.status === 'active' || q.status === 'completed');
@@ -68,11 +72,14 @@ export default function DashboardScreen() {
 
   const serviceBreakdown = useMemo(() => {
     const completedProjects = quotes.filter((q) => q.status === 'completed');
+    // Order follows the master service order from constants/services.ts.
     const services: { label: ServiceStyle; count: number }[] = [
       { label: 'Direct to Film',  count: 0 },
       { label: 'Screen Printing', count: 0 },
       { label: 'Embroidery',      count: 0 },
       { label: 'Promotional',     count: 0 },
+      { label: 'DTF Transfers',   count: 0 },
+      { label: 'Design Work',     count: 0 },
     ];
     completedProjects.forEach((q) => {
       const usedServices = new Set(q.lineItems.map((i) => i.serviceStyle));
@@ -185,8 +192,8 @@ export default function DashboardScreen() {
           <Text style={styles.sectionSub}>Completed projects only</Text>
         </View>
         <View style={styles.serviceGrid}>
-          {Array.from({ length: Math.ceil(serviceBreakdown.length / cardsPerRow) }, (_, rowIdx) => {
-            const perRow = cardsPerRow;
+          {Array.from({ length: Math.ceil(serviceBreakdown.length / serviceCardsPerRow) }, (_, rowIdx) => {
+            const perRow = serviceCardsPerRow;
             const rowItems = serviceBreakdown.slice(rowIdx * perRow, rowIdx * perRow + perRow);
             return (
               <View key={rowIdx} style={styles.statsRow}>
@@ -271,11 +278,14 @@ export default function DashboardScreen() {
   );
 }
 
+// Includes all six services in master order. Add new entries here when expanding.
 const SERVICE_ICON_CONFIG: Record<ServiceStyle, { icon: any; color: string; bg: string }> = {
   'Direct to Film':  { icon: Layers,   color: '#2563EB', bg: '#EFF6FF' },
   'Screen Printing': { icon: Shirt,    color: '#FF5A00', bg: '#FFF4EE' },
   'Embroidery':      { icon: Scissors, color: '#7C3AED', bg: '#F5F3FF' },
   'Promotional':     { icon: Gift,     color: '#059669', bg: '#ECFDF5' },
+  'DTF Transfers':   { icon: Zap,      color: '#DC2626', bg: '#FEF2F2' },
+  'Design Work':     { icon: Pencil,   color: '#D97706', bg: '#FFFBEB' },
 };
 
 const styles = StyleSheet.create({

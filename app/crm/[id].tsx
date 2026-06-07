@@ -95,34 +95,34 @@ import {
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { FLAG_ORG_LAYOUT_V2 } from '@/constants/featureFlags';
 import { STATUS_CONFIG, getEffectiveStatus, QuoteStatus } from '@/types/quote';
+import {
+  LEGACY_SERVICE_COLORS,
+  LEGACY_FALLBACK_COLORS,
+  LEGACY_SERVICE_ORDER,
+  SERVICE_HAS_PCS,
+} from '@/constants/services';
 
-// Baseline services that always appear in Client Legacy (even at 0%). Any other
-// service type found in project history is rendered dynamically alongside these.
-const LEGACY_SERVICES: { key: string; color: string }[] = [
-  { key: 'Screen Print',   color: '#1C1C1E' },
-  { key: 'Embroidery',     color: '#1E3A8A' },
-  { key: 'Direct to Film', color: '#FF5A00' },
-  { key: 'Promotional',    color: '#0E7490' },
-];
-
-// Fallback accent colors for service types discovered in history that aren't
-// part of the baseline set.
-const LEGACY_FALLBACK_COLORS = ['#7C3AED', '#0891B2', '#CA8A04', '#DC2626', '#2563EB', '#DB2777'];
+const LEGACY_SERVICES: { key: string; color: string }[] = LEGACY_SERVICE_ORDER.map((key) => ({
+  key,
+  color: LEGACY_SERVICE_COLORS[key] ?? '#6B7280',
+}));
 
 function legacyServiceColor(key: string, index: number): string {
-  const known = LEGACY_SERVICES.find((s) => s.key === key);
-  return known ? known.color : LEGACY_FALLBACK_COLORS[index % LEGACY_FALLBACK_COLORS.length];
+  return LEGACY_SERVICE_COLORS[key] ?? LEGACY_FALLBACK_COLORS[index % LEGACY_FALLBACK_COLORS.length];
 }
 
 // Map a raw service value onto a canonical baseline name when recognised;
 // otherwise keep the raw value so brand-new service types surface automatically.
+// DTF Transfers check must come BEFORE the generic 'dtf'/'film' check.
 function normalizeLegacyService(raw: string): string | null {
   const s = (raw || '').toLowerCase().trim();
   if (!s) return null;
+  if (s.includes('dtf transfer') || s === 'dtf transfers') return 'DTF Transfers';
   if (s.includes('film') || s.includes('dtf')) return 'Direct to Film';
   if (s.includes('screen')) return 'Screen Print';
   if (s.includes('embroid')) return 'Embroidery';
   if (s.includes('promo')) return 'Promotional';
+  if (s.includes('design')) return 'Design Work';
   return raw.trim();
 }
 
@@ -714,7 +714,18 @@ export default function OrgProfileScreen() {
 
     const totalSvcRevenue = Object.values(svcMap).reduce((s, v) => s + v.revenue, 0);
 
-    const services = Object.keys(svcMap).map((key, idx) => {
+    const allKeys = Object.keys(svcMap);
+    // Sort by master order; unknown service types go to end alphabetically.
+    allKeys.sort((a, b) => {
+      const ai = LEGACY_SERVICE_ORDER.indexOf(a as any);
+      const bi = LEGACY_SERVICE_ORDER.indexOf(b as any);
+      if (ai !== -1 && bi !== -1) return ai - bi;
+      if (ai !== -1) return -1;
+      if (bi !== -1) return 1;
+      return a.localeCompare(b);
+    });
+
+    const services = allKeys.map((key, idx) => {
       const d = svcMap[key];
       const pct = totalSvcRevenue > 0 ? Math.round((d.revenue / totalSvcRevenue) * 100) : 0;
       return { name: key, color: legacyServiceColor(key, idx), revenue: d.revenue, pcs: d.pcs, pct, projectCount: d.projectIds.size };
@@ -1440,11 +1451,11 @@ export default function OrgProfileScreen() {
   const emailEntries = org.activityLog.filter((e) => e.type === 'email');
 
   // Shared Client Legacy card — KPI cards (no donuts/hover). Responsive grid:
-  // 4 per row on desktop, 2 on tablet, 1 on mobile. Service types render
-  // dynamically from project history.
+  // 6 per row on desktop (single row), 3 on tablet (3×2), 2 on mobile (2×3).
+  // Service types render dynamically from project history; sorted by master order.
   const renderClientLegacy = () => {
-    const cols = isDesktop ? 4 : isTablet ? 2 : 1;
-    const cardBasis = cols === 4 ? '23%' : cols === 2 ? '48%' : '100%';
+    const cols = isDesktop ? 6 : isTablet ? 3 : 2;
+    const cardBasis = cols === 6 ? '15.5%' : cols === 3 ? '31.5%' : '47%';
     return (
       <View style={styles.infoCard}>
         <View style={styles.infoCardHeader}>
@@ -1489,10 +1500,12 @@ export default function OrgProfileScreen() {
                   <Text style={styles.legacyKpiStatLabel}>Revenue</Text>
                   <Text style={styles.legacyKpiStatVal}>{formatCurrency(svc.revenue)}</Text>
                 </View>
-                <View style={styles.legacyKpiStatRow}>
-                  <Text style={styles.legacyKpiStatLabel}>PCS</Text>
-                  <Text style={styles.legacyKpiStatVal}>{svc.pcs.toLocaleString()}</Text>
-                </View>
+                {SERVICE_HAS_PCS[svc.name] !== false && (
+                  <View style={styles.legacyKpiStatRow}>
+                    <Text style={styles.legacyKpiStatLabel}>PCS</Text>
+                    <Text style={styles.legacyKpiStatVal}>{svc.pcs.toLocaleString()}</Text>
+                  </View>
+                )}
               </View>
             </View>
           ))}
