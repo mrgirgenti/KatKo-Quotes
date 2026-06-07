@@ -107,13 +107,13 @@ interface ProjectRowProps {
   onPrint: () => void;
   onAcceptIntake: () => void;
   isDesktop: boolean;
-  hideCols?: boolean;
+  compact?: boolean;
   isSelected: boolean;
   onToggleSelect: () => void;
   selectionMode: boolean;
 }
 
-function ProjectRow({ quote, effectiveStatus, index, onPress, onDelete, onConvert, onRevert, onComplete, onEdit, onExportPDF, onExportSheets, onPrint, onAcceptIntake, isDesktop, hideCols, isSelected, onToggleSelect, selectionMode }: ProjectRowProps) {
+function ProjectRow({ quote, effectiveStatus, index, onPress, onDelete, onConvert, onRevert, onComplete, onEdit, onExportPDF, onExportSheets, onPrint, onAcceptIntake, isDesktop, compact, isSelected, onToggleSelect, selectionMode }: ProjectRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const menuBtnRef = useRef<View>(null);
@@ -142,69 +142,61 @@ function ProjectRow({ quote, effectiveStatus, index, onPress, onDelete, onConver
   if (isDesktop) {
     return (
       <TouchableOpacity
-        style={[styles.tableRow, isSelected && styles.tableRowSelected]}
+        style={[styles.tableRow, isSelected && styles.tableRowSelected, compact && styles.tableRowCompact]}
         onPress={selectionMode ? onToggleSelect : onPress}
         activeOpacity={0.7}
       >
-        <View style={styles.colCheckbox}>
+        <View style={[styles.colCheckbox, compact && styles.colCheckboxC]}>
           <Checkbox checked={isSelected} onToggle={onToggleSelect} />
         </View>
-        <View style={styles.colStatus}>
+        <View style={[styles.colStatus, compact && styles.colStatusC]}>
           <StatusBadge status={effectiveStatus} />
         </View>
-        <View style={styles.colOrderDate}>
-          <Text style={styles.tableDate}>{formatDate(quote.orderDate)}</Text>
+        <View style={[styles.colOrderDate, compact && styles.colOrderDateC]}>
+          <Text style={[styles.tableDate, compact && styles.tableDateC]}>{formatDate(quote.orderDate)}</Text>
         </View>
-        {!hideCols && (
-          <View style={styles.colDueDate}>
-            <Text style={styles.tableDate}>{quote.inHandsDate ? formatDate(quote.inHandsDate) : '—'}</Text>
-          </View>
-        )}
+        <View style={[styles.colDueDate, compact && styles.colDueDateC]}>
+          <Text style={[styles.tableDate, compact && styles.tableDateC]}>{quote.inHandsDate ? formatDate(quote.inHandsDate) : '—'}</Text>
+        </View>
         <View style={styles.colClient}>
-          <Text style={styles.tableClient} numberOfLines={1}>{quote.personOrganization}</Text>
+          <Text style={[styles.tableClient, compact && styles.tableClientC]} numberOfLines={1}>{quote.personOrganization}</Text>
         </View>
         <View style={styles.colProject}>
-          <Text style={styles.tableProject} numberOfLines={1}>{quote.projectName}</Text>
+          <Text style={[styles.tableProject, compact && styles.tableProjectC]} numberOfLines={1}>{quote.projectName}</Text>
         </View>
-        {!hideCols && (
-          <View style={styles.colInvoice}>
-            <Text style={styles.tableInvoice} numberOfLines={1}>{quote.projectNumber || quote.invoiceNumber || '—'}</Text>
-          </View>
-        )}
-        {!hideCols && (
+        <View style={[styles.colInvoice, compact && styles.colInvoiceC]}>
+          <Text style={styles.tableInvoice} numberOfLines={1}>{quote.projectNumber || quote.invoiceNumber || '—'}</Text>
+        </View>
+        {!compact && (
           <View style={styles.colApplicator}>
             <Text style={styles.tableApplicator} numberOfLines={2}>
               {applicators.length > 0 ? applicators.join('\n') : '—'}
             </Text>
           </View>
         )}
-        {!hideCols && (
-          <View style={styles.colServices}>
-            <Text style={styles.tableServices}>
-              {lineItemServices.length > 0 ? lineItemServices.join('\n') : '—'}
-            </Text>
-          </View>
-        )}
-        {!hideCols && (
-          <View style={styles.colPcs}>
-            <Text style={styles.tablePcs}>
-              {lineItemPcs.map(n => n > 0 ? `${n} pcs` : '—').join('\n')}
-            </Text>
-          </View>
-        )}
-        <View style={styles.colTotal}>
-          <Text style={styles.tableTotal}>{formatCurrency(total)}</Text>
+        <View style={styles.colServices}>
+          <Text style={[styles.tableServices, compact && styles.tableServicesC]}>
+            {lineItemServices.length > 0 ? lineItemServices.join('\n') : '—'}
+          </Text>
         </View>
-        {!hideCols && (
-          <View style={styles.colMarkup}>
-            <Text style={styles.tableMarkup}>{formatCurrency(markup)}</Text>
-            <Text style={styles.tableMarkupPct}>{markupPct.toFixed(1)}%</Text>
-          </View>
-        )}
-        <View style={styles.colActions}>
-          <TouchableOpacity style={styles.viewBtn} onPress={onPress}>
-            <Text style={styles.viewBtnText}>View</Text>
-          </TouchableOpacity>
+        <View style={[styles.colPcs, compact && styles.colPcsC]}>
+          <Text style={[styles.tablePcs, compact && styles.tablePcsC]}>
+            {lineItemPcs.map(n => n > 0 ? `${n} pcs` : '—').join('\n')}
+          </Text>
+        </View>
+        <View style={[styles.colTotal, compact && styles.colTotalC]}>
+          <Text style={[styles.tableTotal, compact && styles.tableTotalC]}>{formatCurrency(total)}</Text>
+        </View>
+        <View style={[styles.colMarkup, compact && styles.colMarkupC]}>
+          <Text style={[styles.tableMarkup, compact && styles.tableMarkupC]}>{formatCurrency(markup)}</Text>
+          <Text style={styles.tableMarkupPct}>{markupPct.toFixed(1)}%</Text>
+        </View>
+        <View style={[styles.colActions, compact && styles.colActionsC]}>
+          {!compact && (
+            <TouchableOpacity style={styles.viewBtn} onPress={onPress}>
+              <Text style={styles.viewBtnText}>View</Text>
+            </TouchableOpacity>
+          )}
           <View ref={menuBtnRef} collapsable={false}>
             <TouchableOpacity style={styles.menuBtn} onPress={openMenu}>
               <ChevronDown size={14} color={Colors.light.textSecondary} />
@@ -831,56 +823,46 @@ export default function ProjectsScreen() {
 
         {/* Tablet + Desktop: Sort row / Table header */}
         {!isMobile && (
-          <View style={styles.tableHeader}>
-            <View style={styles.colCheckbox}>
+          <View style={[styles.tableHeader, isTablet && styles.tableHeaderCompact]}>
+            <View style={[styles.colCheckbox, isTablet && styles.colCheckboxC]}>
               <Checkbox
                 checked={selectedIds.size > 0 && selectedIds.size === filtered.length}
                 indeterminate={selectedIds.size > 0 && selectedIds.size < filtered.length}
                 onToggle={toggleSelectAll}
               />
             </View>
-            <View style={styles.colStatus}>
+            <View style={[styles.colStatus, isTablet && styles.colStatusC]}>
               <SortBtn field="status" label="Status" />
             </View>
-            <View style={styles.colOrderDate}>
+            <View style={[styles.colOrderDate, isTablet && styles.colOrderDateC]}>
               <SortBtn field="date" label="Order Date" />
             </View>
-            {!isTablet && (
-              <View style={styles.colDueDate}>
-                <SortBtn field="inHands" label="Due Date" />
-              </View>
-            )}
+            <View style={[styles.colDueDate, isTablet && styles.colDueDateC]}>
+              <SortBtn field="inHands" label="Due Date" />
+            </View>
             <View style={styles.colClient}>
               <SortBtn field="client" label="Client" />
             </View>
             <View style={styles.colProject}>
               <SortBtn field="project" label="Project" />
             </View>
-            {!isTablet && (
-              <View style={styles.colInvoice}>
-                <SortBtn field="invoice" label="Invoice #" />
-              </View>
-            )}
+            <View style={[styles.colInvoice, isTablet && styles.colInvoiceC]}>
+              <SortBtn field="invoice" label="Invoice #" />
+            </View>
             {!isTablet && <View style={styles.colApplicator}><Text style={styles.thText}>Applicator(s)</Text></View>}
-            {!isTablet && (
-              <View style={styles.colServices}>
-                <SortBtn field="services" label="Service(s)" />
-              </View>
-            )}
-            {!isTablet && (
-              <View style={styles.colPcs}>
-                <SortBtn field="pcs" label="# PCS" />
-              </View>
-            )}
-            <View style={styles.colTotal}>
+            <View style={styles.colServices}>
+              <SortBtn field="services" label="Service(s)" />
+            </View>
+            <View style={[styles.colPcs, isTablet && styles.colPcsC]}>
+              <SortBtn field="pcs" label="# PCS" />
+            </View>
+            <View style={[styles.colTotal, isTablet && styles.colTotalC]}>
               <SortBtn field="total" label="Total" />
             </View>
-            {!isTablet && (
-              <View style={styles.colMarkup}>
-                <SortBtn field="markup" label="Markup" />
-              </View>
-            )}
-            <View style={styles.colActions}><Text style={styles.thText}>Actions</Text></View>
+            <View style={[styles.colMarkup, isTablet && styles.colMarkupC]}>
+              <SortBtn field="markup" label="Markup" />
+            </View>
+            <View style={[styles.colActions, isTablet && styles.colActionsC]}><Text style={styles.thText}>Actions</Text></View>
           </View>
         )}
       </View>
@@ -951,7 +933,7 @@ export default function ProjectsScreen() {
               onPrint={() => handlePrint(quote)}
               onAcceptIntake={() => handleAcceptIntake(quote)}
               isDesktop={true}
-              hideCols={isTablet}
+              compact={isTablet}
               isSelected={selectedIds.has(quote.id)}
               onToggleSelect={() => toggleSelect(quote.id)}
               selectionMode={selectionMode}
@@ -1095,6 +1077,8 @@ const styles = StyleSheet.create({
   tableDivider: { height: 1, backgroundColor: Colors.light.border, marginHorizontal: DS.spacing.xl },
 
   tableRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: DS.spacing.xl, paddingVertical: 12, backgroundColor: Colors.light.surface },
+  tableHeaderCompact: { paddingHorizontal: 10 },
+  tableRowCompact: { paddingHorizontal: 10, paddingVertical: 10 },
   colStatus:    { width: 100 },
   colOrderDate: { width: 125 },
   colDueDate:   { width: 110 },
@@ -1108,6 +1092,16 @@ const styles = StyleSheet.create({
   colMarkup:    { width: 85, alignItems: 'flex-end' },
   colActions:   { width: 100, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
 
+  colCheckboxC: { width: 28 },
+  colStatusC:   { width: 74 },
+  colOrderDateC:{ width: 76 },
+  colDueDateC:  { width: 68 },
+  colInvoiceC:  { width: 54 },
+  colPcsC:      { width: 46 },
+  colTotalC:    { width: 66 },
+  colMarkupC:   { width: 64 },
+  colActionsC:  { width: 56 },
+
   tableDate:       { fontSize: 13, color: Colors.light.text },
   tableDateSub:    { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
   tableClient:     { fontSize: 13, fontWeight: '700', color: Colors.light.text },
@@ -1119,6 +1113,14 @@ const styles = StyleSheet.create({
   tableTotal:      { fontSize: 14, fontWeight: '700', color: Colors.light.text },
   tableMarkup:     { fontSize: 13, fontWeight: '700', color: '#16A34A' },
   tableMarkupPct:  { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
+
+  tableDateC:     { fontSize: 11 },
+  tableClientC:   { fontSize: 12 },
+  tableProjectC:  { fontSize: 12 },
+  tableServicesC: { fontSize: 11 },
+  tablePcsC:      { fontSize: 11 },
+  tableTotalC:    { fontSize: 12 },
+  tableMarkupC:   { fontSize: 11 },
 
   viewBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: DS.radius.sm, backgroundColor: Colors.light.tint, height: 30, justifyContent: 'center', alignItems: 'center' },
   viewBtnText: { fontSize: 12, fontWeight: '700', color: '#fff' },

@@ -44,6 +44,30 @@ match the Projects design.
 - Search matches client/org (`personOrganization`), project, quote# (`invoiceNumber`/
   `projectNumber`), AND line-item `serviceStyle`.
 
+## Responsive standard for these tables (operational consistency)
+The point of these pages is operational workflow, so EVERY desktop column's meaning
+must survive at smaller widths — never silently drop required fields.
+- **Required fields** (must stay visible/identifiable on every breakpoint): Status,
+  Order Date, Due Date, Client, Project, Quote#/Invoice#, Service, PCS, Revenue/Total,
+  Profit/Markup. (Applicator(s) is the one NON-required projects col — OK to drop on tablet.)
+- **Desktop (>=1024):** full table, unchanged. Keep it byte-equivalent — gate every
+  responsive tweak behind `isTablet`/`compact` so the desktop branch renders identically.
+- **Tablet (768–1023): COMPACT FULL TABLE** — show ALL required columns, just shrunk
+  (smaller fixed-col widths + tighter row/header padding; keep Client/Project/Service as
+  `flex` so they absorb leftover space). NO column-hiding, NO horizontal scroll. Pattern:
+  `style={[styles.colX, compact && styles.colXC]}` with `*C` width/font overrides; in the
+  compact actions cell, drop text buttons (icon-only Track + menu chevron) to save width.
+  Watch the fixed-col budget: at ~768 the sidebar is collapsed (~64px) so content ≈ ~684px;
+  keep summed fixed widths well under that or flex cols get crushed.
+- **Mobile (<768): labeled key-value cards** (NOT a sort strip / unlabeled card). Canonical
+  card = `components/ProjectCard.tsx`: left big queue `#N`, header (recordNum + STATUS badge
+  + menu), 3 two-col labeled rows [PROJECT|CLIENT][ORDER DATE|DUE DATE][SERVICE|PCS], footer
+  [TOTAL/REVENUE|PROFIT]. Quotes mirrors these exact styles in `sales.tsx`. Keep menu/track/
+  lock/selection behavior intact.
+**Why:** user explicitly rejected hiding columns on tablet; chose "compact full table"; and
+wanted mobile cards labeled so a field is never ambiguous. Verify via code/LSP — the
+screenshot tool can't reach these breakpoints (see screenshot-load-gate.md).
+
 ## "Approved" is NOT a real status
 There is no `approved` member in `QuoteStatus` (`types/quote.ts`): members are draft,
 needs_review, quoting, quoted, invoice_sent, paid, active, production_started, completed,
