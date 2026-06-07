@@ -28,6 +28,15 @@ match the Projects design.
   changes filter/search/sort, the bulk count/dialog and the operation silently act on
   only the still-visible subset. Quotes fixes this by deriving `selectedSales` from
   the full `sales` list keyed by `selectedIds`. Prefer that approach.
+- **Header checkbox + bulk COUNT must use the VISIBLE intersection, not raw
+  `selectedIds.size`.** A persistent `selectedIds: Set` is never auto-pruned, so if you
+  drive the select-all header's checked/indeterminate state (or the "N selected" label)
+  off `selectedIds.size` vs `filtered.length`, changing filter/search/tab leaves a stale
+  checked/indeterminate header and a count that disagrees with what Delete actually
+  affects. Compute `visibleSelectedCount = filtered.filter(p=>selectedIds.has(p.id))` and
+  derive `selectionMode`, `allSelected`, and the bulk count from THAT. Contacts
+  (`ContactsDirectory.tsx`) does this; Organizations (`clients.tsx`) still uses raw
+  `selectedIds.size` (latent staleness bug there — fix if touched).
 - **The per-row dropdown is a measure-anchored `Modal` (not the shared OverlayMenu).**
   It must flip ABOVE the trigger and clamp to the viewport, or bottom-row menu items
   render off-screen (especially on mobile). Quotes' `openMenu` does this; the Projects
@@ -64,7 +73,8 @@ Canonical pattern (all four use it):
   </ScrollView>
 </ScrollView>
 ```
-Pixel `minWidth` (Projects 1320, Quotes 1180, Orgs 1200, Contacts 1120) forces horizontal
+Pixel `minWidth` (Projects 1320, Quotes 1180, Orgs 1200, Contacts 1156 — was 1120 before
+the checkbox column) forces horizontal
 scroll on phones; `flexGrow:1` (on BOTH the h-scroll contentContainer AND the inner View)
 lets it stretch to fill wide desktops so desktop stays effectively identical. `minWidth:'100%'`
 is WRONG here — it collapses to viewport on mobile and never scrolls. Keep Client/Project/
