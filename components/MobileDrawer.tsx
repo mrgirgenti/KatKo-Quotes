@@ -11,7 +11,7 @@ import {
   Image,
 } from 'react-native';
 import { Menu, X } from 'lucide-react-native';
-import { SB, SidebarNav, ProfileFooter, NewQuoteButton } from '@/components/SidebarContent';
+import { SB, SidebarNav, ProfileFooter, NewQuoteButton, KK_SIDEBAR_DATASET } from '@/components/SidebarContent';
 import { useUser } from '@/contexts/UserContext';
 
 const DRAWER_W = 280;
@@ -62,7 +62,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       {mounted && (
         <View style={StyleSheet.absoluteFill as any} pointerEvents="box-none">
           <Animated.View style={[styles.scrim, { opacity: scrim }]}>
-            <Pressable style={StyleSheet.absoluteFill as any} onPress={closeDrawer} />
+            <Pressable style={[StyleSheet.absoluteFill, { outlineStyle: 'none' } as any]} onPress={closeDrawer} />
           </Animated.View>
           <Animated.View style={[styles.drawer, { transform: [{ translateX: tx }] }]} {...KK_SIDEBAR_DATASET}>
             <View style={styles.drawerHeader}>
