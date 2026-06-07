@@ -2,7 +2,6 @@ import React, { useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
-  FlatList,
   TouchableOpacity,
   StyleSheet,
   TextInput,
@@ -38,7 +37,6 @@ import Colors from '@/constants/colors';
 import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { useUser } from '@/contexts/UserContext';
-import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { Quote, QuoteStatus, getEffectiveStatus, STATUS_CONFIG } from '@/types/quote';
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
@@ -47,9 +45,6 @@ import { exportSingleSaleToSheets } from '@/utils/googleSheetsExport';
 
 type SortField = 'date' | 'client' | 'revenue' | 'status' | 'inHands' | 'project' | 'invoice' | 'services' | 'pcs' | 'profit';
 type SortDir = 'asc' | 'desc';
-type MobileListDataItem =
-  | { type: 'header'; key: string; label: string }
-  | { type: 'item'; quote: Quote; effectiveStatus: QuoteStatus; queueIndex: number };
 
 const STATUS_PILLS: { key: 'all' | QuoteStatus; label: string }[] = [
   { key: 'all',                label: 'All'             },
@@ -100,17 +95,6 @@ function StatusBadge({ status }: { status: QuoteStatus }) {
   );
 }
 
-function Field({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <Text style={[styles.fieldValue, accent && styles.fieldValueAccent]} numberOfLines={1}>
-        {value || '—'}
-      </Text>
-    </View>
-  );
-}
-
 function Checkbox({ checked, indeterminate, onToggle }: { checked: boolean; indeterminate?: boolean; onToggle: () => void }) {
   const filled = checked || indeterminate;
   return (
@@ -132,7 +116,6 @@ function parseDate(str: string): Date | null {
 interface SaleRowProps {
   quote: Quote;
   effectiveStatus: QuoteStatus;
-  index: number;
   onPress: () => void;
   onTrack: () => void;
   onDelete: () => void;
@@ -143,14 +126,12 @@ interface SaleRowProps {
   onExportPDF: () => void;
   onExportSheets: () => void;
   onPrint: () => void;
-  isDesktop: boolean;
-  isTablet?: boolean;
   isSelected: boolean;
   onToggleSelect: () => void;
   selectionMode: boolean;
 }
 
-function SaleRow({ quote, effectiveStatus, index, onPress, onTrack, onDelete, onRevert, onEdit, onLock, onUnlock, onExportPDF, onExportSheets, onPrint, isDesktop, isTablet, isSelected, onToggleSelect, selectionMode }: SaleRowProps) {
+function SaleRow({ quote, effectiveStatus, onPress, onTrack, onDelete, onRevert, onEdit, onLock, onUnlock, onExportPDF, onExportSheets, onPrint, isSelected, onToggleSelect, selectionMode }: SaleRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const menuBtnRef = useRef<View>(null);
@@ -239,140 +220,72 @@ function SaleRow({ quote, effectiveStatus, index, onPress, onTrack, onDelete, on
     </Modal>
   );
 
-  if (isDesktop) {
-    return (
-      <TouchableOpacity
-        style={[styles.tableRow, isSelected && styles.tableRowSelected, isLocked && styles.tableRowLocked, isTablet && styles.tableRowCompact]}
-        onPress={selectionMode ? onToggleSelect : onPress}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.colCheckbox, isTablet && styles.colCheckboxC]}>
-          <Checkbox checked={isSelected} onToggle={onToggleSelect} />
-        </View>
-        <View style={[styles.colStatus, isTablet && styles.colStatusC]}>
-          <StatusBadge status={effectiveStatus} />
-          <View style={styles.statusIcons}>
-            {isLocked && <Lock size={11} color={Colors.light.textSecondary} />}
-            {quote.exportedToSheets && <Sheet size={11} color={Colors.light.success} />}
-          </View>
-        </View>
-        <View style={[styles.colOrderDate, isTablet && styles.colOrderDateC]}>
-          <Text style={[styles.tableDate, isTablet && styles.tableDateC]}>{formatDate(quote.orderDate)}</Text>
-        </View>
-        <View style={[styles.colDueDate, isTablet && styles.colDueDateC]}>
-          <Text style={[styles.tableDate, isTablet && styles.tableDateC]}>{quote.inHandsDate ? formatDate(quote.inHandsDate) : '—'}</Text>
-        </View>
-        <View style={styles.colClient}>
-          <Text style={[styles.tableClient, isTablet && styles.tableClientC]} numberOfLines={1}>{quote.personOrganization}</Text>
-        </View>
-        <View style={styles.colProject}>
-          <Text style={[styles.tableProject, isTablet && styles.tableProjectC]} numberOfLines={1}>{quote.projectName}</Text>
-        </View>
-        <View style={[styles.colQuote, isTablet && styles.colQuoteC]}>
-          <Text style={styles.tableInvoice} numberOfLines={1}>{quote.invoiceNumber || quote.projectNumber || '—'}</Text>
-        </View>
-        <View style={styles.colServices}>
-          <Text style={[styles.tableServices, isTablet && styles.tableServicesC]}>
-            {lineItemServices.length > 0 ? lineItemServices.join('\n') : '—'}
-          </Text>
-        </View>
-        <View style={[styles.colPcs, isTablet && styles.colPcsC]}>
-          <Text style={[styles.tablePcs, isTablet && styles.tablePcsC]}>
-            {lineItemPcs.map(n => n > 0 ? `${n} pcs` : '—').join('\n')}
-          </Text>
-        </View>
-        <View style={[styles.colRevenue, isTablet && styles.colRevenueC]}>
-          <Text style={[styles.tableTotal, isTablet && styles.tableTotalC]}>{formatCurrency(revenue)}</Text>
-        </View>
-        <View style={[styles.colProfit, isTablet && styles.colProfitC]}>
-          <Text style={[styles.tableProfit, isTablet && styles.tableProfitC, !profitPositive && styles.tableProfitNeg]}>{formatCurrency(profit)}</Text>
-        </View>
-        <View style={[styles.colActions, isTablet && styles.colActionsC]}>
-          {!isLocked && (
-            <TouchableOpacity style={styles.trackBtn} onPress={onTrack}>
-              <BarChart3 size={12} color="#fff" />
-              {!isTablet && <Text style={styles.trackBtnText}>Track</Text>}
-            </TouchableOpacity>
-          )}
-          {!isTablet && (
-            <TouchableOpacity style={styles.viewBtn} onPress={onPress}>
-              <Text style={styles.viewBtnText}>View</Text>
-            </TouchableOpacity>
-          )}
-          <View ref={menuBtnRef} collapsable={false}>
-            <TouchableOpacity style={styles.menuBtn} onPress={openMenu}>
-              <ChevronDown size={14} color={Colors.light.textSecondary} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {menuModal}
-      </TouchableOpacity>
-    );
-  }
-
-  // Mobile card — mirrors components/ProjectCard.tsx
-  const cardServices = [...new Set(lineItemServices)].filter(Boolean) as string[];
-  const cardServiceText = cardServices.length > 0 ? cardServices.join(' · ') : '';
-  const cardPcs = getPcs(quote);
   return (
-    <View style={styles.queueRow}>
-      <Text style={styles.queueNum}>#{index + 1}</Text>
-      <TouchableOpacity
-        style={[styles.card, isSelected && styles.cardSelected, isLocked && styles.cardLocked]}
-        onPress={selectionMode ? onToggleSelect : onPress}
-        activeOpacity={0.75}
-      >
-        {/* Header: record # + status (+ optional checkbox) + menu */}
-        <View style={styles.cardHeader}>
-          <View style={styles.cardHeaderLeft}>
-            {selectionMode && <Checkbox checked={isSelected} onToggle={onToggleSelect} />}
-            <Text style={styles.recordNum}>{quote.invoiceNumber || quote.projectNumber || '—'}</Text>
-            <StatusBadge status={effectiveStatus} />
-            {isLocked && <Lock size={12} color={Colors.light.textSecondary} />}
-            {quote.exportedToSheets && <Sheet size={12} color={Colors.light.success} />}
-          </View>
-          <View ref={menuBtnRef} collapsable={false}>
-            <TouchableOpacity style={styles.menuBtn} onPress={openMenu}>
-              <ChevronDown size={14} color={Colors.light.textSecondary} />
-            </TouchableOpacity>
-          </View>
+    <TouchableOpacity
+      style={[styles.tableRow, isSelected && styles.tableRowSelected, isLocked && styles.tableRowLocked]}
+      onPress={selectionMode ? onToggleSelect : onPress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.colCheckbox}>
+        <Checkbox checked={isSelected} onToggle={onToggleSelect} />
+      </View>
+      <View style={styles.colStatus}>
+        <StatusBadge status={effectiveStatus} />
+        <View style={styles.statusIcons}>
+          {isLocked && <Lock size={11} color={Colors.light.textSecondary} />}
+          {quote.exportedToSheets && <Sheet size={11} color={Colors.light.success} />}
         </View>
+      </View>
+      <View style={styles.colOrderDate}>
+        <Text style={styles.tableDate}>{formatDate(quote.orderDate)}</Text>
+      </View>
+      <View style={styles.colDueDate}>
+        <Text style={styles.tableDate}>{quote.inHandsDate ? formatDate(quote.inHandsDate) : '—'}</Text>
+      </View>
+      <View style={styles.colClient}>
+        <Text style={styles.tableClient} numberOfLines={1}>{quote.personOrganization}</Text>
+      </View>
+      <View style={styles.colProject}>
+        <Text style={styles.tableProject} numberOfLines={1}>{quote.projectName}</Text>
+      </View>
+      <View style={styles.colQuote}>
+        <Text style={styles.tableInvoice} numberOfLines={1}>{quote.invoiceNumber || quote.projectNumber || '—'}</Text>
+      </View>
+      <View style={styles.colServices}>
+        <Text style={styles.tableServices}>
+          {lineItemServices.length > 0 ? lineItemServices.join('\n') : '—'}
+        </Text>
+      </View>
+      <View style={styles.colPcs}>
+        <Text style={styles.tablePcs}>
+          {lineItemPcs.map(n => n > 0 ? `${n} pcs` : '—').join('\n')}
+        </Text>
+      </View>
+      <View style={styles.colRevenue}>
+        <Text style={styles.tableTotal}>{formatCurrency(revenue)}</Text>
+      </View>
+      <View style={styles.colProfit}>
+        <Text style={[styles.tableProfit, !profitPositive && styles.tableProfitNeg]}>{formatCurrency(profit)}</Text>
+      </View>
+      <View style={styles.colActions}>
+        {!isLocked && (
+          <TouchableOpacity style={styles.trackBtn} onPress={onTrack}>
+            <BarChart3 size={12} color="#fff" />
+            <Text style={styles.trackBtnText}>Track</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity style={styles.viewBtn} onPress={onPress}>
+          <Text style={styles.viewBtnText}>View</Text>
+        </TouchableOpacity>
+        <View ref={menuBtnRef} collapsable={false}>
+          <TouchableOpacity style={styles.menuBtn} onPress={openMenu}>
+            <ChevronDown size={14} color={Colors.light.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      </View>
 
-        {/* Labeled field grid — preserves desktop column meaning */}
-        <View style={styles.grid}>
-          <Field label="PROJECT" value={quote.projectName} accent />
-          <Field label="CLIENT" value={quote.personOrganization} accent />
-        </View>
-        <View style={styles.grid}>
-          <Field label="ORDER DATE" value={quote.orderDate ? formatDate(quote.orderDate) : ''} />
-          <Field label="DUE DATE" value={quote.inHandsDate ? formatDate(quote.inHandsDate) : ''} />
-        </View>
-        <View style={styles.grid}>
-          <Field label="SERVICE" value={cardServiceText} />
-          <Field label="PCS" value={cardPcs > 0 ? `${cardPcs.toLocaleString()}` : ''} />
-        </View>
-
-        {/* Financials footer */}
-        <View style={styles.footer}>
-          <View style={styles.finCol}>
-            <Text style={styles.fieldLabel}>REVENUE</Text>
-            <Text style={styles.finValue}>{formatCurrency(revenue)}</Text>
-          </View>
-          <View style={styles.finCol}>
-            <Text style={styles.fieldLabel}>PROFIT</Text>
-            <Text style={[styles.finValue, profitPositive ? styles.profitValue : styles.profitValueNeg]}>{formatCurrency(profit)}</Text>
-          </View>
-          {!isLocked && (
-            <TouchableOpacity style={styles.trackBtn} onPress={onTrack}>
-              <BarChart3 size={12} color="#fff" />
-              <Text style={styles.trackBtnText}>Track</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </TouchableOpacity>
       {menuModal}
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -426,7 +339,6 @@ export default function SalesScreen() {
   const router = useRouter();
   const { sales, deleteQuote, convertToQuote, unlockSale, lockSale, markExportedToSheets, isLoading } = useQuotes();
   const { currentUser, orgAdmin } = useUser();
-  const { isMobile, isTablet } = useBreakpoint();
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | QuoteStatus>('all');
@@ -539,29 +451,6 @@ export default function SalesScreen() {
       setSortDir('desc');
     }
   }, [sortField]);
-
-  const mobileListData = useMemo((): MobileListDataItem[] => {
-    if (!isMobile) return [];
-    const needsHeaders = sortField === 'client' || sortField === 'status';
-    if (!needsHeaders) {
-      return filtered.map(({ quote, effectiveStatus }, i) => ({ type: 'item' as const, quote, effectiveStatus, queueIndex: i }));
-    }
-    const result: MobileListDataItem[] = [];
-    let lastKey = '';
-    let itemCount = 0;
-    for (const { quote, effectiveStatus } of filtered) {
-      const groupKey = sortField === 'client' ? (quote.personOrganization || 'Unknown') : effectiveStatus;
-      const label = sortField === 'client'
-        ? (quote.personOrganization || 'Unknown')
-        : (STATUS_CONFIG[effectiveStatus]?.label ?? effectiveStatus);
-      if (groupKey !== lastKey) {
-        result.push({ type: 'header', key: `hdr-${groupKey}`, label });
-        lastKey = groupKey;
-      }
-      result.push({ type: 'item', quote, effectiveStatus, queueIndex: itemCount++ });
-    }
-    return result;
-  }, [filtered, isMobile, sortField]);
 
   const selectedSales = useMemo(() =>
     sales.filter(q => selectedIds.has(q.id)),
@@ -892,29 +781,6 @@ export default function SalesScreen() {
           </View>
         )}
 
-        {/* Desktop / Tablet: Table header */}
-        {!isMobile && (
-          <View style={[styles.tableHeader, isTablet && styles.tableHeaderCompact]}>
-            <View style={[styles.colCheckbox, isTablet && styles.colCheckboxC]}>
-              <Checkbox
-                checked={selectedIds.size > 0 && selectedIds.size === filtered.length}
-                indeterminate={selectedIds.size > 0 && selectedIds.size < filtered.length}
-                onToggle={toggleSelectAll}
-              />
-            </View>
-            <View style={[styles.colStatus, isTablet && styles.colStatusC]}><SortBtn field="status" label="Status" /></View>
-            <View style={[styles.colOrderDate, isTablet && styles.colOrderDateC]}><SortBtn field="date" label="Order Date" /></View>
-            <View style={[styles.colDueDate, isTablet && styles.colDueDateC]}><SortBtn field="inHands" label="Due Date" /></View>
-            <View style={styles.colClient}><SortBtn field="client" label="Client" /></View>
-            <View style={styles.colProject}><SortBtn field="project" label="Project" /></View>
-            <View style={[styles.colQuote, isTablet && styles.colQuoteC]}><SortBtn field="invoice" label="Quote #" /></View>
-            <View style={styles.colServices}><SortBtn field="services" label="Service(s)" /></View>
-            <View style={[styles.colPcs, isTablet && styles.colPcsC]}><SortBtn field="pcs" label="# PCS" /></View>
-            <View style={[styles.colRevenue, isTablet && styles.colRevenueC]}><SortBtn field="revenue" label="Revenue" /></View>
-            <View style={[styles.colProfit, isTablet && styles.colProfitC]}><SortBtn field="profit" label="Profit" /></View>
-            <View style={[styles.colActions, isTablet && styles.colActionsC]}><Text style={styles.thText}>Actions</Text></View>
-          </View>
-        )}
       </View>
 
       {/* Bulk action bar */}
@@ -927,21 +793,6 @@ export default function SalesScreen() {
           onPrint={handleBulkPrint}
           onDelete={handleBulkDelete}
         />
-      )}
-
-      {/* Mobile sort bar */}
-      {isMobile && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mobileSortScroll} contentContainerStyle={styles.mobileSortRow}>
-          <Text style={styles.mobileSortLabel}>Sort:</Text>
-          {(['status', 'date', 'inHands', 'client', 'project', 'invoice', 'services', 'pcs', 'revenue', 'profit'] as SortField[]).map(f => (
-            <TouchableOpacity key={f} style={[styles.mobileSortBtn, sortField === f && styles.mobileSortBtnActive]} onPress={() => toggleSort(f)}>
-              <Text style={[styles.mobileSortBtnText, sortField === f && styles.mobileSortBtnTextActive]}>
-                {f === 'date' ? 'Order Date' : f === 'inHands' ? 'Due Date' : f === 'client' ? 'Client' : f === 'project' ? 'Project' : f === 'invoice' ? 'Quote #' : f === 'services' ? 'Service(s)' : f === 'pcs' ? '# PCS' : f === 'revenue' ? 'Revenue' : f === 'profit' ? 'Profit' : 'Status'}
-                {sortField === f ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
       )}
 
       {isLoading ? (
@@ -958,72 +809,57 @@ export default function SalesScreen() {
               : 'Convert a quote to a sale to see it here.'}
           </Text>
         </View>
-      ) : !isMobile ? (
-        <FlatList
-          data={filtered}
-          keyExtractor={({ quote }) => quote.id}
-          contentContainerStyle={styles.tableBody}
-          ItemSeparatorComponent={() => <View style={styles.tableDivider} />}
-          renderItem={({ item: { quote, effectiveStatus }, index: _rowIndex }) => (
-            <SaleRow
-              quote={quote}
-              effectiveStatus={effectiveStatus}
-              index={_rowIndex}
-              onPress={() => handleView(quote)}
-              onTrack={() => handleTrack(quote)}
-              onDelete={() => handleDelete(quote)}
-              onRevert={() => handleRevert(quote)}
-              onEdit={() => handleEdit(quote)}
-              onLock={() => handleLock(quote)}
-              onUnlock={() => handleUnlock(quote)}
-              onExportPDF={() => handleExportPDF(quote)}
-              onExportSheets={() => handleExportSheets(quote)}
-              onPrint={() => handlePrint(quote)}
-              isDesktop={true}
-              isTablet={isTablet}
-              isSelected={selectedIds.has(quote.id)}
-              onToggleSelect={() => toggleSelect(quote.id)}
-              selectionMode={selectionMode}
-            />
-          )}
-        />
       ) : (
-        <FlatList
-          data={mobileListData}
-          keyExtractor={(item) => item.type === 'header' ? item.key : item.quote.id}
-          contentContainerStyle={styles.cardList}
-          renderItem={({ item }) => {
-            if (item.type === 'header') {
-              return (
-                <View style={styles.mobileSectionHeader}>
-                  <Text style={styles.mobileSectionHeaderText}>{item.label}</Text>
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+          <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
+            <View style={{ minWidth: 1180, flexGrow: 1 }}>
+              <View style={styles.tableHeader}>
+                <View style={styles.colCheckbox}>
+                  <Checkbox
+                    checked={selectedIds.size > 0 && selectedIds.size === filtered.length}
+                    indeterminate={selectedIds.size > 0 && selectedIds.size < filtered.length}
+                    onToggle={toggleSelectAll}
+                  />
                 </View>
-              );
-            }
-            const { quote, effectiveStatus, queueIndex } = item;
-            return (
-              <SaleRow
-                quote={quote}
-                effectiveStatus={effectiveStatus}
-                index={queueIndex}
-                onPress={() => handleView(quote)}
-                onTrack={() => handleTrack(quote)}
-                onDelete={() => handleDelete(quote)}
-                onRevert={() => handleRevert(quote)}
-                onEdit={() => handleEdit(quote)}
-                onLock={() => handleLock(quote)}
-                onUnlock={() => handleUnlock(quote)}
-                onExportPDF={() => handleExportPDF(quote)}
-                onExportSheets={() => handleExportSheets(quote)}
-                onPrint={() => handlePrint(quote)}
-                isDesktop={false}
-                isSelected={selectedIds.has(quote.id)}
-                onToggleSelect={() => toggleSelect(quote.id)}
-                selectionMode={selectionMode}
-              />
-            );
-          }}
-        />
+                <View style={styles.colStatus}><SortBtn field="status" label="Status" /></View>
+                <View style={styles.colOrderDate}><SortBtn field="date" label="Order Date" /></View>
+                <View style={styles.colDueDate}><SortBtn field="inHands" label="Due Date" /></View>
+                <View style={styles.colClient}><SortBtn field="client" label="Client" /></View>
+                <View style={styles.colProject}><SortBtn field="project" label="Project" /></View>
+                <View style={styles.colQuote}><SortBtn field="invoice" label="Quote #" /></View>
+                <View style={styles.colServices}><SortBtn field="services" label="Service(s)" /></View>
+                <View style={styles.colPcs}><SortBtn field="pcs" label="# PCS" /></View>
+                <View style={styles.colRevenue}><SortBtn field="revenue" label="Revenue" /></View>
+                <View style={styles.colProfit}><SortBtn field="profit" label="Profit" /></View>
+                <View style={styles.colActions}><Text style={styles.thText}>Actions</Text></View>
+              </View>
+              <View style={styles.tableBody}>
+                {filtered.map(({ quote, effectiveStatus }, idx) => (
+                  <React.Fragment key={quote.id}>
+                    {idx > 0 && <View style={styles.tableDivider} />}
+                    <SaleRow
+                      quote={quote}
+                      effectiveStatus={effectiveStatus}
+                      onPress={() => handleView(quote)}
+                      onTrack={() => handleTrack(quote)}
+                      onDelete={() => handleDelete(quote)}
+                      onRevert={() => handleRevert(quote)}
+                      onEdit={() => handleEdit(quote)}
+                      onLock={() => handleLock(quote)}
+                      onUnlock={() => handleUnlock(quote)}
+                      onExportPDF={() => handleExportPDF(quote)}
+                      onExportSheets={() => handleExportSheets(quote)}
+                      onPrint={() => handlePrint(quote)}
+                      isSelected={selectedIds.has(quote.id)}
+                      onToggleSelect={() => toggleSelect(quote.id)}
+                      selectionMode={selectionMode}
+                    />
+                  </React.Fragment>
+                ))}
+              </View>
+            </View>
+          </ScrollView>
+        </ScrollView>
       )}
 
       {/* Unlock password modal */}
@@ -1141,16 +977,6 @@ const styles = StyleSheet.create({
   sortBtnText: { fontSize: 11, fontWeight: '700', color: '#ffffff', textTransform: 'uppercase', letterSpacing: 0.5 },
   sortBtnTextActive: { color: Colors.light.tint },
 
-  mobileSortScroll: { backgroundColor: '#000000', borderBottomWidth: 1, borderBottomColor: '#222222' },
-  mobileSortRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: DS.spacing.lg, paddingVertical: 8 },
-  mobileSortLabel: { fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: '600' },
-  mobileSortBtn: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: DS.radius.pill, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.07)' },
-  mobileSortBtnActive: { borderColor: Colors.light.tint, backgroundColor: 'rgba(255,90,0,0.22)' },
-  mobileSortBtnText: { fontSize: 13, color: 'rgba(255,255,255,0.7)' },
-  mobileSortBtnTextActive: { color: Colors.light.tint, fontWeight: '700' },
-  mobileSectionHeader: { paddingHorizontal: DS.spacing.lg, paddingTop: DS.spacing.lg, paddingBottom: 6 },
-  mobileSectionHeaderText: { fontSize: 11, fontWeight: '700', color: Colors.light.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8 },
-
   tableBody: { paddingBottom: 40 },
   tableDivider: { height: 1, backgroundColor: Colors.light.border, marginHorizontal: DS.spacing.xl },
 
@@ -1171,18 +997,6 @@ const styles = StyleSheet.create({
   colProfit:    { width: 95, alignItems: 'flex-end' },
   colActions:   { width: 160, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
 
-  tableHeaderCompact: { paddingHorizontal: 10 },
-  tableRowCompact: { paddingHorizontal: 10, paddingVertical: 10 },
-  colCheckboxC: { width: 28 },
-  colStatusC:   { width: 72 },
-  colOrderDateC:{ width: 72 },
-  colDueDateC:  { width: 62 },
-  colQuoteC:    { width: 54 },
-  colPcsC:      { width: 46 },
-  colRevenueC:  { width: 64 },
-  colProfitC:   { width: 64 },
-  colActionsC:  { width: 62 },
-
   tableDate:    { fontSize: 13, color: Colors.light.text },
   tableClient:  { fontSize: 13, fontWeight: '700', color: Colors.light.text },
   tableProject: { fontSize: 13, color: Colors.light.text },
@@ -1192,14 +1006,6 @@ const styles = StyleSheet.create({
   tableTotal:   { fontSize: 14, fontWeight: '700', color: Colors.light.text },
   tableProfit:  { fontSize: 13, fontWeight: '700', color: '#16A34A' },
   tableProfitNeg: { color: '#DC2626' },
-
-  tableDateC:    { fontSize: 11 },
-  tableClientC:  { fontSize: 12 },
-  tableProjectC: { fontSize: 12 },
-  tableServicesC:{ fontSize: 11 },
-  tablePcsC:     { fontSize: 11 },
-  tableTotalC:   { fontSize: 12 },
-  tableProfitC:  { fontSize: 12 },
 
   trackBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: DS.radius.sm, backgroundColor: '#1C1C1E', height: 30, justifyContent: 'center' },
   trackBtnText: { fontSize: 12, fontWeight: '700', color: '#fff' },
@@ -1212,26 +1018,6 @@ const styles = StyleSheet.create({
   dropdownItemLast: { borderBottomWidth: 0 },
   dropdownSeparator: { height: 1, backgroundColor: Colors.light.border, marginVertical: 2 },
   dropdownItemText: { fontSize: 13, color: Colors.light.text, fontWeight: '500' },
-
-  cardList: { padding: DS.spacing.lg, gap: 8, paddingBottom: 40 },
-  queueRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  queueNum: { ...metricValueStyle, width: 36, textAlign: 'right', flexShrink: 0, paddingTop: 10 },
-  card: { flex: 1, backgroundColor: '#ffffff', borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', paddingVertical: 10, paddingHorizontal: 12, gap: 8 },
-  cardSelected: { borderColor: Colors.light.primary, backgroundColor: '#FFF7F3' },
-  cardLocked: { backgroundColor: '#FAFAFA' },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, flexWrap: 'wrap' },
-  recordNum: { fontSize: 13, fontWeight: '800', color: '#111827', letterSpacing: 0.3 },
-  grid: { flexDirection: 'row', gap: 12 },
-  field: { flex: 1, minWidth: 0, gap: 2 },
-  fieldLabel: { fontSize: 9, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.5, textTransform: 'uppercase' },
-  fieldValue: { fontSize: 13, color: '#374151' },
-  fieldValueAccent: { fontSize: 14, fontWeight: '600', color: '#111827' },
-  footer: { flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 8 },
-  finCol: { flex: 1, gap: 2 },
-  finValue: { fontSize: 16, fontWeight: '800', color: '#111827' },
-  profitValue: { color: '#059669' },
-  profitValueNeg: { color: '#DC2626' },
 
   badge: { alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 3, borderRadius: DS.radius.pill, borderWidth: 1 },
   badgeText: { fontSize: 11, fontWeight: '700' },

@@ -56,9 +56,6 @@ const TOGGLEABLE_COLS: { id: ColId; label: string }[] = [
   { id: 'campaign', label: 'Campaign' },
 ];
 const DEFAULT_VISIBLE: ColId[] = ['org', 'bizType', 'contact', 'phone', 'email', 'status', 'hub', 'actions'];
-// On tablet (768–1023) the full table overflows; hide the lowest-priority columns
-// (keep org name + contact + status + hub + actions) to match the client-hubs density.
-const TABLET_HIDDEN_COLS: ColId[] = ['bizType', 'phone', 'email', 'campaign'];
 
 const EMPTY_ORG_FORM = { name: '', type: '', city: '', state: '', notes: '', status: 'Cold' as CrmStatus };
 const EMPTY_CONTACT_FORM = { firstName: '', lastName: '', phone: '', email: '', role: '' };
@@ -193,44 +190,6 @@ function OrgRow({ org, onPress, onDelete, visibleCols, isSelected, onToggleSelec
   );
 }
 
-// ── OrgCard (mobile) ───────────────────────────────────────────────────────────
-function OrgCard({ org, onPress }: { org: Organization; onPress: () => void }) {
-  const primaries = org.contacts.filter((c) => c.isPrimary);
-  const primaryContact = primaries[0] || org.contacts[0];
-  const activeCampaign = org.campaigns.find((c) => c.steps.some((s) => s.status === 'pending'));
-  const isLead = org.status === 'Cold' || org.status === 'Working';
-  return (
-    <TouchableOpacity style={[styles.orgCard, isLead && styles.orgCardLead]} onPress={onPress} activeOpacity={0.85}>
-      <View style={styles.orgCardLeft}>
-        <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={46} />
-        <View style={styles.orgCardInfo}>
-          <View style={styles.orgCardNameRow}>
-            <Text style={styles.orgCardName} numberOfLines={1}>{org.name}</Text>
-            <StatusBadge status={org.status} />
-          </View>
-          {org.type ? <Text style={styles.orgCardType}>{org.type}</Text> : null}
-          {primaryContact ? (
-            <View>
-              <Text style={styles.orgCardContact} numberOfLines={1}>
-                {primaryContact.firstName} {primaryContact.lastName}{primaries.length > 1 ? ` +${primaries.length - 1}` : ''}
-              </Text>
-              {primaryContact.phone ? <Text style={styles.orgCardContactSub}>{formatPhone(primaryContact.phone)}</Text> : null}
-              {primaryContact.email ? <Text style={styles.orgCardContactSub} numberOfLines={1}>{primaryContact.email}</Text> : null}
-            </View>
-          ) : null}
-          {activeCampaign ? (
-            <View style={styles.orgCardCampaignRow}>
-              <TrendingUp size={11} color={Colors.light.tint} />
-              <Text style={styles.orgCardCampaignText} numberOfLines={1}>{activeCampaign.templateName}</Text>
-            </View>
-          ) : null}
-        </View>
-      </View>
-      <ChevronRight size={16} color={Colors.light.border} />
-    </TouchableOpacity>
-  );
-}
-
 // ── Main screen ────────────────────────────────────────────────────────────────
 export default function ClientsScreen() {
   const { view } = useGlobalSearchParams<{ view?: string }>();
@@ -241,7 +200,7 @@ export default function ClientsScreen() {
 function OrganizationsScreen() {
   const router = useRouter();
   const { orgs, addOrg, addOrgWithContact, addContact, deleteOrg } = useCrm();
-  const { isMobile, isTablet, isDesktop } = useBreakpoint();
+  const { isDesktop } = useBreakpoint();
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<CrmStatus | 'All'>('All');
@@ -410,8 +369,8 @@ function OrganizationsScreen() {
 
   const selectedOrg = selectedOrgId ? orgs.find((o) => o.id === selectedOrgId) : null;
 
-  // On tablet, render a reduced column set so the table fits without clipping.
-  const effectiveCols = isTablet ? visibleCols.filter((c) => !TABLET_HIDDEN_COLS.includes(c)) : visibleCols;
+  // Full column set on every breakpoint (mobile/tablet scroll horizontally).
+  const effectiveCols = visibleCols;
 
   const tableHeaderRow = (
     <View style={styles.tableHeader}>
@@ -547,19 +506,6 @@ function OrganizationsScreen() {
           </>)}
         </View>
 
-        {isMobile && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mobileSortScroll} contentContainerStyle={styles.mobileSortRow}>
-            <Text style={styles.mobileSortLabel}>Sort:</Text>
-            {(['name', 'type', 'contact', 'status', 'hub'] as SortField[]).map((f) => (
-              <TouchableOpacity key={f} style={[styles.mobileSortBtn, sortField === f && styles.mobileSortBtnActive]} onPress={() => toggleSort(f)}>
-                <Text style={[styles.mobileSortBtnText, sortField === f && styles.mobileSortBtnTextActive]}>
-                  {f === 'name' ? 'Name' : f === 'type' ? 'Type' : f === 'contact' ? 'Contact' : f === 'status' ? 'Status' : 'Hub'}
-                  {sortField === f ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
       </View>
 
       {/* ── Filter Panel ── */}
@@ -620,7 +566,7 @@ function OrganizationsScreen() {
       )}
 
       {/* ── Bulk action bar ── */}
-      {selectionMode && !isMobile && (
+      {selectionMode && (
         <View style={styles.bulkBar}>
           <View style={styles.bulkBarLeft}>
             <TouchableOpacity style={styles.bulkClearBtn} onPress={clearSelection}>
@@ -654,10 +600,10 @@ function OrganizationsScreen() {
           <Text style={styles.emptyText}>{search ? 'Try a different search term.' : filter !== 'All' ? `Add a new contact and set status to ${filter}.` : 'Add your first organization or contact to get started.'}</Text>
           {!search && <TouchableOpacity style={styles.emptyAddBtn} onPress={openAddModal}><Plus size={15} color="#fff" /><Text style={styles.emptyAddBtnText}>Add Contact</Text></TouchableOpacity>}
         </View>
-      ) : !isMobile ? (
+      ) : (
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
           <ScrollView horizontal showsHorizontalScrollIndicator={true} contentContainerStyle={{ flexGrow: 1 }}>
-            <View style={{ minWidth: '100%' }}>
+            <View style={{ minWidth: 1200, flexGrow: 1 }}>
               {tableHeaderRow}
               <View style={styles.tableBody}>
                 {filtered.map((org, idx) => (
@@ -677,11 +623,6 @@ function OrganizationsScreen() {
               </View>
             </View>
           </ScrollView>
-          <View style={{ height: 40 }} />
-        </ScrollView>
-      ) : (
-        <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-          {filtered.map((org) => <OrgCard key={org.id} org={org} onPress={() => router.push(`/crm/${org.id}` as any)} />)}
           <View style={{ height: 40 }} />
         </ScrollView>
       )}
@@ -905,13 +846,6 @@ const styles = StyleSheet.create({
   toolBadge: { backgroundColor: Colors.light.tint, borderRadius: 8, minWidth: 16, height: 16, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3 },
   toolBadgeText: { fontSize: 10, fontWeight: '700' as const, color: '#fff' },
 
-  mobileSortScroll: { flexShrink: 0, backgroundColor: '#000000', borderBottomWidth: 1, borderBottomColor: '#222222' },
-  mobileSortRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6, paddingHorizontal: DS.spacing.lg, paddingVertical: 8 },
-  mobileSortLabel: { fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: '600' as const, marginRight: 2 },
-  mobileSortBtn: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: DS.radius.pill, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.07)' },
-  mobileSortBtnActive: { borderColor: Colors.light.tint, backgroundColor: 'rgba(255,90,0,0.22)' },
-  mobileSortBtnText: { fontSize: 13, color: 'rgba(255,255,255,0.7)' },
-  mobileSortBtnTextActive: { color: Colors.light.tint, fontWeight: '700' as const },
 
   filterPanel: { backgroundColor: Colors.light.surface, borderBottomWidth: 1, borderBottomColor: Colors.light.border, paddingHorizontal: DS.spacing.xl, paddingVertical: DS.spacing.md, gap: 10 },
   filterRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' },
@@ -970,19 +904,6 @@ const styles = StyleSheet.create({
   rowMenuItemText: { fontSize: 14, color: Colors.light.text },
   rowMenuDivider: { height: 1, backgroundColor: Colors.light.border, marginVertical: 2 },
 
-  list: { flex: 1 },
-  listContent: { padding: DS.spacing.lg, gap: 8 },
-  orgCard: { backgroundColor: Colors.light.surface, borderRadius: DS.radius.lg, borderWidth: 1, borderColor: Colors.light.border, padding: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  orgCardLead: { borderLeftWidth: 3, borderLeftColor: '#BFDBFE' },
-  orgCardLeft: { flexDirection: 'row', alignItems: 'center', gap: DS.spacing.md, flex: 1 },
-  orgCardInfo: { flex: 1 },
-  orgCardNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  orgCardName: { fontSize: 15, fontWeight: '700' as const, color: Colors.light.text },
-  orgCardType: { fontSize: 13, color: Colors.light.textSecondary, marginTop: 2 },
-  orgCardContact: { fontSize: 13, color: Colors.light.textSecondary, marginTop: 3 },
-  orgCardContactSub: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 1 },
-  orgCardCampaignRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  orgCardCampaignText: { fontSize: 12, color: Colors.light.tint, fontWeight: '500' as const },
 
   colPickerCard: { backgroundColor: Colors.light.surface, borderRadius: DS.radius.xl, padding: 20, width: 340, maxWidth: '90%' as any },
   colPickerSub: { fontSize: 13, color: Colors.light.textSecondary, marginBottom: 14 },

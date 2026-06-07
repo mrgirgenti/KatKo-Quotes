@@ -1,0 +1,288 @@
+MOBILE/TABLET TABLE PARITY FIX — STOP USING GENERIC CARDS
+
+PRIORITY: HIGH
+
+The current mobile/tablet implementation is still not correct.
+
+Replit keeps confirming that mobile “works,” but that is not the issue.
+
+The issue is that mobile/tablet does NOT mimic the desktop table experience.
+
+==================================================
+CORE PROBLEM
+============
+
+Desktop pages are column-based.
+
+Mobile/tablet pages are being rendered as generic cards.
+
+That breaks the workflow.
+
+On desktop, records are organized by explicit columns:
+
+Organizations:
+
+* Organization
+* Business Type
+* Contact
+* Phone
+* Email
+* Status
+* Client Hub
+* Actions
+
+Contacts:
+
+* Name
+* Organization
+* Title / Role
+* Email
+* Phone
+* Hub Status
+* Last Login
+* Status
+
+Projects:
+
+* Status
+* Order Date
+* Due Date
+* Client
+* Project
+* Invoice #
+* Applicator(s)
+* Service(s)
+* # PCS
+* Total
+* Markup
+* Actions
+
+Quotes:
+
+* Status
+* Order Date
+* Due Date
+* Client
+* Project
+* Quote #
+* Service(s)
+* PCS
+* Revenue
+* Profit
+* Actions
+
+But on mobile/tablet, these are being collapsed into cards where the data does not line up with the same columns.
+
+This is not acceptable.
+
+==================================================
+REQUIREMENT
+===========
+
+Mobile/tablet must preserve the desktop table column model.
+
+Do NOT keep using unrelated card layouts.
+
+The mobile/tablet experience should feel like a responsive version of the desktop table, not a separate UI.
+
+==================================================
+APPROVED MOBILE/TABLET PATTERN
+==============================
+
+Use a horizontally scrollable table for mobile and tablet.
+
+The user should be able to scroll left/right to access the same columns as desktop.
+
+This preserves:
+
+* column labels
+* sorting
+* filtering
+* field meaning
+* operational consistency
+
+==================================================
+DO NOT
+======
+
+Do NOT convert rows into generic cards.
+
+Do NOT hide column labels.
+
+Do NOT invent a separate mobile hierarchy.
+
+Do NOT make mobile “pretty” at the cost of clarity.
+
+Do NOT say the mobile version is complete simply because it renders.
+
+==================================================
+MOBILE TABLE REQUIREMENTS
+=========================
+
+For mobile/tablet:
+
+1. Keep the same column headers as desktop.
+2. Keep the same column order as desktop.
+3. Keep sortable column headers.
+4. Keep filterable column logic.
+5. Allow horizontal scrolling.
+6. Freeze or preserve the first key column if practical.
+7. Keep actions accessible.
+8. Keep row height reasonable.
+9. Preserve desktop data relationships.
+
+==================================================
+ORGANIZATIONS MOBILE/TABLET
+===========================
+
+Replace card layout with responsive table.
+
+Columns must match desktop:
+
+Organization
+Business Type
+Contact
+Phone
+Email
+Status
+Client Hub
+Actions
+
+The user must be able to see the data under the correct column label.
+
+==================================================
+CONTACTS MOBILE/TABLET
+======================
+
+Replace card layout with responsive table.
+
+Columns must match desktop:
+
+Name
+Organization
+Title / Role
+Email
+Phone
+Hub Status
+Last Login
+Status
+
+The current card design does not preserve column meaning.
+
+==================================================
+PROJECTS MOBILE/TABLET
+======================
+
+Replace card layout with responsive table or table-like layout.
+
+Columns must match desktop:
+
+Status
+Order Date
+Due Date
+Client
+Project
+Invoice #
+Applicator(s)
+Service(s)
+
+# PCS
+
+Total
+Markup
+Actions
+
+The current mobile cards do not match the desktop table.
+
+==================================================
+QUOTES MOBILE/TABLET
+====================
+
+Replace card layout with responsive table or table-like layout.
+
+Columns must match desktop:
+
+Status
+Order Date
+Due Date
+Client
+Project
+Quote #
+Service(s)
+PCS
+Revenue
+Profit
+Actions
+
+The current quote cards still feel like the old system and do not match the desktop workflow.
+
+==================================================
+SORT BAR
+========
+
+If a horizontal table is implemented, remove the redundant black “Sort:” chip bar on mobile/tablet unless it is still needed.
+
+The table headers themselves should provide sorting where possible.
+
+Do not duplicate sorting UI unnecessarily.
+
+==================================================
+RESPONSIVE STRATEGY
+===================
+
+Desktop:
+Full table.
+
+Tablet:
+Full table with horizontal scroll if needed.
+
+Mobile:
+Compact table with horizontal scroll.
+
+This is preferred over separate card UIs.
+
+==================================================
+WHY THIS MATTERS
+================
+
+Mobile and tablet are not secondary experiences.
+
+Production staff will use tablet/mobile to process work.
+
+They need the same operational clarity as desktop.
+
+Column meaning must be preserved.
+
+==================================================
+VALIDATION REQUIRED
+===================
+
+Provide screenshots for:
+
+Organizations mobile
+Contacts mobile
+Projects mobile
+Quotes mobile
+
+Organizations tablet
+Contacts tablet
+Projects tablet
+Quotes tablet
+
+For each page, confirm:
+
+* same columns as desktop
+* same order as desktop
+* horizontal scrolling works
+* sortable/filterable behavior still exists
+* no generic card layout remains
+
+==================================================
+SUCCESS CRITERIA
+================
+
+If desktop is a table, mobile/tablet should be a responsive table.
+
+The goal is parity.
+
+Not a separate mobile interpretation.

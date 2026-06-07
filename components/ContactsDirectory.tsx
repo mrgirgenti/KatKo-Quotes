@@ -5,7 +5,7 @@ import {
 import { useRouter } from 'expo-router';
 import { OrgAvatar } from '@/components/OrgAvatar';
 import {
-  Search, X, Users, ChevronRight, ChevronDown, Check,
+  Search, X, Users, ChevronDown, Check,
   Wifi, ShieldCheck, Mail, Ban, MinusCircle, Building2, ArrowUpDown,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
@@ -93,28 +93,6 @@ function PersonRow({ person, onPress }: { person: Person; onPress: () => void })
           </Text>
         </View>
       </View>
-    </TouchableOpacity>
-  );
-}
-
-// ── Mobile card ──
-function PersonCard({ person, onPress }: { person: Person; onPress: () => void }) {
-  const name = `${person.firstName} ${person.lastName}`.trim() || 'Unnamed';
-  return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
-      <OrgAvatar name={name} size={42} shape="circle" />
-      <View style={styles.cardInfo}>
-        <View style={styles.cardNameRow}>
-          <Text style={styles.cardName} numberOfLines={1}>{name}</Text>
-          <HubBadge status={person.hubStatus || 'No Access'} />
-        </View>
-        <Text style={styles.cardOrg} numberOfLines={1}>
-          {person.orgName}{person.role ? ` · ${person.role}` : ''}
-        </Text>
-        {person.email ? <Text style={styles.cardSub} numberOfLines={1}>{person.email}</Text> : null}
-        {person.phone ? <Text style={styles.cardSub}>{formatPhone(person.phone)}</Text> : null}
-      </View>
-      <ChevronRight size={16} color={Colors.light.border} />
     </TouchableOpacity>
   );
 }
@@ -225,17 +203,6 @@ export default function ContactsDirectory() {
       <ArrowUpDown size={11} color={sortField === field ? Colors.light.tint : 'rgba(255,255,255,0.35)'} />
     </TouchableOpacity>
   );
-
-  const SORT_FIELDS: { field: ColId; label: string }[] = [
-    { field: 'name', label: 'Name' },
-    { field: 'org', label: 'Organization' },
-    { field: 'role', label: 'Role' },
-    { field: 'email', label: 'Email' },
-    { field: 'phone', label: 'Phone' },
-    { field: 'hub', label: 'Hub Status' },
-    { field: 'lastLogin', label: 'Last Login' },
-    { field: 'status', label: 'Status' },
-  ];
 
   const tableHeader = (
     <View style={styles.tableHeader}>
@@ -372,10 +339,10 @@ export default function ContactsDirectory() {
           <Text style={styles.emptyTitle}>{search || orgFilter || roleFilter ? 'No matching contacts' : 'No contacts yet'}</Text>
           <Text style={styles.emptyText}>{search || orgFilter || roleFilter ? 'Try adjusting your filters or search.' : 'Add contacts from an organization to see them here.'}</Text>
         </View>
-      ) : isDesktop ? (
+      ) : (
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
           <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
-            <View style={{ minWidth: '100%' }}>
+            <View style={{ minWidth: 1120, flexGrow: 1 }}>
               {tableHeader}
               <View style={styles.tableBody}>
                 {filtered.map((p, idx) => (
@@ -389,22 +356,6 @@ export default function ContactsDirectory() {
           </ScrollView>
           <View style={{ height: 40 }} />
         </ScrollView>
-      ) : (
-        <>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mobileSortBar} contentContainerStyle={styles.mobileSortRow}>
-            {SORT_FIELDS.map(({ field, label }) => (
-              <TouchableOpacity key={field} style={[styles.mobileSortBtn, sortField === field && styles.mobileSortBtnActive]} onPress={() => toggleSort(field)} activeOpacity={0.7}>
-                <Text style={[styles.mobileSortBtnText, sortField === field && styles.mobileSortBtnTextActive]}>
-                  {label}{sortField === field ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-            {filtered.map((p) => <PersonCard key={p.id} person={p} onPress={() => goToPerson(p)} />)}
-            <View style={{ height: 40 }} />
-          </ScrollView>
-        </>
       )}
     </View>
   );
@@ -445,12 +396,6 @@ const styles = StyleSheet.create({
   headText: { fontSize: 11, fontWeight: '700' as const, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' as const, letterSpacing: 0.4 },
   headTextActive: { color: '#fff' },
   sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  mobileSortBar: { flexGrow: 0, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: Colors.light.border },
-  mobileSortRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
-  mobileSortBtn: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: '#fff' },
-  mobileSortBtnActive: { borderColor: Colors.light.tint, backgroundColor: '#FFF4EE' },
-  mobileSortBtnText: { fontSize: 13, color: Colors.light.textSecondary },
-  mobileSortBtnTextActive: { color: Colors.light.tint, fontWeight: '700' as const },
   tableBody: { backgroundColor: '#fff' },
   tableRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20 },
   divider: { height: 1, backgroundColor: Colors.light.border, marginHorizontal: 20 },
@@ -465,14 +410,6 @@ const styles = StyleSheet.create({
   statusActive: { backgroundColor: '#DCFCE7' },
   statusInactive: { backgroundColor: '#F3F4F6' },
   statusPillText: { fontSize: 11, fontWeight: '700' as const },
-
-  listContent: { padding: 16, gap: 10 },
-  card: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, backgroundColor: '#fff', borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border },
-  cardInfo: { flex: 1 },
-  cardNameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  cardName: { flex: 1, fontSize: 15, fontWeight: '700' as const, color: Colors.light.text },
-  cardOrg: { fontSize: 13, color: Colors.light.textSecondary, marginTop: 2 },
-  cardSub: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 1 },
 
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 10 },
   emptyTitle: { fontSize: 17, fontWeight: '700' as const, color: Colors.light.text },

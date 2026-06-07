@@ -2,7 +2,6 @@ import React, { useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
-  FlatList,
   TouchableOpacity,
   StyleSheet,
   TextInput,
@@ -18,10 +17,8 @@ import {
   Search,
   X,
   SlidersHorizontal,
-  ChevronRight,
   Trash2,
   FileText,
-  CheckCircle,
   RotateCcw,
   ArrowUpDown,
   ChevronDown,
@@ -39,18 +36,13 @@ import {
 import Colors from '@/constants/colors';
 import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
 import { useQuotes } from '@/contexts/QuotesContext';
-import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { Quote, QuoteStatus, getEffectiveStatus, STATUS_CONFIG } from '@/types/quote';
-import { ProjectCard } from '@/components/ProjectCard';
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
 import { generateAndSharePDF, printQuote } from '@/utils/pdfGenerator';
 
 type SortField = 'date' | 'client' | 'total' | 'status' | 'inHands' | 'project' | 'invoice' | 'services' | 'pcs' | 'markup';
 type SortDir = 'asc' | 'desc';
-type MobileListDataItem =
-  | { type: 'header'; key: string; label: string }
-  | { type: 'item'; quote: Quote; effectiveStatus: QuoteStatus; queueIndex: number };
 
 const STATUS_PILLS: { key: 'all' | QuoteStatus; label: string }[] = [
   { key: 'all',                label: 'All'             },
@@ -107,19 +99,15 @@ interface ProjectRowProps {
   onPrint: () => void;
   onAcceptIntake: () => void;
   isDesktop: boolean;
-  compact?: boolean;
   isSelected: boolean;
   onToggleSelect: () => void;
   selectionMode: boolean;
 }
 
-function ProjectRow({ quote, effectiveStatus, index, onPress, onDelete, onConvert, onRevert, onComplete, onEdit, onExportPDF, onExportSheets, onPrint, onAcceptIntake, isDesktop, compact, isSelected, onToggleSelect, selectionMode }: ProjectRowProps) {
+function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRevert, onComplete, onEdit, onExportPDF, onExportSheets, onPrint, onAcceptIntake, isSelected, onToggleSelect, selectionMode }: ProjectRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const menuBtnRef = useRef<View>(null);
-  const itemCount = quote.lineItems.length;
-  const completedCount = quote.lineItems.filter(i => !!i.completedAt).length;
-  const serviceStyles = [...new Set(quote.lineItems.map(i => i.serviceStyle))];
   const lineItemServices = quote.lineItems.map(i => i.serviceStyle);
   const lineItemPcs = quote.lineItems.map(i =>
     Object.values(i.sizes || {}).reduce((s: number, v: any) => s + (Number(v) || 0), 0)
@@ -139,64 +127,59 @@ function ProjectRow({ quote, effectiveStatus, index, onPress, onDelete, onConver
   const markup = quote.calculations?.markupAmount ?? 0;
   const markupPct = quote.calculations?.markupPercentage ?? 0;
 
-  if (isDesktop) {
-    return (
-      <TouchableOpacity
-        style={[styles.tableRow, isSelected && styles.tableRowSelected, compact && styles.tableRowCompact]}
-        onPress={selectionMode ? onToggleSelect : onPress}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.colCheckbox, compact && styles.colCheckboxC]}>
+  return (
+    <TouchableOpacity
+      style={[styles.tableRow, isSelected && styles.tableRowSelected]}
+      onPress={selectionMode ? onToggleSelect : onPress}
+      activeOpacity={0.7}
+    >
+        <View style={styles.colCheckbox}>
           <Checkbox checked={isSelected} onToggle={onToggleSelect} />
         </View>
-        <View style={[styles.colStatus, compact && styles.colStatusC]}>
+        <View style={styles.colStatus}>
           <StatusBadge status={effectiveStatus} />
         </View>
-        <View style={[styles.colOrderDate, compact && styles.colOrderDateC]}>
-          <Text style={[styles.tableDate, compact && styles.tableDateC]}>{formatDate(quote.orderDate)}</Text>
+        <View style={styles.colOrderDate}>
+          <Text style={styles.tableDate}>{formatDate(quote.orderDate)}</Text>
         </View>
-        <View style={[styles.colDueDate, compact && styles.colDueDateC]}>
-          <Text style={[styles.tableDate, compact && styles.tableDateC]}>{quote.inHandsDate ? formatDate(quote.inHandsDate) : '—'}</Text>
+        <View style={styles.colDueDate}>
+          <Text style={styles.tableDate}>{quote.inHandsDate ? formatDate(quote.inHandsDate) : '—'}</Text>
         </View>
         <View style={styles.colClient}>
-          <Text style={[styles.tableClient, compact && styles.tableClientC]} numberOfLines={1}>{quote.personOrganization}</Text>
+          <Text style={styles.tableClient} numberOfLines={1}>{quote.personOrganization}</Text>
         </View>
         <View style={styles.colProject}>
-          <Text style={[styles.tableProject, compact && styles.tableProjectC]} numberOfLines={1}>{quote.projectName}</Text>
+          <Text style={styles.tableProject} numberOfLines={1}>{quote.projectName}</Text>
         </View>
-        <View style={[styles.colInvoice, compact && styles.colInvoiceC]}>
+        <View style={styles.colInvoice}>
           <Text style={styles.tableInvoice} numberOfLines={1}>{quote.projectNumber || quote.invoiceNumber || '—'}</Text>
         </View>
-        {!compact && (
-          <View style={styles.colApplicator}>
-            <Text style={styles.tableApplicator} numberOfLines={2}>
-              {applicators.length > 0 ? applicators.join('\n') : '—'}
-            </Text>
-          </View>
-        )}
+        <View style={styles.colApplicator}>
+          <Text style={styles.tableApplicator} numberOfLines={2}>
+            {applicators.length > 0 ? applicators.join('\n') : '—'}
+          </Text>
+        </View>
         <View style={styles.colServices}>
-          <Text style={[styles.tableServices, compact && styles.tableServicesC]}>
+          <Text style={styles.tableServices}>
             {lineItemServices.length > 0 ? lineItemServices.join('\n') : '—'}
           </Text>
         </View>
-        <View style={[styles.colPcs, compact && styles.colPcsC]}>
-          <Text style={[styles.tablePcs, compact && styles.tablePcsC]}>
+        <View style={styles.colPcs}>
+          <Text style={styles.tablePcs}>
             {lineItemPcs.map(n => n > 0 ? `${n} pcs` : '—').join('\n')}
           </Text>
         </View>
-        <View style={[styles.colTotal, compact && styles.colTotalC]}>
-          <Text style={[styles.tableTotal, compact && styles.tableTotalC]}>{formatCurrency(total)}</Text>
+        <View style={styles.colTotal}>
+          <Text style={styles.tableTotal}>{formatCurrency(total)}</Text>
         </View>
-        <View style={[styles.colMarkup, compact && styles.colMarkupC]}>
-          <Text style={[styles.tableMarkup, compact && styles.tableMarkupC]}>{formatCurrency(markup)}</Text>
+        <View style={styles.colMarkup}>
+          <Text style={styles.tableMarkup}>{formatCurrency(markup)}</Text>
           <Text style={styles.tableMarkupPct}>{markupPct.toFixed(1)}%</Text>
         </View>
-        <View style={[styles.colActions, compact && styles.colActionsC]}>
-          {!compact && (
-            <TouchableOpacity style={styles.viewBtn} onPress={onPress}>
-              <Text style={styles.viewBtnText}>View</Text>
-            </TouchableOpacity>
-          )}
+        <View style={styles.colActions}>
+          <TouchableOpacity style={styles.viewBtn} onPress={onPress}>
+            <Text style={styles.viewBtnText}>View</Text>
+          </TouchableOpacity>
           <View ref={menuBtnRef} collapsable={false}>
             <TouchableOpacity style={styles.menuBtn} onPress={openMenu}>
               <ChevronDown size={14} color={Colors.light.textSecondary} />
@@ -270,19 +253,7 @@ function ProjectRow({ quote, effectiveStatus, index, onPress, onDelete, onConver
             </View>
           </TouchableOpacity>
         </Modal>
-      </TouchableOpacity>
-    );
-  }
-
-  return (
-    <ProjectCard
-      queue={index + 1}
-      quote={quote}
-      onPress={onPress}
-      isSelected={isSelected}
-      selectionMode={selectionMode}
-      onToggleSelect={onToggleSelect}
-    />
+    </TouchableOpacity>
   );
 }
 
@@ -354,7 +325,6 @@ function BulkActionBar({
 export default function ProjectsScreen() {
   const router = useRouter();
   const { projects, deleteQuote, convertToSale, convertToQuote, markProjectComplete, isLoading } = useQuotes();
-  const { isMobile, isTablet } = useBreakpoint();
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | QuoteStatus>('all');
@@ -472,29 +442,6 @@ export default function ProjectsScreen() {
       setSortDir('desc');
     }
   }, [sortField]);
-
-  const mobileListData = useMemo((): MobileListDataItem[] => {
-    if (!isMobile) return [];
-    const needsHeaders = sortField === 'client' || sortField === 'status';
-    if (!needsHeaders) {
-      return filtered.map(({ quote, effectiveStatus }, i) => ({ type: 'item' as const, quote, effectiveStatus, queueIndex: i }));
-    }
-    const result: MobileListDataItem[] = [];
-    let lastKey = '';
-    let itemCount = 0;
-    for (const { quote, effectiveStatus } of filtered) {
-      const groupKey = sortField === 'client' ? (quote.personOrganization || 'Unknown') : effectiveStatus;
-      const label = sortField === 'client'
-        ? (quote.personOrganization || 'Unknown')
-        : (STATUS_CONFIG[effectiveStatus]?.label ?? effectiveStatus);
-      if (groupKey !== lastKey) {
-        result.push({ type: 'header', key: `hdr-${groupKey}`, label });
-        lastKey = groupKey;
-      }
-      result.push({ type: 'item', quote, effectiveStatus, queueIndex: itemCount++ });
-    }
-    return result;
-  }, [filtered, isMobile, sortField]);
 
   const selectedQuotes = useMemo(() =>
     filtered.filter(({ quote }) => selectedIds.has(quote.id)).map(f => f.quote),
@@ -821,50 +768,6 @@ export default function ProjectsScreen() {
           </View>
         )}
 
-        {/* Tablet + Desktop: Sort row / Table header */}
-        {!isMobile && (
-          <View style={[styles.tableHeader, isTablet && styles.tableHeaderCompact]}>
-            <View style={[styles.colCheckbox, isTablet && styles.colCheckboxC]}>
-              <Checkbox
-                checked={selectedIds.size > 0 && selectedIds.size === filtered.length}
-                indeterminate={selectedIds.size > 0 && selectedIds.size < filtered.length}
-                onToggle={toggleSelectAll}
-              />
-            </View>
-            <View style={[styles.colStatus, isTablet && styles.colStatusC]}>
-              <SortBtn field="status" label="Status" />
-            </View>
-            <View style={[styles.colOrderDate, isTablet && styles.colOrderDateC]}>
-              <SortBtn field="date" label="Order Date" />
-            </View>
-            <View style={[styles.colDueDate, isTablet && styles.colDueDateC]}>
-              <SortBtn field="inHands" label="Due Date" />
-            </View>
-            <View style={styles.colClient}>
-              <SortBtn field="client" label="Client" />
-            </View>
-            <View style={styles.colProject}>
-              <SortBtn field="project" label="Project" />
-            </View>
-            <View style={[styles.colInvoice, isTablet && styles.colInvoiceC]}>
-              <SortBtn field="invoice" label="Invoice #" />
-            </View>
-            {!isTablet && <View style={styles.colApplicator}><Text style={styles.thText}>Applicator(s)</Text></View>}
-            <View style={styles.colServices}>
-              <SortBtn field="services" label="Service(s)" />
-            </View>
-            <View style={[styles.colPcs, isTablet && styles.colPcsC]}>
-              <SortBtn field="pcs" label="# PCS" />
-            </View>
-            <View style={[styles.colTotal, isTablet && styles.colTotalC]}>
-              <SortBtn field="total" label="Total" />
-            </View>
-            <View style={[styles.colMarkup, isTablet && styles.colMarkupC]}>
-              <SortBtn field="markup" label="Markup" />
-            </View>
-            <View style={[styles.colActions, isTablet && styles.colActionsC]}><Text style={styles.thText}>Actions</Text></View>
-          </View>
-        )}
       </View>
 
       {/* Bulk action bar */}
@@ -882,21 +785,6 @@ export default function ProjectsScreen() {
         />
       )}
 
-      {/* Mobile sort bar */}
-      {isMobile && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mobileSortScroll} contentContainerStyle={styles.mobileSortRow}>
-          <Text style={styles.mobileSortLabel}>Sort:</Text>
-          {(['status', 'date', 'inHands', 'client', 'project', 'invoice', 'services', 'pcs', 'total', 'markup'] as SortField[]).map(f => (
-            <TouchableOpacity key={f} style={[styles.mobileSortBtn, sortField === f && styles.mobileSortBtnActive]} onPress={() => toggleSort(f)}>
-              <Text style={[styles.mobileSortBtnText, sortField === f && styles.mobileSortBtnTextActive]}>
-                {f === 'date' ? 'Order Date' : f === 'inHands' ? 'Due Date' : f === 'client' ? 'Client' : f === 'project' ? 'Project' : f === 'invoice' ? 'Invoice #' : f === 'services' ? 'Service(s)' : f === 'pcs' ? '# PCS' : f === 'total' ? 'Total' : f === 'markup' ? 'Markup' : 'Status'}
-                {sortField === f ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
-
       {isLoading ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>Loading projects…</Text>
@@ -911,72 +799,80 @@ export default function ProjectsScreen() {
               : 'Submit a quote to see it here.'}
           </Text>
         </View>
-      ) : !isMobile ? (
-        <FlatList
-          data={filtered}
-          keyExtractor={({ quote }) => quote.id}
-          contentContainerStyle={styles.tableBody}
-          ItemSeparatorComponent={() => <View style={styles.tableDivider} />}
-          renderItem={({ item: { quote, effectiveStatus }, index: _rowIndex }) => (
-            <ProjectRow
-              quote={quote}
-              effectiveStatus={effectiveStatus}
-              index={_rowIndex}
-              onPress={() => handleView(quote)}
-              onDelete={() => handleDelete(quote)}
-              onConvert={() => handleConvert(quote)}
-              onRevert={() => handleRevert(quote)}
-              onComplete={() => handleComplete(quote)}
-              onEdit={() => handleEdit(quote)}
-              onExportPDF={() => handleExportPDF(quote)}
-              onExportSheets={() => handleExportSheets(quote)}
-              onPrint={() => handlePrint(quote)}
-              onAcceptIntake={() => handleAcceptIntake(quote)}
-              isDesktop={true}
-              compact={isTablet}
-              isSelected={selectedIds.has(quote.id)}
-              onToggleSelect={() => toggleSelect(quote.id)}
-              selectionMode={selectionMode}
-            />
-          )}
-        />
       ) : (
-        <FlatList
-          data={mobileListData}
-          keyExtractor={(item) => item.type === 'header' ? item.key : item.quote.id}
-          contentContainerStyle={styles.cardList}
-          renderItem={({ item }) => {
-            if (item.type === 'header') {
-              return (
-                <View style={styles.mobileSectionHeader}>
-                  <Text style={styles.mobileSectionHeaderText}>{item.label}</Text>
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+          <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
+            <View style={{ minWidth: 1320, flexGrow: 1 }}>
+              <View style={styles.tableHeader}>
+                <View style={styles.colCheckbox}>
+                  <Checkbox
+                    checked={selectedIds.size > 0 && selectedIds.size === filtered.length}
+                    indeterminate={selectedIds.size > 0 && selectedIds.size < filtered.length}
+                    onToggle={toggleSelectAll}
+                  />
                 </View>
-              );
-            }
-            const { quote, effectiveStatus, queueIndex } = item;
-            return (
-              <ProjectRow
-                quote={quote}
-                effectiveStatus={effectiveStatus}
-                index={queueIndex}
-                onPress={() => handleView(quote)}
-                onDelete={() => handleDelete(quote)}
-                onConvert={() => handleConvert(quote)}
-                onRevert={() => handleRevert(quote)}
-                onComplete={() => handleComplete(quote)}
-                onEdit={() => handleEdit(quote)}
-                onExportPDF={() => handleExportPDF(quote)}
-                onExportSheets={() => handleExportSheets(quote)}
-                onPrint={() => handlePrint(quote)}
-                onAcceptIntake={() => handleAcceptIntake(quote)}
-                isDesktop={false}
-                isSelected={selectedIds.has(quote.id)}
-                onToggleSelect={() => toggleSelect(quote.id)}
-                selectionMode={selectionMode}
-              />
-            );
-          }}
-        />
+                <View style={styles.colStatus}>
+                  <SortBtn field="status" label="Status" />
+                </View>
+                <View style={styles.colOrderDate}>
+                  <SortBtn field="date" label="Order Date" />
+                </View>
+                <View style={styles.colDueDate}>
+                  <SortBtn field="inHands" label="Due Date" />
+                </View>
+                <View style={styles.colClient}>
+                  <SortBtn field="client" label="Client" />
+                </View>
+                <View style={styles.colProject}>
+                  <SortBtn field="project" label="Project" />
+                </View>
+                <View style={styles.colInvoice}>
+                  <SortBtn field="invoice" label="Invoice #" />
+                </View>
+                <View style={styles.colApplicator}><Text style={styles.thText}>Applicator(s)</Text></View>
+                <View style={styles.colServices}>
+                  <SortBtn field="services" label="Service(s)" />
+                </View>
+                <View style={styles.colPcs}>
+                  <SortBtn field="pcs" label="# PCS" />
+                </View>
+                <View style={styles.colTotal}>
+                  <SortBtn field="total" label="Total" />
+                </View>
+                <View style={styles.colMarkup}>
+                  <SortBtn field="markup" label="Markup" />
+                </View>
+                <View style={styles.colActions}><Text style={styles.thText}>Actions</Text></View>
+              </View>
+              <View style={styles.tableBody}>
+                {filtered.map(({ quote, effectiveStatus }, idx) => (
+                  <React.Fragment key={quote.id}>
+                    {idx > 0 && <View style={styles.tableDivider} />}
+                    <ProjectRow
+                      quote={quote}
+                      effectiveStatus={effectiveStatus}
+                      index={idx}
+                      onPress={() => handleView(quote)}
+                      onDelete={() => handleDelete(quote)}
+                      onConvert={() => handleConvert(quote)}
+                      onRevert={() => handleRevert(quote)}
+                      onComplete={() => handleComplete(quote)}
+                      onEdit={() => handleEdit(quote)}
+                      onExportPDF={() => handleExportPDF(quote)}
+                      onExportSheets={() => handleExportSheets(quote)}
+                      onPrint={() => handlePrint(quote)}
+                      onAcceptIntake={() => handleAcceptIntake(quote)}
+                      isDesktop={true}
+                      isSelected={selectedIds.has(quote.id)}
+                      onToggleSelect={() => toggleSelect(quote.id)}
+                      selectionMode={selectionMode}
+                    />
+                  </React.Fragment>
+                ))}
+              </View>
+            </View>
+          </ScrollView>
+        </ScrollView>
       )}
 
       <ConfirmDialog
@@ -1063,22 +959,10 @@ const styles = StyleSheet.create({
   sortBtnText: { fontSize: 11, fontWeight: '700', color: '#ffffff', textTransform: 'uppercase', letterSpacing: 0.5 },
   sortBtnTextActive: { color: Colors.light.tint },
 
-  mobileSortScroll: { backgroundColor: '#000000', borderBottomWidth: 1, borderBottomColor: '#222222' },
-  mobileSortRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: DS.spacing.lg, paddingVertical: 8 },
-  mobileSortLabel: { fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: '600' },
-  mobileSortBtn: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: DS.radius.pill, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.07)' },
-  mobileSortBtnActive: { borderColor: Colors.light.tint, backgroundColor: 'rgba(255,90,0,0.22)' },
-  mobileSortBtnText: { fontSize: 13, color: 'rgba(255,255,255,0.7)' },
-  mobileSortBtnTextActive: { color: Colors.light.tint, fontWeight: '700' },
-  mobileSectionHeader: { paddingHorizontal: DS.spacing.lg, paddingTop: DS.spacing.lg, paddingBottom: 6 },
-  mobileSectionHeaderText: { fontSize: 11, fontWeight: '700', color: Colors.light.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8 },
-
   tableBody: { paddingBottom: 40 },
   tableDivider: { height: 1, backgroundColor: Colors.light.border, marginHorizontal: DS.spacing.xl },
 
   tableRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: DS.spacing.xl, paddingVertical: 12, backgroundColor: Colors.light.surface },
-  tableHeaderCompact: { paddingHorizontal: 10 },
-  tableRowCompact: { paddingHorizontal: 10, paddingVertical: 10 },
   colStatus:    { width: 100 },
   colOrderDate: { width: 125 },
   colDueDate:   { width: 110 },
@@ -1092,18 +976,7 @@ const styles = StyleSheet.create({
   colMarkup:    { width: 85, alignItems: 'flex-end' },
   colActions:   { width: 100, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
 
-  colCheckboxC: { width: 28 },
-  colStatusC:   { width: 74 },
-  colOrderDateC:{ width: 76 },
-  colDueDateC:  { width: 68 },
-  colInvoiceC:  { width: 54 },
-  colPcsC:      { width: 46 },
-  colTotalC:    { width: 66 },
-  colMarkupC:   { width: 64 },
-  colActionsC:  { width: 56 },
-
   tableDate:       { fontSize: 13, color: Colors.light.text },
-  tableDateSub:    { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
   tableClient:     { fontSize: 13, fontWeight: '700', color: Colors.light.text },
   tableProject:    { fontSize: 13, color: Colors.light.text },
   tableInvoice:    { fontSize: 13, color: Colors.light.textSecondary },
@@ -1113,14 +986,6 @@ const styles = StyleSheet.create({
   tableTotal:      { fontSize: 14, fontWeight: '700', color: Colors.light.text },
   tableMarkup:     { fontSize: 13, fontWeight: '700', color: '#16A34A' },
   tableMarkupPct:  { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
-
-  tableDateC:     { fontSize: 11 },
-  tableClientC:   { fontSize: 12 },
-  tableProjectC:  { fontSize: 12 },
-  tableServicesC: { fontSize: 11 },
-  tablePcsC:      { fontSize: 11 },
-  tableTotalC:    { fontSize: 12 },
-  tableMarkupC:   { fontSize: 11 },
 
   viewBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: DS.radius.sm, backgroundColor: Colors.light.tint, height: 30, justifyContent: 'center', alignItems: 'center' },
   viewBtnText: { fontSize: 12, fontWeight: '700', color: '#fff' },
@@ -1132,21 +997,6 @@ const styles = StyleSheet.create({
   dropdownItemLast: { borderBottomWidth: 0 },
   dropdownSeparator: { height: 1, backgroundColor: Colors.light.border, marginVertical: 2 },
   dropdownItemText: { fontSize: 13, color: Colors.light.text, fontWeight: '500' },
-
-  cardList: { padding: DS.spacing.lg, gap: 8, paddingBottom: 40 },
-  card: { backgroundColor: Colors.light.surface, borderRadius: DS.radius.lg, padding: 12, borderWidth: 1, borderColor: Colors.light.border, gap: 4 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 },
-  cardHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  cardInvoice: { fontSize: 12, color: Colors.light.textSecondary },
-  cardClient: { fontSize: 15, fontWeight: '800', color: Colors.light.text },
-  cardProject: { fontSize: 13, color: Colors.light.textSecondary },
-  cardMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
-  cardMetaLeft: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
-  cardMetaSep: { color: Colors.light.textSecondary, fontSize: 12 },
-  cardMetaText: { fontSize: 12, color: Colors.light.textSecondary },
-  cardTotal: { fontSize: 15, fontWeight: '800', color: Colors.light.text },
-  cardFooter: { marginTop: 2 },
-  cardServiceStyles: { fontSize: 12, color: Colors.light.textSecondary },
 
   badge: { alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 3, borderRadius: DS.radius.pill, borderWidth: 1 },
   badgeText: { fontSize: 11, fontWeight: '700' },
@@ -1160,8 +1010,6 @@ const styles = StyleSheet.create({
   colCheckbox: { width: 36, alignItems: 'center', justifyContent: 'center' },
 
   tableRowSelected: { backgroundColor: '#FFF4EE' },
-  cardSelected: { borderColor: Colors.light.tint, backgroundColor: '#FFF9F6' },
-  cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 
   bulkBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1C1C1E', paddingVertical: 8, paddingHorizontal: DS.spacing.lg, gap: 12, borderBottomWidth: 1, borderBottomColor: '#333' },
   bulkBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 100 },
