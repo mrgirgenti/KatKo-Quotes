@@ -2388,7 +2388,7 @@ export default function OrgProfileScreen() {
                   orgName={org.name}
                   currentLogoUrl={org.logoUrl}
                   onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })}
-                  size={88}
+                  size={112}
                 />
                 <View style={styles.v2LPHeaderInfo}>
                   <Text style={styles.v2LPName} numberOfLines={2}>{org.name}</Text>
@@ -5545,15 +5545,15 @@ const styles = StyleSheet.create({
   },
 
   // Left panel — RN-web ScrollView ships flexGrow:1 in its base style, so we MUST
-  // pin flexGrow:0 here or the panel grows and eats ~58% of the row. Basis 36%
-  // (clamped) keeps the identity/contacts column at ~35-40% so the operational
-  // right panel (Client Legacy / Active Projects / Submitted Quotes) dominates.
+  // pin flexGrow:0 here or the panel grows and eats ~58% of the row. Basis 40%
+  // (clamped) keeps the identity/contacts column at ~40% with breathing room,
+  // while the operational right panel (Client Legacy / Active Projects) stays dominant at ~60%.
   v2LeftPanel: {
     flexGrow: 0,
     flexShrink: 0,
-    flexBasis: '36%',
-    minWidth: 320,
-    maxWidth: 480,
+    flexBasis: '40%',
+    minWidth: 340,
+    maxWidth: 560,
     backgroundColor: Colors.light.surface,
     borderRightWidth: 1,
     borderRightColor: Colors.light.border,
@@ -5617,7 +5617,7 @@ const styles = StyleSheet.create({
     gap: 5,
     backgroundColor: Colors.light.tint,
     borderRadius: 7,
-    paddingVertical: 6,
+    paddingVertical: 4,
     paddingHorizontal: 12,
   },
   v2LPNewQuoteBtnText: {
@@ -6292,7 +6292,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.border,
     borderRadius: 7,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 4,
   },
   v2LPActionsBtnText: {
     fontSize: 12,
