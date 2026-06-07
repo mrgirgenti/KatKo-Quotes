@@ -94,20 +94,23 @@ export function ProjectCard({
             ) : null}
           </View>
 
-          {/* Column 2 — TOTAL */}
-          <View style={styles.finCol}>
-            <Text style={styles.finLabel}>TOTAL</Text>
-            <Text style={styles.finValue}>{formatCurrency(total)}</Text>
+          {/* Vertical divider between info & financials */}
+          <View style={styles.divider} />
+
+          {/* Financial section — its own ~35% column */}
+          <View style={styles.finSection}>
+            <View style={styles.finCol}>
+              <Text style={styles.finLabel}>TOTAL</Text>
+              <Text style={styles.finValue}>{formatCurrency(total)}</Text>
+            </View>
+            <View style={styles.finCol}>
+              <Text style={styles.finLabel}>PROFIT</Text>
+              <Text style={[styles.finValue, styles.profitValue]}>{formatCurrency(profit)}</Text>
+            </View>
           </View>
 
-          {/* Column 3 — PROFIT */}
-          <View style={styles.finCol}>
-            <Text style={styles.finLabel}>PROFIT</Text>
-            <Text style={[styles.finValue, styles.profitValue]}>{formatCurrency(profit)}</Text>
-          </View>
-
-          {/* Column 4 — Chevron */}
-          <ChevronRight size={14} color={Colors.light.textSecondary} />
+          {/* Chevron */}
+          <ChevronRight size={16} color={Colors.light.textSecondary} />
         </View>
       </TouchableOpacity>
     </View>
@@ -145,13 +148,27 @@ const styles = StyleSheet.create({
   },
   cardBody: {
     flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 12,
+    alignItems: 'stretch' as const,
+    gap: 14,
   },
   infoCol: {
     flex: 1,
     gap: 4,
     minWidth: 0,
+    justifyContent: 'center' as const,
+  },
+  divider: {
+    width: 1,
+    alignSelf: 'stretch' as const,
+    backgroundColor: '#E5E7EB',
+  },
+  finSection: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    gap: 16,
+    flexBasis: '35%' as const,
+    flexShrink: 0,
   },
   metaRow: {
     flexDirection: 'row' as const,
@@ -209,23 +226,22 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   finCol: {
-    alignItems: 'flex-end' as const,
-    gap: 2,
-    flexShrink: 0,
-    minWidth: 72,
+    flex: 1,
+    alignItems: 'flex-start' as const,
+    gap: 5,
   },
   finLabel: {
-    fontSize: 9,
-    fontWeight: '700' as const,
-    color: '#9CA3AF',
-    letterSpacing: 0.8,
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: '#6B7280',
+    letterSpacing: 1,
     textTransform: 'uppercase' as const,
   },
   finValue: {
-    fontSize: 15,
-    fontWeight: '700' as const,
+    fontSize: 22,
+    fontWeight: '800' as const,
     color: '#111827',
-    lineHeight: 18,
+    lineHeight: 26,
   },
   profitValue: {
     color: '#059669',

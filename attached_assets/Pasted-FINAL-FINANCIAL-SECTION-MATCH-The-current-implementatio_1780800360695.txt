@@ -1,0 +1,160 @@
+FINAL FINANCIAL SECTION MATCH
+
+The current implementation still does NOT match the approved design.
+
+Please compare the current implementation against the approved reference image.
+
+The issue is not positioning.
+
+The issue is SCALE and VISUAL HIERARCHY.
+
+==================================================
+CURRENT PROBLEM
+==================================================
+
+The current card treats Total and Profit like metadata.
+
+TOTAL and PROFIT labels are tiny.
+
+Dollar amounts are too small.
+
+The financial area feels compressed into the corner.
+
+There is too much unused white space.
+
+==================================================
+APPROVED DESIGN
+==================================================
+
+The financial area should feel like its own column.
+
+Project information occupies the left.
+
+Financial information occupies the right.
+
+The financial section should immediately draw attention.
+
+==================================================
+VERTICAL DIVIDER
+==================================================
+
+Add a subtle divider line between:
+
+LEFT:
+Project Information
+
+RIGHT:
+Financial Information
+
+Example:
+
+Project Information | Financial Information
+
+Requirements:
+
+- Light gray
+- Full card content height
+- Visible but subtle
+- Same divider used on all project cards
+
+==================================================
+TOTAL / PROFIT COLUMN
+==================================================
+
+Increase size substantially.
+
+Current implementation is approximately 40-50% too small.
+
+TARGET:
+
+TOTAL
+Label:
+- Uppercase
+- Medium weight
+- Clearly visible
+
+Amount:
+- Large
+- Bold
+- Prominent
+
+PROFIT
+Label:
+- Uppercase
+- Medium weight
+- Clearly visible
+
+Amount:
+- Large
+- Bold
+- Prominent
+- Green
+
+The financial section should visually occupy approximately 35% of the card width.
+
+==================================================
+APPROVED VISUAL HIERARCHY
+==================================================
+
+Current hierarchy:
+
+Project Name
+Status
+Financials
+
+Approved hierarchy:
+
+Project Name
+Financials
+Everything Else
+
+The dollar amounts should be one of the first things the eye notices.
+
+==================================================
+MATCH THE REFERENCE
+==================================================
+
+The reference image is approved.
+
+Replicate:
+
+- Financial section size
+- Financial typography
+- Financial spacing
+- Divider placement
+- Visual hierarchy
+
+Do not approximate.
+
+Do not simplify.
+
+Match the approved reference.
+
+==================================================
+APPLY EVERYWHERE
+==================================================
+
+Apply to:
+
+- Active Projects
+- Submitted Quotes
+- Projects Tab
+
+All three must use the same reusable component.
+
+==================================================
+VALIDATION
+==================================================
+
+Provide side-by-side screenshots showing:
+
+1. Active Projects
+2. Submitted Quotes
+3. Projects Tab
+
+Confirm:
+
+- Divider exists
+- Financial section enlarged
+- Total and Profit match reference scale
+- Same component used in all locations
