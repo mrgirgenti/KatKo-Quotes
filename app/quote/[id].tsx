@@ -13,6 +13,7 @@ import {
   TextInput,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import PageBackHeader from '@/components/PageBackHeader';
 import {
   Edit3,
   FileText,
@@ -1355,6 +1356,7 @@ export default function QuoteDetailScreen() {
           headerTintColor: '#fff',
         }}
       />
+      <PageBackHeader title="Quote Details" />
 
       {linkedOrg && (
         <View style={styles.breadcrumbBar}>

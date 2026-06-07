@@ -13,6 +13,7 @@ import {
   FlatList,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import PageBackHeader from '@/components/PageBackHeader';
 import { 
   Save, 
   FileText, 
@@ -380,6 +381,7 @@ export default function SalesTrackingScreen() {
           headerTintColor: '#fff',
         }}
       />
+      <PageBackHeader title="Sales Tracking" />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={[styles.content, isDesktop && { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start' }]}>
         <View style={[styles.header, isDesktop && { width: '100%' }]}>

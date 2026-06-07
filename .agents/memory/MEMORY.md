@@ -1,2 +1,3 @@
-- [RN-web dataSet prop TS workaround](rn-web-dataset-prop.md) — spread an `any`-typed `{dataSet:{...}}` to add data-* hooks on RN Touchables without tsc errors.
-- [RN-web ScrollView eats flex-row width](rn-web-scrollview-flexgrow.md) — a fixed-width ScrollView column still grows ~50%+ in a flex row; pin flexGrow:0 (base style ships flexGrow:1).
+# Memory Index
+
+- [Overlay & back-header patterns](overlay-and-header-patterns.md) — use Modal/portal for menus (never absolute siblings, zIndex won't escape ScrollView clipping); shared PageBackHeader must match native header; heavy crm/[id] page screenshots catch loading state.

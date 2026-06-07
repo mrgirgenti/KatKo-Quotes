@@ -57,13 +57,14 @@ function RootLayoutNav() {
       }}
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="quote/[id]" options={{ title: 'Quote Details' }} />
-      <Stack.Screen name="quote/edit" options={{ title: 'Edit Quote' }} />
-      <Stack.Screen name="quote/sales-tracking" options={{ title: 'Sales Tracking' }} />
+      <Stack.Screen name="quote/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="quote/production/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="quote/edit" options={{ headerShown: false }} />
+      <Stack.Screen name="quote/sales-tracking" options={{ headerShown: false }} />
       <Stack.Screen name="profile" options={{ title: 'Profile', presentation: 'modal' }} />
-      <Stack.Screen name="clients/[id]" options={{ title: 'Client Profile' }} />
-      <Stack.Screen name="crm/[id]" options={{ title: 'Organization' }} />
-      <Stack.Screen name="hub/[id]" options={{ title: 'Hub Management' }} />
+      <Stack.Screen name="clients/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="crm/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="hub/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="portal/[orgId]" options={{ headerShown: false }} />
     </Stack>
   );

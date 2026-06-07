@@ -9,6 +9,7 @@ import {
   Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import PageBackHeader from '@/components/PageBackHeader';
 import {
   CheckCircle,
   Circle,
@@ -155,15 +156,9 @@ export default function ProductionViewScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: 'Production Mode',
-          headerStyle: { backgroundColor: '#111111' },
-          headerTintColor: '#fff',
-          headerTitleStyle: { fontWeight: '700' },
-        }}
-      />
+      <Stack.Screen options={{ title: 'Production Mode', headerShown: false }} />
       <View style={styles.container}>
+        <PageBackHeader title="Production Mode" />
         {/* Progress banner */}
         <View style={styles.banner}>
           <View style={styles.bannerLeft}>

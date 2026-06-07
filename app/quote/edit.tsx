@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import PageBackHeader from '@/components/PageBackHeader';
 import { Plus, Save, X } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useQuotes } from '@/contexts/QuotesContext';
@@ -265,6 +266,7 @@ export default function EditQuoteScreen() {
           headerTintColor: '#fff',
         }}
       />
+      <PageBackHeader title="Edit Quote" />
 
       {isCompleted && (
         <View style={styles.completedBanner}>

@@ -16,13 +16,14 @@ import {
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import PageBackHeader from '@/components/PageBackHeader';
+import OverlayMenu from '@/components/OverlayMenu';
 import {
   Edit3,
   Mail,
   Phone,
   Building2,
   FileText,
-  ChevronRight,
   X,
   XCircle,
   Trash2,
@@ -321,7 +322,6 @@ export default function OrgProfileScreen() {
   const [inviteTab, setInviteTab] = useState<'email' | 'link' | 'message'>('email');
   const [resetPasswordSending, setResetPasswordSending] = useState<string | null>(null);
   const [promotingId, setPromotingId] = useState<string | null>(null);
-  const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [activeSearch, setActiveSearch] = useState('');
   const [activeServiceFilter, setActiveServiceFilter] = useState('');
   const [activeStatusFilter, setActiveStatusFilter] = useState('');
@@ -2367,6 +2367,7 @@ export default function OrgProfileScreen() {
     return (
       <View style={styles.container}>
         <Stack.Screen options={{ title: org.name, headerShown: false }} />
+        <PageBackHeader title="Organization Details" />
 
         {isDesktop ? (
           /* ── DESKTOP: 2-column CRM layout ── */
@@ -2374,12 +2375,6 @@ export default function OrgProfileScreen() {
 
             {/* ── LEFT PANEL: Identity + Contacts ── */}
             <ScrollView style={styles.v2LeftPanel} contentContainerStyle={styles.v2LeftPanelContent} showsVerticalScrollIndicator={false}>
-
-              {/* Back nav */}
-              <TouchableOpacity style={styles.v2LPBack} onPress={() => router.back()}>
-                <ChevronRight size={14} color={Colors.light.textSecondary} style={{ transform: [{ rotate: '180deg' }] as any }} />
-                <Text style={styles.v2LPBackText}>Organizations</Text>
-              </TouchableOpacity>
 
               {/* Header: [Logo | Info column] */}
               <View style={styles.v2LPHeader}>
@@ -2415,39 +2410,38 @@ export default function OrgProfileScreen() {
                   <Plus size={13} color="#fff" />
                   <Text style={styles.v2LPNewQuoteBtnText}>New Quote</Text>
                 </TouchableOpacity>
-                <View style={{ position: 'relative' as any }}>
-                  <TouchableOpacity style={styles.v2LPActionsBtn} onPress={() => setShowActionsMenu((v) => !v)}>
-                    <Text style={styles.v2LPActionsBtnText}>Actions</Text>
-                    <ChevronDown size={12} color={Colors.light.text} />
-                  </TouchableOpacity>
-                  {showActionsMenu && (
+                <OverlayMenu
+                  align="right"
+                  menuWidth={220}
+                  trigger={({ open }) => (
+                    <TouchableOpacity style={styles.v2LPActionsBtn} onPress={open}>
+                      <Text style={styles.v2LPActionsBtnText}>Actions</Text>
+                      <ChevronDown size={12} color={Colors.light.text} />
+                    </TouchableOpacity>
+                  )}
+                >
+                  {({ close }) => (
                     <>
-                      <Pressable
-                        style={{ position: 'fixed' as any, top: 0, left: 0, right: 0, bottom: 0, zIndex: 98 }}
-                        onPress={() => setShowActionsMenu(false)}
-                      />
-                      <View style={styles.v2LPMenuDropdown}>
-                        <TouchableOpacity style={styles.orgMenuItem} onPress={() => { setShowActionsMenu(false); openEditOrg(); }}>
-                          <Edit3 size={14} color={Colors.light.text} />
-                          <Text style={styles.orgMenuItemText}>Edit Profile</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.orgMenuItem} onPress={() => { setShowActionsMenu(false); setAddMemberModal(true); }}>
-                          <Users size={14} color={Colors.light.text} />
-                          <Text style={styles.orgMenuItemText}>Assign Rep</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.orgMenuItem} onPress={() => { setShowActionsMenu(false); setActivityModal(true); }}>
-                          <Plus size={14} color={Colors.light.text} />
-                          <Text style={styles.orgMenuItemText}>Log Activity</Text>
-                        </TouchableOpacity>
-                        <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 2 }} />
-                        <TouchableOpacity style={[styles.orgMenuItem, styles.orgMenuItemDanger]} onPress={() => { setShowActionsMenu(false); handleDeleteOrg(); }}>
-                          <Trash2 size={14} color={Colors.light.error} />
-                          <Text style={[styles.orgMenuItemText, { color: Colors.light.error }]}>Delete Organization</Text>
-                        </TouchableOpacity>
-                      </View>
+                      <TouchableOpacity style={styles.orgMenuItem} onPress={() => { close(); openEditOrg(); }}>
+                        <Edit3 size={14} color={Colors.light.text} />
+                        <Text style={styles.orgMenuItemText}>Edit Profile</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.orgMenuItem} onPress={() => { close(); setAddMemberModal(true); }}>
+                        <Users size={14} color={Colors.light.text} />
+                        <Text style={styles.orgMenuItemText}>Assign Rep</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.orgMenuItem} onPress={() => { close(); setActivityModal(true); }}>
+                        <Plus size={14} color={Colors.light.text} />
+                        <Text style={styles.orgMenuItemText}>Log Activity</Text>
+                      </TouchableOpacity>
+                      <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 2 }} />
+                      <TouchableOpacity style={[styles.orgMenuItem, styles.orgMenuItemDanger]} onPress={() => { close(); handleDeleteOrg(); }}>
+                        <Trash2 size={14} color={Colors.light.error} />
+                        <Text style={[styles.orgMenuItemText, { color: Colors.light.error }]}>Delete Organization</Text>
+                      </TouchableOpacity>
                     </>
                   )}
-                </View>
+                </OverlayMenu>
               </View>
 
 
@@ -3067,9 +3061,6 @@ export default function OrgProfileScreen() {
             {/* Mobile header */}
             <View style={styles.v2MobileHeader}>
               <View style={styles.v2MobileHeaderTop}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.v2MobilBack}>
-                  <ChevronRight size={16} color={Colors.light.textSecondary} style={{ transform: [{ rotate: '180deg' }] as any }} />
-                </TouchableOpacity>
                 <OrgLogoUploader orgId={org.id} orgName={org.name} currentLogoUrl={org.logoUrl} onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })} size={52} />
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.v2MobileOrgName} numberOfLines={1}>{org.name}</Text>
@@ -5651,22 +5642,6 @@ const styles = StyleSheet.create({
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
-  v2LPMenuDropdown: {
-    position: 'absolute' as any,
-    top: 40,
-    right: 0,
-    backgroundColor: Colors.light.surface,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    minWidth: 180,
-    zIndex: 99,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-  },
-
   v2LPDivider: {
     height: 1,
     backgroundColor: Colors.light.border,
@@ -5801,13 +5776,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     gap: 10,
-  },
-  v2MobilBack: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
   },
   v2MobileOrgName: {
     fontSize: 15,

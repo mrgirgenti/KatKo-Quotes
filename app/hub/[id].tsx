@@ -14,6 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import PageBackHeader from '@/components/PageBackHeader';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Globe,
@@ -392,6 +393,7 @@ export default function HubManagementScreen() {
           headerTintColor: '#fff',
         }}
       />
+      <PageBackHeader title="Hub Management" />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, isDesktop && styles.contentDesktop]}>
 
