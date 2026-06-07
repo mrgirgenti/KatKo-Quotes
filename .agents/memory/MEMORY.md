@@ -1,4 +1,4 @@
-- [freeport-async IPv6 fix](freeport-async-ipv6-fix.md) — Expo hangs on startup (DIDNT_OPEN_A_PORT) because bun can't bind IPv6 wildcard; patch node_modules/freeport-async/index.js after every bun install.
-- [ProjectCard component](project-card.md) — reusable card in components/ProjectCard.tsx; replaces all inline p16Card and projectRowExpanded patterns in CRM page and Projects tab.
-- [CRM page stray )} text node](crm-iife-remnants.md) — orphaned `)}` lines after closing `</>` blocks in v2RightPanel cause React Native "Unexpected text node" errors; remove the bare line.
-- [Metric typography](metric-typography.md) — all metric value/label sizing comes from components/Metric.tsx; aliased per-screen; 18px/800 value + 12px/500 label (28px overflows multi-col rows).
+# Memory index
+
+- [Metric typography](metric-typography.md) — one shared value/label style from components/Metric.tsx; cards, queue numbers, and tab stat bars all spread it; profit color via override after spread.
+- [RN-Web focus outline](rn-web-focus-outline.md) — stray blue box on web pressables is the browser focus ring; kill with `outlineStyle: 'none'` in the StyleSheet.

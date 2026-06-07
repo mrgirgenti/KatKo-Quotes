@@ -218,6 +218,7 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderRightColor: SB.borderColor,
     overflow: 'hidden',
+    outlineStyle: 'none' as any,
   },
   header: {
     flexDirection: 'row',
@@ -229,6 +230,7 @@ const styles = StyleSheet.create({
   },
   hamburger: {
     padding: 2,
+    outlineStyle: 'none' as any,
   },
   businessName: {
     fontSize: 13,
@@ -257,6 +259,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 12,
     position: 'relative',
+    outlineStyle: 'none' as any,
   },
   navItemActive: {
     backgroundColor: SB.activeBg,

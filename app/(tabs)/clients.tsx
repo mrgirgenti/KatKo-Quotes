@@ -13,6 +13,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { DS } from '@/constants/designSystem';
+import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
 import { useCrm } from '@/contexts/CrmContext';
 import { Organization, CrmStatus, CRM_STATUS_CONFIG, ORG_TYPES } from '@/types/crm';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -856,8 +857,8 @@ const styles = StyleSheet.create({
 
   statsBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: DS.spacing.lg, marginBottom: DS.spacing.md, backgroundColor: Colors.light.background, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, paddingVertical: 6, paddingHorizontal: 6 },
   statItem: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: 16, fontWeight: '800' as const, color: Colors.light.text },
-  statLabel: { fontSize: 10, color: Colors.light.textSecondary, fontWeight: '500' as const, marginTop: 1 },
+  statValue: { ...metricValueStyle },
+  statLabel: { ...metricLabelStyle, marginTop: 1 },
   statDivider: { width: 1, height: 24, backgroundColor: Colors.light.border },
 
   pillsScroll: { maxHeight: 44 },

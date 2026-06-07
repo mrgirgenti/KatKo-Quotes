@@ -37,6 +37,7 @@ import {
   FolderPlus,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { Quote, QuoteStatus, getEffectiveStatus, STATUS_CONFIG } from '@/types/quote';
@@ -1018,8 +1019,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: '800', color: Colors.light.text },
   statsBar: { flexDirection: 'row' as const, alignItems: 'center' as const, marginHorizontal: DS.spacing.lg, marginBottom: DS.spacing.md, backgroundColor: Colors.light.background, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, paddingVertical: 6, paddingHorizontal: 6 },
   statItem: { flex: 1, alignItems: 'center' as const },
-  statValue: { fontSize: 16, fontWeight: '800' as const, color: Colors.light.text },
-  statLabel: { fontSize: 10, color: Colors.light.textSecondary, fontWeight: '500' as const, marginTop: 1 },
+  statValue: { ...metricValueStyle },
+  statLabel: { ...metricLabelStyle, marginTop: 1 },
   statDivider: { width: 1, height: 24, backgroundColor: Colors.light.border },
 
   pillsScroll: { maxHeight: 44 },
