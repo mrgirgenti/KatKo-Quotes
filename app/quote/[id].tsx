@@ -1353,21 +1353,6 @@ export default function QuoteDetailScreen() {
       />
       <PageBackHeader title="Quote Details" />
 
-      {linkedOrg && (
-        <View style={styles.breadcrumbBar}>
-          <TouchableOpacity onPress={() => router.push('/crm' as any)} style={styles.breadcrumbLink}>
-            <Text style={styles.breadcrumbText}>Organizations</Text>
-          </TouchableOpacity>
-          <Text style={styles.breadcrumbSep}>›</Text>
-          <TouchableOpacity onPress={() => router.push(`/crm/${linkedOrg.id}` as any)} style={styles.breadcrumbLink}>
-            <Text style={styles.breadcrumbText} numberOfLines={1}>{linkedOrg.name}</Text>
-          </TouchableOpacity>
-          <Text style={styles.breadcrumbSep}>›</Text>
-          <Text style={styles.breadcrumbCurrent} numberOfLines={1}>
-            {(quote as any).projectNumber || quote.invoiceNumber || quote.projectName || 'Project'}
-          </Text>
-        </View>
-      )}
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         {isDesktop ? (
           <View style={styles.desktopLayout}>
@@ -3138,34 +3123,5 @@ const koArtStyles = StyleSheet.create({
     fontSize: 11,
     color: 'rgba(255,255,255,0.5)',
     fontWeight: '500' as const,
-  },
-  breadcrumbBar: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: Colors.light.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-    gap: 4,
-  },
-  breadcrumbLink: {
-    flexShrink: 1,
-  },
-  breadcrumbText: {
-    fontSize: 12,
-    color: Colors.light.primary,
-    fontWeight: '500' as const,
-  },
-  breadcrumbSep: {
-    fontSize: 12,
-    color: Colors.light.textSecondary,
-    paddingHorizontal: 2,
-  },
-  breadcrumbCurrent: {
-    fontSize: 12,
-    color: Colors.light.textSecondary,
-    fontWeight: '600' as const,
-    flexShrink: 1,
   },
 });
