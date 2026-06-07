@@ -57,11 +57,22 @@ interface SidebarProps {
 
 const LOGO_AVAILABLE_W = EXPANDED_WIDTH - 32; // 16px padding each side
 
+const SIDEBAR_STORAGE_KEY = 'kk_sidebar_collapsed';
+
+function readSidebarCollapsed(defaultVal: boolean): boolean {
+  if (typeof window === 'undefined') return defaultVal;
+  try {
+    const v = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
+    if (v === null) return defaultVal;
+    return v === '1';
+  } catch { return defaultVal; }
+}
+
 export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const [collapsed, setCollapsed] = useState(() => readSidebarCollapsed(defaultCollapsed));
   const router = useRouter();
   const pathname = usePathname();
-  const widthAnim = useRef(new Animated.Value(defaultCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH)).current;
+  const widthAnim = useRef(new Animated.Value(readSidebarCollapsed(defaultCollapsed) ? COLLAPSED_WIDTH : EXPANDED_WIDTH)).current;
 
   const { orgAdmin, currentUser } = useUser();
   const logoUri = orgAdmin?.companyLogo || FALLBACK_LOGO_URI;
@@ -85,23 +96,16 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
     }
   })();
 
-  useEffect(() => {
-    setCollapsed(defaultCollapsed);
-    Animated.timing(widthAnim, {
-      toValue: defaultCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH,
-      duration: 0,
-      useNativeDriver: false,
-    }).start();
-  }, [defaultCollapsed]);
-
   const toggle = () => {
-    const toValue = collapsed ? EXPANDED_WIDTH : COLLAPSED_WIDTH;
+    const next = !collapsed;
+    const toValue = next ? COLLAPSED_WIDTH : EXPANDED_WIDTH;
     Animated.timing(widthAnim, {
       toValue,
       duration: 200,
       useNativeDriver: false,
     }).start();
-    setCollapsed(!collapsed);
+    setCollapsed(next);
+    try { window.localStorage.setItem(SIDEBAR_STORAGE_KEY, next ? '1' : '0'); } catch {}
   };
 
   const navigate = (href: string) => {

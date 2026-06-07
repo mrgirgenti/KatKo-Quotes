@@ -38,6 +38,7 @@ function toFrontendQuote(p: any): Quote {
     quoteSentAt: p.quoteSentAt ?? undefined,
     notesClient: p.notesClient ?? undefined,
     waveInvoiceLink: p.waveInvoiceLink ?? undefined,
+    projectNumber: p.projectNumber ?? undefined,
   } as Quote;
 }
 

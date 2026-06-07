@@ -308,8 +308,10 @@ export default function OrgProfileScreen() {
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [activeSearch, setActiveSearch] = useState('');
   const [activeServiceFilter, setActiveServiceFilter] = useState('');
+  const [activeStatusFilter, setActiveStatusFilter] = useState('');
   const [quotesSearch, setQuotesSearch] = useState('');
   const [quotesServiceFilter, setQuotesServiceFilter] = useState('');
+  const [quotesStatusFilter, setQuotesStatusFilter] = useState('');
   const [projectsSubTab, setProjectsSubTab] = useState<'active' | 'quotes' | 'completed'>('active');
   const [projectsSearch, setProjectsSearch] = useState('');
 
@@ -572,11 +574,17 @@ export default function OrgProfileScreen() {
         qName === org.name.toLowerCase() ||
         org.contacts.some((c) => `${c.firstName} ${c.lastName}`.toLowerCase() === qName)
       );
-    }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   }, [quotes, org]);
 
   const activeQuotes = useMemo(() => {
-    return relatedQuotes.filter((q) => q.status === 'active' || q.status === 'production_started');
+    return relatedQuotes
+      .filter((q) => q.status === 'active' || q.status === 'production_started')
+      .sort((a, b) => {
+        const da = a.orderDate ? new Date(a.orderDate).getTime() : new Date(a.createdAt).getTime();
+        const db = b.orderDate ? new Date(b.orderDate).getTime() : new Date(b.createdAt).getTime();
+        return da - db;
+      });
   }, [relatedQuotes]);
 
   const filteredActiveQuotes = useMemo(() => {
@@ -587,9 +595,10 @@ export default function OrgProfileScreen() {
       const s = activeSearch.toLowerCase();
       if (s && !pNum.includes(s) && !name.includes(s) && !svcs.includes(s)) return false;
       if (activeServiceFilter && !svcs.includes(activeServiceFilter.toLowerCase())) return false;
+      if (activeStatusFilter && q.status !== activeStatusFilter) return false;
       return true;
     });
-  }, [activeQuotes, activeSearch, activeServiceFilter]);
+  }, [activeQuotes, activeSearch, activeServiceFilter, activeStatusFilter]);
 
   const filteredRelatedQuotes = useMemo(() => {
     return relatedQuotes.filter((q) => {
@@ -599,9 +608,10 @@ export default function OrgProfileScreen() {
       const s = quotesSearch.toLowerCase();
       if (s && !pNum.includes(s) && !name.includes(s) && !svcs.includes(s)) return false;
       if (quotesServiceFilter && !svcs.includes(quotesServiceFilter.toLowerCase())) return false;
+      if (quotesStatusFilter && q.status !== quotesStatusFilter) return false;
       return true;
     });
-  }, [relatedQuotes, quotesSearch, quotesServiceFilter]);
+  }, [relatedQuotes, quotesSearch, quotesServiceFilter, quotesStatusFilter]);
 
   const totalSpent = useMemo(() => {
     return relatedQuotes
@@ -1511,7 +1521,29 @@ export default function OrgProfileScreen() {
               />
             </View>
           </View>
-        )}
+        {activeQuotes.length > 0 && (() => {
+          const statuses = [...new Set(activeQuotes.map(q => q.status))];
+          const svcs = [...new Set(activeQuotes.flatMap(q => (q.lineItems || []).map((li: any) => li.serviceStyle)).filter(Boolean))];
+          return (
+            <View style={styles.p16FilterRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.p16FilterScroll}>
+                <TouchableOpacity style={[styles.p16Pill, !activeStatusFilter && styles.p16PillActive]} onPress={() => setActiveStatusFilter('')}>
+                  <Text style={[styles.p16PillText, !activeStatusFilter && styles.p16PillTextActive]}>All</Text>
+                </TouchableOpacity>
+                {statuses.map(s => (
+                  <TouchableOpacity key={s} style={[styles.p16Pill, activeStatusFilter === s && styles.p16PillActive]} onPress={() => setActiveStatusFilter(activeStatusFilter === s ? '' : s)}>
+                    <Text style={[styles.p16PillText, activeStatusFilter === s && styles.p16PillTextActive]}>{STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? s}</Text>
+                  </TouchableOpacity>
+                ))}
+                {svcs.map(s => (
+                  <TouchableOpacity key={s} style={[styles.p16Pill, activeServiceFilter === s && styles.p16PillActive]} onPress={() => setActiveServiceFilter(activeServiceFilter === s ? '' : s)}>
+                    <Text style={[styles.p16PillText, activeServiceFilter === s && styles.p16PillTextActive]}>{s}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          );
+        })()}
         {activeQuotes.length === 0 ? (
           <View style={styles.emptyCard}>
             <ShoppingBag size={26} color={Colors.light.border} />
@@ -1521,14 +1553,16 @@ export default function OrgProfileScreen() {
         ) : filteredActiveQuotes.length === 0 ? (
           <View style={styles.emptyCard}><Text style={styles.emptyCardText}>No matches</Text></View>
         ) : (
-          filteredActiveQuotes.map((q) => {
+          filteredActiveQuotes.map((q, _idx) => {
             const eff = getEffectiveStatus(q);
             const cfg = STATUS_CONFIG[eff];
             const qPcs = getPcs(q);
             const services = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))];
             const pNum = (q as any).projectNumber || q.invoiceNumber;
             return (
-              <TouchableOpacity key={q.id} style={styles.p16Card} onPress={() => router.push(`/quote/${q.id}` as any)}>
+              <View key={q.id} style={styles.p16ListRow}>
+                <Text style={styles.p16ListNum}>#{_idx + 1}</Text>
+              <TouchableOpacity style={[styles.p16Card, { flex: 1 }]} onPress={() => router.push(`/quote/${q.id}` as any)}>
                 <View style={styles.p16CardTop}>
                   {pNum ? <Text style={styles.p16CardNum}>#{pNum}</Text> : null}
                   <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
@@ -1549,6 +1583,7 @@ export default function OrgProfileScreen() {
                   <Text style={styles.p16CardProfit}>Profit: {formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
                 </View>
               </TouchableOpacity>
+              </View>
             );
           })
         )}
@@ -1612,7 +1647,29 @@ export default function OrgProfileScreen() {
               />
             </View>
           </View>
-        )}
+        {relatedQuotes.length > 0 && (() => {
+          const statuses = [...new Set(relatedQuotes.map(q => q.status))];
+          const svcs = [...new Set(relatedQuotes.flatMap(q => (q.lineItems || []).map((li: any) => li.serviceStyle)).filter(Boolean))];
+          return (
+            <View style={styles.p16FilterRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.p16FilterScroll}>
+                <TouchableOpacity style={[styles.p16Pill, !quotesStatusFilter && styles.p16PillActive]} onPress={() => setQuotesStatusFilter('')}>
+                  <Text style={[styles.p16PillText, !quotesStatusFilter && styles.p16PillTextActive]}>All</Text>
+                </TouchableOpacity>
+                {statuses.map(s => (
+                  <TouchableOpacity key={s} style={[styles.p16Pill, quotesStatusFilter === s && styles.p16PillActive]} onPress={() => setQuotesStatusFilter(quotesStatusFilter === s ? '' : s)}>
+                    <Text style={[styles.p16PillText, quotesStatusFilter === s && styles.p16PillTextActive]}>{STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? s}</Text>
+                  </TouchableOpacity>
+                ))}
+                {svcs.map(s => (
+                  <TouchableOpacity key={s} style={[styles.p16Pill, quotesServiceFilter === s && styles.p16PillActive]} onPress={() => setQuotesServiceFilter(quotesServiceFilter === s ? '' : s)}>
+                    <Text style={[styles.p16PillText, quotesServiceFilter === s && styles.p16PillTextActive]}>{s}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          );
+        })()}
         {relatedQuotes.length === 0 ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyCardText}>No quotes yet.</Text>
@@ -1621,14 +1678,16 @@ export default function OrgProfileScreen() {
         ) : filteredRelatedQuotes.length === 0 ? (
           <View style={styles.emptyCard}><Text style={styles.emptyCardText}>No matches</Text></View>
         ) : (
-          filteredRelatedQuotes.map((q) => {
+          filteredRelatedQuotes.map((q, _idx) => {
             const eff = getEffectiveStatus(q);
             const cfg = STATUS_CONFIG[eff];
             const qPcs = getPcs(q);
             const services = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))];
             const pNum = (q as any).projectNumber || q.invoiceNumber;
             return (
-              <TouchableOpacity key={q.id} style={styles.p16Card} onPress={() => router.push(`/quote/${q.id}` as any)}>
+              <View key={q.id} style={styles.p16ListRow}>
+                <Text style={styles.p16ListNum}>#{_idx + 1}</Text>
+              <TouchableOpacity style={[styles.p16Card, { flex: 1 }]} onPress={() => router.push(`/quote/${q.id}` as any)}>
                 <View style={styles.p16CardTop}>
                   {pNum ? <Text style={styles.p16CardNum}>#{pNum}</Text> : null}
                   <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
@@ -1649,6 +1708,7 @@ export default function OrgProfileScreen() {
                   <Text style={styles.p16CardProfit}>Profit: {formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
                 </View>
               </TouchableOpacity>
+              </View>
             );
           })
         )}
@@ -1924,7 +1984,29 @@ export default function OrgProfileScreen() {
               />
             </View>
           </View>
-        )}
+        {activeQuotes.length > 0 && (() => {
+          const statuses = [...new Set(activeQuotes.map(q => q.status))];
+          const svcs = [...new Set(activeQuotes.flatMap(q => (q.lineItems || []).map((li: any) => li.serviceStyle)).filter(Boolean))];
+          return (
+            <View style={styles.p16FilterRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.p16FilterScroll}>
+                <TouchableOpacity style={[styles.p16Pill, !activeStatusFilter && styles.p16PillActive]} onPress={() => setActiveStatusFilter('')}>
+                  <Text style={[styles.p16PillText, !activeStatusFilter && styles.p16PillTextActive]}>All</Text>
+                </TouchableOpacity>
+                {statuses.map(s => (
+                  <TouchableOpacity key={s} style={[styles.p16Pill, activeStatusFilter === s && styles.p16PillActive]} onPress={() => setActiveStatusFilter(activeStatusFilter === s ? '' : s)}>
+                    <Text style={[styles.p16PillText, activeStatusFilter === s && styles.p16PillTextActive]}>{STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? s}</Text>
+                  </TouchableOpacity>
+                ))}
+                {svcs.map(s => (
+                  <TouchableOpacity key={s} style={[styles.p16Pill, activeServiceFilter === s && styles.p16PillActive]} onPress={() => setActiveServiceFilter(activeServiceFilter === s ? '' : s)}>
+                    <Text style={[styles.p16PillText, activeServiceFilter === s && styles.p16PillTextActive]}>{s}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          );
+        })()}
         {activeQuotes.length === 0 ? (
           <View style={styles.emptyCard}>
             <ShoppingBag size={26} color={Colors.light.border} />
@@ -1934,14 +2016,16 @@ export default function OrgProfileScreen() {
         ) : filteredActiveQuotes.length === 0 ? (
           <View style={styles.emptyCard}><Text style={styles.emptyCardText}>No matches</Text></View>
         ) : (
-          filteredActiveQuotes.map((q) => {
+          filteredActiveQuotes.map((q, _idx) => {
             const eff = getEffectiveStatus(q);
             const cfg = STATUS_CONFIG[eff];
             const qPcs = getPcs(q);
             const services = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))];
             const pNum = (q as any).projectNumber || q.invoiceNumber;
             return (
-              <TouchableOpacity key={q.id} style={styles.p16Card} onPress={() => router.push(`/quote/${q.id}` as any)}>
+              <View key={q.id} style={styles.p16ListRow}>
+                <Text style={styles.p16ListNum}>#{_idx + 1}</Text>
+              <TouchableOpacity style={[styles.p16Card, { flex: 1 }]} onPress={() => router.push(`/quote/${q.id}` as any)}>
                 <View style={styles.p16CardTop}>
                   {pNum ? <Text style={styles.p16CardNum}>#{pNum}</Text> : null}
                   <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
@@ -1962,6 +2046,7 @@ export default function OrgProfileScreen() {
                   <Text style={styles.p16CardProfit}>Profit: {formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
                 </View>
               </TouchableOpacity>
+              </View>
             );
           })
         )}
@@ -2025,7 +2110,29 @@ export default function OrgProfileScreen() {
               />
             </View>
           </View>
-        )}
+        {relatedQuotes.length > 0 && (() => {
+          const statuses = [...new Set(relatedQuotes.map(q => q.status))];
+          const svcs = [...new Set(relatedQuotes.flatMap(q => (q.lineItems || []).map((li: any) => li.serviceStyle)).filter(Boolean))];
+          return (
+            <View style={styles.p16FilterRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.p16FilterScroll}>
+                <TouchableOpacity style={[styles.p16Pill, !quotesStatusFilter && styles.p16PillActive]} onPress={() => setQuotesStatusFilter('')}>
+                  <Text style={[styles.p16PillText, !quotesStatusFilter && styles.p16PillTextActive]}>All</Text>
+                </TouchableOpacity>
+                {statuses.map(s => (
+                  <TouchableOpacity key={s} style={[styles.p16Pill, quotesStatusFilter === s && styles.p16PillActive]} onPress={() => setQuotesStatusFilter(quotesStatusFilter === s ? '' : s)}>
+                    <Text style={[styles.p16PillText, quotesStatusFilter === s && styles.p16PillTextActive]}>{STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? s}</Text>
+                  </TouchableOpacity>
+                ))}
+                {svcs.map(s => (
+                  <TouchableOpacity key={s} style={[styles.p16Pill, quotesServiceFilter === s && styles.p16PillActive]} onPress={() => setQuotesServiceFilter(quotesServiceFilter === s ? '' : s)}>
+                    <Text style={[styles.p16PillText, quotesServiceFilter === s && styles.p16PillTextActive]}>{s}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          );
+        })()}
         {relatedQuotes.length === 0 ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyCardText}>No quotes yet.</Text>
@@ -2034,14 +2141,16 @@ export default function OrgProfileScreen() {
         ) : filteredRelatedQuotes.length === 0 ? (
           <View style={styles.emptyCard}><Text style={styles.emptyCardText}>No matches</Text></View>
         ) : (
-          filteredRelatedQuotes.map((q) => {
+          filteredRelatedQuotes.map((q, _idx) => {
             const eff = getEffectiveStatus(q);
             const cfg = STATUS_CONFIG[eff];
             const qPcs = getPcs(q);
             const services = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))];
             const pNum = (q as any).projectNumber || q.invoiceNumber;
             return (
-              <TouchableOpacity key={q.id} style={styles.p16Card} onPress={() => router.push(`/quote/${q.id}` as any)}>
+              <View key={q.id} style={styles.p16ListRow}>
+                <Text style={styles.p16ListNum}>#{_idx + 1}</Text>
+              <TouchableOpacity style={[styles.p16Card, { flex: 1 }]} onPress={() => router.push(`/quote/${q.id}` as any)}>
                 <View style={styles.p16CardTop}>
                   {pNum ? <Text style={styles.p16CardNum}>#{pNum}</Text> : null}
                   <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
@@ -2062,6 +2171,7 @@ export default function OrgProfileScreen() {
                   <Text style={styles.p16CardProfit}>Profit: {formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
                 </View>
               </TouchableOpacity>
+              </View>
             );
           })
         )}
@@ -2678,14 +2788,16 @@ export default function OrgProfileScreen() {
               ) : filteredActiveQuotes.length === 0 ? (
                 <View style={styles.emptyCard}><Text style={styles.emptyCardText}>No matches</Text></View>
               ) : (
-                filteredActiveQuotes.map((q) => {
+                filteredActiveQuotes.map((q, _idx) => {
                   const eff = getEffectiveStatus(q);
                   const cfg = STATUS_CONFIG[eff];
                   const qPcs = getPcs(q);
                   const services = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))];
                   const pNum = (q as any).projectNumber || q.invoiceNumber;
                   return (
-                    <TouchableOpacity key={q.id} style={styles.p16Card} onPress={() => router.push(`/quote/${q.id}` as any)}>
+                    <View key={q.id} style={styles.p16ListRow}>
+                      <Text style={styles.p16ListNum}>#{_idx + 1}</Text>
+                    <TouchableOpacity style={[styles.p16Card, { flex: 1 }]} onPress={() => router.push(`/quote/${q.id}` as any)}>
                       <View style={styles.p16CardTop}>
                         {pNum ? <Text style={styles.p16CardNum}>#{pNum}</Text> : null}
                         <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
@@ -2706,6 +2818,7 @@ export default function OrgProfileScreen() {
                         <Text style={styles.p16CardProfit}>Profit: {formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
                       </View>
                     </TouchableOpacity>
+                    </View>
                   );
                 })
               )}
@@ -2832,14 +2945,16 @@ export default function OrgProfileScreen() {
               ) : filteredRelatedQuotes.length === 0 ? (
                 <View style={styles.emptyCard}><Text style={styles.emptyCardText}>No matches</Text></View>
               ) : (
-                filteredRelatedQuotes.map((q) => {
+                filteredRelatedQuotes.map((q, _idx) => {
                   const eff = getEffectiveStatus(q);
                   const cfg = STATUS_CONFIG[eff];
                   const qPcs = getPcs(q);
                   const services = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))];
                   const pNum = (q as any).projectNumber || q.invoiceNumber;
                   return (
-                    <TouchableOpacity key={q.id} style={styles.p16Card} onPress={() => router.push(`/quote/${q.id}` as any)}>
+                    <View key={q.id} style={styles.p16ListRow}>
+                      <Text style={styles.p16ListNum}>#{_idx + 1}</Text>
+                    <TouchableOpacity style={[styles.p16Card, { flex: 1 }]} onPress={() => router.push(`/quote/${q.id}` as any)}>
                       <View style={styles.p16CardTop}>
                         {pNum ? <Text style={styles.p16CardNum}>#{pNum}</Text> : null}
                         <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
@@ -2860,6 +2975,7 @@ export default function OrgProfileScreen() {
                         <Text style={styles.p16CardProfit}>Profit: {formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
                       </View>
                     </TouchableOpacity>
+                    </View>
                   );
                 })
               )}
@@ -6171,7 +6287,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.light.border,
     padding: 12,
-    marginBottom: 8,
     gap: 5,
   },
   p16CardTop: {
@@ -6275,5 +6390,51 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600' as const,
     color: Colors.light.text,
+  },
+  /* ── Visual list numbering ── */
+  p16ListRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    marginBottom: 8,
+  },
+  p16ListNum: {
+    fontSize: 18,
+    fontWeight: '800' as const,
+    color: Colors.light.border,
+    width: 28,
+    textAlign: 'right' as const,
+    flexShrink: 0,
+  },
+  /* ── Filter pills ── */
+  p16FilterRow: {
+    marginBottom: 6,
+    marginTop: -2,
+  },
+  p16FilterScroll: {
+    flexDirection: 'row' as const,
+    gap: 5,
+    paddingRight: 4,
+  },
+  p16Pill: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: Colors.light.backgroundSecondary,
+  },
+  p16PillActive: {
+    backgroundColor: Colors.light.primary,
+    borderColor: Colors.light.primary,
+  },
+  p16PillText: {
+    fontSize: 11,
+    fontWeight: '500' as const,
+    color: Colors.light.textSecondary,
+  },
+  p16PillTextActive: {
+    color: '#fff',
+    fontWeight: '600' as const,
   },
 });

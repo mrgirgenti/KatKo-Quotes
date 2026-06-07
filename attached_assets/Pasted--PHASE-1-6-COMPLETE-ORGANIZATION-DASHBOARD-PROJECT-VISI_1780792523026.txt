@@ -1,0 +1,517 @@
+# PHASE 1.6 – COMPLETE ORGANIZATION DASHBOARD, PROJECT VISIBILITY & NAVIGATION
+
+The Active Projects and Submitted Quotes implementation is NOT complete and does not match the approved UX direction.
+
+Do NOT proceed to Navigation Restructure (Phase 2) until this work is completed and verified.
+
+This phase focuses on:
+
+* Organization Detail usability
+* Active Projects
+* Submitted Quotes
+* Project Numbering
+* Search & Filters
+* Navigation
+* CRM visibility
+
+This is NOT a redesign.
+
+This is a refinement and completion of the approved Organization experience.
+
+---
+
+## ACTIVE PROJECTS & SUBMITTED QUOTES
+
+### Core Requirement
+
+Both sections must use the EXACT SAME CARD STRUCTURE.
+
+Currently:
+
+* Active Projects uses one layout.
+* Submitted Quotes uses a different layout.
+
+This must be corrected.
+
+The user should immediately recognize both sections as related.
+
+Only the data changes.
+
+The layout remains identical.
+
+---
+
+## CARD LAYOUT
+
+Each card should use a compact 3-row structure.
+
+Example:
+
+```text
+#1
+
+P-1002
+
+[In Production] Team Shirts                     Order: Apr 12
+
+Due: Apr 30      Direct to Film      37 pcs
+
+Total: $511.45                       Profit: $74.00
+```
+
+### Display Requirements
+
+Every Active Project and Submitted Quote card must display:
+
+* Project Number
+* Status
+* Project Name
+* Order Date
+* Due Date
+* Service
+* Qty
+* Total
+* Profit
+
+Profit must ALWAYS display.
+
+Examples:
+
+Profit: $0.00
+
+Profit: $74.00
+
+Profit: $128.45
+
+Do not hide profit when it equals zero.
+
+---
+
+## VISUAL LIST NUMBERING
+
+Apply identical numbering behavior to BOTH:
+
+* Active Projects
+* Submitted Quotes
+
+### Requirements
+
+Display a large visual sequence number outside the left edge of the card.
+
+Examples:
+
+#1
+
+#2
+
+#3
+
+#4
+
+This number:
+
+* Is NOT part of the card
+* Is NOT the Project Number
+* Is a visual list ordering tool
+* Updates dynamically based on sorting
+
+### Design Requirements
+
+* Larger than card text
+* Positioned outside card
+* Vertically centered against card
+* Easy to scan
+* Not visually overpowering
+
+### Important
+
+The visual list number and Project Number are different.
+
+Example:
+
+```text
+#1
+
+P-1002
+
+[In Production] Team Shirts
+```
+
+Visual List Number:
+#1
+
+Permanent Project Number:
+P-1002
+
+---
+
+## PROJECT NUMBERING
+
+Current implementation is incomplete.
+
+projectNumber exists but is not functioning.
+
+Implement:
+
+Automatic Project Number generation.
+
+Examples:
+
+P-1001
+
+P-1002
+
+P-1003
+
+Requirements:
+
+* Generate automatically
+* Unique
+* Backfill existing records
+* Preserve existing data
+
+Display Project Numbers in:
+
+* Active Projects
+* Submitted Quotes
+* Projects Tab
+* Project Detail Page
+* Search Results
+
+Project Number becomes the primary identifier.
+
+---
+
+## SORTING LOGIC
+
+IMPORTANT:
+
+The Organization page is a CRM view.
+
+It is NOT a production management view.
+
+We process work FIFO.
+
+Clients already understand our turnaround requirements.
+
+Default sorting should reflect operational reality.
+
+### Active Projects
+
+Default Sort:
+
+Order Date
+
+Oldest First
+
+Purpose:
+
+Process projects in order received.
+
+### Submitted Quotes
+
+Default Sort:
+
+Submission Date
+
+Oldest First
+
+Purpose:
+
+Process quotes in order received.
+
+### Due Dates
+
+Due Dates remain:
+
+* Visible
+* Searchable
+* Filterable
+
+However:
+
+Due Dates should NOT control default sorting.
+
+Production scheduling belongs in:
+
+* Projects
+* Production
+
+not inside the Organization dashboard.
+
+---
+
+## SEARCH
+
+Add search to BOTH sections.
+
+Search by:
+
+* Project Number
+* Project Name
+* Invoice Number
+* Organization Name
+* Service
+
+Search should update list numbering dynamically.
+
+---
+
+## FILTERS
+
+Add filters to BOTH sections.
+
+### Status Filter
+
+Examples:
+
+* All
+* Submitted
+* Approved
+* In Production
+* Completed
+* Cancelled
+
+### Service Filter
+
+Examples:
+
+* Direct to Film
+* Screen Print
+* Embroidery
+* Promotional
+* Signage
+
+### Date Range Filter
+
+Examples:
+
+* Last 30 Days
+* This Quarter
+* This Year
+* Custom Range
+
+List numbering should automatically recalculate after filtering.
+
+---
+
+## VIEW ALL LINKS
+
+Add:
+
+View All Active Projects →
+
+Add:
+
+View All Quotes →
+
+Requirements:
+
+* Must be clickable
+* Must route correctly
+* Must preserve Organization context
+
+---
+
+### View All Active Projects
+
+Routes to:
+
+Projects
+
+Automatically filtered:
+
+Organization = Current Organization
+
+Status = Active
+
+---
+
+### View All Quotes
+
+Routes to:
+
+Quotes
+
+Automatically filtered:
+
+Organization = Current Organization
+
+Status = Submitted
+
+---
+
+## CARD NAVIGATION
+
+The Organization page is a launchpad.
+
+The cards must remain fully interactive.
+
+### Active Projects
+
+Clicking anywhere on the card:
+
+→ Opens Project Detail Page
+
+---
+
+### Submitted Quotes
+
+Clicking anywhere on the card:
+
+→ Opens Quote Detail Page
+
+---
+
+## BREADCRUMB NAVIGATION
+
+Add breadcrumb support.
+
+Examples:
+
+Organizations > Battlestar Coffee > P-1002
+
+Organizations > Battlestar Coffee > Q-1045
+
+Users should be able to return to the Organization page with one click.
+
+This is especially important because users currently feel trapped when navigating deeper into records.
+
+---
+
+## SIDEBAR PERSISTENCE
+
+Current sidebar state resets on refresh.
+
+Implement persistence.
+
+Requirements:
+
+* Remember expanded state
+* Remember collapsed state
+* Persist across route changes
+* Persist across refreshes
+
+Use appropriate storage mechanism.
+
+The navigation state should survive sessions.
+
+---
+
+## ORGANIZATION PAGE ROLE
+
+The Organization page is a CRM dashboard.
+
+Its purpose is:
+
+* Relationship Management
+* Client Visibility
+* Project Visibility
+* Quote Visibility
+* Communication Visibility
+
+It is NOT:
+
+* Production Scheduling
+* Shop Floor Management
+
+Production management belongs in:
+
+Projects
+
+and eventually:
+
+Production
+
+The Organization page should provide visibility and quick access, not production queue management.
+
+---
+
+## ACTIVITY SYSTEM VALIDATION
+
+Confirm whether activity write APIs exist.
+
+If missing:
+
+Create a reusable activity service foundation.
+
+Future systems that will use this:
+
+* Projects
+* Quotes
+* Finance
+* Client Hub
+* Communications
+* Production
+
+Do not fully implement all activity logging yet.
+
+Provide architecture findings.
+
+---
+
+## COMMUNICATIONS FOUNDATION AUDIT
+
+Do NOT build Gmail integration.
+
+Instead:
+
+Document:
+
+* Current implementation
+* Existing routes
+* Existing models
+* Existing limitations
+
+Provide recommendations for future Gmail integration.
+
+---
+
+## VALIDATION REQUIREMENTS
+
+Do not mark complete until all requirements are verified.
+
+Provide:
+
+1. Screenshot of Active Projects
+
+2. Screenshot of Submitted Quotes
+
+3. Screenshot of Projects Tab
+
+4. Example Active Project showing:
+
+   * Project Number
+   * Status
+   * Project Name
+   * Order Date
+   * Due Date
+   * Service
+   * Qty
+   * Total
+   * Profit
+
+5. Example Submitted Quote showing:
+
+   * Project Number
+   * Status
+   * Project Name
+   * Order Date
+   * Due Date
+   * Service
+   * Qty
+   * Total
+   * Profit
+
+6. Confirmation that:
+
+   * Search works
+   * Filters work
+   * View All routing works
+   * Project Number generation works
+   * Sidebar persistence works
+   * Breadcrumbs work
+
+Provide files modified, components modified, routes added, and any remaining technical debt discovered.
+
+Only after this phase is complete and verified should we proceed to Phase 2 Navigation Restructure.
