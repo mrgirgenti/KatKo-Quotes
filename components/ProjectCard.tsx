@@ -52,62 +52,66 @@ export function ProjectCard({
         onPress={selectionMode ? (onToggleSelect ?? onPress) : onPress}
         activeOpacity={0.75}
       >
-        {/* Top row: project number + status badge + chevron */}
-        <View style={styles.cardTop}>
-          <View style={styles.cardTopLeft}>
-            {selectionMode && (
-              <TouchableOpacity
-                onPress={onToggleSelect}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
-                  {isSelected && <Check size={10} color="#fff" strokeWidth={3} />}
-                </View>
-              </TouchableOpacity>
-            )}
-            {pNum ? <Text style={styles.projectNum}>{pNum}</Text> : null}
-            <View style={[styles.statusBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
-              <Text style={[styles.statusBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
+        <View style={styles.cardBody}>
+          {/* LEFT: project info stack */}
+          <View style={styles.leftCol}>
+            {/* Project number + status badge row */}
+            <View style={styles.topRow}>
+              {selectionMode && (
+                <TouchableOpacity
+                  onPress={onToggleSelect}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
+                    {isSelected && <Check size={10} color="#fff" strokeWidth={3} />}
+                  </View>
+                </TouchableOpacity>
+              )}
+              {pNum ? <Text style={styles.projectNum}>{pNum}</Text> : null}
+              <View style={[styles.statusBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+                <Text style={[styles.statusBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
+              </View>
             </View>
-          </View>
-          <ChevronRight size={13} color={Colors.light.textSecondary} />
-        </View>
 
-        {/* Project name */}
-        <Text style={styles.projectName} numberOfLines={2}>
-          {quote.projectName || quote.personOrganization || '—'}
-        </Text>
+            {/* Project name */}
+            <Text style={styles.projectName} numberOfLines={2}>
+              {quote.projectName || quote.personOrganization || '—'}
+            </Text>
 
-        {/* Dates */}
-        {(quote.orderDate || quote.inHandsDate) ? (
-          <View style={styles.datesRow}>
-            {quote.orderDate ? (
-              <Text style={styles.dateText}>Order: {formatDate(quote.orderDate)}</Text>
+            {/* Dates */}
+            {(quote.orderDate || quote.inHandsDate) ? (
+              <View style={styles.datesRow}>
+                {quote.orderDate ? (
+                  <Text style={styles.dateText}>Order: {formatDate(quote.orderDate)}</Text>
+                ) : null}
+                {quote.orderDate && quote.inHandsDate ? (
+                  <Text style={styles.dateSep}>·</Text>
+                ) : null}
+                {quote.inHandsDate ? (
+                  <Text style={styles.dateText}>Due: {formatDate(quote.inHandsDate)}</Text>
+                ) : null}
+              </View>
             ) : null}
-            {quote.orderDate && quote.inHandsDate ? (
-              <Text style={styles.dateSep}>·</Text>
-            ) : null}
-            {quote.inHandsDate ? (
-              <Text style={styles.dateText}>Due: {formatDate(quote.inHandsDate)}</Text>
+
+            {/* Service + Qty */}
+            {serviceQty ? (
+              <Text style={styles.serviceQty} numberOfLines={1}>{serviceQty}</Text>
             ) : null}
           </View>
-        ) : null}
 
-        {/* Service + Qty grouped */}
-        {serviceQty ? (
-          <Text style={styles.serviceQty} numberOfLines={1}>{serviceQty}</Text>
-        ) : null}
-
-        {/* Financial section */}
-        <View style={styles.financials}>
-          <View style={styles.financialCol}>
-            <Text style={styles.financialLabel}>Total</Text>
-            <Text style={styles.financialValue}>{formatCurrency(total)}</Text>
-          </View>
-          <View style={styles.financialDivider} />
-          <View style={styles.financialCol}>
-            <Text style={styles.financialLabel}>Profit</Text>
-            <Text style={[styles.financialValue, styles.profitValue]}>{formatCurrency(profit)}</Text>
+          {/* RIGHT: financials + chevron */}
+          <View style={styles.rightCol}>
+            <View style={styles.financials}>
+              <View style={styles.financialRow}>
+                <Text style={styles.financialLabel}>TOTAL</Text>
+                <Text style={styles.financialValue}>{formatCurrency(total)}</Text>
+              </View>
+              <View style={styles.financialRow}>
+                <Text style={styles.financialLabel}>PROFIT</Text>
+                <Text style={[styles.financialValue, styles.profitValue]}>{formatCurrency(profit)}</Text>
+              </View>
+            </View>
+            <ChevronRight size={13} color={Colors.light.textSecondary} style={styles.chevron} />
           </View>
         </View>
       </TouchableOpacity>
@@ -120,7 +124,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     gap: 8,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   queueNum: {
     fontSize: 22,
@@ -136,23 +140,26 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    padding: 12,
-    gap: 5,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
   },
   cardSelected: {
     borderColor: Colors.light.primary,
     backgroundColor: '#FFF7F3',
   },
-  cardTop: {
+  cardBody: {
     flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
+    alignItems: 'flex-start' as const,
+    gap: 10,
   },
-  cardTopLeft: {
+  leftCol: {
+    flex: 1,
+    gap: 4,
+  },
+  topRow: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     gap: 7,
-    flex: 1,
     flexWrap: 'wrap' as const,
   },
   checkbox: {
@@ -190,7 +197,6 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     color: '#111827',
     lineHeight: 19,
-    marginTop: 1,
   },
   datesRow: {
     flexDirection: 'row' as const,
@@ -211,38 +217,36 @@ const styles = StyleSheet.create({
     fontWeight: '500' as const,
     color: '#374151',
   },
-  financials: {
-    flexDirection: 'row' as const,
-    alignItems: 'stretch' as const,
-    marginTop: 8,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
+  rightCol: {
+    alignItems: 'flex-end' as const,
+    justifyContent: 'space-between' as const,
+    alignSelf: 'stretch' as const,
+    flexShrink: 0,
   },
-  financialCol: {
-    flex: 1,
-    gap: 2,
+  financials: {
+    alignItems: 'flex-end' as const,
+    gap: 5,
+  },
+  financialRow: {
+    alignItems: 'flex-end' as const,
+    gap: 1,
   },
   financialLabel: {
-    fontSize: 10,
-    fontWeight: '500' as const,
+    fontSize: 9,
+    fontWeight: '600' as const,
     color: '#9CA3AF',
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
   financialValue: {
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: '700' as const,
     color: '#111827',
-    lineHeight: 22,
+    lineHeight: 17,
   },
   profitValue: {
     color: '#059669',
   },
-  financialDivider: {
-    width: 1,
-    backgroundColor: '#E2E8F0',
-    marginHorizontal: 14,
-    minHeight: 36,
+  chevron: {
+    marginTop: 4,
   },
 });
