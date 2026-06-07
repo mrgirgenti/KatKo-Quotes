@@ -307,6 +307,7 @@ export default function OrgProfileScreen() {
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [activeSearch, setActiveSearch] = useState('');
   const [activeServiceFilter, setActiveServiceFilter] = useState('');
+  const [activeStatusFilter, setActiveStatusFilter] = useState('');
   const [projectsSubTab, setProjectsSubTab] = useState<'active' | 'quotes' | 'completed'>('active');
   const [projectsSearch, setProjectsSearch] = useState('');
 
@@ -1547,29 +1548,26 @@ export default function OrgProfileScreen() {
               />
             </View>
           </View>
-        {activeQuotes.length > 0 && (() => {
-          const statuses = [...new Set(activeQuotes.map(q => q.status))];
-          const svcs = [...new Set(activeQuotes.flatMap(q => (q.lineItems || []).map((li: any) => li.serviceStyle)).filter(Boolean))];
-          return (
-            <View style={styles.p16FilterRow}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.p16FilterScroll}>
-                <TouchableOpacity style={[styles.p16Pill, !activeStatusFilter && styles.p16PillActive]} onPress={() => setActiveStatusFilter('')}>
-                  <Text style={[styles.p16PillText, !activeStatusFilter && styles.p16PillTextActive]}>All</Text>
+        )}
+        {activeQuotes.length > 0 && (
+          <View style={styles.p16FilterRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.p16FilterScroll}>
+              <TouchableOpacity style={[styles.p16Pill, !activeStatusFilter && styles.p16PillActive]} onPress={() => setActiveStatusFilter('')}>
+                <Text style={[styles.p16PillText, !activeStatusFilter && styles.p16PillTextActive]}>All</Text>
+              </TouchableOpacity>
+              {[...new Set(activeQuotes.map(q => q.status))].map(s => (
+                <TouchableOpacity key={s} style={[styles.p16Pill, activeStatusFilter === s && styles.p16PillActive]} onPress={() => setActiveStatusFilter(activeStatusFilter === s ? '' : s)}>
+                  <Text style={[styles.p16PillText, activeStatusFilter === s && styles.p16PillTextActive]}>{STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? s}</Text>
                 </TouchableOpacity>
-                {statuses.map(s => (
-                  <TouchableOpacity key={s} style={[styles.p16Pill, activeStatusFilter === s && styles.p16PillActive]} onPress={() => setActiveStatusFilter(activeStatusFilter === s ? '' : s)}>
-                    <Text style={[styles.p16PillText, activeStatusFilter === s && styles.p16PillTextActive]}>{STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? s}</Text>
-                  </TouchableOpacity>
-                ))}
-                {svcs.map(s => (
-                  <TouchableOpacity key={s} style={[styles.p16Pill, activeServiceFilter === s && styles.p16PillActive]} onPress={() => setActiveServiceFilter(activeServiceFilter === s ? '' : s)}>
-                    <Text style={[styles.p16PillText, activeServiceFilter === s && styles.p16PillTextActive]}>{s}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          );
-        })()}
+              ))}
+              {[...new Set(activeQuotes.flatMap(q => (q.lineItems || []).map((li: any) => li.serviceStyle)).filter(Boolean))].map(s => (
+                <TouchableOpacity key={s} style={[styles.p16Pill, activeServiceFilter === s && styles.p16PillActive]} onPress={() => setActiveServiceFilter(activeServiceFilter === s ? '' : s)}>
+                  <Text style={[styles.p16PillText, activeServiceFilter === s && styles.p16PillTextActive]}>{s}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
         {activeQuotes.length === 0 ? (
           <View style={styles.emptyCard}>
             <ShoppingBag size={26} color={Colors.light.border} />
@@ -1673,29 +1671,26 @@ export default function OrgProfileScreen() {
               />
             </View>
           </View>
-        {relatedQuotes.length > 0 && (() => {
-          const statuses = [...new Set(relatedQuotes.map(q => q.status))];
-          const svcs = [...new Set(relatedQuotes.flatMap(q => (q.lineItems || []).map((li: any) => li.serviceStyle)).filter(Boolean))];
-          return (
-            <View style={styles.p16FilterRow}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.p16FilterScroll}>
-                <TouchableOpacity style={[styles.p16Pill, !quotesStatusFilter && styles.p16PillActive]} onPress={() => setQuotesStatusFilter('')}>
-                  <Text style={[styles.p16PillText, !quotesStatusFilter && styles.p16PillTextActive]}>All</Text>
+        )}
+        {relatedQuotes.length > 0 && (
+          <View style={styles.p16FilterRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.p16FilterScroll}>
+              <TouchableOpacity style={[styles.p16Pill, !quotesStatusFilter && styles.p16PillActive]} onPress={() => setQuotesStatusFilter('')}>
+                <Text style={[styles.p16PillText, !quotesStatusFilter && styles.p16PillTextActive]}>All</Text>
+              </TouchableOpacity>
+              {[...new Set(relatedQuotes.map(q => q.status))].map(s => (
+                <TouchableOpacity key={s} style={[styles.p16Pill, quotesStatusFilter === s && styles.p16PillActive]} onPress={() => setQuotesStatusFilter(quotesStatusFilter === s ? '' : s)}>
+                  <Text style={[styles.p16PillText, quotesStatusFilter === s && styles.p16PillTextActive]}>{STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? s}</Text>
                 </TouchableOpacity>
-                {statuses.map(s => (
-                  <TouchableOpacity key={s} style={[styles.p16Pill, quotesStatusFilter === s && styles.p16PillActive]} onPress={() => setQuotesStatusFilter(quotesStatusFilter === s ? '' : s)}>
-                    <Text style={[styles.p16PillText, quotesStatusFilter === s && styles.p16PillTextActive]}>{STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? s}</Text>
-                  </TouchableOpacity>
-                ))}
-                {svcs.map(s => (
-                  <TouchableOpacity key={s} style={[styles.p16Pill, quotesServiceFilter === s && styles.p16PillActive]} onPress={() => setQuotesServiceFilter(quotesServiceFilter === s ? '' : s)}>
-                    <Text style={[styles.p16PillText, quotesServiceFilter === s && styles.p16PillTextActive]}>{s}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          );
-        })()}
+              ))}
+              {[...new Set(relatedQuotes.flatMap(q => (q.lineItems || []).map((li: any) => li.serviceStyle)).filter(Boolean))].map(s => (
+                <TouchableOpacity key={s} style={[styles.p16Pill, quotesServiceFilter === s && styles.p16PillActive]} onPress={() => setQuotesServiceFilter(quotesServiceFilter === s ? '' : s)}>
+                  <Text style={[styles.p16PillText, quotesServiceFilter === s && styles.p16PillTextActive]}>{s}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
         {relatedQuotes.length === 0 ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyCardText}>No quotes yet.</Text>
@@ -2010,29 +2005,26 @@ export default function OrgProfileScreen() {
               />
             </View>
           </View>
-        {activeQuotes.length > 0 && (() => {
-          const statuses = [...new Set(activeQuotes.map(q => q.status))];
-          const svcs = [...new Set(activeQuotes.flatMap(q => (q.lineItems || []).map((li: any) => li.serviceStyle)).filter(Boolean))];
-          return (
-            <View style={styles.p16FilterRow}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.p16FilterScroll}>
-                <TouchableOpacity style={[styles.p16Pill, !activeStatusFilter && styles.p16PillActive]} onPress={() => setActiveStatusFilter('')}>
-                  <Text style={[styles.p16PillText, !activeStatusFilter && styles.p16PillTextActive]}>All</Text>
+        )}
+        {activeQuotes.length > 0 && (
+          <View style={styles.p16FilterRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.p16FilterScroll}>
+              <TouchableOpacity style={[styles.p16Pill, !activeStatusFilter && styles.p16PillActive]} onPress={() => setActiveStatusFilter('')}>
+                <Text style={[styles.p16PillText, !activeStatusFilter && styles.p16PillTextActive]}>All</Text>
+              </TouchableOpacity>
+              {[...new Set(activeQuotes.map(q => q.status))].map(s => (
+                <TouchableOpacity key={s} style={[styles.p16Pill, activeStatusFilter === s && styles.p16PillActive]} onPress={() => setActiveStatusFilter(activeStatusFilter === s ? '' : s)}>
+                  <Text style={[styles.p16PillText, activeStatusFilter === s && styles.p16PillTextActive]}>{STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? s}</Text>
                 </TouchableOpacity>
-                {statuses.map(s => (
-                  <TouchableOpacity key={s} style={[styles.p16Pill, activeStatusFilter === s && styles.p16PillActive]} onPress={() => setActiveStatusFilter(activeStatusFilter === s ? '' : s)}>
-                    <Text style={[styles.p16PillText, activeStatusFilter === s && styles.p16PillTextActive]}>{STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? s}</Text>
-                  </TouchableOpacity>
-                ))}
-                {svcs.map(s => (
-                  <TouchableOpacity key={s} style={[styles.p16Pill, activeServiceFilter === s && styles.p16PillActive]} onPress={() => setActiveServiceFilter(activeServiceFilter === s ? '' : s)}>
-                    <Text style={[styles.p16PillText, activeServiceFilter === s && styles.p16PillTextActive]}>{s}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          );
-        })()}
+              ))}
+              {[...new Set(activeQuotes.flatMap(q => (q.lineItems || []).map((li: any) => li.serviceStyle)).filter(Boolean))].map(s => (
+                <TouchableOpacity key={s} style={[styles.p16Pill, activeServiceFilter === s && styles.p16PillActive]} onPress={() => setActiveServiceFilter(activeServiceFilter === s ? '' : s)}>
+                  <Text style={[styles.p16PillText, activeServiceFilter === s && styles.p16PillTextActive]}>{s}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
         {activeQuotes.length === 0 ? (
           <View style={styles.emptyCard}>
             <ShoppingBag size={26} color={Colors.light.border} />
@@ -2136,29 +2128,26 @@ export default function OrgProfileScreen() {
               />
             </View>
           </View>
-        {relatedQuotes.length > 0 && (() => {
-          const statuses = [...new Set(relatedQuotes.map(q => q.status))];
-          const svcs = [...new Set(relatedQuotes.flatMap(q => (q.lineItems || []).map((li: any) => li.serviceStyle)).filter(Boolean))];
-          return (
-            <View style={styles.p16FilterRow}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.p16FilterScroll}>
-                <TouchableOpacity style={[styles.p16Pill, !quotesStatusFilter && styles.p16PillActive]} onPress={() => setQuotesStatusFilter('')}>
-                  <Text style={[styles.p16PillText, !quotesStatusFilter && styles.p16PillTextActive]}>All</Text>
+        )}
+        {relatedQuotes.length > 0 && (
+          <View style={styles.p16FilterRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.p16FilterScroll}>
+              <TouchableOpacity style={[styles.p16Pill, !quotesStatusFilter && styles.p16PillActive]} onPress={() => setQuotesStatusFilter('')}>
+                <Text style={[styles.p16PillText, !quotesStatusFilter && styles.p16PillTextActive]}>All</Text>
+              </TouchableOpacity>
+              {[...new Set(relatedQuotes.map(q => q.status))].map(s => (
+                <TouchableOpacity key={s} style={[styles.p16Pill, quotesStatusFilter === s && styles.p16PillActive]} onPress={() => setQuotesStatusFilter(quotesStatusFilter === s ? '' : s)}>
+                  <Text style={[styles.p16PillText, quotesStatusFilter === s && styles.p16PillTextActive]}>{STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? s}</Text>
                 </TouchableOpacity>
-                {statuses.map(s => (
-                  <TouchableOpacity key={s} style={[styles.p16Pill, quotesStatusFilter === s && styles.p16PillActive]} onPress={() => setQuotesStatusFilter(quotesStatusFilter === s ? '' : s)}>
-                    <Text style={[styles.p16PillText, quotesStatusFilter === s && styles.p16PillTextActive]}>{STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? s}</Text>
-                  </TouchableOpacity>
-                ))}
-                {svcs.map(s => (
-                  <TouchableOpacity key={s} style={[styles.p16Pill, quotesServiceFilter === s && styles.p16PillActive]} onPress={() => setQuotesServiceFilter(quotesServiceFilter === s ? '' : s)}>
-                    <Text style={[styles.p16PillText, quotesServiceFilter === s && styles.p16PillTextActive]}>{s}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          );
-        })()}
+              ))}
+              {[...new Set(relatedQuotes.flatMap(q => (q.lineItems || []).map((li: any) => li.serviceStyle)).filter(Boolean))].map(s => (
+                <TouchableOpacity key={s} style={[styles.p16Pill, quotesServiceFilter === s && styles.p16PillActive]} onPress={() => setQuotesServiceFilter(quotesServiceFilter === s ? '' : s)}>
+                  <Text style={[styles.p16PillText, quotesServiceFilter === s && styles.p16PillTextActive]}>{s}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
         {relatedQuotes.length === 0 ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyCardText}>No quotes yet.</Text>
@@ -2830,7 +2819,6 @@ export default function OrgProfileScreen() {
                   )}
                 </>
               )}
-              )}
               {activeQuotes.length === 0 ? (
                 <View style={styles.emptyCard}>
                   <ShoppingBag size={26} color={Colors.light.border} />
@@ -2871,7 +2859,6 @@ export default function OrgProfileScreen() {
                         </View>
                       </View>
                     </TouchableOpacity>
-                    </View>
                   );
                 })
               )}
@@ -3059,7 +3046,6 @@ export default function OrgProfileScreen() {
                         </View>
                       </View>
                     </TouchableOpacity>
-                    </View>
                   );
                 })
               )}
