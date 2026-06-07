@@ -487,7 +487,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
             />
 
             {/* 3. Service Applicator + Product Source */}
-            <View style={styles.row}>
+            <View style={[styles.row, isMobile && styles.rowMobile]}>
               <View style={styles.halfField}>
                 <ComboBox
                   label="Service Applicator"
@@ -512,7 +512,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
 
             {/* 4. Location #1 + #2 */}
             {!isPromotional && (
-              <View style={styles.row}>
+              <View style={[styles.row, isMobile && styles.rowMobile]}>
                 <View style={styles.halfField}>
                   <ComboBox
                     label="Location #1"
@@ -548,7 +548,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                     <Text style={styles.addLocationBtnText}>Add Location #3 / #4</Text>
                   </TouchableOpacity>
                 ) : (
-                  <View style={styles.row}>
+                  <View style={[styles.row, isMobile && styles.rowMobile]}>
                     <View style={styles.halfField}>
                       <ComboBox
                         label="Location #3"
@@ -1140,17 +1140,17 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                 </View>
               )}
 
-              <View style={styles.costsRow}>
-                <View style={styles.costField}>
+              <View style={[styles.costsRow, isMobile && styles.costsRowMobile]}>
+                <View style={[styles.costField, isMobile && styles.costFieldMobile]}>
                   <CurrencyInput label="Product" value={item.productCostEach} onChange={(v) => onChange({ ...item, productCostEach: v })} />
                 </View>
-                <View style={styles.costField}>
+                <View style={[styles.costField, isMobile && styles.costFieldMobile]}>
                   <CurrencyInput label="Service" value={item.serviceCostEach} onChange={(v) => onChange({ ...item, serviceCostEach: v })} />
                 </View>
-                <View style={styles.costField}>
+                <View style={[styles.costField, isMobile && styles.costFieldMobile]}>
                   <CurrencyInput label="Fees*" value={item.serviceFeeEach} onChange={(v) => onChange({ ...item, serviceFeeEach: v })} />
                 </View>
-                <View style={styles.costField}>
+                <View style={[styles.costField, isMobile && styles.costFieldMobile]}>
                   <CurrencyInput label="Markup" value={item.markupEach || 0} onChange={(v) => onChange({ ...item, markupEach: v })} />
                 </View>
               </View>
@@ -1424,6 +1424,10 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: 10,
+  },
+  rowMobile: {
+    flexDirection: 'column',
+    gap: 0,
   },
   halfField: {
     flex: 1,
@@ -1882,8 +1886,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
+  costsRowMobile: {
+    flexWrap: 'wrap',
+  },
   costField: {
     flex: 1,
+  },
+  costFieldMobile: {
+    flexBasis: '47%',
+    flexGrow: 1,
   },
   // DTF
   dtfCalcSection: {

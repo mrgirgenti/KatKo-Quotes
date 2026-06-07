@@ -34,6 +34,7 @@ import {
   calculateQuote,
   generateId,
 } from '@/utils/quoteCalculations';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 const createEmptyLineItem = (): LineItem => ({
   id: generateId(),
@@ -58,6 +59,7 @@ export default function EditQuoteScreen() {
   const router = useRouter();
   const { allQuotes, isLoading: quotesLoading, updateQuoteAsync } = useQuotes();
   const { currentUserId, isOrgAdmin } = useUser();
+  const { isMobile } = useBreakpoint();
 
   const originalQuote = useMemo(() => {
     return allQuotes.find((q) => q.id === id);
@@ -305,7 +307,7 @@ export default function EditQuoteScreen() {
               value={orderType}
               onChange={setOrderType}
             />
-            <View style={styles.row}>
+            <View style={[styles.row, isMobile && styles.rowMobile]}>
               <View style={styles.halfField}>
                 <FormInput
                   label="Order Date"
@@ -478,6 +480,10 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: 12,
+  },
+  rowMobile: {
+    flexDirection: 'column',
+    gap: 0,
   },
   halfField: {
     flex: 1,

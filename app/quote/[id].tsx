@@ -96,7 +96,7 @@ export default function QuoteDetailScreen() {
   const toggleItem = useCallback((itemId: string) => {
     setExpandedItems(prev => ({ ...prev, [itemId]: !prev[itemId] }));
   }, []);
-  const { isDesktop } = useBreakpoint();
+  const { isDesktop, isMobile } = useBreakpoint();
 
   const allProjects = useMemo(() => {
     return (projects || [...quotes, ...sales]).slice().sort((a, b) => {
@@ -840,9 +840,9 @@ export default function QuoteDetailScreen() {
               </TouchableOpacity>
 
               {isExpanded && (
-                <View style={styles.lineItemBody}>
+                <View style={[styles.lineItemBody, isMobile && styles.lineItemBodyMobile]}>
                   {/* Mockup — left 1/3 */}
-                  <View style={styles.lineItemMockupCol}>
+                  <View style={[styles.lineItemMockupCol, isMobile && styles.lineItemMockupColMobile]}>
                     {item.mockupUri ? (
                       <Image
                         source={{ uri: item.mockupUri }}
@@ -1408,7 +1408,7 @@ export default function QuoteDetailScreen() {
       </View>
 
       <View style={styles.actionBar}>
-        <View style={styles.actionBarInner}>
+        <View style={[styles.actionBarInner, isMobile && styles.actionBarInnerMobile]}>
           <TouchableOpacity style={styles.iconButton} onPress={() => setMenuVisible(true)}>
             <MoreVertical size={20} color={Colors.light.tint} />
           </TouchableOpacity>
@@ -1907,6 +1907,10 @@ const styles = StyleSheet.create({
     gap: 12,
     alignItems: 'flex-start',
   },
+  lineItemBodyMobile: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
   lineItemDetails: {
     gap: 8,
   },
@@ -2218,6 +2222,10 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 480,
   },
+  actionBarInnerMobile: {
+    flexWrap: 'wrap',
+    rowGap: 10,
+  },
   iconButton: {
     width: 48,
     height: 48,
@@ -2293,6 +2301,11 @@ const styles = StyleSheet.create({
     flex: 1,
     flexShrink: 0,
     alignSelf: 'flex-start',
+  },
+  lineItemMockupColMobile: {
+    flex: 0,
+    width: '100%',
+    alignSelf: 'stretch',
   },
   lineItemRightCol: {
     flex: 2,

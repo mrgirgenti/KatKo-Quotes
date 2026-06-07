@@ -133,12 +133,13 @@ interface SaleRowProps {
   onExportSheets: () => void;
   onPrint: () => void;
   isDesktop: boolean;
+  isTablet?: boolean;
   isSelected: boolean;
   onToggleSelect: () => void;
   selectionMode: boolean;
 }
 
-function SaleRow({ quote, effectiveStatus, index, onPress, onTrack, onDelete, onRevert, onEdit, onLock, onUnlock, onExportPDF, onExportSheets, onPrint, isDesktop, isSelected, onToggleSelect, selectionMode }: SaleRowProps) {
+function SaleRow({ quote, effectiveStatus, index, onPress, onTrack, onDelete, onRevert, onEdit, onLock, onUnlock, onExportPDF, onExportSheets, onPrint, isDesktop, isTablet, isSelected, onToggleSelect, selectionMode }: SaleRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const menuBtnRef = useRef<View>(null);
@@ -247,28 +248,36 @@ function SaleRow({ quote, effectiveStatus, index, onPress, onTrack, onDelete, on
         <View style={styles.colOrderDate}>
           <Text style={styles.tableDate}>{formatDate(quote.orderDate)}</Text>
         </View>
-        <View style={styles.colDueDate}>
-          <Text style={styles.tableDate}>{quote.inHandsDate ? formatDate(quote.inHandsDate) : '—'}</Text>
-        </View>
+        {!isTablet && (
+          <View style={styles.colDueDate}>
+            <Text style={styles.tableDate}>{quote.inHandsDate ? formatDate(quote.inHandsDate) : '—'}</Text>
+          </View>
+        )}
         <View style={styles.colClient}>
           <Text style={styles.tableClient} numberOfLines={1}>{quote.personOrganization}</Text>
         </View>
         <View style={styles.colProject}>
           <Text style={styles.tableProject} numberOfLines={1}>{quote.projectName}</Text>
         </View>
-        <View style={styles.colQuote}>
-          <Text style={styles.tableInvoice} numberOfLines={1}>{quote.invoiceNumber || quote.projectNumber || '—'}</Text>
-        </View>
-        <View style={styles.colServices}>
-          <Text style={styles.tableServices}>
-            {lineItemServices.length > 0 ? lineItemServices.join('\n') : '—'}
-          </Text>
-        </View>
-        <View style={styles.colPcs}>
-          <Text style={styles.tablePcs}>
-            {lineItemPcs.map(n => n > 0 ? `${n} pcs` : '—').join('\n')}
-          </Text>
-        </View>
+        {!isTablet && (
+          <View style={styles.colQuote}>
+            <Text style={styles.tableInvoice} numberOfLines={1}>{quote.invoiceNumber || quote.projectNumber || '—'}</Text>
+          </View>
+        )}
+        {!isTablet && (
+          <View style={styles.colServices}>
+            <Text style={styles.tableServices}>
+              {lineItemServices.length > 0 ? lineItemServices.join('\n') : '—'}
+            </Text>
+          </View>
+        )}
+        {!isTablet && (
+          <View style={styles.colPcs}>
+            <Text style={styles.tablePcs}>
+              {lineItemPcs.map(n => n > 0 ? `${n} pcs` : '—').join('\n')}
+            </Text>
+          </View>
+        )}
         <View style={styles.colRevenue}>
           <Text style={styles.tableTotal}>{formatCurrency(revenue)}</Text>
         </View>
@@ -399,7 +408,7 @@ export default function SalesScreen() {
   const router = useRouter();
   const { sales, deleteQuote, convertToQuote, unlockSale, lockSale, markExportedToSheets, isLoading } = useQuotes();
   const { currentUser, orgAdmin } = useUser();
-  const { isDesktop } = useBreakpoint();
+  const { isMobile, isTablet } = useBreakpoint();
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | QuoteStatus>('all');
@@ -514,7 +523,7 @@ export default function SalesScreen() {
   }, [sortField]);
 
   const mobileListData = useMemo((): MobileListDataItem[] => {
-    if (isDesktop) return [];
+    if (!isMobile) return [];
     const needsHeaders = sortField === 'client' || sortField === 'status';
     if (!needsHeaders) {
       return filtered.map(({ quote, effectiveStatus }, i) => ({ type: 'item' as const, quote, effectiveStatus, queueIndex: i }));
@@ -534,7 +543,7 @@ export default function SalesScreen() {
       result.push({ type: 'item', quote, effectiveStatus, queueIndex: itemCount++ });
     }
     return result;
-  }, [filtered, isDesktop, sortField]);
+  }, [filtered, isMobile, sortField]);
 
   const selectedSales = useMemo(() =>
     sales.filter(q => selectedIds.has(q.id)),
@@ -865,8 +874,8 @@ export default function SalesScreen() {
           </View>
         )}
 
-        {/* Desktop: Table header */}
-        {isDesktop && (
+        {/* Desktop / Tablet: Table header */}
+        {!isMobile && (
           <View style={styles.tableHeader}>
             <View style={styles.colCheckbox}>
               <Checkbox
@@ -877,12 +886,12 @@ export default function SalesScreen() {
             </View>
             <View style={styles.colStatus}><SortBtn field="status" label="Status" /></View>
             <View style={styles.colOrderDate}><SortBtn field="date" label="Order Date" /></View>
-            <View style={styles.colDueDate}><SortBtn field="inHands" label="Due Date" /></View>
+            {!isTablet && <View style={styles.colDueDate}><SortBtn field="inHands" label="Due Date" /></View>}
             <View style={styles.colClient}><SortBtn field="client" label="Client" /></View>
             <View style={styles.colProject}><SortBtn field="project" label="Project" /></View>
-            <View style={styles.colQuote}><SortBtn field="invoice" label="Quote #" /></View>
-            <View style={styles.colServices}><SortBtn field="services" label="Service(s)" /></View>
-            <View style={styles.colPcs}><SortBtn field="pcs" label="# PCS" /></View>
+            {!isTablet && <View style={styles.colQuote}><SortBtn field="invoice" label="Quote #" /></View>}
+            {!isTablet && <View style={styles.colServices}><SortBtn field="services" label="Service(s)" /></View>}
+            {!isTablet && <View style={styles.colPcs}><SortBtn field="pcs" label="# PCS" /></View>}
             <View style={styles.colRevenue}><SortBtn field="revenue" label="Revenue" /></View>
             <View style={styles.colProfit}><SortBtn field="profit" label="Profit" /></View>
             <View style={styles.colActions}><Text style={styles.thText}>Actions</Text></View>
@@ -903,7 +912,7 @@ export default function SalesScreen() {
       )}
 
       {/* Mobile sort bar */}
-      {!isDesktop && (
+      {isMobile && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mobileSortScroll} contentContainerStyle={styles.mobileSortRow}>
           <Text style={styles.mobileSortLabel}>Sort:</Text>
           {(['status', 'date', 'inHands', 'client', 'project', 'invoice', 'services', 'pcs', 'revenue', 'profit'] as SortField[]).map(f => (
@@ -931,7 +940,7 @@ export default function SalesScreen() {
               : 'Convert a quote to a sale to see it here.'}
           </Text>
         </View>
-      ) : isDesktop ? (
+      ) : !isMobile ? (
         <FlatList
           data={filtered}
           keyExtractor={({ quote }) => quote.id}
@@ -953,6 +962,7 @@ export default function SalesScreen() {
               onExportSheets={() => handleExportSheets(quote)}
               onPrint={() => handlePrint(quote)}
               isDesktop={true}
+              isTablet={isTablet}
               isSelected={selectedIds.has(quote.id)}
               onToggleSelect={() => toggleSelect(quote.id)}
               selectionMode={selectionMode}

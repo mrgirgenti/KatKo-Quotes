@@ -2591,8 +2591,15 @@ export default function OrgProfileScreen() {
             {/* ── RIGHT PANEL: Tabs + Content ── */}
             <View style={styles.v2RightPanel}>
 
-              {/* Tab bar — desktop only shows Overview/Activity/Notes/Comms; Contacts lives in left panel */}
-              <View style={[styles.v2TabBar, { flexDirection: 'row' }]}>
+              {/* Tab bar — desktop only shows Overview/Activity/Notes/Comms; Contacts lives in left panel.
+                  Horizontal ScrollView (flexGrow:0 so it doesn't eat vertical space in the column panel)
+                  prevents the tab row from clipping when the right panel is narrow. */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={[styles.v2TabBar, { flexGrow: 0, flexShrink: 0 }]}
+                contentContainerStyle={{ flexDirection: 'row' }}
+              >
                 {DESKTOP_TAB_CONFIG.map(({ id, label, count }) => (
                   <TouchableOpacity
                     key={id}
@@ -2607,7 +2614,7 @@ export default function OrgProfileScreen() {
                     )}
                   </TouchableOpacity>
                 ))}
-              </View>
+              </ScrollView>
 
               {/* Overview tab */}
               {activeTab === 'overview' && (

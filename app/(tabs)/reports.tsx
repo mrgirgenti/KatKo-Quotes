@@ -22,6 +22,7 @@ import {
   X,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
@@ -39,6 +40,7 @@ type ReportType = 'quotes' | 'sales' | 'lineItems';
 
 export default function ReportsScreen() {
   const { quotes } = useQuotes();
+  const { isMobile } = useBreakpoint();
   const [showFilters, setShowFilters] = useState(true);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -183,7 +185,7 @@ export default function ReportsScreen() {
 
         {showFilters && (
           <View style={styles.filtersCard}>
-            <View style={styles.filterRow}>
+            <View style={[styles.filterRow, isMobile && styles.filterRowStacked]}>
               <View style={styles.filterField}>
                 <View style={styles.filterLabel}>
                   <Calendar size={14} color={Colors.light.textSecondary} />
@@ -230,7 +232,7 @@ export default function ReportsScreen() {
               />
             </View>
 
-            <View style={styles.filterRow}>
+            <View style={[styles.filterRow, isMobile && styles.filterRowStacked]}>
               <View style={styles.filterField}>
                 <View style={styles.filterLabel}>
                   <DollarSign size={14} color={Colors.light.textSecondary} />
@@ -473,6 +475,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginBottom: 12,
+  },
+  filterRowStacked: {
+    flexDirection: 'column',
   },
   filterField: {
     flex: 1,

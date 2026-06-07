@@ -56,6 +56,9 @@ const TOGGLEABLE_COLS: { id: ColId; label: string }[] = [
   { id: 'campaign', label: 'Campaign' },
 ];
 const DEFAULT_VISIBLE: ColId[] = ['org', 'bizType', 'contact', 'phone', 'email', 'status', 'hub', 'actions'];
+// On tablet (768–1023) the full table overflows; hide the lowest-priority columns
+// (keep org name + contact + status + hub + actions) to match the client-hubs density.
+const TABLET_HIDDEN_COLS: ColId[] = ['bizType', 'phone', 'email', 'campaign'];
 
 const EMPTY_ORG_FORM = { name: '', type: '', city: '', state: '', notes: '', status: 'Cold' as CrmStatus };
 const EMPTY_CONTACT_FORM = { firstName: '', lastName: '', phone: '', email: '', role: '' };
@@ -238,7 +241,7 @@ export default function ClientsScreen() {
 function OrganizationsScreen() {
   const router = useRouter();
   const { orgs, addOrg, addOrgWithContact, addContact, deleteOrg } = useCrm();
-  const { isDesktop } = useBreakpoint();
+  const { isMobile, isTablet, isDesktop } = useBreakpoint();
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<CrmStatus | 'All'>('All');
@@ -407,6 +410,9 @@ function OrganizationsScreen() {
 
   const selectedOrg = selectedOrgId ? orgs.find((o) => o.id === selectedOrgId) : null;
 
+  // On tablet, render a reduced column set so the table fits without clipping.
+  const effectiveCols = isTablet ? visibleCols.filter((c) => !TABLET_HIDDEN_COLS.includes(c)) : visibleCols;
+
   const tableHeaderRow = (
     <View style={styles.tableHeader}>
       <TouchableOpacity
@@ -421,7 +427,7 @@ function OrganizationsScreen() {
         </View>
       </TouchableOpacity>
       <View style={{ width: AVATAR_W }} />
-      {TOGGLEABLE_COLS.filter((c) => visibleCols.includes(c.id)).map((col) => {
+      {TOGGLEABLE_COLS.filter((c) => effectiveCols.includes(c.id)).map((col) => {
         const colStyle: any = COL_FLEX[col.id] != null ? { flex: COL_FLEX[col.id] } : { width: COL_WIDTHS[col.id] };
         return (
           <View key={col.id} style={colStyle}>
@@ -541,7 +547,7 @@ function OrganizationsScreen() {
           </>)}
         </View>
 
-        {!isDesktop && (
+        {isMobile && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mobileSortScroll} contentContainerStyle={styles.mobileSortRow}>
             <Text style={styles.mobileSortLabel}>Sort:</Text>
             {(['name', 'type', 'contact', 'status', 'hub'] as SortField[]).map((f) => (
@@ -614,7 +620,7 @@ function OrganizationsScreen() {
       )}
 
       {/* ── Bulk action bar ── */}
-      {selectionMode && isDesktop && (
+      {selectionMode && !isMobile && (
         <View style={styles.bulkBar}>
           <View style={styles.bulkBarLeft}>
             <TouchableOpacity style={styles.bulkClearBtn} onPress={clearSelection}>
@@ -648,7 +654,7 @@ function OrganizationsScreen() {
           <Text style={styles.emptyText}>{search ? 'Try a different search term.' : filter !== 'All' ? `Add a new contact and set status to ${filter}.` : 'Add your first organization or contact to get started.'}</Text>
           {!search && <TouchableOpacity style={styles.emptyAddBtn} onPress={openAddModal}><Plus size={15} color="#fff" /><Text style={styles.emptyAddBtnText}>Add Contact</Text></TouchableOpacity>}
         </View>
-      ) : isDesktop ? (
+      ) : !isMobile ? (
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
           <ScrollView horizontal showsHorizontalScrollIndicator={true} contentContainerStyle={{ flexGrow: 1 }}>
             <View style={{ minWidth: '100%' }}>
@@ -660,7 +666,7 @@ function OrganizationsScreen() {
                       org={org}
                       onPress={() => router.push(`/crm/${org.id}` as any)}
                       onDelete={() => { if (typeof window === 'undefined' || window.confirm(`Delete ${org.name}? This cannot be undone.`)) deleteOrg(org.id); }}
-                      visibleCols={visibleCols}
+                      visibleCols={effectiveCols}
                       isSelected={selectedIds.has(org.id)}
                       onToggleSelect={() => toggleSelect(org.id)}
                       selectionMode={selectionMode}

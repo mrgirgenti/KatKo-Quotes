@@ -52,7 +52,7 @@ export default function SalesTrackingScreen() {
   const { quotes, sales, updateSalesData, lockSale } = useQuotes();
   const { currentUser } = useUser();
   const { orgs, addOrg } = useCrm();
-  const { isDesktop } = useBreakpoint();
+  const { isDesktop, isMobile } = useBreakpoint();
 
   const quote = useMemo(() => {
     const allItems = [...quotes, ...sales];
@@ -362,6 +362,54 @@ export default function SalesTrackingScreen() {
 
   const uniqueVendors = [...new Set(lineItemCosts.map(item => item.productVendor))];
   const uniqueApplicators = [...new Set(lineItemCosts.map(item => item.applicator))];
+
+  const renderOverviewRow = (
+    label: string,
+    quoted: number,
+    actual: number,
+    opts: { bold?: boolean; actualLower?: any; actualHigher?: any } = {}
+  ) => {
+    const { bold, actualLower, actualHigher } = opts;
+    const lower = actualLower ?? styles.actualValueRed;
+    const higher = actualHigher ?? styles.actualValueGreen;
+    const actualStyle = actual < quoted ? lower : actual > quoted ? higher : undefined;
+
+    if (isMobile) {
+      return (
+        <View key={label} style={styles.tableRowMobile}>
+          <Text style={[styles.tableRowLabelMobile, bold && styles.tableRowLabelBoldMobile]}>
+            {label}
+          </Text>
+          <View style={styles.tableRowMobileValues}>
+            <View style={styles.tableRowMobileCell}>
+              <Text style={styles.tableRowMobileCellLabel}>QUOTED</Text>
+              <Text style={[styles.tableRowValueMobile, bold && styles.tableRowValueBoldMobile]}>
+                {formatCurrency(quoted)}
+              </Text>
+            </View>
+            <View style={styles.tableRowMobileCell}>
+              <Text style={styles.tableRowMobileCellLabel}>ACTUAL</Text>
+              <Text style={[styles.tableRowValueMobile, bold && styles.tableRowValueBoldMobile, actualStyle]}>
+                {formatCurrency(actual)}
+              </Text>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View key={label} style={bold ? styles.tableRowBold : styles.tableRow}>
+        <Text style={bold ? styles.tableRowLabelBold : styles.tableRowLabel}>{label}</Text>
+        <Text style={bold ? styles.tableRowValueBold : styles.tableRowValue}>
+          {formatCurrency(quoted)}
+        </Text>
+        <Text style={[bold ? styles.tableRowValueBold : styles.tableRowValue, actualStyle]}>
+          {formatCurrency(actual)}
+        </Text>
+      </View>
+    );
+  };
 
   return (
     <KeyboardAvoidingView 
@@ -726,105 +774,30 @@ export default function SalesTrackingScreen() {
             </View>
 
             <View style={styles.tableContainer}>
-              <View style={styles.tableHeader}>
-                <Text style={styles.tableHeaderLabel}></Text>
-                <Text style={styles.tableHeaderValue}>QUOTED</Text>
-                <Text style={styles.tableHeaderValue}>ACTUAL</Text>
-              </View>
+              {!isMobile && (
+                <View style={styles.tableHeader}>
+                  <Text style={styles.tableHeaderLabel}></Text>
+                  <Text style={styles.tableHeaderValue}>QUOTED</Text>
+                  <Text style={styles.tableHeaderValue}>ACTUAL</Text>
+                </View>
+              )}
 
-              <View style={styles.tableRow}>
-                <Text style={styles.tableRowLabel}>Product Cost</Text>
-                <Text style={styles.tableRowValue}>{formatCurrency(calculations.quotedProductCost)}</Text>
-                <Text style={[
-                  styles.tableRowValue,
-                  calculations.totalProductCost < calculations.quotedProductCost && styles.actualValueRed,
-                  calculations.totalProductCost > calculations.quotedProductCost && styles.actualValueGreen,
-                ]}>{formatCurrency(calculations.totalProductCost)}</Text>
-              </View>
-
-              <View style={styles.tableRow}>
-                <Text style={styles.tableRowLabel}>Service Cost</Text>
-                <Text style={styles.tableRowValue}>{formatCurrency(calculations.quotedServiceCost)}</Text>
-                <Text style={[
-                  styles.tableRowValue,
-                  calculations.totalServiceCost < calculations.quotedServiceCost && styles.actualValueRed,
-                  calculations.totalServiceCost > calculations.quotedServiceCost && styles.actualValueGreen,
-                ]}>{formatCurrency(calculations.totalServiceCost)}</Text>
-              </View>
-
-              <View style={styles.tableRow}>
-                <Text style={styles.tableRowLabel}>Fees</Text>
-                <Text style={styles.tableRowValue}>{formatCurrency(calculations.quotedFees)}</Text>
-                <Text style={[
-                  styles.tableRowValue,
-                  calculations.totalServiceFeesCost < calculations.quotedFees && styles.actualValueRed,
-                  calculations.totalServiceFeesCost > calculations.quotedFees && styles.actualValueGreen,
-                ]}>{formatCurrency(calculations.totalServiceFeesCost)}</Text>
-              </View>
-
-              <View style={styles.tableRow}>
-                <Text style={styles.tableRowLabel}>Other Costs</Text>
-                <Text style={styles.tableRowValue}>{formatCurrency(0)}</Text>
-                <Text style={[
-                  styles.tableRowValue,
-                  calculations.totalOtherCosts < 0 && styles.actualValueRed,
-                  calculations.totalOtherCosts > 0 && styles.actualValueGreen,
-                ]}>{formatCurrency(calculations.totalOtherCosts)}</Text>
-              </View>
-
-              <View style={styles.tableRow}>
-                <Text style={styles.tableRowLabel}>Online Fee</Text>
-                <Text style={styles.tableRowValue}>{formatCurrency(calculations.quotedOnlineFee)}</Text>
-                <Text style={[
-                  styles.tableRowValue,
-                  parseNumber(actualOnlineFee) < calculations.quotedOnlineFee && styles.actualValueRed,
-                  parseNumber(actualOnlineFee) > calculations.quotedOnlineFee && styles.actualValueGreen,
-                ]}>{formatCurrency(parseNumber(actualOnlineFee))}</Text>
-              </View>
-
-              <View style={styles.tableRow}>
-                <Text style={styles.tableRowLabel}>Card Fee</Text>
-                <Text style={styles.tableRowValue}>{formatCurrency(calculations.quotedCardFee)}</Text>
-                <Text style={[
-                  styles.tableRowValue,
-                  parseNumber(actualCardFee) < calculations.quotedCardFee && styles.actualValueRed,
-                  parseNumber(actualCardFee) > calculations.quotedCardFee && styles.actualValueGreen,
-                ]}>{formatCurrency(parseNumber(actualCardFee))}</Text>
-              </View>
-
-              <View style={styles.tableRow}>
-                <Text style={styles.tableRowLabel}>Sales Tax</Text>
-                <Text style={styles.tableRowValue}>{formatCurrency(calculations.quotedSalesTax)}</Text>
-                <Text style={[
-                  styles.tableRowValue,
-                  parseNumber(actualSalesTax) < calculations.quotedSalesTax && styles.actualValueRed,
-                  parseNumber(actualSalesTax) > calculations.quotedSalesTax && styles.actualValueGreen,
-                ]}>{formatCurrency(parseNumber(actualSalesTax))}</Text>
-              </View>
+              {renderOverviewRow('Product Cost', calculations.quotedProductCost, calculations.totalProductCost)}
+              {renderOverviewRow('Service Cost', calculations.quotedServiceCost, calculations.totalServiceCost)}
+              {renderOverviewRow('Fees', calculations.quotedFees, calculations.totalServiceFeesCost)}
+              {renderOverviewRow('Other Costs', 0, calculations.totalOtherCosts)}
+              {renderOverviewRow('Online Fee', calculations.quotedOnlineFee, parseNumber(actualOnlineFee))}
+              {renderOverviewRow('Card Fee', calculations.quotedCardFee, parseNumber(actualCardFee))}
+              {renderOverviewRow('Sales Tax', calculations.quotedSalesTax, parseNumber(actualSalesTax))}
 
               <View style={styles.tableDivider} />
 
-              <View style={styles.tableRowBold}>
-                <Text style={styles.tableRowLabelBold}>Cost of Goods</Text>
-                <Text style={styles.tableRowValueBold}>{formatCurrency(calculations.quotedCOG)}</Text>
-                <Text style={[
-                  styles.tableRowValueBold,
-                  calculations.actualCOG < calculations.quotedCOG && styles.actualValueRed,
-                  calculations.actualCOG > calculations.quotedCOG && styles.actualValueGreen,
-                ]}>{formatCurrency(calculations.actualCOG)}</Text>
-              </View>
-
-              <View style={styles.tableRowBold}>
-                <Text style={styles.tableRowLabelBold}>Profit</Text>
-                <Text style={styles.tableRowValueBold}>{formatCurrency(calculations.quotedProfit)}</Text>
-                <Text style={[
-                  styles.tableRowValueBold,
-                  calculations.actualProfit < calculations.quotedProfit && styles.lossText,
-                  calculations.actualProfit > calculations.quotedProfit && styles.profitText,
-                ]}>
-                  {formatCurrency(calculations.actualProfit)}
-                </Text>
-              </View>
+              {renderOverviewRow('Cost of Goods', calculations.quotedCOG, calculations.actualCOG, { bold: true })}
+              {renderOverviewRow('Profit', calculations.quotedProfit, calculations.actualProfit, {
+                bold: true,
+                actualLower: styles.lossText,
+                actualHigher: styles.profitText,
+              })}
             </View>
 
             <View style={styles.amountProfitRow}>
@@ -1762,6 +1735,47 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: Colors.light.text,
     textAlign: 'right' as const,
+  },
+  tableRowMobile: {
+    flexDirection: 'column' as const,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+    gap: 6,
+  },
+  tableRowLabelMobile: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: Colors.light.text,
+  },
+  tableRowLabelBoldMobile: {
+    fontWeight: '700' as const,
+  },
+  tableRowMobileValues: {
+    flexDirection: 'row' as const,
+    gap: 12,
+  },
+  tableRowMobileCell: {
+    flex: 1,
+    backgroundColor: Colors.light.surface,
+    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  tableRowMobileCellLabel: {
+    fontSize: 9,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase' as const,
+    marginBottom: 2,
+  },
+  tableRowValueMobile: {
+    fontSize: 14,
+    fontWeight: '500' as const,
+    color: Colors.light.text,
+  },
+  tableRowValueBoldMobile: {
+    fontWeight: '700' as const,
   },
   profitDetailsRow: {
     flexDirection: 'row',

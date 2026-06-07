@@ -29,7 +29,8 @@ export default function DashboardScreen() {
   const router = useRouter();
   const { quotes } = useQuotes();
   const { orgs } = useCrm();
-  const { isMobile } = useBreakpoint();
+  const { isMobile, isTablet } = useBreakpoint();
+  const cardsPerRow = isMobile ? 2 : isTablet ? 2 : 4;
 
   const stats = useMemo(() => {
     const salesList = quotes.filter((q) => q.status === 'active' || q.status === 'completed');
@@ -150,10 +151,10 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Stat cards — 2 per row on mobile, 4 on larger screens */}
+      {/* Stat cards — 2 per row on mobile/tablet, 4 on desktop */}
       <View style={styles.statsGrid}>
-        {Array.from({ length: Math.ceil(statCards.length / (isMobile ? 2 : 4)) }, (_, rowIdx) => {
-          const perRow = isMobile ? 2 : 4;
+        {Array.from({ length: Math.ceil(statCards.length / cardsPerRow) }, (_, rowIdx) => {
+          const perRow = cardsPerRow;
           const rowItems = statCards.slice(rowIdx * perRow, rowIdx * perRow + perRow);
           return (
             <View key={rowIdx} style={styles.statsRow}>
@@ -184,8 +185,8 @@ export default function DashboardScreen() {
           <Text style={styles.sectionSub}>Completed projects only</Text>
         </View>
         <View style={styles.serviceGrid}>
-          {Array.from({ length: Math.ceil(serviceBreakdown.length / (isMobile ? 2 : 4)) }, (_, rowIdx) => {
-            const perRow = isMobile ? 2 : 4;
+          {Array.from({ length: Math.ceil(serviceBreakdown.length / cardsPerRow) }, (_, rowIdx) => {
+            const perRow = cardsPerRow;
             const rowItems = serviceBreakdown.slice(rowIdx * perRow, rowIdx * perRow + perRow);
             return (
               <View key={rowIdx} style={styles.statsRow}>

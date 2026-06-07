@@ -1,5 +1,6 @@
 - [Screenshot load gate](screenshot-load-gate.md) — the app's global "Loading…" (UserContext) gate often blocks the screenshot tool on this SSR Expo web app; verify via code + tsc instead.
 - [Operational table pages](operational-table-pages.md) — Quotes (`sales.tsx`) & Projects (`projects.tsx`) are sibling operational tables; keep in sync. Bulk selection must derive from full dataset; row menu must flip/clamp.
+- [SSR responsive shell](ssr-responsive-shell.md) — useWindowDimensions=0 on SSR reads as mobile; gate shell switch behind a `mounted` flag. Responsive standard: mobile=cards, tablet=hide low-priority cols (`isTablet`), desktop=full table; gate table on `!isMobile`.
 - [RN-web focus outline](rn-web-focus-outline.md) — per-style `outlineStyle:'none'` misses focusable descendants; for a whole subtree (e.g. sidebar) inject one `[data-kk-sidebar] *:focus` CSS reset.
 - [Overlay & header patterns](overlay-and-header-patterns.md) — floating menus must use `OverlayMenu`/Modal portal, never absolute siblings (they get clipped); detail pages use shared `PageBackHeader`.
 - [Production plan + dual-status](production-and-status-model.md) — Production design in docs/; UI runs on `frontendStatus` string + `lineItemsData` JSON, NOT the Prisma enums.
