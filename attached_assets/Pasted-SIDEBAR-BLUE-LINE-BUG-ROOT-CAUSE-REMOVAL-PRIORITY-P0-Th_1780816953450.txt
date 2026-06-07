@@ -1,0 +1,148 @@
+SIDEBAR BLUE LINE BUG — ROOT CAUSE REMOVAL
+
+PRIORITY: P0
+
+This issue has existed through multiple UI passes.
+
+It has been partially reduced in size but has never been eliminated.
+
+The current implementation is not acceptable.
+
+==================================================
+ISSUE
+=====
+
+A blue vertical line / focus box continues to appear inside the left sidebar.
+
+It is visible:
+
+* on hover
+* on navigation
+* around menu items
+* near the logo area
+* along the left side of the navigation
+
+See attached screenshot.
+
+==================================================
+REQUIREMENT
+===========
+
+Do NOT reduce it.
+
+Do NOT restyle it.
+
+Do NOT recolor it.
+
+Remove it entirely.
+
+==================================================
+ROOT CAUSE INVESTIGATION
+========================
+
+Identify exactly what is rendering this artifact.
+
+Audit:
+
+* focus styles
+* focus-visible styles
+* active styles
+* selected styles
+* left borders
+* outline properties
+* box shadows
+* pseudo-elements (::before / ::after)
+* collapsed sidebar indicators
+* navigation state indicators
+* keyboard accessibility rings
+* React Navigation state styling
+
+Find the actual source.
+
+==================================================
+NOT ACCEPTABLE
+==============
+
+Changing:
+
+width
+
+opacity
+
+color
+
+position
+
+is not a fix.
+
+The artifact should not exist.
+
+==================================================
+VALIDATION
+==========
+
+Test:
+
+Dashboard
+
+Organizations
+
+Contacts
+
+Quotes
+
+Projects
+
+Production
+
+Invoices
+
+Payments
+
+Client Hubs
+
+Tasks
+
+Profile
+
+Confirm:
+
+* no blue line
+* no blue border
+* no blue outline
+* no blue focus box
+* no blue indicator remains
+
+==================================================
+SCREENSHOT REQUIRED
+===================
+
+Provide screenshots showing:
+
+Sidebar idle
+
+Sidebar hover state
+
+Sidebar selected state
+
+Confirm artifact is completely gone.
+
+==================================================
+SUCCESS CRITERIA
+================
+
+The sidebar should contain only:
+
+* icons
+* labels
+* approved orange active state
+
+No blue lines.
+
+No blue boxes.
+
+No blue outlines.
+
+No blue indicators.
+
+No remnants of previous navigation styling.

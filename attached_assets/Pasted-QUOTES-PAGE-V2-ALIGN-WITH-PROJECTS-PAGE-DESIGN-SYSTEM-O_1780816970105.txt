@@ -1,0 +1,344 @@
+QUOTES PAGE V2 — ALIGN WITH PROJECTS PAGE DESIGN SYSTEM
+
+OBJECTIVE
+
+The Quotes page currently feels like an older generation of the platform.
+
+Organizations and Projects are now the design references.
+
+Quotes should be rebuilt to follow the same architecture, interaction patterns, and visual language as Projects.
+
+Do NOT make incremental tweaks to the existing card layout.
+
+Move Quotes onto the same design system as Projects.
+
+==================================================
+REFERENCE PAGES
+===============
+
+Approved:
+
+* Organizations
+* Projects
+
+Use these as the visual and UX references.
+
+==================================================
+PART 1 — HEADER ALIGNMENT
+=========================
+
+Current Quotes header does not match Organizations or Projects.
+
+Rebuild the header structure to match Projects.
+
+Required:
+
+Page Title:
+Quotes
+
+Primary Action:
+
+* New Quote
+
+Position and styling should mirror:
+
+* Start Project
+
+from the Projects page.
+
+==================================================
+PART 2 — KPI METRICS ROW
+========================
+
+Replace current metrics presentation.
+
+Match the Projects page KPI structure.
+
+Example statuses:
+
+Needs Review
+
+Quoted
+
+Invoice Sent
+
+Paid
+
+Approved
+
+Expired
+
+Display:
+
+Count
+
+Status Label
+
+Same sizing and hierarchy used by Projects.
+
+==================================================
+PART 3 — FILTER PILLS
+=====================
+
+Replace Open / Archived structure.
+
+Implement Project-style filter pills.
+
+Examples:
+
+All
+
+Needs Review
+
+Quoted
+
+Invoice Sent
+
+Paid
+
+Approved
+
+Expired
+
+Each pill should display counts.
+
+Match Projects page behavior.
+
+==================================================
+PART 4 — SEARCH
+===============
+
+Use same search implementation as Projects.
+
+Placeholder:
+
+Search client, quote, project, invoice...
+
+Match spacing, sizing, and styling.
+
+==================================================
+PART 5 — TABLE STRUCTURE
+========================
+
+Retire the large card-based quote list.
+
+Replace with a sortable operational table similar to Projects.
+
+Required columns:
+
+Status
+
+Order Date
+
+Due Date
+
+Client
+
+Project
+
+Quote #
+
+Service(s)
+
+PCS
+
+Revenue
+
+Profit
+
+Actions
+
+==================================================
+PART 6 — COLUMN SORTING
+=======================
+
+Every column should be sortable.
+
+Required:
+
+Status ↕
+
+Order Date ↕
+
+Due Date ↕
+
+Client ↕
+
+Project ↕
+
+Quote # ↕
+
+Service(s) ↕
+
+PCS ↕
+
+Revenue ↕
+
+Profit ↕
+
+Match Projects implementation.
+
+==================================================
+PART 7 — VISUAL CONSISTENCY
+===========================
+
+Table header background:
+
+#000000
+
+Use same header styling as:
+
+Organizations
+
+Projects
+
+Do NOT use navy or charcoal variants.
+
+==================================================
+PART 8 — ACTIONS
+================
+
+Maintain:
+
+View
+
+Track
+
+Actions menu
+
+but adapt them into the table architecture.
+
+Do not lose functionality.
+
+Only modernize presentation.
+
+==================================================
+PART 9 — REMOVE LEGACY ELEMENTS
+===============================
+
+Remove:
+
+Large quote cards
+
+Large profit boxes
+
+Open / Archived segmented bar
+
+Redundant whitespace
+
+Card-heavy layout
+
+The current structure wastes vertical space and prevents efficient quote management.
+
+==================================================
+PART 10 — CONTACTS PAGE FIXES
+=============================
+
+While completing this task, also fix Contacts.
+
+==================================================
+CONTACTS — HEADER COLOR
+=======================
+
+Current table header is not true black.
+
+Use:
+
+#000000
+
+Match Organizations and Projects exactly.
+
+==================================================
+CONTACTS — SORTING
+==================
+
+Add sorting to every column.
+
+Required:
+
+Name ↕
+
+Organization ↕
+
+Title / Role ↕
+
+Email ↕
+
+Phone ↕
+
+Hub Status ↕
+
+Last Login ↕
+
+Status ↕
+
+==================================================
+CONTACTS — FILTERS
+==================
+
+Add filter controls consistent with Organizations.
+
+Required:
+
+Organization
+
+Role
+
+Hub Status
+
+Status
+
+==================================================
+DESIGN RULE
+===========
+
+Going forward, list-based operational pages should follow:
+
+Title
+
+Metrics
+
+Filters
+
+Search
+
+Sortable Table
+
+Actions
+
+Records
+
+This standard should apply to:
+
+Organizations
+
+Contacts
+
+Quotes
+
+Projects
+
+==================================================
+VALIDATION
+==========
+
+Provide screenshots showing:
+
+Organizations
+
+Projects
+
+Contacts
+
+Quotes
+
+Confirm:
+
+* Quotes now follows Projects architecture
+* Contacts header uses #000000
+* Contacts columns are sortable
+* Contacts filters added
+* Quotes table columns sortable
+* Quotes filters functional
+* Quotes card layout retired
+* Quotes and Projects visually aligned
