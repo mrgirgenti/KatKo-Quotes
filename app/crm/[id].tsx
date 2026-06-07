@@ -66,6 +66,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { OrgLogoUploader } from '@/components/OrgLogoUploader';
+import { ProjectCard } from '@/components/ProjectCard';
 import { Sidebar } from '@/components/Sidebar';
 import { useCrm } from '@/contexts/CrmContext';
 import { useQuotes } from '@/contexts/QuotesContext';
@@ -1577,39 +1578,14 @@ export default function OrgProfileScreen() {
         ) : filteredActiveQuotes.length === 0 ? (
           <View style={styles.emptyCard}><Text style={styles.emptyCardText}>No matches</Text></View>
         ) : (
-          filteredActiveQuotes.map((q, _idx) => {
-            const eff = getEffectiveStatus(q);
-            const cfg = STATUS_CONFIG[eff];
-            const qPcs = getPcs(q);
-            const services = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))];
-            const pNum = (q as any).projectNumber || q.invoiceNumber;
-            return (
-              <View key={q.id} style={styles.p16ListRow}>
-                <Text style={styles.p16ListNum}>#{_idx + 1}</Text>
-              <TouchableOpacity style={[styles.p16Card, { flex: 1 }]} onPress={() => router.push(`/quote/${q.id}` as any)}>
-                <View style={styles.p16CardTop}>
-                  {pNum ? <Text style={styles.p16CardNum}>#{pNum}</Text> : null}
-                  <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
-                    <Text style={[styles.projectRowBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
-                  </View>
-                  <ChevronRight size={12} color={Colors.light.textSecondary} style={{ marginLeft: 'auto' as any }} />
-                </View>
-                <Text style={styles.p16CardName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
-                <View style={styles.p16CardDates}>
-                  <Text style={styles.p16CardDateItem}>Order: {q.orderDate ? formatDate(q.orderDate) : '—'}</Text>
-                  <Text style={styles.p16CardDateSep}>·</Text>
-                  <Text style={styles.p16CardDateItem}>Due: {q.inHandsDate ? formatDate(q.inHandsDate) : '—'}</Text>
-                </View>
-                {services.length > 0 && <Text style={styles.p16CardService} numberOfLines={1}>Service: {services.join(' · ')}</Text>}
-                <View style={styles.p16CardBottom}>
-                  <Text style={styles.p16CardBottomItem}>Qty: {qPcs > 0 ? `${qPcs.toLocaleString()} pcs` : '—'}</Text>
-                  <Text style={styles.p16CardBottomItem}>Total: {formatCurrency(q.calculations?.total ?? 0)}</Text>
-                  <Text style={styles.p16CardProfit}>Profit: {formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
-                </View>
-              </TouchableOpacity>
-              </View>
-            );
-          })
+          filteredActiveQuotes.map((q, _idx) => (
+            <ProjectCard
+              key={q.id}
+              queue={_idx + 1}
+              quote={q}
+              onPress={() => router.push(`/quote/${q.id}` as any)}
+            />
+          ))
         )}
         {activeQuotes.length > 0 && (
           <TouchableOpacity style={styles.p16ViewAll} onPress={() => setActiveTab('projects')}>
@@ -1699,39 +1675,14 @@ export default function OrgProfileScreen() {
         ) : filteredRelatedQuotes.length === 0 ? (
           <View style={styles.emptyCard}><Text style={styles.emptyCardText}>No matches</Text></View>
         ) : (
-          filteredRelatedQuotes.map((q, _idx) => {
-            const eff = getEffectiveStatus(q);
-            const cfg = STATUS_CONFIG[eff];
-            const qPcs = getPcs(q);
-            const services = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))];
-            const pNum = (q as any).projectNumber || q.invoiceNumber;
-            return (
-              <View key={q.id} style={styles.p16ListRow}>
-                <Text style={styles.p16ListNum}>#{_idx + 1}</Text>
-              <TouchableOpacity style={[styles.p16Card, { flex: 1 }]} onPress={() => router.push(`/quote/${q.id}` as any)}>
-                <View style={styles.p16CardTop}>
-                  {pNum ? <Text style={styles.p16CardNum}>#{pNum}</Text> : null}
-                  <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
-                    <Text style={[styles.projectRowBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
-                  </View>
-                  <ChevronRight size={12} color={Colors.light.textSecondary} style={{ marginLeft: 'auto' as any }} />
-                </View>
-                <Text style={styles.p16CardName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
-                <View style={styles.p16CardDates}>
-                  <Text style={styles.p16CardDateItem}>Order: {q.orderDate ? formatDate(q.orderDate) : '—'}</Text>
-                  <Text style={styles.p16CardDateSep}>·</Text>
-                  <Text style={styles.p16CardDateItem}>Due: {q.inHandsDate ? formatDate(q.inHandsDate) : '—'}</Text>
-                </View>
-                {services.length > 0 && <Text style={styles.p16CardService} numberOfLines={1}>Service: {services.join(' · ')}</Text>}
-                <View style={styles.p16CardBottom}>
-                  <Text style={styles.p16CardBottomItem}>Qty: {qPcs > 0 ? `${qPcs.toLocaleString()} pcs` : '—'}</Text>
-                  <Text style={styles.p16CardBottomItem}>Total: {formatCurrency(q.calculations?.total ?? 0)}</Text>
-                  <Text style={styles.p16CardProfit}>Profit: {formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
-                </View>
-              </TouchableOpacity>
-              </View>
-            );
-          })
+          filteredRelatedQuotes.map((q, _idx) => (
+            <ProjectCard
+              key={q.id}
+              queue={_idx + 1}
+              quote={q}
+              onPress={() => router.push(`/quote/${q.id}` as any)}
+            />
+          ))
         )}
         {relatedQuotes.length > 0 && (
           <TouchableOpacity style={styles.p16ViewAll} onPress={() => setActiveTab('projects')}>
@@ -2034,39 +1985,14 @@ export default function OrgProfileScreen() {
         ) : filteredActiveQuotes.length === 0 ? (
           <View style={styles.emptyCard}><Text style={styles.emptyCardText}>No matches</Text></View>
         ) : (
-          filteredActiveQuotes.map((q, _idx) => {
-            const eff = getEffectiveStatus(q);
-            const cfg = STATUS_CONFIG[eff];
-            const qPcs = getPcs(q);
-            const services = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))];
-            const pNum = (q as any).projectNumber || q.invoiceNumber;
-            return (
-              <View key={q.id} style={styles.p16ListRow}>
-                <Text style={styles.p16ListNum}>#{_idx + 1}</Text>
-              <TouchableOpacity style={[styles.p16Card, { flex: 1 }]} onPress={() => router.push(`/quote/${q.id}` as any)}>
-                <View style={styles.p16CardTop}>
-                  {pNum ? <Text style={styles.p16CardNum}>#{pNum}</Text> : null}
-                  <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
-                    <Text style={[styles.projectRowBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
-                  </View>
-                  <ChevronRight size={12} color={Colors.light.textSecondary} style={{ marginLeft: 'auto' as any }} />
-                </View>
-                <Text style={styles.p16CardName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
-                <View style={styles.p16CardDates}>
-                  <Text style={styles.p16CardDateItem}>Order: {q.orderDate ? formatDate(q.orderDate) : '—'}</Text>
-                  <Text style={styles.p16CardDateSep}>·</Text>
-                  <Text style={styles.p16CardDateItem}>Due: {q.inHandsDate ? formatDate(q.inHandsDate) : '—'}</Text>
-                </View>
-                {services.length > 0 && <Text style={styles.p16CardService} numberOfLines={1}>Service: {services.join(' · ')}</Text>}
-                <View style={styles.p16CardBottom}>
-                  <Text style={styles.p16CardBottomItem}>Qty: {qPcs > 0 ? `${qPcs.toLocaleString()} pcs` : '—'}</Text>
-                  <Text style={styles.p16CardBottomItem}>Total: {formatCurrency(q.calculations?.total ?? 0)}</Text>
-                  <Text style={styles.p16CardProfit}>Profit: {formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
-                </View>
-              </TouchableOpacity>
-              </View>
-            );
-          })
+          filteredActiveQuotes.map((q, _idx) => (
+            <ProjectCard
+              key={q.id}
+              queue={_idx + 1}
+              quote={q}
+              onPress={() => router.push(`/quote/${q.id}` as any)}
+            />
+          ))
         )}
         {activeQuotes.length > 0 && (
           <TouchableOpacity style={styles.p16ViewAll} onPress={() => setActiveTab('projects')}>
@@ -2156,39 +2082,14 @@ export default function OrgProfileScreen() {
         ) : filteredRelatedQuotes.length === 0 ? (
           <View style={styles.emptyCard}><Text style={styles.emptyCardText}>No matches</Text></View>
         ) : (
-          filteredRelatedQuotes.map((q, _idx) => {
-            const eff = getEffectiveStatus(q);
-            const cfg = STATUS_CONFIG[eff];
-            const qPcs = getPcs(q);
-            const services = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))];
-            const pNum = (q as any).projectNumber || q.invoiceNumber;
-            return (
-              <View key={q.id} style={styles.p16ListRow}>
-                <Text style={styles.p16ListNum}>#{_idx + 1}</Text>
-              <TouchableOpacity style={[styles.p16Card, { flex: 1 }]} onPress={() => router.push(`/quote/${q.id}` as any)}>
-                <View style={styles.p16CardTop}>
-                  {pNum ? <Text style={styles.p16CardNum}>#{pNum}</Text> : null}
-                  <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
-                    <Text style={[styles.projectRowBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
-                  </View>
-                  <ChevronRight size={12} color={Colors.light.textSecondary} style={{ marginLeft: 'auto' as any }} />
-                </View>
-                <Text style={styles.p16CardName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
-                <View style={styles.p16CardDates}>
-                  <Text style={styles.p16CardDateItem}>Order: {q.orderDate ? formatDate(q.orderDate) : '—'}</Text>
-                  <Text style={styles.p16CardDateSep}>·</Text>
-                  <Text style={styles.p16CardDateItem}>Due: {q.inHandsDate ? formatDate(q.inHandsDate) : '—'}</Text>
-                </View>
-                {services.length > 0 && <Text style={styles.p16CardService} numberOfLines={1}>Service: {services.join(' · ')}</Text>}
-                <View style={styles.p16CardBottom}>
-                  <Text style={styles.p16CardBottomItem}>Qty: {qPcs > 0 ? `${qPcs.toLocaleString()} pcs` : '—'}</Text>
-                  <Text style={styles.p16CardBottomItem}>Total: {formatCurrency(q.calculations?.total ?? 0)}</Text>
-                  <Text style={styles.p16CardProfit}>Profit: {formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
-                </View>
-              </TouchableOpacity>
-              </View>
-            );
-          })
+          filteredRelatedQuotes.map((q, _idx) => (
+            <ProjectCard
+              key={q.id}
+              queue={_idx + 1}
+              quote={q}
+              onPress={() => router.push(`/quote/${q.id}` as any)}
+            />
+          ))
         )}
         {relatedQuotes.length > 0 && (
           <TouchableOpacity style={styles.p16ViewAll} onPress={() => setActiveTab('projects')}>
@@ -2830,37 +2731,14 @@ export default function OrgProfileScreen() {
                   <Text style={styles.emptyCardText}>No projects match your filters.</Text>
                 </View>
               ) : (
-                filteredActiveQuotes.map((q, _idx) => {
-                  const eff = getEffectiveStatus(q);
-                  const cfg = STATUS_CONFIG[eff];
-                  const qPcs = getPcs(q);
-                  const services = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))];
-                  const pNum = (q as any).projectNumber || q.invoiceNumber;
-                  return (
-                    <TouchableOpacity key={q.id} style={styles.projectRowExpanded} onPress={() => router.push(`/quote/${q.id}` as any)}>
-                      <View style={styles.projectRowExpandedTop}>
-                        {q.projectNumber ? (
-                          <Text style={styles.projectNumChip}>{q.projectNumber}</Text>
-                        ) : null}
-                        <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
-                          <Text style={[styles.projectRowBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
-                        </View>
-                        <Text style={styles.projectRowName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
-                        <ChevronRight size={12} color={Colors.light.textSecondary} style={{ marginLeft: 'auto' as any }} />
-                      </View>
-                      <View style={styles.projectRowExpandedBottom}>
-                        <Text style={styles.projectMetaService} numberOfLines={1}>
-                          {services.length > 0 ? services.join(' · ') : '—'}
-                        </Text>
-                        <View style={styles.projectMetaNumbers}>
-                          <Text style={styles.projectMetaPcs}>{qPcs.toLocaleString()} pcs</Text>
-                          <Text style={styles.projectMetaTotal}>{formatCurrency(q.calculations?.total ?? 0)}</Text>
-                          <Text style={styles.projectMetaMarkup}>{formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })
+                filteredActiveQuotes.map((q, _idx) => (
+                  <ProjectCard
+                    key={q.id}
+                    queue={_idx + 1}
+                    quote={q}
+                    onPress={() => router.push(`/quote/${q.id}` as any)}
+                  />
+                ))
               )}
               {activeQuotes.length > 0 && (
                 <TouchableOpacity style={styles.viewAllLink} onPress={() => router.push('/(tabs)/projects' as any)}>
@@ -3003,7 +2881,6 @@ export default function OrgProfileScreen() {
                   )}
                 </>
               )}
-              )}
               {relatedQuotes.length === 0 ? (
                 <View style={styles.emptyCard}>
                   <Text style={styles.emptyCardText}>No quotes yet.</Text>
@@ -3013,41 +2890,14 @@ export default function OrgProfileScreen() {
                   <Text style={styles.emptyCardText}>No quotes match your filters.</Text>
                 </View>
               ) : (
-                filteredRelatedQuotes.map((q, _idx) => {
-                  const eff = getEffectiveStatus(q);
-                  const cfg = STATUS_CONFIG[eff];
-                  const qPcs = getPcs(q);
-                  const services = [...new Set((q.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean))];
-                  return (
-                    <TouchableOpacity key={q.id} style={styles.projectRowExpanded} onPress={() => router.push(`/quote/${q.id}` as any)}>
-                      <View style={styles.projectRowExpandedTop}>
-                        {q.projectNumber ? (
-                          <Text style={styles.projectNumChip}>{q.projectNumber}</Text>
-                        ) : null}
-                        <View style={[styles.projectRowBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
-                          <Text style={[styles.projectRowBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
-                        </View>
-                        <Text style={styles.projectRowName} numberOfLines={1}>{q.projectName || q.personOrganization}</Text>
-                        <ChevronRight size={12} color={Colors.light.textSecondary} style={{ marginLeft: 'auto' as any }} />
-                      </View>
-                      <View style={styles.projectRowExpandedMeta}>
-                        <Text style={styles.projectMetaItem}>Order: {q.orderDate ? formatDate(q.orderDate) : '—'}</Text>
-                        <Text style={styles.projectMetaSep}>·</Text>
-                        <Text style={styles.projectMetaItem}>Due: {q.inHandsDate ? formatDate(q.inHandsDate) : '—'}</Text>
-                      </View>
-                      <View style={styles.projectRowExpandedBottom}>
-                        <Text style={styles.projectMetaService} numberOfLines={1}>
-                          {services.length > 0 ? services.join(' · ') : '—'}
-                        </Text>
-                        <View style={styles.projectMetaNumbers}>
-                          <Text style={styles.projectMetaPcs}>{qPcs.toLocaleString()} pcs</Text>
-                          <Text style={styles.projectMetaTotal}>{formatCurrency(q.calculations?.total ?? 0)}</Text>
-                          <Text style={styles.projectMetaMarkup}>{formatCurrency(q.calculations?.markupAmount ?? 0)}</Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })
+                filteredRelatedQuotes.map((q, _idx) => (
+                  <ProjectCard
+                    key={q.id}
+                    queue={_idx + 1}
+                    quote={q}
+                    onPress={() => router.push(`/quote/${q.id}` as any)}
+                  />
+                ))
               )}
               {relatedQuotes.length > 0 && (
                 <TouchableOpacity style={styles.viewAllLink} onPress={() => router.push('/(tabs)/projects' as any)}>

@@ -40,6 +40,7 @@ import Colors from '@/constants/colors';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { Quote, QuoteStatus, getEffectiveStatus, STATUS_CONFIG } from '@/types/quote';
+import { ProjectCard } from '@/components/ProjectCard';
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
 import { generateAndSharePDF, printQuote } from '@/utils/pdfGenerator';
@@ -48,7 +49,7 @@ type SortField = 'date' | 'client' | 'total' | 'status' | 'inHands' | 'project' 
 type SortDir = 'asc' | 'desc';
 type MobileListDataItem =
   | { type: 'header'; key: string; label: string }
-  | { type: 'item'; quote: Quote; effectiveStatus: QuoteStatus };
+  | { type: 'item'; quote: Quote; effectiveStatus: QuoteStatus; queueIndex: number };
 
 const STATUS_PILLS: { key: 'all' | QuoteStatus; label: string }[] = [
   { key: 'all',                label: 'All'             },
@@ -93,6 +94,7 @@ function parseDate(str: string): Date | null {
 interface ProjectRowProps {
   quote: Quote;
   effectiveStatus: QuoteStatus;
+  index: number;
   onPress: () => void;
   onDelete: () => void;
   onConvert: () => void;
@@ -109,7 +111,7 @@ interface ProjectRowProps {
   selectionMode: boolean;
 }
 
-function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRevert, onComplete, onEdit, onExportPDF, onExportSheets, onPrint, onAcceptIntake, isDesktop, isSelected, onToggleSelect, selectionMode }: ProjectRowProps) {
+function ProjectRow({ quote, effectiveStatus, index, onPress, onDelete, onConvert, onRevert, onComplete, onEdit, onExportPDF, onExportSheets, onPrint, onAcceptIntake, isDesktop, isSelected, onToggleSelect, selectionMode }: ProjectRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const menuBtnRef = useRef<View>(null);
@@ -267,46 +269,14 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
   }
 
   return (
-    <TouchableOpacity
-      style={[styles.card, isSelected && styles.cardSelected]}
-      onPress={selectionMode ? onToggleSelect : onPress}
-      activeOpacity={0.7}
-    >
-      <View style={styles.cardHeader}>
-        <View style={styles.cardHeaderLeft}>
-          {selectionMode && (
-            <Checkbox checked={isSelected} onToggle={onToggleSelect} />
-          )}
-          <StatusBadge status={effectiveStatus} />
-        </View>
-        <View style={styles.cardHeaderRight}>
-          {quote.invoiceNumber ? (
-            <Text style={styles.cardInvoice}>#{quote.invoiceNumber}</Text>
-          ) : null}
-          {selectionMode ? null : <ChevronRight size={16} color={Colors.light.textSecondary} />}
-        </View>
-      </View>
-      <Text style={styles.cardClient} numberOfLines={1}>{quote.personOrganization}</Text>
-      <Text style={styles.cardProject} numberOfLines={1}>{quote.projectName}</Text>
-      <View style={styles.cardMeta}>
-        <View style={styles.cardMetaLeft}>
-          <Text style={styles.cardMetaText}>{formatDate(quote.orderDate)}</Text>
-          {quote.inHandsDate ? (
-            <Text style={styles.cardMetaSep}>·</Text>
-          ) : null}
-          {quote.inHandsDate ? (
-            <Text style={styles.cardMetaText}>Due {formatDate(quote.inHandsDate)}</Text>
-          ) : null}
-        </View>
-        <Text style={styles.cardTotal}>{formatCurrency(total)}</Text>
-      </View>
-      <View style={styles.cardFooter}>
-        <Text style={styles.cardServiceStyles} numberOfLines={1}>
-          {serviceStyles.join(' · ')}
-          {(isActive || isCompleted) ? ` · ${completedCount}/${itemCount} items done` : ` · ${itemCount} item${itemCount !== 1 ? 's' : ''}`}
-        </Text>
-      </View>
-    </TouchableOpacity>
+    <ProjectCard
+      queue={index + 1}
+      quote={quote}
+      onPress={onPress}
+      isSelected={isSelected}
+      selectionMode={selectionMode}
+      onToggleSelect={onToggleSelect}
+    />
   );
 }
 
@@ -501,10 +471,11 @@ export default function ProjectsScreen() {
     if (isDesktop) return [];
     const needsHeaders = sortField === 'client' || sortField === 'status';
     if (!needsHeaders) {
-      return filtered.map(({ quote, effectiveStatus }) => ({ type: 'item' as const, quote, effectiveStatus }));
+      return filtered.map(({ quote, effectiveStatus }, i) => ({ type: 'item' as const, quote, effectiveStatus, queueIndex: i }));
     }
     const result: MobileListDataItem[] = [];
     let lastKey = '';
+    let itemCount = 0;
     for (const { quote, effectiveStatus } of filtered) {
       const groupKey = sortField === 'client' ? (quote.personOrganization || 'Unknown') : effectiveStatus;
       const label = sortField === 'client'
@@ -514,7 +485,7 @@ export default function ProjectsScreen() {
         result.push({ type: 'header', key: `hdr-${groupKey}`, label });
         lastKey = groupKey;
       }
-      result.push({ type: 'item', quote, effectiveStatus });
+      result.push({ type: 'item', quote, effectiveStatus, queueIndex: itemCount++ });
     }
     return result;
   }, [filtered, isDesktop, sortField]);
@@ -940,10 +911,11 @@ export default function ProjectsScreen() {
           keyExtractor={({ quote }) => quote.id}
           contentContainerStyle={styles.tableBody}
           ItemSeparatorComponent={() => <View style={styles.tableDivider} />}
-          renderItem={({ item: { quote, effectiveStatus } }) => (
+          renderItem={({ item: { quote, effectiveStatus }, index: _rowIndex }) => (
             <ProjectRow
               quote={quote}
               effectiveStatus={effectiveStatus}
+              index={_rowIndex}
               onPress={() => handleView(quote)}
               onDelete={() => handleDelete(quote)}
               onConvert={() => handleConvert(quote)}
@@ -974,11 +946,12 @@ export default function ProjectsScreen() {
                 </View>
               );
             }
-            const { quote, effectiveStatus } = item;
+            const { quote, effectiveStatus, queueIndex } = item;
             return (
               <ProjectRow
                 quote={quote}
                 effectiveStatus={effectiveStatus}
+                index={queueIndex}
                 onPress={() => handleView(quote)}
                 onDelete={() => handleDelete(quote)}
                 onConvert={() => handleConvert(quote)}

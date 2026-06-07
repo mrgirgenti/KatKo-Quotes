@@ -1,1 +1,3 @@
 - [freeport-async IPv6 fix](freeport-async-ipv6-fix.md) — Expo hangs on startup (DIDNT_OPEN_A_PORT) because bun can't bind IPv6 wildcard; patch node_modules/freeport-async/index.js after every bun install.
+- [ProjectCard component](project-card.md) — reusable card in components/ProjectCard.tsx; replaces all inline p16Card and projectRowExpanded patterns in CRM page and Projects tab.
+- [CRM page stray )} text node](crm-iife-remnants.md) — orphaned `)}` lines after closing `</>` blocks in v2RightPanel cause React Native "Unexpected text node" errors; remove the bare line.
