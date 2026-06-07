@@ -432,7 +432,7 @@ export default function ContactsDirectory() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.light.background },
-  pageHeader: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: Colors.light.border },
+  pageHeader: { paddingHorizontal: 20, paddingTop: DS.spacing.xl, paddingBottom: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: Colors.light.border },
   headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pageTitle: { fontSize: 24, fontWeight: '800' as const, color: Colors.light.text },
 
