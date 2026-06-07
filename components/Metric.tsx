@@ -10,15 +10,15 @@ import Colors from '@/constants/colors';
  * metric section reads identically.
  */
 export const metricValueStyle: TextStyle = {
-  fontSize: 18,
+  fontSize: 20,
   fontWeight: '800',
   color: Colors.light.text,
-  lineHeight: 22,
+  lineHeight: 24,
 };
 
 export const metricLabelStyle: TextStyle = {
-  fontSize: 12,
-  fontWeight: '500',
+  fontSize: 11,
+  fontWeight: '600',
   color: Colors.light.textSecondary,
 };
 

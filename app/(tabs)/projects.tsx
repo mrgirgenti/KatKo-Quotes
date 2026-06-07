@@ -692,8 +692,8 @@ export default function ProjectsScreen() {
                 ]}>
                   {pill.label}
                 </Text>
-                <View style={[styles.pillCount, active && cfg ? { backgroundColor: cfg.borderColor } : null]}>
-                  <Text style={[styles.pillCountText, active && cfg ? { color: cfg.color } : null]}>{count}</Text>
+                <View style={[styles.pillCount, active && (cfg ? { backgroundColor: cfg.borderColor } : styles.pillCountActive)]}>
+                  <Text style={[styles.pillCountText, active && (cfg ? { color: cfg.color } : styles.pillCountTextActive)]}>{count}</Text>
                 </View>
               </TouchableOpacity>
             );
@@ -919,23 +919,25 @@ const styles = StyleSheet.create({
   header: { backgroundColor: Colors.light.surface, borderBottomWidth: 1, borderBottomColor: Colors.light.border, paddingTop: Platform.OS === 'web' ? 0 : 48 },
   headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: DS.spacing.xl, paddingTop: DS.spacing.xl, paddingBottom: DS.spacing.md },
   title: { fontSize: 24, fontWeight: '800', color: Colors.light.text },
-  statsBar: { flexDirection: 'row' as const, alignItems: 'center' as const, marginHorizontal: DS.spacing.lg, marginBottom: DS.spacing.md, backgroundColor: Colors.light.background, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, paddingVertical: 6, paddingHorizontal: 6 },
+  statsBar: { flexDirection: 'row' as const, alignItems: 'center' as const, marginHorizontal: DS.spacing.lg, marginBottom: DS.spacing.md, backgroundColor: '#FAFAFA', borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, paddingVertical: 12, paddingHorizontal: 16 },
   statItem: { flex: 1, alignItems: 'center' as const },
   statValue: { ...metricValueStyle },
-  statLabel: { ...metricLabelStyle, marginTop: 1 },
-  statDivider: { width: 1, height: 24, backgroundColor: Colors.light.border },
+  statLabel: { ...metricLabelStyle, marginTop: 2 },
+  statDivider: { width: 1, height: 28, backgroundColor: Colors.light.border },
 
   pillsScroll: { maxHeight: 44 },
   pillsRow: { flexDirection: 'row', gap: DS.spacing.sm, paddingHorizontal: DS.spacing.xl, paddingBottom: DS.spacing.md },
-  pill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: DS.spacing.md, paddingVertical: 4, borderRadius: DS.radius.pill, borderWidth: 1.5, borderColor: Colors.light.border, backgroundColor: Colors.light.background },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: Colors.light.background },
   pillActive: { borderColor: Colors.light.tint, backgroundColor: '#FFF4EE' },
-  pillText: { fontSize: 13, fontWeight: '500', color: Colors.light.textSecondary },
-  pillTextActive: { color: Colors.light.tint, fontWeight: '700' },
-  pillCount: { backgroundColor: Colors.light.border, borderRadius: 10, minWidth: 16, height: 16, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
-  pillCountText: { fontSize: 10, fontWeight: '700', color: Colors.light.textSecondary },
+  pillText: { fontSize: 13, fontWeight: '600', color: Colors.light.textSecondary },
+  pillTextActive: { color: Colors.light.tint },
+  pillCount: { minWidth: 20, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 999, backgroundColor: '#F1F1F1', alignItems: 'center' as const },
+  pillCountActive: { backgroundColor: Colors.light.tint },
+  pillCountText: { fontSize: 11, fontWeight: '700', color: Colors.light.textSecondary },
+  pillCountTextActive: { color: '#fff' },
 
   searchRow: { flexDirection: 'row', gap: DS.spacing.sm, paddingHorizontal: DS.spacing.xl, paddingBottom: DS.spacing.md, alignItems: 'center' },
-  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.light.background, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, paddingHorizontal: 12, height: 40 },
+  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F5F5F5', borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, paddingHorizontal: 12, height: 40 },
   searchInput: { flex: 1, fontSize: 14, color: Colors.light.text, outlineStyle: 'none' as any },
   startProjectBtn: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6, backgroundColor: Colors.light.tint, paddingHorizontal: 16, borderRadius: DS.radius.md, height: 40 },
   startProjectBtnText: { fontSize: 14, fontWeight: '700' as const, color: '#fff', whiteSpace: 'nowrap' as any },

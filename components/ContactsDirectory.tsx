@@ -10,6 +10,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { DS } from '@/constants/designSystem';
+import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
 import { useCrm } from '@/contexts/CrmContext';
 import { Contact } from '@/types/crm';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -435,10 +436,10 @@ const styles = StyleSheet.create({
   headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pageTitle: { fontSize: 24, fontWeight: '800' as const, color: Colors.light.text },
 
-  statsBar: { flexDirection: 'row', alignItems: 'center', marginTop: 14, paddingVertical: 12, paddingHorizontal: 16, backgroundColor: '#FAFAFA', borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border },
+  statsBar: { flexDirection: 'row', alignItems: 'center', marginTop: 12, paddingVertical: 12, paddingHorizontal: 16, backgroundColor: '#FAFAFA', borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border },
   statItem: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: 20, fontWeight: '800' as const },
-  statLabel: { fontSize: 11, color: Colors.light.textSecondary, marginTop: 2, fontWeight: '600' as const },
+  statValue: { ...metricValueStyle },
+  statLabel: { ...metricLabelStyle, marginTop: 2 },
   statDivider: { width: 1, height: 28, backgroundColor: Colors.light.border },
 
   pillsScroll: { marginTop: 14, flexGrow: 0 },
@@ -461,8 +462,8 @@ const styles = StyleSheet.create({
   toolBtnTextActive: { color: Colors.light.tint },
 
   tableHeader: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 20, backgroundColor: '#000000' },
-  headText: { fontSize: 11, fontWeight: '700' as const, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' as const, letterSpacing: 0.4 },
-  headTextActive: { color: '#fff' },
+  headText: { fontSize: 11, fontWeight: '700' as const, color: '#ffffff', textTransform: 'uppercase' as const, letterSpacing: 0.5 },
+  headTextActive: { color: Colors.light.tint },
   sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   tableBody: { backgroundColor: '#fff' },
   tableRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20 },

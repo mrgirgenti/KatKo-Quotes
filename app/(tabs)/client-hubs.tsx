@@ -543,14 +543,14 @@ const styles = StyleSheet.create({
 
   // Metrics
   statsBar: {
-    flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 12,
-    backgroundColor: Colors.light.background, borderRadius: 10, borderWidth: 1, borderColor: Colors.light.border,
-    paddingVertical: 12, paddingHorizontal: 6,
+    flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 12,
+    backgroundColor: '#FAFAFA', borderRadius: 10, borderWidth: 1, borderColor: Colors.light.border,
+    paddingVertical: 12, paddingHorizontal: 16,
   },
   statItem: { flex: 1, alignItems: 'center', gap: 3 },
   statValue: { ...metricValueStyle },
   statLabel: { ...metricLabelStyle, textAlign: 'center' as const },
-  statDivider: { width: 1, height: 32, backgroundColor: Colors.light.border },
+  statDivider: { width: 1, height: 28, backgroundColor: Colors.light.border },
 
   // Chips
   chipsScroll: { flexGrow: 0, marginBottom: 12 },
@@ -568,7 +568,7 @@ const styles = StyleSheet.create({
   searchRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, paddingBottom: 12, alignItems: 'center' },
   searchBox: {
     flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: Colors.light.background, borderRadius: 10, borderWidth: 1, borderColor: Colors.light.border,
+    backgroundColor: '#F5F5F5', borderRadius: 10, borderWidth: 1, borderColor: Colors.light.border,
     paddingHorizontal: 12, height: 40,
   },
   searchInput: { flex: 1, fontSize: 14, color: Colors.light.text, outlineStyle: 'none' as any },
@@ -582,7 +582,7 @@ const styles = StyleSheet.create({
 
   // Table
   list: { flex: 1 },
-  tableHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#000000' },
+  tableHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#000000' },
   thText: { fontSize: 11, fontWeight: '700' as const, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: 0.5 },
   sortBtn: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4 },
   sortBtnText: { fontSize: 11, fontWeight: '700' as const, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: 0.5 },
