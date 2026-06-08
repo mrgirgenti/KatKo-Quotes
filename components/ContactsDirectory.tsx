@@ -1,20 +1,23 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, Modal, Pressable, Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { OrgAvatar } from '@/components/OrgAvatar';
+import OverlayMenu from '@/components/OverlayMenu';
 import {
   Search, X, Users, ChevronDown, Check,
   Wifi, ShieldCheck, Mail, Ban, MinusCircle, Building2, ArrowUpDown, Trash2,
+  Plus, FileText, Upload,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { DS } from '@/constants/designSystem';
 import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
 import { useCrm } from '@/contexts/CrmContext';
-import { Contact } from '@/types/crm';
+import { Contact, CrmStatus, CRM_STATUS_CONFIG, ORG_TYPES } from '@/types/crm';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
-import { formatPhone } from '@/utils/phone';
+import { formatPhone, formatPhoneInput } from '@/utils/phone';
 
 type Person = Contact & { orgId: string; orgName: string; orgLogo?: string };
 type HubStatus = NonNullable<Contact['hubStatus']>;
@@ -106,9 +109,12 @@ function PersonRow({ person, onPress, isSelected, onToggleSelect }: {
   );
 }
 
+const EMPTY_CONTACT_FORM = { firstName: '', lastName: '', phone: '', email: '', role: '' };
+const EMPTY_NEW_ORG_FORM = { name: '', type: '', status: 'Active Client' as CrmStatus };
+
 export default function ContactsDirectory() {
   const router = useRouter();
-  const { orgs, deleteContact } = useCrm();
+  const { orgs, addOrg, addOrgWithContact, addContact, deleteContact } = useCrm();
   const { isDesktop } = useBreakpoint();
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -125,6 +131,58 @@ export default function ContactsDirectory() {
   const [roleDropOpen, setRoleDropOpen] = useState(false);
   const [sortField, setSortField] = useState<ColId>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  const [contactModalVisible, setContactModalVisible] = useState(false);
+  const [contactForm, setContactForm] = useState(EMPTY_CONTACT_FORM);
+  const [orgSearch, setOrgSearch] = useState('');
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+  const [showOrgDrop, setShowOrgDrop] = useState(false);
+  const [createNewOrg, setCreateNewOrg] = useState(false);
+  const [newOrgForm, setNewOrgForm] = useState(EMPTY_NEW_ORG_FORM);
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+
+  const openContactModal = useCallback(() => {
+    setContactForm(EMPTY_CONTACT_FORM);
+    setOrgSearch(''); setSelectedOrgId(null);
+    setShowOrgDrop(false); setCreateNewOrg(false);
+    setNewOrgForm(EMPTY_NEW_ORG_FORM); setShowTypeDropdown(false);
+    setContactModalVisible(true);
+  }, []);
+
+  const orgSearchResults = useMemo(() => {
+    if (!orgSearch.trim()) return orgs.slice(0, 6);
+    return orgs.filter((o) => o.name.toLowerCase().includes(orgSearch.toLowerCase())).slice(0, 6);
+  }, [orgs, orgSearch]);
+
+  const selectedOrg = selectedOrgId ? orgs.find((o) => o.id === selectedOrgId) : null;
+
+  const canSaveContact = !!(contactForm.firstName.trim() || contactForm.lastName.trim());
+
+  const handleSaveContact = useCallback(() => {
+    if (!canSaveContact) return;
+    const contactData: any = {
+      firstName: contactForm.firstName.trim(),
+      lastName: contactForm.lastName.trim(),
+      phone: contactForm.phone.trim() || undefined,
+      email: contactForm.email.trim() || undefined,
+      role: contactForm.role.trim() || undefined,
+      isPrimary: true,
+    };
+    if (selectedOrgId) {
+      addContact({ orgId: selectedOrgId, contact: contactData });
+    } else if (createNewOrg && newOrgForm.name.trim()) {
+      addOrgWithContact({
+        orgData: { name: newOrgForm.name.trim(), type: newOrgForm.type || undefined, status: newOrgForm.status } as any,
+        contactData,
+      });
+    } else {
+      const fallbackOrgName = orgSearch.trim() || `${contactForm.firstName} ${contactForm.lastName}`.trim();
+      addOrgWithContact({ orgData: { name: fallbackOrgName, status: 'Active Client' } as any, contactData });
+    }
+    setContactModalVisible(false);
+  }, [canSaveContact, contactForm, selectedOrgId, createNewOrg, newOrgForm, orgSearch, addContact, addOrgWithContact]);
+
+  const saveBtnLabel = selectedOrgId ? 'Save Contact' : createNewOrg ? 'Save Contact + Organization' : 'Save Contact';
 
   const people = useMemo<Person[]>(() =>
     orgs.flatMap((o) =>
@@ -260,6 +318,35 @@ export default function ContactsDirectory() {
       <View style={styles.pageHeader}>
         <View style={styles.headerTop}>
           <Text style={styles.pageTitle}>Contacts</Text>
+          <View style={styles.headerBtns}>
+            <OverlayMenu
+              align="right"
+              menuWidth={185}
+              trigger={({ open }) => (
+                <TouchableOpacity style={styles.actionsBtn} onPress={open}>
+                  <Text style={styles.actionsBtnText}>Actions</Text>
+                  <ChevronDown size={14} color={Colors.light.textSecondary} />
+                </TouchableOpacity>
+              )}
+            >
+              {({ close }) => (
+                <>
+                  <TouchableOpacity style={styles.actionsMenuItem} onPress={close}>
+                    <Upload size={14} color={Colors.light.text} />
+                    <Text style={styles.actionsMenuItemText}>Import Contacts</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.actionsMenuItem, { borderBottomWidth: 0 }]} onPress={close}>
+                    <FileText size={14} color={Colors.light.text} />
+                    <Text style={styles.actionsMenuItemText}>Export CSV</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </OverlayMenu>
+            <TouchableOpacity style={styles.addBtn} onPress={openContactModal}>
+              <Plus size={15} color="#fff" />
+              <Text style={styles.addBtnText}>Add Contact</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.statsBar}>
@@ -401,7 +488,12 @@ export default function ContactsDirectory() {
         <View style={styles.emptyState}>
           <Users size={40} color={Colors.light.border} />
           <Text style={styles.emptyTitle}>{search || orgFilter || roleFilter ? 'No matching contacts' : 'No contacts yet'}</Text>
-          <Text style={styles.emptyText}>{search || orgFilter || roleFilter ? 'Try adjusting your filters or search.' : 'Add contacts from an organization to see them here.'}</Text>
+          <Text style={styles.emptyText}>{search || orgFilter || roleFilter ? 'Try adjusting your filters or search.' : 'Add contacts using the button above.'}</Text>
+          {!search && !orgFilter && !roleFilter && (
+            <TouchableOpacity style={styles.addBtn} onPress={openContactModal}>
+              <Plus size={15} color="#fff" /><Text style={styles.addBtnText}>Add Contact</Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : (
         <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
@@ -426,6 +518,132 @@ export default function ContactsDirectory() {
           <View style={{ height: 40 }} />
         </ScrollView>
       )}
+
+      {/* ── Add Contact Modal ── */}
+      <Modal visible={contactModalVisible} transparent animationType="fade" onRequestClose={() => setContactModalVisible(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setContactModalVisible(false)}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
+            <Pressable style={styles.modalCard} onPress={() => { setShowOrgDrop(false); setShowTypeDropdown(false); }}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>New Contact Person</Text>
+                <TouchableOpacity onPress={() => setContactModalVisible(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                <Text style={styles.fieldLabel}>Name *</Text>
+                <View style={styles.rowInputs}>
+                  <TextInput style={[styles.textInput, { flex: 1 }]} value={contactForm.firstName} onChangeText={(v) => setContactForm((f) => ({ ...f, firstName: v }))} placeholder="First name" placeholderTextColor={Colors.light.textSecondary} autoFocus />
+                  <TextInput style={[styles.textInput, { flex: 1 }]} value={contactForm.lastName} onChangeText={(v) => setContactForm((f) => ({ ...f, lastName: v }))} placeholder="Last name" placeholderTextColor={Colors.light.textSecondary} />
+                </View>
+
+                <Text style={styles.fieldLabel}>Phone / Email</Text>
+                <View style={styles.rowInputs}>
+                  <TextInput style={[styles.textInput, { flex: 1 }]} value={contactForm.phone} onChangeText={(v) => setContactForm((f) => ({ ...f, phone: formatPhoneInput(v) }))} placeholder="(555) 000-0000" placeholderTextColor={Colors.light.textSecondary} keyboardType="phone-pad" />
+                  <TextInput style={[styles.textInput, { flex: 1 }]} value={contactForm.email} onChangeText={(v) => setContactForm((f) => ({ ...f, email: v }))} placeholder="Email" placeholderTextColor={Colors.light.textSecondary} keyboardType="email-address" autoCapitalize="none" />
+                </View>
+
+                <Text style={styles.fieldLabel}>Role / Title</Text>
+                <TextInput style={styles.textInput} value={contactForm.role} onChangeText={(v) => setContactForm((f) => ({ ...f, role: v }))} placeholder="e.g. Purchasing Manager, Coach…" placeholderTextColor={Colors.light.textSecondary} />
+
+                <View style={styles.sectionDivider}>
+                  <View style={styles.sectionDividerLine} /><Text style={styles.sectionDividerLabel}>Organization</Text><View style={styles.sectionDividerLine} />
+                </View>
+
+                {!createNewOrg && (
+                  <>
+                    <TouchableOpacity
+                      style={[styles.typePickerBtn, selectedOrg && { borderColor: Colors.light.tint }]}
+                      onPress={() => { setShowOrgDrop((v) => !v); setShowTypeDropdown(false); }}
+                    >
+                      <Text style={selectedOrg ? styles.typePickerBtnText : styles.typePickerBtnPlaceholder} numberOfLines={1}>
+                        {selectedOrg ? selectedOrg.name : orgSearch || 'Search or type org name…'}
+                      </Text>
+                      {selectedOrg
+                        ? <TouchableOpacity onPress={() => { setSelectedOrgId(null); setOrgSearch(''); }}><X size={15} color={Colors.light.textSecondary} /></TouchableOpacity>
+                        : <ChevronDown size={15} color={Colors.light.textSecondary} />
+                      }
+                    </TouchableOpacity>
+
+                    {showOrgDrop && !selectedOrg && (
+                      <View style={styles.typeDropdown}>
+                        <View style={styles.orgSearchRow}>
+                          <Search size={13} color={Colors.light.textSecondary} />
+                          <TextInput style={styles.orgSearchInput} value={orgSearch} onChangeText={setOrgSearch} placeholder="Search existing orgs…" placeholderTextColor={Colors.light.textSecondary} autoFocus />
+                        </View>
+                        {orgSearchResults.map((o) => (
+                          <TouchableOpacity key={o.id} style={styles.typeDropdownItem} onPress={() => { setSelectedOrgId(o.id); setOrgSearch(o.name); setShowOrgDrop(false); }}>
+                            <Text style={styles.typeDropdownText}>{o.name}</Text>
+                            {o.type ? <Text style={{ fontSize: 11, color: Colors.light.textSecondary }}>{o.type}</Text> : null}
+                          </TouchableOpacity>
+                        ))}
+                        <TouchableOpacity
+                          style={[styles.typeDropdownItem, { backgroundColor: '#FFF4EE', borderBottomWidth: 0 }]}
+                          onPress={() => { setCreateNewOrg(true); setShowOrgDrop(false); }}
+                        >
+                          <Plus size={13} color={Colors.light.tint} />
+                          <Text style={{ fontSize: 14, color: Colors.light.tint, fontWeight: '600' as const }}>+ Create New Organization</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </>
+                )}
+
+                {createNewOrg && (
+                  <View style={styles.inlineOrgBox}>
+                    <View style={styles.inlineOrgHeader}>
+                      <Text style={styles.inlineOrgTitle}>New Organization</Text>
+                      <TouchableOpacity onPress={() => { setCreateNewOrg(false); setNewOrgForm(EMPTY_NEW_ORG_FORM); }}>
+                        <X size={16} color={Colors.light.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={styles.fieldLabel}>Organization Name *</Text>
+                    <TextInput style={styles.textInput} value={newOrgForm.name} onChangeText={(v) => setNewOrgForm((f) => ({ ...f, name: v }))} placeholder="Company, school, church…" placeholderTextColor={Colors.light.textSecondary} autoFocus />
+                    <Text style={styles.fieldLabel}>Type</Text>
+                    <TouchableOpacity style={styles.typePickerBtn} onPress={() => setShowTypeDropdown((v) => !v)}>
+                      <Text style={newOrgForm.type ? styles.typePickerBtnText : styles.typePickerBtnPlaceholder}>{newOrgForm.type || 'Select type…'}</Text>
+                      <ChevronDown size={15} color={Colors.light.textSecondary} />
+                    </TouchableOpacity>
+                    {showTypeDropdown && (
+                      <View style={styles.typeDropdown}>
+                        {(ORG_TYPES as readonly string[]).map((t) => (
+                          <TouchableOpacity key={t} style={styles.typeDropdownItem} onPress={() => { setNewOrgForm((f) => ({ ...f, type: t })); setShowTypeDropdown(false); }}>
+                            <Text style={[styles.typeDropdownText, newOrgForm.type === t && styles.typeDropdownTextActive]}>{t}</Text>
+                            {newOrgForm.type === t && <Check size={13} color={Colors.light.tint} />}
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                    <Text style={styles.fieldLabel}>Status</Text>
+                    <View style={styles.statusRow}>
+                      {(['Cold', 'Working', 'Active Client'] as CrmStatus[]).map((s) => {
+                        const cfg = CRM_STATUS_CONFIG[s]; const sel = newOrgForm.status === s;
+                        return (
+                          <TouchableOpacity key={s} style={[styles.statusOption, sel && { backgroundColor: cfg.bg, borderColor: cfg.border }]} onPress={() => setNewOrgForm((f) => ({ ...f, status: s }))}>
+                            <Text style={[styles.statusOptionText, sel && { color: cfg.color, fontWeight: '700' as const }]}>{s}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
+
+                {!createNewOrg && !selectedOrgId && (
+                  <TouchableOpacity style={styles.createOrgLink} onPress={() => { setCreateNewOrg(true); setShowOrgDrop(false); }}>
+                    <Plus size={13} color={Colors.light.tint} />
+                    <Text style={styles.createOrgLinkText}>+ Create New Organization</Text>
+                  </TouchableOpacity>
+                )}
+
+                <View style={{ height: 16 }} />
+              </ScrollView>
+
+              <TouchableOpacity style={[styles.saveBtn, !canSaveContact && styles.saveBtnDisabled]} onPress={handleSaveContact} disabled={!canSaveContact}>
+                <Text style={styles.saveBtnText}>{saveBtnLabel}</Text>
+              </TouchableOpacity>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -501,10 +719,55 @@ const styles = StyleSheet.create({
 
   dropOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   dropCard: { width: '100%', maxWidth: 420, backgroundColor: '#fff', borderRadius: DS.radius.lg, padding: 16 },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  modalTitle: { fontSize: 16, fontWeight: '700' as const, color: Colors.light.text },
   dropRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 6, borderBottomWidth: 1, borderBottomColor: '#F1F1F1' },
   dropRowText: { fontSize: 14, color: Colors.light.text, flex: 1 },
   dropRowTextOn: { fontWeight: '700' as const, color: Colors.light.tint },
   dropEmpty: { fontSize: 13, color: Colors.light.textSecondary, padding: 12, textAlign: 'center' as const },
+
+  headerBtns: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8 },
+  actionsBtn: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6, paddingHorizontal: 12, height: 40, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: Colors.light.surface },
+  actionsBtnText: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.text },
+  actionsMenuItem: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 10, paddingHorizontal: 14, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  actionsMenuItemText: { fontSize: 13, color: Colors.light.text, fontWeight: '500' as const },
+  addBtn: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6, backgroundColor: Colors.light.tint, paddingHorizontal: 16, borderRadius: DS.radius.md, height: 40 },
+  addBtnText: { fontSize: 14, fontWeight: '700' as const, color: '#fff' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalKAV: { width: '100%', maxWidth: 520, alignSelf: 'center' as const },
+  modalCard: { backgroundColor: '#fff', borderRadius: DS.radius.lg, padding: 24, maxHeight: '85%' as any, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 12 },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  modalTitle: { fontSize: 17, fontWeight: '700' as const, color: Colors.light.text },
+
+  fieldLabel: { fontSize: 12, fontWeight: '600' as const, color: Colors.light.textSecondary, textTransform: 'uppercase' as const, letterSpacing: 0.5, marginTop: 14, marginBottom: 6 },
+  textInput: { height: 40, borderWidth: 1, borderColor: Colors.light.border, borderRadius: DS.radius.md, paddingHorizontal: 12, fontSize: 14, color: Colors.light.text, backgroundColor: '#FAFAFA', outlineStyle: 'none' as any },
+  rowInputs: { flexDirection: 'row' as const, gap: 8 },
+
+  sectionDivider: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, marginVertical: 16 },
+  sectionDividerLine: { flex: 1, height: 1, backgroundColor: Colors.light.border },
+  sectionDividerLabel: { fontSize: 11, fontWeight: '700' as const, color: Colors.light.textSecondary, textTransform: 'uppercase' as const, letterSpacing: 0.8 },
+
+  typePickerBtn: { height: 40, flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, borderWidth: 1, borderColor: Colors.light.border, borderRadius: DS.radius.md, paddingHorizontal: 12, backgroundColor: '#FAFAFA' },
+  typePickerBtnText: { fontSize: 14, color: Colors.light.text, flex: 1 },
+  typePickerBtnPlaceholder: { fontSize: 14, color: Colors.light.textSecondary, flex: 1 },
+  typeDropdown: { borderWidth: 1, borderColor: Colors.light.border, borderRadius: DS.radius.md, backgroundColor: '#fff', marginTop: 4, overflow: 'hidden' as const, maxHeight: 220 },
+  typeDropdownItem: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', gap: 6 },
+  typeDropdownText: { fontSize: 14, color: Colors.light.text, flex: 1 },
+  typeDropdownTextActive: { fontWeight: '700' as const, color: Colors.light.tint },
+  orgSearchRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  orgSearchInput: { flex: 1, fontSize: 14, color: Colors.light.text, outlineStyle: 'none' as any },
+
+  inlineOrgBox: { borderWidth: 1, borderColor: Colors.light.border, borderRadius: DS.radius.md, padding: 14, backgroundColor: '#FAFAFA', marginTop: 4 },
+  inlineOrgHeader: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, marginBottom: 4 },
+  inlineOrgTitle: { fontSize: 13, fontWeight: '700' as const, color: Colors.light.text },
+
+  statusRow: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 6, marginBottom: 4 },
+  statusOption: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: '#F5F5F5' },
+  statusOptionText: { fontSize: 12, fontWeight: '600' as const, color: Colors.light.textSecondary },
+
+  createOrgLink: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 5, marginTop: 8, paddingVertical: 4 },
+  createOrgLinkText: { fontSize: 13, color: Colors.light.tint, fontWeight: '600' as const },
+
+  saveBtn: { backgroundColor: Colors.light.tint, borderRadius: DS.radius.md, height: 44, alignItems: 'center' as const, justifyContent: 'center' as const, marginTop: 16 },
+  saveBtnDisabled: { opacity: 0.45 },
+  saveBtnText: { fontSize: 15, fontWeight: '700' as const, color: '#fff' },
 });

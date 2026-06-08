@@ -8,7 +8,7 @@ import { OrgAvatar } from '@/components/OrgAvatar';
 import ContactsDirectory from '@/components/ContactsDirectory';
 import OverlayMenu from '@/components/OverlayMenu';
 import {
-  Plus, Search, X, Users, Building2, User, ChevronRight, TrendingUp,
+  Plus, Search, X, Users, Building2, TrendingUp,
   Thermometer, Star, Archive, Upload, ChevronDown, Check, ArrowUpDown,
   Wifi, WifiOff, Edit3, Trash2, UserPlus, FileText, Globe,
   Settings2, SlidersHorizontal,
@@ -27,7 +27,7 @@ type ColId = 'org' | 'bizType' | 'contact' | 'phone' | 'email' | 'status' | 'hub
 type SortField = 'name' | 'type' | 'contact' | 'campaign' | 'status' | 'hub';
 type SortDir = 'asc' | 'desc';
 type AddMode = 'org' | 'person';
-type AddStep = 'choose' | 'details';
+type AddStep = 'details';
 
 type FilterState = {
   org: string; bizType: string[]; contact: string; phone: string;
@@ -311,7 +311,7 @@ function OrganizationsScreen() {
 
   const openAddModal = useCallback(() => {
     setOrgForm(EMPTY_ORG_FORM); setContactForm(EMPTY_CONTACT_FORM);
-    setAddStep('choose'); setAddMode('org'); setShowTypeDropdown(false);
+    setAddStep('details'); setAddMode('org'); setShowTypeDropdown(false);
     setOrgSearch(''); setSelectedOrgId(null); setPersonOrgStatus('Active Client');
     setShowOrgDropdown(false); setModalVisible(true);
   }, []);
@@ -446,7 +446,7 @@ function OrganizationsScreen() {
               )}
             </OverlayMenu>
             <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
-              <Plus size={15} color="#fff" /><Text style={styles.addBtnText}>Add Contact</Text>
+              <Plus size={15} color="#fff" /><Text style={styles.addBtnText}>Add Organization</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -598,7 +598,7 @@ function OrganizationsScreen() {
           <Building2 size={40} color={Colors.light.border} />
           <Text style={styles.emptyTitle}>{search ? 'No results found' : filter !== 'All' ? `No ${filter} contacts` : 'No contacts yet'}</Text>
           <Text style={styles.emptyText}>{search ? 'Try a different search term.' : filter !== 'All' ? `Add a new contact and set status to ${filter}.` : 'Add your first organization or contact to get started.'}</Text>
-          {!search && <TouchableOpacity style={styles.emptyAddBtn} onPress={openAddModal}><Plus size={15} color="#fff" /><Text style={styles.emptyAddBtnText}>Add Contact</Text></TouchableOpacity>}
+          {!search && <TouchableOpacity style={styles.emptyAddBtn} onPress={openAddModal}><Plus size={15} color="#fff" /><Text style={styles.emptyAddBtnText}>Add Organization</Text></TouchableOpacity>}
         </View>
       ) : (
         <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
@@ -658,35 +658,9 @@ function OrganizationsScreen() {
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
             <Pressable style={styles.modalCard} onPress={() => { setShowTypeDropdown(false); setShowOrgDropdown(false); }}>
               <View style={styles.modalHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  {addStep === 'details' && (
-                    <TouchableOpacity onPress={() => setAddStep('choose')} style={{ padding: 2 }}>
-                      <ChevronRight size={18} color={Colors.light.textSecondary} style={{ transform: [{ rotate: '180deg' }] }} />
-                    </TouchableOpacity>
-                  )}
-                  <Text style={styles.modalTitle}>{addStep === 'choose' ? 'Add Contact' : addMode === 'org' ? 'New Organization' : 'New Contact Person'}</Text>
-                </View>
+                <Text style={styles.modalTitle}>{addMode === 'org' ? 'New Organization' : 'New Contact Person'}</Text>
                 <TouchableOpacity onPress={() => setModalVisible(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
               </View>
-
-              {addStep === 'choose' && (
-                <View style={styles.chooseStep}>
-                  <Text style={styles.chooseLabel}>What are you adding?</Text>
-                  <TouchableOpacity style={[styles.chooseOption, addMode === 'org' && styles.chooseOptionActive]} onPress={() => setAddMode('org')}>
-                    <View style={[styles.chooseIcon, addMode === 'org' && styles.chooseIconActive]}><Building2 size={22} color={addMode === 'org' ? '#fff' : Colors.light.textSecondary} /></View>
-                    <View style={{ flex: 1 }}><Text style={styles.chooseOptionTitle}>Organization</Text><Text style={styles.chooseOptionSub}>A company, school, church, or business</Text></View>
-                    <View style={[styles.chooseRadio, addMode === 'org' && styles.chooseRadioActive]}>{addMode === 'org' && <Check size={12} color="#fff" />}</View>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.chooseOption, addMode === 'person' && styles.chooseOptionActive]} onPress={() => setAddMode('person')}>
-                    <View style={[styles.chooseIcon, addMode === 'person' && { backgroundColor: '#7C3AED' }]}><User size={22} color={addMode === 'person' ? '#fff' : Colors.light.textSecondary} /></View>
-                    <View style={{ flex: 1 }}><Text style={styles.chooseOptionTitle}>Contact Person</Text><Text style={styles.chooseOptionSub}>An individual linked to an organization</Text></View>
-                    <View style={[styles.chooseRadio, addMode === 'person' && styles.chooseRadioActive]}>{addMode === 'person' && <Check size={12} color="#fff" />}</View>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.continueBtn} onPress={() => setAddStep('details')}>
-                    <Text style={styles.continueBtnText}>Continue</Text><ChevronRight size={16} color="#fff" />
-                  </TouchableOpacity>
-                </View>
-              )}
 
               {addStep === 'details' && addMode === 'org' && (
                 <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -928,19 +902,6 @@ const styles = StyleSheet.create({
   modalCard: { backgroundColor: Colors.light.surface, borderRadius: DS.radius.xxl, padding: 20, maxHeight: '90%' as any },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
   modalTitle: { fontSize: 18, fontWeight: '800' as const, color: Colors.light.text },
-
-  chooseStep: { gap: 12, marginBottom: 8 },
-  chooseLabel: { fontSize: 14, color: Colors.light.textSecondary, marginBottom: 4 },
-  chooseOption: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderRadius: DS.radius.xl, borderWidth: 2, borderColor: Colors.light.border, backgroundColor: Colors.light.background },
-  chooseOptionActive: { borderColor: Colors.light.tint, backgroundColor: '#FFF4EE' },
-  chooseIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.light.border, justifyContent: 'center', alignItems: 'center' },
-  chooseIconActive: { backgroundColor: Colors.light.tint },
-  chooseOptionTitle: { fontSize: 15, fontWeight: '700' as const, color: Colors.light.text },
-  chooseOptionSub: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 2 },
-  chooseRadio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: Colors.light.border, justifyContent: 'center', alignItems: 'center' },
-  chooseRadioActive: { borderColor: Colors.light.tint, backgroundColor: Colors.light.tint },
-  continueBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: Colors.light.tint, borderRadius: DS.radius.lg, paddingVertical: 14, marginTop: 4 },
-  continueBtnText: { color: '#fff', fontWeight: '700' as const, fontSize: 15 },
 
   fieldLabel: { fontSize: 11, fontWeight: '700' as const, color: Colors.light.textSecondary, textTransform: 'uppercase' as const, letterSpacing: 0.5, marginTop: 14, marginBottom: 6 },
   textInput: { backgroundColor: Colors.light.background, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, paddingHorizontal: 13, paddingVertical: 11, fontSize: 15, color: Colors.light.text },

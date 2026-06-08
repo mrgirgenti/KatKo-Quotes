@@ -2571,7 +2571,7 @@ export default function OrgProfileScreen() {
                   <Text style={styles.v2LPNotesText}>No files uploaded yet.</Text>
                 ) : (
                   <View style={styles.v2MediaGrid}>
-                    {orgFiles.slice(0, 6).map((f: any) => {
+                    {orgFiles.slice(0, 9).map((f: any) => {
                       const isImage = f.mimeType?.startsWith('image/');
                       const ext = (f.originalName || '').split('.').pop()?.toUpperCase() || 'FILE';
                       return (
@@ -2593,8 +2593,8 @@ export default function OrgProfileScreen() {
                     })}
                   </View>
                 )}
-                {orgFiles.length > 6 && (
-                  <Text style={styles.v2ViewAll}>+{orgFiles.length - 6} more files</Text>
+                {orgFiles.length > 9 && (
+                  <Text style={styles.v2ViewAll}>+{orgFiles.length - 9} more files</Text>
                 )}
               </View>
 
@@ -5047,18 +5047,18 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   orgMediaItem: {
-    width: 90,
+    width: 135,
     gap: 4,
   },
   orgMediaThumb: {
-    width: 90,
-    height: 72,
+    width: 135,
+    height: 108,
     borderRadius: 8,
     backgroundColor: Colors.light.border,
   },
   orgMediaIcon: {
-    width: 90,
-    height: 72,
+    width: 135,
+    height: 108,
     borderRadius: 8,
     backgroundColor: Colors.light.background,
     borderWidth: 1,
@@ -5516,18 +5516,18 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   v2MediaItem: {
-    width: 70,
+    width: 105,
     gap: 3,
   },
   v2MediaThumb: {
-    width: 70,
-    height: 56,
+    width: 105,
+    height: 84,
     borderRadius: 6,
     backgroundColor: Colors.light.border,
   },
   v2MediaIcon: {
-    width: 70,
-    height: 56,
+    width: 105,
+    height: 84,
     borderRadius: 6,
     backgroundColor: Colors.light.surface,
     borderWidth: 1,
