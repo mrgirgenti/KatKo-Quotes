@@ -178,6 +178,46 @@ export default function RootLayout() {
     }
   }, []);
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const isBlue = (c: string) => {
+      if (!c) return false;
+      const m = c.match(/rgba?\(([^)]+)\)/);
+      if (!m) return /blue|#00?7|#1a73|#2563|#3b82|#0a8/i.test(c);
+      const [r, g, b] = m[1].split(',').map((n) => parseFloat(n));
+      return b > 120 && b > r + 30 && b > g + 30;
+    };
+    const desc = (el: HTMLElement | null) => {
+      if (!el) return 'none';
+      const cs = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      const cls = typeof el.className === 'string' ? el.className.split(' ').slice(0, 3).join('.') : '';
+      return `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}.${cls} | rect(x=${Math.round(r.x)},y=${Math.round(r.y)},w=${Math.round(r.width)},h=${Math.round(r.height)}) | tabindex=${el.getAttribute('tabindex')} | outline=${cs.outline} | outlineColor=${cs.outlineColor} | boxShadow=${cs.boxShadow.slice(0, 80)} | borderL=${cs.borderLeftWidth} ${cs.borderLeftColor}`;
+    };
+    const scan = (reason: string) => {
+      const vh = window.innerHeight;
+      const hits: string[] = [];
+      document.querySelectorAll('*').forEach((n) => {
+        const el = n as HTMLElement;
+        let cs: CSSStyleDeclaration;
+        try { cs = getComputedStyle(el); } catch { return; }
+        const r = el.getBoundingClientRect();
+        const thinTall = r.width > 0 && r.width <= 8 && r.height >= vh * 0.3;
+        const blueOutline = cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0 && isBlue(cs.outlineColor);
+        const blueShadow = cs.boxShadow && cs.boxShadow !== 'none' && isBlue(cs.boxShadow);
+        if (thinTall || blueOutline || blueShadow) hits.push(`[${reason}] ${desc(el)}`);
+      });
+      console.log(`%c[KK2 ${reason}] activeEl=${desc(document.activeElement as HTMLElement)} | hits=${hits.length}`, 'color:#fff;background:#0a6;padding:2px');
+      hits.forEach((h) => console.log('[KK2]', h));
+    };
+    const onFocus = () => { scan('win-focus'); requestAnimationFrame(() => scan('win-focus-raf')); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('focusin', () => scan('focusin'));
+    const iv = setInterval(() => scan('interval'), 2000);
+    (window as any).kk2 = scan;
+    return () => { window.removeEventListener('focus', onFocus); clearInterval(iv); };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
