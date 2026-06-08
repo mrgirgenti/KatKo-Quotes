@@ -4,6 +4,7 @@ import type { PropsWithChildren } from 'react';
 const FOCUS_RESET_CSS =
   '*{outline:none!important;-webkit-tap-highlight-color:transparent!important;}' +
   '*:focus,*:focus-visible,*:focus-within{outline:none!important;box-shadow:none!important;}' +
+  '*:not(input):not(textarea):not(select):hover{box-shadow:none!important;}' +
   '::-moz-focus-inner{border:0!important;}' +
   'html,body{outline:none!important;}' +
   // Safari does not support scrollbar-width:none (Firefox/Chrome only).

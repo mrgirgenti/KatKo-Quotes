@@ -28,6 +28,12 @@ SplashScreen.preventAutoHideAsync();
 const KK_FOCUS_RESET_CSS =
   '*{-webkit-tap-highlight-color:transparent!important;outline:none!important;}' +
   '*:focus,*:focus-visible,*:focus-within{outline:none!important;box-shadow:none!important;}' +
+  // Suppress any hover-triggered box-shadow that RN Web injects via class rules.
+  // The global outline:none above catches outline on hover, but box-shadow on
+  // non-focused elements (e.g. Animated.View sidebar container on mouseenter)
+  // requires an explicit :hover rule. Scoped to non-input elements so form field
+  // hover styles are unaffected.
+  '*:not(input):not(textarea):not(select):hover{box-shadow:none!important;}' +
   '::-moz-focus-inner{border:0!important;}' +
   'html,body{outline:none!important;}' +
   // Safari ignores scrollbar-width:none (a Firefox/Chrome feature). Without this,

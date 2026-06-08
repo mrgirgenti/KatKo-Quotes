@@ -40,6 +40,7 @@ const styles = StyleSheet.create({
   webLayout: {
     flex: 1,
     flexDirection: 'row',
+    outlineStyle: 'none' as any,
   },
   webContent: {
     flex: 1,

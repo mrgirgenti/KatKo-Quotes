@@ -32,7 +32,11 @@ if (typeof document !== 'undefined') {
     // for the stray blue line — the previous reset only covered data-kk-nav nodes.
     '[data-kk-sidebar],[data-kk-sidebar] *{-webkit-tap-highlight-color:transparent;}' +
     '[data-kk-sidebar]:focus,[data-kk-sidebar]:focus-visible,' +
-    '[data-kk-sidebar] *:focus,[data-kk-sidebar] *:focus-visible{outline:none !important;box-shadow:none !important;}';
+    '[data-kk-sidebar] *:focus,[data-kk-sidebar] *:focus-visible{outline:none !important;box-shadow:none !important;}' +
+    // Suppress any hover-triggered box-shadow on the sidebar container or its
+    // descendants. RN Web can inject class-based box-shadow on mouseenter for
+    // Animated.View / ScrollView containers; this ensures none bleeds through.
+    '[data-kk-sidebar]:hover,[data-kk-sidebar] *:hover{box-shadow:none !important;outline:none !important;}';
   const existing = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
   if (existing) {
     existing.textContent = CSS;
