@@ -29,7 +29,18 @@ const KK_FOCUS_RESET_CSS =
   '*{-webkit-tap-highlight-color:transparent!important;outline:none!important;}' +
   '*:focus,*:focus-visible,*:focus-within{outline:none!important;box-shadow:none!important;}' +
   '::-moz-focus-inner{border:0!important;}' +
-  'html,body{outline:none!important;}';
+  'html,body{outline:none!important;}' +
+  // Safari ignores scrollbar-width:none (a Firefox/Chrome feature). Without this,
+  // Safari renders its native scrollbar track on overflow:scroll containers using
+  // the system accent colour (blue on most macOS/iOS setups), which shows as a
+  // persistent thin blue vertical line at the right edge of any scrollable panel
+  // (e.g. the sidebar nav ScrollView). Suppressing ::-webkit-scrollbar globally
+  // is the correct cross-browser fix; this block is re-injected here (runtime)
+  // to complement the identical rule already in the SSR <head> via +html.tsx.
+  '*::-webkit-scrollbar{display:none!important;width:0!important;height:0!important;}' +
+  '*::-webkit-scrollbar-track{background:transparent!important;}' +
+  '*::-webkit-scrollbar-thumb{background:transparent!important;}' +
+  '*::-webkit-scrollbar-corner{background:transparent!important;}';
 
 function injectFocusReset() {
   if (typeof document === 'undefined') return;
@@ -54,11 +65,6 @@ function injectFocusReset() {
     document.addEventListener('focus', (e) => {
       const t = e.target as HTMLElement | null;
       if (!t) return;
-      // DEBUG: log focused element so we can identify the blue-ring source
-      if (typeof console !== 'undefined') {
-        const cs = window.getComputedStyle(t);
-        console.log('[KK-FOCUS]', t.tagName, t.className || '(no-class)', 'outline:', cs.outline, 'tabIndex:', t.tabIndex, 'size:', t.offsetWidth + 'x' + t.offsetHeight);
-      }
       // Strip outline immediately + via rAF for async RN Web injection
       kkStripFocus(t);
       requestAnimationFrame(() => kkStripFocus(t));

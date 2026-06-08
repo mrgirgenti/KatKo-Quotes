@@ -5,3 +5,4 @@
 - [RN-web focus outline](rn-web-focus-outline.md) — per-style `outlineStyle:'none'` misses focusable descendants; for a whole subtree (e.g. sidebar) inject one `[data-kk-sidebar] *:focus` CSS reset.
 - [Overlay & header patterns](overlay-and-header-patterns.md) — floating menus must use `OverlayMenu`/Modal portal, never absolute siblings (they get clipped); detail pages use shared `PageBackHeader`.
 - [Production plan + dual-status](production-and-status-model.md) — Production design in docs/; UI runs on `frontendStatus` string + `lineItemsData` JSON, NOT the Prisma enums.
+- [Safari WebKit scrollbar](safari-scrollbar-fix.md) — scrollbar-width:none is Firefox/Chrome only; add *::-webkit-scrollbar{display:none} in both SSR head (+html.tsx) and runtime CSS injection (_layout.tsx) to kill the blue track in Safari.
