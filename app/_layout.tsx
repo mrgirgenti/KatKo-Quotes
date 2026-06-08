@@ -242,38 +242,48 @@ export default function RootLayout() {
       const [r, g, b] = m[1].split(',').map((n) => parseFloat(n));
       return b > 120 && b > r + 30 && b > g + 30;
     };
+    const collect = (root: ParentNode, out: HTMLElement[]) => {
+      root.querySelectorAll('*').forEach((n) => {
+        const el = n as HTMLElement;
+        out.push(el);
+        if (el.shadowRoot) collect(el.shadowRoot, out);
+      });
+    };
     const scan = (reason: string) => {
       const vh = window.innerHeight;
       const hits: string[] = [];
-      const all = document.querySelectorAll('*');
-      all.forEach((node) => {
-        const el = node as HTMLElement;
-        const cs = getComputedStyle(el);
+      const all: HTMLElement[] = [];
+      collect(document, all);
+      all.forEach((el) => {
+        let cs: CSSStyleDeclaration;
+        try { cs = getComputedStyle(el); } catch { return; }
         const r = el.getBoundingClientRect();
-        const thinTall = r.width > 0 && r.width <= 6 && r.height >= vh * 0.5;
-        const hasOutline = cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0;
-        const hasShadow = cs.boxShadow && cs.boxShadow !== 'none';
-        const blueBorderL = parseFloat(cs.borderLeftWidth) > 0 && isBlue(cs.borderLeftColor);
-        const blueBg = thinTall && isBlue(cs.backgroundColor);
-        if (thinTall || (hasOutline && isBlue(cs.outlineColor)) || (hasShadow && isBlue(cs.boxShadow)) || blueBorderL || blueBg) {
+        const thinTall = r.width > 0 && r.width <= 6 && r.height >= vh * 0.4;
+        const isAccentBlue = isBlue(cs.outlineColor) && !isBlue(cs.borderLeftColor);
+        const hasBlueOutline = cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0 && isBlue(cs.outlineColor);
+        const hasBlueShadow = cs.boxShadow && cs.boxShadow !== 'none' && isBlue(cs.boxShadow);
+        if (thinTall || hasBlueOutline || hasBlueShadow) {
           const id = `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${el.className && typeof el.className === 'string' ? '.' + el.className.split(' ').slice(0, 2).join('.') : ''}`;
-          hits.push(`[${reason}] ${id} | rect(x=${Math.round(r.x)},y=${Math.round(r.y)},w=${Math.round(r.width)},h=${Math.round(r.height)}) | outline=${cs.outline} | boxShadow=${cs.boxShadow.slice(0, 60)} | borderL=${cs.borderLeftWidth} ${cs.borderLeftColor} | bg=${cs.backgroundColor} | pos=${cs.position} z=${cs.zIndex}`);
+          hits.push(`[${reason}] ${id} | rect(x=${Math.round(r.x)},y=${Math.round(r.y)},w=${Math.round(r.width)},h=${Math.round(r.height)}) | outline=${cs.outline} | boxShadow=${cs.boxShadow.slice(0, 70)} | bg=${cs.backgroundColor} | pos=${cs.position} z=${cs.zIndex}`);
         }
       });
       const ae = document.activeElement as HTMLElement | null;
-      const aeInfo = ae ? `${ae.tagName.toLowerCase()}${ae.id ? '#' + ae.id : ''} class=${typeof ae.className === 'string' ? ae.className : ''}` : 'none';
-      console.log(`%c[KK-DIAG ${reason}] activeElement=${aeInfo} | hits=${hits.length}`, 'color:#fff;background:#c0392b;padding:2px');
+      const aeInfo = ae ? `${ae.tagName.toLowerCase()}${ae.id ? '#' + ae.id : ''}` : 'none';
+      console.log(`%c[KK-DIAG ${reason}] activeEl=${aeInfo} hits=${hits.length}`, 'color:#fff;background:#c0392b;padding:2px');
       hits.forEach((h) => console.log('[KK-DIAG]', h));
     };
-    const onFocus = () => requestAnimationFrame(() => scan('window-focus'));
-    const onFocusIn = (e: FocusEvent) => requestAnimationFrame(() => scan('focusin'));
+    const onFocus = () => { scan('focus-sync'); requestAnimationFrame(() => scan('focus-raf')); };
+    const onFocusIn = () => scan('focusin');
+    const onMove = (e: MouseEvent) => { if (e.clientX < 60) scan('mouse-left-edge'); };
     window.addEventListener('focus', onFocus);
     document.addEventListener('focusin', onFocusIn);
-    const iv = setInterval(() => scan('interval'), 1500);
+    document.addEventListener('mousemove', onMove);
+    const iv = setInterval(() => scan('interval'), 2000);
     (window as any).kkScan = scan;
     return () => {
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('mousemove', onMove);
       clearInterval(iv);
     };
   }, []);
