@@ -230,6 +230,54 @@ export default function RootLayout() {
     }
   }, []);
 
+  // TEMP DIAGNOSTIC: hunt for the stray vertical blue line. Scans every element
+  // for a visible outline / box-shadow / blue left-border, or a thin-and-tall
+  // shape, and logs the culprit. Triggered on window focus + focusin + interval.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const isBlue = (c: string) => {
+      if (!c) return false;
+      const m = c.match(/rgba?\(([^)]+)\)/);
+      if (!m) return /blue|#00?7|#1a73|#2563|#3b82|#0a8/i.test(c);
+      const [r, g, b] = m[1].split(',').map((n) => parseFloat(n));
+      return b > 120 && b > r + 30 && b > g + 30;
+    };
+    const scan = (reason: string) => {
+      const vh = window.innerHeight;
+      const hits: string[] = [];
+      const all = document.querySelectorAll('*');
+      all.forEach((node) => {
+        const el = node as HTMLElement;
+        const cs = getComputedStyle(el);
+        const r = el.getBoundingClientRect();
+        const thinTall = r.width > 0 && r.width <= 6 && r.height >= vh * 0.5;
+        const hasOutline = cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0;
+        const hasShadow = cs.boxShadow && cs.boxShadow !== 'none';
+        const blueBorderL = parseFloat(cs.borderLeftWidth) > 0 && isBlue(cs.borderLeftColor);
+        const blueBg = thinTall && isBlue(cs.backgroundColor);
+        if (thinTall || (hasOutline && isBlue(cs.outlineColor)) || (hasShadow && isBlue(cs.boxShadow)) || blueBorderL || blueBg) {
+          const id = `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${el.className && typeof el.className === 'string' ? '.' + el.className.split(' ').slice(0, 2).join('.') : ''}`;
+          hits.push(`[${reason}] ${id} | rect(x=${Math.round(r.x)},y=${Math.round(r.y)},w=${Math.round(r.width)},h=${Math.round(r.height)}) | outline=${cs.outline} | boxShadow=${cs.boxShadow.slice(0, 60)} | borderL=${cs.borderLeftWidth} ${cs.borderLeftColor} | bg=${cs.backgroundColor} | pos=${cs.position} z=${cs.zIndex}`);
+        }
+      });
+      const ae = document.activeElement as HTMLElement | null;
+      const aeInfo = ae ? `${ae.tagName.toLowerCase()}${ae.id ? '#' + ae.id : ''} class=${typeof ae.className === 'string' ? ae.className : ''}` : 'none';
+      console.log(`%c[KK-DIAG ${reason}] activeElement=${aeInfo} | hits=${hits.length}`, 'color:#fff;background:#c0392b;padding:2px');
+      hits.forEach((h) => console.log('[KK-DIAG]', h));
+    };
+    const onFocus = () => requestAnimationFrame(() => scan('window-focus'));
+    const onFocusIn = (e: FocusEvent) => requestAnimationFrame(() => scan('focusin'));
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('focusin', onFocusIn);
+    const iv = setInterval(() => scan('interval'), 1500);
+    (window as any).kkScan = scan;
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('focusin', onFocusIn);
+      clearInterval(iv);
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
