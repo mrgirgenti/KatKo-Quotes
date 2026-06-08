@@ -59,8 +59,15 @@ function injectFocusReset() {
   el.id = STYLE_ID;
   el.textContent = KK_FOCUS_RESET_CSS;
   document.head.appendChild(el);
-  // Layer 2: focus event listener — immediate removal + deferred removal via rAF
-  // to catch RN Web handlers that apply inline outline AFTER the focus event fires.
+  // Layer 2: focus event listener — strips any inline outline/box-shadow RN Web
+  // applies AFTER the focus event fires. NOTE: deliberately does NOT blur the
+  // element or rewrite tabindex. Earlier "nuclear" versions force-blurred every
+  // focused element back to <body> on every focus and rewrote all tabindex="0"
+  // → "-1"; that churn (a) broke keyboard accessibility and (b) repainted the
+  // Replit preview-iframe's own focus ring on every mouse-enter (the stray blue
+  // line is the iframe ring drawn by the parent page — unreachable from CSS here
+  // and absent when the app runs in its own tab). Stripping inline styles is
+  // enough; the CSS in Layer 1 already removes real in-app focus outlines.
   if (!(window as any).__kkFocusListenerBound) {
     (window as any).__kkFocusListenerBound = true;
     const kkStripFocus = (el: HTMLElement | null) => {
@@ -71,68 +78,9 @@ function injectFocusReset() {
     document.addEventListener('focus', (e) => {
       const t = e.target as HTMLElement | null;
       if (!t) return;
-      // Strip outline immediately + via rAF for async RN Web injection
       kkStripFocus(t);
       requestAnimationFrame(() => kkStripFocus(t));
-      // Nuclear: blur any non-form element so no focus state can exist.
-      // setTimeout(0) defers until after press/click handlers have fired,
-      // so tap actions complete before focus is removed.
-      const tag = (t.tagName || '').toLowerCase();
-      if (tag !== 'input' && tag !== 'textarea' && tag !== 'select' && !t.isContentEditable) {
-        setTimeout(() => {
-          if (document.activeElement === t) t.blur();
-        }, 0);
-      }
     }, true);
-  }
-  // Layer 3: MutationObserver — strips tabIndex="0" from any non-form element
-  // the moment it appears in the DOM. Without tabIndex, the browser has no
-  // programmatic way to give these elements keyboard focus; combined with the
-  // blur listener above, this makes stray focus rings impossible.
-  if (!(window as any).__kkTabIndexObserverBound) {
-    (window as any).__kkTabIndexObserverBound = true;
-    const FORM_TAGS = new Set(['input', 'textarea', 'select', 'button', 'a']);
-    const kkStripTabIndex = (node: Element) => {
-      const el = node as HTMLElement;
-      if (!el.tagName) return;
-      const tag = el.tagName.toLowerCase();
-      if (!FORM_TAGS.has(tag) && el.getAttribute('tabindex') === '0') {
-        el.setAttribute('tabindex', '-1');
-      }
-      // Also handle all descendants
-      el.querySelectorAll?.('[tabindex="0"]').forEach((child: Element) => {
-        const childTag = child.tagName.toLowerCase();
-        if (!FORM_TAGS.has(childTag)) {
-          child.setAttribute('tabindex', '-1');
-        }
-      });
-    };
-    const tabMO = new MutationObserver((mutations) => {
-      for (const m of mutations) {
-        for (const node of m.addedNodes) {
-          if (node.nodeType === 1) kkStripTabIndex(node as Element);
-        }
-        // Also handle attribute changes (RN Web may add tabIndex after initial render)
-        if (m.type === 'attributes' && m.attributeName === 'tabindex') {
-          kkStripTabIndex(m.target as Element);
-        }
-      }
-    });
-    const startTabMO = () => {
-      // Strip existing elements immediately
-      document.querySelectorAll('[tabindex="0"]').forEach(kkStripTabIndex);
-      tabMO.observe(document.body, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['tabindex'],
-      });
-    };
-    if (document.body) {
-      startTabMO();
-    } else {
-      document.addEventListener('DOMContentLoaded', startTabMO);
-    }
   }
   // Layer 4: style MutationObserver — catches any inline outline added after render.
   if (!(window as any).__kkStyleObserverBound) {
