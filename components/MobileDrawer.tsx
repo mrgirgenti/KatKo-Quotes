@@ -29,15 +29,15 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const openDrawer = () => {
     setMounted(true);
     Animated.parallel([
-      Animated.timing(tx, { toValue: 0, duration: 220, useNativeDriver: true }),
-      Animated.timing(scrim, { toValue: 1, duration: 220, useNativeDriver: true }),
+      Animated.timing(tx, { toValue: 0, duration: 220, useNativeDriver: false }),
+      Animated.timing(scrim, { toValue: 1, duration: 220, useNativeDriver: false }),
     ]).start();
   };
 
   const closeDrawer = () => {
     Animated.parallel([
-      Animated.timing(tx, { toValue: -DRAWER_W, duration: 200, useNativeDriver: true }),
-      Animated.timing(scrim, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(tx, { toValue: -DRAWER_W, duration: 200, useNativeDriver: false }),
+      Animated.timing(scrim, { toValue: 0, duration: 200, useNativeDriver: false }),
     ]).start(() => setMounted(false));
   };
 
