@@ -230,64 +230,6 @@ export default function RootLayout() {
     }
   }, []);
 
-  // TEMP DIAGNOSTIC: hunt for the stray vertical blue line. Scans every element
-  // for a visible outline / box-shadow / blue left-border, or a thin-and-tall
-  // shape, and logs the culprit. Triggered on window focus + focusin + interval.
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const isBlue = (c: string) => {
-      if (!c) return false;
-      const m = c.match(/rgba?\(([^)]+)\)/);
-      if (!m) return /blue|#00?7|#1a73|#2563|#3b82|#0a8/i.test(c);
-      const [r, g, b] = m[1].split(',').map((n) => parseFloat(n));
-      return b > 120 && b > r + 30 && b > g + 30;
-    };
-    const collect = (root: ParentNode, out: HTMLElement[]) => {
-      root.querySelectorAll('*').forEach((n) => {
-        const el = n as HTMLElement;
-        out.push(el);
-        if (el.shadowRoot) collect(el.shadowRoot, out);
-      });
-    };
-    const scan = (reason: string) => {
-      const vh = window.innerHeight;
-      const hits: string[] = [];
-      const all: HTMLElement[] = [];
-      collect(document, all);
-      all.forEach((el) => {
-        let cs: CSSStyleDeclaration;
-        try { cs = getComputedStyle(el); } catch { return; }
-        const r = el.getBoundingClientRect();
-        const thinTall = r.width > 0 && r.width <= 6 && r.height >= vh * 0.4;
-        const isAccentBlue = isBlue(cs.outlineColor) && !isBlue(cs.borderLeftColor);
-        const hasBlueOutline = cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0 && isBlue(cs.outlineColor);
-        const hasBlueShadow = cs.boxShadow && cs.boxShadow !== 'none' && isBlue(cs.boxShadow);
-        if (thinTall || hasBlueOutline || hasBlueShadow) {
-          const id = `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${el.className && typeof el.className === 'string' ? '.' + el.className.split(' ').slice(0, 2).join('.') : ''}`;
-          hits.push(`[${reason}] ${id} | rect(x=${Math.round(r.x)},y=${Math.round(r.y)},w=${Math.round(r.width)},h=${Math.round(r.height)}) | outline=${cs.outline} | boxShadow=${cs.boxShadow.slice(0, 70)} | bg=${cs.backgroundColor} | pos=${cs.position} z=${cs.zIndex}`);
-        }
-      });
-      const ae = document.activeElement as HTMLElement | null;
-      const aeInfo = ae ? `${ae.tagName.toLowerCase()}${ae.id ? '#' + ae.id : ''}` : 'none';
-      console.log(`%c[KK-DIAG ${reason}] activeEl=${aeInfo} hits=${hits.length}`, 'color:#fff;background:#c0392b;padding:2px');
-      hits.forEach((h) => console.log('[KK-DIAG]', h));
-    };
-    const onFocus = () => { scan('focus-sync'); requestAnimationFrame(() => scan('focus-raf')); };
-    const onFocusIn = () => scan('focusin');
-    const onMove = (e: MouseEvent) => { if (e.clientX < 60) scan('mouse-left-edge'); };
-    window.addEventListener('focus', onFocus);
-    document.addEventListener('focusin', onFocusIn);
-    document.addEventListener('mousemove', onMove);
-    const iv = setInterval(() => scan('interval'), 2000);
-    (window as any).kkScan = scan;
-    return () => {
-      window.removeEventListener('focus', onFocus);
-      document.removeEventListener('focusin', onFocusIn);
-      document.removeEventListener('mousemove', onMove);
-      clearInterval(iv);
-    };
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>

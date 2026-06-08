@@ -7,6 +7,17 @@ description: How to reliably suppress all blue focus rings in this Expo web app 
 
 RN Web renders `<ScrollView>`, `<Pressable>`, and other interactive components as `<div tabIndex="0">`. On focus the browser paints a blue `outline`. When the element overflows the viewport, only one edge is visible — a "vertical blue line" artifact. A full-screen element (like a scrim Pressable) shows both left AND right edges.
 
+## FIRST rule out the Replit-preview iframe before touching app code
+
+A **thin vertical blue line at a FIXED viewport x-position (~40px), full-height, on EVERY page regardless of layout, that flashes when the mouse enters the preview from the LEFT (editor→preview side)** is NOT an app bug. It is **Chrome's focus ring on the Replit preview `<iframe>` itself** — you cannot style across the iframe boundary from inside, which is why no amount of `outline:none`/`box-shadow:none` CSS removes it.
+
+**Definitive triage (do this BEFORE writing any CSS/JS fix):**
+- Add a temp DOM scan on window-focus/focusin/mousemove; if it reports `activeElement=body` and finds NO thin-tall/blue element in the DOM at the moment the line is visible → the line is outside the app DOM.
+- Ask the user to open the app in its **own browser tab** (not the Replit preview pane). If the line **disappears** → confirmed iframe artifact. It also persists in a Chrome **Guest** window (no extensions) but only while inside the preview pane.
+- Extensions (e.g. reading-ruler tools) can *amplify* it (bigger line in normal profile, smaller in incognito) but are not the root cause.
+
+**Conclusion:** End users never see it (published/standalone app has no embedding iframe). Do not chase it with app code. **Why:** wasted multiple sessions adding 4-layer CSS resets that could never work because the line is rendered by the browser around the iframe, outside our stylable DOM.
+
 ## Why CSS-only approaches fail
 
 `outlineStyle: 'none'` as a React Native inline style prop translates to `outline-style: none` on the DOM element's `style` attribute. **RN Web (react-native-web) internally applies focus styles via JavaScript (`element.style.outline = ...`) after the component renders, overwriting our prop.** A stylesheet rule with `!important` does NOT override a JS-set inline style (inline styles always win over stylesheet rules regardless of `!important`).
