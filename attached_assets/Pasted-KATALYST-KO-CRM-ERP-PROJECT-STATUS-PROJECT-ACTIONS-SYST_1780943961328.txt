@@ -1,0 +1,313 @@
+KATALYST KO CRM/ERP
+
+PROJECT STATUS + PROJECT ACTIONS SYSTEM IMPLEMENTATION
+
+Before making changes, review the current Project architecture, Quote architecture, Project Detail page, status fields, workflow buttons, dashboard counts, reporting, filters, automations, and navigation patterns.
+
+The current system was originally built around a linear workflow with direct navigation buttons. We are now transitioning toward a status-driven operational workflow.
+
+The goal is NOT to overcomplicate the system.
+
+The goal is to create a scalable operational framework that supports future Production, Work Orders, Purchasing, Scheduling, Invoicing, and Reporting modules.
+
+==================================================
+PROJECT STATUS ARCHITECTURE
+===========================
+
+Projects represent operational work.
+
+Projects should have their own operational statuses separate from Quote statuses.
+
+Implement the following Project Statuses:
+
+* Accepted
+* Awaiting Artwork
+* Artwork Approval
+* Ready for Production
+* In Production
+* On Hold
+* Completed
+* Delivered
+* Closed
+
+Status Definitions:
+
+Accepted
+Project created from an approved quote.
+
+Awaiting Artwork
+Waiting on artwork or customer assets.
+
+Artwork Approval
+Proof has been sent and customer approval is required.
+
+Ready for Production
+All approvals complete and project is ready to begin production.
+
+In Production
+Production work is actively underway.
+
+On Hold
+Project progress has been paused.
+
+Completed
+Production is finished.
+
+Delivered
+Customer has received the finished product.
+
+Closed
+Administrative and financial completion of the project.
+
+==================================================
+IMPORTANT STATUS RULES
+======================
+
+These statuses should NOT be automatically assigned unless specifically noted.
+
+Users must be able to manually change project status.
+
+Not every business event can be automated.
+
+Examples:
+
+* Customer delays
+* Artwork issues
+* Inventory shortages
+* Schedule changes
+* Internal production delays
+
+Manual operational control is required.
+
+==================================================
+PROJECT ACTIONS SYSTEM
+======================
+
+Create a Project Actions framework.
+
+This should become the primary operational workflow mechanism for projects.
+
+Every project should display:
+
+Current Status
+
+and
+
+Available Actions
+
+The system should present valid actions based on the current project status.
+
+This is not intended to be a rigid workflow engine.
+
+It is intended to guide users through operational progression.
+
+==================================================
+PROJECT DETAIL PAGE
+===================
+
+Add a new Project Actions area near the top of the Project Detail page.
+
+Example:
+
+Current Status:
+In Production
+
+Actions:
+[Actions ▼]
+
+The actions menu should contain status transition actions.
+
+==================================================
+STATUS TRANSITIONS
+==================
+
+Accepted
+
+Available Actions:
+
+* Move to Awaiting Artwork
+* Move to Artwork Approval
+* Move to Ready for Production
+* Move to In Production
+* Place On Hold
+
+Awaiting Artwork
+
+Available Actions:
+
+* Move to Artwork Approval
+* Move to Ready for Production
+* Move to In Production
+* Place On Hold
+
+Artwork Approval
+
+Available Actions:
+
+* Move to Ready for Production
+* Move to In Production
+* Place On Hold
+
+Ready for Production
+
+Available Actions:
+
+* Move to In Production
+* Place On Hold
+
+In Production
+
+Available Actions:
+
+* Mark Completed
+* Place On Hold
+
+On Hold
+
+Available Actions:
+
+* Resume Project
+* Change Hold Reason
+
+Resume Project should allow selecting the status to return to.
+
+Do not assume all projects return to the same stage.
+
+Completed
+
+Available Actions:
+
+* Mark Delivered
+* Reopen Production
+
+Delivered
+
+Available Actions:
+
+* Close Project
+
+Closed
+
+Available Actions:
+
+* Reopen Project (Admin Only)
+
+==================================================
+ON HOLD REQUIREMENTS
+====================
+
+When a project is moved to On Hold:
+
+Require a Hold Reason.
+
+Hold Reasons:
+
+* Waiting on Customer
+* Waiting on Artwork
+* Waiting on Inventory
+* Waiting on Payment
+* Internal Delay
+* Other
+
+Optional Notes field.
+
+Store:
+
+* Hold Reason
+* Hold Notes
+* Date Placed On Hold
+* User Who Placed On Hold
+
+Display this information within the Project Detail page.
+
+==================================================
+DELIVERY METHOD
+===============
+
+Do NOT use delivery method as a project status.
+
+Create a separate Delivery Method field.
+
+Options:
+
+* Pickup
+* Shipping
+* Local Delivery
+
+Examples:
+
+Status = Delivered
+Delivery Method = Pickup
+
+Status = Delivered
+Delivery Method = Shipping
+
+Status = Delivered
+Delivery Method = Local Delivery
+
+Delivery Method should remain independent from Project Status.
+
+==================================================
+PROJECT HISTORY / ACTIVITY TRACKING
+===================================
+
+Every Project Action should create an activity record.
+
+Examples:
+
+Project moved to Awaiting Artwork
+
+Project moved to Artwork Approval
+
+Project placed On Hold
+
+Project resumed
+
+Project marked Completed
+
+Project marked Delivered
+
+Project Closed
+
+Store:
+
+* Timestamp
+* User
+* Previous Status
+* New Status
+* Notes (if applicable)
+
+This activity history will become the foundation for a future project timeline.
+
+==================================================
+FINANCIAL SEPARATION
+====================
+
+Do NOT mix financial statuses with project statuses.
+
+Project Status should remain operational.
+
+Financial status will remain separate and will eventually support:
+
+* Not Invoiced
+* Invoiced
+* Partially Paid
+* Paid
+* Overdue
+
+Do not add these to the Project Status list.
+
+==================================================
+IMPLEMENTATION REVIEW
+=====================
+
+Before implementation:
+
+1. Audit current project workflow buttons.
+2. Identify any existing logic that assumes a linear workflow.
+3. Identify dashboard metrics impacted by status changes.
+4. Identify reporting impacted by status changes.
+5. Identify automations impacted by status changes.
+6. Present findings and implementation plan before making schema changes.
+
+The objective is to evolve Projects from a simple linear workflow into a scalable operational workflow system while maintaining compatibility with future ERP modules.
