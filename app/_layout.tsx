@@ -194,6 +194,24 @@ export default function RootLayout() {
       const cls = typeof el.className === 'string' ? el.className.split(' ').slice(0, 3).join('.') : '';
       return `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}.${cls} | rect(x=${Math.round(r.x)},y=${Math.round(r.y)},w=${Math.round(r.width)},h=${Math.round(r.height)}) | tabindex=${el.getAttribute('tabindex')} | outline=${cs.outline} | outlineColor=${cs.outlineColor} | boxShadow=${cs.boxShadow.slice(0, 80)} | borderL=${cs.borderLeftWidth} ${cs.borderLeftColor}`;
     };
+    const pseudoHit = (el: HTMLElement, which: '::before' | '::after', r: DOMRect, vh: number) => {
+      let cs: CSSStyleDeclaration;
+      try { cs = getComputedStyle(el, which); } catch { return null; }
+      if (!cs || cs.content === 'none' || cs.content === 'normal') {
+        // pseudo with no content can still paint if it has size; only skip if truly empty
+        if (cs.content === 'none') return null;
+      }
+      const blueBg = isBlue(cs.backgroundColor);
+      const blueBorderL = parseFloat(cs.borderLeftWidth) > 0 && isBlue(cs.borderLeftColor);
+      const blueBorderR = parseFloat(cs.borderRightWidth) > 0 && isBlue(cs.borderRightColor);
+      const blueShadow = cs.boxShadow && cs.boxShadow !== 'none' && isBlue(cs.boxShadow);
+      const tallHost = r.height >= vh * 0.3;
+      if ((blueBg || blueBorderL || blueBorderR || blueShadow) && (tallHost || cs.position === 'fixed' || cs.position === 'absolute')) {
+        const tag = (el.tagName || '').toLowerCase();
+        return `${tag}${which} hostRect(x=${Math.round(r.x)},y=${Math.round(r.y)},w=${Math.round(r.width)},h=${Math.round(r.height)}) | pos=${cs.position} | content=${cs.content} | bg=${cs.backgroundColor} | borderL=${cs.borderLeftWidth} ${cs.borderLeftColor} | w=${cs.width} h=${cs.height} | left=${cs.left} | boxShadow=${cs.boxShadow.slice(0,60)}`;
+      }
+      return null;
+    };
     const scan = (reason: string) => {
       const vh = window.innerHeight;
       const hits: string[] = [];
@@ -202,10 +220,15 @@ export default function RootLayout() {
         let cs: CSSStyleDeclaration;
         try { cs = getComputedStyle(el); } catch { return; }
         const r = el.getBoundingClientRect();
-        const thinTall = r.width > 0 && r.width <= 8 && r.height >= vh * 0.3;
+        const tall = r.height >= vh * 0.3;
+        const thinTall = r.width > 0 && r.width <= 8 && tall;
         const blueOutline = cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0 && isBlue(cs.outlineColor);
         const blueShadow = cs.boxShadow && cs.boxShadow !== 'none' && isBlue(cs.boxShadow);
-        if (thinTall || blueOutline || blueShadow) hits.push(`[${reason}] ${desc(el)}`);
+        const blueBorderL = tall && parseFloat(cs.borderLeftWidth) > 0 && isBlue(cs.borderLeftColor);
+        const blueBorderR = tall && parseFloat(cs.borderRightWidth) > 0 && isBlue(cs.borderRightColor);
+        if (thinTall || blueOutline || blueShadow || blueBorderL || blueBorderR) hits.push(`EL ${desc(el)}`);
+        const pb = pseudoHit(el, '::before', r, vh); if (pb) hits.push('PSEUDO ' + pb);
+        const pa = pseudoHit(el, '::after', r, vh); if (pa) hits.push('PSEUDO ' + pa);
       });
       console.log(`%c[KK2 ${reason}] activeEl=${desc(document.activeElement as HTMLElement)} | hits=${hits.length}`, 'color:#fff;background:#0a6;padding:2px');
       hits.forEach((h) => console.log('[KK2]', h));
