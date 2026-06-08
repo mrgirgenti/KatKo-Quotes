@@ -5,4 +5,5 @@
 - [RN-web focus outline](rn-web-focus-outline.md) — focus-ring resets + a FIXED full-height vertical blue line on every page = Replit-PREVIEW-IFRAME ring (not app), gone in own tab; triage before any CSS fix.
 - [Overlay & header patterns](overlay-and-header-patterns.md) — floating menus must use `OverlayMenu`/Modal portal, never absolute siblings (they get clipped); detail pages use shared `PageBackHeader`.
 - [Production plan + dual-status](production-and-status-model.md) — Production design in docs/; UI runs on `frontendStatus` string + `lineItemsData` JSON, NOT the Prisma enums.
+- [Prisma db push drift](prisma-push-drift.md) — db push wants to DROP unrelated drifted columns (e.g. Quote.projectNumber); for additive changes use a targeted ALTER, never --accept-data-loss.
 - [Safari WebKit scrollbar](safari-scrollbar-fix.md) — scrollbar-width:none is Firefox/Chrome only; add *::-webkit-scrollbar{display:none} in both SSR head (+html.tsx) and runtime CSS injection (_layout.tsx) to kill the blue track in Safari.

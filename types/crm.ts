@@ -118,6 +118,7 @@ export interface Organization {
   status: CrmStatus;
   notes?: string;
   hubEnabled?: boolean;
+  hubEverEnabled?: boolean;
   logoUrl?: string;
   internalLogoUrl?: string;
   departments: Department[];

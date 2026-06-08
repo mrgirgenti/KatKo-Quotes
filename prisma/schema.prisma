@@ -127,6 +127,7 @@ model Organization {
   notes                String?
   status               OrganizationStatus @default(ACTIVE)
   hubEnabled           Boolean            @default(false)
+  hubEverEnabled       Boolean            @default(false)
   crmStatus            String             @default("Cold")
   city                 String?
   state                String?

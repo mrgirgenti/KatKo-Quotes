@@ -49,7 +49,7 @@ const HUB_STATUS_CFG: Record<HubStatusKey, { label: string; color: string; bg: s
   'Invite Pending':{ label: 'Invite Pending',color: '#B45309', bg: '#FEF3C7', border: '#FCD34D', dot: '#D97706', Icon: Mail },
   'Pending Setup': { label: 'Pending Setup', color: '#4338CA', bg: '#EEF2FF', border: '#C7D2FE', dot: '#6366F1', Icon: Wrench },
   'No Users':      { label: 'No Users',      color: '#6B7280', bg: '#F3F4F6', border: '#E5E7EB', dot: '#9CA3AF', Icon: UserX },
-  'Disabled':      { label: 'Disabled',      color: '#B91C1C', bg: '#FEE2E2', border: '#FCA5A5', dot: '#EF4444', Icon: Ban },
+  'Disabled':      { label: 'Deactivated',   color: '#B91C1C', bg: '#FEE2E2', border: '#FCA5A5', dot: '#EF4444', Icon: Ban },
 };
 
 const HUB_STATUS_RANK: Record<HubStatusKey, number> = {
@@ -250,7 +250,16 @@ export default function ClientHubsScreen() {
 
   const now = Date.now();
 
-  const decorated = useMemo(() => orgs.map((o) => computeHubStats(o, now)), [orgs, now]);
+  // Only orgs that have a Client Hub now, or had one before (and it was later
+  // turned off), belong on this page. Orgs that never had a hub are managed from
+  // their CRM profile, so listing them all here is just noise.
+  const decorated = useMemo(
+    () =>
+      orgs
+        .filter((o) => o.hubEnabled || o.hubEverEnabled)
+        .map((o) => computeHubStats(o, now)),
+    [orgs, now],
+  );
 
   // ── Metrics ──
   const metrics = useMemo(() => {
@@ -480,11 +489,11 @@ export default function ClientHubsScreen() {
           <ActivityIndicator color={Colors.light.tint} size="large" />
           <Text style={styles.loadingText}>Loading client hubs…</Text>
         </View>
-      ) : orgs.length === 0 ? (
+      ) : decorated.length === 0 ? (
         <View style={styles.emptyState}>
           <Globe size={44} color={Colors.light.border} />
-          <Text style={styles.emptyTitle}>No organizations yet</Text>
-          <Text style={styles.emptyText}>Add organizations in Contacts to manage their Client Hubs here.</Text>
+          <Text style={styles.emptyTitle}>No Client Hubs yet</Text>
+          <Text style={styles.emptyText}>Enable a Client Hub from a client's profile and it will appear here.</Text>
         </View>
       ) : filtered.length === 0 ? (
         <View style={styles.emptyState}>

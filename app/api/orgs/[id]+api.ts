@@ -52,6 +52,7 @@ function toFrontendOrg(org: any, contacts: any[], activityLogs: any[]): Organiza
     campaigns: (org.campaignsData as CampaignAssignment[] | null) || [],
     departments: (org.departmentsData as Department[] | null) || [],
     hubEnabled: org.hubEnabled ?? false,
+    hubEverEnabled: org.hubEverEnabled ?? false,
     logoUrl: org.logoUrl ?? undefined,
     internalLogoUrl: org.internalLogoUrl ?? undefined,
     createdAt: new Date(org.createdAt).toISOString(),
@@ -100,8 +101,9 @@ export async function PUT(request: Request, { id }: { id: string }) {
         "internalLogoUrl" = $12,
         address = $13,
         website = $14,
+        "hubEverEnabled" = $15,
         "updatedAt" = NOW()
-      WHERE id = $15 RETURNING *`,
+      WHERE id = $16 RETURNING *`,
       [
         body.name ?? existing.name,
         body.type !== undefined ? body.type : existing.type,
@@ -117,6 +119,7 @@ export async function PUT(request: Request, { id }: { id: string }) {
         body.internalLogoUrl !== undefined ? (body.internalLogoUrl || null) : (existing.internalLogoUrl ?? null),
         body.address !== undefined ? (body.address || null) : (existing.address ?? null),
         body.website !== undefined ? (body.website || null) : (existing.website ?? null),
+        body.hubEnabled === true ? true : (existing.hubEverEnabled ?? false),
         id,
       ],
     );
