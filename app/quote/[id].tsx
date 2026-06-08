@@ -87,7 +87,7 @@ export default function QuoteDetailScreen() {
   const [resumeModalVisible, setResumeModalVisible] = useState(false);
   const [holdReasonDraft, setHoldReasonDraft] = useState<string>('');
   const [holdNotesDraft, setHoldNotesDraft] = useState('');
-  const [opActivities, setOpActivities] = useState<Array<{ id: string; actionType: string; summary: string; createdAt: string }>>([]);
+  const [opActivities, setOpActivities] = useState<Array<{ id: string; actionType: string; summary: string; createdAt: string; metadata?: { fromStatus?: string | null; toStatus?: string | null; holdReason?: string | null; holdNotes?: string | null; actorName?: string | null } | null }>>([]);
 
   interface ProjectFile {
     id: string;
@@ -148,7 +148,7 @@ export default function QuoteDetailScreen() {
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (cancelled || !data?.activities) return;
-        const ops = (data.activities as Array<{ id: string; actionType: string; summary: string; createdAt: string }>)
+        const ops = (data.activities as Array<{ id: string; actionType: string; summary: string; createdAt: string; metadata?: any }>)
           .filter(a => a.actionType === 'operational_status_change' || a.actionType === 'operational_on_hold');
         setOpActivities(ops);
       })
@@ -1421,7 +1421,6 @@ export default function QuoteDetailScreen() {
 
   const renderOperationalPanel = () => {
     if (!quote) return null;
-    if (!opCurrent && !opEligible) return null;
     const cfg = opCurrent ? OPERATIONAL_STATUS_CONFIG[opCurrent] : null;
     const indicators: Array<{ key: 'paymentReceived' | 'artworkReceived' | 'proofApproved'; label: string; value: boolean }> = [
       { key: 'paymentReceived', label: 'Payment Received', value: !!quote.paymentReceived },
@@ -1448,13 +1447,17 @@ export default function QuoteDetailScreen() {
             <View style={[opStyles.statusDot, { backgroundColor: cfg.color }]} />
             <Text style={[opStyles.statusBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
           </View>
-        ) : (
+        ) : opEligible ? (
           <View style={opStyles.startWrap}>
             <Text style={opStyles.startHint}>This project isn&apos;t being tracked operationally yet.</Text>
             <TouchableOpacity style={opStyles.startBtn} onPress={handleStartOpTracking} disabled={isSettingOperationalStatus}>
               <ArrowRight size={16} color="#fff" />
               <Text style={opStyles.startBtnText}>Start Operational Tracking</Text>
             </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={opStyles.startWrap}>
+            <Text style={opStyles.startHint}>Operational tracking begins automatically once this project becomes active.</Text>
           </View>
         )}
 
@@ -1474,6 +1477,19 @@ export default function QuoteDetailScreen() {
           </View>
         ) : null}
 
+        <Text style={opStyles.sectionLabel}>Delivery Method</Text>
+        <View style={opStyles.chipRow}>
+          {DELIVERY_METHODS.map((m) => {
+            const active = quote.deliveryMethod === m;
+            return (
+              <TouchableOpacity key={m} style={[opStyles.chip, active && opStyles.chipActive]} onPress={() => handleSelectDelivery(m)}>
+                <Truck size={14} color={active ? '#fff' : Colors.light.tint} />
+                <Text style={[opStyles.chipText, active && opStyles.chipTextActive]}>{m}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         {opCurrent ? (
           <>
             <Text style={opStyles.sectionLabel}>Operational Summary</Text>
@@ -1492,19 +1508,6 @@ export default function QuoteDetailScreen() {
               </View>
             </View>
 
-            <Text style={opStyles.sectionLabel}>Delivery Method</Text>
-            <View style={opStyles.chipRow}>
-              {DELIVERY_METHODS.map((m) => {
-                const active = quote.deliveryMethod === m;
-                return (
-                  <TouchableOpacity key={m} style={[opStyles.chip, active && opStyles.chipActive]} onPress={() => handleSelectDelivery(m)}>
-                    <Truck size={14} color={active ? '#fff' : Colors.light.tint} />
-                    <Text style={[opStyles.chipText, active && opStyles.chipTextActive]}>{m}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
             <Text style={opStyles.sectionLabel}>Indicators</Text>
             <View style={opStyles.indicatorRow}>
               {indicators.map((ind) => (
@@ -1520,15 +1523,26 @@ export default function QuoteDetailScreen() {
               <>
                 <Text style={opStyles.sectionLabel}>Status History</Text>
                 <View style={opStyles.historyList}>
-                  {opActivities.slice(0, 8).map((a) => (
-                    <View key={a.id} style={opStyles.historyItem}>
-                      <View style={opStyles.historyDot} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={opStyles.historyText}>{a.summary}</Text>
-                        <Text style={opStyles.historyDate}>{new Date(a.createdAt).toLocaleString()}</Text>
+                  {opActivities.slice(0, 8).map((a) => {
+                    const m = a.metadata || {};
+                    const from = m.fromStatus || 'Not started';
+                    const to = m.toStatus || '—';
+                    const notes = m.holdNotes || null;
+                    const reason = m.holdReason || null;
+                    return (
+                      <View key={a.id} style={opStyles.historyItem}>
+                        <View style={opStyles.historyDot} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={opStyles.historyText}>{from} → {to}</Text>
+                          <Text style={opStyles.historyMeta}>
+                            {m.actorName || 'Someone'} · {new Date(a.createdAt).toLocaleString()}
+                          </Text>
+                          {reason ? <Text style={opStyles.historyMeta}>Reason: {reason}</Text> : null}
+                          {notes ? <Text style={opStyles.historyNotes}>{notes}</Text> : null}
+                        </View>
                       </View>
-                    </View>
-                  ))}
+                    );
+                  })}
                 </View>
               </>
             ) : null}
@@ -3578,8 +3592,10 @@ const opStyles = StyleSheet.create({
   historyList: { gap: 10 },
   historyItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   historyDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.light.tint, marginTop: 5 },
-  historyText: { fontSize: 13, color: '#374151' },
+  historyText: { fontSize: 13, color: '#374151', fontWeight: '600' },
   historyDate: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
+  historyMeta: { fontSize: 11, color: '#6B7280', marginTop: 2 },
+  historyNotes: { fontSize: 12, color: '#374151', marginTop: 2, fontStyle: 'italic' },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.35)',
