@@ -126,6 +126,7 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
         ...q,
         status: 'active',
         activeDate: dateStr,
+        operationalStatus: q.operationalStatus || 'Accepted',
         salesData: {
           convertedDate: dateStr,
           completedDate: '',
@@ -334,6 +335,75 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
     onSuccess: invalidateQuotes,
   });
 
+  const actorName = currentUser?.name || 'Someone';
+
+  const setOperationalStatusMutation = useMutation({
+    mutationFn: async ({
+      quoteId,
+      status,
+      holdReason,
+      holdNotes,
+    }: {
+      quoteId: string;
+      status: import('@/types/quote').OperationalProjectStatus;
+      holdReason?: string | null;
+      holdNotes?: string | null;
+    }) => {
+      const current = quotesQuery.data || [];
+      const q = current.find((x) => x.id === quoteId);
+      if (!q) throw new Error('Quote not found');
+      const goingOnHold = status === 'On Hold';
+      const updated: Quote = {
+        ...q,
+        operationalStatus: status,
+        holdReason: goingOnHold ? (holdReason ?? null) : null,
+        holdNotes: goingOnHold ? (holdNotes ?? null) : null,
+        holdPlacedAt: goingOnHold ? new Date().toISOString() : null,
+        holdPlacedBy: goingOnHold ? actorName : null,
+      };
+      return apiFetch(`/api/projects/${quoteId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ...updated, actorName }),
+      });
+    },
+    onSuccess: invalidateQuotes,
+  });
+
+  const setDeliveryMethodMutation = useMutation({
+    mutationFn: async ({
+      quoteId,
+      deliveryMethod,
+    }: { quoteId: string; deliveryMethod: import('@/types/quote').DeliveryMethod | null }) => {
+      const current = quotesQuery.data || [];
+      const q = current.find((x) => x.id === quoteId);
+      if (!q) throw new Error('Quote not found');
+      const updated: Quote = { ...q, deliveryMethod };
+      return apiFetch(`/api/projects/${quoteId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ...updated, actorName }),
+      });
+    },
+    onSuccess: invalidateQuotes,
+  });
+
+  const setIndicatorMutation = useMutation({
+    mutationFn: async ({
+      quoteId,
+      key,
+      value,
+    }: { quoteId: string; key: 'paymentReceived' | 'artworkReceived' | 'proofApproved'; value: boolean }) => {
+      const current = quotesQuery.data || [];
+      const q = current.find((x) => x.id === quoteId);
+      if (!q) throw new Error('Quote not found');
+      const updated: Quote = { ...q, [key]: value };
+      return apiFetch(`/api/projects/${quoteId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ...updated, actorName }),
+      });
+    },
+    onSuccess: invalidateQuotes,
+  });
+
   // Treat "no user loaded yet" as admin so quotes are visible during initialization.
   // Only enforce per-user filtering once a real non-admin user is confirmed.
   const isAdmin = !currentUser || currentUser.role === 'org_admin';
@@ -368,6 +438,11 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
     lockSale: lockSaleMutation.mutate,
     unlockSale: unlockSaleMutation.mutate,
     markExportedToSheets: markExportedToSheetsMutation.mutate,
+    setOperationalStatus: setOperationalStatusMutation.mutate,
+    setOperationalStatusAsync: setOperationalStatusMutation.mutateAsync,
+    isSettingOperationalStatus: setOperationalStatusMutation.isPending,
+    setDeliveryMethod: setDeliveryMethodMutation.mutate,
+    setIndicator: setIndicatorMutation.mutate,
     isAdding: addQuoteMutation.isPending,
     isConverting: convertToActiveMutation.isPending,
     isLocking: lockSaleMutation.isPending,

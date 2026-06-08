@@ -36,7 +36,7 @@ import {
 import Colors from '@/constants/colors';
 import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
 import { useQuotes } from '@/contexts/QuotesContext';
-import { Quote, QuoteStatus, getEffectiveStatus, STATUS_CONFIG } from '@/types/quote';
+import { Quote, QuoteStatus, getEffectiveStatus, STATUS_CONFIG, OperationalProjectStatus, OPERATIONAL_STATUS_CONFIG, OPERATIONAL_STATUSES } from '@/types/quote';
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
 import { generateAndSharePDF, printQuote } from '@/utils/pdfGenerator';
@@ -62,6 +62,15 @@ function StatusBadge({ status }: { status: QuoteStatus }) {
   return (
     <View style={[styles.badge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
       <Text style={[styles.badgeText, { color: cfg.color }]}>{cfg.label}</Text>
+    </View>
+  );
+}
+
+function OpBadge({ status }: { status: OperationalProjectStatus }) {
+  const cfg = OPERATIONAL_STATUS_CONFIG[status];
+  return (
+    <View style={[styles.opBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+      <Text style={[styles.opBadgeText, { color: cfg.color }]} numberOfLines={1}>{cfg.label}</Text>
     </View>
   );
 }
@@ -138,6 +147,7 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
         </View>
         <View style={styles.colStatus}>
           <StatusBadge status={effectiveStatus} />
+          {quote.operationalStatus ? <OpBadge status={quote.operationalStatus as OperationalProjectStatus} /> : null}
         </View>
         <View style={styles.colOrderDate}>
           <Text style={styles.tableDate}>{formatDate(quote.orderDate)}</Text>
@@ -333,6 +343,7 @@ export default function ProjectsScreen() {
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [minTotal, setMinTotal] = useState('');
   const [maxTotal, setMinMax] = useState('');
+  const [opFilter, setOpFilter] = useState<'all' | OperationalProjectStatus>('all');
   const [deleteTarget, setDeleteTarget] = useState<Quote | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteVisible, setBulkDeleteVisible] = useState(false);
@@ -374,6 +385,10 @@ export default function ProjectsScreen() {
 
     if (statusFilter !== 'all') {
       list = list.filter(({ effectiveStatus }) => effectiveStatus === statusFilter);
+    }
+
+    if (opFilter !== 'all') {
+      list = list.filter(({ quote }) => quote.operationalStatus === opFilter);
     }
 
     if (search.trim()) {
@@ -432,7 +447,7 @@ export default function ProjectsScreen() {
     });
 
     return list;
-  }, [resolvedProjects, statusFilter, search, minTotal, maxTotal, sortField, sortDir]);
+  }, [resolvedProjects, statusFilter, opFilter, search, minTotal, maxTotal, sortField, sortDir]);
 
   const toggleSort = useCallback((field: SortField) => {
     if (sortField === field) {
@@ -606,6 +621,7 @@ export default function ProjectsScreen() {
   const activeFilterCount = [
     minTotal,
     maxTotal,
+    opFilter !== 'all' ? opFilter : '',
   ].filter(Boolean).length;
 
   const SortBtn = ({ field, label }: { field: SortField; label: string }) => (
@@ -760,10 +776,31 @@ export default function ProjectsScreen() {
               </View>
               <TouchableOpacity
                 style={styles.clearFiltersBtn}
-                onPress={() => { setMinTotal(''); setMinMax(''); }}
+                onPress={() => { setMinTotal(''); setMinMax(''); setOpFilter('all'); }}
               >
                 <Text style={styles.clearFiltersBtnText}>Clear</Text>
               </TouchableOpacity>
+            </View>
+            <Text style={[styles.filterLabel, { marginTop: 6 }]}>Operational Status</Text>
+            <View style={styles.opFilterRow}>
+              <TouchableOpacity
+                style={[styles.opFilterChip, opFilter === 'all' && styles.opFilterChipActive]}
+                onPress={() => setOpFilter('all')}
+              >
+                <Text style={[styles.opFilterChipText, opFilter === 'all' && styles.opFilterChipTextActive]}>All</Text>
+              </TouchableOpacity>
+              {OPERATIONAL_STATUSES.map((s) => {
+                const active = opFilter === s;
+                return (
+                  <TouchableOpacity
+                    key={s}
+                    style={[styles.opFilterChip, active && styles.opFilterChipActive]}
+                    onPress={() => setOpFilter(s)}
+                  >
+                    <Text style={[styles.opFilterChipText, active && styles.opFilterChipTextActive]}>{s}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         )}
@@ -1002,6 +1039,13 @@ const styles = StyleSheet.create({
 
   badge: { alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 3, borderRadius: DS.radius.pill, borderWidth: 1 },
   badgeText: { fontSize: 11, fontWeight: '700' },
+  opBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: DS.radius.pill, borderWidth: 1, marginTop: 4, maxWidth: 150 },
+  opBadgeText: { fontSize: 10, fontWeight: '700' },
+  opFilterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  opFilterChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: DS.radius.pill, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: Colors.light.background },
+  opFilterChipActive: { borderColor: Colors.light.tint, backgroundColor: '#FFF4EE' },
+  opFilterChipText: { fontSize: 12, color: Colors.light.textSecondary, fontWeight: '600' },
+  opFilterChipTextActive: { color: Colors.light.tint },
 
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 40 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.light.text },

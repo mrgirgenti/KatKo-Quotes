@@ -39,8 +39,19 @@ function toFrontendQuote(p: any): Quote {
     notesClient: p.notesClient ?? undefined,
     waveInvoiceLink: p.waveInvoiceLink ?? undefined,
     projectNumber: p.projectNumber ?? undefined,
+    operationalStatus: p.operationalStatus ?? null,
+    holdReason: p.holdReason ?? null,
+    holdNotes: p.holdNotes ?? null,
+    holdPlacedAt: p.holdPlacedAt ?? null,
+    holdPlacedBy: p.holdPlacedBy ?? null,
+    deliveryMethod: p.deliveryMethod ?? null,
+    paymentReceived: p.paymentReceived ?? false,
+    artworkReceived: p.artworkReceived ?? false,
+    proofApproved: p.proofApproved ?? false,
   } as Quote;
 }
+
+const PAID_OR_LATER = new Set(['paid', 'active', 'production_started', 'completed']);
 
 function frontendStatusToDbStatus(s: string) {
   switch (s) {
@@ -124,10 +135,33 @@ export async function PUT(request: Request, { id }: { id: string }) {
     const body: Quote = await request.json();
 
     const prevResult = await pool.query(
-      `SELECT "frontendStatus", "organizationId", title FROM "Project" WHERE id = $1`,
+      `SELECT "frontendStatus", "organizationId", title,
+              "operationalStatus", "holdReason", "holdNotes", "holdPlacedAt", "holdPlacedBy",
+              "deliveryMethod", "paymentReceived", "artworkReceived", "proofApproved"
+       FROM "Project" WHERE id = $1`,
       [id],
     );
     const prev = prevResult.rows[0];
+    const b = body as any;
+
+    // Operational fields are preserved when the caller omits them (undefined),
+    // so generic project saves never wipe operational state.
+    const keep = <T>(incoming: T | undefined, existing: T): T =>
+      incoming === undefined ? existing : incoming;
+
+    const operationalStatus = keep(b.operationalStatus, prev?.operationalStatus ?? null);
+    const holdReason = keep(b.holdReason, prev?.holdReason ?? null);
+    const holdNotes = keep(b.holdNotes, prev?.holdNotes ?? null);
+    const holdPlacedAt = keep(b.holdPlacedAt, prev?.holdPlacedAt ?? null);
+    const holdPlacedBy = keep(b.holdPlacedBy, prev?.holdPlacedBy ?? null);
+    const deliveryMethod = keep(b.deliveryMethod, prev?.deliveryMethod ?? null);
+    // Payment auto-sets true once the project reaches a paid-or-later sales status.
+    // Use the effective status (incoming if present, otherwise the existing one) so
+    // partial saves that omit status still upgrade an already paid-or-later project.
+    const effectiveStatus = body.status ?? prev?.frontendStatus;
+    const paymentReceived = keep(b.paymentReceived, prev?.paymentReceived ?? false) || PAID_OR_LATER.has(effectiveStatus);
+    const artworkReceived = keep(b.artworkReceived, prev?.artworkReceived ?? false);
+    const proofApproved = keep(b.proofApproved, prev?.proofApproved ?? false);
 
     const result = await pool.query(
       `UPDATE "Project" SET
@@ -139,6 +173,9 @@ export async function PUT(request: Request, { id }: { id: string }) {
         "activeDate" = $16, "isLocked" = $17, "lockedDate" = $18,
         "exportedToSheets" = $19, "exportedToSheetsDate" = $20,
         "quoteSentAt" = $21, "waveInvoiceLink" = $22,
+        "operationalStatus" = $24, "holdReason" = $25, "holdNotes" = $26,
+        "holdPlacedAt" = $27, "holdPlacedBy" = $28, "deliveryMethod" = $29,
+        "paymentReceived" = $30, "artworkReceived" = $31, "proofApproved" = $32,
         "updatedAt" = NOW()
       WHERE id = $23 RETURNING *`,
       [
@@ -165,6 +202,15 @@ export async function PUT(request: Request, { id }: { id: string }) {
         (body as any).quoteSentAt ?? null,
         (body as any).waveInvoiceLink ?? null,
         id,
+        operationalStatus,
+        holdReason,
+        holdNotes,
+        holdPlacedAt,
+        holdPlacedBy,
+        deliveryMethod,
+        paymentReceived,
+        artworkReceived,
+        proofApproved,
       ],
     );
     if (!result.rows[0]) return Response.json({ error: 'Not found' }, { status: 404 });
@@ -173,6 +219,34 @@ export async function PUT(request: Request, { id }: { id: string }) {
     const newStatus = updated.frontendStatus as string;
     const oldStatus = prev?.frontendStatus as string | undefined;
     const orgId = updated.organizationId as string | null;
+
+    // Operational status transition logging (independent of orgId — keyed on projectId).
+    const prevOperational = (prev?.operationalStatus ?? null) as string | null;
+    if (operationalStatus && operationalStatus !== prevOperational) {
+      const actorName = (b.actorName as string | undefined) || 'Someone';
+      const isHold = operationalStatus === 'On Hold';
+      const summary = isHold
+        ? `${actorName} placed "${updated.title || 'Untitled'}" On Hold${holdReason ? ` (${holdReason})` : ''}`
+        : `${actorName} set status to ${operationalStatus}${prevOperational ? ` (from ${prevOperational})` : ''}`;
+      pool.query(
+        `INSERT INTO "ActivityLog" (id, "organizationId", "projectId", "actionType", "actionSummary", metadata, "createdAt")
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5::jsonb, NOW())`,
+        [
+          orgId,
+          id,
+          isHold ? 'operational_on_hold' : 'operational_status_change',
+          summary,
+          JSON.stringify({
+            projectName: updated.title,
+            fromStatus: prevOperational,
+            toStatus: operationalStatus,
+            holdReason: holdReason ?? null,
+            holdNotes: holdNotes ?? null,
+            actorName,
+          }),
+        ],
+      ).catch((err) => console.error('[PUT /api/projects/:id] operational ActivityLog insert failed:', err));
+    }
 
     if (orgId && newStatus && oldStatus && newStatus !== oldStatus) {
       const activityType = STATUS_TO_ACTIVITY[newStatus];

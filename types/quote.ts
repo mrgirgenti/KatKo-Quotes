@@ -124,7 +124,90 @@ export interface Quote {
   quoteSentAt?: string;
   notesClient?: string;
   waveInvoiceLink?: string;
+  operationalStatus?: OperationalProjectStatus | null;
+  holdReason?: string | null;
+  holdNotes?: string | null;
+  holdPlacedAt?: string | null;
+  holdPlacedBy?: string | null;
+  deliveryMethod?: DeliveryMethod | null;
+  paymentReceived?: boolean;
+  artworkReceived?: boolean;
+  proofApproved?: boolean;
 }
+
+export type OperationalProjectStatus =
+  | 'Accepted'
+  | 'Awaiting Artwork'
+  | 'Artwork Approval'
+  | 'Awaiting Payment'
+  | 'Ready for Production'
+  | 'In Production'
+  | 'On Hold'
+  | 'Completed'
+  | 'Delivered'
+  | 'Closed';
+
+export type DeliveryMethod = 'Pickup' | 'Shipping' | 'Local Delivery';
+
+export type HoldReason =
+  | 'Waiting on Customer'
+  | 'Waiting on Artwork'
+  | 'Waiting on Inventory'
+  | 'Waiting on Payment'
+  | 'Internal Delay'
+  | 'Other';
+
+export const OPERATIONAL_STATUSES: OperationalProjectStatus[] = [
+  'Accepted',
+  'Awaiting Artwork',
+  'Artwork Approval',
+  'Awaiting Payment',
+  'Ready for Production',
+  'In Production',
+  'On Hold',
+  'Completed',
+  'Delivered',
+  'Closed',
+];
+
+export const OPERATIONAL_STATUS_CONFIG: Record<OperationalProjectStatus, { label: string; color: string; bg: string; borderColor: string }> = {
+  'Accepted':            { label: 'Accepted',            color: '#1D4ED8', bg: '#DBEAFE', borderColor: '#93C5FD' },
+  'Awaiting Artwork':    { label: 'Awaiting Artwork',    color: '#92400E', bg: '#FEF3C7', borderColor: '#FDE68A' },
+  'Artwork Approval':    { label: 'Artwork Approval',    color: '#6D28D9', bg: '#EDE9FE', borderColor: '#C4B5FD' },
+  'Awaiting Payment':    { label: 'Awaiting Payment',    color: '#B45309', bg: '#FEF3C7', borderColor: '#FCD34D' },
+  'Ready for Production': { label: 'Ready for Production', color: '#0F766E', bg: '#CCFBF1', borderColor: '#5EEAD4' },
+  'In Production':       { label: 'In Production',        color: '#FFFFFF', bg: '#FF5A00', borderColor: '#FF5A00' },
+  'On Hold':            { label: 'On Hold',             color: '#FFFFFF', bg: '#DC2626', borderColor: '#DC2626' },
+  'Completed':          { label: 'Completed',           color: '#FFFFFF', bg: '#16A34A', borderColor: '#16A34A' },
+  'Delivered':          { label: 'Delivered',           color: '#FFFFFF', bg: '#059669', borderColor: '#059669' },
+  'Closed':             { label: 'Closed',              color: '#374151', bg: '#E5E7EB', borderColor: '#D1D5DB' },
+};
+
+// Logical next-step transitions shown to normal (non-admin) users.
+// On Hold is offered separately and is always available; admins can jump anywhere.
+export const OPERATIONAL_NEXT: Record<OperationalProjectStatus, OperationalProjectStatus[]> = {
+  'Accepted':            ['Awaiting Artwork'],
+  'Awaiting Artwork':    ['Artwork Approval'],
+  'Artwork Approval':    ['Awaiting Payment'],
+  'Awaiting Payment':    ['Ready for Production'],
+  'Ready for Production': ['In Production'],
+  'In Production':       ['Completed'],
+  'On Hold':            [],
+  'Completed':          ['Delivered'],
+  'Delivered':          ['Closed'],
+  'Closed':             [],
+};
+
+export const HOLD_REASONS: HoldReason[] = [
+  'Waiting on Customer',
+  'Waiting on Artwork',
+  'Waiting on Inventory',
+  'Waiting on Payment',
+  'Internal Delay',
+  'Other',
+];
+
+export const DELIVERY_METHODS: DeliveryMethod[] = ['Pickup', 'Shipping', 'Local Delivery'];
 
 export interface SalesCalculations {
   actualCOG: number;

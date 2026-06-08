@@ -260,6 +260,15 @@ model Project {
   exportedToSheetsDate String?
   quoteSentAt      String?
   waveInvoiceLink  String?
+  operationalStatus String?
+  holdReason       String?
+  holdNotes        String?
+  holdPlacedAt     String?
+  holdPlacedBy     String?
+  deliveryMethod   String?
+  paymentReceived  Boolean       @default(false)
+  artworkReceived  Boolean       @default(false)
+  proofApproved    Boolean       @default(false)
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 

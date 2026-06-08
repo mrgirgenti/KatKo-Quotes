@@ -91,6 +91,14 @@ export async function POST(request: Request) {
        RETURNING *`,
       [orgId, projectId || null, uploadedByUserId || null, fileTypeParam, fileEntry.name, storageKey, mimeType, buffer.length, visibility]
     );
+    // Auto-update the operational "Artwork Received" indicator when artwork is
+    // uploaded against a project. Non-fatal; never blocks the upload response.
+    if (projectId && fileTypeParam === 'ARTWORK') {
+      await client.query(
+        `UPDATE "Project" SET "artworkReceived" = true WHERE id = $1 AND "artworkReceived" = false`,
+        [projectId],
+      ).catch((err) => console.error('[POST /api/files] artworkReceived auto-set failed:', err));
+    }
     return Response.json({ file: result.rows[0] }, { status: 201 });
   } finally {
     client.release();

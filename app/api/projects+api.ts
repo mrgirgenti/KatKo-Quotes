@@ -46,6 +46,15 @@ function toFrontendQuote(p: any): Quote {
     quoteSentAt: p.quoteSentAt ?? undefined,
     notesClient: p.notesClient ?? undefined,
     waveInvoiceLink: p.waveInvoiceLink ?? undefined,
+    operationalStatus: p.operationalStatus ?? null,
+    holdReason: p.holdReason ?? null,
+    holdNotes: p.holdNotes ?? null,
+    holdPlacedAt: p.holdPlacedAt ?? null,
+    holdPlacedBy: p.holdPlacedBy ?? null,
+    deliveryMethod: p.deliveryMethod ?? null,
+    paymentReceived: p.paymentReceived ?? false,
+    artworkReceived: p.artworkReceived ?? false,
+    proofApproved: p.proofApproved ?? false,
   } as Quote;
 }
 

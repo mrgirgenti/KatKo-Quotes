@@ -56,7 +56,7 @@ import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { formatCurrency, calculateLineItemSubtotal, getTotalQuantity } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
-import { LineItem, SIZE_LABELS, GarmentVariant, STATUS_CONFIG, QuoteStatus } from '@/types/quote';
+import { LineItem, SIZE_LABELS, GarmentVariant, STATUS_CONFIG, QuoteStatus, OperationalProjectStatus, DeliveryMethod, OPERATIONAL_STATUSES, OPERATIONAL_STATUS_CONFIG, OPERATIONAL_NEXT, HOLD_REASONS, DELIVERY_METHODS } from '@/types/quote';
 import { useUser } from '@/contexts/UserContext';
 import { useCrm } from '@/contexts/CrmContext';
 import { generateAndSharePDF, printQuote, generateWorkOrderPDFs } from '@/utils/pdfGenerator';
@@ -67,7 +67,7 @@ import { exportSingleSaleToSheets } from '@/utils/googleSheetsExport';
 export default function QuoteDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { quotes, sales, convertToSale, convertToQuote, deleteQuote, isConverting, markExportedToSheets, lockSale, projects, startProduction, isLoading: quotesLoading, updateQuoteAsync } = useQuotes();
+  const { quotes, sales, convertToSale, convertToQuote, deleteQuote, isConverting, markExportedToSheets, lockSale, projects, startProduction, isLoading: quotesLoading, updateQuoteAsync, setOperationalStatus, setDeliveryMethod, setIndicator, isSettingOperationalStatus } = useQuotes();
   const { currentUser } = useUser();
   const { orgs } = useCrm();
   const [toastVisible, setToastVisible] = useState(false);
@@ -82,6 +82,12 @@ export default function QuoteDetailScreen() {
   const [isSavingWaveLink, setIsSavingWaveLink] = useState(false);
   const [waveLinkCopied, setWaveLinkCopied] = useState(false);
   const [emailCopied, setEmailCopied] = useState(false);
+  const [opMenuVisible, setOpMenuVisible] = useState(false);
+  const [holdModalVisible, setHoldModalVisible] = useState(false);
+  const [resumeModalVisible, setResumeModalVisible] = useState(false);
+  const [holdReasonDraft, setHoldReasonDraft] = useState<string>('');
+  const [holdNotesDraft, setHoldNotesDraft] = useState('');
+  const [opActivities, setOpActivities] = useState<Array<{ id: string; actionType: string; summary: string; createdAt: string }>>([]);
 
   interface ProjectFile {
     id: string;
@@ -134,6 +140,21 @@ export default function QuoteDetailScreen() {
       .then(data => { if (data?.files) setProjectFiles(data.files); })
       .catch(() => {});
   }, [quote?.id, quote?.orgId]);
+
+  useEffect(() => {
+    if (!quote?.id) return;
+    let cancelled = false;
+    fetch(`/api/projects/${quote.id}/activity`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (cancelled || !data?.activities) return;
+        const ops = (data.activities as Array<{ id: string; actionType: string; summary: string; createdAt: string }>)
+          .filter(a => a.actionType === 'operational_status_change' || a.actionType === 'operational_on_hold');
+        setOpActivities(ops);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [quote?.id, quote?.operationalStatus, quote?.holdReason]);
 
   const linkedOrg = useMemo(() => {
     if (!quote) return undefined;
@@ -1323,6 +1344,200 @@ export default function QuoteDetailScreen() {
     );
   };
 
+  const opCurrent = ((quote?.operationalStatus as OperationalProjectStatus | null) || null);
+  const opOnHold = opCurrent === 'On Hold';
+  const opEligible = ['paid', 'active', 'production_started', 'completed'].includes(quote?.status);
+  const isOpAdmin = !currentUser || currentUser.role === 'org_admin';
+
+  const opActionOptions: OperationalProjectStatus[] = (() => {
+    if (!opCurrent) return [];
+    if (isOpAdmin) return OPERATIONAL_STATUSES.filter((s) => s !== opCurrent);
+    const next = [...(OPERATIONAL_NEXT[opCurrent] || [])];
+    if (!opOnHold && !next.includes('On Hold')) next.push('On Hold');
+    return next;
+  })();
+
+  // Resume targets: admins can return to any status; non-admins resume into the
+  // active workflow only (closeout statuses stay admin-only), matching the
+  // role-aware Actions menu.
+  const NON_ADMIN_RESUME: OperationalProjectStatus[] = [
+    'Accepted', 'Awaiting Artwork', 'Artwork Approval', 'Awaiting Payment',
+    'Ready for Production', 'In Production',
+  ];
+  const opResumeOptions: OperationalProjectStatus[] = isOpAdmin
+    ? OPERATIONAL_STATUSES.filter((s) => s !== 'On Hold')
+    : NON_ADMIN_RESUME;
+
+  const showOpToast = (msg: string) => { setToastMessage(msg); setToastVisible(true); };
+
+  const handleStartOpTracking = () => {
+    if (!quote) return;
+    setOperationalStatus({ quoteId: quote.id, status: 'Accepted' });
+    showOpToast('Operational tracking started');
+  };
+
+  const handleSelectOpAction = (status: OperationalProjectStatus) => {
+    setOpMenuVisible(false);
+    if (!quote) return;
+    if (status === 'On Hold') {
+      setHoldReasonDraft(HOLD_REASONS[0]);
+      setHoldNotesDraft('');
+      setHoldModalVisible(true);
+      return;
+    }
+    setOperationalStatus({ quoteId: quote.id, status });
+    showOpToast(`Status updated to ${status}`);
+  };
+
+  const handleConfirmHold = () => {
+    if (!quote) return;
+    if (!holdReasonDraft) { showOpToast('Select a hold reason'); return; }
+    setOperationalStatus({
+      quoteId: quote.id,
+      status: 'On Hold',
+      holdReason: holdReasonDraft,
+      holdNotes: holdNotesDraft.trim() || null,
+    });
+    setHoldModalVisible(false);
+    showOpToast('Project placed on hold');
+  };
+
+  const handleResumeOp = (status: OperationalProjectStatus) => {
+    setResumeModalVisible(false);
+    if (!quote) return;
+    setOperationalStatus({ quoteId: quote.id, status });
+    showOpToast(`Resumed to ${status}`);
+  };
+
+  const handleSelectDelivery = (method: DeliveryMethod) => {
+    if (!quote) return;
+    setDeliveryMethod({ quoteId: quote.id, deliveryMethod: quote.deliveryMethod === method ? null : method });
+  };
+
+  const handleToggleIndicator = (key: 'paymentReceived' | 'artworkReceived' | 'proofApproved') => {
+    if (!quote) return;
+    setIndicator({ quoteId: quote.id, key, value: !quote[key] });
+  };
+
+  const renderOperationalPanel = () => {
+    if (!quote) return null;
+    if (!opCurrent && !opEligible) return null;
+    const cfg = opCurrent ? OPERATIONAL_STATUS_CONFIG[opCurrent] : null;
+    const indicators: Array<{ key: 'paymentReceived' | 'artworkReceived' | 'proofApproved'; label: string; value: boolean }> = [
+      { key: 'paymentReceived', label: 'Payment Received', value: !!quote.paymentReceived },
+      { key: 'artworkReceived', label: 'Artwork Received', value: !!quote.artworkReceived },
+      { key: 'proofApproved', label: 'Proof Approved', value: !!quote.proofApproved },
+    ];
+    return (
+      <View style={opStyles.card}>
+        <View style={opStyles.headerRow}>
+          <View style={opStyles.headerTitleWrap}>
+            <ClipboardList size={18} color={Colors.light.tint} />
+            <Text style={opStyles.headerTitle}>Production Status</Text>
+          </View>
+          {opCurrent ? (
+            <TouchableOpacity style={opStyles.actionsBtn} onPress={() => setOpMenuVisible(true)} disabled={isSettingOperationalStatus}>
+              <Text style={opStyles.actionsBtnText}>Actions</Text>
+              <ChevronDown size={15} color="#fff" />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        {opCurrent && cfg ? (
+          <View style={[opStyles.statusBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+            <View style={[opStyles.statusDot, { backgroundColor: cfg.color }]} />
+            <Text style={[opStyles.statusBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
+          </View>
+        ) : (
+          <View style={opStyles.startWrap}>
+            <Text style={opStyles.startHint}>This project isn&apos;t being tracked operationally yet.</Text>
+            <TouchableOpacity style={opStyles.startBtn} onPress={handleStartOpTracking} disabled={isSettingOperationalStatus}>
+              <ArrowRight size={16} color="#fff" />
+              <Text style={opStyles.startBtnText}>Start Operational Tracking</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {opOnHold ? (
+          <View style={opStyles.holdBanner}>
+            <AlertCircle size={16} color="#B45309" />
+            <View style={{ flex: 1 }}>
+              <Text style={opStyles.holdReason}>On Hold — {quote.holdReason || 'Reason not specified'}</Text>
+              {quote.holdNotes ? <Text style={opStyles.holdNotes}>{quote.holdNotes}</Text> : null}
+              {quote.holdPlacedBy ? (
+                <Text style={opStyles.holdMeta}>By {quote.holdPlacedBy}{quote.holdPlacedAt ? ` · ${new Date(quote.holdPlacedAt).toLocaleString()}` : ''}</Text>
+              ) : null}
+            </View>
+            <TouchableOpacity style={opStyles.resumeBtn} onPress={() => setResumeModalVisible(true)}>
+              <Text style={opStyles.resumeBtnText}>Resume</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+        {opCurrent ? (
+          <>
+            <Text style={opStyles.sectionLabel}>Operational Summary</Text>
+            <View style={opStyles.summaryGrid}>
+              <View style={opStyles.summaryRow}>
+                <Text style={opStyles.summaryKey}>Operational Status</Text>
+                <Text style={opStyles.summaryVal}>{opCurrent}</Text>
+              </View>
+              <View style={opStyles.summaryRow}>
+                <Text style={opStyles.summaryKey}>Delivery Method</Text>
+                <Text style={opStyles.summaryVal}>{quote.deliveryMethod || 'Not set'}</Text>
+              </View>
+              <View style={opStyles.summaryRow}>
+                <Text style={opStyles.summaryKey}>On Hold</Text>
+                <Text style={[opStyles.summaryVal, opOnHold && { color: '#DC2626' }]}>{opOnHold ? 'Yes' : 'No'}</Text>
+              </View>
+            </View>
+
+            <Text style={opStyles.sectionLabel}>Delivery Method</Text>
+            <View style={opStyles.chipRow}>
+              {DELIVERY_METHODS.map((m) => {
+                const active = quote.deliveryMethod === m;
+                return (
+                  <TouchableOpacity key={m} style={[opStyles.chip, active && opStyles.chipActive]} onPress={() => handleSelectDelivery(m)}>
+                    <Truck size={14} color={active ? '#fff' : Colors.light.tint} />
+                    <Text style={[opStyles.chipText, active && opStyles.chipTextActive]}>{m}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={opStyles.sectionLabel}>Indicators</Text>
+            <View style={opStyles.indicatorRow}>
+              {indicators.map((ind) => (
+                <TouchableOpacity key={ind.key} style={[opStyles.indicator, ind.value && opStyles.indicatorOn]} onPress={() => handleToggleIndicator(ind.key)}>
+                  <CheckCircle size={15} color={ind.value ? '#16A34A' : '#9CA3AF'} />
+                  <Text style={[opStyles.indicatorText, ind.value && opStyles.indicatorTextOn]}>{ind.label}</Text>
+                  <Text style={[opStyles.indicatorYesNo, { color: ind.value ? '#16A34A' : '#9CA3AF' }]}>{ind.value ? 'Yes' : 'No'}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {opActivities.length > 0 ? (
+              <>
+                <Text style={opStyles.sectionLabel}>Status History</Text>
+                <View style={opStyles.historyList}>
+                  {opActivities.slice(0, 8).map((a) => (
+                    <View key={a.id} style={opStyles.historyItem}>
+                      <View style={opStyles.historyDot} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={opStyles.historyText}>{a.summary}</Text>
+                        <Text style={opStyles.historyDate}>{new Date(a.createdAt).toLocaleString()}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </>
+            ) : null}
+          </>
+        ) : null}
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <Toast
@@ -1344,6 +1559,87 @@ export default function QuoteDetailScreen() {
         }}
         onCancel={() => setConfirmDeleteVisible(false)}
       />
+
+      <Modal visible={opMenuVisible} transparent animationType="fade" onRequestClose={() => setOpMenuVisible(false)}>
+        <TouchableOpacity style={opStyles.modalOverlay} activeOpacity={1} onPress={() => setOpMenuVisible(false)}>
+          <View style={opStyles.menuSheet}>
+            <Text style={opStyles.menuTitle}>Change Status</Text>
+            {opOnHold ? (
+              <TouchableOpacity style={opStyles.menuItem} onPress={() => { setOpMenuVisible(false); setResumeModalVisible(true); }}>
+                <RotateCcw size={16} color={Colors.light.tint} />
+                <Text style={opStyles.menuItemText}>Resume from Hold…</Text>
+              </TouchableOpacity>
+            ) : null}
+            {opActionOptions.map((s) => (
+              <TouchableOpacity key={s} style={opStyles.menuItem} onPress={() => handleSelectOpAction(s)}>
+                <View style={[opStyles.menuDot, { backgroundColor: OPERATIONAL_STATUS_CONFIG[s].color === '#FFFFFF' ? OPERATIONAL_STATUS_CONFIG[s].bg : OPERATIONAL_STATUS_CONFIG[s].color }]} />
+                <Text style={opStyles.menuItemText}>{s}</Text>
+              </TouchableOpacity>
+            ))}
+            {opActionOptions.length === 0 && !opOnHold ? (
+              <Text style={opStyles.menuEmpty}>No further actions available.</Text>
+            ) : null}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal visible={holdModalVisible} transparent animationType="fade" onRequestClose={() => setHoldModalVisible(false)}>
+        <View style={opStyles.modalOverlayCenter}>
+          <View style={opStyles.dialog}>
+            <Text style={opStyles.dialogTitle}>Place On Hold</Text>
+            <Text style={opStyles.dialogLabel}>Hold Reason</Text>
+            <View style={opStyles.chipWrap}>
+              {HOLD_REASONS.map((r) => {
+                const active = holdReasonDraft === r;
+                return (
+                  <TouchableOpacity key={r} style={[opStyles.chip, active && opStyles.chipActive]} onPress={() => setHoldReasonDraft(r)}>
+                    <Text style={[opStyles.chipText, active && opStyles.chipTextActive]}>{r}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <Text style={opStyles.dialogLabel}>Notes (optional)</Text>
+            <TextInput
+              style={opStyles.notesInput}
+              value={holdNotesDraft}
+              onChangeText={setHoldNotesDraft}
+              placeholder="Add context for the hold…"
+              placeholderTextColor="#9CA3AF"
+              multiline
+            />
+            <View style={opStyles.dialogActions}>
+              <TouchableOpacity style={[opStyles.dialogBtn, opStyles.dialogBtnGhost]} onPress={() => setHoldModalVisible(false)}>
+                <Text style={opStyles.dialogBtnGhostText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[opStyles.dialogBtn, opStyles.dialogBtnDanger]} onPress={handleConfirmHold}>
+                <Text style={opStyles.dialogBtnDangerText}>Place On Hold</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={resumeModalVisible} transparent animationType="fade" onRequestClose={() => setResumeModalVisible(false)}>
+        <View style={opStyles.modalOverlayCenter}>
+          <View style={opStyles.dialog}>
+            <Text style={opStyles.dialogTitle}>Resume Project</Text>
+            <Text style={opStyles.dialogLabel}>Move to status</Text>
+            <View style={opStyles.chipWrap}>
+              {opResumeOptions.map((s) => (
+                <TouchableOpacity key={s} style={opStyles.chip} onPress={() => handleResumeOp(s)}>
+                  <Text style={opStyles.chipText}>{s}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={opStyles.dialogActions}>
+              <TouchableOpacity style={[opStyles.dialogBtn, opStyles.dialogBtnGhost]} onPress={() => setResumeModalVisible(false)}>
+                <Text style={opStyles.dialogBtnGhostText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <Stack.Screen
         options={{
           title: 'Quote Details',
@@ -1358,6 +1654,7 @@ export default function QuoteDetailScreen() {
           <View style={styles.desktopLayout}>
             <View style={styles.desktopLeft}>
               {renderIntakeBanner()}
+              {renderOperationalPanel()}
               {renderOrderInfo()}
               {renderLineItems()}
               {renderUploadedArtwork()}
@@ -1371,6 +1668,7 @@ export default function QuoteDetailScreen() {
         ) : (
           <View>
             {renderIntakeBanner()}
+            {renderOperationalPanel()}
             {renderOrderInfo()}
             {renderLineItems()}
             {renderUploadedArtwork()}
@@ -3137,4 +3435,220 @@ const koArtStyles = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
     fontWeight: '500' as const,
   },
+});
+
+const opStyles = StyleSheet.create({
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  headerTitleWrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerTitle: { fontSize: 15, fontWeight: '700' as const, color: '#111827' },
+  actionsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.light.tint,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  actionsBtnText: { color: '#fff', fontWeight: '600' as const, fontSize: 13 },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  statusDot: { width: 9, height: 9, borderRadius: 5 },
+  statusBadgeText: { fontSize: 14, fontWeight: '700' as const },
+  startWrap: { gap: 10, marginBottom: 4 },
+  startHint: { fontSize: 13, color: '#6B7280' },
+  startBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    backgroundColor: Colors.light.tint,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 8,
+  },
+  startBtnText: { color: '#fff', fontWeight: '600' as const, fontSize: 13 },
+  holdBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#FEF3C7',
+    borderColor: '#FDE68A',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+  },
+  holdReason: { fontSize: 13, fontWeight: '700' as const, color: '#92400E' },
+  holdNotes: { fontSize: 12, color: '#78350F', marginTop: 2 },
+  holdMeta: { fontSize: 11, color: '#A16207', marginTop: 4 },
+  resumeBtn: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#D97706',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  resumeBtnText: { color: '#B45309', fontWeight: '600' as const, fontSize: 12 },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  summaryGrid: {
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  summaryKey: { fontSize: 13, color: '#6B7280' },
+  summaryVal: { fontSize: 13, fontWeight: '600' as const, color: '#111827' },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.light.tint,
+    backgroundColor: '#fff',
+  },
+  chipActive: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
+  chipText: { fontSize: 13, color: Colors.light.tint, fontWeight: '600' as const },
+  chipTextActive: { color: '#fff' },
+  indicatorRow: { gap: 8 },
+  indicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+  },
+  indicatorOn: { borderColor: '#86EFAC', backgroundColor: '#F0FDF4' },
+  indicatorText: { flex: 1, fontSize: 13, color: '#374151', fontWeight: '500' as const },
+  indicatorTextOn: { color: '#166534' },
+  indicatorYesNo: { fontSize: 12, fontWeight: '700' as const },
+  historyList: { gap: 10 },
+  historyItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  historyDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.light.tint, marginTop: 5 },
+  historyText: { fontSize: 13, color: '#374151' },
+  historyDate: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalOverlayCenter: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  menuSheet: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    paddingVertical: 8,
+    width: 280,
+    maxWidth: '100%',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  menuTitle: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+  },
+  menuDot: { width: 9, height: 9, borderRadius: 5 },
+  menuItemText: { fontSize: 14, color: '#111827', fontWeight: '500' as const },
+  menuEmpty: { fontSize: 13, color: '#9CA3AF', paddingHorizontal: 16, paddingVertical: 10 },
+  dialog: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    width: 420,
+    maxWidth: '100%',
+  },
+  dialogTitle: { fontSize: 17, fontWeight: '700' as const, color: '#111827', marginBottom: 14 },
+  dialogLabel: { fontSize: 12, fontWeight: '700' as const, color: '#6B7280', marginBottom: 8 },
+  notesInput: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#111827',
+    minHeight: 70,
+    textAlignVertical: 'top',
+    marginBottom: 14,
+  },
+  dialogActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 4 },
+  dialogBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 },
+  dialogBtnGhost: { backgroundColor: '#F3F4F6' },
+  dialogBtnGhostText: { color: '#374151', fontWeight: '600' as const, fontSize: 13 },
+  dialogBtnDanger: { backgroundColor: '#DC2626' },
+  dialogBtnDangerText: { color: '#fff', fontWeight: '600' as const, fontSize: 13 },
 });
