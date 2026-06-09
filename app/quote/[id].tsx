@@ -87,7 +87,6 @@ export default function QuoteDetailScreen() {
   const [resumeModalVisible, setResumeModalVisible] = useState(false);
   const [holdReasonDraft, setHoldReasonDraft] = useState<string>('');
   const [holdNotesDraft, setHoldNotesDraft] = useState('');
-  const [opActivities, setOpActivities] = useState<Array<{ id: string; actionType: string; summary: string; createdAt: string; metadata?: { fromStatus?: string | null; toStatus?: string | null; holdReason?: string | null; holdNotes?: string | null; actorName?: string | null } | null }>>([]);
 
   interface ProjectFile {
     id: string;
@@ -140,21 +139,6 @@ export default function QuoteDetailScreen() {
       .then(data => { if (data?.files) setProjectFiles(data.files); })
       .catch(() => {});
   }, [quote?.id, quote?.orgId]);
-
-  useEffect(() => {
-    if (!quote?.id) return;
-    let cancelled = false;
-    fetch(`/api/projects/${quote.id}/activity`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (cancelled || !data?.activities) return;
-        const ops = (data.activities as Array<{ id: string; actionType: string; summary: string; createdAt: string; metadata?: any }>)
-          .filter(a => a.actionType === 'operational_status_change' || a.actionType === 'operational_on_hold');
-        setOpActivities(ops);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [quote?.id, quote?.operationalStatus, quote?.holdReason]);
 
   const linkedOrg = useMemo(() => {
     if (!quote) return undefined;
@@ -1419,135 +1403,88 @@ export default function QuoteDetailScreen() {
     setIndicator({ quoteId: quote.id, key, value: !quote[key] });
   };
 
-  const renderOperationalPanel = () => {
+  const renderOperationalCard = () => {
     if (!quote) return null;
     const cfg = opCurrent ? OPERATIONAL_STATUS_CONFIG[opCurrent] : null;
-    const indicators: Array<{ key: 'paymentReceived' | 'artworkReceived' | 'proofApproved'; label: string; value: boolean }> = [
-      { key: 'paymentReceived', label: 'Payment Received', value: !!quote.paymentReceived },
-      { key: 'artworkReceived', label: 'Artwork Received', value: !!quote.artworkReceived },
-      { key: 'proofApproved', label: 'Proof Approved', value: !!quote.proofApproved },
+    const indicators: Array<{ key: 'paymentReceived' | 'artworkReceived' | 'proofApproved'; short: string; value: boolean }> = [
+      { key: 'paymentReceived', short: 'Payment', value: !!quote.paymentReceived },
+      { key: 'artworkReceived', short: 'Artwork', value: !!quote.artworkReceived },
+      { key: 'proofApproved', short: 'Proof', value: !!quote.proofApproved },
     ];
     return (
-      <View style={opStyles.card}>
-        <View style={opStyles.headerRow}>
-          <View style={opStyles.headerTitleWrap}>
-            <ClipboardList size={18} color={Colors.light.tint} />
-            <Text style={opStyles.headerTitle}>Production Status</Text>
-          </View>
+      <View style={styles.section}>
+        <View style={opStyles.cardTitleRow}>
+          <Text style={styles.sectionTitle}>Operational</Text>
           {opCurrent ? (
             <TouchableOpacity style={opStyles.actionsBtn} onPress={() => setOpMenuVisible(true)} disabled={isSettingOperationalStatus}>
               <Text style={opStyles.actionsBtnText}>Actions</Text>
-              <ChevronDown size={15} color="#fff" />
+              <ChevronDown size={14} color="#fff" />
             </TouchableOpacity>
           ) : null}
         </View>
-
-        {opCurrent && cfg ? (
-          <View style={[opStyles.statusBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
-            <View style={[opStyles.statusDot, { backgroundColor: cfg.color }]} />
-            <Text style={[opStyles.statusBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
-          </View>
-        ) : opEligible ? (
-          <View style={opStyles.startWrap}>
-            <Text style={opStyles.startHint}>This project isn&apos;t being tracked operationally yet.</Text>
-            <TouchableOpacity style={opStyles.startBtn} onPress={handleStartOpTracking} disabled={isSettingOperationalStatus}>
-              <ArrowRight size={16} color="#fff" />
-              <Text style={opStyles.startBtnText}>Start Operational Tracking</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={opStyles.startWrap}>
-            <Text style={opStyles.startHint}>Operational tracking begins automatically once this project becomes active.</Text>
-          </View>
-        )}
-
-        {opOnHold ? (
-          <View style={opStyles.holdBanner}>
-            <AlertCircle size={16} color="#B45309" />
-            <View style={{ flex: 1 }}>
-              <Text style={opStyles.holdReason}>On Hold — {quote.holdReason || 'Reason not specified'}</Text>
-              {quote.holdNotes ? <Text style={opStyles.holdNotes}>{quote.holdNotes}</Text> : null}
-              {quote.holdPlacedBy ? (
-                <Text style={opStyles.holdMeta}>By {quote.holdPlacedBy}{quote.holdPlacedAt ? ` · ${new Date(quote.holdPlacedAt).toLocaleString()}` : ''}</Text>
-              ) : null}
-            </View>
-            <TouchableOpacity style={opStyles.resumeBtn} onPress={() => setResumeModalVisible(true)}>
-              <Text style={opStyles.resumeBtnText}>Resume</Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
-
-        <Text style={opStyles.sectionLabel}>Delivery Method</Text>
-        <View style={opStyles.chipRow}>
-          {DELIVERY_METHODS.map((m) => {
-            const active = quote.deliveryMethod === m;
-            return (
-              <TouchableOpacity key={m} style={[opStyles.chip, active && opStyles.chipActive]} onPress={() => handleSelectDelivery(m)}>
-                <Truck size={14} color={active ? '#fff' : Colors.light.tint} />
-                <Text style={[opStyles.chipText, active && opStyles.chipTextActive]}>{m}</Text>
+        <View style={styles.summaryCard}>
+          <View style={opStyles.attrRow}>
+            <Text style={opStyles.attrKey}>Status</Text>
+            {opCurrent && cfg ? (
+              <View style={[opStyles.statusPill, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+                <View style={[opStyles.statusDot, { backgroundColor: cfg.color }]} />
+                <Text style={[opStyles.statusPillText, { color: cfg.color }]}>{cfg.label}</Text>
+              </View>
+            ) : opEligible ? (
+              <TouchableOpacity onPress={handleStartOpTracking} disabled={isSettingOperationalStatus}>
+                <Text style={opStyles.startLink}>Start tracking</Text>
               </TouchableOpacity>
-            );
-          })}
-        </View>
+            ) : (
+              <Text style={opStyles.attrMuted}>Not started</Text>
+            )}
+          </View>
 
-        {opCurrent ? (
-          <>
-            <Text style={opStyles.sectionLabel}>Operational Summary</Text>
-            <View style={opStyles.summaryGrid}>
-              <View style={opStyles.summaryRow}>
-                <Text style={opStyles.summaryKey}>Operational Status</Text>
-                <Text style={opStyles.summaryVal}>{opCurrent}</Text>
+          {opOnHold ? (
+            <View style={opStyles.holdBannerCompact}>
+              <AlertCircle size={14} color="#B45309" />
+              <View style={{ flex: 1 }}>
+                <Text style={opStyles.holdReason}>On Hold — {quote.holdReason || 'Reason not specified'}</Text>
+                {quote.holdNotes ? <Text style={opStyles.holdNotes}>{quote.holdNotes}</Text> : null}
+                {quote.holdPlacedBy ? (
+                  <Text style={opStyles.holdMeta}>By {quote.holdPlacedBy}{quote.holdPlacedAt ? ` · ${new Date(quote.holdPlacedAt).toLocaleDateString()}` : ''}</Text>
+                ) : null}
               </View>
-              <View style={opStyles.summaryRow}>
-                <Text style={opStyles.summaryKey}>Delivery Method</Text>
-                <Text style={opStyles.summaryVal}>{quote.deliveryMethod || 'Not set'}</Text>
-              </View>
-              <View style={opStyles.summaryRow}>
-                <Text style={opStyles.summaryKey}>On Hold</Text>
-                <Text style={[opStyles.summaryVal, opOnHold && { color: '#DC2626' }]}>{opOnHold ? 'Yes' : 'No'}</Text>
-              </View>
+              <TouchableOpacity style={opStyles.resumeBtn} onPress={() => setResumeModalVisible(true)}>
+                <Text style={opStyles.resumeBtnText}>Resume</Text>
+              </TouchableOpacity>
             </View>
+          ) : null}
 
-            <Text style={opStyles.sectionLabel}>Indicators</Text>
-            <View style={opStyles.indicatorRow}>
+          <View style={opStyles.attrDivider} />
+
+          <View style={opStyles.attrRowWrap}>
+            <Text style={opStyles.attrKey}>Delivery</Text>
+            <View style={opStyles.attrChips}>
+              {DELIVERY_METHODS.map((m) => {
+                const active = quote.deliveryMethod === m;
+                return (
+                  <TouchableOpacity key={m} style={[opStyles.miniChip, active && opStyles.miniChipActive]} onPress={() => handleSelectDelivery(m)}>
+                    <Text style={[opStyles.miniChipText, active && opStyles.miniChipTextActive]}>{m}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={opStyles.attrDivider} />
+
+          <View style={opStyles.attrRowWrap}>
+            <Text style={opStyles.attrKey}>Indicators</Text>
+            <View style={opStyles.attrChips}>
               {indicators.map((ind) => (
-                <TouchableOpacity key={ind.key} style={[opStyles.indicator, ind.value && opStyles.indicatorOn]} onPress={() => handleToggleIndicator(ind.key)}>
-                  <CheckCircle size={15} color={ind.value ? '#16A34A' : '#9CA3AF'} />
-                  <Text style={[opStyles.indicatorText, ind.value && opStyles.indicatorTextOn]}>{ind.label}</Text>
-                  <Text style={[opStyles.indicatorYesNo, { color: ind.value ? '#16A34A' : '#9CA3AF' }]}>{ind.value ? 'Yes' : 'No'}</Text>
+                <TouchableOpacity key={ind.key} style={[opStyles.indBadge, ind.value && opStyles.indBadgeOn]} onPress={() => handleToggleIndicator(ind.key)}>
+                  <CheckCircle size={12} color={ind.value ? '#16A34A' : '#9CA3AF'} />
+                  <Text style={[opStyles.indBadgeText, ind.value && opStyles.indBadgeTextOn]}>{ind.short}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-
-            {opActivities.length > 0 ? (
-              <>
-                <Text style={opStyles.sectionLabel}>Status History</Text>
-                <View style={opStyles.historyList}>
-                  {opActivities.slice(0, 8).map((a) => {
-                    const m = a.metadata || {};
-                    const from = m.fromStatus || 'Not started';
-                    const to = m.toStatus || '—';
-                    const notes = m.holdNotes || null;
-                    const reason = m.holdReason || null;
-                    return (
-                      <View key={a.id} style={opStyles.historyItem}>
-                        <View style={opStyles.historyDot} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={opStyles.historyText}>{from} → {to}</Text>
-                          <Text style={opStyles.historyMeta}>
-                            {m.actorName || 'Someone'} · {new Date(a.createdAt).toLocaleString()}
-                          </Text>
-                          {reason ? <Text style={opStyles.historyMeta}>Reason: {reason}</Text> : null}
-                          {notes ? <Text style={opStyles.historyNotes}>{notes}</Text> : null}
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              </>
-            ) : null}
-          </>
-        ) : null}
+          </View>
+        </View>
       </View>
     );
   };
@@ -1668,7 +1605,6 @@ export default function QuoteDetailScreen() {
           <View style={styles.desktopLayout}>
             <View style={styles.desktopLeft}>
               {renderIntakeBanner()}
-              {renderOperationalPanel()}
               {renderOrderInfo()}
               {renderLineItems()}
               {renderUploadedArtwork()}
@@ -1677,18 +1613,19 @@ export default function QuoteDetailScreen() {
               {renderSendQuotePanel()}
               {quote.status !== 'needs_review' && renderPricingSummary()}
               {(quote.status === 'active' || quote.status === 'production_started' || quote.status === 'completed') && renderSalesTracking()}
+              {renderOperationalCard()}
             </View>
           </View>
         ) : (
           <View>
             {renderIntakeBanner()}
-            {renderOperationalPanel()}
             {renderOrderInfo()}
             {renderLineItems()}
             {renderUploadedArtwork()}
             {renderSendQuotePanel()}
             {quote.status !== 'needs_review' && renderPricingSummary()}
             {(quote.status === 'active' || quote.status === 'production_started' || quote.status === 'completed') && renderSalesTracking()}
+            {renderOperationalCard()}
           </View>
         )}
         <View style={styles.bottomPadding} />
@@ -3452,74 +3389,62 @@ const koArtStyles = StyleSheet.create({
 });
 
 const opStyles = StyleSheet.create({
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  headerRow: {
+  cardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  headerTitleWrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headerTitle: { fontSize: 15, fontWeight: '700' as const, color: '#111827' },
   actionsBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     backgroundColor: Colors.light.tint,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 8,
   },
-  actionsBtnText: { color: '#fff', fontWeight: '600' as const, fontSize: 13 },
-  statusBadge: {
+  actionsBtnText: { color: '#fff', fontWeight: '600' as const, fontSize: 12 },
+  attrRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    gap: 12,
   },
-  statusDot: { width: 9, height: 9, borderRadius: 5 },
-  statusBadgeText: { fontSize: 14, fontWeight: '700' as const },
-  startWrap: { gap: 10, marginBottom: 4 },
-  startHint: { fontSize: 13, color: '#6B7280' },
-  startBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 6,
-    backgroundColor: Colors.light.tint,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 8,
-  },
-  startBtnText: { color: '#fff', fontWeight: '600' as const, fontSize: 13 },
-  holdBanner: {
+  attrRowWrap: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  attrKey: { fontSize: 13, color: '#6B7280', fontWeight: '500' as const, paddingTop: 4 },
+  attrMuted: { fontSize: 13, color: '#9CA3AF' },
+  attrChips: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 6, flex: 1 },
+  attrDivider: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 12 },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  statusPillText: { fontSize: 12, fontWeight: '700' as const },
+  startLink: { fontSize: 13, color: Colors.light.tint, fontWeight: '600' as const },
+  holdBannerCompact: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
     backgroundColor: '#FEF3C7',
     borderColor: '#FDE68A',
     borderWidth: 1,
     borderRadius: 10,
-    padding: 12,
-    marginBottom: 12,
+    padding: 10,
+    marginTop: 12,
   },
-  holdReason: { fontSize: 13, fontWeight: '700' as const, color: '#92400E' },
+  holdReason: { fontSize: 12, fontWeight: '700' as const, color: '#92400E' },
   holdNotes: { fontSize: 12, color: '#78350F', marginTop: 2 },
   holdMeta: { fontSize: 11, color: '#A16207', marginTop: 4 },
   resumeBtn: {
@@ -3527,37 +3452,35 @@ const opStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#D97706',
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   resumeBtnText: { color: '#B45309', fontWeight: '600' as const, fontSize: 12 },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: '700' as const,
-    color: '#9CA3AF',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  summaryGrid: {
+  miniChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
-    borderRadius: 10,
-    overflow: 'hidden',
+    borderColor: Colors.light.tint,
+    backgroundColor: '#fff',
   },
-  summaryRow: {
+  miniChipActive: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
+  miniChipText: { fontSize: 12, color: Colors.light.tint, fontWeight: '600' as const },
+  miniChipTextActive: { color: '#fff' },
+  indBadge: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
   },
-  summaryKey: { fontSize: 13, color: '#6B7280' },
-  summaryVal: { fontSize: 13, fontWeight: '600' as const, color: '#111827' },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  indBadgeOn: { borderColor: '#86EFAC', backgroundColor: '#F0FDF4' },
+  indBadgeText: { fontSize: 12, color: '#6B7280', fontWeight: '600' as const },
+  indBadgeTextOn: { color: '#166534' },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   chip: {
     flexDirection: 'row',
@@ -3573,29 +3496,6 @@ const opStyles = StyleSheet.create({
   chipActive: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
   chipText: { fontSize: 13, color: Colors.light.tint, fontWeight: '600' as const },
   chipTextActive: { color: '#fff' },
-  indicatorRow: { gap: 8 },
-  indicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
-  },
-  indicatorOn: { borderColor: '#86EFAC', backgroundColor: '#F0FDF4' },
-  indicatorText: { flex: 1, fontSize: 13, color: '#374151', fontWeight: '500' as const },
-  indicatorTextOn: { color: '#166534' },
-  indicatorYesNo: { fontSize: 12, fontWeight: '700' as const },
-  historyList: { gap: 10 },
-  historyItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  historyDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.light.tint, marginTop: 5 },
-  historyText: { fontSize: 13, color: '#374151', fontWeight: '600' },
-  historyDate: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
-  historyMeta: { fontSize: 11, color: '#6B7280', marginTop: 2 },
-  historyNotes: { fontSize: 12, color: '#374151', marginTop: 2, fontStyle: 'italic' },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.35)',
