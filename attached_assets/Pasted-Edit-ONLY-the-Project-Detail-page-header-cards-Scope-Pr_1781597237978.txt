@@ -1,0 +1,81 @@
+Edit ONLY the Project Detail page header cards.
+
+Scope:
+- Project Details card
+- Primary Contact card
+- Project Workflow card
+
+Do NOT modify:
+- Pricing Summary
+- Sales Tracking
+- Line Items
+- Track Costs button
+- Production Mode button
+- Sidebar
+- Bottom action bar
+- Any routing or data logic
+
+Header layout requirements:
+
+1. The header should contain exactly three cards:
+   - Project Details
+   - Primary Contact
+   - Project Workflow
+
+2. These three cards should sit in one horizontal row on desktop.
+
+3. All three cards must have:
+   - Matching height
+   - Consistent padding
+   - Consistent border radius
+   - Consistent border color
+   - Consistent typography
+   - Aligned top edges
+   - Aligned bottom edges
+
+4. Remove the empty/right-side Actions card or any unused fourth header area.
+
+5. Project Details card:
+   - Keep project name prominent.
+   - Show organization name.
+   - Show project number and existing sales/status badge.
+   - Show Order Date and Due Date at the bottom.
+   - Maintain current visual style.
+
+6. Primary Contact card:
+   - Match the height of Project Details and Project Workflow.
+   - Keep contact name prominent.
+   - Show role/subtitle.
+   - Show email, phone if available, and location.
+   - Do not let this card collapse shorter than the others.
+
+7. Project Workflow card:
+   - Make this card compact and functional.
+   - It should not feel oversized or disconnected.
+   - Use this structure:
+
+   Header:
+   Project Workflow
+
+   Top row:
+   Status badge on the left
+   Actions dropdown on the right
+
+   Middle row:
+   Delivery Method as a single selected value, not three oversized pills.
+   Example:
+   Delivery: Pickup
+   Add a small edit/change control if needed.
+
+   Bottom row:
+   Requirements / Indicators displayed compactly:
+   Payment: Yes/No
+   Artwork: Yes/No
+   Proof: Yes/No
+
+8. Project Workflow should not use large full-width rows.
+9. Project Workflow should not duplicate summary information.
+10. Keep the design clean, dense, and aligned with the existing Katalyst Ko orange/black/white style.
+
+Goal:
+The header should feel like one unified project summary area, not three unrelated sections. The workflow card should be useful at a glance without dominating the page.

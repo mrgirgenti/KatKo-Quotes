@@ -1,0 +1,405 @@
+# Production Module V1
+
+## Objective
+
+Build the Production module as the operational command center of Katalyst Ko OS.
+
+This is where production staff, managers, and owners monitor, prioritize, and execute active work.
+
+This is NOT a CRM page.
+
+This is NOT a reporting page.
+
+This is NOT a quote management page.
+
+The Production module should answer:
+
+* What should we work on next?
+* What is currently in production?
+* What is blocked?
+* What is due soon?
+* What is behind schedule?
+* What capacity do we have left?
+
+All production views should operate from the same underlying project data.
+
+No duplicated records.
+
+No separate production projects.
+
+A project exists once and can be viewed through multiple production layouts.
+
+---
+
+# Navigation
+
+Operations
+
+* Projects
+* Production
+
+Projects remains the source of truth.
+
+Production is a specialized operational view of projects.
+
+Clicking any project in Production should open the existing Project Detail page.
+
+Do not create a separate project-detail experience.
+
+---
+
+# View Modes
+
+The Production page should support multiple view modes.
+
+Users may select their preferred view.
+
+Users may set a default production view in Profile / Settings.
+
+The system remembers the user's last selected view.
+
+Views:
+
+1. Board
+2. Queue
+3. Calendar
+4. Analytics
+
+---
+
+# Shared Filters
+
+All views share the same filtering system.
+
+Filters:
+
+* All Projects
+* Service Type
+* Operational Status
+* Priority
+* Assigned User
+* Due Date Range
+* Delivery Method
+
+Search:
+
+* Project Name
+* Organization
+* Project Number
+
+Filters persist when switching views.
+
+---
+
+# Priority System
+
+Add a dedicated Priority field.
+
+Priority is independent from Status.
+
+Priority answers:
+
+"How important is this project?"
+
+Status answers:
+
+"Where is this project?"
+
+Priority Options:
+
+Critical
+High
+Normal
+Low
+
+Default:
+
+Normal
+
+Display:
+
+Critical = Red
+High = Orange
+Normal = Blue
+Low = Gray
+
+Projects should sort by:
+
+1. Priority
+2. Due Date
+
+A Critical project due tomorrow should appear before a Normal project due next week.
+
+---
+
+# Board View (Default)
+
+Purpose:
+
+Daily production management.
+
+Layout:
+
+Columns:
+
+Ready for Production
+In Production
+On Hold
+Completed
+
+Cards display:
+
+Priority Badge
+Project Name
+Project Number
+Organization
+Service Type
+Quantity
+Due Date
+Delivery Method
+
+Examples:
+
+🔥 Critical
+Youth Camp Shirts
+Grace AZ
+300 pcs
+Screen Printing
+Due Jun 12
+
+⚠ High
+Baptism Tees
+Grace AZ
+25 pcs
+DTF
+Due Jun 14
+
+Actions:
+
+Drag and drop between columns.
+
+Dragging updates operational status.
+
+Clicking card opens Project Detail.
+
+Board automatically sorts:
+
+Priority first
+Due date second
+
+---
+
+# Queue View
+
+Purpose:
+
+Operations manager view.
+
+Inspired by DecoNetwork production queues.
+
+Table layout.
+
+Columns:
+
+Priority
+Project Number
+Project Name
+Organization
+Operational Status
+Service Type
+Quantity
+Order Date
+Due Date
+Assigned User
+Delivery Method
+
+Features:
+
+Column sorting
+Column filtering
+Bulk selection
+Bulk status changes
+
+Clicking any row opens Project Detail.
+
+This should be the most data-dense production view.
+
+---
+
+# Calendar View
+
+Purpose:
+
+Capacity planning.
+
+Views:
+
+Month
+Week
+Day
+
+Calendar events are generated from project due dates.
+
+Color coding:
+
+Screen Printing
+Direct To Film
+Embroidery
+Promotional
+DTF Transfers
+Design Work
+
+Calendar card displays:
+
+Project Name
+Organization
+Priority
+Quantity
+
+Clicking any event opens Project Detail.
+
+Optional future enhancement:
+
+Drag project to another date.
+
+Do not build drag scheduling in V1.
+
+---
+
+# Analytics View
+
+Purpose:
+
+Owner and manager visibility.
+
+Widgets:
+
+Projects In Production
+Projects Ready For Production
+Projects On Hold
+Projects Due This Week
+Projects Due Today
+
+Charts:
+
+Production By Service
+Production By Priority
+Production By Status
+
+Tables:
+
+Upcoming Deadlines
+Projects On Hold
+Recent Production Activity
+
+Everything in Analytics should derive from live project data.
+
+No separate reporting datasets.
+
+---
+
+# Production Data Source
+
+Production only displays projects with operational statuses:
+
+Accepted
+Awaiting Artwork
+Artwork Approval
+Awaiting Payment
+Ready for Production
+In Production
+On Hold
+Completed
+Delivered
+
+Exclude:
+
+Draft
+Quoted
+Expired
+
+Those remain inside Quotes.
+
+Production begins only after a project enters the operational workflow.
+
+---
+
+# Project Integration
+
+Every production card, row, event, and analytics record should link directly to the existing Project Detail page.
+
+No duplicate detail screens.
+
+No separate production project pages.
+
+The existing Project Detail page remains the management hub.
+
+Production is simply a different lens into project data.
+
+---
+
+# Operational Status Display
+
+Use operationalStatus as the primary production field.
+
+Statuses:
+
+Accepted
+Awaiting Artwork
+Artwork Approval
+Awaiting Payment
+Ready for Production
+In Production
+On Hold
+Completed
+Delivered
+Closed
+
+Closed projects should not appear in Production by default.
+
+Add a toggle:
+
+Show Closed Projects
+
+---
+
+# Future Roadmap (Do Not Build Yet)
+
+Phase 2:
+
+Production Assignments
+Work Centers
+Press Scheduling
+Embroidery Scheduling
+Packaging Queue
+
+Phase 3:
+
+Capacity Planning
+Machine Load Balancing
+Production Forecasting
+
+Phase 4:
+
+Shop-floor Work Orders
+Purchase Orders
+Inventory Integration
+
+Do not implement these yet.
+
+Build the production foundation first.
+
+---
+
+# Success Criteria
+
+A production manager should be able to:
+
+* Open Production
+* Instantly identify the highest-priority jobs
+* See what is currently running
+* See what is blocked
+* See what is due next
+* Open any project in one click
+
+without ever leaving the Production module.

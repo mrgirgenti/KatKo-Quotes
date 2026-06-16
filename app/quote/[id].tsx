@@ -88,6 +88,7 @@ export default function QuoteDetailScreen() {
   const [resumeModalVisible, setResumeModalVisible] = useState(false);
   const [holdReasonDraft, setHoldReasonDraft] = useState<string>('');
   const [holdNotesDraft, setHoldNotesDraft] = useState('');
+  const [deliveryEditOpen, setDeliveryEditOpen] = useState(false);
 
   interface ProjectFile {
     id: string;
@@ -732,7 +733,6 @@ export default function QuoteDetailScreen() {
           .filter(Boolean)
           .join('\n')
       : '';
-    const showContactCard = !!(linkedContact || (linkedOrg && location));
 
     return (
       <View style={styles.section}>
@@ -781,39 +781,39 @@ export default function QuoteDetailScreen() {
           </View>
 
           {/* Primary Contact card */}
-          {showContactCard && (
-            <View style={[styles.card, styles.contactCard, isDesktop && styles.contactCardDesktop]}>
-              <Text style={styles.contactCardLabel}>PRIMARY CONTACT</Text>
-              {linkedContact ? (
-                <>
-                  <Text style={styles.contactCardName}>
-                    {linkedContact.firstName} {linkedContact.lastName}
-                  </Text>
-                  <Text style={styles.contactCardRole}>{linkedContact.role || 'Primary Contact'}</Text>
-                </>
-              ) : (
-                <Text style={[styles.contactCardName, { marginBottom: 10 }]}>{orgName}</Text>
-              )}
-              {linkedContact?.phone ? (
-                <View style={styles.contactCardRow}>
-                  <Phone size={14} color={Colors.light.textSecondary} />
-                  <Text style={styles.contactCardInfo}>{linkedContact.phone}</Text>
-                </View>
-              ) : null}
-              {linkedContact?.email ? (
-                <View style={styles.contactCardRow}>
-                  <Mail size={14} color={Colors.light.textSecondary} />
-                  <Text style={styles.contactCardInfo}>{linkedContact.email}</Text>
-                </View>
-              ) : null}
-              {location ? (
-                <View style={styles.contactCardRow}>
-                  <MapPin size={14} color={Colors.light.textSecondary} />
-                  <Text style={styles.contactCardInfo}>{location}</Text>
-                </View>
-              ) : null}
-            </View>
-          )}
+          <View style={[styles.card, styles.contactCard, isDesktop && styles.contactCardDesktop]}>
+            <Text style={styles.contactCardLabel}>PRIMARY CONTACT</Text>
+            {linkedContact ? (
+              <>
+                <Text style={styles.contactCardName}>
+                  {linkedContact.firstName} {linkedContact.lastName}
+                </Text>
+                <Text style={styles.contactCardRole}>{linkedContact.role || 'Primary Contact'}</Text>
+              </>
+            ) : orgName ? (
+              <Text style={[styles.contactCardName, { marginBottom: 10 }]}>{orgName}</Text>
+            ) : (
+              <Text style={[styles.contactCardName, styles.contactCardEmpty]}>No primary contact on file</Text>
+            )}
+            {linkedContact?.phone ? (
+              <View style={styles.contactCardRow}>
+                <Phone size={14} color={Colors.light.textSecondary} />
+                <Text style={styles.contactCardInfo}>{linkedContact.phone}</Text>
+              </View>
+            ) : null}
+            {linkedContact?.email ? (
+              <View style={styles.contactCardRow}>
+                <Mail size={14} color={Colors.light.textSecondary} />
+                <Text style={styles.contactCardInfo}>{linkedContact.email}</Text>
+              </View>
+            ) : null}
+            {location ? (
+              <View style={styles.contactCardRow}>
+                <MapPin size={14} color={Colors.light.textSecondary} />
+                <Text style={styles.contactCardInfo}>{location}</Text>
+              </View>
+            ) : null}
+          </View>
 
           {/* Project Workflow card */}
           {renderWorkflowCard()}
@@ -1422,11 +1422,25 @@ export default function QuoteDetailScreen() {
     ];
     return (
       <View style={[styles.card, styles.workflowCard, isDesktop && styles.workflowCardDesktop]}>
-        <View style={opStyles.cardTitleRow}>
-          <View style={opStyles.wfTitleWrap}>
-            <Workflow size={14} color={Colors.light.textSecondary} />
-            <Text style={styles.contactCardLabel}>PROJECT WORKFLOW</Text>
-          </View>
+        <View style={opStyles.wfTitleWrap}>
+          <Workflow size={14} color={Colors.light.textSecondary} />
+          <Text style={styles.contactCardLabel}>PROJECT WORKFLOW</Text>
+        </View>
+
+        {/* Top row: status badge on the left, Actions dropdown on the right */}
+        <View style={opStyles.wfTopRow}>
+          {opCurrent && cfg ? (
+            <View style={[opStyles.statusPill, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+              <View style={[opStyles.statusDot, { backgroundColor: cfg.color }]} />
+              <Text style={[opStyles.statusPillText, { color: cfg.color }]}>{cfg.label}</Text>
+            </View>
+          ) : opEligible ? (
+            <TouchableOpacity onPress={handleStartOpTracking} disabled={isSettingOperationalStatus}>
+              <Text style={opStyles.startLink}>Start tracking</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={opStyles.attrMuted}>Not started</Text>
+          )}
           {opCurrent ? (
             <TouchableOpacity style={opStyles.actionsBtn} onPress={() => setOpMenuVisible(true)} disabled={isSettingOperationalStatus}>
               <Text style={opStyles.actionsBtnText}>Actions</Text>
@@ -1434,20 +1448,6 @@ export default function QuoteDetailScreen() {
             </TouchableOpacity>
           ) : null}
         </View>
-
-        <Text style={opStyles.wfSectionLabel}>STATUS</Text>
-        {opCurrent && cfg ? (
-          <View style={[opStyles.statusPill, opStyles.statusPillLeft, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
-            <View style={[opStyles.statusDot, { backgroundColor: cfg.color }]} />
-            <Text style={[opStyles.statusPillText, { color: cfg.color }]}>{cfg.label}</Text>
-          </View>
-        ) : opEligible ? (
-          <TouchableOpacity onPress={handleStartOpTracking} disabled={isSettingOperationalStatus}>
-            <Text style={opStyles.startLink}>Start tracking</Text>
-          </TouchableOpacity>
-        ) : (
-          <Text style={opStyles.attrMuted}>Not started</Text>
-        )}
 
         {opOnHold ? (
           <View style={opStyles.holdBannerCompact}>
@@ -1465,27 +1465,34 @@ export default function QuoteDetailScreen() {
           </View>
         ) : null}
 
-        <Text style={opStyles.wfSectionLabel}>DELIVERY METHOD</Text>
-        <View style={opStyles.wfChipsLeft}>
-          {DELIVERY_METHODS.map((m) => {
-            const active = quote.deliveryMethod === m;
-            return (
-              <TouchableOpacity key={m} style={[opStyles.miniChip, active && opStyles.miniChipActive]} onPress={() => handleSelectDelivery(m)}>
-                <Text style={[opStyles.miniChipText, active && opStyles.miniChipTextActive]}>{m}</Text>
-              </TouchableOpacity>
-            );
-          })}
+        {/* Middle row: delivery as a single selected value with a small change control */}
+        <View style={opStyles.wfDeliveryRow}>
+          <Text style={opStyles.wfInlineLabel}>Delivery</Text>
+          <Text style={opStyles.wfInlineValue}>{quote.deliveryMethod || 'Not set'}</Text>
+          <TouchableOpacity onPress={() => setDeliveryEditOpen((v) => !v)} hitSlop={8}>
+            <Text style={opStyles.wfChangeLink}>{deliveryEditOpen ? 'Done' : 'Change'}</Text>
+          </TouchableOpacity>
         </View>
+        {deliveryEditOpen ? (
+          <View style={opStyles.wfDeliveryOptions}>
+            {DELIVERY_METHODS.map((m) => {
+              const active = quote.deliveryMethod === m;
+              return (
+                <TouchableOpacity key={m} style={[opStyles.miniChip, active && opStyles.miniChipActive]} onPress={() => handleSelectDelivery(m)}>
+                  <Text style={[opStyles.miniChipText, active && opStyles.miniChipTextActive]}>{m}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ) : null}
 
-        <Text style={opStyles.wfSectionLabel}>INDICATORS</Text>
-        <View style={opStyles.wfIndicatorsRow}>
+        {/* Bottom row: requirements / indicators, compact */}
+        <View style={opStyles.wfReqRow}>
           {indicators.map((ind) => (
-            <TouchableOpacity key={ind.key} style={opStyles.wfIndicator} onPress={() => handleToggleIndicator(ind.key)} activeOpacity={0.7}>
-              <CheckCircle size={16} color={ind.value ? '#16A34A' : '#D1D5DB'} />
-              <View style={opStyles.wfIndicatorText}>
-                <Text style={opStyles.wfIndicatorLabel}>{ind.short}</Text>
-                <Text style={[opStyles.wfIndicatorValue, ind.value && opStyles.wfIndicatorValueOn]}>{ind.value ? 'Yes' : 'No'}</Text>
-              </View>
+            <TouchableOpacity key={ind.key} style={opStyles.wfReqItem} onPress={() => handleToggleIndicator(ind.key)} activeOpacity={0.7}>
+              <CheckCircle size={14} color={ind.value ? '#16A34A' : '#D1D5DB'} />
+              <Text style={opStyles.wfReqLabel}>{ind.short}</Text>
+              <Text style={[opStyles.wfReqValue, ind.value && opStyles.wfIndicatorValueOn]}>{ind.value ? 'Yes' : 'No'}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -1955,7 +1962,8 @@ const styles = StyleSheet.create({
   orderDivider: {
     height: 1,
     backgroundColor: Colors.light.border,
-    marginVertical: 12,
+    marginTop: 'auto' as const,
+    marginBottom: 12,
   },
   identityRow: {
     flexDirection: 'column' as const,
@@ -2029,9 +2037,9 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch' as const,
   },
   contactCardDesktop: {
-    width: 280,
-    flexShrink: 0,
-    alignSelf: 'flex-start' as const,
+    flex: 1,
+    minWidth: 0,
+    alignSelf: 'stretch' as const,
   },
   contactCardLabel: {
     fontSize: 11,
@@ -2051,6 +2059,10 @@ const styles = StyleSheet.create({
     marginTop: 2,
     marginBottom: 10,
   },
+  contactCardEmpty: {
+    fontWeight: '500' as const,
+    color: Colors.light.textSecondary,
+  },
   contactCardRow: {
     flexDirection: 'row' as const,
     alignItems: 'flex-start' as const,
@@ -2067,7 +2079,7 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch' as const,
   },
   workflowCardDesktop: {
-    flex: 1.5,
+    flex: 1,
     minWidth: 0,
     alignSelf: 'stretch' as const,
   },
@@ -3462,7 +3474,7 @@ const opStyles = StyleSheet.create({
   miniChipActive: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
   miniChipText: { fontSize: 12, color: Colors.light.tint, fontWeight: '600' as const },
   miniChipTextActive: { color: '#fff' },
-  wfTitleWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  wfTitleWrap: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
   wfSectionLabel: {
     fontSize: 11,
     fontWeight: '700' as const,
@@ -3471,6 +3483,36 @@ const opStyles = StyleSheet.create({
     marginTop: 14,
     marginBottom: 8,
   },
+  wfTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  wfDeliveryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 14,
+  },
+  wfInlineLabel: { fontSize: 13, fontWeight: '600' as const, color: '#6B7280' },
+  wfInlineValue: { fontSize: 13, fontWeight: '700' as const, color: Colors.light.text, flex: 1 },
+  wfChangeLink: { fontSize: 12, fontWeight: '600' as const, color: Colors.light.tint },
+  wfDeliveryOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  wfReqRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 14,
+  },
+  wfReqItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    flexGrow: 1,
+  },
+  wfReqLabel: { fontSize: 13, fontWeight: '600' as const, color: '#374151' },
+  wfReqValue: { fontSize: 13, fontWeight: '700' as const, color: '#9CA3AF' },
   statusPillLeft: { alignSelf: 'flex-start' as const },
   wfChipsLeft: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   wfIndicatorsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 20 },
