@@ -50,6 +50,7 @@ import {
   Link2,
   DollarSign,
   AlertCircle,
+  Workflow,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -730,7 +731,7 @@ export default function QuoteDetailScreen() {
 
     return (
       <View style={styles.section}>
-        <View style={[styles.identityRow, isDesktop && showContactCard && styles.identityRowDesktop]}>
+        <View style={[styles.identityRow, isDesktop && styles.identityRowDesktop]}>
           {/* Quote Information card */}
           <View style={[styles.card, styles.identityCard]}>
             <Text style={styles.identityProjectName} numberOfLines={2}>
@@ -808,6 +809,9 @@ export default function QuoteDetailScreen() {
               ) : null}
             </View>
           )}
+
+          {/* Project Workflow card */}
+          {renderWorkflowCard()}
         </View>
       </View>
     );
@@ -1403,7 +1407,7 @@ export default function QuoteDetailScreen() {
     setIndicator({ quoteId: quote.id, key, value: !quote[key] });
   };
 
-  const renderOperationalCard = () => {
+  const renderWorkflowCard = () => {
     if (!quote) return null;
     const cfg = opCurrent ? OPERATIONAL_STATUS_CONFIG[opCurrent] : null;
     const indicators: Array<{ key: 'paymentReceived' | 'artworkReceived' | 'proofApproved'; short: string; value: boolean }> = [
@@ -1412,9 +1416,12 @@ export default function QuoteDetailScreen() {
       { key: 'proofApproved', short: 'Proof', value: !!quote.proofApproved },
     ];
     return (
-      <View style={styles.section}>
+      <View style={[styles.card, styles.workflowCard, isDesktop && styles.workflowCardDesktop]}>
         <View style={opStyles.cardTitleRow}>
-          <Text style={styles.sectionTitle}>Operational</Text>
+          <View style={opStyles.wfTitleWrap}>
+            <Workflow size={14} color={Colors.light.textSecondary} />
+            <Text style={styles.contactCardLabel}>PROJECT WORKFLOW</Text>
+          </View>
           {opCurrent ? (
             <TouchableOpacity style={opStyles.actionsBtn} onPress={() => setOpMenuVisible(true)} disabled={isSettingOperationalStatus}>
               <Text style={opStyles.actionsBtnText}>Actions</Text>
@@ -1422,68 +1429,60 @@ export default function QuoteDetailScreen() {
             </TouchableOpacity>
           ) : null}
         </View>
-        <View style={styles.summaryCard}>
-          <View style={opStyles.attrRow}>
-            <Text style={opStyles.attrKey}>Status</Text>
-            {opCurrent && cfg ? (
-              <View style={[opStyles.statusPill, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
-                <View style={[opStyles.statusDot, { backgroundColor: cfg.color }]} />
-                <Text style={[opStyles.statusPillText, { color: cfg.color }]}>{cfg.label}</Text>
-              </View>
-            ) : opEligible ? (
-              <TouchableOpacity onPress={handleStartOpTracking} disabled={isSettingOperationalStatus}>
-                <Text style={opStyles.startLink}>Start tracking</Text>
+
+        <Text style={opStyles.wfSectionLabel}>STATUS</Text>
+        {opCurrent && cfg ? (
+          <View style={[opStyles.statusPill, opStyles.statusPillLeft, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+            <View style={[opStyles.statusDot, { backgroundColor: cfg.color }]} />
+            <Text style={[opStyles.statusPillText, { color: cfg.color }]}>{cfg.label}</Text>
+          </View>
+        ) : opEligible ? (
+          <TouchableOpacity onPress={handleStartOpTracking} disabled={isSettingOperationalStatus}>
+            <Text style={opStyles.startLink}>Start tracking</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={opStyles.attrMuted}>Not started</Text>
+        )}
+
+        {opOnHold ? (
+          <View style={opStyles.holdBannerCompact}>
+            <AlertCircle size={14} color="#B45309" />
+            <View style={{ flex: 1 }}>
+              <Text style={opStyles.holdReason}>On Hold — {quote.holdReason || 'Reason not specified'}</Text>
+              {quote.holdNotes ? <Text style={opStyles.holdNotes}>{quote.holdNotes}</Text> : null}
+              {quote.holdPlacedBy ? (
+                <Text style={opStyles.holdMeta}>By {quote.holdPlacedBy}{quote.holdPlacedAt ? ` · ${new Date(quote.holdPlacedAt).toLocaleDateString()}` : ''}</Text>
+              ) : null}
+            </View>
+            <TouchableOpacity style={opStyles.resumeBtn} onPress={() => setResumeModalVisible(true)}>
+              <Text style={opStyles.resumeBtnText}>Resume</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+        <Text style={opStyles.wfSectionLabel}>DELIVERY METHOD</Text>
+        <View style={opStyles.wfChipsLeft}>
+          {DELIVERY_METHODS.map((m) => {
+            const active = quote.deliveryMethod === m;
+            return (
+              <TouchableOpacity key={m} style={[opStyles.miniChip, active && opStyles.miniChipActive]} onPress={() => handleSelectDelivery(m)}>
+                <Text style={[opStyles.miniChipText, active && opStyles.miniChipTextActive]}>{m}</Text>
               </TouchableOpacity>
-            ) : (
-              <Text style={opStyles.attrMuted}>Not started</Text>
-            )}
-          </View>
+            );
+          })}
+        </View>
 
-          {opOnHold ? (
-            <View style={opStyles.holdBannerCompact}>
-              <AlertCircle size={14} color="#B45309" />
-              <View style={{ flex: 1 }}>
-                <Text style={opStyles.holdReason}>On Hold — {quote.holdReason || 'Reason not specified'}</Text>
-                {quote.holdNotes ? <Text style={opStyles.holdNotes}>{quote.holdNotes}</Text> : null}
-                {quote.holdPlacedBy ? (
-                  <Text style={opStyles.holdMeta}>By {quote.holdPlacedBy}{quote.holdPlacedAt ? ` · ${new Date(quote.holdPlacedAt).toLocaleDateString()}` : ''}</Text>
-                ) : null}
+        <Text style={opStyles.wfSectionLabel}>INDICATORS</Text>
+        <View style={opStyles.wfIndicatorsRow}>
+          {indicators.map((ind) => (
+            <TouchableOpacity key={ind.key} style={opStyles.wfIndicator} onPress={() => handleToggleIndicator(ind.key)} activeOpacity={0.7}>
+              <CheckCircle size={16} color={ind.value ? '#16A34A' : '#D1D5DB'} />
+              <View style={opStyles.wfIndicatorText}>
+                <Text style={opStyles.wfIndicatorLabel}>{ind.short}</Text>
+                <Text style={[opStyles.wfIndicatorValue, ind.value && opStyles.wfIndicatorValueOn]}>{ind.value ? 'Yes' : 'No'}</Text>
               </View>
-              <TouchableOpacity style={opStyles.resumeBtn} onPress={() => setResumeModalVisible(true)}>
-                <Text style={opStyles.resumeBtnText}>Resume</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
-
-          <View style={opStyles.attrDivider} />
-
-          <View style={opStyles.attrRowWrap}>
-            <Text style={opStyles.attrKey}>Delivery</Text>
-            <View style={opStyles.attrChips}>
-              {DELIVERY_METHODS.map((m) => {
-                const active = quote.deliveryMethod === m;
-                return (
-                  <TouchableOpacity key={m} style={[opStyles.miniChip, active && opStyles.miniChipActive]} onPress={() => handleSelectDelivery(m)}>
-                    <Text style={[opStyles.miniChipText, active && opStyles.miniChipTextActive]}>{m}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={opStyles.attrDivider} />
-
-          <View style={opStyles.attrRowWrap}>
-            <Text style={opStyles.attrKey}>Indicators</Text>
-            <View style={opStyles.attrChips}>
-              {indicators.map((ind) => (
-                <TouchableOpacity key={ind.key} style={[opStyles.indBadge, ind.value && opStyles.indBadgeOn]} onPress={() => handleToggleIndicator(ind.key)}>
-                  <CheckCircle size={12} color={ind.value ? '#16A34A' : '#9CA3AF'} />
-                  <Text style={[opStyles.indBadgeText, ind.value && opStyles.indBadgeTextOn]}>{ind.short}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
     );
@@ -1613,7 +1612,6 @@ export default function QuoteDetailScreen() {
               {renderSendQuotePanel()}
               {quote.status !== 'needs_review' && renderPricingSummary()}
               {(quote.status === 'active' || quote.status === 'production_started' || quote.status === 'completed') && renderSalesTracking()}
-              {renderOperationalCard()}
             </View>
           </View>
         ) : (
@@ -1625,7 +1623,6 @@ export default function QuoteDetailScreen() {
             {renderSendQuotePanel()}
             {quote.status !== 'needs_review' && renderPricingSummary()}
             {(quote.status === 'active' || quote.status === 'production_started' || quote.status === 'completed') && renderSalesTracking()}
-            {renderOperationalCard()}
           </View>
         )}
         <View style={styles.bottomPadding} />
@@ -2060,6 +2057,14 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
     flex: 1,
     lineHeight: 18,
+  },
+  workflowCard: {
+    alignSelf: 'stretch' as const,
+  },
+  workflowCardDesktop: {
+    flex: 1.5,
+    minWidth: 0,
+    alignSelf: 'stretch' as const,
   },
   section: {
     marginBottom: 16,
@@ -3405,22 +3410,7 @@ const opStyles = StyleSheet.create({
     borderRadius: 8,
   },
   actionsBtnText: { color: '#fff', fontWeight: '600' as const, fontSize: 12 },
-  attrRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  attrRowWrap: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  attrKey: { fontSize: 13, color: '#6B7280', fontWeight: '500' as const, paddingTop: 4 },
   attrMuted: { fontSize: 13, color: '#9CA3AF' },
-  attrChips: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 6, flex: 1 },
-  attrDivider: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 12 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
   statusPill: {
     flexDirection: 'row',
@@ -3467,20 +3457,23 @@ const opStyles = StyleSheet.create({
   miniChipActive: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
   miniChipText: { fontSize: 12, color: Colors.light.tint, fontWeight: '600' as const },
   miniChipTextActive: { color: '#fff' },
-  indBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
+  wfTitleWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  wfSectionLabel: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: '#9CA3AF',
+    letterSpacing: 0.5,
+    marginTop: 14,
+    marginBottom: 8,
   },
-  indBadgeOn: { borderColor: '#86EFAC', backgroundColor: '#F0FDF4' },
-  indBadgeText: { fontSize: 12, color: '#6B7280', fontWeight: '600' as const },
-  indBadgeTextOn: { color: '#166534' },
+  statusPillLeft: { alignSelf: 'flex-start' as const },
+  wfChipsLeft: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  wfIndicatorsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 20 },
+  wfIndicator: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  wfIndicatorText: { gap: 1 },
+  wfIndicatorLabel: { fontSize: 13, fontWeight: '600' as const, color: '#374151' },
+  wfIndicatorValue: { fontSize: 12, color: '#9CA3AF', fontWeight: '500' as const },
+  wfIndicatorValueOn: { color: '#16A34A' },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   chip: {
     flexDirection: 'row',
