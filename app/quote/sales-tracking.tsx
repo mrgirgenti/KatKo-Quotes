@@ -61,7 +61,7 @@ export default function SalesTrackingScreen() {
   }, [quotes, sales, id]);
 
   const getItemQuantity = useCallback((item: LineItem) => {
-    return Object.values(item.sizes).reduce((sum, qty) => sum + qty, 0);
+    return Object.values(item.sizes ?? {}).reduce((sum, qty) => sum + (Number(qty) || 0), 0);
   }, []);
 
   const getTotalSizeQuantities = useCallback((item: LineItem) => {
@@ -90,11 +90,11 @@ export default function SalesTrackingScreen() {
       const itemQty = getItemQuantity(item);
       return {
         lineItemId: item.id,
-        actualProductCost: item.productCostEach * itemQty,
+        actualProductCost: (item.productCostEach ?? 0) * itemQty,
         productVendor: item.apparelProvider,
-        actualServiceCost: item.serviceCostEach * itemQty,
+        actualServiceCost: (item.serviceCostEach ?? 0) * itemQty,
         applicator: item.applicator || 'Katalyst Ko Printshop',
-        actualServiceFeesCost: item.serviceFeeEach,
+        actualServiceFeesCost: item.serviceFeeEach ?? 0,
         actualServiceFeesProfit: 0,
         actualOtherCosts: 0,
         otherCostsDescription: '',
@@ -110,15 +110,15 @@ export default function SalesTrackingScreen() {
   const [hasSalesTax, setHasSalesTax] = useState(quote?.hasSalesTax ?? false);
   const [actualOnlineFee, setActualOnlineFee] = useState(
     quote?.salesData?.actualOnlineFee?.toFixed(2) || 
-    (quote?.hasOnlineFee ? quote?.calculations.onlineFee.toFixed(2) : '0.00')
+    (quote?.hasOnlineFee ? (quote?.calculations?.onlineFee ?? 0).toFixed(2) : '0.00')
   );
   const [actualSalesTax, setActualSalesTax] = useState(
     quote?.salesData?.actualSalesTax?.toFixed(2) || 
-    (quote?.hasSalesTax ? quote?.calculations.salesTax.toFixed(2) : '0.00')
+    (quote?.hasSalesTax ? (quote?.calculations?.salesTax ?? 0).toFixed(2) : '0.00')
   );
   const [actualCardFee, setActualCardFee] = useState(
     quote?.salesData?.actualCardFee?.toFixed(2) || 
-    (quote?.hasCardFee ? quote?.calculations.cardFee.toFixed(2) : '0.00')
+    (quote?.hasCardFee ? (quote?.calculations?.cardFee ?? 0).toFixed(2) : '0.00')
   );
   const [amountCollected, setAmountCollected] = useState(
     quote?.salesData?.amountCollected?.toFixed(2) || '0.00'
@@ -162,22 +162,22 @@ export default function SalesTrackingScreen() {
     const cardFee = parseNumber(actualCardFee);
     const collected = parseNumber(amountCollected);
 
-    const quotedProductCost = quote?.calculations.productCostTotal || 0;
-    const quotedServiceCost = quote?.calculations.serviceCostTotal || 0;
-    const quotedFees = quote?.calculations.serviceFeeTotal || 0;
-    const quotedOnlineFee = quote?.calculations.onlineFee || 0;
-    const quotedSalesTax = quote?.calculations.salesTax || 0;
-    const quotedCardFee = quote?.calculations.cardFee || 0;
+    const quotedProductCost = quote?.calculations?.productCostTotal || 0;
+    const quotedServiceCost = quote?.calculations?.serviceCostTotal || 0;
+    const quotedFees = quote?.calculations?.serviceFeeTotal || 0;
+    const quotedOnlineFee = quote?.calculations?.onlineFee || 0;
+    const quotedSalesTax = quote?.calculations?.salesTax || 0;
+    const quotedCardFee = quote?.calculations?.cardFee || 0;
     const actualFees = totalServiceFeesCost;
     const feesDifference = quotedFees - actualFees;
 
-    const quotedCOG = quote?.calculations.cogTotal || 0;
+    const quotedCOG = quote?.calculations?.cogTotal || 0;
     const actualCOG = totalProductCost + totalServiceCost + totalServiceFeesCost + totalOtherCosts;
     const actualTotalWithFees = actualCOG + onlineFee + salesTax + cardFee;
-    const quotedProfit = quote?.calculations.markupAmount || 0;
+    const quotedProfit = quote?.calculations?.markupAmount || 0;
     const actualProfit = collected - actualTotalWithFees + totalServiceFeesProfit;
     const actualProfitMargin = collected > 0 ? ((actualProfit / collected) * 100) : 0;
-    const quotedProfitMargin = (quote?.calculations.total || 0) > 0 ? ((quotedProfit / (quote?.calculations.total || 1)) * 100) : 0;
+    const quotedProfitMargin = (quote?.calculations?.total || 0) > 0 ? ((quotedProfit / (quote?.calculations?.total || 1)) * 100) : 0;
 
     const cogDifference = quotedCOG - actualCOG;
     const profitDifference = actualProfit - quotedProfit;

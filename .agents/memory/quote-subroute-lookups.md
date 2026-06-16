@@ -15,3 +15,7 @@ Valid statuses: draft | needs_review | quoting | quoted | invoice_sent | paid | 
 
 ## Sub-routes lack the detail page's directQuote fallback
 `app/quote/[id].tsx` falls back to a direct `/api/projects/{id}` fetch (`directQuote`) so it can render projects not present in the context arrays. `sales-tracking.tsx` and `production/[id].tsx` only look in context (`quotes`/`sales`/`projects`) — add a loading guard (ActivityIndicator while `isLoading`) before any "not found", and consider a direct fetch if non-admin user filtering ever hides a project that the detail page still shows.
+
+## Cost/calculation fields can be null on real records
+`quote.calculations.*` and saved cost fields (`productCostEach`, sizes, etc.) are often null/undefined on older or completed projects. `quote?.calculations.onlineFee.toFixed(2)` crashes because `?.` only guards `quote`, not the nested object/field.
+**How to apply:** When rendering money/cost on these screens, use `(quote?.calculations?.X ?? 0).toFixed(2)`, coerce per-each/size values with `?? 0` (and `Number(qty) || 0` in quantity reducers), and remember `formatCurrency`/`?? 0` does NOT catch `NaN` (only null/undefined) — keep arithmetic operands non-NaN at the source.
