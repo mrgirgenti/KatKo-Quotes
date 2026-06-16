@@ -7,4 +7,5 @@
 - [Production plan + dual-status](production-and-status-model.md) — Production design in docs/; UI runs on `frontendStatus` string + `lineItemsData` JSON, NOT the Prisma enums.
 - [Prisma db push drift](prisma-push-drift.md) — db push wants to DROP unrelated drifted columns (e.g. Quote.projectNumber); for additive changes use a targeted ALTER, never --accept-data-loss.
 - [Safari WebKit scrollbar](safari-scrollbar-fix.md) — scrollbar-width:none is Firefox/Chrome only; add *::-webkit-scrollbar{display:none} in both SSR head (+html.tsx) and runtime CSS injection (_layout.tsx) to kill the blue track in Safari.
+- [Expo SSR deployment](expo-ssr-deployment.md) — autoscale prod run MUST be `expo serve` (not `expo start`) or health check fails; never use `static` target (kills API routes).
 - [API has no server-side authz](api-no-server-authz.md) — role gating is client-side only; API routes trust the request body (incl. actorName); any field settable via direct call.
