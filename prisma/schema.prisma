@@ -58,6 +58,8 @@ enum PriorityLevel {
   LOW
   NORMAL
   RUSH
+  CRITICAL
+  HIGH
 }
 
 enum IntakeSource {
@@ -243,6 +245,7 @@ model Project {
   intakeSource     IntakeSource  @default(INTERNAL)
   status           ProjectStatus @default(DRAFT)
   priority         PriorityLevel @default(NORMAL)
+  rush             Boolean       @default(false)
   dueDate          DateTime?
   notesInternal    String?
   notesClient      String?

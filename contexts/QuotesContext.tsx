@@ -404,6 +404,57 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
     onSuccess: invalidateQuotes,
   });
 
+  const setPriorityMutation = useMutation({
+    mutationFn: async ({
+      quoteId,
+      priority,
+    }: { quoteId: string; priority: import('@/types/quote').ProjectPriority }) => {
+      const current = quotesQuery.data || [];
+      const q = current.find((x) => x.id === quoteId);
+      if (!q) throw new Error('Quote not found');
+      const updated: Quote = { ...q, priority };
+      return apiFetch(`/api/projects/${quoteId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ...updated, actorName }),
+      });
+    },
+    onSuccess: invalidateQuotes,
+  });
+
+  const setAssigneeMutation = useMutation({
+    mutationFn: async ({
+      quoteId,
+      assignedToUserId,
+    }: { quoteId: string; assignedToUserId: string | null }) => {
+      const current = quotesQuery.data || [];
+      const q = current.find((x) => x.id === quoteId);
+      if (!q) throw new Error('Quote not found');
+      const updated: Quote = { ...q, assignedToUserId };
+      return apiFetch(`/api/projects/${quoteId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ...updated, actorName }),
+      });
+    },
+    onSuccess: invalidateQuotes,
+  });
+
+  const setRushMutation = useMutation({
+    mutationFn: async ({
+      quoteId,
+      rush,
+    }: { quoteId: string; rush: boolean }) => {
+      const current = quotesQuery.data || [];
+      const q = current.find((x) => x.id === quoteId);
+      if (!q) throw new Error('Quote not found');
+      const updated: Quote = { ...q, rush };
+      return apiFetch(`/api/projects/${quoteId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ...updated, actorName }),
+      });
+    },
+    onSuccess: invalidateQuotes,
+  });
+
   // Treat "no user loaded yet" as admin so quotes are visible during initialization.
   // Only enforce per-user filtering once a real non-admin user is confirmed.
   const isAdmin = !currentUser || currentUser.role === 'org_admin';
@@ -416,12 +467,15 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
   const sales = userQuotes.filter(
     (q) => q.status === 'active' || q.status === 'production_started' || q.status === 'completed',
   );
+  // Production lens: only projects that have entered the operational workflow.
+  const productionProjects = userQuotes.filter((q) => !!q.operationalStatus);
 
   return {
     quotes,
     projects,
     allQuotes: quotesQuery.data || [],
     sales,
+    productionProjects,
     isLoading: quotesQuery.isLoading,
     addQuote: addQuoteMutation.mutate,
     updateQuote: updateQuoteMutation.mutate,
@@ -443,6 +497,14 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
     isSettingOperationalStatus: setOperationalStatusMutation.isPending,
     setDeliveryMethod: setDeliveryMethodMutation.mutate,
     setIndicator: setIndicatorMutation.mutate,
+    setPriority: setPriorityMutation.mutate,
+    setPriorityAsync: setPriorityMutation.mutateAsync,
+    isSettingPriority: setPriorityMutation.isPending,
+    setAssignee: setAssigneeMutation.mutate,
+    setAssigneeAsync: setAssigneeMutation.mutateAsync,
+    setRush: setRushMutation.mutate,
+    setRushAsync: setRushMutation.mutateAsync,
+    isSettingRush: setRushMutation.isPending,
     isAdding: addQuoteMutation.isPending,
     isConverting: convertToActiveMutation.isPending,
     isLocking: lockSaleMutation.isPending,

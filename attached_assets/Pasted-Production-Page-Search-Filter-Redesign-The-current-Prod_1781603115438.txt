@@ -1,0 +1,169 @@
+Production Page – Search & Filter Redesign
+
+The current Production page filter system is visually overwhelming and consumes too much vertical space. The Production Board should be the primary focus of the page, not rows of filter pills.
+
+Redesign the Search and Filter experience on the Production page only.
+
+DO NOT modify:
+
+* Board View functionality
+* Queue View functionality
+* Calendar View functionality
+* Analytics View functionality
+* Production cards
+* Production statuses
+* Project Actions system
+
+This change applies ONLY to the filtering/search UI.
+
+OBJECTIVE
+
+Replace the current multi-row pill architecture with a modern search + filter experience that feels closer to ClickUp, Monday, Printavo, or ShopMonkey.
+
+The Production Board should move higher on the screen and receive more visual focus.
+
+REMOVE
+
+Remove the permanently visible filter sections:
+
+* Priority
+* Status
+* Assignee
+* Service
+* Delivery
+* Due
+
+These should no longer appear as stacked rows underneath the search field.
+
+NEW LAYOUT
+
+Replace the current filter area with:
+
+[ Search projects, clients, project #... ]
+
+[ Filters ▼ ]     [ Saved Views ▼ ]
+
+Only these controls should be visible by default.
+
+SEARCH EXPERIENCE
+
+When a user clicks into the search bar:
+
+Expand a dropdown panel beneath the search field.
+
+The panel should contain:
+
+Priority
+
+* Critical
+* High
+* Normal
+* Low
+
+Status
+
+* Accepted
+* Awaiting Artwork
+* Artwork Approval
+* Awaiting Payment
+* Ready For Production
+* In Production
+* On Hold
+* Completed
+* Delivered
+* Closed
+
+Assignee
+
+* Unassigned
+* Assigned To Me
+* Assigned User
+
+Service
+
+* Direct To Film
+* Screen Printing
+* Embroidery
+* Promotional
+* DTF Transfers
+* Design Work
+
+Delivery
+
+* Pickup
+* Shipping
+* Local Delivery
+
+Due Date
+
+* Overdue
+* Due Today
+* Next 7 Days
+* Next 30 Days
+
+This should function as a quick-filter panel tied to the search experience.
+
+FILTERS BUTTON
+
+The Filters button should open a larger filter drawer or dropdown.
+
+Users should be able to:
+
+* Select multiple filters
+* Clear all filters
+* Apply filters
+* Save filter combinations
+
+ACTIVE FILTERS
+
+When filters are active:
+
+Display only active filters as removable chips directly below the toolbar.
+
+Example:
+
+[Rush ✕]
+[Embroidery ✕]
+[Due This Week ✕]
+
+Do NOT display every available filter.
+
+Only display active selections.
+
+SAVED VIEWS
+
+Add a Saved Views dropdown.
+
+Default views:
+
+* All Production
+* My Projects
+* Rush Orders
+* Due This Week
+* In Production
+* On Hold
+* Embroidery Queue
+* DTF Queue
+
+Architecture should support user-created saved views in the future.
+
+Examples:
+
+* Josh's Daily Queue
+* Embroidery Department
+* Rush Orders
+
+DESIGN GOAL
+
+The page should feel like an operational workspace rather than a database query builder.
+
+Success criteria:
+
+* Fewer visible controls
+* More board visibility
+* Cleaner professional appearance
+* Faster project discovery
+* Easier filtering workflow
+* Better use of vertical screen space
+
+The Production Board should become the primary visual focus of the page.

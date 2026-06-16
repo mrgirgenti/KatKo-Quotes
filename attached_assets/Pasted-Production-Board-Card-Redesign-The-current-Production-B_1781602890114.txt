@@ -1,0 +1,147 @@
+Production Board Card Redesign
+
+The current Production Board cards are not using space efficiently and do not surface the most important production information clearly.
+
+Redesign ONLY the Board View cards on the Production page.
+
+Do NOT modify:
+
+* Queue View
+* Projects page
+* Quotes page
+* Project Detail page
+* Any other card layouts
+
+This change applies ONLY to:
+
+Operations → Production → Board View
+
+Target layout:
+
+LEFT SECTION
+
+* Keep the existing colored vertical status strip on the far left.
+* Keep the mockup/artwork preview area.
+* Mockup area should be approximately 80-100px wide.
+* If no artwork exists, show the current placeholder image.
+
+If project.rush = true:
+
+* Display a 🔥 emoji in the upper-left corner of the card.
+* Position it slightly overlapping the mockup section.
+* This indicator should be highly visible.
+
+If project.rush = false:
+
+* Do not show the flame.
+
+CENTER SECTION
+
+Top row:
+
+[Priority Badge]   #ProjectNumber
+
+Examples:
+
+[Normal] #KK-8675309
+[High] #KK-8675310
+[Critical] #KK-8675311
+
+Priority remains:
+
+Critical
+High
+Normal
+Low
+
+Priority is NOT Rush.
+
+Second row:
+
+Project Name
+
+Large bold text.
+
+This should be the most visually prominent text on the card.
+
+Third row:
+
+Only show when project.rush = true
+
+Display:
+
+🔥 Rush
+
+in red text.
+
+Do NOT show:
+
+Rush / Critical
+
+Rush and Priority are separate concepts.
+
+BOTTOM ROW
+
+Display all information on a single line:
+
+[calendar icon] Order: Apr 21, 2026
+|
+[calendar icon] Due: Apr 30, 2026
+|
+[service icon] Direct to Film
+
+Requirements:
+
+* Single horizontal row
+* Use divider separators (|)
+* Do not stack labels underneath
+* Do not create multiple rows
+* Keep compact and highly scannable
+
+RIGHT SECTION
+
+Display quantity in large bold typography.
+
+Example:
+
+37 pcs
+
+This should sit in the upper-right corner of the card.
+
+Quantity should be one of the largest visual elements on the card.
+
+SORTING
+
+Board cards should sort:
+
+1. Rush projects first
+2. Priority
+3. Due date
+
+Rush is a paid service level and should take precedence over standard projects.
+
+INTERACTION
+
+Clicking anywhere on the card opens the existing Project Detail page.
+
+Do not create any new project detail screens.
+
+SUCCESS CRITERIA
+
+The finished card should visually resemble this structure:
+
+🔥
+
+[Mockup]
+
+[Normal] #KK-8675309
+
+Project Name Here
+
+🔥 Rush
+
+📅 Order: Apr 21, 2026 | 📅 Due: Apr 30, 2026 | 👕 Direct to Film
+
+37 pcs
+
+The goal is fast visual scanning for production staff, not displaying excessive metadata.

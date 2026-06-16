@@ -63,12 +63,13 @@ import { useCrm } from '@/contexts/CrmContext';
 import { generateAndSharePDF, printQuote, generateWorkOrderPDFs } from '@/utils/pdfGenerator';
 import { Toast } from '@/components/Toast';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { PriorityControl } from '@/components/production/PriorityControl';
 import { exportSingleSaleToSheets } from '@/utils/googleSheetsExport';
 
 export default function QuoteDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { quotes, sales, convertToSale, convertToQuote, deleteQuote, isConverting, markExportedToSheets, lockSale, projects, startProduction, isLoading: quotesLoading, updateQuoteAsync, setOperationalStatus, setDeliveryMethod, setIndicator, isSettingOperationalStatus } = useQuotes();
+  const { quotes, sales, convertToSale, convertToQuote, deleteQuote, isConverting, markExportedToSheets, lockSale, projects, startProduction, isLoading: quotesLoading, updateQuoteAsync, setOperationalStatus, setDeliveryMethod, setIndicator, isSettingOperationalStatus, setPriority, setRush } = useQuotes();
   const { currentUser } = useUser();
   const { orgs } = useCrm();
   const [toastVisible, setToastVisible] = useState(false);
@@ -1425,6 +1426,24 @@ export default function QuoteDetailScreen() {
         <View style={opStyles.wfTitleWrap}>
           <Workflow size={14} color={Colors.light.textSecondary} />
           <Text style={styles.contactCardLabel}>PROJECT WORKFLOW</Text>
+        </View>
+
+        {/* Priority row */}
+        <View style={opStyles.wfPriorityRow}>
+          <Text style={opStyles.wfInlineLabel}>Priority</Text>
+          <PriorityControl
+            priority={quote.priority}
+            onChange={(p) => setPriority({ quoteId: quote.id, priority: p })}
+          />
+          <TouchableOpacity
+            style={[opStyles.wfRushToggle, quote.rush && opStyles.wfRushToggleActive]}
+            onPress={() => setRush({ quoteId: quote.id, rush: !quote.rush })}
+            activeOpacity={0.7}
+          >
+            <Text style={[opStyles.wfRushToggleText, quote.rush && opStyles.wfRushToggleTextActive]}>
+              {quote.rush ? '🔥 Rush' : 'Mark Rush'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Top row: status badge on the left, Actions dropdown on the right */}
@@ -3495,6 +3514,23 @@ const opStyles = StyleSheet.create({
     gap: 8,
     marginTop: 14,
   },
+  wfPriorityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 12,
+  },
+  wfRushToggle: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+  },
+  wfRushToggleActive: { borderColor: '#FCA5A5', backgroundColor: '#FEF2F2' },
+  wfRushToggleText: { fontSize: 12, fontWeight: '700' as const, color: '#6B7280' },
+  wfRushToggleTextActive: { color: '#DC2626' },
   wfInlineLabel: { fontSize: 13, fontWeight: '600' as const, color: '#6B7280' },
   wfInlineValue: { fontSize: 13, fontWeight: '700' as const, color: Colors.light.text, flex: 1 },
   wfChangeLink: { fontSize: 12, fontWeight: '600' as const, color: Colors.light.tint },

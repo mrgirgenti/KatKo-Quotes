@@ -1,0 +1,129 @@
+Production Board Card Correction
+
+STOP redesigning or reinterpreting the card.
+
+The current implementation does not match the provided mockup.
+
+The goal is NOT to create a similar card.
+
+The goal is to recreate the provided card layout as closely as possible using our existing project data.
+
+Use the attached mockup as the source of truth.
+
+DO NOT:
+
+* Create alternative layouts
+* Reorganize the information
+* Stack metadata vertically
+* Add extra controls
+* Compress the card
+* Invent new spacing rules
+
+The card should visually match the supplied mockup.
+
+REQUIRED LAYOUT
+
+LEFT SIDE
+
+* Keep the existing vertical status color strip.
+* Immediately beside it place the mockup/artwork area.
+* Mockup area should be approximately 90px wide.
+* Mockup area should span nearly the full height of the card.
+* Show uploaded artwork if available.
+* Otherwise show the existing shirt placeholder.
+
+MAIN CONTENT
+
+TOP ROW
+
+Left:
+
+[Priority Badge]   #Project Number
+
+Example:
+
+[Normal]   #P-1008
+
+Right:
+
+Large bold quantity.
+
+Example:
+
+37 pcs
+
+Quantity should be aligned to the upper-right corner exactly like the mockup.
+
+SECOND ROW
+
+Project Name
+
+Large bold text.
+
+This should be the most visually prominent text on the card.
+
+THIRD ROW
+
+If Rush = true:
+
+Display:
+
+🔥 Rush
+
+directly beneath the project name.
+
+Use the actual emoji.
+
+Do NOT display:
+
+Rush/Critical
+
+Do NOT combine Rush and Priority.
+
+If Rush = false:
+
+Show nothing.
+
+BOTTOM ROW
+
+This row is critical.
+
+Render exactly as:
+
+[calendar icon] Order: Apr 21, 2026
+|
+[calendar icon] Due: Apr 30, 2026
+|
+[service icon] Direct to Film
+
+All three items must exist on ONE horizontal line.
+
+DO NOT:
+
+* Put Order on one line and date below it
+* Put Due on one line and date below it
+* Put Service on its own line
+* Create stacked labels
+
+The card should match the visual structure of the provided mockup.
+
+REMOVE
+
+Remove:
+
+* Move button
+* Open button
+
+The card itself should be clickable.
+
+Clicking anywhere on the card should open the existing Project Detail page.
+
+SUCCESS CRITERIA
+
+Compare the finished card directly against the supplied mockup.
+
+If the final card does not visually resemble the supplied mockup at first glance, the implementation is incorrect.
+
+The supplied mockup is not inspiration.
+
+It is the layout specification.

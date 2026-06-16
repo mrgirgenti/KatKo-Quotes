@@ -1,5 +1,26 @@
 import { pool } from '@/lib/pool';
-import type { Quote } from '@/types/quote';
+import type { Quote, ProjectPriority } from '@/types/quote';
+
+function dbPriorityToFrontend(p: string | null | undefined): ProjectPriority {
+  switch (p) {
+    case 'CRITICAL': return 'Critical';
+    case 'HIGH': return 'High';
+    case 'RUSH': return 'High';
+    case 'LOW': return 'Low';
+    case 'NORMAL':
+    default: return 'Normal';
+  }
+}
+
+function frontendPriorityToDb(p: string | null | undefined): string {
+  switch (p) {
+    case 'Critical': return 'CRITICAL';
+    case 'High': return 'HIGH';
+    case 'Low': return 'LOW';
+    case 'Normal':
+    default: return 'NORMAL';
+  }
+}
 
 const VALID_STATUSES = new Set(['draft','needs_review','quoting','quoted','invoice_sent','paid','active','production_started','completed','expired']);
 
@@ -48,6 +69,9 @@ function toFrontendQuote(p: any): Quote {
     paymentReceived: p.paymentReceived ?? false,
     artworkReceived: p.artworkReceived ?? false,
     proofApproved: p.proofApproved ?? false,
+    priority: dbPriorityToFrontend(p.priority),
+    assignedToUserId: p.assignedToUserId ?? null,
+    rush: p.rush ?? false,
   } as Quote;
 }
 
@@ -137,7 +161,8 @@ export async function PUT(request: Request, { id }: { id: string }) {
     const prevResult = await pool.query(
       `SELECT "frontendStatus", "organizationId", title,
               "operationalStatus", "holdReason", "holdNotes", "holdPlacedAt", "holdPlacedBy",
-              "deliveryMethod", "paymentReceived", "artworkReceived", "proofApproved"
+              "deliveryMethod", "paymentReceived", "artworkReceived", "proofApproved",
+              priority, "assignedToUserId", rush
        FROM "Project" WHERE id = $1`,
       [id],
     );
@@ -163,6 +188,22 @@ export async function PUT(request: Request, { id }: { id: string }) {
     const artworkReceived = keep(b.artworkReceived, prev?.artworkReceived ?? false);
     const proofApproved = keep(b.proofApproved, prev?.proofApproved ?? false);
 
+    // Priority: stored as a DB enum; preserve existing enum when caller omits it,
+    // otherwise translate the frontend label into the enum value.
+    const priority = b.priority === undefined
+      ? (prev?.priority ?? 'NORMAL')
+      : frontendPriorityToDb(b.priority);
+
+    const rush = keep(b.rush, prev?.rush ?? false);
+
+    // Assignee FK must reference an existing User (or be null). Validate to avoid
+    // FK-violation 500s when a stale id is sent.
+    let assignedToUserId: string | null = keep(b.assignedToUserId, prev?.assignedToUserId ?? null);
+    if (assignedToUserId) {
+      const chk = await pool.query(`SELECT id FROM "User" WHERE id = $1`, [assignedToUserId]);
+      if (!chk.rows[0]) assignedToUserId = null;
+    }
+
     const result = await pool.query(
       `UPDATE "Project" SET
         title = $1, "clientName" = $2, "organizationId" = $3, "orderType" = $4,
@@ -176,6 +217,7 @@ export async function PUT(request: Request, { id }: { id: string }) {
         "operationalStatus" = $24, "holdReason" = $25, "holdNotes" = $26,
         "holdPlacedAt" = $27, "holdPlacedBy" = $28, "deliveryMethod" = $29,
         "paymentReceived" = $30, "artworkReceived" = $31, "proofApproved" = $32,
+        priority = $33::"PriorityLevel", "assignedToUserId" = $34, rush = $35,
         "updatedAt" = NOW()
       WHERE id = $23 RETURNING *`,
       [
@@ -211,6 +253,9 @@ export async function PUT(request: Request, { id }: { id: string }) {
         paymentReceived,
         artworkReceived,
         proofApproved,
+        priority,
+        assignedToUserId,
+        rush,
       ],
     );
     if (!result.rows[0]) return Response.json({ error: 'Not found' }, { status: 404 });

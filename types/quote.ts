@@ -133,7 +133,31 @@ export interface Quote {
   paymentReceived?: boolean;
   artworkReceived?: boolean;
   proofApproved?: boolean;
+  priority?: ProjectPriority | null;
+  assignedToUserId?: string | null;
+  rush?: boolean;
 }
+
+export type ProjectPriority = 'Critical' | 'High' | 'Normal' | 'Low';
+
+export const PROJECT_PRIORITIES: ProjectPriority[] = ['Critical', 'High', 'Normal', 'Low'];
+
+export const DEFAULT_PRIORITY: ProjectPriority = 'Normal';
+
+// Lower rank = higher priority (used for sorting Critical first).
+export const PRIORITY_RANK: Record<ProjectPriority, number> = {
+  Critical: 0,
+  High: 1,
+  Normal: 2,
+  Low: 3,
+};
+
+export const PRIORITY_CONFIG: Record<ProjectPriority, { label: string; color: string; bg: string; borderColor: string }> = {
+  Critical: { label: 'Critical', color: '#FFFFFF', bg: '#DC2626', borderColor: '#DC2626' },
+  High:     { label: 'High',     color: '#FFFFFF', bg: '#EA580C', borderColor: '#EA580C' },
+  Normal:   { label: 'Normal',   color: '#1D4ED8', bg: '#DBEAFE', borderColor: '#93C5FD' },
+  Low:      { label: 'Low',      color: '#4B5563', bg: '#F3F4F6', borderColor: '#D1D5DB' },
+};
 
 export type OperationalProjectStatus =
   | 'Accepted'

@@ -1,0 +1,236 @@
+Production Board Card Layout Corrections
+
+The current Production Board cards still do not match the approved design direction.
+
+STOP redesigning or reinterpreting the card.
+
+The goal is to recreate the approved card layout as closely as possible using existing project data.
+
+This applies ONLY to:
+
+Operations → Production → Board View
+
+Do NOT modify:
+
+* Queue View
+* Calendar View
+* Analytics View
+* Projects page
+* Quotes page
+* Project Detail page
+* Production status logic
+* Production workflow logic
+
+The approved card layout is the source of truth.
+
+---
+
+## CARD STRUCTURE
+
+LEFT SECTION
+
+Keep:
+
+* Existing vertical status color strip
+* Existing mockup/artwork area
+
+Adjust:
+
+* Increase mockup section width to approximately 90-100px
+* Mockup section should occupy nearly full card height
+* Display uploaded mockup if available
+* Otherwise display existing placeholder shirt graphic
+
+The mockup section should feel visually substantial and not compressed.
+
+---
+
+## RUSH INDICATOR
+
+Rush is NOT Priority.
+
+If:
+
+project.rush === true
+
+Display:
+
+🔥
+
+in the upper-left corner of the card, overlapping the mockup section.
+
+Also display:
+
+🔥 Rush
+
+beneath the Project Name.
+
+Do NOT display:
+
+Rush / Critical
+
+Do NOT combine Rush and Priority.
+
+If:
+
+project.rush === false
+
+Show no flame.
+
+Show no Rush label.
+
+---
+
+## TOP ROW
+
+Left side:
+
+[Priority Badge]   #ProjectNumber
+
+Example:
+
+[Normal]   #P-1008
+
+Right side:
+
+Large bold quantity.
+
+Example:
+
+37 pcs
+
+Quantity should remain in the upper-right corner and be one of the largest visual elements on the card.
+
+---
+
+## SECOND ROW
+
+Project Name
+
+Example:
+
+Team Shirts
+
+Requirements:
+
+* Larger font size
+* Bold weight
+* Most visually dominant text on the card
+
+The Project Name should stand out more than the Priority Badge or Project Number.
+
+---
+
+## THIRD ROW
+
+Display:
+
+📅 Order Date: Apr 21, 2026
+
+This should sit directly beneath the Project Name.
+
+Use the label:
+
+Order Date
+
+Do NOT use:
+
+Order
+
+---
+
+## BOTTOM ROW
+
+Display exactly:
+
+📅 In-Hands Date: Apr 30, 2026
+|
+👕 Direct to Film
+
+This should be a single horizontal row.
+
+Use the label:
+
+In-Hands Date
+
+Do NOT use:
+
+Due
+Due Date
+Delivery Date
+
+Maintain the same terminology used elsewhere throughout Katalyst OS.
+
+---
+
+## REMOVE
+
+Remove:
+
+* Move button
+* Open button
+
+The entire card should be clickable.
+
+Clicking anywhere on the card should open the existing Project Detail page.
+
+---
+
+## CARD WIDTH
+
+The current cards and board columns still feel too narrow.
+
+Adjust the board layout so cards utilize more horizontal space.
+
+Goals:
+
+* Wider cards
+* Better spacing
+* Less cramped appearance
+* Better readability
+
+Do NOT increase card height.
+
+Use the additional width to improve:
+
+* Project Name visibility
+* Date readability
+* Service readability
+* Overall visual balance
+
+---
+
+## VISUAL TARGET
+
+Final card hierarchy should be:
+
+🔥 (if Rush)
+
+[Mockup]
+
+[Normal] #P-1008                                37 pcs
+
+Team Shirts
+
+🔥 Rush (only if Rush)
+
+📅 Order Date: Apr 21, 2026
+
+📅 In-Hands Date: Apr 30, 2026 | 👕 Direct to Film
+
+---
+
+## SUCCESS CRITERIA
+
+The finished card should immediately communicate:
+
+1. Rush status
+2. Project Name
+3. Quantity
+4. In-Hands Date
+5. Service Type
+6. Order Date
+7. Priority
+8. Project Number
+
+The card should feel clean, professional, easy to scan, and optimized for a production environment.
