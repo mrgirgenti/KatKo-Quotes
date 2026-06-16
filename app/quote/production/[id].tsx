@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Alert,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import PageBackHeader from '@/components/PageBackHeader';
@@ -75,7 +76,7 @@ function SizeGridDisplay({ sizes, isPromotional }: { sizes: SizeQuantities; isPr
 export default function ProductionViewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { projects, quotes, sales, markProjectComplete, markLineItemComplete, unmarkLineItemComplete, isCompletingProject } = useQuotes();
+  const { projects, quotes, sales, markProjectComplete, markLineItemComplete, unmarkLineItemComplete, isCompletingProject, isLoading: quotesLoading } = useQuotes();
 
   const quote = (projects || [...quotes, ...sales]).find(q => q.id === id);
   const items = quote?.lineItems ?? [];
@@ -142,6 +143,14 @@ export default function ProductionViewScreen() {
   const handleExit = useCallback(() => {
     router.replace(`/quote/${id}`);
   }, [router, id]);
+
+  if (!quote && quotesLoading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={Colors.light.tint} />
+      </View>
+    );
+  }
 
   if (!quote || !item) {
     return (

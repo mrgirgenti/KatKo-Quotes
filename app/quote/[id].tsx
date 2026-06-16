@@ -428,6 +428,11 @@ export default function QuoteDetailScreen() {
     router.push(`/quote/production/${quote.id}`);
   }, [quote, startProduction, router]);
 
+  const handleOpenProduction = useCallback(() => {
+    if (!quote) return;
+    router.push(`/quote/production/${quote.id}`);
+  }, [quote, router]);
+
   const handleRevertToQuote = useCallback(() => {
     if (!quote) return;
     if (quote.isLocked) {
@@ -1720,7 +1725,7 @@ export default function QuoteDetailScreen() {
                   <Text style={styles.actionBtnOutlineText}>Track Costs</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1 }]} onPress={handleStartProduction}>
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1 }]} onPress={handleOpenProduction}>
                 <Flame size={17} color="#fff" />
                 <Text style={styles.actionBtnSolidText}>Production Mode</Text>
               </TouchableOpacity>
@@ -1738,7 +1743,7 @@ export default function QuoteDetailScreen() {
                   <Text style={styles.actionBtnOutlineText}>Track Costs</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1 }]} onPress={handleStartProduction}>
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1 }]} onPress={handleOpenProduction}>
                 <Flame size={17} color="#fff" />
                 <Text style={styles.actionBtnSolidText}>Production Mode</Text>
               </TouchableOpacity>

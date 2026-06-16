@@ -11,6 +11,7 @@ import {
   Modal,
   Pressable,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import PageBackHeader from '@/components/PageBackHeader';
@@ -49,7 +50,7 @@ import { DateInput } from '@/components/DateInput';
 export default function SalesTrackingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { quotes, sales, updateSalesData, lockSale } = useQuotes();
+  const { quotes, sales, updateSalesData, lockSale, isLoading: quotesLoading } = useQuotes();
   const { currentUser } = useUser();
   const { orgs, addOrg } = useCrm();
   const { isDesktop, isMobile } = useBreakpoint();
@@ -343,13 +344,23 @@ export default function SalesTrackingScreen() {
     setApplicatorModalVisible(false);
   };
 
-  if (!quote || quote.status !== 'sale') {
+  if (!quote) {
+    if (quotesLoading) {
+      return (
+        <View style={styles.container}>
+          <Stack.Screen options={{ title: 'Cost Tracking' }} />
+          <View style={styles.notFound}>
+            <ActivityIndicator size="large" color={Colors.light.tint} />
+          </View>
+        </View>
+      );
+    }
     return (
       <View style={styles.container}>
-        <Stack.Screen options={{ title: 'Sales Tracking' }} />
+        <Stack.Screen options={{ title: 'Cost Tracking' }} />
         <View style={styles.notFound}>
           <FileText size={48} color={Colors.light.border} />
-          <Text style={styles.notFoundText}>Sale not found</Text>
+          <Text style={styles.notFoundText}>Project not found</Text>
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
             <Text style={styles.backBtnText}>Go Back</Text>
           </TouchableOpacity>
