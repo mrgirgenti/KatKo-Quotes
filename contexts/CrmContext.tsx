@@ -14,6 +14,7 @@ import {
   MembershipRole,
 } from '@/types/crm';
 import { generateId } from '@/utils/quoteCalculations';
+import { getClerkToken } from '@/lib/clerkToken';
 
 const ORGS_KEY = 'crm_organizations';
 const TEMPLATES_KEY = 'crm_campaign_templates';
@@ -62,9 +63,14 @@ const DEFAULT_TEMPLATES: CampaignTemplate[] = [
 ];
 
 async function apiFetch(path: string, opts?: RequestInit) {
+  const token = await getClerkToken();
   const res = await fetch(path, {
     ...opts,
-    headers: { 'Content-Type': 'application/json', ...(opts?.headers ?? {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(opts?.headers ?? {}),
+    },
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

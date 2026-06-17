@@ -1,15 +1,20 @@
 'use client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { TouchableOpacity, Text } from 'react-native';
 import { ChevronLeft } from 'lucide-react-native';
+import { ClerkProvider, useAuth } from '@clerk/clerk-expo';
+import { tokenCache } from '@clerk/clerk-expo/token-cache';
 
 import { QuotesProvider } from '@/contexts/QuotesContext';
 import { UserProvider } from '@/contexts/UserContext';
 import { CrmProvider } from '@/contexts/CrmContext';
+import { setClerkTokenGetter } from '@/lib/clerkToken';
+
+const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -144,6 +149,37 @@ const queryClient = new QueryClient({
   },
 });
 
+// Client-side auth gate. The real security boundary is server-side (API routes
+// verify the Clerk session); this only handles UX redirects. Portal routes are a
+// separate client-facing auth system and are intentionally NOT gated by Clerk.
+function AuthGate() {
+  const { isLoaded, isSignedIn, getToken } = useAuth();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  // Expose Clerk's token getter to non-React modules (apiFetch) so every API
+  // request carries the session token for server-side verification.
+  useEffect(() => {
+    setClerkTokenGetter(() => getToken());
+    return () => setClerkTokenGetter(null);
+  }, [getToken]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (!pathname) return;
+    const isPortal = pathname.startsWith('/portal');
+    const isAuthRoute = pathname === '/sign-in' || pathname === '/sign-up';
+    if (isPortal) return;
+    if (!isSignedIn && !isAuthRoute) {
+      router.replace('/sign-in');
+    } else if (isSignedIn && isAuthRoute) {
+      router.replace('/(tabs)');
+    }
+  }, [isLoaded, isSignedIn, pathname, router]);
+
+  return null;
+}
+
 function RootLayoutNav() {
   return (
     <Stack
@@ -153,6 +189,8 @@ function RootLayoutNav() {
         headerLeft: () => <HeaderBackButton />,
       }}
     >
+      <Stack.Screen name="sign-in" options={{ headerShown: false }} />
+      <Stack.Screen name="sign-up" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="quote/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="quote/production/[id]" options={{ headerShown: false }} />
@@ -179,16 +217,19 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <UserProvider>
-          <QuotesProvider>
-            <CrmProvider>
-              <RootLayoutNav />
-            </CrmProvider>
-          </QuotesProvider>
-        </UserProvider>
-      </GestureHandlerRootView>
-    </QueryClientProvider>
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
+      <QueryClientProvider client={queryClient}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <UserProvider>
+            <QuotesProvider>
+              <CrmProvider>
+                <AuthGate />
+                <RootLayoutNav />
+              </CrmProvider>
+            </QuotesProvider>
+          </UserProvider>
+        </GestureHandlerRootView>
+      </QueryClientProvider>
+    </ClerkProvider>
   );
 }

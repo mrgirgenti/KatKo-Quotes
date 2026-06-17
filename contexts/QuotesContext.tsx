@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
 import { Quote, SalesData, LineItemActualCosts, QuoteStatus } from '@/types/quote';
 import { useUser } from '@/contexts/UserContext';
+import { getClerkToken } from '@/lib/clerkToken';
 
 const QUOTES_STORAGE_KEY = 'printshop_quotes';
 
@@ -21,9 +22,14 @@ function nowDateStr(): string {
 }
 
 async function apiFetch(path: string, opts?: RequestInit) {
+  const token = await getClerkToken();
   const res = await fetch(path, {
     ...opts,
-    headers: { 'Content-Type': 'application/json', ...(opts?.headers ?? {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(opts?.headers ?? {}),
+    },
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

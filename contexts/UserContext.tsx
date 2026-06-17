@@ -2,7 +2,34 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect, useRef } from 'react';
+import { useAuth } from '@clerk/clerk-expo';
 import { UserProfile, DEFAULT_USER, AVATAR_COLORS } from '@/types/user';
+import { getClerkToken } from '@/lib/clerkToken';
+
+// Fetch the verified DB user for the current Clerk session. This is the bridge
+// that makes the client's identity/role reflect the real authenticated account
+// (the DB remains the source of truth for roles).
+async function loadClerkDbUser(): Promise<UserProfile | null> {
+  const token = await getClerkToken();
+  if (!token) return null;
+  try {
+    const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return null;
+    const u = await res.json();
+    return {
+      id: u.id,
+      name: u.name || u.email || 'User',
+      businessName: '',
+      email: u.email || '',
+      phone: '',
+      avatarColor: AVATAR_COLORS[0],
+      createdAt: new Date().toISOString(),
+      role: u.role === 'org_admin' ? 'org_admin' : 'user',
+    };
+  } catch {
+    return null;
+  }
+}
 
 async function syncUserToDB(user: UserProfile): Promise<void> {
   try {
