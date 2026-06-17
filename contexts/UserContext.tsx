@@ -33,9 +33,13 @@ async function loadClerkDbUser(): Promise<UserProfile | null> {
 
 async function syncUserToDB(user: UserProfile): Promise<void> {
   try {
+    const token = await getClerkToken();
     await fetch('/api/users', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify(user),
     });
   } catch {
@@ -119,6 +123,7 @@ function generateUserId(): string {
 
 export const [UserProvider, useUser] = createContextHook(() => {
   const queryClient = useQueryClient();
+  const { isSignedIn } = useAuth();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const syncedCountRef = useRef(0);
@@ -127,6 +132,17 @@ export const [UserProvider, useUser] = createContextHook(() => {
     queryKey: ['users'],
     queryFn: loadUsers,
   });
+
+  // Bridge: when signed in with Clerk, the verified DB user (with its DB-backed
+  // role) is the authoritative identity for the client UI. The DB remains the
+  // source of truth for roles — this just reflects it client-side.
+  const clerkUserQuery = useQuery({
+    queryKey: ['clerk-db-user', !!isSignedIn],
+    queryFn: loadClerkDbUser,
+    enabled: !!isSignedIn,
+    staleTime: 5 * 60 * 1000,
+  });
+  const clerkUser = clerkUserQuery.data ?? null;
 
   useEffect(() => {
     loadCurrentUserId().then((id) => {
@@ -145,6 +161,9 @@ export const [UserProvider, useUser] = createContextHook(() => {
   }, [isInitialized, usersQuery.data?.length]);
 
   useEffect(() => {
+    // When authenticated via Clerk, the verified DB user drives identity — never
+    // synthesize a local org_admin (that would be an unauthenticated phantom).
+    if (isSignedIn) return;
     if (isInitialized && usersQuery.data && usersQuery.data.length === 0) {
       const defaultUser: UserProfile = {
         ...DEFAULT_USER,
@@ -159,11 +178,20 @@ export const [UserProvider, useUser] = createContextHook(() => {
       setCurrentUserId(usersQuery.data[0].id);
       saveCurrentUserId(usersQuery.data[0].id);
     }
-  }, [isInitialized, usersQuery.data]);
+  }, [isInitialized, usersQuery.data, isSignedIn]);
 
-  const currentUser = usersQuery.data?.find((u) => u.id === currentUserId) || null;
+  const localCurrentUser = usersQuery.data?.find((u) => u.id === currentUserId) || null;
+  // Clerk identity (when present) wins over the legacy local AsyncStorage user.
+  const currentUser = clerkUser ?? localCurrentUser;
+  const effectiveCurrentUserId = clerkUser?.id ?? currentUserId;
 
-  const orgAdmin = usersQuery.data?.find((u) => u.role === 'org_admin') || null;
+  const baseUsers = usersQuery.data || [];
+  const users =
+    clerkUser && !baseUsers.some((u) => u.id === clerkUser.id)
+      ? [clerkUser, ...baseUsers]
+      : baseUsers;
+
+  const orgAdmin = users.find((u) => u.role === 'org_admin') || null;
 
   const isOrgAdmin = () => currentUser?.role === 'org_admin';
 
@@ -227,11 +255,11 @@ export const [UserProvider, useUser] = createContextHook(() => {
   };
 
   return {
-    users: usersQuery.data || [],
+    users,
     currentUser,
-    currentUserId,
+    currentUserId: effectiveCurrentUserId,
     orgAdmin,
-    isLoading: usersQuery.isLoading || !isInitialized,
+    isLoading: usersQuery.isLoading || !isInitialized || (!!isSignedIn && clerkUserQuery.isLoading),
     isOrgAdmin,
     switchUser,
     createUser,
