@@ -13,7 +13,7 @@ import { useSignIn, useSSO } from '@clerk/clerk-expo';
 import { useRouter, Link } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
-import { Eye, EyeOff, Check } from 'lucide-react-native';
+import { Eye, EyeOff, Check, ArrowLeft } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { GoogleIcon } from '@/components/GoogleIcon';
 
@@ -38,6 +38,11 @@ export default function SignInScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [mfaStep, setMfaStep] = useState(false);
+  const [mfaStrategy, setMfaStrategy] = useState<string>('totp');
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaSubmitting, setMfaSubmitting] = useState(false);
 
   useEffect(() => {
     const saved = getStoredEmail();
@@ -68,13 +73,22 @@ export default function SignInScreen() {
     }
     setSubmitting(true);
     try {
-      const attempt = await signIn.create({ identifier: email.trim(), password });
+      const attempt = await signIn!.create({ identifier: email.trim(), password });
       if (attempt.status === 'complete') {
         persistRemember(email.trim(), rememberMe);
         await setActive({ session: attempt.createdSessionId });
         router.replace('/(tabs)');
+      } else if (attempt.status === 'needs_second_factor') {
+        const sf = attempt.supportedSecondFactors?.[0];
+        const strategy = (sf?.strategy as string) ?? 'totp';
+        setMfaStrategy(strategy);
+        if (strategy !== 'totp' && strategy !== 'backup_code') {
+          await signIn!.prepareSecondFactor({ strategy: strategy as any });
+        }
+        setMfaCode('');
+        setMfaStep(true);
       } else {
-        setError('Additional verification is required to sign in.');
+        setError('Sign-in could not be completed. Please try again.');
       }
     } catch (err: any) {
       setError(
@@ -86,6 +100,37 @@ export default function SignInScreen() {
       setSubmitting(false);
     }
   }, [isLoaded, submitting, email, password, rememberMe, signIn, setActive, router, persistRemember]);
+
+  const onMfaSubmit = useCallback(async () => {
+    if (!isLoaded || mfaSubmitting) return;
+    setError(null);
+    if (!mfaCode.trim()) {
+      setError('Enter the verification code.');
+      return;
+    }
+    setMfaSubmitting(true);
+    try {
+      const attempt = await signIn!.attemptSecondFactor({
+        strategy: mfaStrategy as any,
+        code: mfaCode.trim(),
+      });
+      if (attempt.status === 'complete') {
+        persistRemember(email.trim(), rememberMe);
+        await setActive({ session: attempt.createdSessionId });
+        router.replace('/(tabs)');
+      } else {
+        setError('Verification failed. Please try again.');
+      }
+    } catch (err: any) {
+      setError(
+        err?.errors?.[0]?.longMessage ||
+          err?.errors?.[0]?.message ||
+          'Incorrect code. Please try again.',
+      );
+    } finally {
+      setMfaSubmitting(false);
+    }
+  }, [isLoaded, mfaSubmitting, mfaCode, mfaStrategy, signIn, setActive, email, rememberMe, router, persistRemember]);
 
   const onGooglePress = useCallback(async () => {
     if (googleLoading) return;
@@ -111,116 +156,170 @@ export default function SignInScreen() {
     }
   }, [googleLoading, startSSOFlow, router]);
 
+  const mfaLabel =
+    mfaStrategy === 'totp'
+      ? 'Enter the 6-digit code from your authenticator app.'
+      : mfaStrategy === 'email_code'
+      ? 'A verification code was sent to your email.'
+      : 'A verification code was sent to your phone.';
+
   return (
     <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
       <View style={styles.card}>
         <View style={styles.logoBadge}>
           <Text style={styles.logoText}>KK</Text>
         </View>
-        <Text style={styles.title}>Welcome back</Text>
-        <Text style={styles.subtitle}>Sign in to Katalyst Ko OS</Text>
 
-        <TouchableOpacity
-          style={styles.googleBtn}
-          onPress={onGooglePress}
-          disabled={googleLoading}
-          activeOpacity={0.8}
-        >
-          {googleLoading ? (
-            <ActivityIndicator color={Colors.light.text} />
-          ) : (
-            <>
-              <GoogleIcon size={18} />
-              <Text style={styles.googleBtnText}>Continue with Google</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        {mfaStep ? (
+          <>
+            <Text style={styles.title}>Check your {mfaStrategy === 'totp' ? 'authenticator' : 'inbox'}</Text>
+            <Text style={styles.subtitle}>{mfaLabel}</Text>
 
-        <View style={styles.dividerRow}>
-          <View style={styles.divider} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.divider} />
-        </View>
+            <Text style={styles.label}>Verification code</Text>
+            <TextInput
+              style={styles.input}
+              value={mfaCode}
+              onChangeText={setMfaCode}
+              placeholder="000000"
+              placeholderTextColor="#9ca3af"
+              keyboardType="number-pad"
+              maxLength={8}
+              autoFocus
+              onSubmitEditing={onMfaSubmit}
+            />
 
-        <Text style={styles.label}>Email address</Text>
-        <TextInput
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          placeholder="Enter your email address"
-          placeholderTextColor="#9ca3af"
-          autoCapitalize="none"
-          keyboardType="email-address"
-          autoComplete="email"
-        />
+            {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Text style={styles.label}>Password</Text>
-        <View style={styles.passwordRow}>
-          <TextInput
-            style={styles.passwordInput}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Enter your password"
-            placeholderTextColor="#9ca3af"
-            secureTextEntry={!showPassword}
-            autoComplete="current-password"
-            onSubmitEditing={onSignInPress}
-          />
-          <TouchableOpacity
-            onPress={() => setShowPassword((s) => !s)}
-            style={styles.eyeBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            {showPassword ? (
-              <EyeOff size={18} color="#6b7280" />
-            ) : (
-              <Eye size={18} color="#6b7280" />
-            )}
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity
+              style={styles.submitBtn}
+              onPress={onMfaSubmit}
+              disabled={mfaSubmitting}
+              activeOpacity={0.85}
+            >
+              {mfaSubmitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.submitBtnText}>Verify</Text>
+              )}
+            </TouchableOpacity>
 
-        <View style={styles.rememberForgotRow}>
-          <TouchableOpacity
-            style={styles.rememberRow}
-            onPress={() => setRememberMe((v) => !v)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-              {rememberMe && <Check size={11} color="#fff" strokeWidth={3} />}
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => { setMfaStep(false); setMfaCode(''); setError(null); }}
+              activeOpacity={0.7}
+            >
+              <ArrowLeft size={14} color={Colors.light.textSecondary} />
+              <Text style={styles.backBtnText}>Back to sign in</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <Text style={styles.title}>Welcome back</Text>
+            <Text style={styles.subtitle}>Sign in to Katalyst Ko OS</Text>
+
+            <TouchableOpacity
+              style={styles.googleBtn}
+              onPress={onGooglePress}
+              disabled={googleLoading}
+              activeOpacity={0.8}
+            >
+              {googleLoading ? (
+                <ActivityIndicator color={Colors.light.text} />
+              ) : (
+                <>
+                  <GoogleIcon size={18} />
+                  <Text style={styles.googleBtnText}>Continue with Google</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.dividerRow}>
+              <View style={styles.divider} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.divider} />
             </View>
-            <Text style={styles.rememberLabel}>Remember me</Text>
-          </TouchableOpacity>
 
-          <Link href="/forgot-password" asChild>
-            <TouchableOpacity>
-              <Text style={styles.forgotText}>Forgot password?</Text>
+            <Text style={styles.label}>Email address</Text>
+            <TextInput
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
+              placeholder="Enter your email address"
+              placeholderTextColor="#9ca3af"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              autoComplete="email"
+            />
+
+            <Text style={styles.label}>Password</Text>
+            <View style={styles.passwordRow}>
+              <TextInput
+                style={styles.passwordInput}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Enter your password"
+                placeholderTextColor="#9ca3af"
+                secureTextEntry={!showPassword}
+                autoComplete="current-password"
+                onSubmitEditing={onSignInPress}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword((s) => !s)}
+                style={styles.eyeBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                {showPassword ? (
+                  <EyeOff size={18} color="#6b7280" />
+                ) : (
+                  <Eye size={18} color="#6b7280" />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.rememberForgotRow}>
+              <TouchableOpacity
+                style={styles.rememberRow}
+                onPress={() => setRememberMe((v) => !v)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                  {rememberMe && <Check size={11} color="#fff" strokeWidth={3} />}
+                </View>
+                <Text style={styles.rememberLabel}>Remember me</Text>
+              </TouchableOpacity>
+
+              <Link href="/forgot-password" asChild>
+                <TouchableOpacity>
+                  <Text style={styles.forgotText}>Forgot password?</Text>
+                </TouchableOpacity>
+              </Link>
+            </View>
+
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+
+            <TouchableOpacity
+              style={styles.submitBtn}
+              onPress={onSignInPress}
+              disabled={submitting}
+              activeOpacity={0.85}
+            >
+              {submitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.submitBtnText}>Sign in</Text>
+              )}
             </TouchableOpacity>
-          </Link>
-        </View>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        <TouchableOpacity
-          style={styles.submitBtn}
-          onPress={onSignInPress}
-          disabled={submitting}
-          activeOpacity={0.85}
-        >
-          {submitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitBtnText}>Sign in</Text>
-          )}
-        </TouchableOpacity>
-
-        <View style={styles.footerRow}>
-          <Text style={styles.footerText}>Don&apos;t have an account? </Text>
-          <Link href="/sign-up" replace asChild>
-            <TouchableOpacity>
-              <Text style={styles.footerLink}>Sign up</Text>
-            </TouchableOpacity>
-          </Link>
-        </View>
+            <View style={styles.footerRow}>
+              <Text style={styles.footerText}>Don&apos;t have an account? </Text>
+              <Link href="/sign-up" replace asChild>
+                <TouchableOpacity>
+                  <Text style={styles.footerLink}>Sign up</Text>
+                </TouchableOpacity>
+              </Link>
+            </View>
+          </>
+        )}
       </View>
     </ScrollView>
   );
@@ -343,4 +442,12 @@ const styles = StyleSheet.create({
   footerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 22 },
   footerText: { color: Colors.light.textSecondary, fontSize: 14 },
   footerLink: { color: Colors.light.primary, fontSize: 14, fontWeight: '700' },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 16,
+  },
+  backBtnText: { fontSize: 13, color: Colors.light.textSecondary, fontWeight: '500' },
 });
