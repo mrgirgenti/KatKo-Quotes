@@ -1,0 +1,368 @@
+# Mobile UX & Organization Details Refinement
+
+This prompt contains multiple approved UI refinements. Implement all changes together.
+
+---
+
+## Edit #1 — Active Projects & Submitted Quotes (Mobile Cards)
+
+### Scope
+
+Applies ONLY to:
+
+* Organization Details → Active Projects
+* Organization Details → Submitted Quotes
+* Contact Details → Active Projects
+* Contact Details → Submitted Quotes
+
+Do NOT modify:
+
+* Projects page
+* Production page
+* Quotes page
+
+### Current Problem
+
+Desktop cards were redesigned successfully, but mobile cards are still using the old layout.
+
+Mobile should not have a separate card architecture.
+
+It should be a responsive version of the new desktop card design.
+
+### Requirements
+
+Mobile cards should preserve the same hierarchy as desktop:
+
+* Project Number
+* Status Badge
+* Project Name
+* Client + Service
+* Due Date
+* PCS
+* Revenue
+* Profit
+
+Use the desktop design as the source of truth.
+
+Do not use the legacy stacked mobile layout.
+
+Goal:
+
+Desktop and mobile should feel like the same component.
+
+---
+
+## Edit #2 — Project Workflow Section (Project Details)
+
+### Scope
+
+Applies to:
+
+* Project Details page
+* Mobile and Desktop
+
+### Current Problem
+
+The current workflow card lacks hierarchy.
+
+Status, Priority, Delivery, Indicators, and Actions all compete visually.
+
+### Desired Hierarchy
+
+1. Status
+2. Actions
+3. Priority
+4. Delivery Method
+5. Readiness Indicators
+
+### Requirements
+
+Status should become the primary visual element.
+
+Actions should visually relate to Status.
+
+Delivery should be grouped with Priority.
+
+Indicators should read as readiness indicators, not project statuses.
+
+Current indicators:
+
+* Payment
+* Artwork
+* Proof
+
+Should remain informational and non-blocking.
+
+Improve spacing, grouping, and hierarchy.
+
+Do not remove functionality.
+
+---
+
+## Edit #3 — Project Details Line Items (Mobile Only)
+
+### Current Problem
+
+Mockup images are rendering underneath:
+
+* Service
+* Applicator
+* Source
+
+This creates overlap and readability issues.
+
+### Requirements
+
+On mobile:
+
+Move the mockup image into its own dedicated row directly below the line item header.
+
+Structure:
+
+Line Item Header
+
+Mockup Image
+
+Service
+Applicator
+Source
+
+Product Information
+Location
+Notes
+Sizes
+
+No text should render on top of the image.
+
+Desktop layout remains unchanged.
+
+---
+
+## Edit #4 — Production Page Project Cards (Mobile)
+
+### Current Problem
+
+The overall card layout is good.
+
+Only minor typography/layout refinements are needed.
+
+### Requirements
+
+#### Due Date
+
+Change:
+
+Due Date
+Apr 30
+
+To:
+
+Due Date: Apr 30
+
+Single line.
+
+#### PCS
+
+Change:
+
+PCS
+37
+
+To:
+
+PCS: 37
+
+Single line.
+
+#### Project Name Spacing
+
+Add slight vertical spacing between:
+
+Project Number
+
+and
+
+Project Name
+
+Example:
+
+#P-1008
+
+Team Shirts
+
+The title should breathe slightly more.
+
+### Preserve
+
+Keep:
+
+* Image size
+* Card size
+* Due Date location
+* PCS location
+* Submitted date
+* Service placement
+* Overall card structure
+
+This is a refinement pass only.
+
+---
+
+## Edit #5 — Remove Notes From Overview Sidebar
+
+### Scope
+
+Applies to:
+
+* Organization Details
+* Contact Details
+
+### Current Problem
+
+Notes are displayed in two places:
+
+1. Overview sidebar
+2. Notes tab
+
+This creates duplication.
+
+### Requirements
+
+Remove the Notes section from the Overview sidebar entirely.
+
+Remove:
+
+NOTES
+
+<note preview>
+
+Notes should exist only inside the dedicated Notes tab.
+
+This will reduce unnecessary scrolling and allow Client Hub content to move higher.
+
+---
+
+## Edit #6 — Service Style Selector (Mobile Only)
+
+### Scope
+
+Quote System
+
+### Current Problem
+
+The Service Style segmented control becomes unusable on mobile.
+
+Current examples:
+
+* Direct to...
+* Screen P...
+* Embroid...
+* Promotio...
+
+### Requirements
+
+Desktop:
+
+Keep existing segmented control.
+
+Mobile:
+
+Replace with a standard dropdown/select field.
+
+Example:
+
+SERVICE STYLE
+
+[ Direct to Film ▼ ]
+
+The dropdown should contain:
+
+* Direct to Film
+* Screen Printing
+* Embroidery
+* Promotional
+* DTF Transfers
+* Design Work
+
+Use the same visual style as existing select fields.
+
+Do not use horizontal scrolling.
+
+Do not truncate service names.
+
+---
+
+## Edit #7 — Organization & Contact Details Header Layout
+
+### Scope
+
+Applies to:
+
+* Organization Details
+* Contact Details
+
+### Current Problem
+
+The layout is very close, but the logo is still occupying its own vertical space.
+
+The organization information should sit directly to the right of the logo.
+
+### Approved Layout
+
+[ LOGO ]                                        [ Actions ▼ ] [ New Quote ]
+
+```
+             Battlestar Coffee Co
+
+             [icon] Business              [icon] Primary Contact
+             [icon] Mesa, AZ              Josh Girgenti
+```
+
+### Requirements
+
+Keep:
+
+* Actions button
+* New Quote button
+* Organization Name
+* Business label
+* Location
+* Primary Contact
+
+Remove permanently:
+
+* Active Client badge
+* Change link
+* Remove link
+
+Layout requirements:
+
+* Logo/profile image remains on the far left.
+* Organization information moves directly to the right of the logo.
+* Organization Name remains the largest text element.
+* Business and Location remain grouped together.
+* Primary Contact remains grouped on the right.
+* Actions and New Quote stay in their current top-right position.
+* Preserve current overall card height as much as possible.
+
+Goal:
+
+Improve alignment and information density while preserving the overall design.
+
+---
+
+## Implementation Notes
+
+These are refinement tasks.
+
+Do not redesign the application.
+
+Preserve:
+
+* Existing branding
+* Existing color palette
+* Existing card styling
+* Existing navigation patterns
+* Existing functionality
+
+Focus on improving usability, consistency, mobile responsiveness, and information hierarchy while keeping the current design language intact.

@@ -1278,14 +1278,6 @@ export default function OrgProfileScreen() {
         </View>
       )}
 
-      {/* Notes */}
-      {org.notes && (
-        <View style={styles.leftInfoCard}>
-          <Text style={styles.leftInfoCardLabel}>Notes</Text>
-          <Text style={styles.notesText}>{org.notes}</Text>
-        </View>
-      )}
-
       {/* Contacts card */}
       <View style={styles.infoCard}>
         <View style={styles.infoCardHeader}>
@@ -2536,91 +2528,96 @@ export default function OrgProfileScreen() {
             {/* ── LEFT PANEL: Identity + Contacts ── */}
             <ScrollView style={styles.v2LeftPanel} contentContainerStyle={styles.v2LeftPanelContent} showsVerticalScrollIndicator={false}>
 
-              {/* Header: [Logo | Identity | Actions + Primary Contact] */}
+              {/* Header: Logo (left) + [Actions / Name / Info] (right) */}
               <View style={styles.v2LPHeader}>
-                {/* Row 1: Logo (left) + Actions / New Quote (right) */}
-                <View style={styles.v2LPHeaderTopRow}>
+                <View style={styles.v2LPHeaderOuterRow}>
+                  {/* Logo column */}
                   <OrgLogoUploader
                     orgId={org.id}
                     orgName={org.name}
                     currentLogoUrl={org.logoUrl}
                     onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })}
-                    size={84}
+                    size={72}
                     hideActions
                   />
-                  <View style={styles.v2LPHeaderActions}>
-                    <OverlayMenu
-                      align="right"
-                      menuWidth={220}
-                      trigger={({ open }) => (
-                        <TouchableOpacity style={styles.v2LPActionsBtn} onPress={open}>
-                          <Text style={styles.v2LPActionsBtnText}>Actions</Text>
-                          <ChevronDown size={12} color={Colors.light.text} />
-                        </TouchableOpacity>
-                      )}
-                    >
-                      {({ close }) => (
-                        <>
-                          <TouchableOpacity style={styles.orgMenuItem} onPress={() => { close(); openEditOrg(); }}>
-                            <Edit3 size={14} color={Colors.light.text} />
-                            <Text style={styles.orgMenuItemText}>Edit Profile</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity style={styles.orgMenuItem} onPress={() => { close(); setAddMemberModal(true); }}>
-                            <Users size={14} color={Colors.light.text} />
-                            <Text style={styles.orgMenuItemText}>Assign Rep</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity style={styles.orgMenuItem} onPress={() => { close(); setActivityModal(true); }}>
-                            <Plus size={14} color={Colors.light.text} />
-                            <Text style={styles.orgMenuItemText}>Log Activity</Text>
-                          </TouchableOpacity>
-                          <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 2 }} />
-                          <TouchableOpacity style={[styles.orgMenuItem, styles.orgMenuItemDanger]} onPress={() => { close(); handleDeleteOrg(); }}>
-                            <Trash2 size={14} color={Colors.light.error} />
-                            <Text style={[styles.orgMenuItemText, { color: Colors.light.error }]}>Delete Organization</Text>
-                          </TouchableOpacity>
-                        </>
-                      )}
-                    </OverlayMenu>
-                    <TouchableOpacity
-                      style={styles.v2LPNewQuoteBtn}
-                      onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
-                    >
-                      <Plus size={13} color="#fff" />
-                      <Text style={styles.v2LPNewQuoteBtnText}>New Quote</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
 
-                {/* Row 2: Org name (primary element) */}
-                <Text style={styles.v2LPName} numberOfLines={2}>{org.name}</Text>
-
-                {/* Row 3: Business info | Primary contact */}
-                <View style={styles.v2LPHeaderInfoGrid}>
-                  <View style={styles.v2LPHeaderInfoCol}>
-                    {org.type ? (
-                      <View style={styles.v2LPHeaderDetailRow}>
-                        <Building2 size={13} color={Colors.light.textSecondary} />
-                        <Text style={styles.v2LPHeaderDetailText} numberOfLines={1}>{org.type}</Text>
-                      </View>
-                    ) : null}
-                    {(org.city || org.state) ? (
-                      <View style={styles.v2LPHeaderDetailRow}>
-                        <MapPin size={13} color={Colors.light.textSecondary} />
-                        <Text style={styles.v2LPHeaderDetailText} numberOfLines={1}>{[org.city, org.state].filter(Boolean).join(', ')}</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  {primaryContact ? (
-                    <View style={styles.v2LPHeaderInfoCol}>
-                      <View style={styles.v2LPHeaderDetailRow}>
-                        <User size={13} color={Colors.light.textSecondary} />
-                        <Text style={styles.v2LPPrimaryContactLabel}>Primary Contact</Text>
-                      </View>
-                      <Text style={styles.v2LPPrimaryContactName} numberOfLines={1}>
-                        {primaryContact.firstName} {primaryContact.lastName}
-                      </Text>
+                  {/* Right content: actions → name → info */}
+                  <View style={styles.v2LPHeaderRightContent}>
+                    {/* Actions row — pinned to top-right */}
+                    <View style={styles.v2LPHeaderActions}>
+                      <OverlayMenu
+                        align="right"
+                        menuWidth={220}
+                        trigger={({ open }) => (
+                          <TouchableOpacity style={styles.v2LPActionsBtn} onPress={open}>
+                            <Text style={styles.v2LPActionsBtnText}>Actions</Text>
+                            <ChevronDown size={12} color={Colors.light.text} />
+                          </TouchableOpacity>
+                        )}
+                      >
+                        {({ close }) => (
+                          <>
+                            <TouchableOpacity style={styles.orgMenuItem} onPress={() => { close(); openEditOrg(); }}>
+                              <Edit3 size={14} color={Colors.light.text} />
+                              <Text style={styles.orgMenuItemText}>Edit Profile</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.orgMenuItem} onPress={() => { close(); setAddMemberModal(true); }}>
+                              <Users size={14} color={Colors.light.text} />
+                              <Text style={styles.orgMenuItemText}>Assign Rep</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.orgMenuItem} onPress={() => { close(); setActivityModal(true); }}>
+                              <Plus size={14} color={Colors.light.text} />
+                              <Text style={styles.orgMenuItemText}>Log Activity</Text>
+                            </TouchableOpacity>
+                            <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 2 }} />
+                            <TouchableOpacity style={[styles.orgMenuItem, styles.orgMenuItemDanger]} onPress={() => { close(); handleDeleteOrg(); }}>
+                              <Trash2 size={14} color={Colors.light.error} />
+                              <Text style={[styles.orgMenuItemText, { color: Colors.light.error }]}>Delete Organization</Text>
+                            </TouchableOpacity>
+                          </>
+                        )}
+                      </OverlayMenu>
+                      <TouchableOpacity
+                        style={styles.v2LPNewQuoteBtn}
+                        onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
+                      >
+                        <Plus size={13} color="#fff" />
+                        <Text style={styles.v2LPNewQuoteBtnText}>New Quote</Text>
+                      </TouchableOpacity>
                     </View>
-                  ) : null}
+
+                    {/* Org name */}
+                    <Text style={styles.v2LPName} numberOfLines={2}>{org.name}</Text>
+
+                    {/* Business info | Primary contact */}
+                    <View style={styles.v2LPHeaderInfoGrid}>
+                      <View style={styles.v2LPHeaderInfoCol}>
+                        {org.type ? (
+                          <View style={styles.v2LPHeaderDetailRow}>
+                            <Building2 size={13} color={Colors.light.textSecondary} />
+                            <Text style={styles.v2LPHeaderDetailText} numberOfLines={1}>{org.type}</Text>
+                          </View>
+                        ) : null}
+                        {(org.city || org.state) ? (
+                          <View style={styles.v2LPHeaderDetailRow}>
+                            <MapPin size={13} color={Colors.light.textSecondary} />
+                            <Text style={styles.v2LPHeaderDetailText} numberOfLines={1}>{[org.city, org.state].filter(Boolean).join(', ')}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      {primaryContact ? (
+                        <View style={styles.v2LPHeaderInfoCol}>
+                          <View style={styles.v2LPHeaderDetailRow}>
+                            <User size={13} color={Colors.light.textSecondary} />
+                            <Text style={styles.v2LPPrimaryContactLabel}>Primary Contact</Text>
+                          </View>
+                          <Text style={styles.v2LPPrimaryContactName} numberOfLines={1}>
+                            {primaryContact.firstName} {primaryContact.lastName}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
                 </View>
               </View>
 
@@ -2685,18 +2682,7 @@ export default function OrgProfileScreen() {
                 )}
               </View>
 
-              {/* Notes (if any) */}
-              {(org as any).notes ? (
-                <>
-                  <View style={styles.v2LPDivider} />
-                  <View style={styles.v2LPSection}>
-                    <Text style={styles.v2LPSectionTitle}>Notes</Text>
-                    <Text style={styles.v2LPNotesText}>{(org as any).notes}</Text>
-                  </View>
-                </>
-              ) : null}
-
-              {/* Client Hub section — lives here in left panel, between Notes and Media Bin */}
+              {/* Client Hub section — lives here in left panel */}
               <View style={styles.v2LPDivider} />
               <View style={styles.v2LPSection}>
                 {clientHubInner}
@@ -5849,6 +5835,16 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 10,
   },
+  v2LPHeaderOuterRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    gap: 12,
+  },
+  v2LPHeaderRightContent: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
   v2LPHeaderTopRow: {
     flexDirection: 'row' as const,
     alignItems: 'flex-start' as const,
@@ -5905,6 +5901,7 @@ const styles = StyleSheet.create({
   v2LPHeaderActions: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
+    justifyContent: 'flex-end' as const,
     gap: 8,
   },
   v2LPPrimaryContact: {

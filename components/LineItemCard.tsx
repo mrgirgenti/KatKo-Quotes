@@ -140,6 +140,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   const [expanded, setExpanded] = useState(true);
   const [showDesigner, setShowDesigner] = useState(false);
   const [showLocation34, setShowLocation34] = useState(!!(item.location3 || item.location4));
+  const [serviceDropdownOpen, setServiceDropdownOpen] = useState(false);
 
   const [dtfWidth1, setDtfWidth1] = useState('');
   const [dtfHeight1, setDtfHeight1] = useState('');
@@ -481,13 +482,48 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
             />
 
             {/* 2. Service Style */}
-            <SegmentedControl
-              label="Service Style"
-              options={SERVICE_STYLES}
-              value={item.serviceStyle}
-              onChange={handleServiceStyleChange}
-              centered
-            />
+            {isMobile ? (
+              <View style={styles.serviceDropdownWrap}>
+                <Text style={styles.serviceDropdownLabel}>SERVICE STYLE</Text>
+                <TouchableOpacity
+                  style={styles.serviceDropdownBtn}
+                  onPress={() => setServiceDropdownOpen(v => !v)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.serviceDropdownValue}>{item.serviceStyle || 'Select style'}</Text>
+                  <ChevronDown size={14} color={Colors.light.textSecondary} />
+                </TouchableOpacity>
+                {serviceDropdownOpen && (
+                  <View style={styles.serviceDropdownList}>
+                    {(SERVICE_STYLES as readonly string[]).map((style) => {
+                      const active = item.serviceStyle === style;
+                      return (
+                        <TouchableOpacity
+                          key={style}
+                          style={[styles.serviceDropdownItem, active && styles.serviceDropdownItemActive]}
+                          onPress={() => {
+                            handleServiceStyleChange(style as typeof item.serviceStyle);
+                            setServiceDropdownOpen(false);
+                          }}
+                        >
+                          <Text style={[styles.serviceDropdownItemText, active && styles.serviceDropdownItemTextActive]}>
+                            {style}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+            ) : (
+              <SegmentedControl
+                label="Service Style"
+                options={SERVICE_STYLES}
+                value={item.serviceStyle}
+                onChange={handleServiceStyleChange}
+                centered
+              />
+            )}
 
             {/* 3. Service Applicator + Product Source */}
             <View style={[styles.row, isMobile && styles.rowMobile]}>
@@ -1434,6 +1470,59 @@ const styles = StyleSheet.create({
   },
   halfField: {
     flex: 1,
+  },
+  // ── Service Style mobile dropdown ──
+  serviceDropdownWrap: {
+    gap: 4,
+    marginBottom: 2,
+  },
+  serviceDropdownLabel: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase' as const,
+  },
+  serviceDropdownBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  serviceDropdownValue: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.light.text,
+    flex: 1,
+  },
+  serviceDropdownList: {
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 8,
+    overflow: 'hidden' as const,
+    backgroundColor: Colors.light.surface,
+  },
+  serviceDropdownItem: {
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+  },
+  serviceDropdownItemActive: {
+    backgroundColor: Colors.light.tint + '12',
+  },
+  serviceDropdownItemText: {
+    fontSize: 14,
+    color: Colors.light.text,
+  },
+  serviceDropdownItemTextActive: {
+    color: Colors.light.tint,
+    fontWeight: '700' as const,
   },
   // Location expand button
   addLocationBtn: {

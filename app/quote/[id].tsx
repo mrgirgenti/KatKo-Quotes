@@ -854,25 +854,41 @@ export default function QuoteDetailScreen() {
                 </View>
               </TouchableOpacity>
 
+              {/* Mobile-only: full-width mockup row between header and body */}
+              {isExpanded && isMobile && (
+                <View style={styles.lineItemMobileMockupRow}>
+                  {item.mockupUri ? (
+                    <Image source={{ uri: item.mockupUri }} style={styles.mockupImage} resizeMode="contain" />
+                  ) : (
+                    <View style={styles.mockupPlaceholder}>
+                      <Package size={28} color={Colors.light.border} />
+                      <Text style={styles.mockupPlaceholderText}>No mockup</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
               {isExpanded && (
                 <View style={[styles.lineItemBody, isMobile && styles.lineItemBodyMobile]}>
-                  {/* Mockup — left 1/3 */}
-                  <View style={[styles.lineItemMockupCol, isMobile && styles.lineItemMockupColMobile]}>
-                    {item.mockupUri ? (
-                      <Image
-                        source={{ uri: item.mockupUri }}
-                        style={styles.mockupImage}
-                        resizeMode="contain"
-                      />
-                    ) : (
-                      <View style={styles.mockupPlaceholder}>
-                        <Package size={28} color={Colors.light.border} />
-                        <Text style={styles.mockupPlaceholderText}>No mockup</Text>
-                      </View>
-                    )}
-                  </View>
+                  {/* Mockup — desktop only (left 1/3) */}
+                  {!isMobile && (
+                    <View style={styles.lineItemMockupCol}>
+                      {item.mockupUri ? (
+                        <Image
+                          source={{ uri: item.mockupUri }}
+                          style={styles.mockupImage}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <View style={styles.mockupPlaceholder}>
+                          <Package size={28} color={Colors.light.border} />
+                          <Text style={styles.mockupPlaceholderText}>No mockup</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
 
-                  {/* Right panel — all details + sizes + costs + subtotal (2/3) */}
+                  {/* Right panel — all details + sizes + costs + subtotal */}
                   <View style={styles.lineItemRightCol}>
                     {/* Detail rows */}
                     <View style={styles.lineItemDetailsCol}>
@@ -1428,25 +1444,7 @@ export default function QuoteDetailScreen() {
           <Text style={styles.contactCardLabel}>PROJECT WORKFLOW</Text>
         </View>
 
-        {/* Priority row */}
-        <View style={opStyles.wfPriorityRow}>
-          <Text style={opStyles.wfInlineLabel}>Priority</Text>
-          <PriorityControl
-            priority={quote.priority}
-            onChange={(p) => setPriority({ quoteId: quote.id, priority: p })}
-          />
-          <TouchableOpacity
-            style={[opStyles.wfRushToggle, quote.rush && opStyles.wfRushToggleActive]}
-            onPress={() => setRush({ quoteId: quote.id, rush: !quote.rush })}
-            activeOpacity={0.7}
-          >
-            <Text style={[opStyles.wfRushToggleText, quote.rush && opStyles.wfRushToggleTextActive]}>
-              {quote.rush ? '🔥 Rush' : 'Mark Rush'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Top row: status badge on the left, Actions dropdown on the right */}
+        {/* Status (primary element) + Actions */}
         <View style={opStyles.wfTopRow}>
           {opCurrent && cfg ? (
             <View style={[opStyles.statusPill, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
@@ -1484,7 +1482,25 @@ export default function QuoteDetailScreen() {
           </View>
         ) : null}
 
-        {/* Middle row: delivery as a single selected value with a small change control */}
+        {/* Priority + Rush */}
+        <View style={opStyles.wfPriorityRow}>
+          <Text style={opStyles.wfInlineLabel}>Priority</Text>
+          <PriorityControl
+            priority={quote.priority}
+            onChange={(p) => setPriority({ quoteId: quote.id, priority: p })}
+          />
+          <TouchableOpacity
+            style={[opStyles.wfRushToggle, quote.rush && opStyles.wfRushToggleActive]}
+            onPress={() => setRush({ quoteId: quote.id, rush: !quote.rush })}
+            activeOpacity={0.7}
+          >
+            <Text style={[opStyles.wfRushToggleText, quote.rush && opStyles.wfRushToggleTextActive]}>
+              {quote.rush ? '🔥 Rush' : 'Mark Rush'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Delivery */}
         <View style={opStyles.wfDeliveryRow}>
           <Text style={opStyles.wfInlineLabel}>Delivery</Text>
           <Text style={opStyles.wfInlineValue}>{quote.deliveryMethod || 'Not set'}</Text>
@@ -2586,6 +2602,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginBottom: 10,
+  },
+  lineItemMobileMockupRow: {
+    width: '100%' as const,
+    height: 200,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    overflow: 'hidden' as const,
   },
   lineItemMockupCol: {
     flex: 1,

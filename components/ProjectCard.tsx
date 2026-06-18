@@ -98,31 +98,38 @@ export function ProjectCard({
             activeOpacity={0.75}
           >
             {cmpHeader}
-            <View style={styles.cmpBodyMobile}>
-              <View style={styles.cmpBodyLeft}>
-                <Text style={styles.cmpName} numberOfLines={1}>{quote.projectName || '—'}</Text>
-                {quote.personOrganization ? (
-                  <Text style={styles.cmpMeta} numberOfLines={1}>{quote.personOrganization}</Text>
-                ) : null}
-                {serviceText ? (
-                  <Text style={styles.cmpMeta} numberOfLines={1}>{serviceText}</Text>
-                ) : null}
+            <Text style={styles.cmpName} numberOfLines={1}>{quote.projectName || '—'}</Text>
+            {(quote.personOrganization || serviceText) ? (
+              <Text style={styles.cmpMeta} numberOfLines={1}>
+                {[quote.personOrganization, serviceText].filter(Boolean).join(' · ')}
+              </Text>
+            ) : null}
+            {/* Data strip — same visual language as desktop */}
+            <View style={styles.cmpMobileDataStrip}>
+              <View style={styles.cmpMobileDataCol}>
+                <View style={styles.cmpDesktopColLabelRow}>
+                  <Calendar size={10} color="#94A3B8" />
+                  <Text style={styles.cmpColLabelTxt}>Due</Text>
+                </View>
+                <Text style={styles.cmpColVal}>{dueDate}</Text>
               </View>
-              <View style={styles.cmpBodyRight}>
-                <Text style={styles.cmpRightLabel}>Due Date</Text>
-                <Text style={styles.cmpRightVal}>{dueDate}</Text>
-                <Text style={[styles.cmpRightLabel, { marginTop: 6 }]}>PCS</Text>
-                <Text style={styles.cmpRightVal}>{pcs > 0 ? pcs.toLocaleString() : '—'}</Text>
+              <View style={styles.cmpVertDivider} />
+              <View style={styles.cmpMobileDataCol}>
+                <View style={styles.cmpDesktopColLabelRow}>
+                  <Package size={10} color="#94A3B8" />
+                  <Text style={styles.cmpColLabelTxt}>PCS</Text>
+                </View>
+                <Text style={styles.cmpColVal}>{pcs > 0 ? pcs.toLocaleString() : '—'}</Text>
               </View>
-            </View>
-            <View style={styles.cmpFinRowMobile}>
-              <View style={styles.cmpFinColMobile}>
-                <Text style={styles.cmpFinLabel}>Revenue</Text>
-                <Text style={[styles.cmpFinVal, { color: '#059669' }]}>{formatCurrency(total)}</Text>
+              <View style={styles.cmpVertDivider} />
+              <View style={styles.cmpMobileFinCol}>
+                <Text style={[styles.cmpFinBigVal, { color: '#059669', fontSize: 13 }]}>{formatCurrency(total)}</Text>
+                <Text style={styles.cmpColLabelTxt}>Revenue</Text>
               </View>
-              <View style={styles.cmpFinColMobile}>
-                <Text style={styles.cmpFinLabel}>Profit</Text>
-                <Text style={[styles.cmpFinVal, { color: '#FF5A00' }]}>{formatCurrency(profit)}</Text>
+              <View style={styles.cmpVertDivider} />
+              <View style={styles.cmpMobileFinCol}>
+                <Text style={[styles.cmpFinBigVal, { color: '#FF5A00', fontSize: 13 }]}>{formatCurrency(profit)}</Text>
+                <Text style={styles.cmpColLabelTxt}>Profit</Text>
               </View>
             </View>
           </TouchableOpacity>
@@ -460,55 +467,29 @@ const styles = StyleSheet.create({
     color: '#CBD5E1',
   },
 
-  /* Mobile two-column compact */
-  cmpBodyMobile: {
+  /* Mobile data strip — same visual language as desktop divider columns */
+  cmpMobileDataStrip: {
     flexDirection: 'row' as const,
-    gap: 10,
-  },
-  cmpBodyLeft: {
-    flex: 1,
-    minWidth: 0,
-    gap: 3,
-  },
-  cmpBodyRight: {
-    gap: 2,
-    alignItems: 'flex-end' as const,
-    minWidth: 80,
-  },
-  cmpRightLabel: {
-    fontSize: 9,
-    fontWeight: '700' as const,
-    color: '#94A3B8',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase' as const,
-  },
-  cmpRightVal: {
-    fontSize: 12,
-    fontWeight: '700' as const,
-    color: '#111827',
-  },
-  cmpFinRowMobile: {
-    flexDirection: 'row' as const,
+    alignItems: 'stretch' as const,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    paddingTop: 6,
-    gap: 8,
+    borderTopColor: '#E2E8F0',
+    marginTop: 4,
+    marginHorizontal: -12,
   },
-  cmpFinColMobile: {
+  cmpMobileDataCol: {
     flex: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    gap: 3,
+    justifyContent: 'center' as const,
+  },
+  cmpMobileFinCol: {
+    flex: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     gap: 2,
-  },
-  cmpFinLabel: {
-    fontSize: 9,
-    fontWeight: '700' as const,
-    color: '#94A3B8',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase' as const,
-  },
-  cmpFinVal: {
-    fontSize: 13,
-    fontWeight: '800' as const,
-    color: '#111827',
+    justifyContent: 'center' as const,
+    alignItems: 'flex-end' as const,
   },
 
   /* ── Desktop compact — single horizontal row ── */

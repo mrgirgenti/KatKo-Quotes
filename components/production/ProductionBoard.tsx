@@ -138,20 +138,18 @@ function BoardCard({ quote, onOpen }: { quote: Quote; onOpen: () => void }) {
               </Text>
             </View>
 
-            {/* RIGHT: due date → pcs block → service */}
+            {/* RIGHT: due date (single line) → pcs (single line) → service */}
             <View style={styles.rightInfo}>
-              <View>
-                <Text style={styles.dueLabelSmall}>Due Date</Text>
-                <Text style={styles.dueValue}>{formatMonthDay(quote.inHandsDate)}</Text>
-              </View>
+              <Text style={styles.dueDateLine} numberOfLines={1}>
+                {'Due Date: '}<Text style={styles.dueValueInline}>{formatMonthDay(quote.inHandsDate)}</Text>
+              </Text>
               {pcs > 0 ? (
-                <View style={styles.pcsBlock}>
-                  <Text style={styles.pcsLabel}>PCS</Text>
-                  <Text style={styles.pcsValue}>{pcs}</Text>
-                </View>
+                <Text style={styles.pcsLine} numberOfLines={1}>
+                  {'PCS: '}<Text style={styles.pcsValueInline}>{pcs}</Text>
+                </Text>
               ) : null}
               {service ? (
-                <Text style={styles.serviceText} numberOfLines={2}>{service}</Text>
+                <Text style={styles.serviceText} numberOfLines={1}>{service}</Text>
               ) : null}
             </View>
 
@@ -188,15 +186,14 @@ const styles = StyleSheet.create({
   splitRow: { flexDirection: 'row', alignItems: 'stretch', gap: 8 },
 
   leftInfo: { flex: 1, gap: 1 },
-  projNum: { fontSize: 11, fontWeight: '700', color: Colors.light.textSecondary, letterSpacing: 0.2 },
-  projectName: { fontSize: 14, fontWeight: '800', color: Colors.light.text, lineHeight: 19, marginTop: 1 },
+  projNum: { fontSize: 11, fontWeight: '700', color: Colors.light.textSecondary, letterSpacing: 0.2, marginBottom: 3 },
+  projectName: { fontSize: 14, fontWeight: '800', color: Colors.light.text, lineHeight: 19 },
   submittedText: { fontSize: 10, fontWeight: '500', color: Colors.light.textSecondary, marginTop: 2 },
 
-  rightInfo: { width: 68, alignItems: 'flex-end', gap: 4, justifyContent: 'center' },
-  dueLabelSmall: { fontSize: 9, fontWeight: '600', color: Colors.light.textSecondary, textAlign: 'right' },
-  dueValue: { fontSize: 13, fontWeight: '800', color: '#ff5a00', textAlign: 'right' },
-  pcsBlock: { alignItems: 'flex-end' },
-  pcsLabel: { fontSize: 9, fontWeight: '700', color: Colors.light.textSecondary, letterSpacing: 0.5, textTransform: 'uppercase' },
-  pcsValue: { fontSize: 19, fontWeight: '900', color: Colors.light.text, lineHeight: 23 },
+  rightInfo: { width: 96, alignItems: 'flex-end', gap: 5, justifyContent: 'center' },
+  dueDateLine: { fontSize: 9, fontWeight: '600', color: Colors.light.textSecondary, textAlign: 'right' },
+  dueValueInline: { fontSize: 9, fontWeight: '800', color: '#ff5a00' },
+  pcsLine: { fontSize: 9, fontWeight: '600', color: Colors.light.textSecondary, textAlign: 'right' },
+  pcsValueInline: { fontSize: 10, fontWeight: '800', color: Colors.light.text },
   serviceText: { fontSize: 10, fontWeight: '600', color: Colors.light.textSecondary, textAlign: 'right' },
 });
