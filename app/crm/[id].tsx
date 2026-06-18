@@ -2389,72 +2389,86 @@ export default function OrgProfileScreen() {
             {/* ── LEFT PANEL: Identity + Contacts ── */}
             <ScrollView style={styles.v2LeftPanel} contentContainerStyle={styles.v2LeftPanelContent} showsVerticalScrollIndicator={false}>
 
-              {/* Header: [Logo | Info column] */}
+              {/* Header: [Logo | Identity | Actions + Primary Contact] */}
               <View style={styles.v2LPHeader}>
                 <OrgLogoUploader
                   orgId={org.id}
                   orgName={org.name}
                   currentLogoUrl={org.logoUrl}
                   onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })}
-                  size={112}
+                  size={120}
                 />
+                {/* Middle: org name + business details */}
                 <View style={styles.v2LPHeaderInfo}>
                   <Text style={styles.v2LPName} numberOfLines={2}>{org.name}</Text>
-                  <StatusBadge status={org.status} />
-                  {(org.type || org.city || org.state) ? (
-                    <Text style={styles.v2LPHeaderMetaLine} numberOfLines={1}>
-                      {[org.type, [org.city, org.state].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
-                    </Text>
+                  {org.type ? (
+                    <View style={styles.v2LPHeaderDetailRow}>
+                      <Building2 size={12} color={Colors.light.textSecondary} />
+                      <Text style={styles.v2LPHeaderDetailText} numberOfLines={1}>{org.type}</Text>
+                    </View>
                   ) : null}
-                  {org.website ? (
-                    <TouchableOpacity onPress={() => typeof window !== 'undefined' && window.open(org.website!.startsWith('http') ? org.website! : `https://${org.website}`, '_blank')}>
-                      <Text style={styles.v2LPHeaderWebsite} numberOfLines={1}>{org.website}</Text>
-                    </TouchableOpacity>
+                  {(org.city || org.state) ? (
+                    <View style={styles.v2LPHeaderDetailRow}>
+                      <MapPin size={12} color={Colors.light.textSecondary} />
+                      <Text style={styles.v2LPHeaderDetailText} numberOfLines={1}>{[org.city, org.state].filter(Boolean).join(', ')}</Text>
+                    </View>
                   ) : null}
                 </View>
-              </View>
-
-              {/* Action row: [New Quote] [Actions ▼] */}
-              <View style={styles.v2LPActionRow}>
-                <TouchableOpacity
-                  style={styles.v2LPNewQuoteBtn}
-                  onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
-                >
-                  <Plus size={13} color="#fff" />
-                  <Text style={styles.v2LPNewQuoteBtnText}>New Quote</Text>
-                </TouchableOpacity>
-                <OverlayMenu
-                  align="right"
-                  menuWidth={220}
-                  trigger={({ open }) => (
-                    <TouchableOpacity style={styles.v2LPActionsBtn} onPress={open}>
-                      <Text style={styles.v2LPActionsBtnText}>Actions</Text>
-                      <ChevronDown size={12} color={Colors.light.text} />
+                {/* Right: Actions + New Quote (top) / Primary Contact (bottom) */}
+                <View style={styles.v2LPHeaderRight}>
+                  <View style={styles.v2LPHeaderActions}>
+                    <OverlayMenu
+                      align="right"
+                      menuWidth={220}
+                      trigger={({ open }) => (
+                        <TouchableOpacity style={styles.v2LPActionsBtn} onPress={open}>
+                          <Text style={styles.v2LPActionsBtnText}>Actions</Text>
+                          <ChevronDown size={12} color={Colors.light.text} />
+                        </TouchableOpacity>
+                      )}
+                    >
+                      {({ close }) => (
+                        <>
+                          <TouchableOpacity style={styles.orgMenuItem} onPress={() => { close(); openEditOrg(); }}>
+                            <Edit3 size={14} color={Colors.light.text} />
+                            <Text style={styles.orgMenuItemText}>Edit Profile</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.orgMenuItem} onPress={() => { close(); setAddMemberModal(true); }}>
+                            <Users size={14} color={Colors.light.text} />
+                            <Text style={styles.orgMenuItemText}>Assign Rep</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.orgMenuItem} onPress={() => { close(); setActivityModal(true); }}>
+                            <Plus size={14} color={Colors.light.text} />
+                            <Text style={styles.orgMenuItemText}>Log Activity</Text>
+                          </TouchableOpacity>
+                          <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 2 }} />
+                          <TouchableOpacity style={[styles.orgMenuItem, styles.orgMenuItemDanger]} onPress={() => { close(); handleDeleteOrg(); }}>
+                            <Trash2 size={14} color={Colors.light.error} />
+                            <Text style={[styles.orgMenuItemText, { color: Colors.light.error }]}>Delete Organization</Text>
+                          </TouchableOpacity>
+                        </>
+                      )}
+                    </OverlayMenu>
+                    <TouchableOpacity
+                      style={styles.v2LPNewQuoteBtn}
+                      onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}
+                    >
+                      <Plus size={13} color="#fff" />
+                      <Text style={styles.v2LPNewQuoteBtnText}>New Quote</Text>
                     </TouchableOpacity>
-                  )}
-                >
-                  {({ close }) => (
-                    <>
-                      <TouchableOpacity style={styles.orgMenuItem} onPress={() => { close(); openEditOrg(); }}>
-                        <Edit3 size={14} color={Colors.light.text} />
-                        <Text style={styles.orgMenuItemText}>Edit Profile</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.orgMenuItem} onPress={() => { close(); setAddMemberModal(true); }}>
-                        <Users size={14} color={Colors.light.text} />
-                        <Text style={styles.orgMenuItemText}>Assign Rep</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.orgMenuItem} onPress={() => { close(); setActivityModal(true); }}>
-                        <Plus size={14} color={Colors.light.text} />
-                        <Text style={styles.orgMenuItemText}>Log Activity</Text>
-                      </TouchableOpacity>
-                      <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 2 }} />
-                      <TouchableOpacity style={[styles.orgMenuItem, styles.orgMenuItemDanger]} onPress={() => { close(); handleDeleteOrg(); }}>
-                        <Trash2 size={14} color={Colors.light.error} />
-                        <Text style={[styles.orgMenuItemText, { color: Colors.light.error }]}>Delete Organization</Text>
-                      </TouchableOpacity>
-                    </>
-                  )}
-                </OverlayMenu>
+                  </View>
+                  {primaryContact ? (
+                    <View style={styles.v2LPPrimaryContact}>
+                      <View style={styles.v2LPPrimaryContactRow}>
+                        <User size={11} color={Colors.light.textSecondary} />
+                        <Text style={styles.v2LPPrimaryContactLabel}>Primary Contact</Text>
+                      </View>
+                      <Text style={styles.v2LPPrimaryContactName} numberOfLines={1}>
+                        {primaryContact.firstName} {primaryContact.lastName}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
               </View>
 
 
@@ -5589,14 +5603,14 @@ const styles = StyleSheet.create({
 
   v2LPHeader: {
     flexDirection: 'row' as const,
-    alignItems: 'center' as const,
+    alignItems: 'flex-start' as const,
     gap: 12,
-    marginBottom: 2,
+    marginBottom: 10,
   },
   v2LPHeaderInfo: {
     flex: 1,
     minWidth: 0,
-    gap: 2,
+    gap: 0,
   },
   v2LPHeaderMetaLine: {
     fontSize: 11,
@@ -5612,6 +5626,52 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: Colors.light.text,
     lineHeight: 20,
+    marginBottom: 4,
+  },
+  v2LPHeaderDetailRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 5,
+    marginTop: 4,
+  },
+  v2LPHeaderDetailText: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    flex: 1,
+    minWidth: 0,
+  },
+  v2LPHeaderRight: {
+    flexDirection: 'column' as const,
+    alignItems: 'flex-end' as const,
+    justifyContent: 'space-between' as const,
+    alignSelf: 'stretch' as const,
+    gap: 8,
+  },
+  v2LPHeaderActions: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+  },
+  v2LPPrimaryContact: {
+    alignItems: 'flex-end' as const,
+  },
+  v2LPPrimaryContactRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+    marginBottom: 2,
+  },
+  v2LPPrimaryContactLabel: {
+    fontSize: 10,
+    color: Colors.light.textSecondary,
+    fontWeight: '600' as const,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+  },
+  v2LPPrimaryContactName: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.light.text,
   },
 
   v2LPActionRow: {
@@ -5621,7 +5681,6 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   v2LPNewQuoteBtn: {
-    flex: 1,
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,

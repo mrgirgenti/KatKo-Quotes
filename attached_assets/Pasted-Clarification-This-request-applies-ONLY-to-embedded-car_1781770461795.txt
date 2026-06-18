@@ -1,0 +1,115 @@
+Clarification: This request applies ONLY to embedded cards inside Organization Details and Contact Details.
+
+Do NOT modify:
+
+* Projects page
+* Quotes page
+* Production page
+* Global project table layouts
+* Global quote table layouts
+
+This redesign applies ONLY to:
+
+Organization Details
+→ Active Projects
+
+Organization Details
+→ Submitted Quotes
+
+Contact Details
+→ Active Projects
+
+Contact Details
+→ Submitted Quotes
+
+Current Issue
+
+The embedded cards inside these sections remain the original tall layout with excessive whitespace.
+
+The previous implementation only improved mobile responsiveness but did not implement the approved card redesign.
+
+Required Changes
+
+1. Reduce Card Height
+
+Reduce overall card height by approximately 30-40%.
+
+These cards should feel much denser and allow more projects/quotes to be visible without scrolling.
+
+2. Desktop Card Layout
+
+Use a compact two-line layout.
+
+Approved structure:
+
+#1    P-1008    [Status]
+
+Team Shirts
+
+Joshy G • Direct to Film
+
+Due Date: Apr 30
+PCS: 37
+
+Revenue: $511.45
+Profit: $74.00
+
+Goal:
+Keep all information visible while dramatically reducing vertical whitespace.
+
+3. Mobile Card Layout
+
+Implement the approved two-column layout.
+
+LEFT COLUMN
+
+Team Shirts
+Joshy G
+Direct to Film
+
+RIGHT COLUMN
+
+Due Date
+Apr 30
+
+PCS
+37
+
+BOTTOM ROW
+
+Revenue
+$511.45
+
+Profit
+$74.00
+
+Maintain the same labels used throughout the application.
+
+Do not replace labels with icons.
+
+4. Filters
+
+Remove the quick filter pills currently displayed beneath the search bar in these embedded sections.
+
+Replace with:
+
+[ Search ] [ Filters ▼ ]
+
+Reuse the same filter interaction pattern already established on the Production page.
+
+5. Preserve Existing Styling
+
+Keep:
+
+* Black section headers
+* Orange accents
+* Status badges
+* Card styling
+* Hover states
+* Existing metrics row
+
+This is a redesign of the embedded cards only.
+
+Expected Result
+
+The Active Projects and Submitted Quotes sections inside Organization Details and Contact Details should feel substantially denser, more modern, and more usable while preserving all existing information.
