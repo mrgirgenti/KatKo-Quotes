@@ -12,6 +12,7 @@ import {
   Image,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import { useClerk } from '@clerk/clerk-expo';
 import {
   User,
   Building2,
@@ -36,6 +37,7 @@ import {
   Shield,
   ChevronDown,
   ChevronUp,
+  LogOut,
 } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { GOOGLE_SCRIPT_TEMPLATE } from '@/utils/googleSheetsExport';
@@ -48,8 +50,14 @@ import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { signOut } = useClerk();
   const { currentUser, users, updateUser, createUser, deleteUser, isUpdating, isOrgAdmin } = useUser();
   const { isMobile } = useBreakpoint();
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.replace('/sign-in' as any);
+  };
 
   const [name, setName] = useState(currentUser?.name || '');
   const [businessName, setBusinessName] = useState(currentUser?.businessName || '');
@@ -807,6 +815,14 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          <TouchableOpacity style={styles.signOutCard} onPress={handleSignOut} activeOpacity={0.8}>
+            <LogOut size={18} color="#DC2626" />
+            <Text style={styles.signOutText}>Sign Out</Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.bottomPadding} />
       </ScrollView>
 
@@ -948,6 +964,21 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 16,
+  },
+  signOutCard: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 12,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    padding: 16,
+  },
+  signOutText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: '#DC2626',
   },
   sectionTitle: {
     fontSize: 15,

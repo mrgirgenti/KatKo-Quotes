@@ -1,0 +1,190 @@
+Active Projects & Submitted Quotes – Final Refinement Pass
+
+The recent redesign is moving in the right direction and should remain the foundation. This is NOT a redesign. This is a polish and alignment pass.
+
+Apply all changes below to BOTH:
+
+- Active Projects
+- Submitted Quotes
+
+The two sections should use identical card structure, spacing, alignment rules, and typography.
+
+----------------------------------------
+1. Project Name Hierarchy
+----------------------------------------
+
+Increase Project Name font size approximately 10%.
+
+The project name should be the primary visual element of the card.
+
+Current hierarchy feels:
+
+Project Number ≈ Project Name
+
+Desired hierarchy:
+
+Project Name
+↓
+Status Badge
+↓
+Project Number
+↓
+Client / Service
+
+Project names should be easier to scan quickly.
+
+----------------------------------------
+2. Reduce Status Badge Dominance
+----------------------------------------
+
+Current status badges are slightly too prominent.
+
+Reduce:
+
+- Badge height approximately 15–20%
+- Badge font size slightly
+
+Status should remain visible but should not compete with the project name.
+
+----------------------------------------
+3. Reduce Project Number Prominence
+----------------------------------------
+
+Project numbers are metadata.
+
+Reduce:
+
+- Font size slightly
+- Font weight slightly
+
+Example:
+
+P-1008
+
+should visually support the card, not compete with the project title.
+
+----------------------------------------
+4. Column Divider Cleanup
+----------------------------------------
+
+Current cards feel overly segmented.
+
+Remove divider between:
+
+- Due Date and PCS
+- Revenue and Profit
+
+Keep:
+
+- Divider between Project Information and Operational Information
+- Divider between PCS and Revenue
+
+Desired structure:
+
+Project Info | Due Date + PCS | Revenue + Profit
+
+Instead of:
+
+Project Info | Due Date | PCS | Revenue | Profit
+
+This will create a cleaner and more modern card.
+
+----------------------------------------
+5. Reduce Dead Space
+----------------------------------------
+
+There is currently too much empty space between:
+
+Project Information Area
+
+and
+
+Due Date Area
+
+Expand the project information section slightly and pull Due Date closer.
+
+The card should feel balanced across the full width.
+
+Do NOT increase overall card height.
+
+----------------------------------------
+6. Alignment Pass (Very Important)
+----------------------------------------
+
+All cards must align perfectly.
+
+Currently some columns drift slightly from row to row.
+
+Requirements:
+
+Every card in both sections must share the exact same column widths.
+
+Due Dates must align vertically.
+
+PCS values must align vertically.
+
+Revenue values must align vertically.
+
+Profit values must align vertically.
+
+All dividers must align vertically.
+
+Every card should appear as if an invisible grid exists behind the layout.
+
+Consistency is more important than squeezing additional information into the card.
+
+----------------------------------------
+7. Fix Section Separation Logic
+----------------------------------------
+
+Projects should not appear in both sections.
+
+Active Projects should contain only project-stage records.
+
+Submitted Quotes should contain only quote-stage records.
+
+Example:
+
+A project that is:
+
+- Ready for Production
+- In Production
+- On Hold
+- Completed
+- Delivered
+- Closed
+
+should NOT appear inside Submitted Quotes.
+
+Submitted Quotes should only contain:
+
+- Needs Review
+- Quoting
+- Quoted
+- Invoice Sent
+- Accepted
+
+Ensure filtering logic reflects this separation.
+
+----------------------------------------
+8. Preserve Existing Improvements
+----------------------------------------
+
+Keep:
+
+- Search bar
+- Filters button
+- Compact card height
+- Ranking number (#1, #2, etc.)
+- Chevron navigation
+- Revenue and Profit visibility
+- Client Name visibility
+- Service visibility
+- Current card styling
+- Current section headers
+
+Do not revert any of the recent density improvements.
+
+Goal:
+
+Maintain the new compact design while improving hierarchy, reducing visual clutter, fixing alignment inconsistencies, and ensuring Active Projects and Submitted Quotes behave as distinct workflow stages.

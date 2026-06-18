@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useRouter, usePathname, useGlobalSearchParams } from 'expo-router';
-import { User, Plus } from 'lucide-react-native';
+import { User, Plus, LogOut } from 'lucide-react-native';
+import { useClerk } from '@clerk/clerk-expo';
 import { NAV_GROUPS, isItemActive, NavItem } from '@/components/navConfig';
 import { useUser } from '@/contexts/UserContext';
 
@@ -134,6 +135,7 @@ export function ProfileFooter({ collapsed = false, onNavigate }: NavProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { currentUser } = useUser();
+  const { signOut } = useClerk();
   const active = pathname.startsWith('/profile');
 
   const go = () => {
@@ -141,31 +143,60 @@ export function ProfileFooter({ collapsed = false, onNavigate }: NavProps) {
     onNavigate?.();
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    router.replace('/sign-in' as any);
+  };
+
+  const avatar = currentUser?.profilePicture ? (
+    <Image source={{ uri: currentUser.profilePicture }} style={styles.profileAvatar} resizeMode="cover" />
+  ) : currentUser?.name ? (
+    <View style={[styles.profileAvatar, styles.profileAvatarFallback, { backgroundColor: currentUser.avatarColor || SB.iconColor }]}>
+      <Text style={styles.profileAvatarText}>{currentUser.name[0].toUpperCase()}</Text>
+    </View>
+  ) : (
+    <View style={[styles.profileAvatar, styles.profileAvatarFallback, { backgroundColor: SB.iconColor }]}>
+      <User size={14} color="#fff" />
+    </View>
+  );
+
+  if (collapsed) {
+    return (
+      <TouchableOpacity
+        {...KK_NAV_DATASET}
+        style={[styles.navItem, active && styles.navItemActive, styles.navItemCollapsed]}
+        onPress={go}
+        activeOpacity={0.7}
+      >
+        {avatar}
+      </TouchableOpacity>
+    );
+  }
+
   return (
-    <TouchableOpacity
-      {...KK_NAV_DATASET}
-      style={[styles.navItem, active && styles.navItemActive, collapsed && styles.navItemCollapsed]}
-      onPress={go}
-      activeOpacity={0.7}
-    >
-      {active && !collapsed && <View style={styles.activeBar} />}
-      {currentUser?.profilePicture ? (
-        <Image source={{ uri: currentUser.profilePicture }} style={styles.profileAvatar} resizeMode="cover" />
-      ) : currentUser?.name ? (
-        <View style={[styles.profileAvatar, styles.profileAvatarFallback, { backgroundColor: currentUser.avatarColor || SB.iconColor }]}>
-          <Text style={styles.profileAvatarText}>{currentUser.name[0].toUpperCase()}</Text>
-        </View>
-      ) : (
-        <View style={[styles.profileAvatar, styles.profileAvatarFallback, { backgroundColor: SB.iconColor }]}>
-          <User size={14} color="#fff" />
-        </View>
-      )}
-      {!collapsed && (
+    <View style={styles.profileFooterRow}>
+      <TouchableOpacity
+        {...KK_NAV_DATASET}
+        style={[styles.navItem, styles.profileNavFlex, active && styles.navItemActive]}
+        onPress={go}
+        activeOpacity={0.7}
+      >
+        {active && <View style={styles.activeBar} />}
+        {avatar}
         <Text style={[styles.navLabel, active && styles.navLabelActive]} numberOfLines={1}>
           {currentUser?.name || 'Profile'}
         </Text>
-      )}
-    </TouchableOpacity>
+      </TouchableOpacity>
+      <TouchableOpacity
+        {...KK_NAV_DATASET}
+        style={styles.signOutBtn}
+        onPress={handleSignOut}
+        activeOpacity={0.7}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <LogOut size={15} color={SB.text} />
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -266,6 +297,20 @@ const styles = StyleSheet.create({
     color: SB.text,
     letterSpacing: 0.5,
     textTransform: 'uppercase' as const,
+  },
+  profileFooterRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+  },
+  profileNavFlex: {
+    flex: 1,
+    minWidth: 0,
+  },
+  signOutBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
   },
   profileAvatar: {
     width: 28,
