@@ -93,6 +93,9 @@ function BoardCard({ quote, onOpen }: { quote: Quote; onOpen: () => void }) {
   const rush = isRush(quote);
   const mockupUri = (quote.lineItems || []).find((li) => li.mockupUri)?.mockupUri;
 
+  // Only show badge for elevated priorities — Normal is the default and needs no label
+  const showPriority = quote.priority && quote.priority !== 'Normal' && quote.priority !== 'Low';
+
   const dragProps = Platform.OS === 'web' ? ({
     draggable: true,
     onDragStart: (e: any) => {
@@ -119,37 +122,39 @@ function BoardCard({ quote, onOpen }: { quote: Quote; onOpen: () => void }) {
           {rush ? <Text style={styles.flame}>🔥</Text> : null}
         </View>
 
-        {/* Main content */}
+        {/* Main content: left info column + right operational column */}
         <View style={styles.main}>
-          {/* Top row: priority + project number (left) | due date (right) */}
-          <View style={styles.topRow}>
-            <View style={styles.topLeft}>
-              <PriorityBadge priority={quote.priority} />
+          <View style={styles.splitRow}>
+
+            {/* LEFT: priority (if elevated) → project number → name → submitted */}
+            <View style={styles.leftInfo}>
+              {showPriority && <PriorityBadge priority={quote.priority} small />}
               {projNum ? <Text style={styles.projNum}>#{projNum}</Text> : null}
+              <Text style={styles.projectName} numberOfLines={1}>
+                {quote.projectName || 'Untitled Project'}
+              </Text>
+              <Text style={styles.submittedText}>
+                Submitted: {formatMonthDay(quote.orderDate)}
+              </Text>
             </View>
-            <View style={styles.dueWrap}>
-              <Text style={styles.dueLabel}>Due Date: </Text>
-              <Text style={styles.dueValue}>{formatMonthDay(quote.inHandsDate)}</Text>
-            </View>
-          </View>
 
-          {/* Name row: project name (left) | qty (right) */}
-          <View style={styles.nameRow}>
-            <Text style={styles.projectName} numberOfLines={1}>{quote.projectName || 'Untitled Project'}</Text>
-            {pcs > 0 ? (
-              <View style={styles.qtyWrap}>
-                <Text style={styles.qtyValue}>{pcs}</Text>
-                <Text style={styles.qtyUnit}> pcs</Text>
+            {/* RIGHT: due date → pcs block → service */}
+            <View style={styles.rightInfo}>
+              <View>
+                <Text style={styles.dueLabelSmall}>Due Date</Text>
+                <Text style={styles.dueValue}>{formatMonthDay(quote.inHandsDate)}</Text>
               </View>
-            ) : null}
-          </View>
+              {pcs > 0 ? (
+                <View style={styles.pcsBlock}>
+                  <Text style={styles.pcsLabel}>PCS</Text>
+                  <Text style={styles.pcsValue}>{pcs}</Text>
+                </View>
+              ) : null}
+              {service ? (
+                <Text style={styles.serviceText} numberOfLines={2}>{service}</Text>
+              ) : null}
+            </View>
 
-          {rush ? <Text style={styles.rushLine}>🔥 Rush</Text> : null}
-
-          {/* Bottom row: submitted date (left) | service (far right) */}
-          <View style={styles.metaRow}>
-            <Text style={styles.metaText}>Submitted: {formatMonthDay(quote.orderDate)}</Text>
-            <Text style={styles.metaText}>{service}</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -171,7 +176,7 @@ const styles = StyleSheet.create({
   emptyCol: { fontSize: 12, color: Colors.light.textSecondary, textAlign: 'center', paddingVertical: 24 },
 
   card: { backgroundColor: Colors.light.surface, borderRadius: DS.radius.lg, borderWidth: 1, borderColor: Colors.light.border, ...DS.shadow.small, cursor: 'grab' as any },
-  cardRow: { flexDirection: 'row', alignItems: 'stretch', minHeight: 125 },
+  cardRow: { flexDirection: 'row', alignItems: 'stretch', minHeight: 112 },
   statusStrip: { width: 6, borderTopLeftRadius: DS.radius.lg, borderBottomLeftRadius: DS.radius.lg },
 
   mockupWrap: { width: 100, padding: 8, position: 'relative' },
@@ -179,22 +184,19 @@ const styles = StyleSheet.create({
   mockupImg: { width: '100%', height: '100%' },
   flame: { position: 'absolute', top: -4, left: -2, fontSize: 26, lineHeight: 30, zIndex: 2 },
 
-  main: { flex: 1, paddingHorizontal: 16, paddingVertical: 14, gap: 9, justifyContent: 'center' },
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  topLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
-  projNum: { fontSize: 13, fontWeight: '700', color: Colors.light.textSecondary },
-  dueWrap: { flexDirection: 'row', alignItems: 'baseline', flexShrink: 0 },
-  dueLabel: { fontSize: 12, fontWeight: '600', color: Colors.light.textSecondary },
-  dueValue: { fontSize: 12, fontWeight: '800', color: '#ff5a00' },
+  main: { flex: 1, paddingHorizontal: 14, paddingVertical: 12, justifyContent: 'center' },
+  splitRow: { flexDirection: 'row', alignItems: 'stretch', gap: 10 },
 
-  nameRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 },
-  projectName: { flexShrink: 1, fontSize: 22, fontWeight: '800', color: Colors.light.text, lineHeight: 26 },
-  qtyWrap: { flexDirection: 'row', alignItems: 'baseline', flexShrink: 0 },
-  qtyValue: { fontSize: 24, fontWeight: '900', color: Colors.light.text, lineHeight: 28 },
-  qtyUnit: { fontSize: 14, fontWeight: '700', color: Colors.light.textSecondary },
+  leftInfo: { flex: 1, gap: 2 },
+  projNum: { fontSize: 12, fontWeight: '700', color: Colors.light.textSecondary, letterSpacing: 0.2 },
+  projectName: { fontSize: 15, fontWeight: '800', color: Colors.light.text, lineHeight: 20, marginTop: 1 },
+  submittedText: { fontSize: 11, fontWeight: '500', color: Colors.light.textSecondary, marginTop: 3 },
 
-  rushLine: { fontSize: 14, fontWeight: '800', color: '#DC2626' },
-
-  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 2 },
-  metaText: { fontSize: 13, color: Colors.light.textSecondary, fontWeight: '600' },
+  rightInfo: { width: 82, alignItems: 'flex-end', gap: 5, justifyContent: 'center' },
+  dueLabelSmall: { fontSize: 10, fontWeight: '600', color: Colors.light.textSecondary, textAlign: 'right' },
+  dueValue: { fontSize: 13, fontWeight: '800', color: '#ff5a00', textAlign: 'right' },
+  pcsBlock: { alignItems: 'flex-end' },
+  pcsLabel: { fontSize: 10, fontWeight: '700', color: Colors.light.textSecondary, letterSpacing: 0.5, textTransform: 'uppercase' },
+  pcsValue: { fontSize: 22, fontWeight: '900', color: Colors.light.text, lineHeight: 26 },
+  serviceText: { fontSize: 11, fontWeight: '600', color: Colors.light.textSecondary, textAlign: 'right' },
 });

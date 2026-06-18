@@ -1,0 +1,159 @@
+Production Board Card Refinement
+
+Do NOT redesign the Production page.
+
+Do NOT modify:
+
+* Board layout
+* Ready for Production column
+* In Production column
+* On Hold column
+* Completed column
+* Search bar
+* Filters
+* Saved Views
+* Metrics row
+* Card image size
+* Drag/drop behavior
+
+The current board structure is approved.
+
+Only refine the project cards inside the production columns.
+
+Goal
+
+Maintain the existing three-zone card layout:
+
+[ Mockup Image ] [ Project Information ] [ Operational Information ]
+
+while improving hierarchy, reducing clutter, and making the cards easier for production staff to scan quickly.
+
+Production Context
+
+This page is used by production staff.
+
+The most important information is:
+
+1. Project Name
+2. Due Date
+3. PCS Quantity
+
+Staff must also be able to immediately see:
+
+* Submitted Date
+* Service Type
+* Project Number
+
+without opening the project.
+
+Changes Required
+
+1. Remove Normal Priority Badge
+
+Remove the blue "Normal" badge entirely.
+
+Normal is the default state and should not consume visual space.
+
+Only display a priority badge when a project is:
+
+* High
+* Rush
+* Critical
+
+If Priority = Normal, show nothing.
+
+2. Project Number Placement
+
+Move the project number to its own line above the project name.
+
+Example:
+
+#P-1008
+
+Team Shirts
+
+This creates cleaner hierarchy and removes competition between the project number and project name.
+
+3. Project Name
+
+Increase project name size slightly.
+
+Not dramatically.
+
+The project name should remain the primary visual element of the card.
+
+4. Due Date
+
+Keep Due Date in the upper-right corner.
+
+This placement is approved and should remain.
+
+Example:
+
+Due Date: Apr 30
+
+Due Date remains the most important operational field.
+
+5. PCS Placement
+
+Move PCS directly below Due Date.
+
+Example:
+
+PCS
+37
+
+Keep the quantity highly visible but secondary to Due Date.
+
+6. Service Placement
+
+Move Service below PCS in the right column.
+
+Example:
+
+Direct to Film
+
+This keeps all operational information grouped together.
+
+7. Submitted Date
+
+Keep Submitted Date under the Project Name.
+
+Example:
+
+Submitted: Apr 21
+
+Maintain visibility since production staff use this information regularly.
+
+8. Card Density
+
+Reduce vertical spacing slightly.
+
+Target approximately 10% tighter than current implementation.
+
+Do not remove any information.
+
+Do not shrink the image.
+
+Reference Layout
+
+[ Mockup Image ]
+
+#P-1008
+
+Team Shirts
+
+Submitted: Apr 21
+
+---
+
+Due Date: Apr 30
+
+PCS
+37
+
+Direct to Film
+
+Expected Result
+
+Cards should feel cleaner, easier to scan, and more production-focused while preserving the existing board structure and image-driven layout that is already working well.
