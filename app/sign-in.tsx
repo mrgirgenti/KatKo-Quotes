@@ -105,8 +105,18 @@ export default function SignInScreen() {
           break;
         }
 
+        case 'needs_client_trust': {
+          // Clerk's Bot Protection (Cloudflare Turnstile) is blocking sign-in.
+          // @clerk/clerk-expo on web cannot run the Turnstile challenge.
+          // Fix: Clerk Dashboard → Configure → Attack Protection → Bot Protection → OFF.
+          setError(
+            'Sign-in is blocked by bot protection. Please disable Bot Protection in your Clerk dashboard (Configure → Attack Protection → Bot Protection) and try again.',
+          );
+          break;
+        }
+
         default: {
-          setError(`Unexpected response from sign-in (${attempt.status}). Please try again.`);
+          setError(`Sign-in could not be completed. Please try again or use Google Sign-In.`);
         }
       }
     },
