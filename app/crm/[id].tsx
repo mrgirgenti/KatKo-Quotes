@@ -64,6 +64,7 @@ import {
   UserX,
   UserCheck,
   Search,
+  SlidersHorizontal,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { OrgLogoUploader } from '@/components/OrgLogoUploader';
@@ -1555,38 +1556,86 @@ export default function OrgProfileScreen() {
             </View>
           </View>
         )}
-        {/* Search row */}
         {activeQuotes.length > 0 && (
-          <View style={styles.p16SearchRow}>
-            <View style={styles.p16SearchBox}>
+          <View style={styles.embSFRow}>
+            <View style={styles.embSearchBox}>
               <Search size={13} color={Colors.light.textSecondary} />
               <TextInput
-                style={styles.p16SearchInput}
-                placeholder="Search by name, number, service…"
+                style={styles.embSearchInput}
+                placeholder="Search project #, name, service…"
                 placeholderTextColor={Colors.light.textSecondary}
-                value={activeSearch}
-                onChangeText={setActiveSearch}
+                value={activeProjectSearch}
+                onChangeText={setActiveProjectSearch}
               />
+              {activeProjectSearch ? (
+                <TouchableOpacity onPress={() => setActiveProjectSearch('')}>
+                  <X size={12} color={Colors.light.textSecondary} />
+                </TouchableOpacity>
+              ) : null}
             </View>
-          </View>
-        )}
-        {activeQuotes.length > 0 && (
-          <View style={styles.p16FilterRow}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.p16FilterScroll}>
-              <TouchableOpacity style={[styles.p16Pill, !activeStatusFilter && styles.p16PillActive]} onPress={() => setActiveStatusFilter('')}>
-                <Text style={[styles.p16PillText, !activeStatusFilter && styles.p16PillTextActive]}>All</Text>
-              </TouchableOpacity>
-              {[...new Set(activeQuotes.map(q => q.status))].map(s => (
-                <TouchableOpacity key={s} style={[styles.p16Pill, activeStatusFilter === s && styles.p16PillActive]} onPress={() => setActiveStatusFilter(activeStatusFilter === s ? '' : s)}>
-                  <Text style={[styles.p16PillText, activeStatusFilter === s && styles.p16PillTextActive]}>{STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? s}</Text>
-                </TouchableOpacity>
-              ))}
-              {[...new Set(activeQuotes.flatMap(q => (q.lineItems || []).map((li: any) => li.serviceStyle)).filter(Boolean))].map(s => (
-                <TouchableOpacity key={s} style={[styles.p16Pill, activeServiceFilter === s && styles.p16PillActive]} onPress={() => setActiveServiceFilter(activeServiceFilter === s ? '' : s)}>
-                  <Text style={[styles.p16PillText, activeServiceFilter === s && styles.p16PillTextActive]}>{s}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <OverlayMenu
+              align="right"
+              menuWidth={200}
+              trigger={({ open }) => {
+                const fc = (activeProjectStatusFilter !== 'all' ? 1 : 0) + (activeProjectServiceFilter !== 'all' ? 1 : 0);
+                return (
+                  <TouchableOpacity style={[styles.embFilterBtn, fc > 0 && styles.embFilterBtnActive]} onPress={open}>
+                    <SlidersHorizontal size={12} color={fc > 0 ? '#fff' : Colors.light.textSecondary} />
+                    <Text style={[styles.embFilterBtnText, fc > 0 && styles.embFilterBtnTextActive]}>
+                      Filters{fc > 0 ? ` (${fc})` : ''}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }}
+            >
+              {({ close }) => {
+                const statuses = [...new Set(activeQuotes.map(q => getEffectiveStatus(q)))];
+                return (
+                  <>
+                    <Text style={styles.embFilterSectionLabel}>Status</Text>
+                    {(['all', ...statuses] as Array<'all' | typeof statuses[number]>).map((s) => (
+                      <TouchableOpacity
+                        key={String(s)}
+                        style={[styles.embFilterOption, activeProjectStatusFilter === s && styles.embFilterOptionSelected]}
+                        onPress={() => { setActiveProjectStatusFilter(s as any); close(); }}
+                      >
+                        <Text style={[styles.embFilterOptionText, activeProjectStatusFilter === s && styles.embFilterOptionTextSelected]}>
+                          {s === 'all' ? 'All Statuses' : STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? String(s)}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                    {activeProjectServices.length > 0 && (
+                      <>
+                        <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 4 }} />
+                        <Text style={styles.embFilterSectionLabel}>Service</Text>
+                        {(['all', ...activeProjectServices]).map((s) => (
+                          <TouchableOpacity
+                            key={s}
+                            style={[styles.embFilterOption, activeProjectServiceFilter === s && styles.embFilterOptionSelected]}
+                            onPress={() => { setActiveProjectServiceFilter(s); close(); }}
+                          >
+                            <Text style={[styles.embFilterOptionText, activeProjectServiceFilter === s && styles.embFilterOptionTextSelected]}>
+                              {s === 'all' ? 'All Services' : s}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </>
+                    )}
+                    {(activeProjectStatusFilter !== 'all' || activeProjectServiceFilter !== 'all') && (
+                      <>
+                        <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 4 }} />
+                        <TouchableOpacity
+                          style={styles.embFilterOption}
+                          onPress={() => { setActiveProjectStatusFilter('all'); setActiveProjectServiceFilter('all'); close(); }}
+                        >
+                          <Text style={[styles.embFilterOptionText, { color: Colors.light.error }]}>Clear Filters</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </>
+                );
+              }}
+            </OverlayMenu>
           </View>
         )}
         {activeQuotes.length === 0 ? (
@@ -1603,6 +1652,7 @@ export default function OrgProfileScreen() {
               key={q.id}
               queue={_idx + 1}
               quote={q}
+              compact
               onPress={() => router.push(`/quote/${q.id}` as any)}
             />
           ))
@@ -1644,38 +1694,86 @@ export default function OrgProfileScreen() {
             <Text style={styles.revenueStatLabel}>PCS</Text>
           </View>
         </View>
-        {/* Search row */}
         {relatedQuotes.length > 0 && (
-          <View style={styles.p16SearchRow}>
-            <View style={styles.p16SearchBox}>
+          <View style={styles.embSFRow}>
+            <View style={styles.embSearchBox}>
               <Search size={13} color={Colors.light.textSecondary} />
               <TextInput
-                style={styles.p16SearchInput}
-                placeholder="Search by name, number, service…"
+                style={styles.embSearchInput}
+                placeholder="Search project #, name, service…"
                 placeholderTextColor={Colors.light.textSecondary}
                 value={quotesSearch}
                 onChangeText={setQuotesSearch}
               />
+              {quotesSearch ? (
+                <TouchableOpacity onPress={() => setQuotesSearch('')}>
+                  <X size={12} color={Colors.light.textSecondary} />
+                </TouchableOpacity>
+              ) : null}
             </View>
-          </View>
-        )}
-        {relatedQuotes.length > 0 && (
-          <View style={styles.p16FilterRow}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.p16FilterScroll}>
-              <TouchableOpacity style={[styles.p16Pill, !quotesStatusFilter && styles.p16PillActive]} onPress={() => setQuotesStatusFilter('')}>
-                <Text style={[styles.p16PillText, !quotesStatusFilter && styles.p16PillTextActive]}>All</Text>
-              </TouchableOpacity>
-              {[...new Set(relatedQuotes.map(q => q.status))].map(s => (
-                <TouchableOpacity key={s} style={[styles.p16Pill, quotesStatusFilter === s && styles.p16PillActive]} onPress={() => setQuotesStatusFilter(quotesStatusFilter === s ? '' : s)}>
-                  <Text style={[styles.p16PillText, quotesStatusFilter === s && styles.p16PillTextActive]}>{STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? s}</Text>
-                </TouchableOpacity>
-              ))}
-              {[...new Set(relatedQuotes.flatMap(q => (q.lineItems || []).map((li: any) => li.serviceStyle)).filter(Boolean))].map(s => (
-                <TouchableOpacity key={s} style={[styles.p16Pill, quotesServiceFilter === s && styles.p16PillActive]} onPress={() => setQuotesServiceFilter(quotesServiceFilter === s ? '' : s)}>
-                  <Text style={[styles.p16PillText, quotesServiceFilter === s && styles.p16PillTextActive]}>{s}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <OverlayMenu
+              align="right"
+              menuWidth={200}
+              trigger={({ open }) => {
+                const fc = (quotesStatusFilter !== 'all' ? 1 : 0) + (quotesServiceFilter !== 'all' ? 1 : 0);
+                return (
+                  <TouchableOpacity style={[styles.embFilterBtn, fc > 0 && styles.embFilterBtnActive]} onPress={open}>
+                    <SlidersHorizontal size={12} color={fc > 0 ? '#fff' : Colors.light.textSecondary} />
+                    <Text style={[styles.embFilterBtnText, fc > 0 && styles.embFilterBtnTextActive]}>
+                      Filters{fc > 0 ? ` (${fc})` : ''}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }}
+            >
+              {({ close }) => {
+                const statuses = [...new Set(relatedQuotes.map(q => getEffectiveStatus(q)))];
+                return (
+                  <>
+                    <Text style={styles.embFilterSectionLabel}>Status</Text>
+                    {(['all', ...statuses] as Array<'all' | typeof statuses[number]>).map((s) => (
+                      <TouchableOpacity
+                        key={String(s)}
+                        style={[styles.embFilterOption, quotesStatusFilter === s && styles.embFilterOptionSelected]}
+                        onPress={() => { setQuotesStatusFilter(s as any); close(); }}
+                      >
+                        <Text style={[styles.embFilterOptionText, quotesStatusFilter === s && styles.embFilterOptionTextSelected]}>
+                          {s === 'all' ? 'All Statuses' : STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? String(s)}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                    {relatedQuoteServices.length > 0 && (
+                      <>
+                        <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 4 }} />
+                        <Text style={styles.embFilterSectionLabel}>Service</Text>
+                        {(['all', ...relatedQuoteServices]).map((s) => (
+                          <TouchableOpacity
+                            key={s}
+                            style={[styles.embFilterOption, quotesServiceFilter === s && styles.embFilterOptionSelected]}
+                            onPress={() => { setQuotesServiceFilter(s); close(); }}
+                          >
+                            <Text style={[styles.embFilterOptionText, quotesServiceFilter === s && styles.embFilterOptionTextSelected]}>
+                              {s === 'all' ? 'All Services' : s}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </>
+                    )}
+                    {(quotesStatusFilter !== 'all' || quotesServiceFilter !== 'all') && (
+                      <>
+                        <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 4 }} />
+                        <TouchableOpacity
+                          style={styles.embFilterOption}
+                          onPress={() => { setQuotesStatusFilter('all'); setQuotesServiceFilter('all'); close(); }}
+                        >
+                          <Text style={[styles.embFilterOptionText, { color: Colors.light.error }]}>Clear Filters</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </>
+                );
+              }}
+            </OverlayMenu>
           </View>
         )}
         {relatedQuotes.length === 0 ? (
@@ -1691,6 +1789,7 @@ export default function OrgProfileScreen() {
               key={q.id}
               queue={_idx + 1}
               quote={q}
+              compact
               onPress={() => router.push(`/quote/${q.id}` as any)}
             />
           ))
@@ -2033,38 +2132,86 @@ export default function OrgProfileScreen() {
             <Text style={styles.revenueStatLabel}>PCS</Text>
           </View>
         </View>
-        {/* Search row */}
         {relatedQuotes.length > 0 && (
-          <View style={styles.p16SearchRow}>
-            <View style={styles.p16SearchBox}>
+          <View style={styles.embSFRow}>
+            <View style={styles.embSearchBox}>
               <Search size={13} color={Colors.light.textSecondary} />
               <TextInput
-                style={styles.p16SearchInput}
-                placeholder="Search by name, number, service…"
+                style={styles.embSearchInput}
+                placeholder="Search project #, name, service…"
                 placeholderTextColor={Colors.light.textSecondary}
                 value={quotesSearch}
                 onChangeText={setQuotesSearch}
               />
+              {quotesSearch ? (
+                <TouchableOpacity onPress={() => setQuotesSearch('')}>
+                  <X size={12} color={Colors.light.textSecondary} />
+                </TouchableOpacity>
+              ) : null}
             </View>
-          </View>
-        )}
-        {relatedQuotes.length > 0 && (
-          <View style={styles.p16FilterRow}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.p16FilterScroll}>
-              <TouchableOpacity style={[styles.p16Pill, !quotesStatusFilter && styles.p16PillActive]} onPress={() => setQuotesStatusFilter('')}>
-                <Text style={[styles.p16PillText, !quotesStatusFilter && styles.p16PillTextActive]}>All</Text>
-              </TouchableOpacity>
-              {[...new Set(relatedQuotes.map(q => q.status))].map(s => (
-                <TouchableOpacity key={s} style={[styles.p16Pill, quotesStatusFilter === s && styles.p16PillActive]} onPress={() => setQuotesStatusFilter(quotesStatusFilter === s ? '' : s)}>
-                  <Text style={[styles.p16PillText, quotesStatusFilter === s && styles.p16PillTextActive]}>{STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? s}</Text>
-                </TouchableOpacity>
-              ))}
-              {[...new Set(relatedQuotes.flatMap(q => (q.lineItems || []).map((li: any) => li.serviceStyle)).filter(Boolean))].map(s => (
-                <TouchableOpacity key={s} style={[styles.p16Pill, quotesServiceFilter === s && styles.p16PillActive]} onPress={() => setQuotesServiceFilter(quotesServiceFilter === s ? '' : s)}>
-                  <Text style={[styles.p16PillText, quotesServiceFilter === s && styles.p16PillTextActive]}>{s}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <OverlayMenu
+              align="right"
+              menuWidth={200}
+              trigger={({ open }) => {
+                const fc = (quotesStatusFilter !== 'all' ? 1 : 0) + (quotesServiceFilter !== 'all' ? 1 : 0);
+                return (
+                  <TouchableOpacity style={[styles.embFilterBtn, fc > 0 && styles.embFilterBtnActive]} onPress={open}>
+                    <SlidersHorizontal size={12} color={fc > 0 ? '#fff' : Colors.light.textSecondary} />
+                    <Text style={[styles.embFilterBtnText, fc > 0 && styles.embFilterBtnTextActive]}>
+                      Filters{fc > 0 ? ` (${fc})` : ''}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }}
+            >
+              {({ close }) => {
+                const statuses = [...new Set(relatedQuotes.map(q => getEffectiveStatus(q)))];
+                return (
+                  <>
+                    <Text style={styles.embFilterSectionLabel}>Status</Text>
+                    {(['all', ...statuses] as Array<'all' | typeof statuses[number]>).map((s) => (
+                      <TouchableOpacity
+                        key={String(s)}
+                        style={[styles.embFilterOption, quotesStatusFilter === s && styles.embFilterOptionSelected]}
+                        onPress={() => { setQuotesStatusFilter(s as any); close(); }}
+                      >
+                        <Text style={[styles.embFilterOptionText, quotesStatusFilter === s && styles.embFilterOptionTextSelected]}>
+                          {s === 'all' ? 'All Statuses' : STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? String(s)}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                    {relatedQuoteServices.length > 0 && (
+                      <>
+                        <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 4 }} />
+                        <Text style={styles.embFilterSectionLabel}>Service</Text>
+                        {(['all', ...relatedQuoteServices]).map((s) => (
+                          <TouchableOpacity
+                            key={s}
+                            style={[styles.embFilterOption, quotesServiceFilter === s && styles.embFilterOptionSelected]}
+                            onPress={() => { setQuotesServiceFilter(s); close(); }}
+                          >
+                            <Text style={[styles.embFilterOptionText, quotesServiceFilter === s && styles.embFilterOptionTextSelected]}>
+                              {s === 'all' ? 'All Services' : s}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </>
+                    )}
+                    {(quotesStatusFilter !== 'all' || quotesServiceFilter !== 'all') && (
+                      <>
+                        <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 4 }} />
+                        <TouchableOpacity
+                          style={styles.embFilterOption}
+                          onPress={() => { setQuotesStatusFilter('all'); setQuotesServiceFilter('all'); close(); }}
+                        >
+                          <Text style={[styles.embFilterOptionText, { color: Colors.light.error }]}>Clear Filters</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </>
+                );
+              }}
+            </OverlayMenu>
           </View>
         )}
         {relatedQuotes.length === 0 ? (
@@ -2687,44 +2834,86 @@ export default function OrgProfileScreen() {
                 </View>
               )}
               {activeQuotes.length > 0 && (
-                <>
-                  <View style={styles.crmSearchRow}>
-                    <View style={styles.crmSearchBox}>
-                      <Search size={13} color={Colors.light.textSecondary} />
-                      <TextInput
-                        style={styles.crmSearchInput}
-                        placeholder="Search project #, name, service…"
-                        placeholderTextColor={Colors.light.textSecondary}
-                        value={activeProjectSearch}
-                        onChangeText={setActiveProjectSearch}
-                      />
-                      {activeProjectSearch ? (
-                        <TouchableOpacity onPress={() => setActiveProjectSearch('')}>
-                          <X size={13} color={Colors.light.textSecondary} />
-                        </TouchableOpacity>
-                      ) : null}
-                    </View>
-                  </View>
-                  {activeProjectServices.length > 0 && (
-                    <View style={styles.crmFilterPillsRow}>
-                      <TouchableOpacity
-                        style={[styles.crmFilterPill, activeProjectServiceFilter === 'all' && styles.crmFilterPillActive]}
-                        onPress={() => setActiveProjectServiceFilter('all')}
-                      >
-                        <Text style={[styles.crmFilterPillText, activeProjectServiceFilter === 'all' && styles.crmFilterPillTextActive]}>All</Text>
+                <View style={styles.embSFRow}>
+                  <View style={styles.embSearchBox}>
+                    <Search size={13} color={Colors.light.textSecondary} />
+                    <TextInput
+                      style={styles.embSearchInput}
+                      placeholder="Search project #, name, service…"
+                      placeholderTextColor={Colors.light.textSecondary}
+                      value={activeProjectSearch}
+                      onChangeText={setActiveProjectSearch}
+                    />
+                    {activeProjectSearch ? (
+                      <TouchableOpacity onPress={() => setActiveProjectSearch('')}>
+                        <X size={12} color={Colors.light.textSecondary} />
                       </TouchableOpacity>
-                      {activeProjectServices.map((svc) => (
-                        <TouchableOpacity
-                          key={svc}
-                          style={[styles.crmFilterPill, activeProjectServiceFilter === svc && styles.crmFilterPillActive]}
-                          onPress={() => setActiveProjectServiceFilter(svc)}
-                        >
-                          <Text style={[styles.crmFilterPillText, activeProjectServiceFilter === svc && styles.crmFilterPillTextActive]}>{svc}</Text>
+                    ) : null}
+                  </View>
+                  <OverlayMenu
+                    align="right"
+                    menuWidth={200}
+                    trigger={({ open }) => {
+                      const fc = (activeProjectStatusFilter !== 'all' ? 1 : 0) + (activeProjectServiceFilter !== 'all' ? 1 : 0);
+                      return (
+                        <TouchableOpacity style={[styles.embFilterBtn, fc > 0 && styles.embFilterBtnActive]} onPress={open}>
+                          <SlidersHorizontal size={12} color={fc > 0 ? '#fff' : Colors.light.textSecondary} />
+                          <Text style={[styles.embFilterBtnText, fc > 0 && styles.embFilterBtnTextActive]}>
+                            Filters{fc > 0 ? ` (${fc})` : ''}
+                          </Text>
                         </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                </>
+                      );
+                    }}
+                  >
+                    {({ close }) => {
+                      const statuses = [...new Set(activeQuotes.map(q => getEffectiveStatus(q)))];
+                      return (
+                        <>
+                          <Text style={styles.embFilterSectionLabel}>Status</Text>
+                          {(['all', ...statuses] as Array<'all' | typeof statuses[number]>).map((s) => (
+                            <TouchableOpacity
+                              key={String(s)}
+                              style={[styles.embFilterOption, activeProjectStatusFilter === s && styles.embFilterOptionSelected]}
+                              onPress={() => { setActiveProjectStatusFilter(s as any); close(); }}
+                            >
+                              <Text style={[styles.embFilterOptionText, activeProjectStatusFilter === s && styles.embFilterOptionTextSelected]}>
+                                {s === 'all' ? 'All Statuses' : STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? String(s)}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                          {activeProjectServices.length > 0 && (
+                            <>
+                              <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 4 }} />
+                              <Text style={styles.embFilterSectionLabel}>Service</Text>
+                              {(['all', ...activeProjectServices]).map((s) => (
+                                <TouchableOpacity
+                                  key={s}
+                                  style={[styles.embFilterOption, activeProjectServiceFilter === s && styles.embFilterOptionSelected]}
+                                  onPress={() => { setActiveProjectServiceFilter(s); close(); }}
+                                >
+                                  <Text style={[styles.embFilterOptionText, activeProjectServiceFilter === s && styles.embFilterOptionTextSelected]}>
+                                    {s === 'all' ? 'All Services' : s}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </>
+                          )}
+                          {(activeProjectStatusFilter !== 'all' || activeProjectServiceFilter !== 'all') && (
+                            <>
+                              <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 4 }} />
+                              <TouchableOpacity
+                                style={styles.embFilterOption}
+                                onPress={() => { setActiveProjectStatusFilter('all'); setActiveProjectServiceFilter('all'); close(); }}
+                              >
+                                <Text style={[styles.embFilterOptionText, { color: Colors.light.error }]}>Clear Filters</Text>
+                              </TouchableOpacity>
+                            </>
+                          )}
+                        </>
+                      );
+                    }}
+                  </OverlayMenu>
+                </View>
               )}
               {activeQuotes.length === 0 ? (
                 <View style={styles.emptyCard}>
@@ -2742,6 +2931,7 @@ export default function OrgProfileScreen() {
                     key={q.id}
                     queue={_idx + 1}
                     quote={q}
+                    compact
                     onPress={() => router.push(`/quote/${q.id}` as any)}
                   />
                 ))
@@ -2779,44 +2969,86 @@ export default function OrgProfileScreen() {
                 </View>
               </View>
               {relatedQuotes.length > 0 && (
-                <>
-                  <View style={styles.crmSearchRow}>
-                    <View style={styles.crmSearchBox}>
-                      <Search size={13} color={Colors.light.textSecondary} />
-                      <TextInput
-                        style={styles.crmSearchInput}
-                        placeholder="Search project #, name, service…"
-                        placeholderTextColor={Colors.light.textSecondary}
-                        value={quotesSearch}
-                        onChangeText={setQuotesSearch}
-                      />
-                      {quotesSearch ? (
-                        <TouchableOpacity onPress={() => setQuotesSearch('')}>
-                          <X size={13} color={Colors.light.textSecondary} />
-                        </TouchableOpacity>
-                      ) : null}
-                    </View>
-                  </View>
-                  {relatedQuoteServices.length > 0 && (
-                    <View style={styles.crmFilterPillsRow}>
-                      <TouchableOpacity
-                        style={[styles.crmFilterPill, quotesServiceFilter === 'all' && styles.crmFilterPillActive]}
-                        onPress={() => setQuotesServiceFilter('all')}
-                      >
-                        <Text style={[styles.crmFilterPillText, quotesServiceFilter === 'all' && styles.crmFilterPillTextActive]}>All</Text>
+                <View style={styles.embSFRow}>
+                  <View style={styles.embSearchBox}>
+                    <Search size={13} color={Colors.light.textSecondary} />
+                    <TextInput
+                      style={styles.embSearchInput}
+                      placeholder="Search project #, name, service…"
+                      placeholderTextColor={Colors.light.textSecondary}
+                      value={quotesSearch}
+                      onChangeText={setQuotesSearch}
+                    />
+                    {quotesSearch ? (
+                      <TouchableOpacity onPress={() => setQuotesSearch('')}>
+                        <X size={12} color={Colors.light.textSecondary} />
                       </TouchableOpacity>
-                      {relatedQuoteServices.map((svc) => (
-                        <TouchableOpacity
-                          key={svc}
-                          style={[styles.crmFilterPill, quotesServiceFilter === svc && styles.crmFilterPillActive]}
-                          onPress={() => setQuotesServiceFilter(svc)}
-                        >
-                          <Text style={[styles.crmFilterPillText, quotesServiceFilter === svc && styles.crmFilterPillTextActive]}>{svc}</Text>
+                    ) : null}
+                  </View>
+                  <OverlayMenu
+                    align="right"
+                    menuWidth={200}
+                    trigger={({ open }) => {
+                      const fc = (quotesStatusFilter !== 'all' ? 1 : 0) + (quotesServiceFilter !== 'all' ? 1 : 0);
+                      return (
+                        <TouchableOpacity style={[styles.embFilterBtn, fc > 0 && styles.embFilterBtnActive]} onPress={open}>
+                          <SlidersHorizontal size={12} color={fc > 0 ? '#fff' : Colors.light.textSecondary} />
+                          <Text style={[styles.embFilterBtnText, fc > 0 && styles.embFilterBtnTextActive]}>
+                            Filters{fc > 0 ? ` (${fc})` : ''}
+                          </Text>
                         </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                </>
+                      );
+                    }}
+                  >
+                    {({ close }) => {
+                      const statuses = [...new Set(relatedQuotes.map(q => getEffectiveStatus(q)))];
+                      return (
+                        <>
+                          <Text style={styles.embFilterSectionLabel}>Status</Text>
+                          {(['all', ...statuses] as Array<'all' | typeof statuses[number]>).map((s) => (
+                            <TouchableOpacity
+                              key={String(s)}
+                              style={[styles.embFilterOption, quotesStatusFilter === s && styles.embFilterOptionSelected]}
+                              onPress={() => { setQuotesStatusFilter(s as any); close(); }}
+                            >
+                              <Text style={[styles.embFilterOptionText, quotesStatusFilter === s && styles.embFilterOptionTextSelected]}>
+                                {s === 'all' ? 'All Statuses' : STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? String(s)}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                          {relatedQuoteServices.length > 0 && (
+                            <>
+                              <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 4 }} />
+                              <Text style={styles.embFilterSectionLabel}>Service</Text>
+                              {(['all', ...relatedQuoteServices]).map((s) => (
+                                <TouchableOpacity
+                                  key={s}
+                                  style={[styles.embFilterOption, quotesServiceFilter === s && styles.embFilterOptionSelected]}
+                                  onPress={() => { setQuotesServiceFilter(s); close(); }}
+                                >
+                                  <Text style={[styles.embFilterOptionText, quotesServiceFilter === s && styles.embFilterOptionTextSelected]}>
+                                    {s === 'all' ? 'All Services' : s}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </>
+                          )}
+                          {(quotesStatusFilter !== 'all' || quotesServiceFilter !== 'all') && (
+                            <>
+                              <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 4 }} />
+                              <TouchableOpacity
+                                style={styles.embFilterOption}
+                                onPress={() => { setQuotesStatusFilter('all'); setQuotesServiceFilter('all'); close(); }}
+                              >
+                                <Text style={[styles.embFilterOptionText, { color: Colors.light.error }]}>Clear Filters</Text>
+                              </TouchableOpacity>
+                            </>
+                          )}
+                        </>
+                      );
+                    }}
+                  </OverlayMenu>
+                </View>
               )}
               {relatedQuotes.length === 0 ? (
                 <View style={styles.emptyCard}>
@@ -2832,6 +3064,7 @@ export default function OrgProfileScreen() {
                     key={q.id}
                     queue={_idx + 1}
                     quote={q}
+                    compact
                     onPress={() => router.push(`/quote/${q.id}` as any)}
                   />
                 ))
@@ -6390,6 +6623,84 @@ const styles = StyleSheet.create({
   },
   p16PillTextActive: {
     color: '#fff',
+    fontWeight: '600' as const,
+  },
+
+  /* ── Embedded search + filter row (used in infoCard active-projects & quotes) ── */
+  embSFRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  embSearchBox: {
+    flex: 1,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 7,
+    backgroundColor: Colors.light.background,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  embSearchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.light.text,
+    outlineStyle: 'none' as any,
+  },
+  embFilterBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 5,
+    backgroundColor: Colors.light.background,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  embFilterBtnActive: {
+    backgroundColor: Colors.light.tint,
+    borderColor: Colors.light.tint,
+  },
+  embFilterBtnText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.light.textSecondary,
+  },
+  embFilterBtnTextActive: {
+    color: '#fff',
+  },
+  embFilterSectionLabel: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+    paddingHorizontal: 10,
+    paddingTop: 6,
+    paddingBottom: 4,
+  },
+  embFilterOption: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 6,
+    marginHorizontal: 4,
+  },
+  embFilterOptionSelected: {
+    backgroundColor: Colors.light.tint + '22',
+  },
+  embFilterOptionText: {
+    fontSize: 13,
+    color: Colors.light.text,
+  },
+  embFilterOptionTextSelected: {
+    color: Colors.light.tint,
     fontWeight: '600' as const,
   },
 });

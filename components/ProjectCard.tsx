@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { ChevronRight, Check } from 'lucide-react-native';
 import { getEffectiveStatus, STATUS_CONFIG } from '@/types/quote';
 import { formatCurrency } from '@/utils/quoteCalculations';
@@ -14,6 +14,7 @@ interface ProjectCardProps {
   isSelected?: boolean;
   selectionMode?: boolean;
   onToggleSelect?: () => void;
+  compact?: boolean;
 }
 
 function getPcs(quote: any): number {
@@ -45,7 +46,11 @@ export function ProjectCard({
   isSelected = false,
   selectionMode = false,
   onToggleSelect,
+  compact = false,
 }: ProjectCardProps) {
+  const { width } = useWindowDimensions();
+  const isMobile = width > 0 && width < 768;
+
   const eff = getEffectiveStatus(quote);
   const cfg = STATUS_CONFIG[eff];
   const pNum = quote.projectNumber || quote.invoiceNumber || '—';
@@ -53,9 +58,109 @@ export function ProjectCard({
   const services = [...new Set(
     (quote.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean)
   )] as string[];
-  const serviceText = services.length > 0 ? services.join(' · ') : '—';
+  const serviceText = services.length > 0 ? services.join(' · ') : '';
   const total = quote.calculations?.total ?? 0;
   const profit = quote.calculations?.markupAmount ?? 0;
+  const dueDate = quote.inHandsDate ? formatDate(quote.inHandsDate) : '—';
+
+  if (compact) {
+    const checkbox = selectionMode ? (
+      <TouchableOpacity
+        onPress={onToggleSelect}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
+          {isSelected && <Check size={10} color="#fff" strokeWidth={3} />}
+        </View>
+      </TouchableOpacity>
+    ) : null;
+
+    const cmpHeader = (
+      <View style={styles.cmpHeader}>
+        <View style={styles.cmpHeaderLeft}>
+          {checkbox}
+          <Text style={styles.cmpRecordNum}>{pNum}</Text>
+          <View style={[styles.cmpStatusBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+            <Text style={[styles.cmpStatusText, { color: cfg.color }]}>{cfg.label}</Text>
+          </View>
+        </View>
+        <ChevronRight size={14} color={Colors.light.textSecondary} />
+      </View>
+    );
+
+    if (isMobile) {
+      return (
+        <View style={styles.row}>
+          <Text style={styles.queueNum}>#{queue}</Text>
+          <TouchableOpacity
+            style={[styles.cmpCard, isSelected && styles.cmpCardSelected]}
+            onPress={selectionMode ? (onToggleSelect ?? onPress) : onPress}
+            activeOpacity={0.75}
+          >
+            {cmpHeader}
+            <View style={styles.cmpBodyMobile}>
+              <View style={styles.cmpBodyLeft}>
+                <Text style={styles.cmpName} numberOfLines={1}>{quote.projectName || '—'}</Text>
+                {quote.personOrganization ? (
+                  <Text style={styles.cmpMeta} numberOfLines={1}>{quote.personOrganization}</Text>
+                ) : null}
+                {serviceText ? (
+                  <Text style={styles.cmpMeta} numberOfLines={1}>{serviceText}</Text>
+                ) : null}
+              </View>
+              <View style={styles.cmpBodyRight}>
+                <Text style={styles.cmpRightLabel}>Due Date</Text>
+                <Text style={styles.cmpRightVal}>{dueDate}</Text>
+                <Text style={[styles.cmpRightLabel, { marginTop: 6 }]}>PCS</Text>
+                <Text style={styles.cmpRightVal}>{pcs > 0 ? pcs.toLocaleString() : '—'}</Text>
+              </View>
+            </View>
+            <View style={styles.cmpFinRowMobile}>
+              <View style={styles.cmpFinColMobile}>
+                <Text style={styles.cmpFinLabel}>Revenue</Text>
+                <Text style={[styles.cmpFinVal, { color: '#059669' }]}>{formatCurrency(total)}</Text>
+              </View>
+              <View style={styles.cmpFinColMobile}>
+                <Text style={styles.cmpFinLabel}>Profit</Text>
+                <Text style={[styles.cmpFinVal, { color: '#FF5A00' }]}>{formatCurrency(profit)}</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.row}>
+        <Text style={styles.queueNum}>#{queue}</Text>
+        <TouchableOpacity
+          style={[styles.cmpCard, isSelected && styles.cmpCardSelected]}
+          onPress={selectionMode ? (onToggleSelect ?? onPress) : onPress}
+          activeOpacity={0.75}
+        >
+          {cmpHeader}
+          <Text style={styles.cmpName} numberOfLines={1}>{quote.projectName || '—'}</Text>
+          {(quote.personOrganization || serviceText) ? (
+            <Text style={styles.cmpMeta} numberOfLines={1}>
+              {[quote.personOrganization, serviceText].filter(Boolean).join(' · ')}
+            </Text>
+          ) : null}
+          <View style={styles.cmpRow}>
+            <Text style={styles.cmpStatItem}>Due Date: <Text style={styles.cmpStatVal}>{dueDate}</Text></Text>
+            <Text style={styles.cmpSep}>·</Text>
+            <Text style={styles.cmpStatItem}>PCS: <Text style={styles.cmpStatVal}>{pcs > 0 ? pcs.toLocaleString() : '—'}</Text></Text>
+          </View>
+          <View style={styles.cmpRow}>
+            <Text style={styles.cmpStatItem}>Revenue: <Text style={[styles.cmpStatVal, { color: '#059669' }]}>{formatCurrency(total)}</Text></Text>
+            <Text style={styles.cmpSep}>·</Text>
+            <Text style={styles.cmpStatItem}>Profit: <Text style={[styles.cmpStatVal, { color: '#FF5A00' }]}>{formatCurrency(profit)}</Text></Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const serviceTextFull = services.length > 0 ? services.join(' · ') : '—';
 
   return (
     <View style={styles.row}>
@@ -96,7 +201,7 @@ export function ProjectCard({
           <Field label="DUE DATE" value={quote.inHandsDate ? formatDate(quote.inHandsDate) : ''} />
         </View>
         <View style={styles.grid}>
-          <Field label="SERVICE" value={serviceText} />
+          <Field label="SERVICE" value={serviceTextFull} />
           <Field label="PCS" value={pcs > 0 ? `${pcs.toLocaleString()}` : ''} />
         </View>
 
@@ -231,5 +336,130 @@ const styles = StyleSheet.create({
   },
   profitValue: {
     color: '#059669',
+  },
+
+  /* ── Compact card styles ── */
+  cmpCard: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    gap: 5,
+  },
+  cmpCardSelected: {
+    borderColor: Colors.light.primary,
+    backgroundColor: '#FFF7F3',
+  },
+  cmpHeader: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    gap: 6,
+  },
+  cmpHeaderLeft: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    flex: 1,
+    minWidth: 0,
+    flexWrap: 'wrap' as const,
+  },
+  cmpRecordNum: {
+    fontSize: 12,
+    fontWeight: '800' as const,
+    color: '#111827',
+    letterSpacing: 0.3,
+  },
+  cmpStatusBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  cmpStatusText: {
+    fontSize: 9,
+    fontWeight: '600' as const,
+  },
+  cmpName: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: '#111827',
+  },
+  cmpMeta: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  cmpRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    flexWrap: 'wrap' as const,
+  },
+  cmpStatItem: {
+    fontSize: 11,
+    color: '#94A3B8',
+  },
+  cmpStatVal: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: '#374151',
+  },
+  cmpSep: {
+    fontSize: 11,
+    color: '#CBD5E1',
+  },
+
+  /* Mobile two-column compact */
+  cmpBodyMobile: {
+    flexDirection: 'row' as const,
+    gap: 10,
+  },
+  cmpBodyLeft: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3,
+  },
+  cmpBodyRight: {
+    gap: 2,
+    alignItems: 'flex-end' as const,
+    minWidth: 80,
+  },
+  cmpRightLabel: {
+    fontSize: 9,
+    fontWeight: '700' as const,
+    color: '#94A3B8',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase' as const,
+  },
+  cmpRightVal: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: '#111827',
+  },
+  cmpFinRowMobile: {
+    flexDirection: 'row' as const,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingTop: 6,
+    gap: 8,
+  },
+  cmpFinColMobile: {
+    flex: 1,
+    gap: 2,
+  },
+  cmpFinLabel: {
+    fontSize: 9,
+    fontWeight: '700' as const,
+    color: '#94A3B8',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase' as const,
+  },
+  cmpFinVal: {
+    fontSize: 13,
+    fontWeight: '800' as const,
+    color: '#111827',
   },
 });

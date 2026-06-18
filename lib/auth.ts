@@ -121,6 +121,13 @@ export async function authenticateRequest(request: Request): Promise<AuthedUser 
     console.error('[auth] CLERK_SECRET_KEY is not set');
     return null;
   }
+  if (!secretKey.startsWith('sk_test_') && !secretKey.startsWith('sk_live_')) {
+    console.error(
+      '[auth] CLERK_SECRET_KEY has an unexpected format — expected sk_test_… or sk_live_… ' +
+      '(check Replit secrets: you may have pasted the publishable key pk_… instead)',
+    );
+    return null;
+  }
   const token = extractToken(request);
   if (!token) return null;
 
