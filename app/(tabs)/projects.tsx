@@ -146,8 +146,9 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
           <Checkbox checked={isSelected} onToggle={onToggleSelect} />
         </View>
         <View style={styles.colStatus}>
-          <StatusBadge status={effectiveStatus} />
-          {quote.operationalStatus ? <OpBadge status={quote.operationalStatus as OperationalProjectStatus} /> : null}
+          {quote.operationalStatus
+            ? <OpBadge status={quote.operationalStatus as OperationalProjectStatus} />
+            : <StatusBadge status={effectiveStatus} />}
         </View>
         <View style={styles.colOrderDate}>
           <Text style={styles.tableDate}>{formatDate(quote.orderDate)}</Text>
@@ -1039,7 +1040,7 @@ const styles = StyleSheet.create({
 
   badge: { alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 3, borderRadius: DS.radius.pill, borderWidth: 1 },
   badgeText: { fontSize: 11, fontWeight: '700' },
-  opBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: DS.radius.pill, borderWidth: 1, marginTop: 4, maxWidth: 150 },
+  opBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: DS.radius.pill, borderWidth: 1, maxWidth: 150 },
   opBadgeText: { fontSize: 10, fontWeight: '700' },
   opFilterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   opFilterChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: DS.radius.pill, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: Colors.light.background },
