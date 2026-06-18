@@ -40,7 +40,9 @@ const KK_FOCUS_RESET_CSS =
   // hover styles are unaffected.
   '*:not(input):not(textarea):not(select):hover{box-shadow:none!important;}' +
   '::-moz-focus-inner{border:0!important;}' +
-  'html,body{outline:none!important;}' +
+  'html,body,#root,#__next{outline:none!important;box-shadow:none!important;}' +
+  'div:focus,div:focus-visible,[tabindex]:focus,[tabindex]:focus-visible{outline:none!important;box-shadow:none!important;}' +
+  '[data-rnw-scrollview]:focus,[data-rnw-scrollview]:focus-visible{outline:none!important;box-shadow:none!important;}' +
   // Safari ignores scrollbar-width:none (a Firefox/Chrome feature). Without this,
   // Safari renders its native scrollbar track on overflow:scroll containers using
   // the system accent colour (blue on most macOS/iOS setups), which shows as a
@@ -75,11 +77,21 @@ function injectFocusReset() {
   // enough; the CSS in Layer 1 already removes real in-app focus outlines.
   if (!(window as any).__kkFocusListenerBound) {
     (window as any).__kkFocusListenerBound = true;
+    // Spare real form controls so keyboard users keep their native focus ring.
+    // Everything else (RN-web div wrappers, ScrollViews, Pressables, root containers)
+    // gets its inline outline/box-shadow stripped.
+    const isFormControl = (el: HTMLElement) => {
+      const t = el.tagName?.toLowerCase() ?? '';
+      return t === 'input' || t === 'textarea' || t === 'select';
+    };
     const kkStripFocus = (el: HTMLElement | null) => {
-      if (!el || !el.style) return;
+      if (!el || !el.style || isFormControl(el)) return;
       el.style.setProperty('outline', 'none', 'important');
       el.style.setProperty('box-shadow', 'none', 'important');
     };
+    // Startup scan: strip any element that is already focused when this code runs
+    // (covers the loading-skeleton phase where focus may be set before this listener).
+    kkStripFocus(document.activeElement as HTMLElement | null);
     document.addEventListener('focus', (e) => {
       const t = e.target as HTMLElement | null;
       if (!t) return;

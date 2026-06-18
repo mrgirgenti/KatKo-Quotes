@@ -1,0 +1,77 @@
+Blue Focus Line Bug — Full Platform Fix Required
+
+The blue vertical line still persists.
+
+New evidence:
+The blue line appears even on the app startup/loading skeleton screen before normal app UI has fully loaded.
+
+This means the issue is not limited to:
+- MobileDrawer ScrollView
+- Table ScrollViews
+- Project pages
+- Management pages
+
+It appears to be tied to a focused root container, app wrapper, ScrollView, or browser focus outline on a focusable div rendered by React Native Web / Expo Web.
+
+In the startup screenshot, the blue line appears along the far-left edge of a darker layout boundary, which suggests a parent container or root wrapper is receiving focus and showing the browser outline.
+
+Required investigation:
+1. Inspect the DOM when the app is loading.
+2. Identify the element receiving focus.
+3. Check for:
+   - tabIndex="0"
+   - outline
+   - focus-visible
+   - React Native Web ScrollView wrapper
+   - root app container focus ring
+   - Expo Router / Slot wrapper focus state
+   - Replit preview wrapper if applicable
+
+Required fix:
+Apply a global web-only focus outline suppression for non-input layout containers.
+
+Add/verify CSS similar to:
+
+html, body, #root {
+  outline: none !important;
+}
+
+div:focus,
+div:focus-visible,
+[tabindex="0"]:focus,
+[tabindex="0"]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+[data-rnw-scrollview]:focus,
+[data-rnw-scrollview]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+Important:
+Do NOT remove useful focus states from real interactive controls like:
+- buttons
+- inputs
+- selects
+- textareas
+- links
+- dropdown items
+
+Those should keep accessible focus styling.
+
+The fix should target layout wrappers, ScrollViews, and non-interactive div containers only.
+
+Validation:
+After the fix, verify the blue line does not appear on:
+- app startup/loading screen
+- dashboard
+- sidebar
+- mobile drawer
+- project tables
+- organization detail page
+- production page
+- scrollable views
+
+This bug should be treated as global root/layout focus styling, not a page-specific issue.

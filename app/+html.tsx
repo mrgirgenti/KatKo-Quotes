@@ -6,7 +6,14 @@ const FOCUS_RESET_CSS =
   '*:focus,*:focus-visible,*:focus-within{outline:none!important;box-shadow:none!important;}' +
   '*:not(input):not(textarea):not(select):hover{box-shadow:none!important;}' +
   '::-moz-focus-inner{border:0!important;}' +
-  'html,body{outline:none!important;}' +
+  // Explicit targets: root containers, RN-web div wrappers, ScrollViews, and any
+  // element with tabIndex. These are all already covered by the *:focus rule above
+  // but adding them by name ensures specificity wins even if an injected stylesheet
+  // adds a more-specific rule later. Keep real form controls (input/textarea/select)
+  // out of these to preserve their native/custom focus styling.
+  'html,body,#root,#__next{outline:none!important;box-shadow:none!important;}' +
+  'div:focus,div:focus-visible,[tabindex]:focus,[tabindex]:focus-visible{outline:none!important;box-shadow:none!important;}' +
+  '[data-rnw-scrollview]:focus,[data-rnw-scrollview]:focus-visible{outline:none!important;box-shadow:none!important;}' +
   // Safari does not support scrollbar-width:none (Firefox/Chrome only).
   // Suppress WebKit scrollbar tracks here — in the SSR <head> so it applies
   // before first paint, preventing any blue scrollbar track flash.
