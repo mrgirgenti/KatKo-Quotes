@@ -133,6 +133,12 @@ export default function SignInScreen() {
           </TouchableOpacity>
         </View>
 
+        <Link href="/forgot-password" asChild>
+          <TouchableOpacity style={styles.forgotRow}>
+            <Text style={styles.forgotText}>Forgot password?</Text>
+          </TouchableOpacity>
+        </Link>
+
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <TouchableOpacity style={styles.submitBtn} onPress={onSignInPress} disabled={submitting} activeOpacity={0.85}>
@@ -178,6 +184,8 @@ const styles = StyleSheet.create({
   passwordRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: Colors.light.border, borderRadius: 10, marginBottom: 16, backgroundColor: '#fff' },
   passwordInput: { flex: 1, height: 48, paddingHorizontal: 14, fontSize: 15, color: Colors.light.text },
   eyeBtn: { paddingHorizontal: 12, paddingVertical: 12 },
+  forgotRow: { alignItems: 'flex-end', marginBottom: 12 },
+  forgotText: { color: Colors.light.primary, fontSize: 13, fontWeight: '600' },
   error: { color: Colors.light.error, fontSize: 13, marginBottom: 12 },
   submitBtn: { height: 50, borderRadius: 10, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center', marginTop: 4 },
   submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
