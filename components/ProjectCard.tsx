@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
-import { ChevronRight, Check } from 'lucide-react-native';
+import { ChevronRight, Check, Calendar, Package } from 'lucide-react-native';
 import { getEffectiveStatus, STATUS_CONFIG } from '@/types/quote';
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
@@ -130,30 +130,78 @@ export function ProjectCard({
       );
     }
 
+    // Desktop compact — single horizontal row with divider-separated columns
     return (
       <View style={styles.row}>
         <Text style={styles.queueNum}>#{queue}</Text>
         <TouchableOpacity
-          style={[styles.cmpCard, isSelected && styles.cmpCardSelected]}
+          style={[styles.cmpDesktopCard, isSelected && styles.cmpCardSelected]}
           onPress={selectionMode ? (onToggleSelect ?? onPress) : onPress}
           activeOpacity={0.75}
         >
-          {cmpHeader}
-          <Text style={styles.cmpName} numberOfLines={1}>{quote.projectName || '—'}</Text>
-          {(quote.personOrganization || serviceText) ? (
-            <Text style={styles.cmpMeta} numberOfLines={1}>
-              {[quote.personOrganization, serviceText].filter(Boolean).join(' · ')}
-            </Text>
-          ) : null}
-          <View style={styles.cmpRow}>
-            <Text style={styles.cmpStatItem}>Due Date: <Text style={styles.cmpStatVal}>{dueDate}</Text></Text>
-            <Text style={styles.cmpSep}>·</Text>
-            <Text style={styles.cmpStatItem}>PCS: <Text style={styles.cmpStatVal}>{pcs > 0 ? pcs.toLocaleString() : '—'}</Text></Text>
+          {/* Left: project number + name + client · service */}
+          <View style={styles.cmpDesktopLeft}>
+            <View style={styles.cmpDesktopTopRow}>
+              {selectionMode && (
+                <TouchableOpacity onPress={onToggleSelect} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
+                    {isSelected && <Check size={10} color="#fff" strokeWidth={3} />}
+                  </View>
+                </TouchableOpacity>
+              )}
+              <Text style={styles.cmpRecordNum}>{pNum}</Text>
+              <View style={[styles.cmpStatusBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+                <Text style={[styles.cmpStatusText, { color: cfg.color }]}>{cfg.label}</Text>
+              </View>
+            </View>
+            <Text style={styles.cmpName} numberOfLines={1}>{quote.projectName || '—'}</Text>
+            {(quote.personOrganization || serviceText) ? (
+              <Text style={styles.cmpMeta} numberOfLines={1}>
+                {[quote.personOrganization, serviceText].filter(Boolean).join(' · ')}
+              </Text>
+            ) : null}
           </View>
-          <View style={styles.cmpRow}>
-            <Text style={styles.cmpStatItem}>Revenue: <Text style={[styles.cmpStatVal, { color: '#059669' }]}>{formatCurrency(total)}</Text></Text>
-            <Text style={styles.cmpSep}>·</Text>
-            <Text style={styles.cmpStatItem}>Profit: <Text style={[styles.cmpStatVal, { color: '#FF5A00' }]}>{formatCurrency(profit)}</Text></Text>
+
+          <View style={styles.cmpVertDivider} />
+
+          {/* Due Date */}
+          <View style={styles.cmpDesktopDataCol}>
+            <View style={styles.cmpDesktopColLabelRow}>
+              <Calendar size={11} color="#94A3B8" />
+              <Text style={styles.cmpColLabelTxt}>Due Date</Text>
+            </View>
+            <Text style={styles.cmpColVal}>{dueDate}</Text>
+          </View>
+
+          <View style={styles.cmpVertDivider} />
+
+          {/* PCS */}
+          <View style={styles.cmpDesktopDataCol}>
+            <View style={styles.cmpDesktopColLabelRow}>
+              <Package size={11} color="#94A3B8" />
+              <Text style={styles.cmpColLabelTxt}>PCS</Text>
+            </View>
+            <Text style={styles.cmpColVal}>{pcs > 0 ? pcs.toLocaleString() : '—'}</Text>
+          </View>
+
+          <View style={styles.cmpVertDivider} />
+
+          {/* Revenue */}
+          <View style={styles.cmpDesktopFinCol}>
+            <Text style={[styles.cmpFinBigVal, { color: '#059669' }]}>{formatCurrency(total)}</Text>
+            <Text style={styles.cmpColLabelTxt}>Revenue</Text>
+          </View>
+
+          <View style={styles.cmpVertDivider} />
+
+          {/* Profit */}
+          <View style={styles.cmpDesktopFinCol}>
+            <Text style={[styles.cmpFinBigVal, { color: '#FF5A00' }]}>{formatCurrency(profit)}</Text>
+            <Text style={styles.cmpColLabelTxt}>Profit</Text>
+          </View>
+
+          <View style={styles.cmpChevronWrap}>
+            <ChevronRight size={16} color={Colors.light.textSecondary} />
           </View>
         </TouchableOpacity>
       </View>
@@ -461,5 +509,78 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800' as const,
     color: '#111827',
+  },
+
+  /* ── Desktop compact — single horizontal row ── */
+  cmpDesktopCard: {
+    flex: 1,
+    flexDirection: 'row' as const,
+    alignItems: 'stretch' as const,
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden' as const,
+  },
+  cmpDesktopLeft: {
+    flex: 1,
+    minWidth: 0,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    gap: 3,
+    justifyContent: 'center' as const,
+  },
+  cmpDesktopTopRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    flexWrap: 'wrap' as const,
+  },
+  cmpVertDivider: {
+    width: 1,
+    backgroundColor: '#E2E8F0',
+    alignSelf: 'stretch' as const,
+  },
+  cmpDesktopDataCol: {
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    gap: 5,
+    justifyContent: 'center' as const,
+    minWidth: 106,
+  },
+  cmpDesktopColLabelRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+  },
+  cmpColLabelTxt: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: '#94A3B8',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase' as const,
+  },
+  cmpColVal: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: '#111827',
+  },
+  cmpDesktopFinCol: {
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    gap: 3,
+    justifyContent: 'center' as const,
+    alignItems: 'flex-end' as const,
+    minWidth: 84,
+  },
+  cmpFinBigVal: {
+    fontSize: 15,
+    fontWeight: '800' as const,
+  },
+  cmpChevronWrap: {
+    paddingHorizontal: 10,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    alignSelf: 'stretch' as const,
   },
 });
