@@ -26,6 +26,14 @@ function getStoredEmail(): string {
   return localStorage.getItem(REMEMBER_KEY) ?? '';
 }
 
+function clerkMsg(err: any): string {
+  return (
+    err?.errors?.[0]?.longMessage ||
+    err?.errors?.[0]?.message ||
+    String(err?.message || err || 'An unexpected error occurred.')
+  );
+}
+
 export default function SignInScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
   const { startSSOFlow } = useSSO();
@@ -39,6 +47,7 @@ export default function SignInScreen() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // MFA second-factor step
   const [mfaStep, setMfaStep] = useState(false);
   const [mfaStrategy, setMfaStrategy] = useState<string>('totp');
   const [mfaCode, setMfaCode] = useState('');
@@ -55,13 +64,53 @@ export default function SignInScreen() {
   const persistRemember = useCallback(
     (emailValue: string, checked: boolean) => {
       if (Platform.OS !== 'web' || typeof localStorage === 'undefined') return;
-      if (checked) {
-        localStorage.setItem(REMEMBER_KEY, emailValue);
-      } else {
-        localStorage.removeItem(REMEMBER_KEY);
-      }
+      if (checked) localStorage.setItem(REMEMBER_KEY, emailValue);
+      else localStorage.removeItem(REMEMBER_KEY);
     },
     [],
+  );
+
+  // ── Core sign-in flow ────────────────────────────────────────────────────
+  // Clerk "Identifier First" instances: create() returns needs_first_factor,
+  // then you call attemptFirstFactor({ strategy:'password', password }).
+  // Classic instances: create() with password returns complete or needs_second_factor.
+  // This recursive helper handles both patterns and the MFA gate.
+  const advance = useCallback(
+    async (attempt: any, pwd: string, emailVal: string, remember: boolean): Promise<void> => {
+      switch (attempt.status) {
+        case 'complete': {
+          persistRemember(emailVal, remember);
+          await setActive({ session: attempt.createdSessionId });
+          router.replace('/(tabs)');
+          break;
+        }
+
+        case 'needs_first_factor': {
+          // Identifier-first flow — submit the password as the first factor now.
+          const result = await signIn!.attemptFirstFactor({ strategy: 'password', password: pwd });
+          await advance(result, pwd, emailVal, remember);
+          break;
+        }
+
+        case 'needs_second_factor': {
+          const sf = attempt.supportedSecondFactors?.[0];
+          const strategy = (sf?.strategy as string) ?? 'totp';
+          setMfaStrategy(strategy);
+          // email_code / phone_code need to be prepared before the user can submit.
+          if (strategy !== 'totp' && strategy !== 'backup_code') {
+            await signIn!.prepareSecondFactor({ strategy: strategy as any });
+          }
+          setMfaCode('');
+          setMfaStep(true);
+          break;
+        }
+
+        default: {
+          setError(`Unexpected response from sign-in (${attempt.status}). Please try again.`);
+        }
+      }
+    },
+    [signIn, setActive, router, persistRemember],
   );
 
   const onSignInPress = useCallback(async () => {
@@ -74,33 +123,15 @@ export default function SignInScreen() {
     setSubmitting(true);
     try {
       const attempt = await signIn!.create({ identifier: email.trim(), password });
-      if (attempt.status === 'complete') {
-        persistRemember(email.trim(), rememberMe);
-        await setActive({ session: attempt.createdSessionId });
-        router.replace('/(tabs)');
-      } else if (attempt.status === 'needs_second_factor') {
-        const sf = attempt.supportedSecondFactors?.[0];
-        const strategy = (sf?.strategy as string) ?? 'totp';
-        setMfaStrategy(strategy);
-        if (strategy !== 'totp' && strategy !== 'backup_code') {
-          await signIn!.prepareSecondFactor({ strategy: strategy as any });
-        }
-        setMfaCode('');
-        setMfaStep(true);
-      } else {
-        setError('Sign-in could not be completed. Please try again.');
-      }
+      await advance(attempt, password, email.trim(), rememberMe);
     } catch (err: any) {
-      setError(
-        err?.errors?.[0]?.longMessage ||
-          err?.errors?.[0]?.message ||
-          'Could not sign in. Check your details and try again.',
-      );
+      setError(clerkMsg(err));
     } finally {
       setSubmitting(false);
     }
-  }, [isLoaded, submitting, email, password, rememberMe, signIn, setActive, router, persistRemember]);
+  }, [isLoaded, submitting, email, password, rememberMe, signIn, advance]);
 
+  // ── MFA second-factor submit ─────────────────────────────────────────────
   const onMfaSubmit = useCallback(async () => {
     if (!isLoaded || mfaSubmitting) return;
     setError(null);
@@ -122,16 +153,13 @@ export default function SignInScreen() {
         setError('Verification failed. Please try again.');
       }
     } catch (err: any) {
-      setError(
-        err?.errors?.[0]?.longMessage ||
-          err?.errors?.[0]?.message ||
-          'Incorrect code. Please try again.',
-      );
+      setError(clerkMsg(err));
     } finally {
       setMfaSubmitting(false);
     }
   }, [isLoaded, mfaSubmitting, mfaCode, mfaStrategy, signIn, setActive, email, rememberMe, router, persistRemember]);
 
+  // ── Google SSO ───────────────────────────────────────────────────────────
   const onGooglePress = useCallback(async () => {
     if (googleLoading) return;
     setError(null);
@@ -150,19 +178,23 @@ export default function SignInScreen() {
         router.replace('/(tabs)');
       }
     } catch (err: any) {
-      setError(err?.errors?.[0]?.longMessage || 'Google sign-in failed. Please try again.');
+      setError(clerkMsg(err));
     } finally {
       setGoogleLoading(false);
     }
   }, [googleLoading, startSSOFlow, router]);
 
-  const mfaLabel =
+  // ── Derived labels ───────────────────────────────────────────────────────
+  const mfaTitle =
+    mfaStrategy === 'totp' ? 'Check your authenticator' : 'Check your inbox';
+  const mfaSubtitle =
     mfaStrategy === 'totp'
       ? 'Enter the 6-digit code from your authenticator app.'
       : mfaStrategy === 'email_code'
       ? 'A verification code was sent to your email.'
       : 'A verification code was sent to your phone.';
 
+  // ── Render ───────────────────────────────────────────────────────────────
   return (
     <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
       <View style={styles.card}>
@@ -170,10 +202,11 @@ export default function SignInScreen() {
           <Text style={styles.logoText}>KK</Text>
         </View>
 
+        {/* ── MFA step ─────────────────────────────────────────────────── */}
         {mfaStep ? (
           <>
-            <Text style={styles.title}>Check your {mfaStrategy === 'totp' ? 'authenticator' : 'inbox'}</Text>
-            <Text style={styles.subtitle}>{mfaLabel}</Text>
+            <Text style={styles.title}>{mfaTitle}</Text>
+            <Text style={styles.subtitle}>{mfaSubtitle}</Text>
 
             <Text style={styles.label}>Verification code</Text>
             <TextInput
@@ -213,6 +246,7 @@ export default function SignInScreen() {
             </TouchableOpacity>
           </>
         ) : (
+          /* ── Normal sign-in ──────────────────────────────────────────── */
           <>
             <Text style={styles.title}>Welcome back</Text>
             <Text style={styles.subtitle}>Sign in to Katalyst Ko OS</Text>
@@ -268,11 +302,7 @@ export default function SignInScreen() {
                 style={styles.eyeBtn}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                {showPassword ? (
-                  <EyeOff size={18} color="#6b7280" />
-                ) : (
-                  <Eye size={18} color="#6b7280" />
-                )}
+                {showPassword ? <EyeOff size={18} color="#6b7280" /> : <Eye size={18} color="#6b7280" />}
               </TouchableOpacity>
             </View>
 

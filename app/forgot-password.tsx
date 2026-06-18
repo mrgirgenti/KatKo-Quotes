@@ -80,8 +80,12 @@ export default function ForgotPasswordScreen() {
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
         router.replace('/(tabs)');
+      } else if (result.status === 'needs_second_factor') {
+        // Password reset succeeded but MFA is required — redirect to sign-in
+        // where the full MFA flow is handled.
+        router.replace('/sign-in');
       } else {
-        setError('Additional verification required. Please try signing in normally.');
+        setError('Password was reset but sign-in could not complete. Please sign in manually.');
       }
     } catch (err: any) {
       setError(

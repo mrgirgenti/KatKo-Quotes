@@ -133,7 +133,10 @@ export async function authenticateRequest(request: Request): Promise<AuthedUser 
 
   let sub: string | undefined;
   try {
-    const claims = await verifyToken(token, { secretKey });
+    // clockSkewInMs: tolerate up to 5 s of drift between client and server
+    // clocks, preventing spurious "token used before issued" / "token expired"
+    // errors on mobile devices whose clocks lag slightly.
+    const claims = await verifyToken(token, { secretKey, clockSkewInMs: 5000 });
     sub = claims.sub;
   } catch (err) {
     console.error('[auth] token verification failed:', (err as Error)?.message);
