@@ -26,7 +26,12 @@ config.watchFolders = (config.watchFolders || []).filter(
     !folder.includes(".bun") && !folder.includes("attached_assets")
 );
 
-const blockedDirs = [".cache", "attached_assets"];
+// .expo/types — Expo Router auto-regenerates router.d.ts while Metro is
+// bundling; without this, Metro's file-watcher detects the write mid-compile
+// and resets the bundle back to 0/1, adding ~20–30 s to every cold start.
+// .agents / .local — Replit tooling writes memory/task/session files here
+// continuously; they contain no JS and must not trigger bundle invalidations.
+const blockedDirs = [".cache", "attached_assets", ".expo/types", ".agents", ".local"];
 
 config.resolver = {
   ...config.resolver,
