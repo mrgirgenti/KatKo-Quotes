@@ -168,7 +168,7 @@ function AuthGate() {
     if (!isLoaded) return;
     if (!pathname) return;
     const isPortal = pathname.startsWith('/portal');
-    const isAuthRoute = pathname === '/sign-in' || pathname === '/sign-up';
+    const isAuthRoute = pathname === '/sign-in' || pathname === '/sign-up' || pathname === '/forgot-password';
     if (isPortal) return;
     if (!isSignedIn && !isAuthRoute) {
       router.replace('/sign-in');
@@ -191,6 +191,7 @@ function RootLayoutNav() {
     >
       <Stack.Screen name="sign-in" options={{ headerShown: false }} />
       <Stack.Screen name="sign-up" options={{ headerShown: false }} />
+      <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="quote/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="quote/production/[id]" options={{ headerShown: false }} />
