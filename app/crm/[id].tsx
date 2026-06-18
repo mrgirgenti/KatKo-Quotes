@@ -2538,31 +2538,16 @@ export default function OrgProfileScreen() {
 
               {/* Header: [Logo | Identity | Actions + Primary Contact] */}
               <View style={styles.v2LPHeader}>
-                <OrgLogoUploader
-                  orgId={org.id}
-                  orgName={org.name}
-                  currentLogoUrl={org.logoUrl}
-                  onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })}
-                  size={120}
-                />
-                {/* Middle: org name + business details */}
-                <View style={styles.v2LPHeaderInfo}>
-                  <Text style={styles.v2LPName} numberOfLines={2}>{org.name}</Text>
-                  {org.type ? (
-                    <View style={styles.v2LPHeaderDetailRow}>
-                      <Building2 size={12} color={Colors.light.textSecondary} />
-                      <Text style={styles.v2LPHeaderDetailText} numberOfLines={1}>{org.type}</Text>
-                    </View>
-                  ) : null}
-                  {(org.city || org.state) ? (
-                    <View style={styles.v2LPHeaderDetailRow}>
-                      <MapPin size={12} color={Colors.light.textSecondary} />
-                      <Text style={styles.v2LPHeaderDetailText} numberOfLines={1}>{[org.city, org.state].filter(Boolean).join(', ')}</Text>
-                    </View>
-                  ) : null}
-                </View>
-                {/* Right: Actions + New Quote (top) / Primary Contact (bottom) */}
-                <View style={styles.v2LPHeaderRight}>
+                {/* Row 1: Logo (left) + Actions / New Quote (right) */}
+                <View style={styles.v2LPHeaderTopRow}>
+                  <OrgLogoUploader
+                    orgId={org.id}
+                    orgName={org.name}
+                    currentLogoUrl={org.logoUrl}
+                    onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })}
+                    size={84}
+                    hideActions
+                  />
                   <View style={styles.v2LPHeaderActions}>
                     <OverlayMenu
                       align="right"
@@ -2604,10 +2589,31 @@ export default function OrgProfileScreen() {
                       <Text style={styles.v2LPNewQuoteBtnText}>New Quote</Text>
                     </TouchableOpacity>
                   </View>
+                </View>
+
+                {/* Row 2: Org name (primary element) */}
+                <Text style={styles.v2LPName} numberOfLines={2}>{org.name}</Text>
+
+                {/* Row 3: Business info | Primary contact */}
+                <View style={styles.v2LPHeaderInfoGrid}>
+                  <View style={styles.v2LPHeaderInfoCol}>
+                    {org.type ? (
+                      <View style={styles.v2LPHeaderDetailRow}>
+                        <Building2 size={13} color={Colors.light.textSecondary} />
+                        <Text style={styles.v2LPHeaderDetailText} numberOfLines={1}>{org.type}</Text>
+                      </View>
+                    ) : null}
+                    {(org.city || org.state) ? (
+                      <View style={styles.v2LPHeaderDetailRow}>
+                        <MapPin size={13} color={Colors.light.textSecondary} />
+                        <Text style={styles.v2LPHeaderDetailText} numberOfLines={1}>{[org.city, org.state].filter(Boolean).join(', ')}</Text>
+                      </View>
+                    ) : null}
+                  </View>
                   {primaryContact ? (
-                    <View style={styles.v2LPPrimaryContact}>
-                      <View style={styles.v2LPPrimaryContactRow}>
-                        <User size={11} color={Colors.light.textSecondary} />
+                    <View style={styles.v2LPHeaderInfoCol}>
+                      <View style={styles.v2LPHeaderDetailRow}>
+                        <User size={13} color={Colors.light.textSecondary} />
                         <Text style={styles.v2LPPrimaryContactLabel}>Primary Contact</Text>
                       </View>
                       <Text style={styles.v2LPPrimaryContactName} numberOfLines={1}>
@@ -3328,10 +3334,14 @@ export default function OrgProfileScreen() {
             {/* Mobile header */}
             <View style={styles.v2MobileHeader}>
               <View style={styles.v2MobileHeaderTop}>
-                <OrgLogoUploader orgId={org.id} orgName={org.name} currentLogoUrl={org.logoUrl} onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })} size={52} />
+                <OrgLogoUploader orgId={org.id} orgName={org.name} currentLogoUrl={org.logoUrl} onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })} size={52} hideActions />
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.v2MobileOrgName} numberOfLines={1}>{org.name}</Text>
-                  <StatusBadge status={org.status} />
+                  {primaryContact ? (
+                    <Text style={styles.v2MobileOrgMeta} numberOfLines={1}>{primaryContact.firstName} {primaryContact.lastName}</Text>
+                  ) : org.type ? (
+                    <Text style={styles.v2MobileOrgMeta} numberOfLines={1}>{org.type}</Text>
+                  ) : null}
                 </View>
                 <TouchableOpacity style={styles.v2LPNewQuoteBtn} onPress={() => router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } })}>
                   <Plus size={13} color="#fff" /><Text style={styles.v2LPNewQuoteBtnText}>New Quote</Text>
@@ -5835,10 +5845,24 @@ const styles = StyleSheet.create({
   },
 
   v2LPHeader: {
+    flexDirection: 'column' as const,
+    gap: 10,
+    marginBottom: 10,
+  },
+  v2LPHeaderTopRow: {
     flexDirection: 'row' as const,
     alignItems: 'flex-start' as const,
+    justifyContent: 'space-between' as const,
     gap: 12,
-    marginBottom: 10,
+  },
+  v2LPHeaderInfoGrid: {
+    flexDirection: 'row' as const,
+    gap: 20,
+  },
+  v2LPHeaderInfoCol: {
+    flex: 1,
+    minWidth: 0,
+    gap: 6,
   },
   v2LPHeaderInfo: {
     flex: 1,
@@ -5855,17 +5879,15 @@ const styles = StyleSheet.create({
     color: Colors.light.tint,
   },
   v2LPName: {
-    fontSize: 15,
-    fontWeight: '700' as const,
+    fontSize: 20,
+    fontWeight: '800' as const,
     color: Colors.light.text,
-    lineHeight: 20,
-    marginBottom: 4,
+    lineHeight: 26,
   },
   v2LPHeaderDetailRow: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     gap: 5,
-    marginTop: 4,
   },
   v2LPHeaderDetailText: {
     fontSize: 12,
@@ -6093,6 +6115,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700' as const,
     color: Colors.light.text,
+  },
+  v2MobileOrgMeta: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    marginTop: 2,
   },
 
   hubDisabledBanner: {

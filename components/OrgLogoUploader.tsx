@@ -15,9 +15,10 @@ interface OrgLogoUploaderProps {
   currentLogoUrl?: string | null;
   onLogoChange: (url: string | null) => void;
   size?: number;
+  hideActions?: boolean;
 }
 
-export function OrgLogoUploader({ orgId, orgName, currentLogoUrl, onLogoChange, size = 80 }: OrgLogoUploaderProps) {
+export function OrgLogoUploader({ orgId, orgName, currentLogoUrl, onLogoChange, size = 80, hideActions = false }: OrgLogoUploaderProps) {
   const fileInputRef = useRef<any>(null);
   const [uploading, setUploading] = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -107,19 +108,21 @@ export function OrgLogoUploader({ orgId, orgName, currentLogoUrl, onLogoChange, 
         )}
       </View>
 
-      <View style={styles.actions}>
-        <TouchableOpacity onPress={() => fileInputRef.current?.click?.()} disabled={uploading}>
-          <Text style={styles.changeText}>{hasLogo ? 'Change' : 'Upload Logo'}</Text>
-        </TouchableOpacity>
-        {hasLogo && !uploading && (
-          <>
-            <Text style={styles.actionDivider}>·</Text>
-            <TouchableOpacity onPress={handleRemove}>
-              <Text style={styles.removeText}>Remove</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
+      {!hideActions && (
+        <View style={styles.actions}>
+          <TouchableOpacity onPress={() => fileInputRef.current?.click?.()} disabled={uploading}>
+            <Text style={styles.changeText}>{hasLogo ? 'Change' : 'Upload Logo'}</Text>
+          </TouchableOpacity>
+          {hasLogo && !uploading && (
+            <>
+              <Text style={styles.actionDivider}>·</Text>
+              <TouchableOpacity onPress={handleRemove}>
+                <Text style={styles.removeText}>Remove</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      )}
 
       {Platform.OS === 'web' && (
         <input

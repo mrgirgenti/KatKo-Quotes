@@ -10,3 +10,4 @@
 - [Expo SSR deployment](expo-ssr-deployment.md) — autoscale prod run MUST be `expo serve` (not `expo start`) or health check fails; never use `static` target (kills API routes).
 - [Clerk auth architecture](clerk-auth-architecture.md) — Clerk = identity only; DB User is source of truth for roles. authenticateRequest() in lib/auth.ts verifies token + upserts DB row. POST/PUT/DELETE on projects require auth; priority/assignee changes require org_admin role.
 - [Quote sub-route lookups](quote-subroute-lookups.md) — no 'sale' status exists (don't gate on it); Production Mode is navigation-only vs Start Production (mutating); sub-routes lack detail page's directQuote fallback.
+- [CRM org-header variants](crm-org-header-variants.md) — only v2LPHeader/v2MobileHeader render (FLAG_ORG_LAYOUT_V2=true); legacy leftPanel is dead code; logo Change/Remove live in OrgLogoUploader (hideActions to hide).
