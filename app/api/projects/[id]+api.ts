@@ -31,7 +31,7 @@ function toFrontendQuote(p: any): Quote {
   if (p.status === 'QUOTING') status = 'quoting';
   if (p.status === 'PAID') status = 'paid';
   if (p.status === 'INVOICE_SENT') status = 'invoice_sent';
-  if (status === 'quote_approved') status = 'quoted';
+  if ((status as string) === 'quote_approved') status = 'quoted';
   if (!VALID_STATUSES.has(status as string)) status = 'quoted';
   return {
     id: p.id,

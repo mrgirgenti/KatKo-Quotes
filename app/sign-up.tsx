@@ -44,7 +44,15 @@ export default function SignUpScreen() {
     }
     setSubmitting(true);
     try {
-      await signUp.create({ emailAddress: email.trim(), password });
+      const nameParts = name.trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      await signUp.create({
+        emailAddress: email.trim(),
+        password,
+        ...(firstName ? { firstName } : {}),
+        ...(lastName ? { lastName } : {}),
+      });
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       setPendingVerification(true);
     } catch (err: any) {

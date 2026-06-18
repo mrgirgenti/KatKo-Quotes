@@ -1,0 +1,154 @@
+Active Projects & Submitted Quotes Card Redesign
+
+Scope
+
+Apply these changes to:
+
+* Active Projects
+* Submitted Quotes
+
+Do not modify:
+
+* Metrics row
+* Section headers
+* Search functionality
+* Revenue calculations
+* Profit calculations
+* Sorting logic
+* Existing project links
+
+Goal
+
+Reduce excessive card height and whitespace while increasing information density and maintaining readability.
+
+The new design should allow significantly more projects and quotes to be visible without scrolling.
+
+Search & Filters
+
+Current:
+
+Search Bar
+Quick Filter Pills underneath
+
+Replace with:
+
+Search Bar                        [ Filters ▼ ]
+
+Requirements:
+
+* Remove the quick filter pills entirely.
+* Add a Filters button inline to the right of the Search field.
+* Reuse the same filter interaction pattern established on the Production page.
+* Maintain desktop and mobile responsiveness.
+
+Desktop Card Layout
+
+Keep the existing card concept but reduce whitespace and height.
+
+Layout:
+
+Top Row
+
+# Rank
+
+Project Number
+Status Badge
+Chevron
+
+Main Content
+
+Project Name
+
+Client Name • Service
+
+Due Date          PCS
+Apr 30, 2026      37
+
+Revenue           Profit
+$511.45           $74.00
+
+Requirements:
+
+* Project Name remains primary visual element.
+* Client and Service remain visible.
+* Due Date and PCS share one row.
+* Revenue and Profit share one row.
+* Reduce vertical spacing significantly.
+* Reduce overall card height approximately 30-40%.
+* Increase information density without creating clutter.
+
+Mobile Card Layout
+
+Mobile should be a condensed version of desktop.
+
+Do not create a completely different mobile experience.
+
+Layout:
+
+Top Row
+
+# Rank
+
+Project Number
+Status Badge
+Chevron
+
+Content Area
+
+LEFT COLUMN
+
+Project Name
+Client Name
+Service
+
+RIGHT COLUMN
+
+Due Date
+Apr 30, 2026
+
+PCS
+37
+
+Bottom Row
+
+Revenue           Profit
+$511.45           $74.00
+
+Requirements:
+
+* Maintain the same terminology used throughout the application.
+* Do not replace labels with icons.
+* Use:
+
+  * Due Date
+  * PCS
+  * Revenue
+  * Profit
+* Do not use mobile-specific wording.
+* Project information belongs on the left.
+* Operational information belongs on the right.
+* Financial information belongs on the bottom row.
+* Maintain compact card height.
+
+Visual Design
+
+Keep existing:
+
+* Black section headers
+* Orange accent color
+* Status badge styling
+* Card styling
+* Border radius
+* Hover states
+
+This is a refinement of the existing design, not a redesign.
+
+Expected Outcome
+
+Users should be able to:
+
+* See more projects and quotes per screen.
+* Scan project information faster.
+* Maintain desktop/mobile consistency.
+* Access filtering through a unified Filters button.
+* Preserve all existing project data visibility while dramatically reducing wasted space.

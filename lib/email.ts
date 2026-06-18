@@ -48,7 +48,7 @@ export async function sendEmail(opts: SendEmailOptions): Promise<{ id?: string; 
     const resend = await getResendClient();
     const result = await resend.emails.send({
       from: FROM,
-      reply_to: opts.replyTo ?? REPLY_TO,
+      replyTo: opts.replyTo ?? REPLY_TO,
       to: Array.isArray(opts.to) ? opts.to : [opts.to],
       subject: opts.subject,
       html: opts.html,
