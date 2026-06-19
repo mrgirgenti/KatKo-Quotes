@@ -284,7 +284,7 @@ function Chip({ label, active, onPress, activeColor, activeTextColor }: { label:
 const styles = StyleSheet.create({
   wrap: { paddingHorizontal: DS.spacing.xl, paddingBottom: DS.spacing.sm, gap: 8 },
   toolbar: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F5F5F5', borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, paddingHorizontal: 12, height: 40 },
+  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F5F5F5', borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, paddingHorizontal: 12, height: 40, overflow: 'hidden' },
   searchInput: { flex: 1, fontSize: 14, color: Colors.light.text, outlineStyle: 'none' as any },
 
   toolBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 12, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: Colors.light.surface },
