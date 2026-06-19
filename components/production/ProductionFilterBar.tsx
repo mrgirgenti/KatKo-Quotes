@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, TextInput, ScrollView } from 
 import { Search, X, SlidersHorizontal, Bookmark, ChevronDown, Star, Trash2, Check, Flame } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { DS } from '@/constants/designSystem';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { OPERATIONAL_STATUSES, PROJECT_PRIORITIES, PRIORITY_CONFIG, OPERATIONAL_STATUS_CONFIG, SERVICE_STYLES, DELIVERY_METHODS } from '@/types/quote';
 import type { ProductionFilters } from '@/lib/production';
 import { DUE_RANGE_OPTIONS, EMPTY_FILTERS } from '@/lib/production';
@@ -41,6 +42,7 @@ export function ProductionFilterBar({
   activeFilterCount,
 }: Props) {
   const [panelOpen, setPanelOpen] = useState(false);
+  const { isDesktop } = useBreakpoint();
   const set = (patch: Partial<ProductionFilters>) => onChange({ ...filters, ...patch });
 
   const dueLabel = (k: string) => DUE_RANGE_OPTIONS.find((o) => o.key === k)?.label || k;
@@ -81,17 +83,29 @@ export function ProductionFilterBar({
           ) : null}
         </View>
 
-        <TouchableOpacity
-          style={[styles.toolBtn, (panelOpen || activeFilterCount > 0) && styles.toolBtnActive]}
-          onPress={() => setPanelOpen((v) => !v)}
-        >
-          <SlidersHorizontal size={15} color={activeFilterCount > 0 ? Colors.light.tint : Colors.light.textSecondary} />
-          <Text style={[styles.toolBtnText, activeFilterCount > 0 && styles.toolBtnTextActive]}>Filters</Text>
-          {activeFilterCount > 0 ? (
-            <View style={styles.countBadge}><Text style={styles.countBadgeText}>{activeFilterCount}</Text></View>
-          ) : null}
-          <ChevronDown size={14} color={Colors.light.textSecondary} />
-        </TouchableOpacity>
+        {!isDesktop ? (
+          <TouchableOpacity
+            style={[styles.filterIconBtn, (panelOpen || activeFilterCount > 0) && styles.toolBtnActive]}
+            onPress={() => setPanelOpen((v) => !v)}
+          >
+            <SlidersHorizontal size={16} color={activeFilterCount > 0 ? Colors.light.tint : Colors.light.textSecondary} />
+            {activeFilterCount > 0 ? (
+              <View style={styles.countBadgeAbsolute}><Text style={styles.countBadgeAbsoluteText}>{activeFilterCount}</Text></View>
+            ) : null}
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.toolBtn, (panelOpen || activeFilterCount > 0) && styles.toolBtnActive]}
+            onPress={() => setPanelOpen((v) => !v)}
+          >
+            <SlidersHorizontal size={15} color={activeFilterCount > 0 ? Colors.light.tint : Colors.light.textSecondary} />
+            <Text style={[styles.toolBtnText, activeFilterCount > 0 && styles.toolBtnTextActive]}>Filters</Text>
+            {activeFilterCount > 0 ? (
+              <View style={styles.countBadge}><Text style={styles.countBadgeText}>{activeFilterCount}</Text></View>
+            ) : null}
+            <ChevronDown size={14} color={Colors.light.textSecondary} />
+          </TouchableOpacity>
+        )}
 
         <SavedViewsMenu
           views={views}
@@ -285,7 +299,11 @@ const styles = StyleSheet.create({
   wrap: { paddingHorizontal: DS.spacing.xl, paddingBottom: DS.spacing.sm, gap: 8 },
   toolbar: { flexDirection: 'row', gap: 12, alignItems: 'center' },
   searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F5F5F5', borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, paddingHorizontal: 12, height: 40, overflow: 'hidden' },
-  searchInput: { flex: 1, fontSize: 14, color: Colors.light.text, outlineStyle: 'none' as any },
+  searchInput: { flex: 1, fontSize: 14, color: Colors.light.text, outlineStyle: 'none' as any, textAlign: 'left' },
+
+  filterIconBtn: { width: 40, height: 40, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: Colors.light.background, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  countBadgeAbsolute: { position: 'absolute', top: 4, right: 4, minWidth: 14, height: 14, paddingHorizontal: 3, borderRadius: 7, backgroundColor: Colors.light.tint, alignItems: 'center', justifyContent: 'center' },
+  countBadgeAbsoluteText: { fontSize: 9, fontWeight: '800', color: '#fff' },
 
   toolBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 12, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: Colors.light.surface },
   toolBtnActive: { borderColor: Colors.light.tint, backgroundColor: '#FFF4EE' },
