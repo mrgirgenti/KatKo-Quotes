@@ -129,6 +129,14 @@ function PersonRow({ person, onPress, isSelected, onToggleSelect }: {
           {({ close }) => (
             <>
               <TouchableOpacity style={styles.actionsMenuItem} onPress={() => { close(); router.push(`/crm/${person.orgId}` as any); }}>
+                <Edit3 size={14} color={Colors.light.text} />
+                <Text style={styles.actionsMenuItemText}>Edit Contact</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionsMenuItem} onPress={() => { close(); router.push('/quote/edit' as any); }}>
+                <FileText size={14} color={Colors.light.text} />
+                <Text style={styles.actionsMenuItemText}>New Quote</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionsMenuItem} onPress={() => { close(); router.push(`/crm/${person.orgId}` as any); }}>
                 <Users size={14} color={Colors.light.text} />
                 <Text style={styles.actionsMenuItemText}>View Profile</Text>
               </TouchableOpacity>

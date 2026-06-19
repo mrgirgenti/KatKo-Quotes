@@ -988,7 +988,7 @@ const styles = StyleSheet.create({
   sortBtnTextActive: { color: Colors.light.tint },
 
   tableBody: { paddingBottom: 40 },
-  tableDivider: { height: 1, backgroundColor: Colors.light.border, marginHorizontal: DS.spacing.xl },
+  tableDivider: { height: 1, backgroundColor: Colors.light.border, marginHorizontal: DS.spacing.xl, alignSelf: 'stretch' },
 
   tableRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: DS.spacing.xl, paddingVertical: 12, backgroundColor: Colors.light.surface },
   tableRowSelected: { backgroundColor: '#FFF4EE' },

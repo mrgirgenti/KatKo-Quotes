@@ -1462,7 +1462,9 @@ export default function OrgProfileScreen() {
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.light.tint }}>View Legacy</Text>
-            <ChevronDown size={16} color={Colors.light.tint} style={{ transform: [{ rotate: legacyCollapsed ? '0deg' : '180deg' }] } as any} />
+            {legacyCollapsed
+              ? <ChevronDown size={16} color={Colors.light.tint} />
+              : <ChevronUp size={16} color={Colors.light.tint} />}
           </View>
         </TouchableOpacity>
         <View style={styles.v2SecondaryStats}>

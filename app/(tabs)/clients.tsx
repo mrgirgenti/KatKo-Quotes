@@ -406,7 +406,7 @@ function OrganizationsScreen() {
               menuWidth={185}
               trigger={({ open }) => (
                 <TouchableOpacity style={styles.actionsBtn} onPress={open}>
-                  {isDesktop && <Text style={styles.actionsBtnText}>Actions</Text>}
+                  <Text style={styles.actionsBtnText}>Actions</Text>
                   <ChevronDown size={14} color={Colors.light.textSecondary} />
                 </TouchableOpacity>
               )}
@@ -426,7 +426,7 @@ function OrganizationsScreen() {
             </OverlayMenu>
             <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
               <Plus size={15} color="#fff" />
-              {isDesktop && <Text style={styles.addBtnText}>Add Organization</Text>}
+              <Text style={styles.addBtnText}>Add Organization</Text>
             </TouchableOpacity>
           </View>
         </View>
