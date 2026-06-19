@@ -992,6 +992,7 @@ export default function ClientPortal() {
   const [clientCatalogs, setClientCatalogs] = useState<Array<{
     id: string; name: string; description: string | null; vendorName: string | null;
     category: string; catalogUrl: string; websiteUrl: string | null;
+    coverImageUrl: string | null;
   }>>([]);
   const [catalogsLoading, setCatalogsLoading] = useState(false);
 
@@ -2561,7 +2562,7 @@ export default function ClientPortal() {
   const CAT_FILTER_CHIPS = ['All', 'Apparel', 'Streetwear', 'Promotional', 'Workwear'];
 
   const CatalogsView = () => {
-    const numCols = isMobile ? 1 : isTablet ? 2 : 3;
+    const numCols = isMobile ? 1 : isTablet ? 2 : 4;
     const displayed = clientCatalogs.filter(cat => {
       const matchesCat = catFilter === 'All' || cat.category === catFilter;
       const q = catSearch.trim().toLowerCase();
@@ -2611,8 +2612,8 @@ export default function ClientPortal() {
               <Text style={catStyles.headerSub}>Browse product lines shared by Katalyst Ko</Text>
             </View>
             <TouchableOpacity style={catStyles.requestBtn} onPress={() => setActiveView('submit')} activeOpacity={0.85}>
-              <Plus size={14} color="#fff" />
-              <Text style={catStyles.requestBtnText}>Start a Project</Text>
+              <ExternalLink size={14} color="#fff" />
+              <Text style={catStyles.requestBtnText}>Request a Product</Text>
             </TouchableOpacity>
           </View>
 
@@ -2644,27 +2645,49 @@ export default function ClientPortal() {
               {displayed.map(cat => {
                 const color = CAT_COLORS[cat.category] || '#6B7280';
                 const initials = (cat.vendorName || cat.name).split(' ').map((w: string) => w[0]).join('').slice(0, 3).toUpperCase();
-                const cardW = numCols === 1 ? '100%' : numCols === 2 ? '48%' : '32%';
+                const cardW = numCols === 1 ? '100%' : numCols === 2 ? '48%' : numCols === 4 ? '23.5%' : '32%';
                 return (
                   <View key={cat.id} style={[catStyles.card, { width: cardW as any, flexGrow: 0, flexShrink: 0 }]}>
-                    <View style={catStyles.cardTop}>
+                    {/* Badge row */}
+                    <View style={catStyles.cardTopRow}>
                       <View style={[catStyles.avatar, { backgroundColor: color }]}>
                         <Text style={catStyles.avatarText}>{initials}</Text>
                       </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={catStyles.name}>{cat.vendorName || cat.name}</Text>
-                        {cat.vendorName && cat.vendorName !== cat.name ? <Text style={catStyles.vendor}>{cat.name}</Text> : null}
-                      </View>
-                      <View style={[catStyles.badge, { backgroundColor: color + '18' }]}>
-                        <Text style={[catStyles.badgeText, { color }]}>{cat.category}</Text>
-                      </View>
+                      <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Text style={catStyles.dotsBtn}>•••</Text>
+                      </TouchableOpacity>
                     </View>
+
+                    {/* Logo image area */}
+                    <View style={catStyles.imgArea}>
+                      {cat.coverImageUrl ? (
+                        <Image source={{ uri: cat.coverImageUrl }} style={catStyles.logoImg} resizeMode="contain" />
+                      ) : (
+                        <View style={[catStyles.logoPlaceholder, { backgroundColor: color + '15' }]}>
+                          <Text style={[catStyles.logoPlaceholderText, { color }]}>{initials}</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Name + description + category */}
+                    <Text style={catStyles.name}>{cat.vendorName || cat.name}</Text>
                     {cat.description ? <Text style={catStyles.description}>{cat.description}</Text> : null}
+                    <View style={[catStyles.badge, { backgroundColor: color + '18', alignSelf: 'flex-start' }]}>
+                      <Text style={[catStyles.badgeText, { color }]}>{cat.category}</Text>
+                    </View>
+
+                    {/* Action buttons */}
                     <View style={catStyles.actions}>
                       <TouchableOpacity style={catStyles.primaryBtn} onPress={() => Linking.openURL(cat.catalogUrl)} activeOpacity={0.85}>
                         <BookOpen size={15} color="#fff" />
                         <Text style={catStyles.primaryBtnText}>Open Catalog</Text>
                       </TouchableOpacity>
+                      {cat.websiteUrl ? (
+                        <TouchableOpacity style={catStyles.secondaryBtn} onPress={() => Linking.openURL(cat.websiteUrl!)} activeOpacity={0.85}>
+                          <ExternalLink size={14} color={BRAND} />
+                          <Text style={catStyles.secondaryBtnText}>Visit Website</Text>
+                        </TouchableOpacity>
+                      ) : null}
                     </View>
                   </View>
                 );
@@ -4357,22 +4380,33 @@ const catStyles = StyleSheet.create({
   card: {
     backgroundColor: '#fff',
     borderRadius: 14,
-    padding: 18,
+    padding: 16,
     borderWidth: 1,
     borderColor: BORDER,
-    gap: 12,
+    gap: 10,
   },
-  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: { width: 48, height: 48, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  avatarText: { fontSize: 13, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
-  name: { fontSize: 15, fontWeight: '700', color: TEXT },
+  cardTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  avatar: { width: 30, height: 30, borderRadius: 7, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  avatarText: { fontSize: 10, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
+  dotsBtn: { fontSize: 13, color: '#9CA3AF', letterSpacing: 2, lineHeight: 18 },
+  imgArea: {
+    height: 110,
+    borderRadius: 8,
+    backgroundColor: '#F9FAFB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  logoImg: { width: '100%', height: '100%' } as any,
+  logoPlaceholder: { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center' },
+  logoPlaceholderText: { fontSize: 32, fontWeight: '800' },
+  name: { fontSize: 14, fontWeight: '700', color: TEXT },
   vendor: { fontSize: 12, color: TEXT_LIGHT, marginTop: 1 },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  badgeText: { fontSize: 11, fontWeight: '700' },
-  description: { fontSize: 13, color: TEXT_LIGHT, lineHeight: 19 },
-  actions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  badge: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 20 },
+  badgeText: { fontSize: 11, fontWeight: '600' },
+  description: { fontSize: 12, color: TEXT_LIGHT, lineHeight: 18 },
+  actions: { flexDirection: 'column', gap: 7, marginTop: 2 },
   primaryBtn: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -4385,14 +4419,14 @@ const catStyles = StyleSheet.create({
   secondaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: 9,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: BRAND,
+    borderColor: BORDER,
   },
-  secondaryBtnText: { fontSize: 13, fontWeight: '600', color: BRAND },
+  secondaryBtnText: { fontSize: 13, fontWeight: '600', color: TEXT },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
