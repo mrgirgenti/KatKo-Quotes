@@ -1005,7 +1005,7 @@ const styles = StyleSheet.create({
   tableClient:  { fontSize: 13, fontWeight: '700', color: Colors.light.text },
   tableProject: { fontSize: 13, color: Colors.light.text },
   tableInvoice: { fontSize: 13, color: Colors.light.textSecondary },
-  tableServices:{ fontSize: 12, color: Colors.light.tint, fontWeight: '600', lineHeight: 18 },
+  tableServices:{ fontSize: 12, color: Colors.light.text, lineHeight: 18 },
   tablePcs:     { fontSize: 12, color: Colors.light.text, lineHeight: 18 },
   tablePerPcs:  { fontSize: 13, fontWeight: '600', color: Colors.light.text },
   tableTotal:   { fontSize: 14, fontWeight: '700', color: Colors.light.text },

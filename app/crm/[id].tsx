@@ -1460,7 +1460,10 @@ export default function OrgProfileScreen() {
               <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{legacyMetrics.totalProjects}</Text></View>
             )}
           </View>
-          <ChevronDown size={16} color="rgba(255,255,255,0.7)" style={{ transform: [{ rotate: legacyCollapsed ? '0deg' : '180deg' }] } as any} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.light.tint }}>View Legacy</Text>
+            <ChevronDown size={16} color={Colors.light.tint} style={{ transform: [{ rotate: legacyCollapsed ? '0deg' : '180deg' }] } as any} />
+          </View>
         </TouchableOpacity>
         <View style={styles.v2SecondaryStats}>
           <View style={styles.revenueStatBox}>

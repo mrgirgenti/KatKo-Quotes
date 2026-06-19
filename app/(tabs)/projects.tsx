@@ -168,14 +168,14 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
         <View style={styles.colInvoice}>
           <Text style={styles.tableInvoice}>{quote.projectNumber || quote.invoiceNumber || '—'}</Text>
         </View>
-        <View style={styles.colApplicator}>
-          <Text style={styles.tableApplicator} numberOfLines={2}>
-            {applicators.length > 0 ? applicators.join('\n') : '—'}
-          </Text>
-        </View>
         <View style={styles.colServices}>
           <Text style={styles.tableServices}>
             {lineItemServices.length > 0 ? lineItemServices.join('\n') : '—'}
+          </Text>
+        </View>
+        <View style={styles.colApplicator}>
+          <Text style={styles.tableApplicator} numberOfLines={2}>
+            {applicators.length > 0 ? applicators.join('\n') : '—'}
           </Text>
         </View>
         <View style={styles.colPcs}>
@@ -874,10 +874,10 @@ export default function ProjectsScreen() {
                 <View style={styles.colInvoice}>
                   <SortBtn field="invoice" label="Invoice #" />
                 </View>
-                <View style={styles.colApplicator}><Text style={styles.thText}>Applicator(s)</Text></View>
                 <View style={styles.colServices}>
                   <SortBtn field="services" label="Service(s)" />
                 </View>
+                <View style={styles.colApplicator}><Text style={styles.thText}>Applicator(s)</Text></View>
                 <View style={styles.colPcs}>
                   <SortBtn field="pcs" label="# PCS" />
                 </View>
@@ -1032,7 +1032,7 @@ const styles = StyleSheet.create({
   tableProject:    { fontSize: 13, color: Colors.light.text },
   tableInvoice:    { fontSize: 13, color: Colors.light.textSecondary },
   tableApplicator: { fontSize: 12, color: Colors.light.text, lineHeight: 18 },
-  tableServices:   { fontSize: 12, color: Colors.light.tint, fontWeight: '600', lineHeight: 18 },
+  tableServices:   { fontSize: 12, color: Colors.light.text, lineHeight: 18 },
   tablePcs:        { fontSize: 12, color: Colors.light.text, lineHeight: 18 },
   tablePerPcs:     { fontSize: 13, fontWeight: '600', color: Colors.light.text },
   tableTotal:      { fontSize: 14, fontWeight: '700', color: Colors.light.text },
