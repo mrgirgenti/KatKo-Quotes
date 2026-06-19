@@ -63,6 +63,10 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
         }
         return serverQuotes;
       } catch (err) {
+        const msg = (err as Error)?.message ?? '';
+        if (msg === 'Authentication required' || msg.startsWith('API error 401')) {
+          throw err; // Propagate so TanStack Query retries once the Clerk token is ready
+        }
         console.error('[QuotesContext] loadQuotes failed', err);
         return [];
       }

@@ -65,6 +65,7 @@ import { Toast } from '@/components/Toast';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PriorityControl } from '@/components/production/PriorityControl';
 import { exportSingleSaleToSheets } from '@/utils/googleSheetsExport';
+import { getAuthHeaders } from '@/lib/apiFetch';
 
 export default function QuoteDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -137,10 +138,12 @@ export default function QuoteDetailScreen() {
     const orgId = quote.orgId;
     const projectId = quote.id;
     if (!orgId) return;
-    fetch(`/api/files?orgId=${orgId}&projectId=${projectId}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data?.files) setProjectFiles(data.files); })
-      .catch(() => {});
+    getAuthHeaders().then(authHeaders =>
+      fetch(`/api/files?orgId=${orgId}&projectId=${projectId}`, { headers: authHeaders })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data?.files) setProjectFiles(data.files); })
+        .catch(() => {})
+    );
   }, [quote?.id, quote?.orgId]);
 
   const linkedOrg = useMemo(() => {

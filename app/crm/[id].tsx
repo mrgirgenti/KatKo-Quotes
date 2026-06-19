@@ -91,6 +91,7 @@ import {
 } from '@/types/crm';
 
 import { formatCurrency } from '@/utils/quoteCalculations';
+import { apiFetch, getAuthHeaders } from '@/lib/apiFetch';
 import { FLAG_ORG_LAYOUT_V2 } from '@/constants/featureFlags';
 import { STATUS_CONFIG, getEffectiveStatus, QuoteStatus } from '@/types/quote';
 import {
@@ -244,9 +245,7 @@ export default function OrgProfileScreen() {
   const { data: directOrg, isLoading: directOrgLoading } = useQuery<Organization>({
     queryKey: ['org_detail', id],
     queryFn: async () => {
-      const res = await fetch(`/api/orgs/${id}`, { headers: { 'Content-Type': 'application/json' } });
-      if (!res.ok) throw new Error(`API error ${res.status}`);
-      return res.json();
+      return apiFetch(`/api/orgs/${id}`);
     },
     enabled: !!id,
     staleTime: 1000 * 30,
@@ -357,10 +356,10 @@ export default function OrgProfileScreen() {
     queryKey: ['org_files', org?.id],
     queryFn: async () => {
       if (!org?.id) return [];
-      const res = await fetch(`/api/files?orgId=${org.id}&scope=org`);
-      if (!res.ok) return [];
-      const data = await res.json();
-      return data.files || [];
+      try {
+        const data = await apiFetch(`/api/files?orgId=${org.id}&scope=org`);
+        return data.files || [];
+      } catch { return []; }
     },
     enabled: !!org?.id,
   });
@@ -385,7 +384,7 @@ export default function OrgProfileScreen() {
       fd.append('orgId', org.id);
       fd.append('fileType', 'ARTWORK');
       fd.append('visibility', 'CLIENT_VISIBLE');
-      const res = await fetch('/api/files', { method: 'POST', body: fd });
+      const res = await fetch('/api/files', { method: 'POST', body: fd, headers: await getAuthHeaders() });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         Alert.alert('Upload failed', err?.error || 'Could not upload file.');
@@ -401,7 +400,7 @@ export default function OrgProfileScreen() {
 
   const handleOrgFileDelete = useCallback(async (fileId: string) => {
     try {
-      await fetch(`/api/files/${fileId}`, { method: 'DELETE' });
+      await fetch(`/api/files/${fileId}`, { method: 'DELETE', headers: await getAuthHeaders() });
       refetchOrgFiles();
     } catch {}
   }, [refetchOrgFiles]);

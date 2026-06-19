@@ -114,6 +114,10 @@ export const [CrmProvider, useCrm] = createContextHook(() => {
         }
         return serverOrgs;
       } catch (err) {
+        const msg = (err as Error)?.message ?? '';
+        if (msg === 'Authentication required' || msg.startsWith('API error 401')) {
+          throw err; // Propagate so TanStack Query retries once the Clerk token is ready
+        }
         console.error('[CrmContext] loadOrgs failed', err);
         return [];
       }
