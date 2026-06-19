@@ -66,6 +66,7 @@ function PersonRow({ person, onPress, isSelected, onToggleSelect }: {
   person: Person; onPress: () => void; isSelected: boolean; onToggleSelect: () => void;
 }) {
   const router = useRouter();
+  const { deleteContact } = useCrm();
   const name = `${person.firstName} ${person.lastName}`.trim() || 'Unnamed';
   const last = fmtLastLogin(person.lastLoginAt);
   return (
@@ -79,19 +80,19 @@ function PersonRow({ person, onPress, isSelected, onToggleSelect }: {
         <OrgAvatar name={name} size={32} shape="circle" />
       </View>
       <View style={COL_FLEX.name != null ? { flex: COL_FLEX.name } : { width: COL_WIDTHS.name }}>
-        <Text style={styles.cellName} numberOfLines={1}>{name}</Text>
+        <Text style={styles.cellName}>{name}</Text>
       </View>
       <View style={COL_FLEX.org != null ? { flex: COL_FLEX.org } : { width: COL_WIDTHS.org }}>
-        <Text style={styles.cell} numberOfLines={1}>{person.orgName}</Text>
+        <Text style={styles.cell}>{person.orgName}</Text>
       </View>
       <View style={{ width: COL_WIDTHS.role }}>
-        {person.role ? <Text style={styles.cell} numberOfLines={1}>{person.role}</Text> : <Text style={styles.dim}>—</Text>}
+        {person.role ? <Text style={styles.cell}>{person.role}</Text> : <Text style={styles.dim}>—</Text>}
       </View>
       <View style={COL_FLEX.email != null ? { flex: COL_FLEX.email } : { width: COL_WIDTHS.email }}>
-        {person.email ? <Text style={styles.cell} numberOfLines={1}>{person.email}</Text> : <Text style={styles.dim}>—</Text>}
+        {person.email ? <Text style={styles.cell}>{person.email}</Text> : <Text style={styles.dim}>—</Text>}
       </View>
       <View style={{ width: COL_WIDTHS.phone }}>
-        {person.phone ? <Text style={styles.cell} numberOfLines={1}>{formatPhone(person.phone)}</Text> : <Text style={styles.dim}>—</Text>}
+        {person.phone ? <Text style={styles.cell}>{formatPhone(person.phone)}</Text> : <Text style={styles.dim}>—</Text>}
       </View>
       <View style={{ width: COL_WIDTHS.status }}>
         <View style={[styles.statusPill, person.status === 'inactive' ? styles.statusInactive : styles.statusActive]}>
@@ -104,7 +105,7 @@ function PersonRow({ person, onPress, isSelected, onToggleSelect }: {
         <HubBadge status={person.hubStatus || 'No Access'} />
       </View>
       <View style={{ width: COL_WIDTHS.lastLogin }}>
-        {last ? <Text style={styles.cell} numberOfLines={1}>{last}</Text> : <Text style={styles.dim}>—</Text>}
+        {last ? <Text style={styles.cell}>{last}</Text> : <Text style={styles.dim}>—</Text>}
       </View>
       <View style={{ width: 120, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 }}>
         <TouchableOpacity
@@ -114,13 +115,36 @@ function PersonRow({ person, onPress, isSelected, onToggleSelect }: {
         >
           <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>View</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={{ width: 30, height: 30, borderRadius: 6, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: Colors.light.surface, alignItems: 'center', justifyContent: 'center' }}
-          onPress={(e) => { e.stopPropagation?.(); router.push(`/crm/${person.orgId}` as any); }}
-          activeOpacity={0.7}
+        <OverlayMenu align="right" menuWidth={180}
+          trigger={({ open }) => (
+            <TouchableOpacity
+              style={{ width: 30, height: 30, borderRadius: 6, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: Colors.light.surface, alignItems: 'center', justifyContent: 'center' }}
+              onPress={(e) => { e.stopPropagation?.(); open(); }}
+              activeOpacity={0.7}
+            >
+              <ChevronDown size={14} color={Colors.light.textSecondary} />
+            </TouchableOpacity>
+          )}
         >
-          <ChevronDown size={14} color={Colors.light.textSecondary} />
-        </TouchableOpacity>
+          {({ close }) => (
+            <>
+              <TouchableOpacity style={styles.actionsMenuItem} onPress={() => { close(); router.push(`/crm/${person.orgId}` as any); }}>
+                <Users size={14} color={Colors.light.text} />
+                <Text style={styles.actionsMenuItemText}>View Profile</Text>
+              </TouchableOpacity>
+              <View style={styles.rowMenuDivider} />
+              <TouchableOpacity style={[styles.actionsMenuItem, { borderBottomWidth: 0 }]} onPress={() => {
+                close();
+                if (typeof window === 'undefined' || window.confirm(`Delete ${name}? This cannot be undone.`)) {
+                  deleteContact({ orgId: person.orgId, contactId: person.id });
+                }
+              }}>
+                <Trash2 size={14} color={Colors.light.error} />
+                <Text style={[styles.actionsMenuItemText, { color: Colors.light.error }]}>Delete Contact</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </OverlayMenu>
       </View>
     </TouchableOpacity>
   );
@@ -353,17 +377,9 @@ export default function ContactsDirectory() {
                     <Upload size={14} color={Colors.light.text} />
                     <Text style={styles.actionsMenuItemText}>Import Contacts</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.actionsMenuItem} onPress={close}>
+                  <TouchableOpacity style={[styles.actionsMenuItem, { borderBottomWidth: 0 }]} onPress={close}>
                     <FileText size={14} color={Colors.light.text} />
                     <Text style={styles.actionsMenuItemText}>Export CSV</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.actionsMenuItem} onPress={close}>
-                    <Edit3 size={14} color={Colors.light.text} />
-                    <Text style={styles.actionsMenuItemText}>Bulk Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.actionsMenuItem, { borderBottomWidth: 0 }]} onPress={close}>
-                    <Trash2 size={14} color="#DC2626" />
-                    <Text style={[styles.actionsMenuItemText, { color: '#DC2626' }]}>Bulk Delete</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -755,6 +771,7 @@ const styles = StyleSheet.create({
   actionsBtnText: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.text },
   actionsMenuItem: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 10, paddingHorizontal: 14, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   actionsMenuItemText: { fontSize: 13, color: Colors.light.text, fontWeight: '500' as const },
+  rowMenuDivider: { height: 1, backgroundColor: Colors.light.border, marginVertical: 2 },
   addBtn: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6, backgroundColor: Colors.light.tint, paddingHorizontal: 16, borderRadius: DS.radius.md, height: 40 },
   addBtnText: { fontSize: 14, fontWeight: '700' as const, color: '#fff' },
 

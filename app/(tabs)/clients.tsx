@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput,
   Modal, KeyboardAvoidingView, Platform, Pressable,
@@ -79,19 +79,8 @@ function OrgRow({ org, onPress, onDelete, visibleCols, isSelected, onToggleSelec
   const primaries = org.contacts.filter((c) => c.isPrimary);
   const primaryContact = primaries[0] || org.contacts[0];
   const activeCampaign = org.campaigns.find((c) => c.steps.some((s) => s.status === 'pending'));
-  const menuBtnRef = useRef<View>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
-
-  const openMenu = () => {
-    menuBtnRef.current?.measure((_fx, _fy, width, height, px, py) => {
-      setMenuPos({ top: py + height + 4, right: Math.max(0, (typeof window !== 'undefined' ? window.innerWidth : 400) - px - width) });
-      setMenuOpen(true);
-    });
-  };
 
   const handleAction = (action: string) => {
-    setMenuOpen(false);
     if (action === 'edit') router.push(`/crm/${org.id}` as any);
     else if (action === 'addContact') router.push(`/crm/${org.id}` as any);
     else if (action === 'newQuote') router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } });
@@ -117,25 +106,25 @@ function OrgRow({ org, onPress, onDelete, visibleCols, isSelected, onToggleSelec
         <View style={{ width: AVATAR_W }}>
           <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={36} shape="circle" />
         </View>
-        {col('org', <Text style={styles.tableOrgName} numberOfLines={1}>{org.name}</Text>)}
+        {col('org', <Text style={styles.tableOrgName}>{org.name}</Text>)}
         {col('bizType', org.type
-          ? <Text style={styles.tableCell} numberOfLines={1}>{org.type}</Text>
+          ? <Text style={styles.tableCell}>{org.type}</Text>
           : <Text style={styles.tableDim}>—</Text>
         )}
         {col('contact', primaryContact
-          ? <Text style={styles.tableCell} numberOfLines={1}>{primaryContact.firstName} {primaryContact.lastName}</Text>
+          ? <Text style={styles.tableCell}>{primaryContact.firstName} {primaryContact.lastName}</Text>
           : <Text style={styles.tableDim}>No contact</Text>
         )}
         {col('email', primaryContact?.email
-          ? <Text style={styles.tableCell} numberOfLines={1}>{primaryContact.email}</Text>
+          ? <Text style={styles.tableCell}>{primaryContact.email}</Text>
           : <Text style={styles.tableDim}>—</Text>
         )}
         {col('phone', primaryContact?.phone
-          ? <Text style={styles.tableCell} numberOfLines={1}>{formatPhone(primaryContact.phone)}</Text>
+          ? <Text style={styles.tableCell}>{formatPhone(primaryContact.phone)}</Text>
           : <Text style={styles.tableDim}>—</Text>
         )}
         {col('campaign', activeCampaign
-          ? <Text style={styles.tableCampaignActive} numberOfLines={1}>{activeCampaign.templateName}</Text>
+          ? <Text style={styles.tableCampaignActive}>{activeCampaign.templateName}</Text>
           : <Text style={styles.tableDim}>—</Text>
         )}
         {col('status', <StatusBadge status={org.status} />)}
@@ -147,45 +136,43 @@ function OrgRow({ org, onPress, onDelete, visibleCols, isSelected, onToggleSelec
           <TouchableOpacity style={styles.viewBtn} onPress={() => router.push(`/crm/${org.id}` as any)}>
             <Text style={styles.viewBtnText}>View</Text>
           </TouchableOpacity>
-          <View ref={menuBtnRef} collapsable={false}>
-            <TouchableOpacity style={styles.menuBtn} onPress={(e) => { e.stopPropagation?.(); openMenu(); }} activeOpacity={0.7}>
-              <ChevronDown size={14} color={Colors.light.textSecondary} />
-            </TouchableOpacity>
-          </View>
+          <OverlayMenu align="right" menuWidth={190}
+            trigger={({ open }) => (
+              <TouchableOpacity style={styles.menuBtn} onPress={(e) => { e.stopPropagation?.(); open(); }} activeOpacity={0.7}>
+                <ChevronDown size={14} color={Colors.light.textSecondary} />
+              </TouchableOpacity>
+            )}
+          >
+            {({ close }) => (
+              <>
+                <TouchableOpacity style={styles.rowMenuItem} onPress={() => { close(); handleAction('edit'); }}>
+                  <Edit3 size={14} color={Colors.light.text} /><Text style={styles.rowMenuItemText}>Edit Client</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.rowMenuItem} onPress={() => { close(); handleAction('addContact'); }}>
+                  <UserPlus size={14} color={Colors.light.text} /><Text style={styles.rowMenuItemText}>Add Contacts</Text>
+                </TouchableOpacity>
+                <View style={styles.rowMenuDivider} />
+                <TouchableOpacity style={styles.rowMenuItem} onPress={() => { close(); handleAction('newQuote'); }}>
+                  <FileText size={14} color={Colors.light.text} /><Text style={styles.rowMenuItemText}>New Quote</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.rowMenuItem} onPress={() => { close(); handleAction('uploadMedia'); }}>
+                  <Upload size={14} color={Colors.light.text} /><Text style={styles.rowMenuItemText}>Upload Media</Text>
+                </TouchableOpacity>
+                {org.hubEnabled && (<>
+                  <View style={styles.rowMenuDivider} />
+                  <TouchableOpacity style={styles.rowMenuItem} onPress={() => { close(); handleAction('viewHub'); }}>
+                    <Globe size={14} color={Colors.light.tint} /><Text style={[styles.rowMenuItemText, { color: Colors.light.tint }]}>View Client Hub</Text>
+                  </TouchableOpacity>
+                </>)}
+                <View style={styles.rowMenuDivider} />
+                <TouchableOpacity style={styles.rowMenuItem} onPress={() => { close(); handleAction('delete'); }}>
+                  <Trash2 size={14} color={Colors.light.error} /><Text style={[styles.rowMenuItemText, { color: Colors.light.error }]}>Delete</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </OverlayMenu>
         </View>
       </TouchableOpacity>
-
-      {menuOpen && (
-        <Modal transparent animationType="none" onRequestClose={() => setMenuOpen(false)}>
-          <Pressable style={styles.rowMenuBackdrop} onPress={() => setMenuOpen(false)}>
-            <View style={[styles.rowMenuDropdown, { top: menuPos.top, right: menuPos.right }]}>
-              <TouchableOpacity style={styles.rowMenuItem} onPress={() => handleAction('edit')}>
-                <Edit3 size={14} color={Colors.light.text} /><Text style={styles.rowMenuItemText}>Edit Client</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.rowMenuItem} onPress={() => handleAction('addContact')}>
-                <UserPlus size={14} color={Colors.light.text} /><Text style={styles.rowMenuItemText}>Add Contacts</Text>
-              </TouchableOpacity>
-              <View style={styles.rowMenuDivider} />
-              <TouchableOpacity style={styles.rowMenuItem} onPress={() => handleAction('newQuote')}>
-                <FileText size={14} color={Colors.light.text} /><Text style={styles.rowMenuItemText}>New Quote</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.rowMenuItem} onPress={() => handleAction('uploadMedia')}>
-                <Upload size={14} color={Colors.light.text} /><Text style={styles.rowMenuItemText}>Upload Media</Text>
-              </TouchableOpacity>
-              {org.hubEnabled && (<>
-                <View style={styles.rowMenuDivider} />
-                <TouchableOpacity style={styles.rowMenuItem} onPress={() => handleAction('viewHub')}>
-                  <Globe size={14} color={Colors.light.tint} /><Text style={[styles.rowMenuItemText, { color: Colors.light.tint }]}>View Client Hub</Text>
-                </TouchableOpacity>
-              </>)}
-              <View style={styles.rowMenuDivider} />
-              <TouchableOpacity style={styles.rowMenuItem} onPress={() => handleAction('delete')}>
-                <Trash2 size={14} color={Colors.light.error} /><Text style={[styles.rowMenuItemText, { color: Colors.light.error }]}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Modal>
-      )}
     </>
   );
 }
@@ -419,7 +406,7 @@ function OrganizationsScreen() {
               menuWidth={185}
               trigger={({ open }) => (
                 <TouchableOpacity style={styles.actionsBtn} onPress={open}>
-                  <Text style={styles.actionsBtnText}>Actions</Text>
+                  {isDesktop && <Text style={styles.actionsBtnText}>Actions</Text>}
                   <ChevronDown size={14} color={Colors.light.textSecondary} />
                 </TouchableOpacity>
               )}
@@ -430,23 +417,16 @@ function OrganizationsScreen() {
                     <Upload size={14} color={Colors.light.text} />
                     <Text style={styles.actionsMenuItemText}>Import Contacts</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.actionsMenuItem} onPress={close}>
+                  <TouchableOpacity style={[styles.actionsMenuItem, { borderBottomWidth: 0 }]} onPress={close}>
                     <FileText size={14} color={Colors.light.text} />
                     <Text style={styles.actionsMenuItemText}>Export CSV</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.actionsMenuItem} onPress={close}>
-                    <Edit3 size={14} color={Colors.light.text} />
-                    <Text style={styles.actionsMenuItemText}>Bulk Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.actionsMenuItem, { borderBottomWidth: 0 }]} onPress={close}>
-                    <Trash2 size={14} color="#DC2626" />
-                    <Text style={[styles.actionsMenuItemText, { color: '#DC2626' }]}>Bulk Delete</Text>
                   </TouchableOpacity>
                 </>
               )}
             </OverlayMenu>
             <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
-              <Plus size={15} color="#fff" /><Text style={styles.addBtnText}>{isDesktop ? 'Add Organization' : 'Organization'}</Text>
+              <Plus size={15} color="#fff" />
+              {isDesktop && <Text style={styles.addBtnText}>Add Organization</Text>}
             </TouchableOpacity>
           </View>
         </View>

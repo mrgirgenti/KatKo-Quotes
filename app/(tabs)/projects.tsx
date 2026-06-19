@@ -160,13 +160,13 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
           <Text style={styles.tableDate}>{quote.inHandsDate ? formatDate(quote.inHandsDate) : '—'}</Text>
         </View>
         <View style={styles.colClient}>
-          <Text style={styles.tableClient} numberOfLines={1}>{quote.personOrganization}</Text>
+          <Text style={styles.tableClient}>{quote.personOrganization}</Text>
         </View>
         <View style={styles.colProject}>
-          <Text style={styles.tableProject} numberOfLines={1}>{quote.projectName}</Text>
+          <Text style={styles.tableProject}>{quote.projectName}</Text>
         </View>
         <View style={styles.colInvoice}>
-          <Text style={styles.tableInvoice} numberOfLines={1}>{quote.projectNumber || quote.invoiceNumber || '—'}</Text>
+          <Text style={styles.tableInvoice}>{quote.projectNumber || quote.invoiceNumber || '—'}</Text>
         </View>
         <View style={styles.colApplicator}>
           <Text style={styles.tableApplicator} numberOfLines={2}>
