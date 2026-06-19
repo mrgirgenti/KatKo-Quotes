@@ -79,16 +79,16 @@ function PersonRow({ person, onPress, isSelected, onToggleSelect }: {
       <View style={{ width: 44 }}>
         <OrgAvatar name={name} size={32} shape="circle" />
       </View>
-      <View style={COL_FLEX.name != null ? { flex: COL_FLEX.name } : { width: COL_WIDTHS.name }}>
+      <View style={COL_FLEX.name != null ? { flex: COL_FLEX.name, minWidth: COL_WIDTHS.name } : { width: COL_WIDTHS.name }}>
         <Text style={styles.cellName}>{name}</Text>
       </View>
-      <View style={COL_FLEX.org != null ? { flex: COL_FLEX.org } : { width: COL_WIDTHS.org }}>
+      <View style={COL_FLEX.org != null ? { flex: COL_FLEX.org, minWidth: COL_WIDTHS.org } : { width: COL_WIDTHS.org }}>
         <Text style={styles.cell}>{person.orgName}</Text>
       </View>
       <View style={{ width: COL_WIDTHS.role }}>
         {person.role ? <Text style={styles.cell}>{person.role}</Text> : <Text style={styles.dim}>—</Text>}
       </View>
-      <View style={COL_FLEX.email != null ? { flex: COL_FLEX.email } : { width: COL_WIDTHS.email }}>
+      <View style={COL_FLEX.email != null ? { flex: COL_FLEX.email, minWidth: COL_WIDTHS.email } : { width: COL_WIDTHS.email }}>
         {person.email ? <Text style={styles.cell}>{person.email}</Text> : <Text style={styles.dim}>—</Text>}
       </View>
       <View style={{ width: COL_WIDTHS.phone }}>
@@ -351,10 +351,10 @@ export default function ContactsDirectory() {
         </View>
       </TouchableOpacity>
       <View style={{ width: 44 }} />
-      <View style={COL_FLEX.name != null ? { flex: COL_FLEX.name } : { width: COL_WIDTHS.name }}><SortBtn field="name" label="Name" /></View>
-      <View style={COL_FLEX.org != null ? { flex: COL_FLEX.org } : { width: COL_WIDTHS.org }}><SortBtn field="org" label="Organization" /></View>
+      <View style={COL_FLEX.name != null ? { flex: COL_FLEX.name, minWidth: COL_WIDTHS.name } : { width: COL_WIDTHS.name }}><SortBtn field="name" label="Name" /></View>
+      <View style={COL_FLEX.org != null ? { flex: COL_FLEX.org, minWidth: COL_WIDTHS.org } : { width: COL_WIDTHS.org }}><SortBtn field="org" label="Organization" /></View>
       <View style={{ width: COL_WIDTHS.role }}><SortBtn field="role" label="Title / Role" /></View>
-      <View style={COL_FLEX.email != null ? { flex: COL_FLEX.email } : { width: COL_WIDTHS.email }}><SortBtn field="email" label="Email" /></View>
+      <View style={COL_FLEX.email != null ? { flex: COL_FLEX.email, minWidth: COL_WIDTHS.email } : { width: COL_WIDTHS.email }}><SortBtn field="email" label="Email" /></View>
       <View style={{ width: COL_WIDTHS.phone }}><SortBtn field="phone" label="Phone" /></View>
       <View style={{ width: COL_WIDTHS.status }}><SortBtn field="status" label="Status" /></View>
       <View style={{ width: COL_WIDTHS.hub }}><SortBtn field="hub" label="Hub Status" /></View>
@@ -548,7 +548,7 @@ export default function ContactsDirectory() {
       ) : (
         <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
           <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }} style={{ outlineStyle: 'none' } as any}>
-            <View style={{ minWidth: 1156, flexGrow: 1 }}>
+            <View style={{ minWidth: 1360, flexGrow: 1 }}>
               {tableHeader}
               <View style={styles.tableBody}>
                 {filtered.map((p, idx) => (

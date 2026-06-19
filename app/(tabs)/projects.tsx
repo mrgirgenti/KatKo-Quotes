@@ -174,7 +174,7 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
           </Text>
         </View>
         <View style={styles.colApplicator}>
-          <Text style={styles.tableApplicator} numberOfLines={2}>
+          <Text style={styles.tableApplicator}>
             {applicators.length > 0 ? applicators.join('\n') : '—'}
           </Text>
         </View>
@@ -859,7 +859,7 @@ export default function ProjectsScreen() {
       ) : (
         <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
           <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }} style={{ outlineStyle: 'none' } as any}>
-            <View style={{ minWidth: 1420, flexGrow: 1 }}>
+            <View style={{ minWidth: 1500, flexGrow: 1 }}>
               <View style={styles.tableHeader}>
                 <View style={styles.colCheckbox}>
                   <Checkbox
@@ -1028,11 +1028,11 @@ const styles = StyleSheet.create({
   colStatus:    { width: 100 },
   colOrderDate: { width: 125 },
   colDueDate:   { width: 110 },
-  colClient:    { flex: 1.2 },
-  colProject:   { flex: 1.2 },
+  colClient:    { flex: 1.2, minWidth: 150 },
+  colProject:   { flex: 1.2, minWidth: 160 },
   colInvoice:   { width: 90 },
-  colApplicator:{ flex: 1.2 },
-  colServices:  { flex: 1.0 },
+  colApplicator:{ flex: 1.2, minWidth: 150 },
+  colServices:  { flex: 1.0, minWidth: 140 },
   colPcs:       { width: 72 },
   colPerPcs:    { width: 85, alignItems: 'flex-end' },
   colTotal:     { width: 85, alignItems: 'flex-end' },

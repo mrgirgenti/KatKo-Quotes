@@ -170,7 +170,7 @@ export default function ProductionScreen() {
         <View style={styles.statsBar}>
           <Stat value={stats.total} label="In Workflow" color={Colors.light.text} />
           <View style={styles.statDivider} />
-          <Stat value={stats.inProduction} label="In Production" color={Colors.light.tint} />
+          <Stat value={stats.inProduction} label="Production" color={Colors.light.tint} />
           <View style={styles.statDivider} />
           <Stat value={stats.onHold} label="On Hold" color="#DC2626" />
           <View style={styles.statDivider} />

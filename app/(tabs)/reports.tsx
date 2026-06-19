@@ -17,6 +17,11 @@ import {
   TrendingUp,
   Users,
   ChevronRight,
+  DollarSign,
+  ShoppingBag,
+  Receipt,
+  Info,
+  FileWarning,
 } from 'lucide-react-native';
 import Svg, { Path, Circle, Defs, LinearGradient as SvgGradient, Stop, Line as SvgLine, Text as SvgText, Rect } from 'react-native-svg';
 import { useRouter } from 'expo-router';
@@ -32,7 +37,10 @@ import {
   exportCSV,
 } from '@/utils/csvExport';
 import { Toast } from '@/components/Toast';
-import type { Quote } from '@/types/quote';
+import type { Quote, QuoteStatus } from '@/types/quote';
+import { STATUS_CONFIG, getEffectiveStatus } from '@/types/quote';
+import { OrgAvatar } from '@/components/OrgAvatar';
+import { useCrm } from '@/contexts/CrmContext';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type ReportTab = 'overview' | 'financial' | 'customers' | 'services';
@@ -300,6 +308,63 @@ function computeReconciliationQueue(quotes: Quote[]) {
   };
 }
 
+// ── Top Performing Projects ─────────────────────────────────────────────────────
+interface ProjectRow {
+  id: string;
+  projectName: string;
+  customer: string;
+  revenue: number;
+  profit: number;
+  margin: number;
+  status: QuoteStatus;
+  completedDate: string | null;
+}
+
+function computeTopProjects(quotes: Quote[]): ProjectRow[] {
+  return quotes
+    .map((q) => {
+      const revenue = getRevenue(q);
+      const profit = getProfit(q);
+      return {
+        id: q.id,
+        projectName: ((q as any).projectName as string) || 'Untitled Project',
+        customer: ((q as any).personOrganization as string) || 'Unknown',
+        revenue,
+        profit,
+        margin: revenue > 0 ? profit / revenue : 0,
+        status: getEffectiveStatus(q),
+        completedDate: ((q as any).completedAt as string | undefined) ?? (q.orderDate as string | undefined) ?? null,
+      };
+    })
+    .sort((a, b) => b.revenue - a.revenue);
+}
+
+// ── Formatting helpers ──────────────────────────────────────────────────────────
+function fmtMoney(v: number): string {
+  return `$${Math.round(v).toLocaleString('en-US')}`;
+}
+
+function fmtRelative(iso: string | null): string {
+  if (!iso) return '—';
+  const t = new Date(iso).getTime();
+  if (isNaN(t)) return '—';
+  const days = Math.floor((Date.now() - t) / 86400000);
+  if (days <= 0) return 'Today';
+  if (days === 1) return '1 day ago';
+  if (days < 30) return `${days} days ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return months === 1 ? '1 month ago' : `${months} months ago`;
+  const years = Math.floor(days / 365);
+  return years === 1 ? '1 year ago' : `${years} years ago`;
+}
+
+function fmtDate(iso: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 // ── Monthly data for chart ─────────────────────────────────────────────────────
 interface MonthlyPoint {
   label: string;
@@ -388,23 +453,33 @@ function SectionHeader({
   );
 }
 
-// ── KPI Card (full-width row version) ──────────────────────────────────────────
+// ── KPI Card ───────────────────────────────────────────────────────────────────
 function KpiCard({
   label,
   value,
   change,
   compareLabel,
+  icon: Icon,
 }: {
   label: string;
   value: string;
   change: number | null;
   compareLabel: string;
+  icon: React.ComponentType<{ size?: number; color?: string }>;
 }) {
   const hasChange = change !== null;
   const positive = (change ?? 0) >= 0;
   return (
     <View style={s.kpiCard}>
-      <Text style={s.kpiLabel}>{label}</Text>
+      <View style={s.kpiTopRow}>
+        <View style={s.kpiLabelRow}>
+          <Text style={s.kpiLabel}>{label}</Text>
+          <Info size={12} color={Colors.light.textSecondary} />
+        </View>
+        <View style={s.kpiIconWrap}>
+          <Icon size={18} color="#059669" />
+        </View>
+      </View>
       <Text style={s.kpiValue} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
       {hasChange && (
         <View style={s.kpiChangeRow}>
@@ -966,6 +1041,117 @@ function NeedsReconciliationSection({
   );
 }
 
+// ── Overview Tables ──────────────────────────────────────────────────────────────
+function TopCustomersTable({
+  customers,
+  logoMap,
+}: {
+  customers: CustomerRow[];
+  logoMap: Map<string, string | null | undefined>;
+}) {
+  const rows = customers.slice(0, 5);
+  return (
+    <View>
+      <View style={s.tableHead}>
+        <Text style={[s.thCell, { flex: 2 }]}>Customer</Text>
+        <Text style={s.thCell}>Revenue</Text>
+        <Text style={s.thCell}>Profit</Text>
+        <Text style={s.thCell}>Orders</Text>
+        <Text style={s.thCell}>Last Order</Text>
+      </View>
+      {rows.length === 0 ? (
+        <Text style={s.emptyMsg}>No customers in range.</Text>
+      ) : (
+        rows.map((c, i) => (
+          <View key={c.name} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
+            <View style={[s.custCell, { flex: 2 }]}>
+              <OrgAvatar name={c.name} logoUrl={logoMap.get(c.name)} size={24} shape="circle" />
+              <Text style={s.custName} numberOfLines={1}>{c.name}</Text>
+            </View>
+            <Text style={s.tdCell}>{fmtMoney(c.revenue)}</Text>
+            <Text style={s.tdCell}>{fmtMoney(c.profit)}</Text>
+            <Text style={s.tdCell}>{c.orders}</Text>
+            <Text style={[s.tdCell, s.tdSm]}>{fmtRelative(c.lastOrderDate ?? null)}</Text>
+          </View>
+        ))
+      )}
+    </View>
+  );
+}
+
+function ServicePerformanceTable({ services }: { services: ServiceRow[] }) {
+  const rows = services.slice(0, 5);
+  return (
+    <View>
+      <View style={s.tableHead}>
+        <Text style={[s.thCell, { flex: 1.4 }]}>Service</Text>
+        <Text style={s.thCell}>Revenue</Text>
+        <Text style={s.thCell}>Profit</Text>
+        <Text style={s.thCell}>Orders</Text>
+        <Text style={s.thCell}>Avg Order</Text>
+        <Text style={[s.thCell, s.thRight]}>Margin</Text>
+      </View>
+      {rows.length === 0 ? (
+        <Text style={s.emptyMsg}>No services in range.</Text>
+      ) : (
+        rows.map((sv, i) => {
+          const avgOrder = sv.orders > 0 ? sv.revenue / sv.orders : 0;
+          const margin = sv.revenue > 0 ? (sv.profit / sv.revenue) * 100 : 0;
+          return (
+            <View key={sv.service} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
+              <Text style={[s.tdCell, { flex: 1.4 }]} numberOfLines={1}>{sv.service}</Text>
+              <Text style={s.tdCell}>{fmtMoney(sv.revenue)}</Text>
+              <Text style={s.tdCell}>{fmtMoney(sv.profit)}</Text>
+              <Text style={s.tdCell}>{sv.orders}</Text>
+              <Text style={s.tdCell}>{fmtMoney(avgOrder)}</Text>
+              <Text style={[s.tdCell, s.tdRight, s.marginGreen]}>{margin.toFixed(1)}%</Text>
+            </View>
+          );
+        })
+      )}
+    </View>
+  );
+}
+
+function TopProjectsTable({ projects }: { projects: ProjectRow[] }) {
+  const rows = projects.slice(0, 8);
+  return (
+    <View>
+      <View style={s.tableHead}>
+        <Text style={[s.thCell, { flex: 1.6 }]}>Project</Text>
+        <Text style={[s.thCell, { flex: 1.6 }]}>Customer</Text>
+        <Text style={s.thCell}>Revenue</Text>
+        <Text style={s.thCell}>Profit</Text>
+        <Text style={s.thCell}>Margin</Text>
+        <Text style={s.thCell}>Status</Text>
+        <Text style={s.thCell}>Completed</Text>
+      </View>
+      {rows.length === 0 ? (
+        <Text style={s.emptyMsg}>No projects in range.</Text>
+      ) : (
+        rows.map((p, i) => {
+          const cfg = STATUS_CONFIG[p.status] ?? STATUS_CONFIG.draft;
+          return (
+            <View key={p.id} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
+              <Text style={[s.tdCell, { flex: 1.6 }]} numberOfLines={1}>{p.projectName}</Text>
+              <Text style={[s.tdCell, { flex: 1.6 }]} numberOfLines={1}>{p.customer}</Text>
+              <Text style={s.tdCell}>{fmtMoney(p.revenue)}</Text>
+              <Text style={s.tdCell}>{fmtMoney(p.profit)}</Text>
+              <Text style={[s.tdCell, s.marginGreen]}>{(p.margin * 100).toFixed(1)}%</Text>
+              <View style={s.tdBadgeWrap}>
+                <View style={[s.statusBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+                  <Text style={[s.statusBadgeText, { color: cfg.color }]} numberOfLines={1}>{cfg.label}</Text>
+                </View>
+              </View>
+              <Text style={[s.tdCell, s.tdSm]}>{fmtDate(p.completedDate)}</Text>
+            </View>
+          );
+        })
+      )}
+    </View>
+  );
+}
+
 // ── Overview Tab ───────────────────────────────────────────────────────────────
 function OverviewTab({
   curr,
@@ -974,8 +1160,9 @@ function OverviewTab({
   recon,
   customers,
   services,
-  monthlyData,
-  recentReconciled,
+  topProjects,
+  logoMap,
+  onTab,
   router,
 }: {
   curr: Metrics;
@@ -984,22 +1171,65 @@ function OverviewTab({
   recon: ReturnType<typeof computeReconciliationQueue>;
   customers: CustomerRow[];
   services: ServiceRow[];
-  monthlyData: MonthlyPoint[];
-  recentReconciled: Quote[];
+  topProjects: ProjectRow[];
+  logoMap: Map<string, string | null | undefined>;
+  onTab: (t: ReportTab) => void;
   router: ReturnType<typeof useRouter>;
 }) {
-  const concentration = useMemo(
-    () => computeConcentration(customers, curr.revenue),
-    [customers, curr.revenue],
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const { isDesktop } = useBreakpoint();
+  const twoCol = mounted && isDesktop;
+
+  const kpis: Array<{
+    label: string;
+    value: string;
+    raw: number;
+    prevRaw: number | null;
+    icon: React.ComponentType<{ size?: number; color?: string }>;
+  }> = [
+    { label: 'Revenue', value: fmtMoney(curr.revenue), raw: curr.revenue, prevRaw: prev?.revenue ?? null, icon: DollarSign },
+    { label: 'Profit', value: fmtMoney(curr.profit), raw: curr.profit, prevRaw: prev?.profit ?? null, icon: TrendingUp },
+    { label: 'Orders', value: String(curr.orders), raw: curr.orders, prevRaw: prev?.orders ?? null, icon: ShoppingBag },
+    { label: 'Avg Order Value', value: fmtMoney(curr.avgOrder), raw: curr.avgOrder, prevRaw: prev?.avgOrder ?? null, icon: Receipt },
+  ];
+
+  const customersPanel = (
+    <View style={s.panel}>
+      <View style={s.panelHeader}>
+        <View style={s.panelTitleWrap}>
+          <Text style={s.panelTitle}>TOP CUSTOMERS</Text>
+          <Text style={s.panelSubtitle}> (by Revenue)</Text>
+        </View>
+        <TouchableOpacity style={s.panelActionBtn} onPress={() => onTab('customers')}>
+          <Text style={s.panelAction}>View All Customers</Text>
+          <ChevronRight size={13} color={Colors.light.tint} />
+        </TouchableOpacity>
+      </View>
+      <TopCustomersTable customers={customers} logoMap={logoMap} />
+      <View style={s.panelFooter}>
+        <Text style={s.panelFooterText}>
+          Showing top {Math.min(5, customers.length)} of {customers.length} customers
+        </Text>
+      </View>
+    </View>
   );
 
-  const kpis: Array<{ label: string; value: string; raw: number; prevRaw: number | null }> = [
-    { label: 'Revenue', value: formatCurrency(curr.revenue), raw: curr.revenue, prevRaw: prev?.revenue ?? null },
-    { label: 'Profit', value: formatCurrency(curr.profit), raw: curr.profit, prevRaw: prev?.profit ?? null },
-    { label: 'Orders', value: String(curr.orders), raw: curr.orders, prevRaw: prev?.orders ?? null },
-    { label: 'Avg Order', value: formatCurrency(curr.avgOrder), raw: curr.avgOrder, prevRaw: prev?.avgOrder ?? null },
-    { label: 'Avg PCS', value: curr.avgPcs > 0 ? curr.avgPcs.toFixed(1) : '—', raw: curr.avgPcs, prevRaw: prev?.avgPcs ?? null },
-  ];
+  const servicesPanel = (
+    <View style={s.panel}>
+      <View style={s.panelHeader}>
+        <Text style={s.panelTitle}>SERVICE PERFORMANCE</Text>
+        <TouchableOpacity style={s.panelActionBtn} onPress={() => onTab('services')}>
+          <Text style={s.panelAction}>View All Services</Text>
+          <ChevronRight size={13} color={Colors.light.tint} />
+        </TouchableOpacity>
+      </View>
+      <ServicePerformanceTable services={services} />
+      <View style={s.panelFooter}>
+        <Text style={s.panelFooterText}>Showing all {services.length} services</Text>
+      </View>
+    </View>
+  );
 
   return (
     <View>
@@ -1012,59 +1242,65 @@ function OverviewTab({
             value={k.value}
             change={k.prevRaw !== null ? pctChange(k.raw, k.prevRaw) : null}
             compareLabel={compareLabel}
+            icon={k.icon}
           />
         ))}
       </View>
 
-      {/* ── Needs Reconciliation ── */}
-      <View style={s.sectionWrap}>
-        <NeedsReconciliationSection
-          recon={recon}
-          onViewQueue={() => router.push('/(tabs)/projects')}
-        />
-      </View>
-
-      {/* ── Revenue by Service Snapshot ── */}
-      <View style={s.sectionWrap}>
-        <SectionHeader title="REVENUE BY SERVICE" />
-        <View style={s.sectionBody}>
-          <ServiceSnapshotCards services={services} />
+      {/* ── Reconciliation Queue ── */}
+      <View style={s.panelOuter}>
+        <View style={s.panel}>
+          <View style={s.panelHeader}>
+            <Text style={s.panelTitle}>RECONCILIATION QUEUE</Text>
+            <TouchableOpacity style={s.panelActionBtn} onPress={() => router.push('/(tabs)/projects')}>
+              <Text style={s.panelAction}>View Queue</Text>
+              <ChevronRight size={13} color={Colors.light.tint} />
+            </TouchableOpacity>
+          </View>
+          <View style={s.reconRow}>
+            <View style={s.reconItemLeft}>
+              <FileWarning size={28} color="#EA580C" />
+              <View>
+                <Text style={s.reconValue}>{recon.count}</Text>
+                <Text style={s.reconLabelLeft}>Pending Projects</Text>
+              </View>
+            </View>
+            <View style={s.reconDivider} />
+            <View style={s.reconItem}>
+              <Text style={s.reconValue}>{fmtMoney(recon.revenueWaiting)}</Text>
+              <Text style={s.reconLabel}>Revenue Waiting</Text>
+            </View>
+            <View style={s.reconDivider} />
+            <View style={s.reconItem}>
+              <Text style={s.reconValue}>{fmtMoney(recon.profitWaiting)}</Text>
+              <Text style={s.reconLabel}>Profit Waiting</Text>
+            </View>
+          </View>
         </View>
       </View>
 
-      {/* ── Revenue vs Profit Chart ── */}
-      <View style={s.sectionWrap}>
-        <SectionHeader title="REVENUE VS PROFIT" />
-        <View style={s.sectionBody}>
-          <RevenueVsProfitChart data={monthlyData} />
-        </View>
+      {/* ── Top Customers + Service Performance ── */}
+      <View style={[s.twoColRow, !twoCol && s.twoColStack]}>
+        <View style={s.col}>{customersPanel}</View>
+        <View style={s.col}>{servicesPanel}</View>
       </View>
 
-      {/* ── Top Customers ── */}
-      <View style={s.sectionWrap}>
-        <SectionHeader
-          title="TOP CUSTOMERS"
-          action="View All Customers"
-          onAction={() => router.push('/(tabs)/clients')}
-        />
-        <View style={s.sectionBody}>
-          <TopCustomerCards customers={customers} />
-        </View>
-      </View>
-
-      {/* ── Customer Concentration ── */}
-      <View style={s.sectionWrap}>
-        <SectionHeader title="CUSTOMER CONCENTRATION" />
-        <View style={s.card}>
-          <CustomerConcentrationSection concentration={concentration} />
-        </View>
-      </View>
-
-      {/* ── Recent Reconciliations ── */}
-      <View style={s.sectionWrap}>
-        <SectionHeader title="RECENT RECONCILIATIONS" />
-        <View style={s.sectionBody}>
-          <RecentReconciliationsTable quotes={recentReconciled} />
+      {/* ── Top Performing Projects ── */}
+      <View style={s.panelOuter}>
+        <View style={s.panel}>
+          <View style={s.panelHeader}>
+            <Text style={s.panelTitle}>TOP PERFORMING PROJECTS</Text>
+            <TouchableOpacity style={s.panelActionBtn} onPress={() => router.push('/(tabs)/projects')}>
+              <Text style={s.panelAction}>View All Projects</Text>
+              <ChevronRight size={13} color={Colors.light.tint} />
+            </TouchableOpacity>
+          </View>
+          <TopProjectsTable projects={topProjects} />
+          <View style={s.panelFooter}>
+            <Text style={s.panelFooterText}>
+              Showing top {Math.min(8, topProjects.length)} of {topProjects.length} projects
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -1265,6 +1501,7 @@ function ServicesTab({ services }: { services: ServiceRow[] }) {
 export default function ReportsScreen() {
   const router = useRouter();
   const { quotes } = useQuotes();
+  const { orgs } = useCrm();
 
   const [activeTab, setActiveTab] = useState<ReportTab>('overview');
   const [dateRangeKey, setDateRangeKey] = useState<DateRangeKey>('this_year');
@@ -1287,8 +1524,12 @@ export default function ReportsScreen() {
   const customers = useMemo(() => computeTopCustomers(filteredQuotes), [filteredQuotes]);
   const services = useMemo(() => computeServiceSnapshot(filteredQuotes), [filteredQuotes]);
   const recon = useMemo(() => computeReconciliationQueue(quotes), [quotes]);
-  const monthlyData = useMemo(() => computeMonthlyData(filteredQuotes), [filteredQuotes]);
-  const recentReconciled = useMemo(() => computeRecentReconciliations(filteredQuotes), [filteredQuotes]);
+  const topProjects = useMemo(() => computeTopProjects(filteredQuotes), [filteredQuotes]);
+  const orgLogoMap = useMemo(() => {
+    const m = new Map<string, string | null | undefined>();
+    for (const o of orgs) m.set(o.name, o.logoUrl);
+    return m;
+  }, [orgs]);
 
   const compareLabel = useMemo(() => {
     if (!compRange || compareKey === 'none') return '';
@@ -1369,8 +1610,9 @@ export default function ReportsScreen() {
             recon={recon}
             customers={customers}
             services={services}
-            monthlyData={monthlyData}
-            recentReconciled={recentReconciled}
+            topProjects={topProjects}
+            logoMap={orgLogoMap}
+            onTab={setActiveTab}
             router={router}
           />
         )}
@@ -1485,12 +1727,15 @@ const s = StyleSheet.create({
   // ── KPI Row ──
   kpiRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     paddingHorizontal: DS.spacing.xl,
     paddingVertical: DS.spacing.lg,
     gap: 12,
   },
   kpiCard: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: 180,
+    minWidth: 180,
     backgroundColor: Colors.light.surface,
     borderRadius: DS.radius.lg,
     borderWidth: 1,
@@ -1500,8 +1745,11 @@ const s = StyleSheet.create({
     minHeight: 120,
     justifyContent: 'flex-start',
   },
-  kpiLabel: { fontSize: 10, fontWeight: '700', color: Colors.light.textSecondary, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
-  kpiValue: { fontSize: 24, fontWeight: '800', color: Colors.light.text, marginBottom: 6 },
+  kpiTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
+  kpiLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1 },
+  kpiIconWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  kpiLabel: { fontSize: 13, fontWeight: '700', color: Colors.light.text },
+  kpiValue: { fontSize: 26, fontWeight: '800', color: Colors.light.text, marginBottom: 6 },
   kpiChangeRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 2 },
   kpiChangePct: { fontSize: 12, fontWeight: '700' },
   kpiCompare: { fontSize: 10, color: Colors.light.textSecondary },
@@ -1675,4 +1923,54 @@ const s = StyleSheet.create({
   inactivePillActive: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
   inactivePillText: { fontSize: 12, fontWeight: '600', color: Colors.light.textSecondary },
   inactivePillTextActive: { color: '#fff' },
+
+  // ── Panel (card with black header) ──
+  panelOuter: { marginHorizontal: DS.spacing.xl, marginBottom: DS.spacing.lg },
+  panel: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: DS.radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    overflow: 'hidden',
+  },
+  panelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#000000',
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+  },
+  panelTitleWrap: { flexDirection: 'row', alignItems: 'baseline', flexShrink: 1 },
+  panelTitle: { fontSize: 11, fontWeight: '800', color: '#ffffff', textTransform: 'uppercase', letterSpacing: 0.6 },
+  panelSubtitle: { fontSize: 11, fontWeight: '500', color: '#9CA3AF' },
+  panelActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, flexShrink: 0 },
+  panelAction: { fontSize: 12, fontWeight: '700', color: Colors.light.tint },
+  panelFooter: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    backgroundColor: '#FAFAFA',
+  },
+  panelFooterText: { fontSize: 12, color: Colors.light.textSecondary },
+
+  // ── Two column ──
+  twoColRow: { flexDirection: 'row', gap: 16, marginHorizontal: DS.spacing.xl, marginBottom: DS.spacing.lg },
+  twoColStack: { flexDirection: 'column' },
+  col: { flex: 1, minWidth: 0 },
+
+  // ── Recon left item ──
+  reconItemLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14 },
+  reconLabelLeft: { fontSize: 11, color: Colors.light.textSecondary },
+
+  // ── Customer cell ──
+  custCell: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  custName: { fontSize: 13, fontWeight: '600', color: Colors.light.text, flexShrink: 1 },
+
+  // ── Margin / status ──
+  marginGreen: { color: '#16A34A', fontWeight: '700' },
+  tdBadgeWrap: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  statusBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1 },
+  statusBadgeText: { fontSize: 11, fontWeight: '700' },
 });
