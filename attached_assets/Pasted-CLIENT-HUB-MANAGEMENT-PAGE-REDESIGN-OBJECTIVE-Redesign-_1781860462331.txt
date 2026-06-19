@@ -1,0 +1,318 @@
+CLIENT HUB MANAGEMENT PAGE REDESIGN
+
+OBJECTIVE
+
+Redesign the Client Hub Management page to feel like a premium Katalyst OS management center rather than a basic settings page.
+
+Use Option 4 from the approved mockup direction as the foundation.
+
+The page should feel consistent with:
+
+* Organization Details
+* Contact Details
+* Projects
+* Production
+* Reports
+
+Use the established Katalyst OS design language:
+
+* Black section headers
+* Orange actions
+* Strong visual hierarchy
+* Clean card layouts
+* Better use of space
+* Consistent typography
+
+---
+
+## OVERALL PAGE STRUCTURE
+
+Replace the current simple settings layout with:
+
+1. Hero Header
+2. Hub KPI Row
+3. Management Actions
+4. Team Members
+5. Share Hub
+6. Recent Activity
+
+The page should feel like a Hub Management Center rather than a settings page.
+
+---
+
+## HERO HEADER
+
+Create a large hero-style header.
+
+Display:
+
+* Organization Logo
+* Organization Name
+* Business Type
+* Hub Status
+* Account Rep
+
+Status area:
+
+Portal Ready
+Hub Enabled / Disabled Toggle
+
+Additional information:
+
+* Created Date
+* Last Activity
+
+Example:
+
+Battlestar Coffee Co
+Business
+
+Portal Ready
+Hub Enabled
+
+Created Apr 21, 2026
+Last Activity Jun 18, 2026
+
+---
+
+## LOGO HANDLING
+
+IMPORTANT
+
+The Client Hub logo should remain tied directly to the Organization logo.
+
+Do NOT create a separate logo system.
+
+If an Organization logo exists:
+
+* Display that logo automatically.
+* Hub uses Organization logo.
+
+If NO Organization logo exists:
+
+Display a branding alert.
+
+Example:
+
+BRANDING
+
+No organization logo uploaded.
+
+The organization logo is used for:
+
+• Client Hub
+• Project Requests
+• Quotes
+• Invoices
+• Emails
+
+[ Upload Logo ]
+
+Uploading from this page should update the Organization logo directly.
+
+There should never be separate Hub logos and Organization logos.
+
+---
+
+## HUB KPI ROW
+
+Directly below the Hero Header.
+
+Display 5 KPIs:
+
+Users
+Requests
+Projects
+Revenue
+Last Activity
+
+Definitions:
+
+Users
+= Total active Client Hub users
+
+Requests
+= Total Project Requests submitted through the Hub
+
+Projects
+= Total Projects generated from the Hub
+
+Revenue
+= Revenue generated from Hub projects
+
+Last Activity
+= Most recent Hub activity date
+
+Example:
+
+Users
+1
+
+Requests
+14
+
+Projects
+9
+
+Revenue
+$18,450
+
+Last Activity
+Today
+
+Use the same KPI component styling used elsewhere throughout Katalyst OS.
+
+---
+
+## MANAGEMENT ACTIONS
+
+Use a card-based layout.
+
+Replace generic settings cards with meaningful actions.
+
+Cards:
+
+Team Members
+
+Manage users and permissions.
+
+Share Hub
+
+Copy Link
+Open Hub
+Generate QR Code
+
+Branding
+
+Upload Logo
+View Organization Details
+
+Hub Settings
+
+Enable / Disable Hub
+Manage access
+
+---
+
+## TEAM MEMBERS SECTION
+
+Use standard black section header.
+
+Title:
+
+TEAM MEMBERS
+
+Display:
+
+* Name
+* Email
+* Role
+* Status
+
+Role examples:
+
+* Org Admin
+* User
+
+Actions:
+
+* Invite User
+* Edit User
+* Remove User
+
+Do NOT create a separate Org Admin section.
+
+Org Admin should simply be a role inside Team Members.
+
+---
+
+## SHARE HUB SECTION
+
+Use standard black section header.
+
+Title:
+
+SHARE HUB
+
+Provide:
+
+* Copy Link
+* Open Hub
+* Generate QR Code
+
+These should be grouped together.
+
+This is one of the primary actions on the page.
+
+Give it visual importance.
+
+---
+
+## RECENT ACTIVITY SECTION
+
+Use standard black section header.
+
+Title:
+
+RECENT ACTIVITY
+
+Display chronological Hub activity.
+
+Examples:
+
+Josh Girgenti logged in
+2 hours ago
+
+Project Request submitted
+Yesterday
+
+Invitation accepted
+3 days ago
+
+Quote accepted
+5 days ago
+
+This should help users quickly understand Hub engagement.
+
+---
+
+## REMOVE
+
+Remove:
+
+* Standalone Organization Logo card
+* Standalone Org Admin card
+* Redundant settings cards that provide no operational value
+
+The page should focus on management and performance.
+
+---
+
+## DESIGN REQUIREMENTS
+
+Match Katalyst OS styling:
+
+* Black section headers
+* White content cards
+* Orange action buttons
+* Consistent spacing
+* Consistent typography
+* Responsive layout
+
+Do not make this look like a generic settings page.
+
+The final page should feel like a premium Client Hub Control Center.
+
+---
+
+## SUCCESS CRITERIA
+
+A user should immediately understand:
+
+* Is the Hub active?
+* Who has access?
+* How much activity is happening?
+* How much business is being generated?
+* How do I manage the Hub?
+
+The page should feel substantially more valuable than the current version while remaining consistent with the rest of Katalyst OS.

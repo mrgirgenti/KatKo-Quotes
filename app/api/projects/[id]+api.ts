@@ -173,12 +173,13 @@ export async function PUT(request: Request, { id }: { id: string }) {
     const prev = prevResult.rows[0];
     const b = body as any;
 
-    // Role enforcement: priority + assignee changes require org_admin.
+    // Role enforcement: priority, assignee, and operational-status changes require org_admin.
     const incomingPriority = b.priority !== undefined ? frontendPriorityToDb(b.priority) : undefined;
     const priorityChanging = incomingPriority !== undefined && incomingPriority !== (prev?.priority ?? 'NORMAL');
     const assigneeChanging = b.assignedToUserId !== undefined && b.assignedToUserId !== (prev?.assignedToUserId ?? null);
-    if ((priorityChanging || assigneeChanging) && authedUser.role !== 'org_admin') {
-      return forbidden('Only org admins can change project priority or assignee');
+    const opStatusChanging = b.operationalStatus !== undefined && b.operationalStatus !== (prev?.operationalStatus ?? null);
+    if ((priorityChanging || assigneeChanging || opStatusChanging) && authedUser.role !== 'org_admin') {
+      return forbidden('Only org admins can change project priority, assignee, or operational status');
     }
 
     // Operational fields are preserved when the caller omits them (undefined),
