@@ -1,0 +1,229 @@
+CONTACTS + ORGANIZATIONS REFINEMENT
+STATUS STANDARDIZATION + TABLE ALIGNMENT
+
+OBJECTIVE
+
+Improve consistency between Organizations and Contacts pages by:
+
+1. Standardizing table alignment.
+2. Standardizing all status badge colors and styling.
+3. Ensuring all status systems use a shared source of truth.
+4. Improving visual consistency across the platform.
+
+---
+
+## TABLE ALIGNMENT STANDARD
+
+Apply these alignment rules consistently across all data tables.
+
+LEFT ALIGNED COLUMNS
+
+These contain variable-length content and should always be left aligned:
+
+* Organization Name
+* Contact Name
+* Client Name
+* Project Name
+* Business Type
+* Email
+* Service
+* Applicator
+* Title / Role
+* Notes
+* Description fields
+
+CENTER ALIGNED COLUMNS
+
+These contain status indicators, dates, numbers, or actions and should always be center aligned:
+
+* Status
+* Client Hub
+* Hub Status
+* Last Login
+* PCS
+* Revenue
+* Profit
+* Total
+* Due Date
+* Order Date
+* Invoice #
+* Quote #
+* Actions
+
+Apply these standards consistently across:
+
+* Organizations
+* Contacts
+* Quotes
+* Projects
+* Production
+* Reports
+* Future modules
+
+No exceptions.
+
+---
+
+## STATUS SYSTEM STANDARDIZATION
+
+Create a centralized status system.
+
+Do NOT allow individual pages to define their own status colors.
+
+Every status badge should use a shared StatusBadge component.
+
+All status colors should come from a single configuration file.
+
+Suggested implementation:
+
+statusConfig.ts
+
+or equivalent shared source of truth.
+
+---
+
+## ORGANIZATION STATUS COLORS
+
+Active Client
+
+* Background: #FF5A00
+* Text: White
+
+Working
+
+* Background: Yellow
+* Text: Black
+
+Cold
+
+* Background: Blue
+* Text: White
+
+Past Client
+
+* Background: Dark Gray
+* Text: White
+
+Lifecycle:
+
+Cold → Working → Active Client → Past Client
+
+---
+
+## CONTACT STATUS COLORS
+
+Active
+
+* Background: #FF5A00
+* Text: White
+
+Inactive
+
+* Background: Dark Gray
+* Text: White
+
+---
+
+## CLIENT HUB STATUS COLORS
+
+Live
+
+* Background: Green
+* Text: White
+
+Invited
+
+* Background: Blue
+* Text: White
+
+Pending
+
+* Background: Yellow
+* Text: Black
+
+Disabled
+
+* Background: Dark Gray
+* Text: White
+
+---
+
+## STATUS BADGE REQUIREMENTS
+
+All status badges should use:
+
+* Same font size
+* Same font weight
+* Same border radius
+* Same vertical padding
+* Same horizontal padding
+* Same height
+* Same alignment behavior
+
+Status badges should feel like one unified design system.
+
+No page should create its own badge styling.
+
+---
+
+## CONTACTS PAGE SPECIFIC FIXES
+
+Ensure the Actions column matches the Organizations page.
+
+Actions column should include:
+
+* View button
+* Actions dropdown
+
+Maintain consistency with Organizations.
+
+Column order should be:
+
+Name
+Organization
+Title / Role
+Email
+Phone
+Status
+Hub Status
+Last Login
+Actions
+
+Status should appear BEFORE Hub Status.
+
+Actions should appear AFTER Last Login.
+
+---
+
+## ORGANIZATIONS PAGE SPECIFIC FIXES
+
+Ensure status badges use the new shared status system.
+
+Verify:
+
+* Active Client uses Orange
+* Working uses Yellow
+* Cold uses Blue
+* Past Client uses Dark Gray
+
+Ensure visual consistency with Contacts page.
+
+---
+
+## IMPLEMENTATION REQUIREMENT
+
+Create a reusable StatusBadge component and migrate:
+
+* Organizations
+* Contacts
+* Client Hubs
+
+to use it.
+
+Future modules should also use this component rather than defining their own badge colors.
+
+GOAL
+
+A user should immediately recognize a status color and understand its meaning regardless of where they are in Katalyst OS.
+
+The Contacts and Organizations pages should feel visually identical in structure, alignment, spacing, and status presentation.

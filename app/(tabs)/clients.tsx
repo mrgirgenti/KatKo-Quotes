@@ -10,9 +10,10 @@ import OverlayMenu from '@/components/OverlayMenu';
 import {
   Plus, Search, X, Users, Building2, TrendingUp,
   Thermometer, Star, Archive, Upload, ChevronDown, Check, ArrowUpDown,
-  Wifi, WifiOff, Edit3, Trash2, UserPlus, FileText, Globe,
+  Edit3, Trash2, UserPlus, FileText, Globe,
   Settings2, SlidersHorizontal,
 } from 'lucide-react-native';
+import { OrgStatusBadge, OrgHubBadge } from '@/components/StatusBadge';
 import Colors from '@/constants/colors';
 import { DS } from '@/constants/designSystem';
 import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
@@ -60,17 +61,6 @@ const DEFAULT_VISIBLE: ColId[] = ['org', 'bizType', 'contact', 'email', 'phone',
 const EMPTY_ORG_FORM = { name: '', type: '', city: '', state: '', notes: '', status: 'Cold' as CrmStatus };
 const EMPTY_CONTACT_FORM = { firstName: '', lastName: '', phone: '', email: '', role: '' };
 
-// ── StatusBadge ────────────────────────────────────────────────────────────────
-function StatusBadge({ status }: { status: CrmStatus }) {
-  const cfg = CRM_STATUS_CONFIG[status];
-  return (
-    <View style={[styles.badge, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
-      <View style={[styles.badgeDot, { backgroundColor: cfg.dot }]} />
-      <Text style={[styles.badgeText, { color: cfg.color }]}>{cfg.label}</Text>
-    </View>
-  );
-}
-
 // ── OrgRow ─────────────────────────────────────────────────────────────────────
 interface OrgRowProps { org: Organization; onPress: () => void; onDelete: () => void; visibleCols: ColId[]; isSelected: boolean; onToggleSelect: () => void; selectionMode: boolean; }
 
@@ -89,9 +79,10 @@ function OrgRow({ org, onPress, onDelete, visibleCols, isSelected, onToggleSelec
     else if (action === 'delete') onDelete();
   };
 
-  const col = (id: ColId, content: React.ReactNode) => {
+  const col = (id: ColId, content: React.ReactNode, align?: 'center' | 'left') => {
     if (!visibleCols.includes(id)) return null;
     const style: any = COL_FLEX[id] != null ? { flex: COL_FLEX[id] } : { width: COL_WIDTHS[id] };
+    if (align === 'center') style.alignItems = 'center';
     return <View style={style}>{content}</View>;
   };
 
@@ -127,12 +118,9 @@ function OrgRow({ org, onPress, onDelete, visibleCols, isSelected, onToggleSelec
           ? <Text style={styles.tableCampaignActive}>{activeCampaign.templateName}</Text>
           : <Text style={styles.tableDim}>—</Text>
         )}
-        {col('status', <StatusBadge status={org.status} />)}
-        {col('hub', org.hubEnabled
-          ? <View style={styles.hubBadgeActive}><Wifi size={11} color="#16A34A" /><Text style={styles.hubBadgeTextActive}>Live</Text></View>
-          : <View style={styles.hubBadgeInactive}><WifiOff size={11} color="#FFF" /><Text style={styles.hubBadgeTextInactive}>Inactive</Text></View>
-        )}
-        <View style={{ width: COL_WIDTHS.actions, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+        {col('status', <OrgStatusBadge status={org.status} />, 'center')}
+        {col('hub', <OrgHubBadge live={!!org.hubEnabled} />, 'center')}
+        <View style={{ width: COL_WIDTHS.actions, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
           <TouchableOpacity style={styles.viewBtn} onPress={() => router.push(`/crm/${org.id}` as any)}>
             <Text style={styles.viewBtnText}>View</Text>
           </TouchableOpacity>
@@ -349,7 +337,7 @@ function OrganizationsScreen() {
     if (tab === 'All') return <Users size={12} color={filter === tab ? Colors.light.tint : Colors.light.textSecondary} />;
     if (tab === 'Cold') return <Thermometer size={12} color={filter === tab ? CRM_STATUS_CONFIG['Cold'].color : Colors.light.textSecondary} />;
     if (tab === 'Working') return <TrendingUp size={12} color={filter === tab ? CRM_STATUS_CONFIG['Working'].color : Colors.light.textSecondary} />;
-    if (tab === 'Active Client') return <Star size={12} color={filter === tab ? '#FF5A00' : Colors.light.textSecondary} />;
+    if (tab === 'Active Client') return <Star size={12} color={filter === tab ? CRM_STATUS_CONFIG['Active Client'].color : Colors.light.textSecondary} />;
     if (tab === 'Past Client') return <Archive size={12} color={filter === tab ? CRM_STATUS_CONFIG['Past Client'].color : Colors.light.textSecondary} />;
     return null;
   };
@@ -374,7 +362,11 @@ function OrganizationsScreen() {
       </TouchableOpacity>
       <View style={{ width: AVATAR_W }} />
       {TOGGLEABLE_COLS.filter((c) => effectiveCols.includes(c.id)).map((col) => {
-        const colStyle: any = COL_FLEX[col.id] != null ? { flex: COL_FLEX[col.id] } : { width: COL_WIDTHS[col.id] };
+        const isCentered = col.id === 'status' || col.id === 'hub';
+        const colStyle: any = {
+          ...(COL_FLEX[col.id] != null ? { flex: COL_FLEX[col.id] } : { width: COL_WIDTHS[col.id] }),
+          ...(isCentered ? { alignItems: 'center' } : {}),
+        };
         return (
           <View key={col.id} style={colStyle}>
             {col.id === 'org' && <SortBtn field="name" label="Organization" />}
@@ -388,7 +380,7 @@ function OrganizationsScreen() {
           </View>
         );
       })}
-      <View style={{ width: COL_WIDTHS.actions, alignItems: 'flex-end' }}>
+      <View style={{ width: COL_WIDTHS.actions, alignItems: 'center' }}>
         <Text style={styles.sortBtnText}>ACTIONS</Text>
       </View>
     </View>
@@ -842,14 +834,6 @@ const styles = StyleSheet.create({
   sortBtnText: { fontSize: 11, fontWeight: '700' as const, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: 0.5 },
   sortBtnTextActive: { color: Colors.light.tint },
 
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 3, borderRadius: DS.radius.pill, borderWidth: 1, alignSelf: 'flex-start' as const },
-  badgeDot: { width: 6, height: 6, borderRadius: 3 },
-  badgeText: { fontSize: 11, fontWeight: '700' as const },
-
-  hubBadgeActive: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4, backgroundColor: '#DCFCE7', borderRadius: DS.radius.sm, paddingHorizontal: 8, paddingVertical: 4, alignSelf: 'flex-start' as const, borderWidth: 1, borderColor: '#86EFAC' },
-  hubBadgeInactive: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4, backgroundColor: '#374151', borderRadius: DS.radius.sm, paddingHorizontal: 8, paddingVertical: 4, alignSelf: 'flex-start' as const, borderWidth: 1, borderColor: '#4B5563' },
-  hubBadgeTextActive: { fontSize: 11, color: '#15803D', fontWeight: '600' as const },
-  hubBadgeTextInactive: { fontSize: 11, color: '#FFFFFF', fontWeight: '600' as const },
 
   viewBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: DS.radius.sm, backgroundColor: Colors.light.tint, height: 30, justifyContent: 'center' as const, alignItems: 'center' as const },
   viewBtnText: { fontSize: 12, fontWeight: '700' as const, color: '#fff' },

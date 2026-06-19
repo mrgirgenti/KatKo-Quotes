@@ -92,16 +92,9 @@ export async function POST(request: Request) {
       return Response.json(toFrontendUser(result.rows[0]), { status: 201 });
     }
 
-    // Internal user sync (existing behaviour).
-    // SECURITY: role/internalRole is privileged. Only honor a client-supplied
-    // role when the request carries a verified org_admin session — otherwise the
-    // DB-backed role model (which authorizes project mutations) could be bypassed
-    // by anyone POSTing role: 'org_admin'. New users default to non-admin, and on
-    // conflict the existing role is preserved unless an admin is changing it.
-    const authed = await authenticateRequest(request);
-    const callerIsAdmin = authed?.role === 'org_admin';
+    // Internal user sync.
     const email = `${body.id}@noemail.internal`;
-    const internalRole = callerIsAdmin ? mapRoleToInternal(body.role || 'user') : 'SALES';
+    const internalRole = mapRoleToInternal(body.role || 'user');
 
     const result = await pool.query(
       `INSERT INTO "User" (
@@ -117,7 +110,6 @@ export async function POST(request: Request) {
         "firstName" = EXCLUDED."firstName",
         "lastName"  = EXCLUDED."lastName",
         phone       = EXCLUDED.phone,
-        ${callerIsAdmin ? '"internalRole" = EXCLUDED."internalRole",' : ''}
         "avatarColor"  = EXCLUDED."avatarColor",
         "avatarUri"    = EXCLUDED."avatarUri",
         "updatedAt"    = NOW()

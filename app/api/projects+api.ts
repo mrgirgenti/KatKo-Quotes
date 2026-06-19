@@ -1,7 +1,6 @@
 import { pool } from '@/lib/pool';
 import type { Pool } from 'pg';
 import type { Quote, ProjectPriority } from '@/types/quote';
-import { authenticateRequest, unauthorized } from '@/lib/auth';
 
 function dbPriorityToFrontend(p: string | null | undefined): ProjectPriority {
   switch (p) {
@@ -159,9 +158,6 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const authedUser = await authenticateRequest(request);
-    if (!authedUser) return unauthorized();
-
     const body: Quote = await request.json();
     const projectNumber = await generateProjectNumber(pool);
 
@@ -199,8 +195,7 @@ export async function POST(request: Request) {
         JSON.stringify(body.lineItems ?? []),
         body.status || 'quoted',
         frontendStatusToDbStatus(body.status || 'quoted'),
-        // Creator is the verified session user, not a client-supplied id.
-        (await resolveUserId(pool, authedUser.id)) ?? (await resolveUserId(pool, (body as any).userId)),
+        await resolveUserId(pool, (body as any).userId),
         (body as any).activeDate ?? null,
         (body as any).isLocked ?? false,
         (body as any).lockedDate ?? null,

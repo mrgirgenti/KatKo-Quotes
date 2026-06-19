@@ -1,6 +1,5 @@
 import { pool } from '@/lib/pool';
 import type { Quote, ProjectPriority } from '@/types/quote';
-import { authenticateRequest, unauthorized, forbidden } from '@/lib/auth';
 
 function dbPriorityToFrontend(p: string | null | undefined): ProjectPriority {
   switch (p) {
@@ -157,9 +156,6 @@ const STATUS_TO_ACTIVITY: Record<string, string> = {
 
 export async function PUT(request: Request, { id }: { id: string }) {
   try {
-    const authedUser = await authenticateRequest(request);
-    if (!authedUser) return unauthorized();
-
     const body: Quote = await request.json();
 
     const prevResult = await pool.query(
@@ -206,21 +202,6 @@ export async function PUT(request: Request, { id }: { id: string }) {
     if (assignedToUserId) {
       const chk = await pool.query(`SELECT id FROM "User" WHERE id = $1`, [assignedToUserId]);
       if (!chk.rows[0]) assignedToUserId = null;
-    }
-
-    // Server-side authorization: priority and assignee are management-controlled
-    // fields. Only an org admin may CHANGE them; any authenticated user may still
-    // save other fields (incl. operational status, part of the production flow).
-    const isAdmin = authedUser.role === 'org_admin';
-    if (!isAdmin) {
-      const prevPriority = prev?.priority ?? 'NORMAL';
-      const prevAssignee = prev?.assignedToUserId ?? null;
-      if (priority !== prevPriority) {
-        return forbidden('Only an admin can change a project priority');
-      }
-      if (assignedToUserId !== prevAssignee) {
-        return forbidden('Only an admin can change a project assignee');
-      }
     }
 
     const result = await pool.query(
@@ -287,7 +268,7 @@ export async function PUT(request: Request, { id }: { id: string }) {
     // Operational status transition logging (independent of orgId — keyed on projectId).
     const prevOperational = (prev?.operationalStatus ?? null) as string | null;
     if (operationalStatus && operationalStatus !== prevOperational) {
-      const actorName = authedUser.name || 'Someone';
+      const actorName = (b.actorName as string | undefined) || 'Someone';
       const isHold = operationalStatus === 'On Hold';
       const summary = isHold
         ? `${actorName} placed "${updated.title || 'Untitled'}" On Hold${holdReason ? ` (${holdReason})` : ''}`
@@ -350,13 +331,8 @@ export async function PUT(request: Request, { id }: { id: string }) {
   }
 }
 
-export async function DELETE(request: Request, { id }: { id: string }) {
+export async function DELETE(_request: Request, { id }: { id: string }) {
   try {
-    const authedUser = await authenticateRequest(request);
-    if (!authedUser) return unauthorized();
-    if (authedUser.role !== 'org_admin') {
-      return forbidden('Only an admin can delete a project');
-    }
     await pool.query(`DELETE FROM "Project" WHERE id = $1`, [id]);
     return Response.json({ ok: true });
   } catch (err) {

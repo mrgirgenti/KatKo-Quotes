@@ -8,9 +8,10 @@ import { OrgAvatar } from '@/components/OrgAvatar';
 import OverlayMenu from '@/components/OverlayMenu';
 import {
   Search, X, Users, ChevronDown, Check,
-  Wifi, ShieldCheck, Mail, Ban, MinusCircle, ArrowUpDown, Trash2,
+  Wifi, ArrowUpDown, Trash2,
   Plus, FileText, Upload, Edit3, Settings2, SlidersHorizontal,
 } from 'lucide-react-native';
+import { ContactStatusBadge, HubStatusBadge } from '@/components/StatusBadge';
 import Colors from '@/constants/colors';
 import { DS } from '@/constants/designSystem';
 import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
@@ -25,11 +26,11 @@ type Tab = 'All' | 'Portal Users' | 'Non-Portal' | 'Active' | 'Inactive';
 
 const TABS: Tab[] = ['All', 'Portal Users', 'Non-Portal', 'Active', 'Inactive'];
 
-const HUB_CFG: Record<HubStatus, { label: string; color: string; bg: string; border: string; Icon: any }> = {
-  'Active':    { label: 'Active',    color: '#15803D', bg: '#DCFCE7', border: '#86EFAC', Icon: ShieldCheck },
-  'Invited':   { label: 'Invited',   color: '#4338CA', bg: '#EEF2FF', border: '#C7D2FE', Icon: Mail },
-  'Disabled':  { label: 'Disabled',  color: '#B91C1C', bg: '#FEE2E2', border: '#FCA5A5', Icon: Ban },
-  'No Access': { label: 'No Access', color: '#6B7280', bg: '#F3F4F6', border: '#E5E7EB', Icon: MinusCircle },
+const HUB_CFG: Record<HubStatus, { label: string; color: string; bg: string; border: string }> = {
+  'Active':    { label: 'Active',    color: '#FFFFFF', bg: '#16A34A', border: '#15803D' },
+  'Invited':   { label: 'Invited',   color: '#FFFFFF', bg: '#2563EB', border: '#1D4ED8' },
+  'Disabled':  { label: 'Disabled',  color: '#FFFFFF', bg: '#4B5563', border: '#374151' },
+  'No Access': { label: 'No Access', color: '#FFFFFF', bg: '#9CA3AF', border: '#6B7280' },
 };
 
 type ColId = 'name' | 'org' | 'role' | 'email' | 'phone' | 'hub' | 'lastLogin' | 'status';
@@ -57,17 +58,6 @@ type ContactFilterState = {
 };
 const EMPTY_CONTACT_FILTERS: ContactFilterState = { name: '', phone: '', email: '', status: [], hub: [] };
 
-function HubBadge({ status }: { status: HubStatus }) {
-  const cfg = HUB_CFG[status];
-  const Icon = cfg.Icon;
-  return (
-    <View style={[styles.hubBadge, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
-      <Icon size={11} color={cfg.color} />
-      <Text style={[styles.hubBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
-    </View>
-  );
-}
-
 function fmtLastLogin(iso?: string | null) {
   if (!iso) return null;
   const d = new Date(iso);
@@ -94,9 +84,11 @@ function PersonRow({ person, onPress, isSelected, onToggleSelect, visibleCols }:
   const name = `${person.firstName} ${person.lastName}`.trim() || 'Unnamed';
   const last = fmtLastLogin(person.lastLoginAt);
 
-  const col = (id: ColId, content: React.ReactNode) => {
+  const col = (id: ColId, content: React.ReactNode, align?: 'center') => {
     if (!visibleCols.includes(id)) return null;
-    return <View style={colStyle(id)}>{content}</View>;
+    const cs: any = { ...colStyle(id) };
+    if (align === 'center') cs.alignItems = 'center';
+    return <View style={cs}>{content}</View>;
   };
 
   return (
@@ -114,16 +106,10 @@ function PersonRow({ person, onPress, isSelected, onToggleSelect, visibleCols }:
       {col('role', person.role ? <Text style={styles.cell}>{person.role}</Text> : <Text style={styles.dim}>—</Text>)}
       {col('email', person.email ? <Text style={styles.cell}>{person.email}</Text> : <Text style={styles.dim}>—</Text>)}
       {col('phone', person.phone ? <Text style={styles.cell}>{formatPhone(person.phone)}</Text> : <Text style={styles.dim}>—</Text>)}
-      {col('status',
-        <View style={[styles.statusPill, person.status === 'inactive' ? styles.statusInactive : styles.statusActive]}>
-          <Text style={[styles.statusPillText, person.status === 'inactive' ? { color: '#6B7280' } : { color: '#15803D' }]}>
-            {person.status === 'inactive' ? 'Inactive' : 'Active'}
-          </Text>
-        </View>
-      )}
-      {col('hub', <HubBadge status={person.hubStatus || 'No Access'} />)}
-      {col('lastLogin', last ? <Text style={styles.cell}>{last}</Text> : <Text style={styles.dim}>—</Text>)}
-      <View style={{ width: 120, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 }}>
+      {col('status', <ContactStatusBadge status={person.status} />, 'center')}
+      {col('hub', <HubStatusBadge status={person.hubStatus || 'No Access'} />, 'center')}
+      {col('lastLogin', last ? <Text style={styles.cell}>{last}</Text> : <Text style={styles.dim}>—</Text>, 'center')}
+      <View style={{ width: 120, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 4 }}>
         <TouchableOpacity
           style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: Colors.light.tint, height: 30, justifyContent: 'center', alignItems: 'center' }}
           onPress={onPress}
@@ -390,19 +376,23 @@ export default function ContactsDirectory() {
         </View>
       </TouchableOpacity>
       <View style={{ width: 44 }} />
-      {CONTACT_TOGGLEABLE_COLS.filter((c) => visibleCols.includes(c.id)).map((c) => (
-        <View key={c.id} style={colStyle(c.id)}>
-          {c.id === 'name' && <SortBtn field="name" label="Name" />}
-          {c.id === 'org' && <SortBtn field="org" label="Organization" />}
-          {c.id === 'role' && <SortBtn field="role" label="Title / Role" />}
-          {c.id === 'email' && <SortBtn field="email" label="Email" />}
-          {c.id === 'phone' && <SortBtn field="phone" label="Phone" />}
-          {c.id === 'status' && <SortBtn field="status" label="Status" />}
-          {c.id === 'hub' && <SortBtn field="hub" label="Hub Status" />}
-          {c.id === 'lastLogin' && <SortBtn field="lastLogin" label="Last Login" />}
-        </View>
-      ))}
-      <View style={{ width: 120 }}><Text style={styles.headText}>Actions</Text></View>
+      {CONTACT_TOGGLEABLE_COLS.filter((c) => visibleCols.includes(c.id)).map((c) => {
+        const isCentered = c.id === 'status' || c.id === 'hub' || c.id === 'lastLogin';
+        const cs: any = { ...colStyle(c.id), ...(isCentered ? { alignItems: 'center' } : {}) };
+        return (
+          <View key={c.id} style={cs}>
+            {c.id === 'name' && <SortBtn field="name" label="Name" />}
+            {c.id === 'org' && <SortBtn field="org" label="Organization" />}
+            {c.id === 'role' && <SortBtn field="role" label="Title / Role" />}
+            {c.id === 'email' && <SortBtn field="email" label="Email" />}
+            {c.id === 'phone' && <SortBtn field="phone" label="Phone" />}
+            {c.id === 'status' && <SortBtn field="status" label="Status" />}
+            {c.id === 'hub' && <SortBtn field="hub" label="Hub Status" />}
+            {c.id === 'lastLogin' && <SortBtn field="lastLogin" label="Last Login" />}
+          </View>
+        );
+      })}
+      <View style={{ width: 120, alignItems: 'center' }}><Text style={styles.headText}>Actions</Text></View>
     </View>
   );
 
@@ -849,13 +839,6 @@ const styles = StyleSheet.create({
   cellName: { fontSize: 13, fontWeight: '700' as const, color: Colors.light.text },
   dim: { fontSize: 13, color: Colors.light.textSecondary },
 
-  hubBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, borderWidth: 1 },
-  hubBadgeText: { fontSize: 11, fontWeight: '700' as const },
-
-  statusPill: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  statusActive: { backgroundColor: '#DCFCE7' },
-  statusInactive: { backgroundColor: '#F3F4F6' },
-  statusPillText: { fontSize: 11, fontWeight: '700' as const },
 
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 10 },
   emptyTitle: { fontSize: 17, fontWeight: '700' as const, color: Colors.light.text },
