@@ -1,0 +1,124 @@
+PRODUCTION PAGE — BOARD COLUMN HEADER + STATUS COLOR SYSTEM
+
+OBJECTIVE
+
+Refine the Production page board columns while preserving the current approved layout.
+
+Keep the black headers for each production column. Do NOT use colored full headers.
+
+Use color only as a subtle left-side accent system to visually communicate each production status.
+
+--------------------------------------------------
+KEEP CURRENT STRUCTURE
+--------------------------------------------------
+
+Do NOT redesign the Production page.
+
+Keep:
+
+- Current page layout
+- Current top KPI row
+- Current Board / Queue / Calendar / Analytics controls
+- Current search, Filters, and Views controls
+- Current Kanban board layout
+- Current project card layout
+- Current black column headers
+- Current count bubbles
+- Current spacing and dimensions as much as possible
+
+--------------------------------------------------
+COLUMN HEADER REQUIREMENTS
+--------------------------------------------------
+
+Each Production board column should use:
+
+- Black header background
+- White uppercase section title
+- Count bubble on the right
+- Existing border radius
+- Existing spacing
+
+Columns:
+
+1. Ready for Production
+2. In Production
+3. On Hold
+4. Completed
+
+--------------------------------------------------
+STATUS COLOR SYSTEM
+--------------------------------------------------
+
+Add a colored vertical accent bar on the LEFT SIDE of each board column.
+
+Use these colors:
+
+Ready for Production
+- Blue accent bar
+
+In Production
+- Orange accent bar
+- Use brand orange: #FF5A00
+
+On Hold
+- Red accent bar
+
+Completed
+- Green accent bar
+
+The accent bar should be subtle but clearly visible.
+
+Do NOT color the entire header.
+
+Do NOT color the entire column.
+
+Do NOT replace the black headers.
+
+--------------------------------------------------
+PROJECT CARD ACCENT COLORS
+--------------------------------------------------
+
+Individual project cards inside each column should use the same left-side accent color as their parent column.
+
+Examples:
+
+A project inside Ready for Production:
+- Blue left accent bar
+
+A project inside In Production:
+- Orange left accent bar
+
+A project inside On Hold:
+- Red left accent bar
+
+A project inside Completed:
+- Green left accent bar
+
+This creates a consistent visual language between column status and project status.
+
+--------------------------------------------------
+COLOR MEANING
+--------------------------------------------------
+
+Use the following production status language:
+
+Blue = Ready for Production
+
+Orange = In Production
+
+Red = On Hold
+
+Green = Completed
+
+--------------------------------------------------
+SUCCESS CRITERIA
+--------------------------------------------------
+
+After implementation:
+
+- Column headers remain black.
+- Status color is communicated through left accent bars only.
+- Project cards inherit the correct accent color based on their column.
+- The board feels consistent with the rest of Katalyst OS.
+- The page does not become visually noisy or overly colorful.
+- The Production page still looks clean, operational, and easy for employees to scan quickly.

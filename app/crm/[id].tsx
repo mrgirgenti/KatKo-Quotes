@@ -49,11 +49,8 @@ import {
   Package,
   Upload,
   ExternalLink,
-  ToggleLeft,
-  ToggleRight,
   Copy,
   CheckCircle2,
-  Settings,
   Film,
   Music,
   Image as LucideImage,
@@ -957,10 +954,8 @@ export default function OrgProfileScreen() {
             ? <View style={styles.hubStatusBadge}><Text style={styles.hubStatusBadgeText}>Active</Text></View>
             : <View style={[styles.hubStatusBadge, styles.hubStatusBadgeOff]}><Text style={[styles.hubStatusBadgeText, styles.hubStatusBadgeTextOff]}>Inactive</Text></View>}
         </View>
-        <TouchableOpacity style={{ padding: 4 }} onPress={handleHubToggle} activeOpacity={0.7}>
-          {localHubEnabled
-            ? <ToggleRight size={24} color="#FF5A00" />
-            : <ToggleLeft size={24} color={Colors.light.border} />}
+        <TouchableOpacity style={styles.hubSettingsBtn} onPress={() => router.push(`/hub/${org.id}` as any)} activeOpacity={0.8}>
+          <Text style={styles.hubSettingsBtnText}>Hub Settings</Text>
         </TouchableOpacity>
       </View>
 
@@ -982,10 +977,6 @@ export default function OrgProfileScreen() {
               <TouchableOpacity style={styles.hubUrlActionBtn} onPress={handleCopyHubLink}>
                 {hubLinkCopied ? <CheckCircle2 size={10} color="#16A34A" /> : <Copy size={10} color={Colors.light.textSecondary} />}
                 <Text style={[styles.hubUrlActionBtnText, hubLinkCopied && { color: '#16A34A' }]}>{hubLinkCopied ? 'Copied' : 'Copy'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.hubUrlActionBtn} onPress={() => router.push(`/hub/${org.id}` as any)}>
-                <Settings size={10} color={Colors.light.textSecondary} />
-                <Text style={styles.hubUrlActionBtnText}>Settings</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -6157,6 +6148,17 @@ const styles = StyleSheet.create({
   },
   hubStatusBadgeTextOff: {
     color: '#6B7280',
+  },
+  hubSettingsBtn: {
+    backgroundColor: '#FF5A00',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  hubSettingsBtnText: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: '#fff',
   },
   hubUrlRow: {
     flexDirection: 'row' as const,
