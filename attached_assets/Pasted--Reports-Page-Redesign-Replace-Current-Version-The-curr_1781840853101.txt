@@ -1,0 +1,355 @@
+# Reports Page Redesign — Replace Current Version
+
+The current Reports page is functional but does not match the dashboard design we previously approved.
+
+The biggest issue is that the page relies heavily on tables. Reports should function as an executive dashboard, not a spreadsheet.
+
+Do not make minor tweaks to the existing layout. Rebuild the Overview tab to match the structure below while preserving existing data calculations and filtering logic.
+
+---
+
+# Objective
+
+The Reports page should quickly answer:
+
+1. How is the business performing?
+2. What is generating revenue?
+3. What is generating profit?
+4. What needs attention?
+5. Where should I focus next?
+
+The page should feel visual, actionable, and operational.
+
+---
+
+# Preserve Existing Elements
+
+Keep:
+
+Tabs:
+
+* Overview
+* Financial
+* Customers
+* Services
+
+Top Right Controls:
+
+* Date Range Selector
+* Compare
+* Export
+
+Do not redesign these elements.
+
+---
+
+# 1. Top KPI Section
+
+This is the most important area of the page.
+
+Display exactly five KPI cards:
+
+* Revenue
+* Profit
+* Orders
+* Avg Order
+* Avg PCS
+
+Requirements:
+
+* Equal card widths
+* Equal card heights
+* Same spacing between cards
+* Large metric values
+* Smaller labels
+* Consistent with existing Katalyst OS KPI styling
+
+Example:
+
+Revenue
+$152,430
+
+Profit
+$41,850
+
+Orders
+387
+
+Avg Order
+$394
+
+Avg PCS
+58
+
+No additional KPI cards.
+
+---
+
+# 2. Needs Reconciliation Section
+
+Rename:
+
+Reconciliation Queue
+
+To:
+
+Needs Reconciliation
+
+Purpose:
+
+Show projects that have been completed but have not yet been financially reconciled.
+
+Metrics:
+
+* Pending Projects
+* Revenue Waiting
+* Profit Waiting
+
+Add:
+
+View Queue →
+
+top right.
+
+If there are no projects requiring reconciliation:
+
+Display:
+
+"No projects currently awaiting reconciliation."
+
+instead of showing a large empty section.
+
+---
+
+# 3. Revenue by Service Snapshot
+
+REMOVE the current table.
+
+Replace with service cards.
+
+Use the same visual style already used in Client Legacy.
+
+Each service card should show:
+
+* Revenue
+* Profit
+* Orders
+
+Services:
+
+* Direct to Film
+* Screen Printing
+* Embroidery
+* Promotional
+* DTF Transfers
+* Design Work
+
+Desktop:
+
+3 cards per row.
+
+Mobile:
+
+1 card per row.
+
+Example:
+
+Direct to Film
+
+Revenue
+$52,400
+
+Profit
+$17,800
+
+Orders
+124
+
+The goal is quick visibility, not spreadsheet analysis.
+
+---
+
+# 4. Revenue vs Profit Chart
+
+Overview page should contain ONE chart only.
+
+Remove any additional trend charts.
+
+Do not include:
+
+* Revenue by Month
+* Profit by Month
+* Margin Over Time
+
+Replace all charting with:
+
+Revenue vs Profit
+
+Requirements:
+
+* Revenue line
+* Profit line
+* Monthly view
+* Clean styling
+* Responsive
+
+One chart only.
+
+---
+
+# 5. Top Customers
+
+REMOVE the existing customer table.
+
+Replace with ranked customer cards.
+
+Display:
+
+Top 10 customers ranked by revenue.
+
+Each card should show:
+
+Customer Name
+
+Revenue
+Profit
+Orders
+
+Example:
+
+#1 Josh G
+
+Revenue
+$12,500
+
+Profit
+$4,100
+
+Orders
+28
+
+Desktop:
+
+3 cards per row.
+
+Mobile:
+
+1 card per row.
+
+Add:
+
+View All Customers →
+
+top right.
+
+---
+
+# 6. Customer Concentration
+
+NEW SECTION
+
+Purpose:
+
+Show dependency on major customers.
+
+Display three KPI cards:
+
+Top Customer %
+Top 5 Customers %
+Top 10 Customers %
+
+Examples:
+
+Top Customer
+18%
+
+Top 5
+42%
+
+Top 10
+61%
+
+This provides instant visibility into customer concentration risk.
+
+---
+
+# 7. Recent Reconciliations
+
+NEW SECTION
+
+Purpose:
+
+Show recently finalized financial activity.
+
+Display the 10 most recently reconciled projects.
+
+Columns:
+
+* Project
+* Customer
+* Revenue
+* Profit
+* Date Reconciled
+
+This can remain a compact table.
+
+Do not make it oversized.
+
+---
+
+# Overview Page Final Structure
+
+The Overview tab should be structured in this exact order:
+
+1. Revenue
+2. Profit
+3. Orders
+4. Avg Order
+5. Avg PCS
+
+---
+
+Needs Reconciliation
+
+---
+
+Revenue by Service Snapshot
+
+---
+
+Revenue vs Profit
+
+---
+
+Top Customers
+
+---
+
+Customer Concentration
+
+---
+
+Recent Reconciliations
+
+---
+
+# Design Rules
+
+Do NOT default to large tables.
+
+Prioritize:
+
+* KPI cards
+* Summary cards
+* Rankings
+* Visual dashboards
+* Actionable information
+
+Reuse existing design language already built inside:
+
+* Client Legacy
+* Active Projects
+* Submitted Quotes
+* Dashboard KPI cards
+
+The Reports page should feel like an executive dashboard for running the business, not an exported spreadsheet.

@@ -1,0 +1,386 @@
+# Fix Round #2 — Missed & Incomplete Implementations
+
+This prompt is a correction pass. These items were either not implemented, only partially implemented, or implemented incorrectly.
+
+Do not redesign unrelated areas. Focus only on the items below.
+
+---
+
+# 1. Organizations Header (Mobile)
+
+## Current Issue
+
+Changing:
+
+* Add Organization
+
+to
+
+* Organization
+
+helped, but the header is still crowded.
+
+The page title and buttons are fighting for horizontal space.
+
+## Requirements
+
+Mobile only.
+
+Rework the Organizations page header so the title and actions are comfortably spaced.
+
+The Organizations page is the only page suffering from this issue.
+
+Maintain:
+
+* Organizations title
+* Actions button
+* * Organization button
+
+Goal:
+
+No clipping, no crowding, and no compressed button sizing.
+
+---
+
+# 2. Contacts Table Readability (Mobile)
+
+## Current Issue
+
+No meaningful change appears to have been made.
+
+Names and Organizations are still aggressively truncated despite horizontal scrolling existing.
+
+Examples:
+
+* John Jinglehymersm...
+* Riverside High Sch...
+
+## Requirements
+
+Increase minimum widths for:
+
+* Name
+* Organization
+
+Allow the table to grow horizontally.
+
+Preserve horizontal scrolling.
+
+Prioritize readability over forcing columns into the viewport.
+
+Goal:
+
+Users should be able to read full names and organizations.
+
+---
+
+# 3. Bulk Edit & Bulk Delete
+
+## Current Issue
+
+The menu items exist but do not function.
+
+Affected pages:
+
+* Organizations
+* Contacts
+
+## Requirements
+
+Audit and repair functionality.
+
+Bulk Edit must perform bulk edit actions.
+
+Bulk Delete must perform bulk delete actions.
+
+Do not leave placeholder menu items.
+
+---
+
+# 4. Contacts Row Actions
+
+## Current Issue
+
+The dropdown button currently behaves like:
+
+View Contact
+
+instead of opening an actions menu.
+
+Organizations already has a proper actions menu.
+
+## Requirements
+
+Contacts rows should use the same action pattern as Organizations.
+
+Expected behavior:
+
+[ View ] [ ▼ ]
+
+Dropdown should expose contact actions.
+
+Audit and verify all actions actually function.
+
+---
+
+# 5. Organizations Row Actions Audit
+
+## Current Issue
+
+Organizations dropdown contains:
+
+* Edit Client
+* Add Contact
+* New Quote
+* Upload Media
+* View Client Hub
+* Delete
+
+Currently only some actions work.
+
+## Requirements
+
+Audit every action.
+
+Verify:
+
+* Edit Client works
+* Add Contact works
+* New Quote works
+* Upload Media works
+* View Client Hub works
+* Delete works
+
+No dead menu items.
+
+---
+
+# 6. Client Legacy (Mobile)
+
+## Current Issues
+
+### Issue A
+
+Arrow color is incorrect.
+
+### Issue B
+
+Arrow disappears after expansion.
+
+### Issue C
+
+The control lacks clear labeling.
+
+## Requirements
+
+Use brand orange for the arrow.
+
+Display:
+
+View Legacy ▼
+
+When expanded:
+
+Hide Legacy ▲
+
+The control should remain visible in both states.
+
+Do not allow the arrow to disappear.
+
+Desktop remains unchanged.
+
+---
+
+# 7. Projects & Quotes KPI Labels (Mobile)
+
+## Current Issue
+
+Not all label changes were applied.
+
+### Quotes
+
+Current:
+
+Inv. Sent
+
+Should be:
+
+Invoices
+
+### Projects
+
+Current:
+
+In Production
+
+Should be:
+
+Production
+
+## Requirements
+
+Apply all approved mobile KPI labels.
+
+No wrapping.
+
+Single-line labels only.
+
+---
+
+# 8. Production Page Controls (Mobile)
+
+## Current Issue
+
+Search field text still feels crowded.
+
+## Requirements
+
+Change placeholder text to:
+
+Search projects...
+
+Adjust spacing between:
+
+* Search
+* Filters
+* Views
+
+Allow controls to breathe more.
+
+Maintain existing functionality.
+
+---
+
+# 9. Projects Page Column Order
+
+## Current Issue
+
+Applicator(s) is not positioned correctly.
+
+## Requirements
+
+Projects page column order should be:
+
+Service(s)
+Applicator(s)
+PCS
+
+Applicator(s) should immediately follow Service(s).
+
+---
+
+# 10. Quotes & Projects Text Colors
+
+## Current Issue
+
+Service(s) and Applicator(s) values are displaying in brand orange.
+
+This reads like a link and creates unnecessary visual noise.
+
+## Requirements
+
+Remove brand orange styling.
+
+Use standard table text styling.
+
+Apply consistently to:
+
+* Quotes
+* Projects
+
+---
+
+# 11. Quotes & Projects Table Consistency
+
+## Current Issue
+
+Projects table spacing looks better than Quotes.
+
+Both pages contain very similar information but feel visually different.
+
+## Requirements
+
+Use Projects page as the spacing/layout reference.
+
+Make Quotes match:
+
+* Column spacing
+* Alignment
+* Visual rhythm
+* Information density
+
+Goal:
+
+Switching between Quotes and Projects should feel seamless.
+
+---
+
+# 12. Column Filtering Standardization
+
+## Current Issue
+
+Filtering behavior is inconsistent.
+
+## Requirements
+
+All columns in:
+
+* Projects
+* Quotes
+
+should support filtering.
+
+Apply a consistent filter pattern throughout both pages.
+
+Goal:
+
+Users should be able to filter by any visible column without guessing which columns support filtering.
+
+---
+
+# Validation Checklist
+
+Before closing this task verify:
+
+Organizations
+
+* Header no longer crowded on mobile
+* Bulk Edit works
+* Bulk Delete works
+* All row actions work
+
+Contacts
+
+* Name column wider
+* Organization column wider
+* Actions dropdown works
+* Bulk Edit works
+* Bulk Delete works
+
+Client Legacy
+
+* Orange arrow
+* View Legacy label
+* Hide Legacy label
+* Arrow remains visible
+
+Projects
+
+* Production KPI label correct
+* Applicator(s) follows Service(s)
+* Column filtering available
+* Service/Applicator text no longer orange
+
+Quotes
+
+* Invoices KPI label correct
+* Column filtering available
+* Service/Applicator text no longer orange
+* Table spacing matches Projects
+
+Production
+
+* Search projects... placeholder
+* Better spacing between controls
+
+Do not mark this task complete until every validation item above has been verified.

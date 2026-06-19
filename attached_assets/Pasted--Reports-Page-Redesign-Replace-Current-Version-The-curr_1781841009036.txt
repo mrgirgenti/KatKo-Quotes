@@ -1,0 +1,481 @@
+# Reports Page Redesign — Replace Current Version
+
+The current Reports page is functional but does not match the dashboard design we previously approved.
+
+The biggest issue is that the page relies heavily on tables. Reports should function as an executive dashboard, not a spreadsheet.
+
+Do not make minor tweaks to the existing layout. Rebuild the Overview tab to match the structure below while preserving existing data calculations, filtering logic, and date range functionality.
+
+Use the attached mockup as the visual reference for layout proportions, spacing, hierarchy, and sizing.
+
+---
+
+# Objective
+
+The Reports page should quickly answer:
+
+1. How is the business performing?
+2. What is generating revenue?
+3. What is generating profit?
+4. What needs attention?
+5. Where should I focus next?
+
+The page should feel visual, actionable, and operational.
+
+---
+
+# Preserve Existing Elements
+
+Keep:
+
+Tabs:
+
+* Overview
+* Financial
+* Customers
+* Services
+
+Top Right Controls:
+
+* Date Range Selector
+* Compare
+* Export
+
+Do not redesign these elements.
+
+---
+
+# Top KPI Section
+
+This is the most important area of the page.
+
+Display exactly five KPI cards:
+
+* Revenue
+* Profit
+* Orders
+* Avg Order
+* Avg PCS
+
+Requirements:
+
+* 5 cards across
+* Equal widths
+* Equal heights
+* Minimum card height: 120px
+* Card padding: 22–24px
+* Gap between cards: 16px
+* Same styling as other KPI cards throughout Katalyst OS
+
+Value styling:
+
+* Large and visually dominant
+* Bold
+* Primary focus of card
+
+Label styling:
+
+* Small uppercase or semibold
+* Consistent across all KPI cards
+
+Do not allow KPI cards to compress or wrap.
+
+No additional KPI cards.
+
+---
+
+# Needs Reconciliation Section
+
+Rename:
+
+Reconciliation Queue
+
+To:
+
+Needs Reconciliation
+
+Purpose:
+
+Show projects that have been completed but have not yet been financially reconciled.
+
+Metrics:
+
+* Pending Projects
+* Revenue Waiting
+* Profit Waiting
+
+Add:
+
+View Queue →
+
+top right.
+
+Requirements:
+
+* Same width as KPI section
+* Three evenly spaced metric groups
+* Each metric occupies roughly one-third width
+* Minimum section height: 90–100px
+
+If there are no projects requiring reconciliation:
+
+Display:
+
+"No projects currently awaiting reconciliation."
+
+instead of a large empty section.
+
+---
+
+# Revenue by Service Snapshot
+
+REMOVE the current table completely.
+
+Replace with service performance cards.
+
+IMPORTANT:
+
+Reuse the EXACT card component styling already used in the Client Legacy section elsewhere in Katalyst OS.
+
+Do not create a new card style.
+
+Each service card should display:
+
+* Revenue
+* Profit
+* Orders
+
+Services:
+
+* Direct to Film
+* Screen Printing
+* Embroidery
+* Promotional
+* DTF Transfers
+* Design Work
+
+Desktop:
+
+* 3 cards per row
+* 2 rows total
+
+Mobile:
+
+* 1 card per row
+
+Card height:
+
+140–160px
+
+Gap:
+
+16px
+
+The service name should always be visible without truncation.
+
+Goal:
+
+Instant service-level performance visibility without requiring table scanning.
+
+---
+
+# Revenue vs Profit Chart
+
+Overview page should contain ONE chart only.
+
+Remove any additional trend charts.
+
+Do not include:
+
+* Revenue by Month
+* Profit by Month
+* Margin Over Time
+
+Replace all charting with:
+
+Revenue vs Profit
+
+Requirements:
+
+* Revenue line
+* Profit line
+* Monthly view
+* Responsive
+* Clean styling
+
+Width:
+
+100%
+
+Height:
+
+350–400px
+
+This should be the primary visualization on the page.
+
+Do not compress it into a small widget.
+
+---
+
+# Top Customers
+
+REMOVE the current customer table completely.
+
+Replace with ranked customer cards.
+
+IMPORTANT:
+
+Reuse the EXACT card styling, spacing, hierarchy, and visual treatment from the Active Projects cards already built elsewhere in Katalyst OS.
+
+Do not create a new card design.
+
+Display:
+
+Top 10 customers ranked by revenue.
+
+Each card should show:
+
+* Customer Name
+* Revenue
+* Profit
+* Orders
+
+Example:
+
+#1 Josh G
+
+Revenue: $12,500
+Profit: $4,100
+Orders: 28
+
+Desktop:
+
+* 3 cards per row
+* Responsive wrapping
+
+Mobile:
+
+* 1 card per row
+
+Card height:
+
+150–170px
+
+Gap:
+
+16px
+
+Add:
+
+View All Customers →
+
+top right.
+
+Goal:
+
+Quick customer ranking visibility.
+
+---
+
+# Customer Concentration
+
+NEW SECTION
+
+Purpose:
+
+Show dependency on major customers.
+
+Display three KPI cards:
+
+* Top Customer %
+* Top 5 Customers %
+* Top 10 Customers %
+
+Examples:
+
+Top Customer
+18%
+
+Top 5
+42%
+
+Top 10
+61%
+
+Requirements:
+
+* 3 equal KPI cards
+* Same visual style as top KPI row
+* Slightly smaller height
+
+Card height:
+
+90–100px
+
+This provides instant visibility into customer concentration risk.
+
+---
+
+# Recent Reconciliations
+
+NEW SECTION
+
+Purpose:
+
+Show recently finalized financial activity.
+
+Display the 10 most recently reconciled projects.
+
+Columns:
+
+* Project
+* Customer
+* Revenue
+* Profit
+* Date Reconciled
+
+This may remain a compact table.
+
+Requirements:
+
+* Full width
+* Maximum 10 rows
+* Tight and efficient
+
+Do not create a large empty area below the rows.
+
+If fewer than 10 rows exist, shrink the container height accordingly.
+
+---
+
+# Overview Page Final Structure
+
+The Overview tab should be structured in this exact order:
+
+Revenue
+Profit
+Orders
+Avg Order
+Avg PCS
+
+---
+
+Needs Reconciliation
+
+---
+
+Revenue by Service Snapshot
+
+---
+
+Revenue vs Profit
+
+---
+
+Top Customers
+
+---
+
+Customer Concentration
+
+---
+
+Recent Reconciliations
+
+---
+
+# Section Header Standards
+
+All section headers should match the styling already used throughout Katalyst OS:
+
+* Client Legacy
+* Active Projects
+* Submitted Quotes
+
+Requirements:
+
+* Black header bar
+* White text
+* Orange action link on right
+* Consistent height
+
+Header height:
+
+48–52px
+
+Do not introduce a new header style.
+
+---
+
+# Overall Page Width & Spacing
+
+Desktop:
+
+* Full content width
+* Standard page padding: 24px
+* Section spacing: 24px vertical
+
+Card spacing:
+
+16px
+
+Card padding:
+
+24px
+
+The page should feel:
+
+* Spacious
+* Executive-level
+* Premium SaaS
+* Easy to scan
+
+Avoid:
+
+* Dense tables
+* Compressed cards
+* Tiny KPI widgets
+* Uneven heights
+* Excessive empty whitespace
+
+---
+
+# Design Consistency Requirements
+
+Do NOT invent new component styles.
+
+Reuse existing Katalyst OS components whenever possible.
+
+Specifically:
+
+Revenue by Service Snapshot
+→ Reuse Client Legacy cards
+
+Top Customers
+→ Reuse Active Projects card styling
+
+KPI Metrics
+→ Reuse existing dashboard KPI styling
+
+Section Headers
+→ Reuse Client Legacy / Active Projects / Submitted Quotes headers
+
+This removes interpretation and ensures the Reports page feels like a native part of Katalyst OS rather than a separate application.
+
+---
+
+# Success Criteria
+
+When complete, the Reports Overview page should feel like an executive dashboard for running the business.
+
+A user should be able to identify:
+
+* Business performance
+* Profitability
+* Customer concentration
+* Service performance
+* Outstanding reconciliations
+
+within 10 seconds of opening the page.
+
+The page should prioritize visual insights and decision-making over spreadsheet-style tables.

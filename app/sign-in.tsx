@@ -80,7 +80,7 @@ export default function SignInScreen() {
       switch (attempt.status) {
         case 'complete': {
           persistRemember(emailVal, remember);
-          await setActive({ session: attempt.createdSessionId });
+          await setActive!({ session: attempt.createdSessionId });
           router.replace('/(tabs)');
           break;
         }
