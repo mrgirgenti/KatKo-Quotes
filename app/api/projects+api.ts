@@ -1,6 +1,6 @@
 import { pool } from '@/lib/pool';
-import type { Pool } from 'pg';
 import type { Quote, ProjectPriority } from '@/types/quote';
+import { authenticateRequest, unauthorized } from '@/lib/auth';
 
 function dbPriorityToFrontend(p: string | null | undefined): ProjectPriority {
   switch (p) {
@@ -21,12 +21,6 @@ function frontendPriorityToDb(p: string | null | undefined): string {
     case 'Normal':
     default: return 'NORMAL';
   }
-}
-
-async function resolveUserId(db: Pool, userId: unknown): Promise<string | null> {
-  if (!userId || typeof userId !== 'string' || userId === 'default') return null;
-  const check = await db.query(`SELECT id FROM "User" WHERE id = $1`, [userId]);
-  return check.rows[0] ? userId : null;
 }
 
 const VALID_STATUSES = new Set(['draft','needs_review','quoting','quoted','invoice_sent','paid','active','production_started','completed','expired']);
@@ -158,6 +152,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const authedUser = await authenticateRequest(request);
+    if (!authedUser) return unauthorized();
+
     const body: Quote = await request.json();
     const projectNumber = await generateProjectNumber(pool);
 
@@ -195,7 +192,7 @@ export async function POST(request: Request) {
         JSON.stringify(body.lineItems ?? []),
         body.status || 'quoted',
         frontendStatusToDbStatus(body.status || 'quoted'),
-        await resolveUserId(pool, (body as any).userId),
+        authedUser.id,
         (body as any).activeDate ?? null,
         (body as any).isLocked ?? false,
         (body as any).lockedDate ?? null,

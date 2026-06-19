@@ -1,5 +1,6 @@
 import { pool } from '@/lib/pool';
 import type { Quote, ProjectPriority } from '@/types/quote';
+import { authenticateRequest, unauthorized, forbidden } from '@/lib/auth';
 
 function dbPriorityToFrontend(p: string | null | undefined): ProjectPriority {
   switch (p) {
@@ -156,6 +157,9 @@ const STATUS_TO_ACTIVITY: Record<string, string> = {
 
 export async function PUT(request: Request, { id }: { id: string }) {
   try {
+    const authedUser = await authenticateRequest(request);
+    if (!authedUser) return unauthorized();
+
     const body: Quote = await request.json();
 
     const prevResult = await pool.query(
@@ -168,6 +172,14 @@ export async function PUT(request: Request, { id }: { id: string }) {
     );
     const prev = prevResult.rows[0];
     const b = body as any;
+
+    // Role enforcement: priority + assignee changes require org_admin.
+    const incomingPriority = b.priority !== undefined ? frontendPriorityToDb(b.priority) : undefined;
+    const priorityChanging = incomingPriority !== undefined && incomingPriority !== (prev?.priority ?? 'NORMAL');
+    const assigneeChanging = b.assignedToUserId !== undefined && b.assignedToUserId !== (prev?.assignedToUserId ?? null);
+    if ((priorityChanging || assigneeChanging) && authedUser.role !== 'org_admin') {
+      return forbidden('Only org admins can change project priority or assignee');
+    }
 
     // Operational fields are preserved when the caller omits them (undefined),
     // so generic project saves never wipe operational state.
@@ -268,7 +280,7 @@ export async function PUT(request: Request, { id }: { id: string }) {
     // Operational status transition logging (independent of orgId — keyed on projectId).
     const prevOperational = (prev?.operationalStatus ?? null) as string | null;
     if (operationalStatus && operationalStatus !== prevOperational) {
-      const actorName = (b.actorName as string | undefined) || 'Someone';
+      const actorName = authedUser.name || (b.actorName as string | undefined) || 'Someone';
       const isHold = operationalStatus === 'On Hold';
       const summary = isHold
         ? `${actorName} placed "${updated.title || 'Untitled'}" On Hold${holdReason ? ` (${holdReason})` : ''}`
@@ -331,8 +343,12 @@ export async function PUT(request: Request, { id }: { id: string }) {
   }
 }
 
-export async function DELETE(_request: Request, { id }: { id: string }) {
+export async function DELETE(request: Request, { id }: { id: string }) {
   try {
+    const authedUser = await authenticateRequest(request);
+    if (!authedUser) return unauthorized();
+    if (authedUser.role !== 'org_admin') return forbidden('Only org admins can delete projects');
+
     await pool.query(`DELETE FROM "Project" WHERE id = $1`, [id]);
     return Response.json({ ok: true });
   } catch (err) {

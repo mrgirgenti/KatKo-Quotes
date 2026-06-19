@@ -2546,7 +2546,7 @@ export default function OrgProfileScreen() {
                     orgName={org.name}
                     currentLogoUrl={org.logoUrl}
                     onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })}
-                    size={72}
+                    size={128}
                     hideActions
                   />
 
@@ -5299,18 +5299,18 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   orgMediaItem: {
-    width: 135,
+    width: Platform.OS === 'web' ? 176 : 135,
     gap: 4,
   },
   orgMediaThumb: {
-    width: 135,
-    height: 108,
+    width: Platform.OS === 'web' ? 176 : 135,
+    height: Platform.OS === 'web' ? 140 : 108,
     borderRadius: 8,
     backgroundColor: Colors.light.border,
   },
   orgMediaIcon: {
-    width: 135,
-    height: 108,
+    width: Platform.OS === 'web' ? 176 : 135,
+    height: Platform.OS === 'web' ? 140 : 108,
     borderRadius: 8,
     backgroundColor: Colors.light.background,
     borderWidth: 1,
@@ -5768,18 +5768,18 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   v2MediaItem: {
-    width: 105,
+    width: Platform.OS === 'web' ? 136 : 105,
     gap: 3,
   },
   v2MediaThumb: {
-    width: 105,
-    height: 84,
+    width: Platform.OS === 'web' ? 136 : 105,
+    height: Platform.OS === 'web' ? 109 : 84,
     borderRadius: 6,
     backgroundColor: Colors.light.border,
   },
   v2MediaIcon: {
-    width: 105,
-    height: 84,
+    width: Platform.OS === 'web' ? 136 : 105,
+    height: Platform.OS === 'web' ? 109 : 84,
     borderRadius: 6,
     backgroundColor: Colors.light.surface,
     borderWidth: 1,

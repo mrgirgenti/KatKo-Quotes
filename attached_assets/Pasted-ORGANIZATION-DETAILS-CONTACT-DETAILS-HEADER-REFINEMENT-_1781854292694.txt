@@ -1,0 +1,98 @@
+ORGANIZATION DETAILS + CONTACT DETAILS HEADER REFINEMENT
+
+IMPORTANT: THIS IS NOT A HEADER REDESIGN
+
+The current Organization Details and Contact Details header layout has already been approved.
+
+Do NOT redesign, restructure, or reposition any content other than making room for a larger logo/avatar.
+
+--------------------------------------------------
+DO NOT CHANGE
+--------------------------------------------------
+
+- Organization Name placement
+- Contact Name placement
+- Business Type placement
+- Location placement
+- Primary Contact placement
+- Actions button placement
+- New Quote button placement
+- Header height
+- Header padding
+- Typography
+- Font sizes
+- Font weights
+- Card styling
+- Section spacing
+- Mobile structure
+- Desktop structure
+
+The current layout is approved.
+
+--------------------------------------------------
+ONLY CHANGE
+--------------------------------------------------
+
+Increase the avatar/logo size significantly.
+
+Current issue:
+The logo/avatar is too small and does not provide enough visual presence.
+
+New requirement:
+
+The avatar/logo square should:
+
+- Begin aligned with the top of the Actions/New Quote button row.
+- End aligned with the bottom of the Location text.
+- Remain a perfect square.
+- Be approximately 2x larger than it currently is.
+
+The ONLY permitted layout adjustment is:
+
+- Shift the text block slightly to the right to accommodate the larger avatar/logo.
+
+Nothing else should move.
+
+--------------------------------------------------
+LOGO BEHAVIOR
+--------------------------------------------------
+
+Uploaded logos:
+
+- Maintain aspect ratio
+- No stretching
+- No cropping
+- No distortion
+- Fit inside square container
+
+Generated initials avatars:
+
+- Scale proportionally
+- Fill the larger square naturally
+
+--------------------------------------------------
+APPLIES TO
+--------------------------------------------------
+
+- Organization Details
+- Contact Details
+
+Both pages should use identical avatar sizing rules.
+
+--------------------------------------------------
+SUCCESS CRITERIA
+--------------------------------------------------
+
+The only visible change should be:
+
+✅ Larger avatar/logo
+✅ Text shifted slightly right if necessary
+
+Everything else should remain visually identical.
+
+❌ No redesign
+❌ No spacing changes
+❌ No typography changes
+❌ No content movement
+❌ No new layout decisions
+❌ No header restructuring
