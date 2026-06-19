@@ -24,7 +24,7 @@ export const BOARD_COLUMNS: BoardColumnDef[] = [
     title: 'Ready for Production',
     statuses: ['Accepted', 'Awaiting Artwork', 'Artwork Approval', 'Awaiting Payment', 'Ready for Production'],
     canonicalStatus: 'Ready for Production',
-    accent: '#0F766E',
+    accent: '#2563EB',
   },
   {
     key: 'In Production',

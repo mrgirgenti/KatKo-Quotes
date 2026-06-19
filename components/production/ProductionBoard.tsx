@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import { Shirt } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { DS } from '@/constants/designSystem';
-import { OPERATIONAL_STATUS_CONFIG } from '@/types/quote';
 import type { Quote, OperationalProjectStatus, ProjectPriority } from '@/types/quote';
 import type { UserProfile } from '@/types/user';
 import { BOARD_COLUMNS, columnForStatus, sortForBoard, totalPieces, serviceTypeLabel, isRush, formatMonthDay } from '@/lib/production';
@@ -54,10 +53,10 @@ export function ProductionBoard({ projects, onSetStatus }: Props) {
         return (
           <View
             key={col.key}
-            style={[styles.column, dragOverCol === col.key && styles.columnDragOver]}
+            style={[styles.column, dragOverCol === col.key && styles.columnDragOver, { borderLeftWidth: 3, borderLeftColor: col.accent }]}
             {...dropProps}
           >
-            <View style={[styles.columnHeader, { borderTopColor: col.accent }]}>
+            <View style={styles.columnHeader}>
               <Text style={styles.columnTitle}>{col.title}</Text>
               <View style={styles.countPill}>
                 <Text style={styles.countPillText}>{items.length}</Text>
@@ -71,6 +70,7 @@ export function ProductionBoard({ projects, onSetStatus }: Props) {
                   <BoardCard
                     key={q.id}
                     quote={q}
+                    accentColor={col.accent}
                     onOpen={() => router.push(`/quote/${q.id}`)}
                   />
                 ))
@@ -83,10 +83,7 @@ export function ProductionBoard({ projects, onSetStatus }: Props) {
   );
 }
 
-function BoardCard({ quote, onOpen }: { quote: Quote; onOpen: () => void }) {
-  const opStatus = quote.operationalStatus as OperationalProjectStatus | undefined;
-  const opCfg = opStatus ? OPERATIONAL_STATUS_CONFIG[opStatus] : null;
-  const stripColor = opCfg?.color || Colors.light.tint;
+function BoardCard({ quote, onOpen, accentColor }: { quote: Quote; onOpen: () => void; accentColor: string }) {
   const pcs = totalPieces(quote);
   const projNum = quote.projectNumber || quote.invoiceNumber;
   const service = serviceTypeLabel(quote);
@@ -108,7 +105,7 @@ function BoardCard({ quote, onOpen }: { quote: Quote; onOpen: () => void }) {
     <View style={styles.card} {...dragProps}>
       <TouchableOpacity activeOpacity={0.75} onPress={onOpen} style={styles.cardRow}>
         {/* Status strip */}
-        <View style={[styles.statusStrip, { backgroundColor: stripColor }]} />
+        <View style={[styles.statusStrip, { backgroundColor: accentColor }]} />
 
         {/* Mockup / artwork preview */}
         <View style={styles.mockupWrap}>
@@ -165,10 +162,10 @@ const styles = StyleSheet.create({
   board: { flexGrow: 1, flexDirection: 'row', gap: 12, padding: DS.spacing.lg, alignItems: 'flex-start' },
   column: { flex: 1, minWidth: 340, backgroundColor: '#F7F7F8', borderRadius: DS.radius.lg, borderWidth: 1, borderColor: Colors.light.border, maxHeight: '100%' as any },
   columnDragOver: { borderColor: Colors.light.tint, backgroundColor: '#FFF4EE' },
-  columnHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 12, borderTopWidth: 3, borderTopLeftRadius: DS.radius.lg, borderTopRightRadius: DS.radius.lg },
-  columnTitle: { fontSize: 13, fontWeight: '800', color: Colors.light.text, textTransform: 'uppercase', letterSpacing: 0.4 },
-  countPill: { minWidth: 22, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: '#E5E7EB', alignItems: 'center' },
-  countPillText: { fontSize: 11, fontWeight: '700', color: Colors.light.textSecondary },
+  columnHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#000', borderTopLeftRadius: DS.radius.lg, borderTopRightRadius: DS.radius.lg },
+  columnTitle: { fontSize: 13, fontWeight: '800', color: '#fff', textTransform: 'uppercase', letterSpacing: 0.4 },
+  countPill: { minWidth: 22, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center' },
+  countPillText: { fontSize: 11, fontWeight: '700', color: '#fff' },
   columnBody: { paddingHorizontal: 10 },
   columnBodyContent: { paddingBottom: 16, gap: 10 },
   emptyCol: { fontSize: 12, color: Colors.light.textSecondary, textAlign: 'center', paddingVertical: 24 },
