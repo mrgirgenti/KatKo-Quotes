@@ -262,11 +262,11 @@ function SaleRow({ quote, effectiveStatus, onPress, onDelete, onRevert, onEdit, 
           {lineItemPcs.map(n => n > 0 ? `${n} pcs` : '—').join('\n')}
         </Text>
       </View>
-      <View style={styles.colPerPcs}>
-        <Text style={styles.tablePerPcs}>{perPcs != null ? formatCurrency(perPcs) : '—'}</Text>
-      </View>
       <View style={styles.colRevenue}>
         <Text style={styles.tableTotal}>{formatCurrency(revenue)}</Text>
+      </View>
+      <View style={styles.colPerPcs}>
+        <Text style={styles.tablePerPcs}>{perPcs != null ? formatCurrency(perPcs) : '—'}</Text>
       </View>
       <View style={styles.colProfit}>
         <Text style={[styles.tableProfit, !profitPositive && styles.tableProfitNeg]}>{formatCurrency(profit)}</Text>
@@ -820,8 +820,8 @@ export default function SalesScreen() {
                 <View style={styles.colQuote}><SortBtn field="invoice" label="Invoice #" /></View>
                 <View style={styles.colServices}><SortBtn field="services" label="Service(s)" /></View>
                 <View style={styles.colPcs}><SortBtn field="pcs" label="# PCS" /></View>
-                <View style={styles.colPerPcs}><Text style={styles.thText}>Per PCS</Text></View>
                 <View style={styles.colRevenue}><SortBtn field="revenue" label="Total" /></View>
+                <View style={styles.colPerPcs}><Text style={styles.thText}>Per PCS</Text></View>
                 <View style={styles.colProfit}><SortBtn field="profit" label="Profit" /></View>
                 <View style={styles.colActions}><Text style={styles.thText}>Actions</Text></View>
               </View>

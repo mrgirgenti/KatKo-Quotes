@@ -183,11 +183,11 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
             {lineItemPcs.map(n => n > 0 ? `${n} pcs` : '—').join('\n')}
           </Text>
         </View>
-        <View style={styles.colPerPcs}>
-          <Text style={styles.tablePerPcs}>{perPcs != null ? formatCurrency(perPcs) : '—'}</Text>
-        </View>
         <View style={styles.colTotal}>
           <Text style={styles.tableTotal}>{formatCurrency(total)}</Text>
+        </View>
+        <View style={styles.colPerPcs}>
+          <Text style={styles.tablePerPcs}>{perPcs != null ? formatCurrency(perPcs) : '—'}</Text>
         </View>
         <View style={styles.colMarkup}>
           <Text style={styles.tableMarkup}>{formatCurrency(markup)}</Text>
@@ -881,11 +881,11 @@ export default function ProjectsScreen() {
                 <View style={styles.colPcs}>
                   <SortBtn field="pcs" label="# PCS" />
                 </View>
-                <View style={styles.colPerPcs}>
-                  <Text style={styles.thText}>Per PCS</Text>
-                </View>
                 <View style={styles.colTotal}>
                   <SortBtn field="total" label="Total" />
+                </View>
+                <View style={styles.colPerPcs}>
+                  <Text style={styles.thText}>Per PCS</Text>
                 </View>
                 <View style={styles.colMarkup}>
                   <SortBtn field="markup" label="Profit" />
