@@ -2793,7 +2793,7 @@ export default function ClientPortal() {
           </View>
         ) : (
           <View style={svStyles.formRow}>
-            <View style={[styles.card, { flex: 1 }]}>
+            <View style={[styles.card, { flex: 1, maxWidth: 680 }]}>
             <Text style={styles.formTitle}>Submit a Project Request</Text>
             <Text style={styles.formSub}>Fill in the details below — your submission will come straight into Ko OS ready for pricing.</Text>
 
@@ -5218,7 +5218,7 @@ const pcStyles = StyleSheet.create({
 const svStyles = StyleSheet.create({
   formRow: {
     flexDirection: 'row', gap: 20, alignItems: 'flex-start',
-    width: '100%',
+    width: '100%', maxWidth: 1040, marginHorizontal: 'auto' as any,
   },
   helperCard: {
     flexBasis: '28%' as any, flexShrink: 0, flexGrow: 0, minWidth: 200, maxWidth: 320,
