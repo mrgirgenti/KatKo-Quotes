@@ -1,0 +1,263 @@
+IMPLEMENTATION MODE
+
+Do not analyze.
+Do not create plans.
+Do not investigate.
+
+Begin editing code immediately.
+
+Only stop if:
+1. A required file cannot be located.
+2. A dependency blocks implementation.
+3. Existing functionality would be broken.
+
+Otherwise:
+- Edit code
+- Save files
+- Implement the requested changes
+
+When complete:
+- Report files changed
+- Report components changed
+- Stop
+
+--------------------------------------------------
+CLIENT HUB FACELIFT - PHASE 2
+--------------------------------------------------
+
+IMPORTANT
+
+This phase focuses ONLY on:
+
+- My Projects
+- Media Bin
+- Upload Functionality
+
+Do not modify:
+
+- Dashboard
+- Submit Project
+- Product Catalogs
+
+--------------------------------------------------
+MY PROJECTS
+--------------------------------------------------
+
+Current implementation does not match approved design.
+
+It currently feels like stretched table rows.
+
+Goal:
+
+Convert into a project browsing experience.
+
+--------------------------------------------------
+LAYOUT
+--------------------------------------------------
+
+Separate projects into two groups.
+
+SECTION 1
+
+Active Projects
+
+Statuses:
+
+- Needs Review
+- Being Quoted
+- Quote Ready
+- Invoice Sent
+- In Production
+
+--------------------------------------------------
+
+SECTION 2
+
+Completed Projects
+
+Statuses:
+
+- Completed
+- Expired
+- Cancelled
+
+--------------------------------------------------
+
+Active projects should appear first.
+
+Completed projects should appear below.
+
+Current work should always remain top-of-mind.
+
+--------------------------------------------------
+CARD LAYOUT
+--------------------------------------------------
+
+Implement approved 4-column card grid.
+
+Cards should resemble the approved mockup.
+
+Each card should include:
+
+Project Name
+
+Status Pill
+
+Product Thumbnail
+
+Submitted Date
+
+In Hands Date
+
+Project Timeline
+
+PCS
+
+Project Value
+
+View Project Button
+
+--------------------------------------------------
+
+Goal:
+
+Fast visual scanning.
+
+Do not revert to spreadsheet/table appearance.
+
+--------------------------------------------------
+MEDIA BIN
+--------------------------------------------------
+
+Before any redesign:
+
+Fix uploads.
+
+--------------------------------------------------
+UPLOAD BUGS
+--------------------------------------------------
+
+Current issue:
+
+Uploads do not work.
+
+Verify and fix:
+
+1. Upload Files button
+2. Drag and Drop uploads
+3. Multiple file uploads
+
+All must work.
+
+--------------------------------------------------
+MEDIA BIN PAGE
+--------------------------------------------------
+
+Implement approved design.
+
+Maintain:
+
+Upload button
+
+Search
+
+Filters
+
+--------------------------------------------------
+
+Filters:
+
+All
+Logos
+Artwork
+Proofs
+Invoices
+Mockups
+
+--------------------------------------------------
+
+Sorting:
+
+Newest
+Oldest
+A-Z
+
+--------------------------------------------------
+
+View Toggle:
+
+Grid
+List
+
+--------------------------------------------------
+FILE CARDS
+--------------------------------------------------
+
+Increase information density.
+
+Display:
+
+Thumbnail
+
+File Name
+
+Date Uploaded
+
+File Type
+
+--------------------------------------------------
+
+Make metadata easier to read.
+
+The mockup is preferred.
+
+--------------------------------------------------
+EMPTY STATE
+--------------------------------------------------
+
+Current empty state feels dead.
+
+Create upload-first empty state.
+
+Include:
+
+Upload Files
+
+Drag Files Here
+
+Supported file types
+
+--------------------------------------------------
+
+Match Katalyst OS upload styling.
+
+--------------------------------------------------
+CANVA INTEGRATION
+--------------------------------------------------
+
+DO NOT IMPLEMENT.
+
+However:
+
+Review Media Bin architecture and identify the best future integration point for Canva.
+
+At completion provide:
+
+- Recommended integration approach
+- Files likely involved
+- Estimated complexity
+
+Do not build it during this task.
+
+--------------------------------------------------
+
+When complete:
+
+Report:
+
+- Files changed
+- Components changed
+- Upload issues fixed
+- Recommended Canva integration point
+
+Then STOP.

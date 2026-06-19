@@ -1,0 +1,352 @@
+IMPLEMENTATION MODE
+
+Do not analyze.
+Do not create plans.
+Do not investigate.
+
+Begin editing code immediately.
+
+Only stop if:
+1. A required file cannot be located.
+2. A dependency blocks implementation.
+3. Existing functionality would be broken.
+
+Otherwise:
+- Edit code
+- Save files
+- Implement the requested changes
+
+When complete:
+- Report files changed
+- Report components changed
+- Stop
+
+--------------------------------------------------
+CLIENT HUB FACELIFT - PHASE 1
+--------------------------------------------------
+
+Use the approved mockup and instructions below.
+
+IMPORTANT:
+
+This is a UI implementation task.
+
+Do not redesign functionality.
+
+Do not alter permissions.
+
+Do not change business logic.
+
+--------------------------------------------------
+GLOBAL
+--------------------------------------------------
+
+The Client Hub should visually match Katalyst OS.
+
+Apply existing Katalyst OS patterns:
+
+- Black section headers
+- White header text
+- Orange action links
+- Consistent spacing
+- Consistent typography
+- Consistent card styling
+
+Fix sidebar height.
+
+Current issue:
+
+Sidebar does not extend to the bottom of the viewport.
+
+Requirement:
+
+Sidebar must always stretch full height of the browser window.
+
+--------------------------------------------------
+DASHBOARD
+--------------------------------------------------
+
+Current implementation is close but needs refinement.
+
+--------------------------------------------------
+SECTION HEADERS
+--------------------------------------------------
+
+Add Katalyst OS black section headers to:
+
+- Active Projects
+- Quotes & Invoices
+- Product Catalogs
+- Media Bin
+
+Format:
+
+Black background
+White uppercase title
+Orange action link on right
+
+Examples:
+
+ACTIVE PROJECTS
+QUOTES & INVOICES
+PRODUCT CATALOGS
+MEDIA BIN
+
+--------------------------------------------------
+LAYOUT
+--------------------------------------------------
+
+Use:
+
+60% / 40% split
+
+Top Row:
+
+LEFT
+Active Projects
+
+RIGHT
+Quotes & Invoices
+
+Bottom Row:
+
+LEFT
+Product Catalogs
+
+RIGHT
+Media Bin
+
+--------------------------------------------------
+PRODUCT CATALOGS WIDGET
+--------------------------------------------------
+
+Current placeholder is not acceptable.
+
+Replace with actual catalog links.
+
+Display catalogs in a 3-column grid.
+
+Example:
+
+S&S Activewear
+SanMar
+McCreary's
+
+Independent Trading Co
+Shaka Wear
+LA Apparel
+
+Momentec
+Katalyst Ko Promo
+
+Each item should directly open its associated catalog.
+
+Maintain:
+
+View All →
+
+in header.
+
+Use existing orange action styling used elsewhere in OS.
+
+--------------------------------------------------
+MEDIA BIN WIDGET
+--------------------------------------------------
+
+Current empty state is too passive.
+
+Create upload-focused empty state.
+
+Include:
+
+Upload Files button
+
+and
+
+Drag & Drop Upload Area
+
+Use same upload pattern used elsewhere in OS.
+
+Goal:
+
+Encourage artwork uploads.
+
+--------------------------------------------------
+SUBMIT PROJECT PAGE
+--------------------------------------------------
+
+IMPORTANT
+
+DO NOT MODIFY THE PROJECT REQUEST FORM.
+
+DO NOT:
+
+- Change fields
+- Change workflow
+- Change sizing of fields
+- Change products + sizes
+- Change line items
+- Change business logic
+
+Only modify surrounding layout.
+
+--------------------------------------------------
+LAYOUT
+--------------------------------------------------
+
+Current page became too compressed after Need Help card was added.
+
+Adjust layout:
+
+Project Form = approximately 72%
+
+Need Help = approximately 28%
+
+The form should occupy substantially more width than it currently does.
+
+--------------------------------------------------
+NEED HELP CARD
+--------------------------------------------------
+
+Replace phone number.
+
+Current:
+480-202-3407
+
+New:
+
+(480) 559-9033
+
+--------------------------------------------------
+
+Add second CTA:
+
+Email Us
+
+jobs@katalystko.com
+
+--------------------------------------------------
+
+Adjust content accordingly.
+
+Do not increase card size.
+
+--------------------------------------------------
+ARTWORK UPLOADS
+--------------------------------------------------
+
+Verify file upload functionality.
+
+Requirement:
+
+Users must be able to upload multiple artwork files.
+
+Validate:
+
+- file picker uploads
+- drag and drop uploads
+
+Confirm multiple uploads are supported end-to-end.
+
+This is both a UX review and bug verification.
+
+--------------------------------------------------
+PRODUCT CATALOGS PAGE
+--------------------------------------------------
+
+Current implementation is close.
+
+Refine to match approved mockup.
+
+--------------------------------------------------
+CATALOG CARDS
+--------------------------------------------------
+
+Keep vendor-first structure.
+
+Maintain:
+
+- Vendor Name
+- Description
+- Specialty Badge
+
+--------------------------------------------------
+BUTTONS
+--------------------------------------------------
+
+Remove:
+
+Website button
+
+Keep only:
+
+Open Catalog
+
+--------------------------------------------------
+GRID
+--------------------------------------------------
+
+Maintain strict 3-column catalog grid.
+
+Do NOT stretch rows.
+
+Example:
+
+Catalog
+Catalog
+Empty Space
+
+NOT
+
+Catalog
+Catalog (stretched)
+
+--------------------------------------------------
+RIGHT COLUMN
+--------------------------------------------------
+
+Replace bottom black CTA bar.
+
+New layout:
+
+3 catalog columns
+
+PLUS
+
+1 persistent Need Help column
+
+Layout:
+
+| Catalog | Catalog | Catalog | Need Help |
+
+--------------------------------------------------
+
+Need Help card should include:
+
+Need Help?
+
+Not finding what you need?
+
+We'll help source products and recommend the best options.
+
+Call:
+(480) 559-9033
+
+Email:
+jobs@katalystko.com
+
+Submit a Project Request
+
+--------------------------------------------------
+
+This card should remain visible while browsing catalogs.
+
+--------------------------------------------------
+
+When complete:
+
+Report:
+- Files changed
+- Components changed
+
+Then STOP.

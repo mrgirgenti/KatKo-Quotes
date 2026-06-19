@@ -1584,7 +1584,7 @@ export default function ClientPortal() {
 
       {/* Main columns: Active Projects + Quotes */}
       <View style={dash.dashGrid}>
-        <View style={{ flex: 1.4, minWidth: 260 }}>
+        <View style={{ flex: 1.5, minWidth: 260 }}>
           <SectionCard title="Active Projects" count={activeProjects.length} onViewAll={() => setActiveView('projects')}>
             {projectsLoading
               ? <ActivityIndicator color={BRAND} style={{ marginVertical: 20 }} />
@@ -1616,22 +1616,30 @@ export default function ClientPortal() {
 
       {/* Bottom row: Catalogs + Media Bin */}
       <View style={[dash.dashGrid, { marginTop: 0 }]}>
-        <View style={{ flex: 1, minWidth: 200 }}>
+        <View style={{ flex: 1.5, minWidth: 200 }}>
           <SectionCard title="Product Catalogs" onViewAll={() => setActiveView('catalogs')}>
             {catalogsLoading
               ? <ActivityIndicator color={BRAND} style={{ marginVertical: 16 }} />
               : clientCatalogs.length === 0
                 ? <EmptyState icon={<BookOpen size={22} color="#9CA3AF" />} title="No catalogs yet" sub="Product catalogs will appear here." />
-                : <View style={{ gap: 8 }}>
-                    {clientCatalogs.slice(0, 4).map(cat => (
-                      <View key={cat.id} style={homeStyles.previewRow}>
-                        <View style={[homeStyles.previewDot, { backgroundColor: BRAND }]} />
-                        <Text style={homeStyles.previewName} numberOfLines={1}>{cat.vendorName || cat.name}</Text>
-                        <View style={[homeStyles.previewBadge, { backgroundColor: '#FFF4EE' }]}>
-                          <Text style={[homeStyles.previewBadgeText, { color: BRAND }]}>{cat.category}</Text>
-                        </View>
-                      </View>
-                    ))}
+                : <View style={homeStyles.catGrid}>
+                    {clientCatalogs.slice(0, 9).map(cat => {
+                      const initials = (cat.vendorName || cat.name).split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
+                      const color = CAT_COLORS[cat.category] || BRAND;
+                      return (
+                        <TouchableOpacity
+                          key={cat.id}
+                          style={homeStyles.catCell}
+                          onPress={() => Linking.openURL(cat.catalogUrl)}
+                          activeOpacity={0.75}
+                        >
+                          <View style={[homeStyles.catAvatar, { backgroundColor: color }]}>
+                            <Text style={homeStyles.catAvatarText}>{initials}</Text>
+                          </View>
+                          <Text style={homeStyles.catName} numberOfLines={2}>{cat.vendorName || cat.name}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
             }
           </SectionCard>
@@ -1639,7 +1647,28 @@ export default function ClientPortal() {
         <View style={{ flex: 1, minWidth: 200 }}>
           <SectionCard title="Media Bin" onViewAll={() => { setActiveView('artwork'); if (session) fetchMediaBin(session.orgId); }}>
             {mediaBinFiles.length === 0
-              ? <EmptyState icon={<Layers size={22} color="#9CA3AF" />} title="No artwork yet" sub="Upload files to build your media library." />
+              ? (
+                <View style={homeStyles.mbUploadEmpty}>
+                  {Platform.OS === 'web' && (
+                    <input ref={mediaBinInputRef} type="file" accept=".ai,.svg,.png,.jpg,.jpeg,.pdf" multiple style={{ display: 'none' }}
+                      onChange={(e: any) => { const files = Array.from((e.target.files || []) as globalThis.File[]); if (files.length > 0) { setActiveView('artwork'); handleMediaBinUpload(files); } e.target.value = ''; }}
+                    />
+                  )}
+                  <TouchableOpacity
+                    style={homeStyles.mbUploadBtn}
+                    onPress={() => { setActiveView('artwork'); if (session) fetchMediaBin(session.orgId); mediaBinInputRef.current?.click?.(); }}
+                    activeOpacity={0.85}
+                  >
+                    <Upload size={14} color="#fff" />
+                    <Text style={homeStyles.mbUploadBtnText}>Upload Files</Text>
+                  </TouchableOpacity>
+                  <View style={homeStyles.mbDropZone}>
+                    <Upload size={18} color="#9CA3AF" />
+                    <Text style={homeStyles.mbDropZoneText}>Drag & drop artwork here</Text>
+                    <Text style={homeStyles.mbDropZoneSub}>AI · SVG · PNG · JPG · PDF</Text>
+                  </View>
+                </View>
+              )
               : <View style={{ gap: 8 }}>
                   {mediaBinFiles.slice(0, 4).map(f => (
                     <View key={f.id} style={homeStyles.previewRow}>
@@ -2469,94 +2498,110 @@ export default function ClientPortal() {
       const matchesSearch = !q || cat.name.toLowerCase().includes(q) || (cat.vendorName || '').toLowerCase().includes(q) || (cat.description || '').toLowerCase().includes(q);
       return matchesCat && matchesSearch;
     });
+
+    const NeedHelpCard = () => (
+      <View style={catStyles.needHelpCard}>
+        <Text style={catStyles.needHelpTitle}>Need Help?</Text>
+        <Text style={catStyles.needHelpSub}>Not finding what you need? We'll help source products and recommend the best options.</Text>
+        <View style={catStyles.needHelpDivider} />
+        <Text style={catStyles.needHelpContactLabel}>CALL</Text>
+        <TouchableOpacity style={catStyles.needHelpPhoneBtn} onPress={() => Linking.openURL('tel:4805599033')} activeOpacity={0.85}>
+          <Text style={catStyles.needHelpPhoneText}>(480) 559-9033</Text>
+        </TouchableOpacity>
+        <Text style={catStyles.needHelpContactLabel}>EMAIL</Text>
+        <TouchableOpacity style={catStyles.needHelpEmailBtn} onPress={() => Linking.openURL('mailto:jobs@katalystko.com')} activeOpacity={0.85}>
+          <Mail size={13} color={BRAND} />
+          <Text style={catStyles.needHelpEmailText}>jobs@katalystko.com</Text>
+        </TouchableOpacity>
+        <View style={catStyles.needHelpDivider} />
+        <TouchableOpacity style={catStyles.needHelpCTABtn} onPress={() => setActiveView('submit')} activeOpacity={0.85}>
+          <ClipboardList size={14} color="#fff" />
+          <Text style={catStyles.needHelpCTAText}>Submit a Project Request</Text>
+        </TouchableOpacity>
+      </View>
+    );
+
     return (
-      <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
-        {/* Header row */}
-        <View style={catStyles.headerRow}>
-          <View>
-            <Text style={dash.pageTitle}>Product Catalogs</Text>
-            <Text style={catStyles.headerSub}>Browse product lines shared by Katalyst Ko</Text>
-          </View>
-          <TouchableOpacity style={catStyles.requestBtn} onPress={() => setActiveView('submit')} activeOpacity={0.85}>
-            <Plus size={14} color="#fff" />
-            <Text style={catStyles.requestBtnText}>Request a Product</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Search + filter chips */}
-        <View style={catStyles.searchRow}>
-          <Search size={14} color={TEXT_PLACEHOLDER} style={{ marginRight: 8 }} />
-          <TextInput style={catStyles.searchInput} placeholder="Search catalogs by brand or product…" placeholderTextColor={TEXT_PLACEHOLDER} value={catSearch} onChangeText={setCatSearch} />
-          {catSearch.length > 0 && <TouchableOpacity onPress={() => setCatSearch('')} style={{ padding: 4 }}><X size={14} color={TEXT_LIGHT} /></TouchableOpacity>}
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={catStyles.chipsScroll}>
-          <View style={catStyles.chipsRow}>
-            {CAT_FILTER_CHIPS.map(chip => (
-              <TouchableOpacity key={chip} style={[catStyles.chip, catFilter === chip && catStyles.chipActive]} onPress={() => setCatFilter(chip)} activeOpacity={0.8}>
-                <Text style={[catStyles.chipText, catFilter === chip && catStyles.chipTextActive]}>{chip}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
-
-        {catalogsLoading ? (
-          <View style={{ alignItems: 'center', paddingVertical: 48 }}>
-            <ActivityIndicator color={BRAND} />
-            <Text style={{ fontSize: 14, color: TEXT_LIGHT, marginTop: 10 }}>Loading catalogs…</Text>
-          </View>
-        ) : displayed.length === 0 ? (
-          <EmptyState icon={<BookOpen size={40} color="#D1D5DB" />} title={clientCatalogs.length === 0 ? "No catalogs available yet" : "No matching catalogs"} sub={clientCatalogs.length === 0 ? "Product catalogs will be shared here by your Katalyst Ko representative." : "Try a different search or filter."} />
-        ) : (
-          <View style={catStyles.grid}>
-            {displayed.map(cat => {
-              const color = CAT_COLORS[cat.category] || '#6B7280';
-              const initials = (cat.vendorName || cat.name).split(' ').map((w: string) => w[0]).join('').slice(0, 3).toUpperCase();
-              return (
-                <View key={cat.id} style={[catStyles.card, { flex: 1, minWidth: numCols === 1 ? '100%' : numCols === 2 ? '45%' : '30%' }]}>
-                  <View style={catStyles.cardTop}>
-                    <View style={[catStyles.avatar, { backgroundColor: color }]}>
-                      <Text style={catStyles.avatarText}>{initials}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={catStyles.name}>{cat.vendorName || cat.name}</Text>
-                      {cat.vendorName && cat.vendorName !== cat.name ? <Text style={catStyles.vendor}>{cat.name}</Text> : null}
-                    </View>
-                    <View style={[catStyles.badge, { backgroundColor: color + '18' }]}>
-                      <Text style={[catStyles.badgeText, { color }]}>{cat.category}</Text>
-                    </View>
-                  </View>
-                  {cat.description ? <Text style={catStyles.description}>{cat.description}</Text> : null}
-                  <View style={catStyles.actions}>
-                    <TouchableOpacity style={catStyles.primaryBtn} onPress={() => Linking.openURL(cat.catalogUrl)} activeOpacity={0.85}>
-                      <BookOpen size={15} color="#fff" />
-                      <Text style={catStyles.primaryBtnText}>Open Catalog</Text>
-                    </TouchableOpacity>
-                    {cat.websiteUrl ? (
-                      <TouchableOpacity style={catStyles.secondaryBtn} onPress={() => Linking.openURL(cat.websiteUrl!)} activeOpacity={0.85}>
-                        <ExternalLink size={14} color={BRAND} />
-                        <Text style={catStyles.secondaryBtnText}>Website</Text>
-                      </TouchableOpacity>
-                    ) : null}
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        )}
-
-        {/* Bottom CTA */}
-        {!catalogsLoading && clientCatalogs.length > 0 && (
-          <View style={catStyles.ctaBanner}>
-            <View style={{ flex: 1 }}>
-              <Text style={catStyles.ctaTitle}>Don't see what you're looking for?</Text>
-              <Text style={catStyles.ctaSub}>Submit a project request and we'll source the perfect product for you.</Text>
+      <View style={{ flex: 1, flexDirection: 'row' }}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
+          {/* Header row */}
+          <View style={catStyles.headerRow}>
+            <View>
+              <Text style={dash.pageTitle}>Product Catalogs</Text>
+              <Text style={catStyles.headerSub}>Browse product lines shared by Katalyst Ko</Text>
             </View>
-            <TouchableOpacity style={catStyles.ctaBtn} onPress={() => setActiveView('submit')} activeOpacity={0.85}>
-              <Text style={catStyles.ctaBtnText}>Start a Request</Text>
+            <TouchableOpacity style={catStyles.requestBtn} onPress={() => setActiveView('submit')} activeOpacity={0.85}>
+              <Plus size={14} color="#fff" />
+              <Text style={catStyles.requestBtnText}>Request a Product</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Search + filter chips */}
+          <View style={catStyles.searchRow}>
+            <Search size={14} color={TEXT_PLACEHOLDER} style={{ marginRight: 8 }} />
+            <TextInput style={catStyles.searchInput} placeholder="Search catalogs by brand or product…" placeholderTextColor={TEXT_PLACEHOLDER} value={catSearch} onChangeText={setCatSearch} />
+            {catSearch.length > 0 && <TouchableOpacity onPress={() => setCatSearch('')} style={{ padding: 4 }}><X size={14} color={TEXT_LIGHT} /></TouchableOpacity>}
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={catStyles.chipsScroll}>
+            <View style={catStyles.chipsRow}>
+              {CAT_FILTER_CHIPS.map(chip => (
+                <TouchableOpacity key={chip} style={[catStyles.chip, catFilter === chip && catStyles.chipActive]} onPress={() => setCatFilter(chip)} activeOpacity={0.8}>
+                  <Text style={[catStyles.chipText, catFilter === chip && catStyles.chipTextActive]}>{chip}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+
+          {catalogsLoading ? (
+            <View style={{ alignItems: 'center', paddingVertical: 48 }}>
+              <ActivityIndicator color={BRAND} />
+              <Text style={{ fontSize: 14, color: TEXT_LIGHT, marginTop: 10 }}>Loading catalogs…</Text>
+            </View>
+          ) : displayed.length === 0 ? (
+            <EmptyState icon={<BookOpen size={40} color="#D1D5DB" />} title={clientCatalogs.length === 0 ? "No catalogs available yet" : "No matching catalogs"} sub={clientCatalogs.length === 0 ? "Product catalogs will be shared here by your Katalyst Ko representative." : "Try a different search or filter."} />
+          ) : (
+            <View style={catStyles.grid}>
+              {displayed.map(cat => {
+                const color = CAT_COLORS[cat.category] || '#6B7280';
+                const initials = (cat.vendorName || cat.name).split(' ').map((w: string) => w[0]).join('').slice(0, 3).toUpperCase();
+                const cardW = numCols === 1 ? '100%' : numCols === 2 ? '48%' : '32%';
+                return (
+                  <View key={cat.id} style={[catStyles.card, { width: cardW as any, flexGrow: 0, flexShrink: 0 }]}>
+                    <View style={catStyles.cardTop}>
+                      <View style={[catStyles.avatar, { backgroundColor: color }]}>
+                        <Text style={catStyles.avatarText}>{initials}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={catStyles.name}>{cat.vendorName || cat.name}</Text>
+                        {cat.vendorName && cat.vendorName !== cat.name ? <Text style={catStyles.vendor}>{cat.name}</Text> : null}
+                      </View>
+                      <View style={[catStyles.badge, { backgroundColor: color + '18' }]}>
+                        <Text style={[catStyles.badgeText, { color }]}>{cat.category}</Text>
+                      </View>
+                    </View>
+                    {cat.description ? <Text style={catStyles.description}>{cat.description}</Text> : null}
+                    <View style={catStyles.actions}>
+                      <TouchableOpacity style={catStyles.primaryBtn} onPress={() => Linking.openURL(cat.catalogUrl)} activeOpacity={0.85}>
+                        <BookOpen size={15} color="#fff" />
+                        <Text style={catStyles.primaryBtnText}>Open Catalog</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          {isMobile && <NeedHelpCard />}
+        </ScrollView>
+
+        {/* Persistent Need Help column (desktop/tablet) */}
+        {!isMobile && (
+          <View style={catStyles.needHelpColumn}>
+            <NeedHelpCard />
+          </View>
         )}
-      </ScrollView>
+      </View>
     );
   };
 
@@ -2789,9 +2834,13 @@ export default function ClientPortal() {
                   </View>
                 ))}
                 <View style={svStyles.helperDivider} />
-                <Text style={svStyles.helperCallLabel}>CALL US DIRECTLY</Text>
-                <TouchableOpacity style={svStyles.helperPhoneBtn} onPress={() => Linking.openURL('tel:4802023407')} activeOpacity={0.85}>
-                  <Text style={svStyles.helperPhoneText}>480-202-3407</Text>
+                <Text style={svStyles.helperCallLabel}>CONTACT US</Text>
+                <TouchableOpacity style={svStyles.helperPhoneBtn} onPress={() => Linking.openURL('tel:4805599033')} activeOpacity={0.85}>
+                  <Text style={svStyles.helperPhoneText}>(480) 559-9033</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={svStyles.helperEmailBtn} onPress={() => Linking.openURL('mailto:jobs@katalystko.com')} activeOpacity={0.85}>
+                  <Mail size={14} color={BRAND} />
+                  <Text style={svStyles.helperEmailText}>Email Us</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -3861,7 +3910,7 @@ const SIDEBAR_BG = '#000000';
 const SIDEBAR_ACTIVE = '#FF5A00';
 
 const dash = StyleSheet.create({
-  layout: { flex: 1, flexDirection: 'row', backgroundColor: '#F3F4F6' },
+  layout: { flex: 1, flexDirection: 'row', backgroundColor: '#F3F4F6', ...Platform.select({ web: { minHeight: '100vh' as any } as any, default: {} }) },
   layoutMobile: { flexDirection: 'column' },
 
   // Mobile top bar
@@ -3983,10 +4032,10 @@ const dash = StyleSheet.create({
   },
   sectionCardHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 18, paddingTop: 16, paddingBottom: 10,
-    borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+    paddingHorizontal: 18, paddingTop: 13, paddingBottom: 13,
+    backgroundColor: '#111827',
   },
-  sectionCardTitle: { fontSize: 14, fontWeight: '700', color: TEXT },
+  sectionCardTitle: { fontSize: 11, fontWeight: '700', color: '#fff', textTransform: 'uppercase', letterSpacing: 0.9 },
   viewAllLink: { fontSize: 12, color: BRAND, fontWeight: '600' },
 
   projectCard: {
@@ -4285,6 +4334,36 @@ const catStyles = StyleSheet.create({
     borderRadius: 8, flexShrink: 0,
   },
   ctaBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+
+  needHelpColumn: {
+    width: 260, flexShrink: 0, padding: 16,
+    ...Platform.select({ web: { position: 'sticky' as any, top: 0, height: '100vh' as any, overflowY: 'auto' as any } as any, default: {} }),
+  },
+  needHelpCard: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 18, gap: 10,
+    borderWidth: 1, borderColor: BORDER,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+  },
+  needHelpTitle: { fontSize: 16, fontWeight: '800', color: TEXT },
+  needHelpSub: { fontSize: 12, color: TEXT_LIGHT, lineHeight: 18 },
+  needHelpDivider: { height: 1, backgroundColor: BORDER, marginVertical: 2 },
+  needHelpContactLabel: { fontSize: 9, fontWeight: '700', color: TEXT_PLACEHOLDER, letterSpacing: 0.8 },
+  needHelpPhoneBtn: {
+    backgroundColor: BRAND, borderRadius: 8, paddingVertical: 9,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  needHelpPhoneText: { fontSize: 14, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
+  needHelpEmailBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
+    borderWidth: 1, borderColor: BRAND, borderRadius: 8, paddingVertical: 8,
+    backgroundColor: '#FFF4EE',
+  },
+  needHelpEmailText: { fontSize: 12, fontWeight: '600', color: BRAND },
+  needHelpCTABtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: '#111827', borderRadius: 8, paddingVertical: 10,
+  },
+  needHelpCTAText: { fontSize: 12, fontWeight: '700', color: '#fff' },
 });
 
 const mpStyles = StyleSheet.create({
@@ -4815,6 +4894,40 @@ const homeStyles = StyleSheet.create({
   previewBadgeText: {
     fontSize: 10, fontWeight: '600',
   },
+
+  catGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8,
+    paddingHorizontal: 18, paddingVertical: 14,
+  },
+  catCell: {
+    width: '30%', flexGrow: 1,
+    alignItems: 'center', gap: 6,
+    paddingVertical: 10, paddingHorizontal: 4,
+    borderRadius: 10, borderWidth: 1, borderColor: BORDER,
+    backgroundColor: BG,
+  },
+  catAvatar: {
+    width: 36, height: 36, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  catAvatarText: { fontSize: 11, fontWeight: '800', color: '#fff' },
+  catName: { fontSize: 10, fontWeight: '600', color: TEXT, textAlign: 'center', lineHeight: 13 },
+
+  mbUploadEmpty: {
+    paddingHorizontal: 18, paddingVertical: 14, gap: 10,
+  },
+  mbUploadBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: BRAND, borderRadius: 8, paddingVertical: 9,
+  },
+  mbUploadBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  mbDropZone: {
+    borderWidth: 1.5, borderColor: '#D1D5DB', borderStyle: 'dashed' as any,
+    borderRadius: 10, paddingVertical: 16, paddingHorizontal: 12,
+    alignItems: 'center', gap: 5, backgroundColor: '#FAFAFA',
+  },
+  mbDropZoneText: { fontSize: 12, fontWeight: '600', color: TEXT_LIGHT, marginTop: 3 },
+  mbDropZoneSub: { fontSize: 10, color: TEXT_PLACEHOLDER },
 });
 
 const pcStyles = StyleSheet.create({
@@ -4871,7 +4984,7 @@ const svStyles = StyleSheet.create({
     width: '100%',
   },
   helperCard: {
-    width: 260, flexShrink: 0,
+    flexBasis: '28%' as any, flexShrink: 0, flexGrow: 0, minWidth: 200, maxWidth: 320,
     backgroundColor: '#fff', borderRadius: 14, padding: 20, gap: 12,
     borderWidth: 1, borderColor: BORDER,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
@@ -4908,5 +5021,13 @@ const svStyles = StyleSheet.create({
   },
   helperPhoneText: {
     fontSize: 15, fontWeight: '800', color: '#fff', letterSpacing: 0.5,
+  },
+  helperEmailBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    borderWidth: 1, borderColor: BRAND, borderRadius: 8, paddingVertical: 9,
+    backgroundColor: '#FFF4EE',
+  },
+  helperEmailText: {
+    fontSize: 13, fontWeight: '700', color: BRAND,
   },
 });
