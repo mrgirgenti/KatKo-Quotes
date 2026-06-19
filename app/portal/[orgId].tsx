@@ -1103,7 +1103,7 @@ export default function ClientPortal() {
   const fetchMediaBin = useCallback(async (oid: string) => {
     setMediaBinLoading(true);
     try {
-      const res = await fetch(`/api/files?orgId=${oid}&scope=org`);
+      const res = await fetch(`/api/portal/${oid}/files`);
       if (res.ok) {
         const data = await res.json();
         setMediaBinFiles(data.files || []);
