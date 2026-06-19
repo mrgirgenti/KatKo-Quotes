@@ -68,7 +68,7 @@ export function ProductionFilterBar({
           <Search size={15} color={Colors.light.textSecondary} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search projects, clients, project #…"
+            placeholder="Search projects..."
             placeholderTextColor={Colors.light.textSecondary}
             value={filters.search}
             onFocus={() => setPanelOpen(true)}
@@ -283,7 +283,7 @@ function Chip({ label, active, onPress, activeColor, activeTextColor }: { label:
 
 const styles = StyleSheet.create({
   wrap: { paddingHorizontal: DS.spacing.xl, paddingBottom: DS.spacing.sm, gap: 8 },
-  toolbar: { flexDirection: 'row', gap: DS.spacing.sm, alignItems: 'center' },
+  toolbar: { flexDirection: 'row', gap: 12, alignItems: 'center' },
   searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F5F5F5', borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, paddingHorizontal: 12, height: 40 },
   searchInput: { flex: 1, fontSize: 14, color: Colors.light.text, outlineStyle: 'none' as any },
 

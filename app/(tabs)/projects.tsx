@@ -42,7 +42,7 @@ import { formatCurrency } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
 import { generateAndSharePDF, printQuote } from '@/utils/pdfGenerator';
 
-type SortField = 'date' | 'client' | 'total' | 'status' | 'inHands' | 'project' | 'invoice' | 'services' | 'pcs' | 'markup';
+type SortField = 'date' | 'client' | 'total' | 'status' | 'inHands' | 'project' | 'invoice' | 'services' | 'pcs' | 'markup' | 'applicator' | 'perPcs';
 type SortDir = 'asc' | 'desc';
 
 const STATUS_PILLS: { key: 'all' | QuoteStatus; label: string }[] = [
@@ -450,6 +450,18 @@ export default function ProjectsScreen() {
         cmp = pa - pb;
       } else if (sortField === 'markup') {
         cmp = (a.quote.calculations?.markupAmount ?? 0) - (b.quote.calculations?.markupAmount ?? 0);
+      } else if (sortField === 'applicator') {
+        const aa = a.quote.lineItems.map((i: any) => i.applicator).filter(Boolean).sort()[0] || '';
+        const ab = b.quote.lineItems.map((i: any) => i.applicator).filter(Boolean).sort()[0] || '';
+        cmp = aa.localeCompare(ab);
+      } else if (sortField === 'perPcs') {
+        const totalA = a.quote.calculations?.total ?? 0;
+        const pcsA = a.quote.lineItems.reduce((s: number, li: any) =>
+          s + Object.values(li.sizes || {}).reduce((ps: number, v: any) => ps + (Number(v) || 0), 0), 0);
+        const totalB = b.quote.calculations?.total ?? 0;
+        const pcsB = b.quote.lineItems.reduce((s: number, li: any) =>
+          s + Object.values(li.sizes || {}).reduce((ps: number, v: any) => ps + (Number(v) || 0), 0), 0);
+        cmp = (pcsA > 0 ? totalA / pcsA : 0) - (pcsB > 0 ? totalB / pcsB : 0);
       }
       return sortDir === 'asc' ? cmp : -cmp;
     });
@@ -663,7 +675,7 @@ export default function ProjectsScreen() {
             <Text style={[styles.statValue, { color: Colors.light.tint }]}>
               {(statusCounts['active'] ?? 0) + (statusCounts['production_started'] ?? 0)}
             </Text>
-            <Text style={styles.statLabel}>In Production</Text>
+            <Text style={styles.statLabel}>{isDesktop ? 'In Production' : 'Production'}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
@@ -877,7 +889,7 @@ export default function ProjectsScreen() {
                 <View style={styles.colServices}>
                   <SortBtn field="services" label="Service(s)" />
                 </View>
-                <View style={styles.colApplicator}><Text style={styles.thText}>Applicator(s)</Text></View>
+                <View style={styles.colApplicator}><SortBtn field="applicator" label="Applicator(s)" /></View>
                 <View style={styles.colPcs}>
                   <SortBtn field="pcs" label="# PCS" />
                 </View>
@@ -885,7 +897,7 @@ export default function ProjectsScreen() {
                   <SortBtn field="total" label="Total" />
                 </View>
                 <View style={styles.colPerPcs}>
-                  <Text style={styles.thText}>Per PCS</Text>
+                  <SortBtn field="perPcs" label="Per PCS" />
                 </View>
                 <View style={styles.colMarkup}>
                   <SortBtn field="markup" label="Profit" />

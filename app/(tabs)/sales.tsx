@@ -43,7 +43,7 @@ import { formatDate } from '@/utils/textFormatting';
 import { generateAndSharePDF, printQuote } from '@/utils/pdfGenerator';
 import { exportSingleSaleToSheets } from '@/utils/googleSheetsExport';
 
-type SortField = 'date' | 'client' | 'revenue' | 'status' | 'inHands' | 'project' | 'invoice' | 'services' | 'pcs' | 'profit';
+type SortField = 'date' | 'client' | 'revenue' | 'status' | 'inHands' | 'project' | 'invoice' | 'services' | 'pcs' | 'profit' | 'applicator' | 'perPcs';
 type SortDir = 'asc' | 'desc';
 
 const STATUS_PILLS: { key: 'all' | QuoteStatus; label: string }[] = [
@@ -443,6 +443,14 @@ export default function SalesScreen() {
         cmp = sa.localeCompare(sb);
       } else if (sortField === 'pcs') {
         cmp = getPcs(a.quote) - getPcs(b.quote);
+      } else if (sortField === 'applicator') {
+        const aa = a.quote.lineItems.map((i: any) => i.applicator).filter(Boolean).sort()[0] || '';
+        const ab = b.quote.lineItems.map((i: any) => i.applicator).filter(Boolean).sort()[0] || '';
+        cmp = aa.localeCompare(ab);
+      } else if (sortField === 'perPcs') {
+        const pcsA = getPcs(a.quote); const revA = getSalesRevenue(a.quote);
+        const pcsB = getPcs(b.quote); const revB = getSalesRevenue(b.quote);
+        cmp = (pcsA > 0 ? revA / pcsA : 0) - (pcsB > 0 ? revB / pcsB : 0);
       }
       return sortDir === 'asc' ? cmp : -cmp;
     });
@@ -658,7 +666,7 @@ export default function SalesScreen() {
             <Text style={[styles.statValue, { color: '#6D28D9' }]}>
               {statusCounts['invoice_sent'] ?? 0}
             </Text>
-            <Text style={styles.statLabel}>{isDesktop ? 'Invoice Sent' : 'Inv. Sent'}</Text>
+            <Text style={styles.statLabel}>{isDesktop ? 'Invoice Sent' : 'Invoices'}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
@@ -827,10 +835,10 @@ export default function SalesScreen() {
                 <View style={styles.colProject}><SortBtn field="project" label="Project" /></View>
                 <View style={styles.colQuote}><SortBtn field="invoice" label="Invoice #" /></View>
                 <View style={styles.colServices}><SortBtn field="services" label="Service(s)" /></View>
-                <View style={styles.colApplicator}><Text style={styles.thText}>Applicator(s)</Text></View>
+                <View style={styles.colApplicator}><SortBtn field="applicator" label="Applicator(s)" /></View>
                 <View style={styles.colPcs}><SortBtn field="pcs" label="# PCS" /></View>
                 <View style={styles.colRevenue}><SortBtn field="revenue" label="Total" /></View>
-                <View style={styles.colPerPcs}><Text style={styles.thText}>Per PCS</Text></View>
+                <View style={styles.colPerPcs}><SortBtn field="perPcs" label="Per PCS" /></View>
                 <View style={styles.colProfit}><SortBtn field="profit" label="Profit" /></View>
                 <View style={styles.colActions}><Text style={styles.thText}>Actions</Text></View>
               </View>
@@ -986,20 +994,20 @@ const styles = StyleSheet.create({
   tableRowSelected: { backgroundColor: '#FFF4EE' },
   tableRowLocked: { backgroundColor: '#FAFAFA' },
   colCheckbox: { width: 36, alignItems: 'center', justifyContent: 'center' },
-  colStatus:    { width: 110, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  colStatus:    { width: 100, flexDirection: 'row', alignItems: 'center', gap: 6 },
   statusIcons:  { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  colOrderDate: { width: 110 },
-  colDueDate:   { width: 100 },
+  colOrderDate: { width: 125 },
+  colDueDate:   { width: 110 },
   colClient:    { flex: 1.2 },
   colProject:   { flex: 1.2 },
   colQuote:     { width: 90 },
   colServices:  { flex: 1.0 },
-  colApplicator: { flex: 0.9 },
+  colApplicator: { flex: 1.2 },
   colPcs:       { width: 72 },
   colPerPcs:    { width: 85, alignItems: 'flex-end' },
-  colRevenue:   { width: 95, alignItems: 'flex-end' },
-  colProfit:    { width: 95, alignItems: 'flex-end' },
-  colActions:   { width: 160, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
+  colRevenue:   { width: 85, alignItems: 'flex-end' },
+  colProfit:    { width: 85, alignItems: 'flex-end' },
+  colActions:   { width: 100, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
 
   tableDate:    { fontSize: 13, color: Colors.light.text },
   tableClient:  { fontSize: 13, fontWeight: '700', color: Colors.light.text },
