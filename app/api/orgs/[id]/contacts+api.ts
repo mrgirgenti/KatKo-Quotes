@@ -1,10 +1,29 @@
 import { pool } from '@/lib/pool';
+import { authenticateRequest, unauthorized } from '@/lib/auth';
+
+function toContact(c: any) {
+  return {
+    id: c.id,
+    organizationId: c.organizationId ?? undefined,
+    firstName: c.firstName,
+    lastName: c.lastName,
+    role: c.role ?? undefined,
+    email: c.email ?? undefined,
+    phone: c.phone ?? undefined,
+    notes: c.notes ?? undefined,
+    isPrimary: c.isPrimary ?? false,
+    linkedUserId: c.linkedUserId ?? undefined,
+    createdAt: new Date(c.createdAt).toISOString(),
+  };
+}
 
 export async function POST(request: Request, { id }: { id: string }) {
+  const authedUser = await authenticateRequest(request);
+  if (!authedUser) return unauthorized();
+
   try {
     const body = await request.json();
 
-    // If a contact with the same email already exists for this org, update linkedUserId
     if (body.email) {
       const existing = await pool.query(
         `SELECT id FROM "Contact" WHERE "organizationId" = $1 AND LOWER(email) = LOWER($2) LIMIT 1`,
@@ -45,20 +64,4 @@ export async function POST(request: Request, { id }: { id: string }) {
     console.error('[POST /api/orgs/:id/contacts]', err);
     return Response.json({ error: 'Failed to create contact' }, { status: 500 });
   }
-}
-
-function toContact(c: any) {
-  return {
-    id: c.id,
-    organizationId: c.organizationId ?? undefined,
-    firstName: c.firstName,
-    lastName: c.lastName,
-    role: c.role ?? undefined,
-    email: c.email ?? undefined,
-    phone: c.phone ?? undefined,
-    notes: c.notes ?? undefined,
-    isPrimary: c.isPrimary ?? false,
-    linkedUserId: c.linkedUserId ?? undefined,
-    createdAt: new Date(c.createdAt).toISOString(),
-  };
 }

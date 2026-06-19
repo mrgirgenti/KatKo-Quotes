@@ -1,4 +1,5 @@
 import { pool } from '@/lib/pool';
+import { authenticateRequest, unauthorized, forbidden } from '@/lib/auth';
 import type { Organization, Contact, ActivityEntry, CampaignAssignment, Department } from '@/types/crm';
 
 function hubStatusFromUser(u: any): Contact['hubStatus'] {
@@ -71,7 +72,10 @@ function toFrontendOrg(org: any, contacts: any[], activityLogs: any[]): Organiza
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const authedUser = await authenticateRequest(request);
+  if (!authedUser) return unauthorized();
+
   try {
     const [orgsResult, contactsResult, logsResult, usersResult, membershipsResult] = await Promise.all([
       pool.query(`SELECT * FROM "Organization" ORDER BY "createdAt" DESC`),
@@ -87,14 +91,10 @@ export async function GET() {
       userById.set(u.id, u);
       if (u.email) userByEmail.set(String(u.email).toLowerCase(), u);
     }
-    // user.id::orgId pairs — used to scope email fallback to same-org members only
     const membershipSet = new Set<string>();
     for (const m of membershipsResult.rows) {
       membershipSet.add(`${m.userId}:${m.organizationId}`);
     }
-    // Explicit linkedUserId is authoritative. Email is only a fallback, and only
-    // when that user is actually a member of the contact's organization (avoids
-    // cross-org mis-attribution of hub status / last login).
     const matchUser = (c: any) => {
       if (c.linkedUserId) {
         const u = userById.get(c.linkedUserId);
@@ -135,6 +135,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const authedUser = await authenticateRequest(request);
+  if (!authedUser) return unauthorized();
+
   try {
     const body = await request.json();
     const setActive = body.status === 'Active Client';

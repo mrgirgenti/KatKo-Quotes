@@ -1,4 +1,5 @@
 import { pool } from '@/lib/pool';
+import { authenticateRequest, unauthorized } from '@/lib/auth';
 
 function toEntry(a: any) {
   const meta = a.metadata || {};
@@ -11,7 +12,10 @@ function toEntry(a: any) {
   };
 }
 
-export async function GET(_req: Request, { id }: { id: string }) {
+export async function GET(request: Request, { id }: { id: string }) {
+  const authedUser = await authenticateRequest(request);
+  if (!authedUser) return unauthorized();
+
   if (!id) return Response.json({ activities: [] });
   try {
     const result = await pool.query(

@@ -1,4 +1,5 @@
 import { pool } from '@/lib/pool';
+import { authenticateRequest, unauthorized } from '@/lib/auth';
 
 function toFrontendActivity(a: any) {
   const meta = a.metadata || {};
@@ -15,6 +16,9 @@ function toFrontendActivity(a: any) {
 }
 
 export async function POST(request: Request, { id }: { id: string }) {
+  const authedUser = await authenticateRequest(request);
+  if (!authedUser) return unauthorized();
+
   try {
     const body = await request.json();
     const meta = {
@@ -37,6 +41,9 @@ export async function POST(request: Request, { id }: { id: string }) {
 }
 
 export async function PUT(request: Request, { id }: { id: string }) {
+  const authedUser = await authenticateRequest(request);
+  if (!authedUser) return unauthorized();
+
   try {
     const body = await request.json();
     const meta = {
@@ -58,6 +65,9 @@ export async function PUT(request: Request, { id }: { id: string }) {
 }
 
 export async function DELETE(request: Request, { id }: { id: string }) {
+  const authedUser = await authenticateRequest(request);
+  if (!authedUser) return unauthorized();
+
   try {
     const body = await request.json();
     await pool.query(`DELETE FROM "ActivityLog" WHERE id = $1`, [body.entryId]);

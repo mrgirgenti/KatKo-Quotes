@@ -1,4 +1,5 @@
 import { pool } from '@/lib/pool';
+import { authenticateRequest, unauthorized, forbidden } from '@/lib/auth';
 import type { Organization, Contact, ActivityEntry, CampaignAssignment, Department } from '@/types/crm';
 
 function toFrontendContact(c: any): Contact {
@@ -59,7 +60,10 @@ function toFrontendOrg(org: any, contacts: any[], activityLogs: any[]): Organiza
   };
 }
 
-export async function GET(_req: Request, { id }: { id: string }) {
+export async function GET(request: Request, { id }: { id: string }) {
+  const authedUser = await authenticateRequest(request);
+  if (!authedUser) return unauthorized();
+
   try {
     const [orgResult, contactsResult, logsResult] = await Promise.all([
       pool.query(`SELECT * FROM "Organization" WHERE id = $1`, [id]),
@@ -74,6 +78,9 @@ export async function GET(_req: Request, { id }: { id: string }) {
 }
 
 export async function PUT(request: Request, { id }: { id: string }) {
+  const authedUser = await authenticateRequest(request);
+  if (!authedUser) return unauthorized();
+
   try {
     const body = await request.json();
     const existingResult = await pool.query(`SELECT * FROM "Organization" WHERE id = $1`, [id]);
@@ -136,7 +143,11 @@ export async function PUT(request: Request, { id }: { id: string }) {
   }
 }
 
-export async function DELETE(_req: Request, { id }: { id: string }) {
+export async function DELETE(request: Request, { id }: { id: string }) {
+  const authedUser = await authenticateRequest(request);
+  if (!authedUser) return unauthorized();
+  if (authedUser.role !== 'org_admin') return forbidden('Only admins can delete organizations');
+
   try {
     await pool.query(`DELETE FROM "Organization" WHERE id = $1`, [id]);
     return Response.json({ ok: true });

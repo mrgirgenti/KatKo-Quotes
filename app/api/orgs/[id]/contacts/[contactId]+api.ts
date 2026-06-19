@@ -1,6 +1,10 @@
 import { pool } from '@/lib/pool';
+import { authenticateRequest, unauthorized } from '@/lib/auth';
 
 export async function PUT(request: Request, { id, contactId }: { id: string; contactId: string }) {
+  const authedUser = await authenticateRequest(request);
+  if (!authedUser) return unauthorized();
+
   try {
     const body = await request.json();
     const result = await pool.query(
@@ -38,7 +42,10 @@ export async function PUT(request: Request, { id, contactId }: { id: string; con
   }
 }
 
-export async function DELETE(_req: Request, { id, contactId }: { id: string; contactId: string }) {
+export async function DELETE(request: Request, { id, contactId }: { id: string; contactId: string }) {
+  const authedUser = await authenticateRequest(request);
+  if (!authedUser) return unauthorized();
+
   try {
     await pool.query(`DELETE FROM "Contact" WHERE id = $1`, [contactId]);
     return Response.json({ ok: true });

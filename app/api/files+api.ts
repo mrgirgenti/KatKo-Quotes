@@ -1,7 +1,11 @@
 import { pool } from '@/lib/pool';
+import { authenticateRequest, unauthorized } from '@/lib/auth';
 import { writeUpload, ALLOWED_MIME_TYPES } from '@/lib/files';
 
 export async function GET(request: Request) {
+  const authedUser = await authenticateRequest(request);
+  if (!authedUser) return unauthorized();
+
   const url = new URL(request.url);
   const orgId = url.searchParams.get('orgId');
   const projectId = url.searchParams.get('projectId');
@@ -51,6 +55,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const authedUser = await authenticateRequest(request);
+  if (!authedUser) return unauthorized();
+
   let formData: FormData;
   try {
     formData = await request.formData();
@@ -91,8 +98,6 @@ export async function POST(request: Request) {
        RETURNING *`,
       [orgId, projectId || null, uploadedByUserId || null, fileTypeParam, fileEntry.name, storageKey, mimeType, buffer.length, visibility]
     );
-    // Auto-update the operational "Artwork Received" indicator when artwork is
-    // uploaded against a project. Non-fatal; never blocks the upload response.
     if (projectId && fileTypeParam === 'ARTWORK') {
       await client.query(
         `UPDATE "Project" SET "artworkReceived" = true WHERE id = $1 AND "artworkReceived" = false`,

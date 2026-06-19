@@ -1,7 +1,11 @@
 import { pool } from '@/lib/pool';
+import { authenticateRequest, unauthorized } from '@/lib/auth';
 import { readUpload, deleteUpload } from '@/lib/files';
 
 export async function GET(request: Request, { id }: { id: string }) {
+  const authedUser = await authenticateRequest(request);
+  if (!authedUser) return unauthorized();
+
   if (!id) return new Response('Not found', { status: 404 });
   const client = await pool.connect();
   try {
@@ -35,6 +39,9 @@ export async function GET(request: Request, { id }: { id: string }) {
 }
 
 export async function PATCH(request: Request, { id }: { id: string }) {
+  const authedUser = await authenticateRequest(request);
+  if (!authedUser) return unauthorized();
+
   if (!id) return Response.json({ error: 'Not found' }, { status: 404 });
   const body = await request.json().catch(() => ({}));
   const { projectId } = body;
@@ -48,7 +55,10 @@ export async function PATCH(request: Request, { id }: { id: string }) {
   }
 }
 
-export async function DELETE(_request: Request, { id }: { id: string }) {
+export async function DELETE(request: Request, { id }: { id: string }) {
+  const authedUser = await authenticateRequest(request);
+  if (!authedUser) return unauthorized();
+
   if (!id) return Response.json({ error: 'Not found' }, { status: 404 });
   const client = await pool.connect();
   try {
