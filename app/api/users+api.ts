@@ -1,5 +1,5 @@
 import { pool } from '@/lib/pool';
-import { authenticateRequest } from '@/lib/auth';
+import { authenticateRequest, unauthorized, forbidden } from '@/lib/auth';
 
 function parseNameParts(name: string): { firstName: string; lastName: string } {
   const parts = (name || 'User').trim().split(/\s+/);
@@ -31,6 +31,8 @@ function toFrontendUser(u: any) {
 
 export async function GET(request: Request) {
   try {
+    const authedUser = await authenticateRequest(request);
+    if (!authedUser) return unauthorized();
     const url = new URL(request.url);
     const type = url.searchParams.get('type'); // 'internal' | 'client' | null (all)
     let query = `SELECT * FROM "User" WHERE status != 'DISABLED'`;
@@ -50,6 +52,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const authedUser = await authenticateRequest(request);
+    if (!authedUser) return unauthorized();
     const body = await request.json();
     if (!body.id) return Response.json({ error: 'id required' }, { status: 400 });
 
@@ -138,6 +142,8 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const authedUser = await authenticateRequest(request);
+    if (!authedUser) return unauthorized();
     const body = await request.json();
     if (!body.id) return Response.json({ error: 'id required' }, { status: 400 });
 

@@ -1,6 +1,7 @@
 import { pool } from '@/lib/pool';
+import type { Pool } from 'pg';
 import type { Quote, ProjectPriority } from '@/types/quote';
-import { authenticateRequest, unauthorized } from '@/lib/auth';
+import { authenticateRequest, unauthorized, forbidden } from '@/lib/auth';
 
 function dbPriorityToFrontend(p: string | null | undefined): ProjectPriority {
   switch (p) {
@@ -139,8 +140,10 @@ async function runBackfillOnce(db: Pool): Promise<void> {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const authedUser = await authenticateRequest(request);
+    if (!authedUser) return unauthorized();
     runBackfillOnce(pool).catch(() => {});
     const result = await pool.query(`SELECT * FROM "Project" ORDER BY "createdAt" DESC`);
     return Response.json(result.rows.map(toFrontendQuote));
@@ -156,6 +159,18 @@ export async function POST(request: Request) {
     if (!authedUser) return unauthorized();
 
     const body: Quote = await request.json();
+
+    // Role enforcement: only org_admins may create projects with elevated
+    // priority or a pre-assigned assignee. Non-admins have those fields silently
+    // clamped to safe defaults rather than hard-rejected, to avoid breaking the
+    // normal quoting flow where the body may include default/null values.
+    const isElevatedPriority = (body as any).priority !== undefined &&
+      !['Normal', 'normal', undefined, null, ''].includes((body as any).priority);
+    const hasAssignee = !!(body as any).assignedToUserId;
+    if ((isElevatedPriority || hasAssignee) && authedUser.role !== 'org_admin') {
+      return forbidden('Only org admins may set priority or assign a project at creation');
+    }
+
     const projectNumber = await generateProjectNumber(pool);
 
     const result = await pool.query(
