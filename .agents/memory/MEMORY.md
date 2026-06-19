@@ -2,6 +2,7 @@
 - [Screenshot load gate](screenshot-load-gate.md) — the app's global "Loading…" (UserContext) gate often blocks the screenshot tool on this SSR Expo web app; verify via code + tsc instead.
 - [Operational table pages](operational-table-pages.md) — Quotes (`sales.tsx`) & Projects (`projects.tsx`) are sibling operational tables; keep in sync. Bulk selection must derive from full dataset; row menu must flip/clamp.
 - [SSR responsive shell](ssr-responsive-shell.md) — useWindowDimensions=0 on SSR reads as mobile; gate shell switch behind a `mounted` flag.
+- [Portal sidebar full-height](portal-sidebar-height.md) — set height:100vh on dash.layout (not flex:1+minHeight on sidebar); sidebar stretches naturally, no sticky needed.
 - [Operational responsive standard](operational-table-pages.md) — Projects/Quotes/Orgs/Contacts: ALL breakpoints render the same full desktop table in a HORIZONTAL ScrollView (px minWidth + flexGrow), no cards/col-hiding. Supersedes the old cards+compact plan.
 - [RN-web focus outline](rn-web-focus-outline.md) — focus-ring resets + a FIXED full-height vertical blue line on every page = Replit-PREVIEW-IFRAME ring (not app), gone in own tab; triage before any CSS fix.
 - [Overlay & header patterns](overlay-and-header-patterns.md) — floating menus must use `OverlayMenu`/Modal portal, never absolute siblings (they get clipped); detail pages use shared `PageBackHeader`.

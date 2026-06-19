@@ -3962,7 +3962,7 @@ const SIDEBAR_BG = '#000000';
 const SIDEBAR_ACTIVE = '#FF5A00';
 
 const dash = StyleSheet.create({
-  layout: { flex: 1, flexDirection: 'row', backgroundColor: '#F3F4F6', ...Platform.select({ web: { minHeight: '100vh' as any } as any, default: {} }) },
+  layout: { flexDirection: 'row', backgroundColor: '#F3F4F6', ...Platform.select({ web: { height: '100vh' as any, overflow: 'hidden' as any } as any, default: { flex: 1 } }) },
   layoutMobile: { flexDirection: 'column' },
 
   // Mobile top bar
@@ -4013,7 +4013,6 @@ const dash = StyleSheet.create({
     backgroundColor: SIDEBAR_BG,
     flexDirection: 'column',
     overflow: 'hidden' as any,
-    ...Platform.select({ web: { position: 'sticky' as any, top: 0, minHeight: '100vh' as any, alignSelf: 'flex-start' as any }, default: {} }),
   },
   sidebarHamburgerRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
