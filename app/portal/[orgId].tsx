@@ -2565,11 +2565,6 @@ export default function ClientPortal() {
           <Mail size={13} color="#fff" />
           <Text style={catStyles.needHelpEmailText}>Email Us</Text>
         </TouchableOpacity>
-        <View style={catStyles.needHelpDivider} />
-        <TouchableOpacity style={catStyles.needHelpCTABtn} onPress={() => setActiveView('submit')} activeOpacity={0.85}>
-          <ClipboardList size={14} color="#fff" />
-          <Text style={catStyles.needHelpCTAText}>Start a Project</Text>
-        </TouchableOpacity>
       </View>
     );
 
@@ -4431,10 +4426,10 @@ const catStyles = StyleSheet.create({
   needHelpItemBody: { fontSize: 12, color: TEXT_LIGHT, lineHeight: 17, marginTop: 2 },
   needHelpEmailBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
-    borderRadius: 8, paddingVertical: 8,
+    borderRadius: 8, paddingVertical: 9,
     backgroundColor: '#000',
   },
-  needHelpEmailText: { fontSize: 12, fontWeight: '600', color: '#fff' },
+  needHelpEmailText: { fontSize: 14, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
   needHelpCTABtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     backgroundColor: '#111827', borderRadius: 8, paddingVertical: 10,
