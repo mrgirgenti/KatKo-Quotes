@@ -6,22 +6,25 @@ description: How to make the Client Hub sidebar fill the full viewport height re
 # Portal sidebar full-height
 
 ## The rule
-Give `dash.layout` `height: '100vh'` (not `flex:1` + `minHeight`). The sidebar then stretches to fill it naturally — no `position:sticky`, no explicit height on the sidebar needed.
+Fix the global CSS root chain in `+html.tsx` first. Then `flex: 1` on the layout is enough — no `vh` units, no sticky, no explicit height on the sidebar.
 
-**Why:** `flex:1` only fills its parent when the parent has a defined height. The portal root is a conditional-steps View with no fixed height, so `flex:1` never reliably propagates. `minHeight: '100vh'` on the sidebar also failed because it requires the parent chain to have a defined height for flex-stretch to work. Setting an explicit `height: '100vh'` on the layout container itself is the reliable fix.
+**Why:** Every `vh` / `height: '100vh'` attempt on the sidebar failed because React Native Web's style pipeline doesn't reliably pass string viewport units, AND `flex: 1` alone only fills the parent when every ancestor has a defined height. `+html.tsx` was missing `height: 100%` on `html, body, #root, #__next`, so no flex chain ever reached the viewport.
 
 **How to apply:**
+
+Step 1 — `app/+html.tsx` FOCUS_RESET_CSS must include:
 ```js
-// dash.layout
-layout: {
-  flexDirection: 'row',
-  backgroundColor: '#F3F4F6',
-  ...Platform.select({
-    web: { height: '100vh' as any, overflow: 'hidden' as any } as any,
-    default: { flex: 1 },
-  }),
-}
-// dash.sidebar — NO position:sticky, NO height/minHeight
+'html,body,#root,#__next{height:100%;margin:0;padding:0;}' +
+```
+Add this BEFORE the outline-reset line. This is the foundation; without it no approach works.
+
+Step 2 — `dash.layout` (simple, no Platform.select needed):
+```js
+layout: { flex: 1, flexDirection: 'row', backgroundColor: '#F3F4F6' }
+```
+
+Step 3 — `dash.sidebar` (no explicit height, stretches naturally):
+```js
 sidebar: {
   backgroundColor: SIDEBAR_BG,
   flexDirection: 'column',
@@ -29,4 +32,4 @@ sidebar: {
 }
 ```
 
-The `overflow: 'hidden'` on the layout is safe because each view renders its own `ScrollView` for internal scrolling — the layout never needs to scroll.
+With `html/body/#root` at `height: 100%`, the flex chain propagates viewport height all the way down. The sidebar fills it via default `alignItems: stretch`. No `position: sticky`, no `100vh` string, no JS measurement needed.

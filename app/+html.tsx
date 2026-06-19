@@ -11,6 +11,7 @@ const FOCUS_RESET_CSS =
   // but adding them by name ensures specificity wins even if an injected stylesheet
   // adds a more-specific rule later. Keep real form controls (input/textarea/select)
   // out of these to preserve their native/custom focus styling.
+  'html,body,#root,#__next{height:100%;margin:0;padding:0;}' +
   'html,body,#root,#__next{outline:none!important;box-shadow:none!important;}' +
   'div:focus,div:focus-visible,[tabindex]:focus,[tabindex]:focus-visible{outline:none!important;box-shadow:none!important;}' +
   '[data-rnw-scrollview]:focus,[data-rnw-scrollview]:focus-visible{outline:none!important;box-shadow:none!important;}' +

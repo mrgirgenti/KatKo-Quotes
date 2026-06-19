@@ -3962,7 +3962,7 @@ const SIDEBAR_BG = '#000000';
 const SIDEBAR_ACTIVE = '#FF5A00';
 
 const dash = StyleSheet.create({
-  layout: { flexDirection: 'row', backgroundColor: '#F3F4F6', ...Platform.select({ web: { height: '100vh' as any, overflow: 'hidden' as any } as any, default: { flex: 1 } }) },
+  layout: { flex: 1, flexDirection: 'row', backgroundColor: '#F3F4F6' },
   layoutMobile: { flexDirection: 'column' },
 
   // Mobile top bar
