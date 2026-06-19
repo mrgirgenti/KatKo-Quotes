@@ -976,6 +976,7 @@ export default function ClientPortal() {
   type MpSortField = 'status' | 'project' | 'submitted' | 'inHands' | 'items' | 'total';
   const [mpSortField, setMpSortField] = useState<MpSortField>('submitted');
   const [mpSortDir, setMpSortDir] = useState<'asc' | 'desc'>('desc');
+  const [mpPage, setMpPage] = useState(1);
 
   const fileInputRef = useRef<any>(null);
   const mediaBinInputRef = useRef<any>(null);
@@ -1753,6 +1754,7 @@ export default function ClientPortal() {
   );
 
   const MyProjectsView = () => {
+    const PAGE_SIZE = 5;
     const normalSt = (s: string) => s.toUpperCase().replace('QUOTE_SENT', 'QUOTED');
 
     const displayed = orgProjects.filter(p => {
@@ -1794,19 +1796,14 @@ export default function ClientPortal() {
     const sortedDisplayed = [...displayed].sort((a, b) => {
       let valA: any, valB: any;
       switch (mpSortField) {
-        case 'status':
-          valA = normalSt(a.status); valB = normalSt(b.status); break;
-        case 'project':
-          valA = (a.title || '').toLowerCase(); valB = (b.title || '').toLowerCase(); break;
-        case 'submitted':
-          valA = new Date(a.createdAt).getTime(); valB = new Date(b.createdAt).getTime(); break;
+        case 'status': valA = normalSt(a.status); valB = normalSt(b.status); break;
+        case 'project': valA = (a.title || '').toLowerCase(); valB = (b.title || '').toLowerCase(); break;
+        case 'submitted': valA = new Date(a.createdAt).getTime(); valB = new Date(b.createdAt).getTime(); break;
         case 'inHands':
           valA = a.inHandsDate ? new Date(a.inHandsDate).getTime() : 0;
           valB = b.inHandsDate ? new Date(b.inHandsDate).getTime() : 0; break;
-        case 'items':
-          valA = a.lineItemCount || 0; valB = b.lineItemCount || 0; break;
-        case 'total':
-          valA = parseFloat(a.totalCost || '0'); valB = parseFloat(b.totalCost || '0'); break;
+        case 'items': valA = a.lineItemCount || 0; valB = b.lineItemCount || 0; break;
+        case 'total': valA = parseFloat(a.totalCost || '0'); valB = parseFloat(b.totalCost || '0'); break;
         default: valA = 0; valB = 0;
       }
       if (valA < valB) return mpSortDir === 'asc' ? -1 : 1;
@@ -1814,31 +1811,15 @@ export default function ClientPortal() {
       return 0;
     });
 
-    const SortTh = ({ field, label, width, flex, align }: {
-      field: typeof mpSortField; label: string;
-      width?: number; flex?: number; align?: 'left' | 'center' | 'right';
-    }) => {
-      const active = mpSortField === field;
-      const dir = mpSortDir;
-      return (
-        <TouchableOpacity
-          onPress={() => toggleSort(field)}
-          style={[mpStyles.thBtn, width ? { width } : undefined, flex ? { flex } : undefined]}
-        >
-          <Text style={[mpStyles.thText, active && mpStyles.thTextActive, align === 'right' && { textAlign: 'right' }, align === 'center' && { textAlign: 'center' }]}>
-            {label}
-          </Text>
-          {active
-            ? (dir === 'asc'
-              ? <ChevronUp size={10} color="#FF5A00" />
-              : <ChevronDown size={10} color="#FF5A00" />)
-            : <ArrowUpDown size={10} color="rgba(255,255,255,0.4)" />
-          }
-        </TouchableOpacity>
-      );
-    };
+    const ACTIVE_STATUSES = ['NEEDS_REVIEW', 'QUOTING', 'QUOTED', 'INVOICE_SENT', 'IN_PRODUCTION'];
+    const COMPLETED_STATUSES = ['COMPLETED', 'EXPIRED', 'CANCELLED'];
+    const activeProjects = sortedDisplayed.filter(p => ACTIVE_STATUSES.includes(normalSt(p.status)));
+    const completedProjects = sortedDisplayed.filter(p => COMPLETED_STATUSES.includes(normalSt(p.status)));
+
+    const totalPages = Math.max(1, Math.ceil(Math.max(activeProjects.length, completedProjects.length) / PAGE_SIZE));
 
     const hasActiveFilters = !!(mpStatusFilter || mpDateFrom || mpDateTo || mpCostMin || mpCostMax);
+    const advFilterCount = [mpDateFrom || mpDateTo, mpCostMin || mpCostMax].filter(Boolean).length;
 
     const clearAll = () => {
       setMpSearch('');
@@ -1854,7 +1835,6 @@ export default function ClientPortal() {
       { key: 'NEEDS_REVIEW', label: 'Needs Review' },
       { key: 'QUOTING', label: 'Being Quoted' },
       { key: 'QUOTED', label: 'Quote Ready' },
-      { key: 'INVOICE_SENT', label: 'Invoice Sent' },
       { key: 'IN_PRODUCTION', label: 'In Production' },
       { key: 'COMPLETED', label: 'Completed' },
     ];
@@ -1865,79 +1845,158 @@ export default function ClientPortal() {
       statusCounts[norm] = (statusCounts[norm] || 0) + 1;
     });
 
-    const isQuoteStatus = (s: string) => {
-      const n = normalSt(s);
-      return ['QUOTED', 'INVOICE_SENT', 'PAID', 'IN_PRODUCTION', 'COMPLETED'].includes(n);
+    const THUMB_COLORS = ['#FF5A00', '#2563EB', '#7C3AED', '#059669', '#DC2626', '#D97706', '#0891B2'];
+
+    const SortTh = ({ field, label, width, flex, align }: {
+      field: typeof mpSortField; label: string;
+      width?: number; flex?: number; align?: 'left' | 'right';
+    }) => {
+      const active = mpSortField === field;
+      const dir = mpSortDir;
+      return (
+        <TouchableOpacity
+          onPress={() => toggleSort(field)}
+          style={[mpStyles.thBtn, width ? { width } : undefined, flex ? { flex } : undefined]}
+        >
+          <Text style={[mpStyles.thText, active && mpStyles.thTextActive, align === 'right' && { textAlign: 'right' }]}>
+            {label}
+          </Text>
+          {active
+            ? (dir === 'asc' ? <ChevronUp size={10} color="#FF5A00" /> : <ChevronDown size={10} color="#FF5A00" />)
+            : <ArrowUpDown size={10} color="rgba(255,255,255,0.4)" />
+          }
+        </TouchableOpacity>
+      );
     };
 
-    const advFilterCount = [mpDateFrom || mpDateTo, mpCostMin || mpCostMax].filter(Boolean).length;
+    const ColHeaders = () => (
+      <View style={mpStyles.tableHeader}>
+        <View style={mpStyles.thumbCol} />
+        <SortTh field="project" label="PROJECT" flex={2} />
+        <SortTh field="status" label="STATUS" width={128} />
+        <SortTh field="inHands" label="DUE DATE" width={154} />
+        <SortTh field="items" label="PCS" width={58} align="right" />
+        <SortTh field="total" label="TOTAL" width={88} align="right" />
+        <View style={{ width: 88 }}>
+          <Text style={[mpStyles.thText, { textAlign: 'right' }]}>PER PCS</Text>
+        </View>
+        <View style={{ width: 148 }}>
+          <Text style={[mpStyles.thText, { textAlign: 'right' }]}>ACTION</Text>
+        </View>
+      </View>
+    );
 
-    const ACTIVE_STATUSES = ['NEEDS_REVIEW', 'QUOTING', 'QUOTED', 'INVOICE_SENT', 'IN_PRODUCTION'];
-    const COMPLETED_STATUSES = ['COMPLETED', 'EXPIRED', 'CANCELLED'];
-    const activeProjects = sortedDisplayed.filter(p => ACTIVE_STATUSES.includes(normalSt(p.status)));
-    const completedProjects = sortedDisplayed.filter(p => COMPLETED_STATUSES.includes(normalSt(p.status)));
-    const numCols = isMobile ? 1 : isTablet ? 2 : 4;
-    const cardW = isMobile ? '100%' : isTablet ? '48%' : '23.5%';
-
-    const renderPCard = (p: typeof orgProjects[0]) => {
-      const canView = isQuoteStatus(p.status);
-      const cost = p.totalCost && parseFloat(p.totalCost) > 0 ? `$${parseFloat(p.totalCost).toFixed(2)}` : null;
+    const renderRow = (p: PortalProject, idx: number) => {
+      const cost = p.totalCost && parseFloat(p.totalCost) > 0 ? parseFloat(p.totalCost) : null;
       const pcs = p.lineItemCount > 0 ? p.lineItemCount : null;
-      const cfg = PORTAL_STATUS_CONFIG[normalSt(p.status)] as any;
+      const perPcs = cost && pcs ? cost / pcs : null;
+      const thumbColor = THUMB_COLORS[(p.title.charCodeAt(0) || 0) % THUMB_COLORS.length];
+      const initial = (p.title.trim()[0] || '?').toUpperCase();
       return (
-        <View key={p.id} style={[pcStyles.card, { width: cardW as any }]}>
-          <View style={pcStyles.cardTop}>
-            <Text style={pcStyles.projectName} numberOfLines={2}>{p.title}</Text>
+        <View key={p.id} style={[mpStyles.tRow, idx % 2 === 1 && mpStyles.tRowAlt]}>
+          <View style={mpStyles.thumbCol}>
+            <View style={[mpStyles.thumb, { backgroundColor: thumbColor + '22' }]}>
+              <Text style={[mpStyles.thumbInitial, { color: thumbColor }]}>{initial}</Text>
+            </View>
+          </View>
+          <View style={{ flex: 2, paddingRight: 10, justifyContent: 'center' }}>
+            <Text style={mpStyles.tRowName} numberOfLines={2}>{p.title}</Text>
+          </View>
+          <View style={{ width: 128, justifyContent: 'center' }}>
             <StatusPill status={p.status} />
           </View>
-          {cfg && (
-            <View style={[pcStyles.thumbBanner, { backgroundColor: cfg.bg }]}>
-              <Text style={[pcStyles.thumbBannerLabel, { color: cfg.color }]}>{cfg.label.toUpperCase()}</Text>
-            </View>
-          )}
-          <View style={pcStyles.metaGrid}>
-            <View style={pcStyles.metaItem2}><Text style={pcStyles.metaLabel}>SUBMITTED</Text><Text style={pcStyles.metaValue}>{formatDate(p.createdAt)}</Text></View>
-            <View style={pcStyles.metaItem2}><Text style={pcStyles.metaLabel}>IN HANDS</Text><Text style={pcStyles.metaValue}>{p.inHandsDate ? formatDate(p.inHandsDate) : '—'}</Text></View>
-            <View style={pcStyles.metaItem2}><Text style={pcStyles.metaLabel}>PCS</Text><Text style={pcStyles.metaValue}>{pcs ?? '—'}</Text></View>
-            <View style={pcStyles.metaItem2}><Text style={pcStyles.metaLabel}>VALUE</Text><Text style={[pcStyles.metaValue, cost ? { color: BRAND } : {}]}>{cost ?? '—'}</Text></View>
+          <View style={{ width: 154, justifyContent: 'center' }}>
+            <Text style={mpStyles.tDue}>Due {p.inHandsDate ? formatDate(p.inHandsDate) : '\u2014'}</Text>
+            <Text style={mpStyles.tDueSub}>In Hands: {p.inHandsDate ? formatDate(p.inHandsDate) : '\u2014'}</Text>
           </View>
-          <ProjectPipeline status={p.status} />
-          <View style={pcStyles.cardFooter}>
-            {canView ? (
-              <TouchableOpacity style={pcStyles.viewBtn} onPress={() => handleViewProject(p.id)} activeOpacity={0.85}>
-                <Text style={pcStyles.viewBtnText}>View Project →</Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={pcStyles.pendingBadge}><Text style={pcStyles.pendingBadgeText}>Pending Quote</Text></View>
-            )}
+          <View style={{ width: 58, alignItems: 'flex-end', justifyContent: 'center' }}>
+            <Text style={mpStyles.tNum}>{pcs ?? '\u2014'}</Text>
+          </View>
+          <View style={{ width: 88, alignItems: 'flex-end', justifyContent: 'center' }}>
+            <Text style={[mpStyles.tNum, cost ? mpStyles.tNumBold : undefined]}>
+              {cost ? `$${cost.toFixed(2)}` : '\u2014'}
+            </Text>
+          </View>
+          <View style={{ width: 88, alignItems: 'flex-end', justifyContent: 'center' }}>
+            <Text style={mpStyles.tNum}>{perPcs ? `$${perPcs.toFixed(2)}` : '\u2014'}</Text>
+          </View>
+          <View style={{ width: 148, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+            <TouchableOpacity style={mpStyles.viewBtn} onPress={() => handleViewProject(p.id)} activeOpacity={0.85}>
+              <Text style={mpStyles.viewBtnText}>View Project</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={mpStyles.dotsMenuBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={mpStyles.dotsMenuBtnText}>{String.fromCharCode(8942)}</Text>
+            </TouchableOpacity>
           </View>
         </View>
       );
     };
 
-    const renderSection = (title: string, count: number, projects: typeof orgProjects) => {
+    const renderSection = (
+      title: string,
+      projects: PortalProject[],
+      viewAllLabel: string,
+      filterStatus: string | null,
+    ) => {
       if (projects.length === 0) return null;
+      const pagedRows = projects.slice((mpPage - 1) * PAGE_SIZE, mpPage * PAGE_SIZE);
+      if (pagedRows.length === 0) return null;
       return (
-        <View style={pcStyles.section}>
-          <View style={pcStyles.sectionHeader}>
-            <Text style={pcStyles.sectionTitle}>{title}</Text>
-            <View style={pcStyles.sectionBadge}><Text style={pcStyles.sectionBadgeText}>{count}</Text></View>
+        <View style={mpStyles.section} key={title}>
+          <View style={mpStyles.sectionBar}>
+            <Text style={mpStyles.sectionBarTitle}>{title}</Text>
+            <TouchableOpacity onPress={() => { setMpStatusFilter(filterStatus); setMpPage(1); }}>
+              <Text style={mpStyles.viewAllLink}>{viewAllLabel} {String.fromCharCode(8594)}</Text>
+            </TouchableOpacity>
           </View>
-          <View style={[pcStyles.cardGrid, numCols === 1 && { gap: 12 }]}>
-            {projects.map(renderPCard)}
-          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={isMobile}>
+            <View style={{ minWidth: 780 }}>
+              <ColHeaders />
+              {pagedRows.map((p, i) => renderRow(p, i))}
+            </View>
+          </ScrollView>
+        </View>
+      );
+    };
+
+    const Pagination = () => {
+      if (totalPages <= 1) return null;
+      return (
+        <View style={mpStyles.pagination}>
+          <TouchableOpacity
+            style={[mpStyles.pageBtn, mpPage === 1 && mpStyles.pageBtnDisabled]}
+            onPress={() => setMpPage(p => Math.max(1, p - 1))}
+            disabled={mpPage === 1}
+          >
+            <ChevronLeft size={16} color={mpPage === 1 ? '#D1D5DB' : TEXT} />
+          </TouchableOpacity>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+            <TouchableOpacity
+              key={page}
+              style={[mpStyles.pageBtn, page === mpPage && mpStyles.pageBtnActive]}
+              onPress={() => setMpPage(page)}
+            >
+              <Text style={[mpStyles.pageBtnText, page === mpPage && mpStyles.pageBtnTextActive]}>{page}</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity
+            style={[mpStyles.pageBtn, mpPage === totalPages && mpStyles.pageBtnDisabled]}
+            onPress={() => setMpPage(p => Math.min(totalPages, p + 1))}
+            disabled={mpPage === totalPages}
+          >
+            <ChevronRight size={16} color={mpPage === totalPages ? '#D1D5DB' : TEXT} />
+          </TouchableOpacity>
         </View>
       );
     };
 
     return (
       <View style={{ flex: 1 }}>
-        {/* White header matching admin */}
         <View style={mpStyles.header}>
           <View style={mpStyles.headerTop}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View>
               <Text style={mpStyles.headerTitle}>My Projects</Text>
-              <Text style={mpStyles.headerCount}>{orgProjects.length} project{orgProjects.length !== 1 ? 's' : ''}</Text>
+              <Text style={mpStyles.headerSubtitle}>Track the status of your projects in real time.</Text>
             </View>
             <TouchableOpacity style={mpStyles.startProjectBtn} onPress={() => setActiveView('submit')} activeOpacity={0.85}>
               <Plus size={14} color="#fff" />
@@ -1945,52 +2004,46 @@ export default function ClientPortal() {
             </TouchableOpacity>
           </View>
 
-          {/* Status pills — always visible */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={mpStyles.pillsScroll}
-            contentContainerStyle={mpStyles.pillsRow}
-          >
-            {STATUS_PILLS_CFG.map(pill => {
-              const count = pill.key === null ? orgProjects.length : (statusCounts[pill.key] ?? 0);
-              const active = mpStatusFilter === pill.key;
-              const cfg = pill.key ? PORTAL_STATUS_CONFIG[pill.key] : null;
-              return (
-                <TouchableOpacity
-                  key={String(pill.key)}
-                  style={[
-                    mpStyles.pill,
-                    active && mpStyles.pillActive,
-                    active && cfg ? { backgroundColor: cfg.bg, borderColor: cfg.color } : null,
-                  ]}
-                  onPress={() => setMpStatusFilter(pill.key)}
-                >
-                  <Text style={[
-                    mpStyles.pillText,
-                    active && mpStyles.pillTextActive,
-                    active && cfg ? { color: cfg.color } : null,
-                  ]}>
-                    {pill.label}
-                  </Text>
-                  <View style={[mpStyles.pillCount, active && cfg ? { backgroundColor: cfg.color } : null]}>
-                    <Text style={[mpStyles.pillCountText, active && cfg ? { color: '#fff' } : null]}>{count}</Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {/* Search + filter toggle */}
-          <View style={mpStyles.searchRow}>
+          <View style={mpStyles.controlsRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1, flexShrink: 1 }}>
+              <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                {STATUS_PILLS_CFG.map(pill => {
+                  const count = pill.key === null ? orgProjects.length : (statusCounts[pill.key] ?? 0);
+                  const active = mpStatusFilter === pill.key;
+                  const cfg = pill.key ? PORTAL_STATUS_CONFIG[pill.key] : null;
+                  return (
+                    <TouchableOpacity
+                      key={String(pill.key)}
+                      style={[
+                        mpStyles.pill,
+                        active && mpStyles.pillActive,
+                        active && cfg ? { backgroundColor: cfg.bg, borderColor: cfg.color } : null,
+                      ]}
+                      onPress={() => { setMpStatusFilter(pill.key); setMpPage(1); }}
+                    >
+                      <Text style={[
+                        mpStyles.pillText,
+                        active && mpStyles.pillTextActive,
+                        active && cfg ? { color: cfg.color } : null,
+                      ]}>
+                        {pill.label}
+                      </Text>
+                      <View style={[mpStyles.pillCount, active && cfg ? { backgroundColor: cfg.color } : null]}>
+                        <Text style={[mpStyles.pillCountText, active && cfg ? { color: '#fff' } : null]}>{count}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
             <View style={mpStyles.searchBox}>
               <Search size={15} color="#9CA3AF" />
               <TextInput
                 style={mpStyles.searchInput}
-                placeholder="Search projects by name…"
+                placeholder="Search projects..."
                 placeholderTextColor="#9CA3AF"
                 value={mpSearch}
-                onChangeText={setMpSearch}
+                onChangeText={v => { setMpSearch(v); setMpPage(1); }}
               />
               {mpSearch.length > 0 && (
                 <TouchableOpacity onPress={() => setMpSearch('')}>
@@ -2011,7 +2064,6 @@ export default function ClientPortal() {
             </TouchableOpacity>
           </View>
 
-          {/* Advanced filter panel — inside header so border falls below table header */}
           {mpShowFilters && (
             <View style={mpStyles.filterPanel}>
               <Text style={mpStyles.filterPanelTitle}>ADVANCED FILTERS</Text>
@@ -2019,12 +2071,8 @@ export default function ClientPortal() {
                 <View style={mpStyles.filterField}>
                   <Text style={mpStyles.filterLabel}>From Date</Text>
                   {Platform.OS === 'web' ? (
-                    <input
-                      type="date"
-                      value={mpDateFrom}
-                      onChange={(e: any) => setMpDateFrom(e.target.value)}
-                      style={{ border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: TEXT, backgroundColor: '#fff', outline: 'none', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' } as any}
-                    />
+                    <input type="date" value={mpDateFrom} onChange={(e: any) => setMpDateFrom(e.target.value)}
+                      style={{ border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: TEXT, backgroundColor: '#fff', outline: 'none', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' } as any} />
                   ) : (
                     <TextInput style={mpStyles.filterInput} value={mpDateFrom} onChangeText={setMpDateFrom} placeholder="YYYY-MM-DD" placeholderTextColor="#9CA3AF" />
                   )}
@@ -2032,12 +2080,8 @@ export default function ClientPortal() {
                 <View style={mpStyles.filterField}>
                   <Text style={mpStyles.filterLabel}>To Date</Text>
                   {Platform.OS === 'web' ? (
-                    <input
-                      type="date"
-                      value={mpDateTo}
-                      onChange={(e: any) => setMpDateTo(e.target.value)}
-                      style={{ border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: TEXT, backgroundColor: '#fff', outline: 'none', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' } as any}
-                    />
+                    <input type="date" value={mpDateTo} onChange={(e: any) => setMpDateTo(e.target.value)}
+                      style={{ border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: TEXT, backgroundColor: '#fff', outline: 'none', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' } as any} />
                   ) : (
                     <TextInput style={mpStyles.filterInput} value={mpDateTo} onChangeText={setMpDateTo} placeholder="YYYY-MM-DD" placeholderTextColor="#9CA3AF" />
                   )}
@@ -2058,11 +2102,12 @@ export default function ClientPortal() {
               </View>
             </View>
           )}
-
         </View>
 
-        {/* Project cards */}
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40, gap: 12 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40, gap: 24 }}
+          showsVerticalScrollIndicator={false}
+        >
           {projectsLoading ? (
             <ActivityIndicator color={BRAND} style={{ marginTop: 40 }} />
           ) : sortedDisplayed.length === 0 ? (
@@ -2075,9 +2120,7 @@ export default function ClientPortal() {
                 />
               ) : (
                 <View style={mpStyles.ctaCard}>
-                  <View style={mpStyles.ctaIconWrap}>
-                    <ClipboardList size={32} color={BRAND} />
-                  </View>
+                  <View style={mpStyles.ctaIconWrap}><ClipboardList size={32} color={BRAND} /></View>
                   <Text style={mpStyles.ctaTitle}>No projects yet</Text>
                   <Text style={mpStyles.ctaSub}>
                     Ready to get started? Submit your first print request and we'll take it from there.
@@ -2090,16 +2133,11 @@ export default function ClientPortal() {
               )}
             </View>
           ) : (
-            <View style={{ gap: 28 }}>
-              {renderSection('ACTIVE PROJECTS', activeProjects.length, activeProjects)}
-              {renderSection('COMPLETED PROJECTS', completedProjects.length, completedProjects)}
-              {sortedDisplayed.length > 0 && (
-                <Text style={mpStyles.resultCount}>
-                  {sortedDisplayed.length} project{sortedDisplayed.length !== 1 ? 's' : ''}
-                  {orgProjects.length !== sortedDisplayed.length ? ` of ${orgProjects.length}` : ''}
-                </Text>
-              )}
-            </View>
+            <>
+              {renderSection('ACTIVE PROJECTS', activeProjects, 'View all active', null)}
+              {renderSection('COMPLETED PROJECTS', completedProjects, 'View all completed', 'COMPLETED')}
+              <Pagination />
+            </>
           )}
         </ScrollView>
       </View>
@@ -4591,20 +4629,35 @@ const mpStyles = StyleSheet.create({
   },
   headerTop: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 10,
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 14,
+    paddingBottom: 10,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '800',
     color: TEXT,
+    lineHeight: 30,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: TEXT_LIGHT,
+    marginTop: 2,
   },
   headerCount: {
     fontSize: 14,
     color: TEXT_LIGHT,
+  },
+
+  controlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    paddingTop: 2,
   },
 
   pillsScroll: { maxHeight: 46 },
@@ -4619,11 +4672,11 @@ const mpStyles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1.5,
     borderColor: BORDER,
-    backgroundColor: BG,
+    backgroundColor: '#fff',
   },
   pillActive: {
     borderColor: BRAND,
@@ -4661,7 +4714,6 @@ const mpStyles = StyleSheet.create({
     alignItems: 'center',
   },
   searchBox: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -4671,12 +4723,13 @@ const mpStyles = StyleSheet.create({
     borderColor: BORDER,
     paddingHorizontal: 12,
     paddingVertical: 9,
+    minWidth: 180,
   },
   searchInput: {
-    flex: 1,
     fontSize: 14,
     color: TEXT,
     outlineStyle: 'none',
+    minWidth: 100,
   } as any,
   filterToggleBtn: {
     width: 40,
@@ -4767,19 +4820,44 @@ const mpStyles = StyleSheet.create({
     fontWeight: '600',
   },
 
+  section: { gap: 0 },
+  sectionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#111827',
+    borderRadius: 10,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  sectionBarTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+  },
+  viewAllLink: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: BRAND,
+  },
+
   tableHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#111111',
+    backgroundColor: '#1F2937',
   },
   thText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
-    color: '#fff',
+    color: 'rgba(255,255,255,0.7)',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
   thBtn: {
     flexDirection: 'row',
@@ -4790,41 +4868,64 @@ const mpStyles = StyleSheet.create({
     color: '#FF5A00',
   },
 
-  projectRow: {
+  tRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
+    minHeight: 72,
   },
-  projectRowAlt: {
+  tRowAlt: {
     backgroundColor: '#FAFAFA',
   },
-  rowTitle: {
+  thumbCol: {
+    width: 52,
+    paddingRight: 8,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  thumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbInitial: {
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  tRowName: {
     fontSize: 13,
     fontWeight: '700',
     color: TEXT,
-    marginBottom: 2,
+    lineHeight: 18,
   },
-  rowMeta: {
-    fontSize: 12,
-    color: TEXT_LIGHT,
-  },
-  rowCost: {
+  tDue: {
     fontSize: 12,
     fontWeight: '600',
-    color: TEXT_LIGHT,
+    color: TEXT,
   },
-  rowCostFilled: {
-    color: '#111827',
-    fontWeight: '700',
+  tDueSub: {
+    fontSize: 11,
+    color: TEXT_LIGHT,
+    marginTop: 3,
+  },
+  tNum: {
     fontSize: 13,
+    fontWeight: '600',
+    color: TEXT,
+  },
+  tNumBold: {
+    fontWeight: '800',
+    color: '#111827',
   },
   viewBtn: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 7,
     backgroundColor: BRAND,
   },
@@ -4833,6 +4934,54 @@ const mpStyles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
+  dotsMenuBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  dotsMenuBtnText: {
+    fontSize: 18,
+    color: TEXT_LIGHT,
+    lineHeight: 20,
+  },
+
+  pagination: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingTop: 8,
+  },
+  pageBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: BORDER,
+    backgroundColor: '#fff',
+  },
+  pageBtnActive: {
+    backgroundColor: BRAND,
+    borderColor: BRAND,
+  },
+  pageBtnDisabled: {
+    backgroundColor: '#F9FAFB',
+    borderColor: '#E5E7EB',
+  },
+  pageBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: TEXT,
+  },
+  pageBtnTextActive: {
+    color: '#fff',
+  },
+
   resultCount: {
     fontSize: 11,
     color: TEXT_LIGHT,
@@ -4859,7 +5008,7 @@ const mpStyles = StyleSheet.create({
   startProjectBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: BRAND, borderRadius: 8,
-    paddingHorizontal: 14, paddingVertical: 8,
+    paddingHorizontal: 14, paddingVertical: 9,
   },
   startProjectBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
 
@@ -4870,288 +5019,17 @@ const mpStyles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8,
   },
   ctaIconWrap: {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: '#FFF4EE', alignItems: 'center', justifyContent: 'center',
-    marginBottom: 16,
+    width: 60, height: 60, borderRadius: 16, backgroundColor: '#FFF4EE',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
-  ctaTitle: { fontSize: 18, fontWeight: '700', color: TEXT, marginBottom: 8, textAlign: 'center' },
-  ctaSub: { fontSize: 13, color: TEXT_LIGHT, textAlign: 'center', lineHeight: 20, marginBottom: 20 },
+  ctaTitle: { fontSize: 18, fontWeight: '800', color: TEXT, marginBottom: 8 },
+  ctaSub: { fontSize: 13, color: TEXT_LIGHT, textAlign: 'center', lineHeight: 20, marginBottom: 20, maxWidth: 280 },
   ctaBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: BRAND, borderRadius: 10,
-    paddingHorizontal: 24, paddingVertical: 12,
+    paddingHorizontal: 20, paddingVertical: 12,
   },
   ctaBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-});
-
-const profStyles = StyleSheet.create({
-  section: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 22,
-    marginBottom: 18, borderWidth: 1, borderColor: BORDER,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4,
-  },
-  avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 },
-  avatar: {
-    width: 60, height: 60, borderRadius: 30,
-    backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center',
-  },
-  avatarText: { fontSize: 24, fontWeight: '700', color: '#fff' },
-  avatarLarge: {
-    width: 88, height: 88, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6,
-  },
-  avatarLargeText: { fontSize: 38, fontWeight: '700', color: '#fff' },
-  userName: { fontSize: 18, fontWeight: '700', color: TEXT, marginBottom: 2 },
-  userEmail: { fontSize: 13, color: TEXT_LIGHT, marginBottom: 6 },
-  orgBadge: {
-    alignSelf: 'flex-start', backgroundColor: '#FFF4EE', borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1, borderColor: '#FFD5BB',
-  },
-  orgBadgeText: { fontSize: 11, fontWeight: '600', color: BRAND },
-  infoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  infoCell: { flex: 1, minWidth: 120 },
-  infoLabel: { fontSize: 10, fontWeight: '700', color: TEXT_PLACEHOLDER, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 },
-  infoValue: { fontSize: 14, fontWeight: '500', color: TEXT },
-
-  sectionHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14,
-  },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: TEXT },
-  memberCount: { fontSize: 12, color: TEXT_LIGHT },
-
-  inviteRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  inviteInputWrap: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
-    borderWidth: 1, borderColor: BORDER, borderRadius: 9,
-    paddingHorizontal: 12, paddingVertical: 9, backgroundColor: BG,
-  },
-  inviteInput: { flex: 1, fontSize: 13, color: TEXT, outlineStyle: 'none' } as any,
-  inviteBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: BRAND, borderRadius: 9,
-    paddingHorizontal: 14, paddingVertical: 10,
-  },
-  inviteBtnDisabled: { opacity: 0.5 },
-  inviteBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  errorText: { fontSize: 12, color: '#DC2626', marginBottom: 8 },
-  successText: { fontSize: 12, color: '#16A34A', marginBottom: 8 },
-
-  memberList: { borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: BORDER },
-  memberRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#fff',
-  },
-  memberRowAlt: { backgroundColor: '#FAFAFA' },
-  memberAvatar: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  memberAvatarText: { fontSize: 13, fontWeight: '700', color: TEXT_MED },
-  memberName: { fontSize: 13, fontWeight: '600', color: TEXT },
-  memberEmail: { fontSize: 11, color: TEXT_LIGHT },
-  memberMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 0 },
-  rolePill: {
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20,
-    backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: BORDER,
-  },
-  rolePillAdmin: { backgroundColor: '#FFF4EE', borderColor: '#FFD5BB' },
-  rolePillText: { fontSize: 10, fontWeight: '600', color: TEXT_LIGHT },
-  rolePillTextAdmin: { color: BRAND },
-  invitedBadge: {
-    paddingHorizontal: 7, paddingVertical: 2, borderRadius: 20,
-    backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE',
-  },
-  invitedBadgeText: { fontSize: 10, fontWeight: '600', color: '#2563EB' },
-  removeBtn: { padding: 6, borderRadius: 6, backgroundColor: '#FEF2F2' },
-  emptyTeam: { alignItems: 'center', paddingVertical: 20 },
-  emptyTeamText: { fontSize: 13, color: TEXT_LIGHT },
-
-  editBlock: { marginBottom: 18 },
-  editLabel: { fontSize: 10, fontWeight: '700', color: TEXT_PLACEHOLDER, textTransform: 'uppercase', letterSpacing: 0.5 },
-  editBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    borderWidth: 1, borderColor: BRAND, borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 8,
-  },
-  editBtnText: { fontSize: 12, fontWeight: '600', color: BRAND },
-  editBtnDestructive: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    borderWidth: 1, borderColor: '#FECACA', borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#FEF2F2',
-  },
-  editBtnDestructiveText: { fontSize: 12, fontWeight: '600', color: '#DC2626' },
-
-  colorSwatches: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10 },
-  colorSwatch: {
-    width: 32, height: 32, borderRadius: 16,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  colorSwatchSelected: {
-    borderWidth: 3, borderColor: '#fff',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 4,
-  },
-
-  orgLogoPreview: {
-    borderRadius: 10, borderWidth: 1, borderColor: BORDER,
-    backgroundColor: '#F9FAFB', padding: 16, alignItems: 'center',
-  },
-  orgLogoEmpty: {
-    borderRadius: 10, borderWidth: 1, borderColor: BORDER, borderStyle: 'dashed' as any,
-    backgroundColor: '#F9FAFB', padding: 28, alignItems: 'center',
-  },
-  signOutBlock: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    marginTop: 8, padding: 16, borderRadius: 12,
-    borderWidth: 1, borderColor: '#FEE2E2', backgroundColor: '#FFF5F5',
-  },
-  signOutText: { fontSize: 14, fontWeight: '600', color: '#DC2626' },
-});
-
-const pvStyles = StyleSheet.create({
-  card: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 20,
-    borderWidth: 1, borderColor: BORDER,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4,
-  },
-  projectTitle: { fontSize: 22, fontWeight: '800', color: TEXT, marginBottom: 4 },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: TEXT, marginBottom: 2 },
-  metaLabel: { fontSize: 10, fontWeight: '700', color: TEXT_LIGHT, letterSpacing: 0.5 },
-  metaValue: { fontSize: 13, fontWeight: '600', color: TEXT, marginTop: 3 },
-  lineItemBlock: {},
-  lineItemName: { fontSize: 15, fontWeight: '700', color: TEXT },
-  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  detailLabel: { fontSize: 12, color: TEXT_LIGHT, width: 66 },
-  detailValue: { fontSize: 12, color: TEXT, fontWeight: '500', flex: 1 },
-  sizeBox: {
-    borderWidth: 1, borderColor: BORDER, borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 8, minWidth: 52, alignItems: 'center',
-  },
-  sizeLabel: { fontSize: 10, fontWeight: '700', color: TEXT_LIGHT },
-  sizeQty: { fontSize: 15, fontWeight: '700', color: TEXT, marginTop: 2 },
-  costRow: {
-    flexDirection: 'row', gap: 0,
-    borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 12,
-  },
-  costCell: { flex: 1, alignItems: 'center', gap: 4 },
-  costLabel: { fontSize: 10, fontWeight: '600', color: TEXT_LIGHT },
-  costAmt: { fontSize: 12, fontWeight: '700', color: TEXT },
-  lineItemFooter: {
-    marginTop: 20, backgroundColor: BRAND, borderRadius: 10, padding: 14,
-    alignItems: 'center',
-  },
-  priceHeaderRow: { flexDirection: 'row', paddingBottom: 6 },
-  priceColHeader: { width: 70, textAlign: 'right', fontSize: 10, fontWeight: '700', color: TEXT_LIGHT, letterSpacing: 0.4 },
-  priceDivider: { height: 1, backgroundColor: BORDER, marginVertical: 8 },
-  priceRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
-  priceRowLabel: { flex: 1, fontSize: 12, color: TEXT_LIGHT },
-  priceRowVal: { width: 70, textAlign: 'right', fontSize: 12, color: TEXT },
-  totalBlock: {
-    marginTop: 16, backgroundColor: BRAND, borderRadius: 10, padding: 16,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-  },
-  totalLabel: { fontSize: 14, fontWeight: '800', color: '#fff' },
-  totalAmt: { fontSize: 22, fontWeight: '900', color: '#fff' },
-});
-
-const binPickStyles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  sheet: { backgroundColor: '#fff', borderRadius: 14, width: '100%', maxWidth: 480, overflow: 'hidden' },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    padding: 18, borderBottomWidth: 1, borderBottomColor: BORDER,
-  },
-  title: { fontSize: 15, fontWeight: '700', color: TEXT },
-  searchRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 14, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: BORDER, backgroundColor: '#F9FAFB',
-  },
-  searchInput: { flex: 1, fontSize: 13, color: TEXT, outlineStyle: 'none' } as any,
-  fileRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 13, backgroundColor: '#fff',
-  },
-  fileRowAlt: { backgroundColor: '#FAFAFA' },
-  fileName: { fontSize: 13, fontWeight: '500', color: TEXT },
-  fileMeta: { fontSize: 11, color: TEXT_PLACEHOLDER, marginTop: 1 },
-});
-
-const homeStyles = StyleSheet.create({
-  qaRow: {
-    flexDirection: 'row', gap: 12, marginBottom: 20, flexWrap: 'wrap',
-  },
-  qaCard: {
-    flex: 1, minWidth: 120,
-    backgroundColor: '#fff', borderRadius: 12,
-    padding: 16, alignItems: 'center', gap: 10,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
-    borderWidth: 1, borderColor: BORDER,
-  },
-  qaIcon: {
-    width: 40, height: 40, borderRadius: 10, backgroundColor: '#FFF4EE',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  qaLabel: {
-    fontSize: 12, fontWeight: '600', color: TEXT, textAlign: 'center',
-  },
-  previewRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4,
-  },
-  previewThumb: {
-    width: 40, height: 40, borderRadius: 6, flexShrink: 0,
-    backgroundColor: '#F3F4F6',
-  },
-  previewThumbPlaceholder: {
-    width: 40, height: 40, borderRadius: 6, flexShrink: 0,
-    backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center',
-  },
-  previewThumbLabel: {
-    fontSize: 8, fontWeight: '800', color: BRAND, letterSpacing: 0.5,
-  },
-  previewName: {
-    flex: 1, fontSize: 12, color: TEXT, fontWeight: '500',
-  },
-  previewBadge: {
-    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 20,
-  },
-  previewBadgeText: {
-    fontSize: 10, fontWeight: '600',
-  },
-
-  catGrid: {
-    flexDirection: 'row', flexWrap: 'wrap',
-    paddingHorizontal: 14, paddingVertical: 10,
-  },
-  catCell: {
-    width: '33.33%',
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingVertical: 7, paddingHorizontal: 6,
-  },
-  catAvatar: {
-    width: 34, height: 34, borderRadius: 8,
-    alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0,
-  },
-  catAvatarText: { fontSize: 11, fontWeight: '800', color: '#fff' },
-  catName: { flex: 1, fontSize: 12, fontWeight: '600', color: TEXT, lineHeight: 15 },
-
-  mbUploadEmpty: {
-    paddingHorizontal: 18, paddingVertical: 14, gap: 10,
-  },
-  mbUploadBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    backgroundColor: BRAND, borderRadius: 8, paddingVertical: 9,
-  },
-  mbUploadBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  mbDropZone: {
-    borderWidth: 1.5, borderColor: '#D1D5DB', borderStyle: 'dashed' as any,
-    borderRadius: 10, paddingVertical: 16, paddingHorizontal: 12,
-    alignItems: 'center', gap: 5, backgroundColor: '#FAFAFA',
-  },
-  mbDropZoneText: { fontSize: 12, fontWeight: '600', color: TEXT_LIGHT, marginTop: 3 },
-  mbDropZoneSub: { fontSize: 10, color: TEXT_PLACEHOLDER },
 });
 
 const pcStyles = StyleSheet.create({
