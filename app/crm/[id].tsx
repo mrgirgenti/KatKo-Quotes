@@ -6196,10 +6196,12 @@ const styles = StyleSheet.create({
   },
   hubMetricsRow: {
     flexDirection: 'row' as const,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#EBEBEB',
+    borderRadius: 8,
+    marginHorizontal: 10,
+    marginBottom: 8,
     alignItems: 'center' as const,
   },
   hubMetricItem: {
@@ -6221,7 +6223,7 @@ const styles = StyleSheet.create({
   hubMetricDiv: {
     width: 1,
     height: 28,
-    backgroundColor: Colors.light.border,
+    backgroundColor: '#BBBBBB',
   },
   hubCollapseHeader: {
     flexDirection: 'row' as const,

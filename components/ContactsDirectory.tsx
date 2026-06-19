@@ -30,7 +30,7 @@ const HUB_CFG: Record<HubStatus, { label: string; color: string; bg: string; bor
   'Active':    { label: 'Active',    color: '#FFFFFF', bg: '#16A34A', border: '#15803D' },
   'Invited':   { label: 'Invited',   color: '#FFFFFF', bg: '#2563EB', border: '#1D4ED8' },
   'Disabled':  { label: 'Disabled',  color: '#FFFFFF', bg: '#4B5563', border: '#374151' },
-  'No Access': { label: 'No Access', color: '#FFFFFF', bg: '#9CA3AF', border: '#6B7280' },
+  'No Access': { label: 'No Access', color: '#FFFFFF', bg: '#4B5563', border: '#374151' },
 };
 
 type ColId = 'name' | 'org' | 'role' | 'email' | 'phone' | 'hub' | 'lastLogin' | 'status';
@@ -779,7 +779,7 @@ const styles = StyleSheet.create({
   statItem: { flex: 1, alignItems: 'center' },
   statValue: { ...metricValueStyle },
   statLabel: { ...metricLabelStyle, marginTop: 2 },
-  statDivider: { width: 1, height: 28, backgroundColor: Colors.light.border },
+  statDivider: { width: 1, height: 28, backgroundColor: '#BBBBBB' },
 
   pillsScroll: { maxHeight: 44 },
   pillsRow: { flexDirection: 'row', gap: DS.spacing.sm, paddingHorizontal: DS.spacing.xl, paddingBottom: DS.spacing.md },

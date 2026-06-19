@@ -339,6 +339,9 @@ const styles = StyleSheet.create({
   statsGrid: {
     gap: 12,
     marginBottom: 28,
+    backgroundColor: '#EBEBEB',
+    borderRadius: 12,
+    padding: 16,
   },
   statsRow: {
     flexDirection: 'row',

@@ -8,7 +8,7 @@ const HUB_COLORS: Record<HubStatus, { bg: string; color: string }> = {
   'Active':    { bg: '#16A34A', color: '#FFFFFF' },
   'Invited':   { bg: '#2563EB', color: '#FFFFFF' },
   'Disabled':  { bg: '#4B5563', color: '#FFFFFF' },
-  'No Access': { bg: '#9CA3AF', color: '#FFFFFF' },
+  'No Access': { bg: '#4B5563', color: '#FFFFFF' },
 };
 
 export function OrgStatusBadge({ status }: { status: CrmStatus }) {

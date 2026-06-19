@@ -2332,6 +2332,7 @@ const s = StyleSheet.create({
     paddingHorizontal: DS.spacing.xl,
     paddingVertical: DS.spacing.lg,
     gap: 12,
+    backgroundColor: '#EBEBEB',
   },
   kpiCard: {
     flexGrow: 1,

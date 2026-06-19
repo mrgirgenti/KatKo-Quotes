@@ -553,13 +553,13 @@ const styles = StyleSheet.create({
   // Metrics
   statsBar: {
     flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 12,
-    backgroundColor: '#FAFAFA', borderRadius: 10, borderWidth: 1, borderColor: Colors.light.border,
+    backgroundColor: '#EBEBEB', borderRadius: 10,
     paddingVertical: 12, paddingHorizontal: 16,
   },
   statItem: { flex: 1, alignItems: 'center', gap: 3 },
   statValue: { ...metricValueStyle },
   statLabel: { ...metricLabelStyle, textAlign: 'center' as const },
-  statDivider: { width: 1, height: 28, backgroundColor: Colors.light.border },
+  statDivider: { width: 1, height: 28, backgroundColor: '#BBBBBB' },
 
   // Chips
   chipsScroll: { flexGrow: 0, marginBottom: 12 },

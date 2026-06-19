@@ -983,7 +983,7 @@ const styles = StyleSheet.create({
   statItem: { flex: 1, alignItems: 'center' as const },
   statValue: { ...metricValueStyle },
   statLabel: { ...metricLabelStyle, marginTop: 2 },
-  statDivider: { width: 1, height: 28, backgroundColor: Colors.light.border },
+  statDivider: { width: 1, height: 28, backgroundColor: '#BBBBBB' },
 
   pillsScroll: { maxHeight: 44 },
   pillsRow: { flexDirection: 'row', gap: DS.spacing.sm, paddingHorizontal: DS.spacing.xl, paddingBottom: DS.spacing.md },

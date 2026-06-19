@@ -1010,10 +1010,8 @@ const s = StyleSheet.create({
 
   statsBar: {
     flexDirection: 'row',
-    backgroundColor: SURFACE,
+    backgroundColor: '#EBEBEB',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: BORDER,
     paddingVertical: 8,
     paddingHorizontal: 12,
     marginBottom: 20,
@@ -1022,7 +1020,7 @@ const s = StyleSheet.create({
   statItem: { flex: 1, alignItems: 'center' },
   statValue: { fontSize: 17, fontWeight: '800', color: TEXT },
   statLabel: { fontSize: 10, color: TEXT_LIGHT, marginTop: 2 },
-  statDivider: { width: 1, height: 26, backgroundColor: BORDER },
+  statDivider: { width: 1, height: 26, backgroundColor: '#BBBBBB' },
 
   filterRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
   searchBox: {
