@@ -60,6 +60,8 @@ import {
   Menu,
   ArrowUpDown,
   ChevronUp,
+  Grid2x2,
+  List,
 } from 'lucide-react-native';
 import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
 
@@ -929,6 +931,11 @@ export default function ClientPortal() {
   const [mediaBinLoading, setMediaBinLoading] = useState(false);
   const [mediaBinUploading, setMediaBinUploading] = useState(false);
   const [mediaBinSearch, setMediaBinSearch] = useState('');
+  const [mediaBinFilter, setMediaBinFilter] = useState<string>('All');
+  const [mediaBinSort, setMediaBinSort] = useState<'Newest' | 'Oldest' | 'A-Z'>('Newest');
+  const [mediaBinViewMode, setMediaBinViewMode] = useState<'grid' | 'list'>('grid');
+  const [catSearch, setCatSearch] = useState('');
+  const [catFilter, setCatFilter] = useState('All');
 
   const [artworkFromBin, setArtworkFromBin] = useState<MediaFile[]>([]);
   const [binPickerVisible, setBinPickerVisible] = useState(false);
@@ -1560,13 +1567,25 @@ export default function ClientPortal() {
       <Text style={dash.welcomeText}>Welcome back, <Text style={{ color: BRAND }}>{session?.userName}</Text></Text>
       <Text style={dash.welcomeSub}>{displayName} · Client Hub</Text>
 
+      {/* Quick Actions */}
+      <View style={homeStyles.qaRow}>
+        {([
+          { label: 'Start Project',   Icon: Plus,     action: () => setActiveView('submit') },
+          { label: 'View Quotes',     Icon: FileText, action: () => setActiveView('projects') },
+          { label: 'Upload Files',    Icon: Upload,   action: () => { setActiveView('artwork'); if (session) fetchMediaBin(session.orgId); } },
+          { label: 'Browse Catalogs', Icon: BookOpen, action: () => setActiveView('catalogs') },
+        ] as { label: string; Icon: any; action: () => void }[]).map(({ label, Icon, action }) => (
+          <TouchableOpacity key={label} style={homeStyles.qaCard} onPress={action} activeOpacity={0.85}>
+            <View style={homeStyles.qaIcon}><Icon size={20} color={BRAND} /></View>
+            <Text style={homeStyles.qaLabel}>{label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Main columns: Active Projects + Quotes */}
       <View style={dash.dashGrid}>
         <View style={{ flex: 1.4, minWidth: 260 }}>
-          <SectionCard
-            title="Active Projects"
-            count={activeProjects.length}
-            onViewAll={() => setActiveView('projects')}
-          >
+          <SectionCard title="Active Projects" count={activeProjects.length} onViewAll={() => setActiveView('projects')}>
             {projectsLoading
               ? <ActivityIndicator color={BRAND} style={{ marginVertical: 20 }} />
               : activeProjects.length === 0
@@ -1575,13 +1594,8 @@ export default function ClientPortal() {
             }
           </SectionCard>
         </View>
-
         <View style={{ flex: 1, minWidth: 220 }}>
-          <SectionCard
-            title="Quotes & Invoices"
-            count={quoteProjects.length}
-            onViewAll={() => setActiveView('projects')}
-          >
+          <SectionCard title="Quotes & Invoices" count={quoteProjects.length} onViewAll={() => setActiveView('projects')}>
             {projectsLoading
               ? <ActivityIndicator color={BRAND} style={{ marginVertical: 20 }} />
               : quoteProjects.length === 0
@@ -1597,9 +1611,47 @@ export default function ClientPortal() {
                   ))
             }
           </SectionCard>
+        </View>
+      </View>
 
+      {/* Bottom row: Catalogs + Media Bin */}
+      <View style={[dash.dashGrid, { marginTop: 0 }]}>
+        <View style={{ flex: 1, minWidth: 200 }}>
+          <SectionCard title="Product Catalogs" onViewAll={() => setActiveView('catalogs')}>
+            {catalogsLoading
+              ? <ActivityIndicator color={BRAND} style={{ marginVertical: 16 }} />
+              : clientCatalogs.length === 0
+                ? <EmptyState icon={<BookOpen size={22} color="#9CA3AF" />} title="No catalogs yet" sub="Product catalogs will appear here." />
+                : <View style={{ gap: 8 }}>
+                    {clientCatalogs.slice(0, 4).map(cat => (
+                      <View key={cat.id} style={homeStyles.previewRow}>
+                        <View style={[homeStyles.previewDot, { backgroundColor: BRAND }]} />
+                        <Text style={homeStyles.previewName} numberOfLines={1}>{cat.vendorName || cat.name}</Text>
+                        <View style={[homeStyles.previewBadge, { backgroundColor: '#FFF4EE' }]}>
+                          <Text style={[homeStyles.previewBadgeText, { color: BRAND }]}>{cat.category}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+            }
+          </SectionCard>
+        </View>
+        <View style={{ flex: 1, minWidth: 200 }}>
           <SectionCard title="Media Bin" onViewAll={() => { setActiveView('artwork'); if (session) fetchMediaBin(session.orgId); }}>
-            <EmptyState icon={<Layers size={22} color="#9CA3AF" />} title="No artwork yet" sub="Upload files in the Media Bin section to build your media library." />
+            {mediaBinFiles.length === 0
+              ? <EmptyState icon={<Layers size={22} color="#9CA3AF" />} title="No artwork yet" sub="Upload files to build your media library." />
+              : <View style={{ gap: 8 }}>
+                  {mediaBinFiles.slice(0, 4).map(f => (
+                    <View key={f.id} style={homeStyles.previewRow}>
+                      <View style={[homeStyles.previewDot, { backgroundColor: isImageMime(f.mimeType) ? '#10B981' : '#6366F1' }]} />
+                      <Text style={homeStyles.previewName} numberOfLines={1}>{f.originalName}</Text>
+                      <View style={[homeStyles.previewBadge, { backgroundColor: '#F3F4F6' }]}>
+                        <Text style={[homeStyles.previewBadgeText, { color: '#6B7280' }]}>{getMimeLabel(f.mimeType, f.originalName)}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+            }
           </SectionCard>
         </View>
       </View>
@@ -1855,24 +1907,14 @@ export default function ClientPortal() {
             </View>
           )}
 
-          {/* Black table header — inside header so the header border falls below it */}
-          <View style={mpStyles.tableHeader}>
-            <SortTh field="status"    label="STATUS"    width={110} />
-            <SortTh field="project"   label="PROJECT"   flex={1} />
-            <SortTh field="submitted" label="SUBMITTED" width={100} />
-            <SortTh field="inHands"   label="IN-HANDS"  width={100} />
-            <SortTh field="items"     label="ITEMS"     width={54} align="center" />
-            <SortTh field="total"     label="TOTAL"     width={84} align="right" />
-            <View style={{ width: 56 }} />
-          </View>
         </View>
 
-        {/* Project rows */}
-        <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+        {/* Project cards */}
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40, gap: 12 }} showsVerticalScrollIndicator={false}>
           {projectsLoading ? (
             <ActivityIndicator color={BRAND} style={{ marginTop: 40 }} />
           ) : sortedDisplayed.length === 0 ? (
-            <View style={{ paddingHorizontal: 20, paddingTop: 48, alignItems: 'center' }}>
+            <View style={{ paddingTop: 48, alignItems: 'center' }}>
               {hasActiveFilters || mpSearch ? (
                 <EmptyState
                   icon={<ClipboardList size={32} color="#9CA3AF" />}
@@ -1896,31 +1938,54 @@ export default function ClientPortal() {
               )}
             </View>
           ) : (
-            sortedDisplayed.map((p, idx) => {
+            sortedDisplayed.map(p => {
               const canView = isQuoteStatus(p.status);
-              const cost = p.totalCost && parseFloat(p.totalCost) > 0 ? `$${parseFloat(p.totalCost).toFixed(2)}` : '—';
+              const cost = p.totalCost && parseFloat(p.totalCost) > 0 ? `$${parseFloat(p.totalCost).toFixed(2)}` : null;
+              const pcs = p.lineItemCount > 0 ? p.lineItemCount : null;
               return (
-                <View key={p.id} style={[mpStyles.projectRow, idx % 2 === 1 && mpStyles.projectRowAlt]}>
-                  <View style={{ width: 110 }}>
+                <View key={p.id} style={pcStyles.card}>
+                  {/* Top: project name + status badge */}
+                  <View style={pcStyles.cardTop}>
+                    <Text style={pcStyles.projectName} numberOfLines={1}>{p.title}</Text>
                     <StatusPill status={p.status} />
                   </View>
-                  <View style={{ flex: 1, paddingRight: 10 }}>
-                    <Text style={mpStyles.rowTitle} numberOfLines={1}>{p.title}</Text>
-                    <ProjectPipeline status={p.status} />
+
+                  {/* Meta row */}
+                  <View style={pcStyles.metaRow}>
+                    <View style={pcStyles.metaItem}>
+                      <Text style={pcStyles.metaLabel}>SUBMITTED</Text>
+                      <Text style={pcStyles.metaValue}>{formatDate(p.createdAt)}</Text>
+                    </View>
+                    <View style={pcStyles.metaDivider} />
+                    <View style={pcStyles.metaItem}>
+                      <Text style={pcStyles.metaLabel}>IN HANDS</Text>
+                      <Text style={pcStyles.metaValue}>{p.inHandsDate ? formatDate(p.inHandsDate) : '—'}</Text>
+                    </View>
+                    <View style={pcStyles.metaDivider} />
+                    <View style={pcStyles.metaItem}>
+                      <Text style={pcStyles.metaLabel}>TOTAL PCS</Text>
+                      <Text style={pcStyles.metaValue}>{pcs ?? '—'}</Text>
+                    </View>
+                    <View style={pcStyles.metaDivider} />
+                    <View style={pcStyles.metaItem}>
+                      <Text style={pcStyles.metaLabel}>VALUE</Text>
+                      <Text style={[pcStyles.metaValue, cost ? { color: BRAND, fontWeight: '700' } : {}]}>{cost ?? '—'}</Text>
+                    </View>
                   </View>
-                  <Text style={[mpStyles.rowMeta, { width: 100 }]}>{formatDate(p.createdAt)}</Text>
-                  <Text style={[mpStyles.rowMeta, { width: 100 }]}>{p.inHandsDate ? formatDate(p.inHandsDate) : '—'}</Text>
-                  <Text style={[mpStyles.rowMeta, { width: 54, textAlign: 'center' }]}>
-                    {p.lineItemCount > 0 ? p.lineItemCount : '—'}
-                  </Text>
-                  <Text style={[mpStyles.rowCost, { width: 84, textAlign: 'right' }, (parseFloat(p.totalCost ?? '0') > 0) && mpStyles.rowCostFilled]}>
-                    {cost}
-                  </Text>
-                  <View style={{ width: 56, alignItems: 'flex-end' }}>
-                    {canView && (
-                      <TouchableOpacity style={mpStyles.viewBtn} onPress={() => handleViewProject(p.id)}>
-                        <Text style={mpStyles.viewBtnText}>View</Text>
+
+                  {/* Pipeline timeline */}
+                  <ProjectPipeline status={p.status} />
+
+                  {/* Footer */}
+                  <View style={pcStyles.cardFooter}>
+                    {canView ? (
+                      <TouchableOpacity style={pcStyles.viewBtn} onPress={() => handleViewProject(p.id)} activeOpacity={0.85}>
+                        <Text style={pcStyles.viewBtnText}>View Project →</Text>
                       </TouchableOpacity>
+                    ) : (
+                      <View style={pcStyles.pendingBadge}>
+                        <Text style={pcStyles.pendingBadgeText}>Pending Quote</Text>
+                      </View>
                     )}
                   </View>
                 </View>
@@ -1928,12 +1993,12 @@ export default function ClientPortal() {
             })
           )}
 
-          <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
+          {sortedDisplayed.length > 0 && (
             <Text style={mpStyles.resultCount}>
               {sortedDisplayed.length} project{sortedDisplayed.length !== 1 ? 's' : ''}
               {orgProjects.length !== sortedDisplayed.length ? ` of ${orgProjects.length}` : ''}
             </Text>
-          </View>
+          )}
         </ScrollView>
       </View>
     );
@@ -2239,19 +2304,63 @@ export default function ClientPortal() {
     );
   };
 
+  const MB_FILTER_CHIPS = ['All', 'Logos', 'Artwork', 'Proofs', 'Invoices', 'Mockups'];
+  const MB_SORT_OPTIONS: Array<'Newest' | 'Oldest' | 'A-Z'> = ['Newest', 'Oldest', 'A-Z'];
+
   const ArtworkView = () => {
-    const filtered = mediaBinSearch.trim()
+    const matchesFilter = (f: MediaFile) => {
+      if (mediaBinFilter === 'All') return true;
+      const ft = (f.fileType || '').toLowerCase();
+      const name = f.originalName.toLowerCase();
+      if (mediaBinFilter === 'Logos')    return ft === 'logo'    || name.includes('logo');
+      if (mediaBinFilter === 'Artwork')  return ft === 'artwork' || ft === 'design' || name.includes('artwork');
+      if (mediaBinFilter === 'Proofs')   return ft === 'proof'   || name.includes('proof');
+      if (mediaBinFilter === 'Invoices') return ft === 'invoice' || name.includes('invoice') || f.mimeType === 'application/pdf';
+      if (mediaBinFilter === 'Mockups')  return ft === 'mockup'  || name.includes('mockup');
+      return true;
+    };
+
+    const base = mediaBinSearch.trim()
       ? mediaBinFiles.filter(f => f.originalName.toLowerCase().includes(mediaBinSearch.toLowerCase()))
       : mediaBinFiles;
+
+    const filtered = base.filter(matchesFilter).sort((a, b) => {
+      if (mediaBinSort === 'Newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (mediaBinSort === 'Oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return a.originalName.localeCompare(b.originalName);
+    });
+
+    const renderFileCard = (file: MediaFile) => (
+      <View key={file.id} style={mbStyles.fileCard}>
+        <View style={mbStyles.filePreview}>
+          {isImageMime(file.mimeType) ? (
+            <Image source={{ uri: `/api/files/${file.id}?inline=true` }} style={mbStyles.previewImage} resizeMode="cover" />
+          ) : (
+            <View style={mbStyles.fileTypeBox}>
+              <Text style={mbStyles.fileTypeLabel}>{getMimeLabel(file.mimeType, file.originalName)}</Text>
+            </View>
+          )}
+        </View>
+        <View style={mbStyles.fileMeta}>
+          <Text style={mbStyles.fileName} numberOfLines={1}>{file.originalName}</Text>
+          <Text style={mbStyles.fileSize}>{formatBytes(file.fileSize)} · {formatDate(file.createdAt)}</Text>
+        </View>
+        <View style={mbStyles.fileActions}>
+          <TouchableOpacity style={mbStyles.fileActionBtn} onPress={() => { if (Platform.OS === 'web') { const a = document.createElement('a'); a.href = `/api/files/${file.id}`; a.download = file.originalName; a.click(); } }}>
+            <Download size={14} color={TEXT_LIGHT} />
+          </TouchableOpacity>
+          <TouchableOpacity style={[mbStyles.fileActionBtn, { borderColor: '#FECACA', backgroundColor: '#FEF2F2' }]} onPress={() => deleteMediaBinFile(file.id)}>
+            <Trash2 size={14} color="#DC2626" />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+
     return (
       <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
         <View style={dash.pageTitleRow}>
           <Text style={dash.pageTitle}>Media Bin</Text>
-          <TouchableOpacity
-            style={mbStyles.uploadBtn}
-            onPress={() => mediaBinInputRef.current?.click?.()}
-            disabled={mediaBinUploading}
-          >
+          <TouchableOpacity style={mbStyles.uploadBtn} onPress={() => mediaBinInputRef.current?.click?.()} disabled={mediaBinUploading}>
             {mediaBinUploading
               ? <ActivityIndicator size="small" color="#fff" />
               : <><Upload size={14} color="#fff" /><Text style={mbStyles.uploadBtnText}>Upload Files</Text></>
@@ -2259,17 +2368,8 @@ export default function ClientPortal() {
           </TouchableOpacity>
         </View>
         {Platform.OS === 'web' && (
-          <input
-            ref={mediaBinInputRef}
-            type="file"
-            accept=".ai,.svg,.png,.jpg,.jpeg,.pdf"
-            multiple
-            style={{ display: 'none' }}
-            onChange={(e: any) => {
-              const files = Array.from((e.target.files || []) as globalThis.File[]);
-              if (files.length > 0) handleMediaBinUpload(files);
-              e.target.value = '';
-            }}
+          <input ref={mediaBinInputRef} type="file" accept=".ai,.svg,.png,.jpg,.jpeg,.pdf" multiple style={{ display: 'none' }}
+            onChange={(e: any) => { const files = Array.from((e.target.files || []) as globalThis.File[]); if (files.length > 0) handleMediaBinUpload(files); e.target.value = ''; }}
           />
         )}
         <View ref={mediaBinDropRef} style={mbStyles.dropZone}>
@@ -2277,70 +2377,66 @@ export default function ClientPortal() {
           <Text style={mbStyles.dropZoneText}>Drop files here to upload  ·  AI, SVG, PNG, JPG, PDF</Text>
         </View>
 
+        {/* Search */}
         <View style={mbStyles.searchRow}>
           <Search size={14} color={TEXT_PLACEHOLDER} style={{ marginRight: 8 }} />
-          <TextInput
-            style={mbStyles.searchInput}
-            placeholder="Search files…"
-            placeholderTextColor={TEXT_PLACEHOLDER}
-            value={mediaBinSearch}
-            onChangeText={setMediaBinSearch}
-          />
+          <TextInput style={mbStyles.searchInput} placeholder="Search files…" placeholderTextColor={TEXT_PLACEHOLDER} value={mediaBinSearch} onChangeText={setMediaBinSearch} />
           {mediaBinSearch.length > 0 && (
-            <TouchableOpacity onPress={() => setMediaBinSearch('')} style={{ padding: 4 }}>
-              <X size={14} color={TEXT_LIGHT} />
-            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setMediaBinSearch('')} style={{ padding: 4 }}><X size={14} color={TEXT_LIGHT} /></TouchableOpacity>
           )}
+        </View>
+
+        {/* Filter chips + Sort + View toggle */}
+        <View style={mbStyles.controlBar}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              {MB_FILTER_CHIPS.map(chip => (
+                <TouchableOpacity key={chip} style={[mbStyles.filterChip, mediaBinFilter === chip && mbStyles.filterChipActive]} onPress={() => setMediaBinFilter(chip)} activeOpacity={0.8}>
+                  <Text style={[mbStyles.filterChipText, mediaBinFilter === chip && mbStyles.filterChipTextActive]}>{chip}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+          <View style={mbStyles.controlRight}>
+            {MB_SORT_OPTIONS.map(s => (
+              <TouchableOpacity key={s} style={[mbStyles.sortBtn, mediaBinSort === s && mbStyles.sortBtnActive]} onPress={() => setMediaBinSort(s)} activeOpacity={0.8}>
+                <Text style={[mbStyles.sortBtnText, mediaBinSort === s && mbStyles.sortBtnTextActive]}>{s}</Text>
+              </TouchableOpacity>
+            ))}
+            <View style={mbStyles.viewToggle}>
+              <TouchableOpacity style={[mbStyles.viewToggleBtn, mediaBinViewMode === 'grid' && mbStyles.viewToggleBtnActive]} onPress={() => setMediaBinViewMode('grid')}>
+                <Grid2x2 size={14} color={mediaBinViewMode === 'grid' ? BRAND : TEXT_LIGHT} />
+              </TouchableOpacity>
+              <TouchableOpacity style={[mbStyles.viewToggleBtn, mediaBinViewMode === 'list' && mbStyles.viewToggleBtnActive]} onPress={() => setMediaBinViewMode('list')}>
+                <List size={14} color={mediaBinViewMode === 'list' ? BRAND : TEXT_LIGHT} />
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
 
         {mediaBinLoading ? (
           <ActivityIndicator size="large" color={BRAND} style={{ marginTop: 32 }} />
-        ) : filtered.length === 0 && mediaBinSearch ? (
-          <EmptyState
-            icon={<Search size={32} color="#D1D5DB" />}
-            title="No matching files"
-            sub={`No files found for "${mediaBinSearch}"`}
-          />
+        ) : filtered.length === 0 && (mediaBinSearch || mediaBinFilter !== 'All') ? (
+          <EmptyState icon={<Search size={32} color="#D1D5DB" />} title="No matching files" sub="Try a different search or filter." />
         ) : mediaBinFiles.length === 0 ? (
-          <EmptyState
-            icon={<Layers size={40} color="#D1D5DB" />}
-            title="No files in your Media Bin"
-            sub="Upload reusable artwork and design files here. They'll be available for your team and future projects."
-          />
-        ) : (
+          <EmptyState icon={<Layers size={40} color="#D1D5DB" />} title="No files in your Media Bin" sub="Upload reusable artwork and design files here. They'll be available for your team and future projects." />
+        ) : mediaBinViewMode === 'grid' ? (
           <View style={mbStyles.visualGrid}>
             {filtered.map(file => (
               <View key={file.id} style={mbStyles.visualCard}>
                 <View style={mbStyles.visualThumb}>
                   {isImageMime(file.mimeType) ? (
-                    <Image
-                      source={{ uri: `/api/files/${file.id}?inline=true` }}
-                      style={mbStyles.visualThumbImg}
-                      resizeMode="cover"
-                    />
+                    <Image source={{ uri: `/api/files/${file.id}?inline=true` }} style={mbStyles.visualThumbImg} resizeMode="cover" />
                   ) : (
                     <View style={mbStyles.visualThumbPlaceholder}>
                       <Text style={mbStyles.visualThumbLabel}>{getMimeLabel(file.mimeType, file.originalName)}</Text>
                     </View>
                   )}
                   <View style={mbStyles.visualThumbActions}>
-                    <TouchableOpacity
-                      style={mbStyles.visualThumbBtn}
-                      onPress={() => {
-                        if (Platform.OS === 'web') {
-                          const a = document.createElement('a');
-                          a.href = `/api/files/${file.id}`;
-                          a.download = file.originalName;
-                          a.click();
-                        }
-                      }}
-                    >
+                    <TouchableOpacity style={mbStyles.visualThumbBtn} onPress={() => { if (Platform.OS === 'web') { const a = document.createElement('a'); a.href = `/api/files/${file.id}`; a.download = file.originalName; a.click(); } }}>
                       <Download size={13} color="#fff" />
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[mbStyles.visualThumbBtn, { backgroundColor: 'rgba(220,38,38,0.8)' }]}
-                      onPress={() => deleteMediaBinFile(file.id)}
-                    >
+                    <TouchableOpacity style={[mbStyles.visualThumbBtn, { backgroundColor: 'rgba(220,38,38,0.8)' }]} onPress={() => deleteMediaBinFile(file.id)}>
                       <Trash2 size={13} color="#fff" />
                     </TouchableOpacity>
                   </View>
@@ -2352,35 +2448,67 @@ export default function ClientPortal() {
               </View>
             ))}
           </View>
+        ) : (
+          <View style={mbStyles.fileGrid}>{filtered.map(renderFileCard)}</View>
         )}
       </ScrollView>
     );
   };
 
   const CAT_COLORS: Record<string, string> = {
-    Apparel: '#4F46E5', Promotional: '#FF5A00', Accessories: '#0891B2', Signage: '#16A34A', Other: '#6B7280',
+    Apparel: '#4F46E5', Promotional: '#FF5A00', Accessories: '#0891B2', Signage: '#16A34A',
+    Streetwear: '#9333EA', Workwear: '#0891B2', Other: '#6B7280',
   };
+  const CAT_FILTER_CHIPS = ['All', 'Apparel', 'Streetwear', 'Promotional', 'Workwear'];
 
   const CatalogsView = () => {
     const numCols = isMobile ? 1 : isTablet ? 2 : 3;
+    const displayed = clientCatalogs.filter(cat => {
+      const matchesCat = catFilter === 'All' || cat.category === catFilter;
+      const q = catSearch.trim().toLowerCase();
+      const matchesSearch = !q || cat.name.toLowerCase().includes(q) || (cat.vendorName || '').toLowerCase().includes(q) || (cat.description || '').toLowerCase().includes(q);
+      return matchesCat && matchesSearch;
+    });
     return (
       <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
-        <Text style={dash.pageTitle}>Product Catalogs</Text>
-        <Text style={{ fontSize: 13, color: TEXT_LIGHT, marginBottom: 20, marginTop: -8 }}>Browse product catalogs shared by Katalyst Ko</Text>
+        {/* Header row */}
+        <View style={catStyles.headerRow}>
+          <View>
+            <Text style={dash.pageTitle}>Product Catalogs</Text>
+            <Text style={catStyles.headerSub}>Browse product lines shared by Katalyst Ko</Text>
+          </View>
+          <TouchableOpacity style={catStyles.requestBtn} onPress={() => setActiveView('submit')} activeOpacity={0.85}>
+            <Plus size={14} color="#fff" />
+            <Text style={catStyles.requestBtnText}>Request a Product</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Search + filter chips */}
+        <View style={catStyles.searchRow}>
+          <Search size={14} color={TEXT_PLACEHOLDER} style={{ marginRight: 8 }} />
+          <TextInput style={catStyles.searchInput} placeholder="Search catalogs by brand or product…" placeholderTextColor={TEXT_PLACEHOLDER} value={catSearch} onChangeText={setCatSearch} />
+          {catSearch.length > 0 && <TouchableOpacity onPress={() => setCatSearch('')} style={{ padding: 4 }}><X size={14} color={TEXT_LIGHT} /></TouchableOpacity>}
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={catStyles.chipsScroll}>
+          <View style={catStyles.chipsRow}>
+            {CAT_FILTER_CHIPS.map(chip => (
+              <TouchableOpacity key={chip} style={[catStyles.chip, catFilter === chip && catStyles.chipActive]} onPress={() => setCatFilter(chip)} activeOpacity={0.8}>
+                <Text style={[catStyles.chipText, catFilter === chip && catStyles.chipTextActive]}>{chip}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+
         {catalogsLoading ? (
           <View style={{ alignItems: 'center', paddingVertical: 48 }}>
             <ActivityIndicator color={BRAND} />
             <Text style={{ fontSize: 14, color: TEXT_LIGHT, marginTop: 10 }}>Loading catalogs…</Text>
           </View>
-        ) : clientCatalogs.length === 0 ? (
-          <EmptyState
-            icon={<BookOpen size={40} color="#D1D5DB" />}
-            title="No catalogs available yet"
-            sub="Product catalogs will be shared here by your Katalyst Ko representative."
-          />
+        ) : displayed.length === 0 ? (
+          <EmptyState icon={<BookOpen size={40} color="#D1D5DB" />} title={clientCatalogs.length === 0 ? "No catalogs available yet" : "No matching catalogs"} sub={clientCatalogs.length === 0 ? "Product catalogs will be shared here by your Katalyst Ko representative." : "Try a different search or filter."} />
         ) : (
           <View style={catStyles.grid}>
-            {clientCatalogs.map(cat => {
+            {displayed.map(cat => {
               const color = CAT_COLORS[cat.category] || '#6B7280';
               const initials = (cat.vendorName || cat.name).split(' ').map((w: string) => w[0]).join('').slice(0, 3).toUpperCase();
               return (
@@ -2390,8 +2518,8 @@ export default function ClientPortal() {
                       <Text style={catStyles.avatarText}>{initials}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={catStyles.name}>{cat.name}</Text>
-                      {cat.vendorName ? <Text style={catStyles.vendor}>{cat.vendorName}</Text> : null}
+                      <Text style={catStyles.name}>{cat.vendorName || cat.name}</Text>
+                      {cat.vendorName && cat.vendorName !== cat.name ? <Text style={catStyles.vendor}>{cat.name}</Text> : null}
                     </View>
                     <View style={[catStyles.badge, { backgroundColor: color + '18' }]}>
                       <Text style={[catStyles.badgeText, { color }]}>{cat.category}</Text>
@@ -2399,12 +2527,12 @@ export default function ClientPortal() {
                   </View>
                   {cat.description ? <Text style={catStyles.description}>{cat.description}</Text> : null}
                   <View style={catStyles.actions}>
-                    <TouchableOpacity style={catStyles.primaryBtn} onPress={() => Linking.openURL(cat.catalogUrl)}>
+                    <TouchableOpacity style={catStyles.primaryBtn} onPress={() => Linking.openURL(cat.catalogUrl)} activeOpacity={0.85}>
                       <BookOpen size={15} color="#fff" />
                       <Text style={catStyles.primaryBtnText}>Open Catalog</Text>
                     </TouchableOpacity>
                     {cat.websiteUrl ? (
-                      <TouchableOpacity style={catStyles.secondaryBtn} onPress={() => Linking.openURL(cat.websiteUrl!)}>
+                      <TouchableOpacity style={catStyles.secondaryBtn} onPress={() => Linking.openURL(cat.websiteUrl!)} activeOpacity={0.85}>
                         <ExternalLink size={14} color={BRAND} />
                         <Text style={catStyles.secondaryBtnText}>Website</Text>
                       </TouchableOpacity>
@@ -2415,13 +2543,26 @@ export default function ClientPortal() {
             })}
           </View>
         )}
+
+        {/* Bottom CTA */}
+        {!catalogsLoading && clientCatalogs.length > 0 && (
+          <View style={catStyles.ctaBanner}>
+            <View style={{ flex: 1 }}>
+              <Text style={catStyles.ctaTitle}>Don't see what you're looking for?</Text>
+              <Text style={catStyles.ctaSub}>Submit a project request and we'll source the perfect product for you.</Text>
+            </View>
+            <TouchableOpacity style={catStyles.ctaBtn} onPress={() => setActiveView('submit')} activeOpacity={0.85}>
+              <Text style={catStyles.ctaBtnText}>Start a Request</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
     );
   };
 
   const SubmitView = () => (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView contentContainerStyle={[dash.viewContent, { alignItems: 'center' }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[dash.viewContent, submittedId ? { alignItems: 'center' } : {}]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {submittedId ? (
           <View style={[styles.card, { maxWidth: 520 }]}>
             <View style={styles.successIcon}><CheckCircle size={40} color="#16A34A" /></View>
@@ -2465,7 +2606,8 @@ export default function ClientPortal() {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={[styles.card, { maxWidth: 940 }]}>
+          <View style={svStyles.formRow}>
+            <View style={[styles.card, { flex: 1 }]}>
             <Text style={styles.formTitle}>Submit a Project Request</Text>
             <Text style={styles.formSub}>Fill in the details below — your submission will come straight into Ko OS ready for pricing.</Text>
 
@@ -2625,6 +2767,34 @@ export default function ClientPortal() {
                 </>
               )}
             </TouchableOpacity>
+            </View>
+            {!isMobile && (
+              <View style={svStyles.helperCard}>
+                <View style={svStyles.helperBrand}>
+                  <Shield size={16} color={BRAND} />
+                  <Text style={svStyles.helperBrandText}>Need Help?</Text>
+                </View>
+                <Text style={svStyles.helperTagline}>Our team is here to help you get the perfect print.</Text>
+                {([
+                  { heading: 'Not sure what you need?', body: "Describe your project — we'll suggest the right options." },
+                  { heading: 'Want to see samples?',    body: 'We can set up a call or arrange a sample run.' },
+                  { heading: 'Tight deadline?',         body: "Tell us your date and we'll make it work." },
+                ] as { heading: string; body: string }[]).map(({ heading, body }) => (
+                  <View key={heading} style={svStyles.helperItem}>
+                    <CheckCircle2 size={14} color={BRAND} style={{ marginTop: 2 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={svStyles.helperItemTitle}>{heading}</Text>
+                      <Text style={svStyles.helperItemBody}>{body}</Text>
+                    </View>
+                  </View>
+                ))}
+                <View style={svStyles.helperDivider} />
+                <Text style={svStyles.helperCallLabel}>CALL US DIRECTLY</Text>
+                <TouchableOpacity style={svStyles.helperPhoneBtn} onPress={() => Linking.openURL('tel:4802023407')} activeOpacity={0.85}>
+                  <Text style={svStyles.helperPhoneText}>480-202-3407</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -4006,6 +4176,30 @@ const mbStyles = StyleSheet.create({
     padding: 8, borderRadius: 6, backgroundColor: '#F9FAFB',
     borderWidth: 1, borderColor: '#E5E7EB',
   },
+  controlBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap',
+  },
+  filterChip: {
+    paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20,
+    borderWidth: 1.5, borderColor: BORDER, backgroundColor: BG,
+  },
+  filterChipActive: { borderColor: BRAND, backgroundColor: '#FFF4EE' },
+  filterChipText: { fontSize: 12, fontWeight: '500', color: TEXT_LIGHT },
+  filterChipTextActive: { color: BRAND, fontWeight: '700' },
+  controlRight: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto' as any },
+  sortBtn: {
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6,
+    borderWidth: 1, borderColor: BORDER, backgroundColor: BG,
+  },
+  sortBtnActive: { borderColor: BRAND, backgroundColor: '#FFF4EE' },
+  sortBtnText: { fontSize: 11, fontWeight: '500', color: TEXT_LIGHT },
+  sortBtnTextActive: { color: BRAND, fontWeight: '700' },
+  viewToggle: {
+    flexDirection: 'row', borderRadius: 8, overflow: 'hidden',
+    borderWidth: 1, borderColor: BORDER, marginLeft: 4,
+  },
+  viewToggleBtn: { padding: 7, backgroundColor: BG },
+  viewToggleBtnActive: { backgroundColor: '#FFF4EE' },
 });
 
 const catStyles = StyleSheet.create({
@@ -4053,6 +4247,44 @@ const catStyles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 14,
   },
+  headerRow: {
+    flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
+    marginBottom: 8, gap: 12, flexWrap: 'wrap',
+  },
+  headerSub: { fontSize: 13, color: TEXT_LIGHT, marginTop: 2 },
+  requestBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: BRAND, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 8,
+  },
+  requestBtnText: { fontSize: 13, fontWeight: '600', color: '#fff' },
+  searchRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#fff', borderWidth: 1, borderColor: BORDER,
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9,
+    marginBottom: 10, gap: 6,
+  },
+  searchInput: { flex: 1, fontSize: 13, color: TEXT, outlineStyle: 'none' } as any,
+  chipsScroll: { marginBottom: 18 },
+  chipsRow: { flexDirection: 'row', gap: 6, paddingVertical: 2 },
+  chip: {
+    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
+    borderWidth: 1.5, borderColor: BORDER, backgroundColor: BG,
+  },
+  chipActive: { borderColor: BRAND, backgroundColor: '#FFF4EE' },
+  chipText: { fontSize: 13, fontWeight: '500', color: TEXT_LIGHT },
+  chipTextActive: { color: BRAND, fontWeight: '700' },
+  ctaBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 16,
+    backgroundColor: SIDEBAR_BG, borderRadius: 14,
+    padding: 20, marginTop: 24, flexWrap: 'wrap',
+  },
+  ctaTitle: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  ctaSub: { fontSize: 13, color: '#9CA3AF', marginTop: 3 },
+  ctaBtn: {
+    backgroundColor: BRAND, paddingHorizontal: 18, paddingVertical: 10,
+    borderRadius: 8, flexShrink: 0,
+  },
+  ctaBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
 });
 
 const mpStyles = StyleSheet.create({
@@ -4547,4 +4779,134 @@ const binPickStyles = StyleSheet.create({
   fileRowAlt: { backgroundColor: '#FAFAFA' },
   fileName: { fontSize: 13, fontWeight: '500', color: TEXT },
   fileMeta: { fontSize: 11, color: TEXT_PLACEHOLDER, marginTop: 1 },
+});
+
+const homeStyles = StyleSheet.create({
+  qaRow: {
+    flexDirection: 'row', gap: 12, marginBottom: 20, flexWrap: 'wrap',
+  },
+  qaCard: {
+    flex: 1, minWidth: 120,
+    backgroundColor: '#fff', borderRadius: 12,
+    padding: 16, alignItems: 'center', gap: 10,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+    borderWidth: 1, borderColor: BORDER,
+  },
+  qaIcon: {
+    width: 40, height: 40, borderRadius: 10, backgroundColor: '#FFF4EE',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  qaLabel: {
+    fontSize: 12, fontWeight: '600', color: TEXT, textAlign: 'center',
+  },
+  previewRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4,
+  },
+  previewDot: {
+    width: 8, height: 8, borderRadius: 4, flexShrink: 0,
+  },
+  previewName: {
+    flex: 1, fontSize: 12, color: TEXT, fontWeight: '500',
+  },
+  previewBadge: {
+    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 20,
+  },
+  previewBadgeText: {
+    fontSize: 10, fontWeight: '600',
+  },
+});
+
+const pcStyles = StyleSheet.create({
+  card: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 18, gap: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+    borderWidth: 1, borderColor: BORDER,
+  },
+  cardTop: {
+    flexDirection: 'row', alignItems: 'flex-start',
+    justifyContent: 'space-between', gap: 12,
+  },
+  projectName: {
+    flex: 1, fontSize: 17, fontWeight: '700', color: TEXT, lineHeight: 22,
+  },
+  metaRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#F9FAFB', borderRadius: 10, padding: 12,
+  },
+  metaItem: {
+    flex: 1, alignItems: 'center', gap: 3,
+  },
+  metaDivider: {
+    width: 1, height: 30, backgroundColor: BORDER,
+  },
+  metaLabel: {
+    fontSize: 9, fontWeight: '700', color: TEXT_LIGHT, letterSpacing: 0.6,
+  },
+  metaValue: {
+    fontSize: 13, fontWeight: '600', color: TEXT,
+  },
+  cardFooter: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end',
+  },
+  viewBtn: {
+    backgroundColor: BRAND, paddingHorizontal: 18, paddingVertical: 9, borderRadius: 8,
+  },
+  viewBtnText: {
+    fontSize: 13, fontWeight: '700', color: '#fff',
+  },
+  pendingBadge: {
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8,
+    backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: BORDER,
+  },
+  pendingBadgeText: {
+    fontSize: 12, fontWeight: '600', color: TEXT_LIGHT,
+  },
+});
+
+const svStyles = StyleSheet.create({
+  formRow: {
+    flexDirection: 'row', gap: 20, alignItems: 'flex-start',
+    width: '100%',
+  },
+  helperCard: {
+    width: 260, flexShrink: 0,
+    backgroundColor: '#fff', borderRadius: 14, padding: 20, gap: 12,
+    borderWidth: 1, borderColor: BORDER,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+    ...Platform.select({ web: { position: 'sticky' as any, top: 20, alignSelf: 'flex-start' as any } }),
+  },
+  helperBrand: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+  },
+  helperBrandText: {
+    fontSize: 16, fontWeight: '800', color: TEXT,
+  },
+  helperTagline: {
+    fontSize: 13, color: TEXT_LIGHT, lineHeight: 19,
+  },
+  helperItem: {
+    flexDirection: 'row', gap: 8, alignItems: 'flex-start',
+  },
+  helperItemTitle: {
+    fontSize: 13, fontWeight: '700', color: TEXT,
+  },
+  helperItemBody: {
+    fontSize: 12, color: TEXT_LIGHT, lineHeight: 17, marginTop: 2,
+  },
+  helperDivider: {
+    height: 1, backgroundColor: BORDER, marginVertical: 4,
+  },
+  helperCallLabel: {
+    fontSize: 10, fontWeight: '700', color: TEXT_LIGHT, letterSpacing: 0.8,
+  },
+  helperPhoneBtn: {
+    backgroundColor: BRAND, borderRadius: 8, paddingVertical: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  helperPhoneText: {
+    fontSize: 15, fontWeight: '800', color: '#fff', letterSpacing: 0.5,
+  },
 });
