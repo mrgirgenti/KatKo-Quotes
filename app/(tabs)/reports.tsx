@@ -1479,19 +1479,19 @@ function FinancialTab({
       ) : twoCol ? (
         <>
           <View style={s.tableHead}>
-            <Text style={[s.thCell, { flex: 1.4 }]}>Date</Text>
-            <Text style={[s.thCell, s.thRight]}>Projects Reconciled</Text>
-            <Text style={[s.thCell, s.thRight]}>Revenue Added</Text>
-            <Text style={[s.thCell, s.thRight]}>Profit Added</Text>
-            <Text style={[s.thCell, { flex: 1.4 }]}>Reconciled By</Text>
+            <Text style={[s.thCell, { flex: 1.4, minWidth: 72 }]}>Date</Text>
+            <Text style={[s.thCell, s.thRight, { minWidth: 80 }]}>Projects{'\n'}Reconciled</Text>
+            <Text style={[s.thCell, s.thRight, { minWidth: 80 }]}>Revenue{'\n'}Added</Text>
+            <Text style={[s.thCell, s.thRight, { minWidth: 80 }]}>Profit{'\n'}Added</Text>
+            <Text style={[s.thCell, { flex: 1.4, minWidth: 88, paddingLeft: 10 }]}>Reconciled By</Text>
           </View>
           {reconHistory.map((r, i) => (
             <View key={r.date} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
-              <Text style={[s.tdCell, s.tdSm, { flex: 1.4 }]}>{fmtDate(r.date)}</Text>
-              <Text style={[s.tdCell, s.tdRight]}>{r.count}</Text>
-              <Text style={[s.tdCell, s.tdRight]}>{fmtMoney(r.revenue)}</Text>
-              <Text style={[s.tdCell, s.tdRight, s.marginGreen]}>{fmtMoney(r.profit)}</Text>
-              <Text style={[s.tdCell, s.tdSm, { flex: 1.4 }]}>Katalyst Ko</Text>
+              <Text style={[s.tdCell, s.tdSm, { flex: 1.4, minWidth: 72 }]}>{fmtDate(r.date)}</Text>
+              <Text style={[s.tdCell, s.tdRight, { minWidth: 80 }]}>{r.count}</Text>
+              <Text style={[s.tdCell, s.tdRight, { minWidth: 80 }]}>{fmtMoney(r.revenue)}</Text>
+              <Text style={[s.tdCell, s.tdRight, s.marginGreen, { minWidth: 80 }]}>{fmtMoney(r.profit)}</Text>
+              <Text style={[s.tdCell, s.tdSm, { flex: 1.4, minWidth: 88, paddingLeft: 10 }]}>Katalyst Ko</Text>
             </View>
           ))}
         </>
