@@ -2651,108 +2651,110 @@ export default function ClientPortal() {
     );
 
     return (
-      <View style={{ flex: 1, flexDirection: 'row' }}>
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
-          {/* Header row */}
-          <View style={catStyles.headerRow}>
-            <View>
-              <Text style={dash.pageTitle}>Product Catalogs</Text>
-              <Text style={catStyles.headerSub}>Browse product lines shared by Katalyst Ko</Text>
-            </View>
-            <TouchableOpacity style={catStyles.requestBtn} onPress={() => setActiveView('submit')} activeOpacity={0.85}>
-              <ExternalLink size={14} color="#fff" />
-              <Text style={catStyles.requestBtnText}>Request a Product</Text>
-            </TouchableOpacity>
+      <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
+        {/* Header row */}
+        <View style={catStyles.headerRow}>
+          <View>
+            <Text style={dash.pageTitle}>Product Catalogs</Text>
+            <Text style={catStyles.headerSub}>Browse product lines shared by Katalyst Ko</Text>
           </View>
+          <TouchableOpacity style={catStyles.requestBtn} onPress={() => setActiveView('submit')} activeOpacity={0.85}>
+            <ExternalLink size={14} color="#fff" />
+            <Text style={catStyles.requestBtnText}>Request a Product</Text>
+          </TouchableOpacity>
+        </View>
 
-          {/* Search + filter chips */}
-          <View style={catStyles.searchRow}>
-            <Search size={14} color={TEXT_PLACEHOLDER} style={{ marginRight: 8 }} />
-            <TextInput style={catStyles.searchInput} placeholder="Search catalogs by brand or product…" placeholderTextColor={TEXT_PLACEHOLDER} value={catSearch} onChangeText={setCatSearch} />
-            {catSearch.length > 0 && <TouchableOpacity onPress={() => setCatSearch('')} style={{ padding: 4 }}><X size={14} color={TEXT_LIGHT} /></TouchableOpacity>}
+        {/* Search + filter chips — full width above the split */}
+        <View style={catStyles.searchRow}>
+          <Search size={14} color={TEXT_PLACEHOLDER} style={{ marginRight: 8 }} />
+          <TextInput style={catStyles.searchInput} placeholder="Search catalogs by brand or product…" placeholderTextColor={TEXT_PLACEHOLDER} value={catSearch} onChangeText={setCatSearch} />
+          {catSearch.length > 0 && <TouchableOpacity onPress={() => setCatSearch('')} style={{ padding: 4 }}><X size={14} color={TEXT_LIGHT} /></TouchableOpacity>}
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={catStyles.chipsScroll}>
+          <View style={catStyles.chipsRow}>
+            {CAT_FILTER_CHIPS.map(chip => (
+              <TouchableOpacity key={chip} style={[catStyles.chip, catFilter === chip && catStyles.chipActive]} onPress={() => setCatFilter(chip)} activeOpacity={0.8}>
+                <Text style={[catStyles.chipText, catFilter === chip && catStyles.chipTextActive]}>{chip}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={catStyles.chipsScroll}>
-            <View style={catStyles.chipsRow}>
-              {CAT_FILTER_CHIPS.map(chip => (
-                <TouchableOpacity key={chip} style={[catStyles.chip, catFilter === chip && catStyles.chipActive]} onPress={() => setCatFilter(chip)} activeOpacity={0.8}>
-                  <Text style={[catStyles.chipText, catFilter === chip && catStyles.chipTextActive]}>{chip}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-
-          {catalogsLoading ? (
-            <View style={{ alignItems: 'center', paddingVertical: 48 }}>
-              <ActivityIndicator color={BRAND} />
-              <Text style={{ fontSize: 14, color: TEXT_LIGHT, marginTop: 10 }}>Loading catalogs…</Text>
-            </View>
-          ) : displayed.length === 0 ? (
-            <EmptyState icon={<BookOpen size={40} color="#D1D5DB" />} title={clientCatalogs.length === 0 ? "No catalogs available yet" : "No matching catalogs"} sub={clientCatalogs.length === 0 ? "Product catalogs will be shared here by your Katalyst Ko representative." : "Try a different search or filter."} />
-          ) : (
-            <View style={catStyles.grid}>
-              {displayed.map(cat => {
-                const color = CAT_COLORS[cat.category] || '#6B7280';
-                const initials = (cat.vendorName || cat.name).split(' ').map((w: string) => w[0]).join('').slice(0, 3).toUpperCase();
-                const cardW = numCols === 1 ? '100%' : numCols === 2 ? '48%' : numCols === 4 ? '23.5%' : '32%';
-                return (
-                  <View key={cat.id} style={[catStyles.card, { width: cardW as any, flexGrow: 0, flexShrink: 0 }]}>
-                    {/* Badge row */}
-                    <View style={catStyles.cardTopRow}>
-                      <View style={[catStyles.avatar, { backgroundColor: color }]}>
-                        <Text style={catStyles.avatarText}>{initials}</Text>
-                      </View>
-                      <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                        <Text style={catStyles.dotsBtn}>•••</Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Logo image area */}
-                    <View style={catStyles.imgArea}>
-                      {cat.coverImageUrl ? (
-                        <Image source={{ uri: cat.coverImageUrl }} style={catStyles.logoImg} resizeMode="contain" />
-                      ) : (
-                        <View style={[catStyles.logoPlaceholder, { backgroundColor: color + '15' }]}>
-                          <Text style={[catStyles.logoPlaceholderText, { color }]}>{initials}</Text>
-                        </View>
-                      )}
-                    </View>
-
-                    {/* Name + description + category */}
-                    <Text style={catStyles.name}>{cat.vendorName || cat.name}</Text>
-                    {cat.description ? <Text style={catStyles.description}>{cat.description}</Text> : null}
-                    <View style={[catStyles.badge, { backgroundColor: color + '18', alignSelf: 'flex-start' }]}>
-                      <Text style={[catStyles.badgeText, { color }]}>{cat.category}</Text>
-                    </View>
-
-                    {/* Action buttons */}
-                    <View style={catStyles.actions}>
-                      <TouchableOpacity style={catStyles.primaryBtn} onPress={() => Linking.openURL(cat.catalogUrl)} activeOpacity={0.85}>
-                        <BookOpen size={15} color="#fff" />
-                        <Text style={catStyles.primaryBtnText}>Open Catalog</Text>
-                      </TouchableOpacity>
-                      {cat.websiteUrl ? (
-                        <TouchableOpacity style={catStyles.secondaryBtn} onPress={() => Linking.openURL(cat.websiteUrl!)} activeOpacity={0.85}>
-                          <ExternalLink size={14} color={BRAND} />
-                          <Text style={catStyles.secondaryBtnText}>Visit Website</Text>
-                        </TouchableOpacity>
-                      ) : null}
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          )}
-
-          {isMobile && <NeedHelpCard />}
         </ScrollView>
 
-        {/* Persistent Need Help column (desktop/tablet) */}
-        {!isMobile && (
-          <View style={catStyles.needHelpColumn}>
-            <NeedHelpCard />
+        {/* Grid + Need Help side-by-side, starting below the search bar */}
+        <View style={{ flexDirection: 'row', gap: 16, alignItems: 'flex-start' }}>
+          <View style={{ flex: 1 }}>
+            {catalogsLoading ? (
+              <View style={{ alignItems: 'center', paddingVertical: 48 }}>
+                <ActivityIndicator color={BRAND} />
+                <Text style={{ fontSize: 14, color: TEXT_LIGHT, marginTop: 10 }}>Loading catalogs…</Text>
+              </View>
+            ) : displayed.length === 0 ? (
+              <EmptyState icon={<BookOpen size={40} color="#D1D5DB" />} title={clientCatalogs.length === 0 ? "No catalogs available yet" : "No matching catalogs"} sub={clientCatalogs.length === 0 ? "Product catalogs will be shared here by your Katalyst Ko representative." : "Try a different search or filter."} />
+            ) : (
+              <View style={catStyles.grid}>
+                {displayed.map(cat => {
+                  const color = CAT_COLORS[cat.category] || '#6B7280';
+                  const initials = (cat.vendorName || cat.name).split(' ').map((w: string) => w[0]).join('').slice(0, 3).toUpperCase();
+                  const cardW = numCols === 1 ? '100%' : numCols === 2 ? '48%' : numCols === 4 ? '23.5%' : '32%';
+                  return (
+                    <View key={cat.id} style={[catStyles.card, { width: cardW as any, flexGrow: 0, flexShrink: 0 }]}>
+                      {/* Badge row */}
+                      <View style={catStyles.cardTopRow}>
+                        <View style={[catStyles.avatar, { backgroundColor: color }]}>
+                          <Text style={catStyles.avatarText}>{initials}</Text>
+                        </View>
+                        <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                          <Text style={catStyles.dotsBtn}>•••</Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Logo image area */}
+                      <View style={catStyles.imgArea}>
+                        {cat.coverImageUrl ? (
+                          <Image source={{ uri: cat.coverImageUrl }} style={catStyles.logoImg} resizeMode="contain" />
+                        ) : (
+                          <View style={[catStyles.logoPlaceholder, { backgroundColor: color + '15' }]}>
+                            <Text style={[catStyles.logoPlaceholderText, { color }]}>{initials}</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Name + description + category */}
+                      <Text style={catStyles.name}>{cat.vendorName || cat.name}</Text>
+                      {cat.description ? <Text style={catStyles.description}>{cat.description}</Text> : null}
+                      <View style={[catStyles.badge, { backgroundColor: color + '18', alignSelf: 'flex-start' }]}>
+                        <Text style={[catStyles.badgeText, { color }]}>{cat.category}</Text>
+                      </View>
+
+                      {/* Action buttons */}
+                      <View style={catStyles.actions}>
+                        <TouchableOpacity style={catStyles.primaryBtn} onPress={() => Linking.openURL(cat.catalogUrl)} activeOpacity={0.85}>
+                          <BookOpen size={15} color="#fff" />
+                          <Text style={catStyles.primaryBtnText}>Open Catalog</Text>
+                        </TouchableOpacity>
+                        {cat.websiteUrl ? (
+                          <TouchableOpacity style={catStyles.secondaryBtn} onPress={() => Linking.openURL(cat.websiteUrl!)} activeOpacity={0.85}>
+                            <ExternalLink size={14} color={BRAND} />
+                            <Text style={catStyles.secondaryBtnText}>Visit Website</Text>
+                          </TouchableOpacity>
+                        ) : null}
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+            {isMobile && <NeedHelpCard />}
           </View>
-        )}
-      </View>
+
+          {/* Persistent Need Help column — starts flush with the top of the grid */}
+          {!isMobile && (
+            <View style={catStyles.needHelpColumn}>
+              <NeedHelpCard />
+            </View>
+          )}
+        </View>
+      </ScrollView>
     );
   };
 
@@ -4549,8 +4551,8 @@ const catStyles = StyleSheet.create({
   ctaBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
 
   needHelpColumn: {
-    width: 260, flexShrink: 0, padding: 16,
-    ...Platform.select({ web: { position: 'sticky' as any, top: 0, height: '100vh' as any, overflowY: 'auto' as any } as any, default: {} }),
+    width: 260, flexShrink: 0,
+    ...Platform.select({ web: { position: 'sticky' as any, top: 20, alignSelf: 'flex-start' as any } as any, default: {} }),
   },
   needHelpCard: {
     backgroundColor: '#fff', borderRadius: 14, padding: 18, gap: 10,
