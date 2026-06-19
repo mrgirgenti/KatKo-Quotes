@@ -1077,11 +1077,48 @@ function NeedsReconciliationSection({
 function TopCustomersTable({
   customers,
   logoMap,
+  isDesktop,
 }: {
   customers: CustomerRow[];
   logoMap: Map<string, string | null | undefined>;
+  isDesktop: boolean;
 }) {
   const rows = customers.slice(0, 5);
+  if (rows.length === 0) {
+    return <Text style={s.emptyMsg}>No customers in range.</Text>;
+  }
+  if (!isDesktop) {
+    return (
+      <View>
+        {rows.map((c, i) => (
+          <View key={c.name} style={[s.mobileCard, i > 0 && s.mobileCardBorder]}>
+            <View style={s.mobileCardHeaderRow}>
+              <OrgAvatar name={c.name} logoUrl={logoMap.get(c.name)} size={24} shape="circle" />
+              <Text style={s.mobileCardTitle} numberOfLines={1}>{c.name}</Text>
+            </View>
+            <View style={s.mobileCardStats}>
+              <View style={s.mobileCardStat}>
+                <Text style={s.mobileCardStatLabel}>Revenue</Text>
+                <Text style={s.mobileCardStatValue}>{fmtMoney(c.revenue)}</Text>
+              </View>
+              <View style={s.mobileCardStat}>
+                <Text style={s.mobileCardStatLabel}>Profit</Text>
+                <Text style={s.mobileCardStatValue}>{fmtMoney(c.profit)}</Text>
+              </View>
+              <View style={s.mobileCardStat}>
+                <Text style={s.mobileCardStatLabel}>Orders</Text>
+                <Text style={s.mobileCardStatValue}>{c.orders}</Text>
+              </View>
+              <View style={s.mobileCardStat}>
+                <Text style={s.mobileCardStatLabel}>Last Order</Text>
+                <Text style={s.mobileCardStatValue}>{fmtRelative(c.lastOrderDate ?? null)}</Text>
+              </View>
+            </View>
+          </View>
+        ))}
+      </View>
+    );
+  }
   return (
     <View>
       <View style={s.tableHead}>
@@ -1091,28 +1128,68 @@ function TopCustomersTable({
         <Text style={s.thCell}>Orders</Text>
         <Text style={s.thCell}>Last Order</Text>
       </View>
-      {rows.length === 0 ? (
-        <Text style={s.emptyMsg}>No customers in range.</Text>
-      ) : (
-        rows.map((c, i) => (
-          <View key={c.name} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
-            <View style={[s.custCell, { flex: 2 }]}>
-              <OrgAvatar name={c.name} logoUrl={logoMap.get(c.name)} size={24} shape="circle" />
-              <Text style={s.custName} numberOfLines={1}>{c.name}</Text>
-            </View>
-            <Text style={s.tdCell}>{fmtMoney(c.revenue)}</Text>
-            <Text style={s.tdCell}>{fmtMoney(c.profit)}</Text>
-            <Text style={s.tdCell}>{c.orders}</Text>
-            <Text style={[s.tdCell, s.tdSm]}>{fmtRelative(c.lastOrderDate ?? null)}</Text>
+      {rows.map((c, i) => (
+        <View key={c.name} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
+          <View style={[s.custCell, { flex: 2 }]}>
+            <OrgAvatar name={c.name} logoUrl={logoMap.get(c.name)} size={24} shape="circle" />
+            <Text style={s.custName} numberOfLines={1}>{c.name}</Text>
           </View>
-        ))
-      )}
+          <Text style={s.tdCell}>{fmtMoney(c.revenue)}</Text>
+          <Text style={s.tdCell}>{fmtMoney(c.profit)}</Text>
+          <Text style={s.tdCell}>{c.orders}</Text>
+          <Text style={[s.tdCell, s.tdSm]}>{fmtRelative(c.lastOrderDate ?? null)}</Text>
+        </View>
+      ))}
     </View>
   );
 }
 
-function ServicePerformanceTable({ services }: { services: ServiceRow[] }) {
+function ServicePerformanceTable({ services, isDesktop }: { services: ServiceRow[]; isDesktop: boolean }) {
   const rows = services.slice(0, 5);
+  if (rows.length === 0) {
+    return <Text style={s.emptyMsg}>No services in range.</Text>;
+  }
+  if (!isDesktop) {
+    return (
+      <View>
+        {rows.map((sv, i) => {
+          const avgOrder = sv.orders > 0 ? sv.revenue / sv.orders : 0;
+          const margin = sv.revenue > 0 ? (sv.profit / sv.revenue) * 100 : 0;
+          const color = getServiceColor(sv.service);
+          return (
+            <View key={sv.service} style={[s.mobileCard, i > 0 && s.mobileCardBorder]}>
+              <View style={s.mobileCardHeaderRow}>
+                <View style={[s.serviceColorDot, { backgroundColor: color }]} />
+                <Text style={s.mobileCardTitle} numberOfLines={1}>{sv.service}</Text>
+              </View>
+              <View style={s.mobileCardStats}>
+                <View style={s.mobileCardStat}>
+                  <Text style={s.mobileCardStatLabel}>Revenue</Text>
+                  <Text style={s.mobileCardStatValue}>{fmtMoney(sv.revenue)}</Text>
+                </View>
+                <View style={s.mobileCardStat}>
+                  <Text style={s.mobileCardStatLabel}>Profit</Text>
+                  <Text style={[s.mobileCardStatValue, s.marginGreen]}>{fmtMoney(sv.profit)}</Text>
+                </View>
+                <View style={s.mobileCardStat}>
+                  <Text style={s.mobileCardStatLabel}>Orders</Text>
+                  <Text style={s.mobileCardStatValue}>{sv.orders}</Text>
+                </View>
+                <View style={s.mobileCardStat}>
+                  <Text style={s.mobileCardStatLabel}>Avg Order</Text>
+                  <Text style={s.mobileCardStatValue}>{fmtMoney(avgOrder)}</Text>
+                </View>
+                <View style={s.mobileCardStat}>
+                  <Text style={s.mobileCardStatLabel}>Margin</Text>
+                  <Text style={[s.mobileCardStatValue, s.marginGreen]}>{margin.toFixed(1)}%</Text>
+                </View>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    );
+  }
   return (
     <View>
       <View style={s.tableHead}>
@@ -1123,63 +1200,20 @@ function ServicePerformanceTable({ services }: { services: ServiceRow[] }) {
         <Text style={s.thCell}>Avg Order</Text>
         <Text style={[s.thCell, s.thRight]}>Margin</Text>
       </View>
-      {rows.length === 0 ? (
-        <Text style={s.emptyMsg}>No services in range.</Text>
-      ) : (
-        rows.map((sv, i) => {
-          const avgOrder = sv.orders > 0 ? sv.revenue / sv.orders : 0;
-          const margin = sv.revenue > 0 ? (sv.profit / sv.revenue) * 100 : 0;
-          return (
-            <View key={sv.service} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
-              <Text style={[s.tdCell, { flex: 1.4 }]} numberOfLines={1}>{sv.service}</Text>
-              <Text style={s.tdCell}>{fmtMoney(sv.revenue)}</Text>
-              <Text style={s.tdCell}>{fmtMoney(sv.profit)}</Text>
-              <Text style={s.tdCell}>{sv.orders}</Text>
-              <Text style={s.tdCell}>{fmtMoney(avgOrder)}</Text>
-              <Text style={[s.tdCell, s.tdRight, s.marginGreen]}>{margin.toFixed(1)}%</Text>
-            </View>
-          );
-        })
-      )}
-    </View>
-  );
-}
-
-function TopProjectsTable({ projects }: { projects: ProjectRow[] }) {
-  const rows = projects.slice(0, 8);
-  return (
-    <View>
-      <View style={s.tableHead}>
-        <Text style={[s.thCell, { flex: 1.6 }]}>Project</Text>
-        <Text style={[s.thCell, { flex: 1.6 }]}>Customer</Text>
-        <Text style={s.thCell}>Revenue</Text>
-        <Text style={s.thCell}>Profit</Text>
-        <Text style={s.thCell}>Margin</Text>
-        <Text style={s.thCell}>Status</Text>
-        <Text style={s.thCell}>Completed</Text>
-      </View>
-      {rows.length === 0 ? (
-        <Text style={s.emptyMsg}>No projects in range.</Text>
-      ) : (
-        rows.map((p, i) => {
-          const cfg = STATUS_CONFIG[p.status] ?? STATUS_CONFIG.draft;
-          return (
-            <View key={p.id} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
-              <Text style={[s.tdCell, { flex: 1.6 }]} numberOfLines={1}>{p.projectName}</Text>
-              <Text style={[s.tdCell, { flex: 1.6 }]} numberOfLines={1}>{p.customer}</Text>
-              <Text style={s.tdCell}>{fmtMoney(p.revenue)}</Text>
-              <Text style={s.tdCell}>{fmtMoney(p.profit)}</Text>
-              <Text style={[s.tdCell, s.marginGreen]}>{(p.margin * 100).toFixed(1)}%</Text>
-              <View style={s.tdBadgeWrap}>
-                <View style={[s.statusBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
-                  <Text style={[s.statusBadgeText, { color: cfg.color }]} numberOfLines={1}>{cfg.label}</Text>
-                </View>
-              </View>
-              <Text style={[s.tdCell, s.tdSm]}>{fmtDate(p.completedDate)}</Text>
-            </View>
-          );
-        })
-      )}
+      {rows.map((sv, i) => {
+        const avgOrder = sv.orders > 0 ? sv.revenue / sv.orders : 0;
+        const margin = sv.revenue > 0 ? (sv.profit / sv.revenue) * 100 : 0;
+        return (
+          <View key={sv.service} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
+            <Text style={[s.tdCell, { flex: 1.4 }]} numberOfLines={1}>{sv.service}</Text>
+            <Text style={s.tdCell}>{fmtMoney(sv.revenue)}</Text>
+            <Text style={s.tdCell}>{fmtMoney(sv.profit)}</Text>
+            <Text style={s.tdCell}>{sv.orders}</Text>
+            <Text style={s.tdCell}>{fmtMoney(avgOrder)}</Text>
+            <Text style={[s.tdCell, s.tdRight, s.marginGreen]}>{margin.toFixed(1)}%</Text>
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -1192,7 +1226,6 @@ function OverviewTab({
   recon,
   customers,
   services,
-  topProjects,
   logoMap,
   onTab,
   router,
@@ -1203,7 +1236,6 @@ function OverviewTab({
   recon: ReturnType<typeof computeReconciliationQueue>;
   customers: CustomerRow[];
   services: ServiceRow[];
-  topProjects: ProjectRow[];
   logoMap: Map<string, string | null | undefined>;
   onTab: (t: ReportTab) => void;
   router: ReturnType<typeof useRouter>;
@@ -1238,7 +1270,7 @@ function OverviewTab({
           <ChevronRight size={13} color={Colors.light.tint} />
         </TouchableOpacity>
       </View>
-      <TopCustomersTable customers={customers} logoMap={logoMap} />
+      <TopCustomersTable customers={customers} logoMap={logoMap} isDesktop={twoCol} />
       <View style={s.panelFooter}>
         <Text style={s.panelFooterText}>
           Showing top {Math.min(5, customers.length)} of {customers.length} customers
@@ -1256,7 +1288,7 @@ function OverviewTab({
           <ChevronRight size={13} color={Colors.light.tint} />
         </TouchableOpacity>
       </View>
-      <ServicePerformanceTable services={services} />
+      <ServicePerformanceTable services={services} isDesktop={twoCol} />
       <View style={s.panelFooter}>
         <Text style={s.panelFooterText}>Showing all {services.length} services</Text>
       </View>
@@ -1316,25 +1348,6 @@ function OverviewTab({
       <View style={[s.twoColRow, !twoCol && s.twoColStack]}>
         <View style={s.col}>{customersPanel}</View>
         <View style={s.col}>{servicesPanel}</View>
-      </View>
-
-      {/* ── Top Performing Projects ── */}
-      <View style={s.panelOuter}>
-        <View style={s.panel}>
-          <View style={s.panelHeader}>
-            <Text style={s.panelTitle}>TOP PERFORMING PROJECTS</Text>
-            <TouchableOpacity style={s.panelActionBtn} onPress={() => router.push('/(tabs)/projects')}>
-              <Text style={s.panelAction}>View All Projects</Text>
-              <ChevronRight size={13} color={Colors.light.tint} />
-            </TouchableOpacity>
-          </View>
-          <TopProjectsTable projects={topProjects} />
-          <View style={s.panelFooter}>
-            <Text style={s.panelFooterText}>
-              Showing top {Math.min(8, topProjects.length)} of {topProjects.length} projects
-            </Text>
-          </View>
-        </View>
       </View>
 
       <View style={{ height: 40 }} />
@@ -1398,29 +1411,57 @@ function FinancialTab({
       <View style={s.panelHeader}>
         <Text style={s.panelTitle}>{title}</Text>
       </View>
-      <View style={s.tableHead}>
-        <Text style={[s.thCell, { flex: 1.6 }]} />
-        <Text style={[s.thCell, s.thRight]}>Current</Text>
-        <Text style={[s.thCell, s.thRight]}>Last Year</Text>
-        <Text style={[s.thCell, s.thRight]}>Change</Text>
-      </View>
-      {rows.map((r, i) => {
-        const chg = !r.note && r.prev !== null ? pctChange(r.curr, r.prev) : null;
-        return (
-          <View key={r.label} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
-            <Text style={[s.tdCell, { flex: 1.6, fontWeight: r.bold ? '700' : '400' }]} numberOfLines={2}>{r.label}</Text>
-            <Text style={[s.tdCell, s.tdRight, r.bold ? { fontWeight: '700' } : null]}>{r.note ? '—' : r.fmt(r.curr)}</Text>
-            <Text style={[s.tdCell, s.tdRight, s.tdSm]}>{r.prev !== null ? r.fmt(r.prev) : '—'}</Text>
-            {chg !== null ? (
-              <Text style={[s.tdCell, s.tdRight, { color: chg >= 0 ? Colors.light.success : Colors.light.error, fontWeight: '700', fontSize: 12 }]}>
-                {chg >= 0 ? '▲' : '▼'}{Math.abs(chg).toFixed(1)}%
-              </Text>
-            ) : (
-              <Text style={[s.tdCell, s.tdRight, s.tdSm]}>—</Text>
-            )}
+      {twoCol ? (
+        <>
+          <View style={s.tableHead}>
+            <Text style={[s.thCell, { flex: 1.6 }]} />
+            <Text style={[s.thCell, s.thRight]}>Current</Text>
+            <Text style={[s.thCell, s.thRight]}>Last Year</Text>
+            <Text style={[s.thCell, s.thRight]}>Change</Text>
           </View>
-        );
-      })}
+          {rows.map((r, i) => {
+            const chg = !r.note && r.prev !== null ? pctChange(r.curr, r.prev) : null;
+            return (
+              <View key={r.label} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
+                <Text style={[s.tdCell, { flex: 1.6, fontWeight: r.bold ? '700' : '400' }]} numberOfLines={2}>{r.label}</Text>
+                <Text style={[s.tdCell, s.tdRight, r.bold ? { fontWeight: '700' } : null]}>{r.note ? '—' : r.fmt(r.curr)}</Text>
+                <Text style={[s.tdCell, s.tdRight, s.tdSm]}>{r.prev !== null ? r.fmt(r.prev) : '—'}</Text>
+                {chg !== null ? (
+                  <Text style={[s.tdCell, s.tdRight, { color: chg >= 0 ? Colors.light.success : Colors.light.error, fontWeight: '700', fontSize: 12 }]}>
+                    {chg >= 0 ? '▲' : '▼'}{Math.abs(chg).toFixed(1)}%
+                  </Text>
+                ) : (
+                  <Text style={[s.tdCell, s.tdRight, s.tdSm]}>—</Text>
+                )}
+              </View>
+            );
+          })}
+        </>
+      ) : (
+        <>
+          {rows.map((r, i) => {
+            const chg = !r.note && r.prev !== null ? pctChange(r.curr, r.prev) : null;
+            return (
+              <View key={r.label} style={[s.mobileSummaryRow, i > 0 && s.mobileSummaryRowBorder]}>
+                <Text style={[s.mobileSummaryLabel, r.bold && { fontWeight: '700' as const, color: Colors.light.text }]}>{r.label}</Text>
+                <View style={s.mobileSummaryValueRow}>
+                  <Text style={[s.mobileSummaryValue, r.bold && { fontSize: 17 }]}>{r.note ? '—' : r.fmt(r.curr)}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    {r.prev !== null && (
+                      <Text style={s.mobileSummarySub}>vs {r.fmt(r.prev)}</Text>
+                    )}
+                    {chg !== null && (
+                      <Text style={[s.mobileSummaryChange, { color: chg >= 0 ? Colors.light.success : Colors.light.error }]}>
+                        {chg >= 0 ? '▲' : '▼'}{Math.abs(chg).toFixed(1)}%
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              </View>
+            );
+          })}
+        </>
+      )}
     </View>
   );
 
@@ -1433,24 +1474,54 @@ function FinancialTab({
           <ChevronRight size={13} color={Colors.light.tint} />
         </TouchableOpacity>
       </View>
-      <View style={s.tableHead}>
-        <Text style={[s.thCell, { flex: 1.4 }]}>Date</Text>
-        <Text style={[s.thCell, s.thRight]}>Projects Reconciled</Text>
-        <Text style={[s.thCell, s.thRight]}>Revenue Added</Text>
-        <Text style={[s.thCell, s.thRight]}>Profit Added</Text>
-        <Text style={[s.thCell, { flex: 1.4 }]}>Reconciled By</Text>
-      </View>
       {reconHistory.length === 0 ? (
         <Text style={s.emptyMsg}>No reconciled projects in this period.</Text>
-      ) : reconHistory.map((r, i) => (
-        <View key={r.date} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
-          <Text style={[s.tdCell, s.tdSm, { flex: 1.4 }]}>{fmtDate(r.date)}</Text>
-          <Text style={[s.tdCell, s.tdRight]}>{r.count}</Text>
-          <Text style={[s.tdCell, s.tdRight]}>{fmtMoney(r.revenue)}</Text>
-          <Text style={[s.tdCell, s.tdRight, s.marginGreen]}>{fmtMoney(r.profit)}</Text>
-          <Text style={[s.tdCell, s.tdSm, { flex: 1.4 }]}>Katalyst Ko</Text>
-        </View>
-      ))}
+      ) : twoCol ? (
+        <>
+          <View style={s.tableHead}>
+            <Text style={[s.thCell, { flex: 1.4 }]}>Date</Text>
+            <Text style={[s.thCell, s.thRight]}>Projects Reconciled</Text>
+            <Text style={[s.thCell, s.thRight]}>Revenue Added</Text>
+            <Text style={[s.thCell, s.thRight]}>Profit Added</Text>
+            <Text style={[s.thCell, { flex: 1.4 }]}>Reconciled By</Text>
+          </View>
+          {reconHistory.map((r, i) => (
+            <View key={r.date} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
+              <Text style={[s.tdCell, s.tdSm, { flex: 1.4 }]}>{fmtDate(r.date)}</Text>
+              <Text style={[s.tdCell, s.tdRight]}>{r.count}</Text>
+              <Text style={[s.tdCell, s.tdRight]}>{fmtMoney(r.revenue)}</Text>
+              <Text style={[s.tdCell, s.tdRight, s.marginGreen]}>{fmtMoney(r.profit)}</Text>
+              <Text style={[s.tdCell, s.tdSm, { flex: 1.4 }]}>Katalyst Ko</Text>
+            </View>
+          ))}
+        </>
+      ) : (
+        <>
+          {reconHistory.map((r, i) => (
+            <View key={r.date} style={[s.mobileCard, i > 0 && s.mobileCardBorder]}>
+              <Text style={s.mobileCardTitle}>{fmtDate(r.date)}</Text>
+              <View style={[s.mobileCardStats, { marginTop: 8 }]}>
+                <View style={s.mobileCardStat}>
+                  <Text style={s.mobileCardStatLabel}>Projects</Text>
+                  <Text style={s.mobileCardStatValue}>{r.count}</Text>
+                </View>
+                <View style={s.mobileCardStat}>
+                  <Text style={s.mobileCardStatLabel}>Revenue Added</Text>
+                  <Text style={s.mobileCardStatValue}>{fmtMoney(r.revenue)}</Text>
+                </View>
+                <View style={s.mobileCardStat}>
+                  <Text style={s.mobileCardStatLabel}>Profit Added</Text>
+                  <Text style={[s.mobileCardStatValue, s.marginGreen]}>{fmtMoney(r.profit)}</Text>
+                </View>
+                <View style={s.mobileCardStat}>
+                  <Text style={s.mobileCardStatLabel}>Reconciled By</Text>
+                  <Text style={s.mobileCardStatValue}>Katalyst Ko</Text>
+                </View>
+              </View>
+            </View>
+          ))}
+        </>
+      )}
     </View>
   );
 
@@ -1560,30 +1631,62 @@ function CustomersTab({
           <ChevronRight size={13} color={Colors.light.tint} />
         </TouchableOpacity>
       </View>
-      <View style={s.tableHead}>
-        <Text style={[s.thCell, { flex: 2 }]}>Customer</Text>
-        <Text style={[s.thCell, s.thRight]}>Revenue</Text>
-        <Text style={[s.thCell, s.thRight]}>% of Total</Text>
-        <Text style={[s.thCell, s.thRight]}>Orders</Text>
-        <Text style={[s.thCell, s.thRight, { flex: 1.3 }]}>Last Order</Text>
-      </View>
       {top10.length === 0 ? (
         <Text style={s.emptyMsg}>No customer data for this period.</Text>
-      ) : top10.map((c, i) => (
-        <View key={c.name} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
-          <View style={[s.custCell, { flex: 2 }]}>
-            <Text style={s.custName} numberOfLines={1}>{c.name}</Text>
+      ) : twoCol ? (
+        <>
+          <View style={s.tableHead}>
+            <Text style={[s.thCell, { flex: 2 }]}>Customer</Text>
+            <Text style={[s.thCell, s.thRight]}>Revenue</Text>
+            <Text style={[s.thCell, s.thRight]}>% of Total</Text>
+            <Text style={[s.thCell, s.thRight]}>Orders</Text>
+            <Text style={[s.thCell, s.thRight, { flex: 1.3 }]}>Last Order</Text>
           </View>
-          <Text style={[s.tdCell, s.tdRight]}>{fmtMoney(c.revenue)}</Text>
-          <Text style={[s.tdCell, s.tdRight, s.tdSm]}>
-            {totalRevenue > 0 ? ((c.revenue / totalRevenue) * 100).toFixed(1) : '0.0'}%
-          </Text>
-          <Text style={[s.tdCell, s.tdRight]}>{c.orders}</Text>
-          <Text style={[s.tdCell, s.tdRight, s.tdSm, { flex: 1.3 }]}>
-            {c.lastOrderDate ? fmtRelative(c.lastOrderDate) : '—'}
-          </Text>
-        </View>
-      ))}
+          {top10.map((c, i) => (
+            <View key={c.name} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
+              <View style={[s.custCell, { flex: 2 }]}>
+                <Text style={s.custName} numberOfLines={1}>{c.name}</Text>
+              </View>
+              <Text style={[s.tdCell, s.tdRight]}>{fmtMoney(c.revenue)}</Text>
+              <Text style={[s.tdCell, s.tdRight, s.tdSm]}>
+                {totalRevenue > 0 ? ((c.revenue / totalRevenue) * 100).toFixed(1) : '0.0'}%
+              </Text>
+              <Text style={[s.tdCell, s.tdRight]}>{c.orders}</Text>
+              <Text style={[s.tdCell, s.tdRight, s.tdSm, { flex: 1.3 }]}>
+                {c.lastOrderDate ? fmtRelative(c.lastOrderDate) : '—'}
+              </Text>
+            </View>
+          ))}
+        </>
+      ) : (
+        <>
+          {top10.map((c, i) => (
+            <View key={c.name} style={[s.mobileCard, i > 0 && s.mobileCardBorder]}>
+              <Text style={s.mobileCardTitle} numberOfLines={1}>{c.name}</Text>
+              <View style={[s.mobileCardStats, { marginTop: 8 }]}>
+                <View style={s.mobileCardStat}>
+                  <Text style={s.mobileCardStatLabel}>Revenue</Text>
+                  <Text style={s.mobileCardStatValue}>{fmtMoney(c.revenue)}</Text>
+                </View>
+                <View style={s.mobileCardStat}>
+                  <Text style={s.mobileCardStatLabel}>% of Total</Text>
+                  <Text style={s.mobileCardStatValue}>
+                    {totalRevenue > 0 ? ((c.revenue / totalRevenue) * 100).toFixed(1) : '0.0'}%
+                  </Text>
+                </View>
+                <View style={s.mobileCardStat}>
+                  <Text style={s.mobileCardStatLabel}>Orders</Text>
+                  <Text style={s.mobileCardStatValue}>{c.orders}</Text>
+                </View>
+                <View style={s.mobileCardStat}>
+                  <Text style={s.mobileCardStatLabel}>Last Order</Text>
+                  <Text style={s.mobileCardStatValue}>{c.lastOrderDate ? fmtRelative(c.lastOrderDate) : '—'}</Text>
+                </View>
+              </View>
+            </View>
+          ))}
+        </>
+      )}
       <View style={s.panelFooter}>
         <Text style={s.panelFooterText}>
           Showing top {Math.min(top10.length, 10)} of {customers.length} customers
@@ -1597,24 +1700,50 @@ function CustomersTab({
       <View style={s.panelHeader}>
         <Text style={s.panelTitle}>CUSTOMER LIFETIME VALUE</Text>
       </View>
-      <View style={s.tableHead}>
-        <Text style={[s.thCell, { flex: 2 }]}>Customer</Text>
-        <Text style={[s.thCell, s.thRight]}>Revenue</Text>
-        <Text style={[s.thCell, s.thRight]}>Orders</Text>
-        <Text style={[s.thCell, s.thRight, { flex: 1.5 }]}>First Order</Text>
-      </View>
       {top8.length === 0 ? (
         <Text style={s.emptyMsg}>No customer data for this period.</Text>
-      ) : top8.map((c, i) => (
-        <View key={c.name} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
-          <Text style={[s.tdCell, { flex: 2, fontWeight: '600' }]} numberOfLines={1}>{c.name}</Text>
-          <Text style={[s.tdCell, s.tdRight]}>{fmtMoney(c.revenue)}</Text>
-          <Text style={[s.tdCell, s.tdRight]}>{c.orders}</Text>
-          <Text style={[s.tdCell, s.tdRight, s.tdSm, { flex: 1.5 }]}>
-            {c.firstOrderDate ? fmtDate(c.firstOrderDate) : '—'}
-          </Text>
-        </View>
-      ))}
+      ) : twoCol ? (
+        <>
+          <View style={s.tableHead}>
+            <Text style={[s.thCell, { flex: 2 }]}>Customer</Text>
+            <Text style={[s.thCell, s.thRight]}>Revenue</Text>
+            <Text style={[s.thCell, s.thRight]}>Orders</Text>
+            <Text style={[s.thCell, s.thRight, { flex: 1.5 }]}>First Order</Text>
+          </View>
+          {top8.map((c, i) => (
+            <View key={c.name} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
+              <Text style={[s.tdCell, { flex: 2, fontWeight: '600' }]} numberOfLines={1}>{c.name}</Text>
+              <Text style={[s.tdCell, s.tdRight]}>{fmtMoney(c.revenue)}</Text>
+              <Text style={[s.tdCell, s.tdRight]}>{c.orders}</Text>
+              <Text style={[s.tdCell, s.tdRight, s.tdSm, { flex: 1.5 }]}>
+                {c.firstOrderDate ? fmtDate(c.firstOrderDate) : '—'}
+              </Text>
+            </View>
+          ))}
+        </>
+      ) : (
+        <>
+          {top8.map((c, i) => (
+            <View key={c.name} style={[s.mobileCard, i > 0 && s.mobileCardBorder]}>
+              <Text style={s.mobileCardTitle} numberOfLines={1}>{c.name}</Text>
+              <View style={[s.mobileCardStats, { marginTop: 8 }]}>
+                <View style={s.mobileCardStat}>
+                  <Text style={s.mobileCardStatLabel}>Revenue</Text>
+                  <Text style={s.mobileCardStatValue}>{fmtMoney(c.revenue)}</Text>
+                </View>
+                <View style={s.mobileCardStat}>
+                  <Text style={s.mobileCardStatLabel}>Orders</Text>
+                  <Text style={s.mobileCardStatValue}>{c.orders}</Text>
+                </View>
+                <View style={s.mobileCardStat}>
+                  <Text style={s.mobileCardStatLabel}>First Order</Text>
+                  <Text style={s.mobileCardStatValue}>{c.firstOrderDate ? fmtDate(c.firstOrderDate) : '—'}</Text>
+                </View>
+              </View>
+            </View>
+          ))}
+        </>
+      )}
       <View style={s.panelFooter}>
         <Text style={s.panelFooterText}>
           Showing {Math.min(top8.length, 8)} of {customers.length} customers
@@ -1685,33 +1814,80 @@ function ServicesTab({ services }: { services: ServiceRow[] }) {
       <View style={s.panelHeader}>
         <Text style={s.panelTitle}>SERVICE PROFITABILITY</Text>
       </View>
-      <View style={s.tableHead}>
-        <Text style={[s.thCell, { flex: 1.5 }]}>Service</Text>
-        <Text style={[s.thCell, s.thRight]}>Revenue</Text>
-        <Text style={[s.thCell, s.thRight]}>% of Total</Text>
-        <Text style={[s.thCell, s.thRight]}>Profit</Text>
-        <Text style={[s.thCell, s.thRight]}>Margin</Text>
-        <Text style={[s.thCell, s.thRight]}>Orders</Text>
-        <Text style={[s.thCell, s.thRight]}>Avg Order</Text>
-      </View>
       {services.length === 0 ? (
         <Text style={s.emptyMsg}>No service data for this period.</Text>
-      ) : services.map((sv, i) => {
-        const margin = sv.revenue > 0 ? (sv.profit / sv.revenue) * 100 : 0;
-        return (
-          <View key={sv.service} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
-            <Text style={[s.tdCell, { flex: 1.5, fontWeight: '600' }]} numberOfLines={1}>{sv.service}</Text>
-            <Text style={[s.tdCell, s.tdRight]}>{fmtMoney(sv.revenue)}</Text>
-            <Text style={[s.tdCell, s.tdRight, s.tdSm]}>
-              {serviceRevenue > 0 ? ((sv.revenue / serviceRevenue) * 100).toFixed(1) : '0.0'}%
-            </Text>
-            <Text style={[s.tdCell, s.tdRight, s.marginGreen]}>{fmtMoney(sv.profit)}</Text>
-            <Text style={[s.tdCell, s.tdRight]}>{fmtPct(margin)}</Text>
-            <Text style={[s.tdCell, s.tdRight]}>{sv.orders}</Text>
-            <Text style={[s.tdCell, s.tdRight]}>{sv.orders > 0 ? fmtMoney(sv.revenue / sv.orders) : '—'}</Text>
+      ) : twoCol ? (
+        <>
+          <View style={s.tableHead}>
+            <Text style={[s.thCell, { flex: 1.5 }]}>Service</Text>
+            <Text style={[s.thCell, s.thRight]}>Revenue</Text>
+            <Text style={[s.thCell, s.thRight]}>% of Total</Text>
+            <Text style={[s.thCell, s.thRight]}>Profit</Text>
+            <Text style={[s.thCell, s.thRight]}>Margin</Text>
+            <Text style={[s.thCell, s.thRight]}>Orders</Text>
+            <Text style={[s.thCell, s.thRight]}>Avg Order</Text>
           </View>
-        );
-      })}
+          {services.map((sv, i) => {
+            const margin = sv.revenue > 0 ? (sv.profit / sv.revenue) * 100 : 0;
+            return (
+              <View key={sv.service} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
+                <Text style={[s.tdCell, { flex: 1.5, fontWeight: '600' }]} numberOfLines={1}>{sv.service}</Text>
+                <Text style={[s.tdCell, s.tdRight]}>{fmtMoney(sv.revenue)}</Text>
+                <Text style={[s.tdCell, s.tdRight, s.tdSm]}>
+                  {serviceRevenue > 0 ? ((sv.revenue / serviceRevenue) * 100).toFixed(1) : '0.0'}%
+                </Text>
+                <Text style={[s.tdCell, s.tdRight, s.marginGreen]}>{fmtMoney(sv.profit)}</Text>
+                <Text style={[s.tdCell, s.tdRight]}>{fmtPct(margin)}</Text>
+                <Text style={[s.tdCell, s.tdRight]}>{sv.orders}</Text>
+                <Text style={[s.tdCell, s.tdRight]}>{sv.orders > 0 ? fmtMoney(sv.revenue / sv.orders) : '—'}</Text>
+              </View>
+            );
+          })}
+        </>
+      ) : (
+        <>
+          {services.map((sv, i) => {
+            const margin = sv.revenue > 0 ? (sv.profit / sv.revenue) * 100 : 0;
+            const color = getServiceColor(sv.service);
+            return (
+              <View key={sv.service} style={[s.mobileCard, i > 0 && s.mobileCardBorder]}>
+                <View style={s.mobileCardHeaderRow}>
+                  <View style={[s.serviceColorDot, { backgroundColor: color }]} />
+                  <Text style={s.mobileCardTitle} numberOfLines={1}>{sv.service}</Text>
+                </View>
+                <View style={s.mobileCardStats}>
+                  <View style={s.mobileCardStat}>
+                    <Text style={s.mobileCardStatLabel}>Revenue</Text>
+                    <Text style={s.mobileCardStatValue}>{fmtMoney(sv.revenue)}</Text>
+                  </View>
+                  <View style={s.mobileCardStat}>
+                    <Text style={s.mobileCardStatLabel}>% of Total</Text>
+                    <Text style={s.mobileCardStatValue}>
+                      {serviceRevenue > 0 ? ((sv.revenue / serviceRevenue) * 100).toFixed(1) : '0.0'}%
+                    </Text>
+                  </View>
+                  <View style={s.mobileCardStat}>
+                    <Text style={s.mobileCardStatLabel}>Profit</Text>
+                    <Text style={[s.mobileCardStatValue, s.marginGreen]}>{fmtMoney(sv.profit)}</Text>
+                  </View>
+                  <View style={s.mobileCardStat}>
+                    <Text style={s.mobileCardStatLabel}>Margin</Text>
+                    <Text style={[s.mobileCardStatValue, s.marginGreen]}>{fmtPct(margin)}</Text>
+                  </View>
+                  <View style={s.mobileCardStat}>
+                    <Text style={s.mobileCardStatLabel}>Orders</Text>
+                    <Text style={s.mobileCardStatValue}>{sv.orders}</Text>
+                  </View>
+                  <View style={s.mobileCardStat}>
+                    <Text style={s.mobileCardStatLabel}>Avg Order</Text>
+                    <Text style={s.mobileCardStatValue}>{sv.orders > 0 ? fmtMoney(sv.revenue / sv.orders) : '—'}</Text>
+                  </View>
+                </View>
+              </View>
+            );
+          })}
+        </>
+      )}
       <View style={s.panelFooter}>
         <Text style={s.panelFooterText}>Showing all {services.length} services</Text>
       </View>
@@ -1723,28 +1899,68 @@ function ServicesTab({ services }: { services: ServiceRow[] }) {
       <View style={s.panelHeader}>
         <Text style={s.panelTitle}>SERVICE VOLUME (by Quantity)</Text>
       </View>
-      <View style={s.tableHead}>
-        <Text style={[s.thCell, { flex: 1.5 }]}>Service</Text>
-        <Text style={[s.thCell, s.thRight]}>Total Quantity</Text>
-        <Text style={[s.thCell, s.thRight]}>% of Total</Text>
-        <Text style={[s.thCell, s.thRight]}>Orders</Text>
-        <Text style={[s.thCell, s.thRight]}>Avg per Order</Text>
-      </View>
       {byVolume.length === 0 ? (
         <Text style={s.emptyMsg}>No service data for this period.</Text>
-      ) : byVolume.map((sv, i) => (
-        <View key={sv.service} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
-          <Text style={[s.tdCell, { flex: 1.5, fontWeight: '600' }]} numberOfLines={1}>{sv.service}</Text>
-          <Text style={[s.tdCell, s.tdRight]}>{Math.round(sv.totalPcs)}</Text>
-          <Text style={[s.tdCell, s.tdRight, s.tdSm]}>
-            {totalPcs > 0 ? ((sv.totalPcs / totalPcs) * 100).toFixed(1) : '0.0'}%
-          </Text>
-          <Text style={[s.tdCell, s.tdRight]}>{sv.orders}</Text>
-          <Text style={[s.tdCell, s.tdRight]}>
-            {sv.orders > 0 ? (sv.totalPcs / sv.orders).toFixed(0) : '—'}
-          </Text>
-        </View>
-      ))}
+      ) : twoCol ? (
+        <>
+          <View style={s.tableHead}>
+            <Text style={[s.thCell, { flex: 1.5 }]}>Service</Text>
+            <Text style={[s.thCell, s.thRight]}>Total Quantity</Text>
+            <Text style={[s.thCell, s.thRight]}>% of Total</Text>
+            <Text style={[s.thCell, s.thRight]}>Orders</Text>
+            <Text style={[s.thCell, s.thRight]}>Avg per Order</Text>
+          </View>
+          {byVolume.map((sv, i) => (
+            <View key={sv.service} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
+              <Text style={[s.tdCell, { flex: 1.5, fontWeight: '600' }]} numberOfLines={1}>{sv.service}</Text>
+              <Text style={[s.tdCell, s.tdRight]}>{Math.round(sv.totalPcs)}</Text>
+              <Text style={[s.tdCell, s.tdRight, s.tdSm]}>
+                {totalPcs > 0 ? ((sv.totalPcs / totalPcs) * 100).toFixed(1) : '0.0'}%
+              </Text>
+              <Text style={[s.tdCell, s.tdRight]}>{sv.orders}</Text>
+              <Text style={[s.tdCell, s.tdRight]}>
+                {sv.orders > 0 ? (sv.totalPcs / sv.orders).toFixed(0) : '—'}
+              </Text>
+            </View>
+          ))}
+        </>
+      ) : (
+        <>
+          {byVolume.map((sv, i) => {
+            const color = getServiceColor(sv.service);
+            return (
+              <View key={sv.service} style={[s.mobileCard, i > 0 && s.mobileCardBorder]}>
+                <View style={s.mobileCardHeaderRow}>
+                  <View style={[s.serviceColorDot, { backgroundColor: color }]} />
+                  <Text style={s.mobileCardTitle} numberOfLines={1}>{sv.service}</Text>
+                </View>
+                <View style={s.mobileCardStats}>
+                  <View style={s.mobileCardStat}>
+                    <Text style={s.mobileCardStatLabel}>Total Quantity</Text>
+                    <Text style={s.mobileCardStatValue}>{Math.round(sv.totalPcs)}</Text>
+                  </View>
+                  <View style={s.mobileCardStat}>
+                    <Text style={s.mobileCardStatLabel}>% of Total</Text>
+                    <Text style={s.mobileCardStatValue}>
+                      {totalPcs > 0 ? ((sv.totalPcs / totalPcs) * 100).toFixed(1) : '0.0'}%
+                    </Text>
+                  </View>
+                  <View style={s.mobileCardStat}>
+                    <Text style={s.mobileCardStatLabel}>Orders</Text>
+                    <Text style={s.mobileCardStatValue}>{sv.orders}</Text>
+                  </View>
+                  <View style={s.mobileCardStat}>
+                    <Text style={s.mobileCardStatLabel}>Avg per Order</Text>
+                    <Text style={s.mobileCardStatValue}>
+                      {sv.orders > 0 ? (sv.totalPcs / sv.orders).toFixed(0) : '—'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            );
+          })}
+        </>
+      )}
       <View style={s.panelFooter}>
         <Text style={s.panelFooterText}>Showing all {services.length} services</Text>
       </View>
@@ -1788,6 +2004,11 @@ function ServicesTab({ services }: { services: ServiceRow[] }) {
 
 // ── Exports Tab ─────────────────────────────────────────────────────────────────
 function ExportsTab({ onExport }: { onExport: (type: 'quotes' | 'sales' | 'lineItems') => void }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const { isDesktop } = useBreakpoint();
+  const showTable = mounted && isDesktop;
+
   const items: Array<{
     label: string;
     description: string;
@@ -1810,27 +2031,49 @@ function ExportsTab({ onExport }: { onExport: (type: 'quotes' | 'sales' | 'lineI
           <View style={s.panelHeader}>
             <Text style={s.panelTitle}>AVAILABLE EXPORTS</Text>
           </View>
-          <View style={s.tableHead}>
-            <Text style={[s.thCell, { flex: 1.4 }]}>Report</Text>
-            <Text style={[s.thCell, { flex: 2 }]}>Description</Text>
-            <Text style={[s.thCell, { flex: 2 }]}>Includes</Text>
-            <Text style={[s.thCell, { flex: 1.2, textAlign: 'center' as const }]}>Format</Text>
-          </View>
-          {items.map((e, i) => (
-            <View key={e.label} style={[s.tableRow, i > 0 && s.tableRowBorder, { alignItems: 'flex-start', paddingVertical: 13 }]}>
-              <Text style={[s.tdCell, { flex: 1.4, fontWeight: '600' }]} numberOfLines={2}>{e.label}</Text>
-              <Text style={[s.tdCell, s.tdSm, { flex: 2 }]} numberOfLines={3}>{e.description}</Text>
-              <Text style={[s.tdCell, s.tdSm, { flex: 2 }]} numberOfLines={2}>{e.includes}</Text>
-              <View style={{ flex: 1.2, flexDirection: 'row', gap: 5, justifyContent: 'center', flexWrap: 'wrap' }}>
-                <TouchableOpacity style={s.exportFormatBtn} onPress={() => onExport(e.key)}>
-                  <Text style={s.exportFormatBtnText}>CSV</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[s.exportFormatBtn, s.exportFormatBtnExcel]} onPress={() => onExport(e.key)}>
-                  <Text style={s.exportFormatBtnText}>Excel</Text>
-                </TouchableOpacity>
+          {showTable ? (
+            <>
+              <View style={s.tableHead}>
+                <Text style={[s.thCell, { flex: 1.4 }]}>Report</Text>
+                <Text style={[s.thCell, { flex: 2 }]}>Description</Text>
+                <Text style={[s.thCell, { flex: 2 }]}>Includes</Text>
+                <Text style={[s.thCell, { flex: 1.2, textAlign: 'center' as const }]}>Format</Text>
               </View>
-            </View>
-          ))}
+              {items.map((e, i) => (
+                <View key={e.label} style={[s.tableRow, i > 0 && s.tableRowBorder, { alignItems: 'flex-start', paddingVertical: 13 }]}>
+                  <Text style={[s.tdCell, { flex: 1.4, fontWeight: '600' }]} numberOfLines={2}>{e.label}</Text>
+                  <Text style={[s.tdCell, s.tdSm, { flex: 2 }]} numberOfLines={3}>{e.description}</Text>
+                  <Text style={[s.tdCell, s.tdSm, { flex: 2 }]} numberOfLines={2}>{e.includes}</Text>
+                  <View style={{ flex: 1.2, flexDirection: 'row', gap: 5, justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <TouchableOpacity style={s.exportFormatBtn} onPress={() => onExport(e.key)}>
+                      <Text style={s.exportFormatBtnText}>CSV</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[s.exportFormatBtn, s.exportFormatBtnExcel]} onPress={() => onExport(e.key)}>
+                      <Text style={s.exportFormatBtnText}>Excel</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </>
+          ) : (
+            <>
+              {items.map((e, i) => (
+                <View key={e.label} style={[s.mobileExportCard, i > 0 && s.mobileCardBorder]}>
+                  <Text style={s.mobileExportCardTitle}>{e.label}</Text>
+                  <Text style={s.mobileExportCardDesc}>{e.description}</Text>
+                  <Text style={s.mobileExportCardIncludes}>{e.includes}</Text>
+                  <View style={s.mobileExportBtns}>
+                    <TouchableOpacity style={s.mobileExportBtn} onPress={() => onExport(e.key)}>
+                      <Text style={s.mobileExportBtnText}>Export CSV</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[s.mobileExportBtn, s.mobileExportBtnExcel]} onPress={() => onExport(e.key)}>
+                      <Text style={s.mobileExportBtnText}>Export Excel</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </>
+          )}
         </View>
       </View>
 
@@ -1874,7 +2117,6 @@ export default function ReportsScreen() {
   const customers = useMemo(() => computeTopCustomers(filteredQuotes), [filteredQuotes]);
   const services = useMemo(() => computeServiceSnapshot(filteredQuotes), [filteredQuotes]);
   const recon = useMemo(() => computeReconciliationQueue(quotes), [quotes]);
-  const topProjects = useMemo(() => computeTopProjects(filteredQuotes), [filteredQuotes]);
   const orgLogoMap = useMemo(() => {
     const m = new Map<string, string | null | undefined>();
     for (const o of orgs) m.set(o.name, o.logoUrl);
@@ -1961,7 +2203,6 @@ export default function ReportsScreen() {
             recon={recon}
             customers={customers}
             services={services}
-            topProjects={topProjects}
             logoMap={orgLogoMap}
             onTab={setActiveTab}
             router={router}
@@ -2379,5 +2620,126 @@ const s = StyleSheet.create({
     fontSize: 13,
     color: '#92400E',
     lineHeight: 20,
+  },
+
+  // ── Mobile Cards (table→card conversion on small screens) ──
+  mobileCard: {
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  mobileCardBorder: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+  },
+  mobileCardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  mobileCardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.light.text,
+    flex: 1,
+  },
+  mobileCardStats: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  mobileCardStat: {
+    width: '50%',
+    paddingVertical: 5,
+    paddingRight: 8,
+  },
+  mobileCardStatLabel: {
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+    marginBottom: 2,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.3,
+  },
+  mobileCardStatValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.light.text,
+  },
+
+  // ── Mobile Export Cards ──
+  mobileExportCard: {
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    gap: 4,
+  },
+  mobileExportCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.light.text,
+    marginBottom: 2,
+  },
+  mobileExportCardDesc: {
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+    lineHeight: 18,
+  },
+  mobileExportCardIncludes: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    marginTop: 2,
+  },
+  mobileExportBtns: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  mobileExportBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 11,
+    borderRadius: DS.radius.sm,
+    backgroundColor: Colors.light.tint,
+  },
+  mobileExportBtnExcel: {
+    backgroundColor: '#1D6F42',
+  },
+  mobileExportBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
+  // ── Mobile Financial Summary ──
+  mobileSummaryRow: {
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+  },
+  mobileSummaryRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+  },
+  mobileSummaryLabel: {
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+    marginBottom: 5,
+  },
+  mobileSummaryValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  mobileSummaryValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.light.text,
+  },
+  mobileSummarySub: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+  },
+  mobileSummaryChange: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

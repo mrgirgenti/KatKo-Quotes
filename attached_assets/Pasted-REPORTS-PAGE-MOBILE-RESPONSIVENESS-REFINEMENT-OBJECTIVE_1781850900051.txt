@@ -1,0 +1,387 @@
+REPORTS PAGE — MOBILE RESPONSIVENESS REFINEMENT
+
+OBJECTIVE
+
+The Reports page has been structurally improved, but the mobile experience feels crowded, compressed, and difficult to scan.
+
+The goal is NOT to redesign the Reports page.
+
+The goal is to improve readability, spacing, hierarchy, and usability on mobile while preserving the existing desktop layout.
+
+Apply these improvements consistently across ALL Reports tabs:
+
+* Overview
+* Financial
+* Customers
+* Services
+* Exports
+
+---
+
+## GLOBAL MOBILE RULES
+
+Target widths:
+
+Mobile:
+320px–768px
+
+Tablet:
+769px–1024px
+
+On mobile:
+
+* Prioritize readability over density.
+* Avoid compressed multi-column tables.
+* Do not allow text collisions.
+* Do not allow columns to run together.
+* Do not allow labels to wrap into awkward multi-line stacks.
+* Preserve black section headers.
+* Preserve orange actions.
+* Preserve Katalyst OS spacing standards.
+
+---
+
+## TAB NAVIGATION
+
+Current issue:
+
+The tab bar becomes cramped.
+
+Required changes:
+
+* Increase horizontal padding.
+* Allow horizontal scrolling.
+* Keep tabs on a single row.
+* Never wrap tabs onto a second line.
+* Active tab remains orange.
+* Preserve current visual styling.
+
+Example:
+
+Overview | Financial | Customers | Services | Exports
+
+Should scroll horizontally if necessary.
+
+---
+
+## OVERVIEW TAB
+
+Current issues:
+
+* Customer table feels compressed.
+* Service Performance table is unreadable.
+* Top Performing Projects section (if still present) is unusable.
+
+Required changes:
+
+TOP CUSTOMERS
+
+Desktop:
+Keep table layout.
+
+Mobile:
+Convert to stacked customer cards.
+
+Each card:
+
+Customer Name
+
+Revenue: $511
+Profit: $74
+Orders: 1
+Last Order: 1 month ago
+
+Avoid table columns entirely on mobile.
+
+---
+
+SERVICE SNAPSHOT
+
+Desktop:
+Keep table layout.
+
+Mobile:
+Convert to stacked service cards.
+
+Example:
+
+Direct to Film
+
+Revenue: $511
+Profit: $74
+Orders: 1
+Avg PCS: 37
+Margin: 14.5%
+
+One service per row.
+
+Do NOT force table columns.
+
+---
+
+Remove any remaining:
+
+Top Performing Projects
+
+If still present.
+
+---
+
+## FINANCIAL TAB
+
+Current issues:
+
+* Financial metrics are compressed.
+* Reconciliation history columns collide.
+* Export options feel small.
+
+Required changes:
+
+FINANCIAL SUMMARY
+
+Convert table rows into metric cards.
+
+Example:
+
+Net Profit
+$74
+
+Gross Margin
+14.5%
+
+Net Margin
+14.5%
+
+Each metric should have adequate spacing.
+
+---
+
+RECONCILIATION HISTORY
+
+Current table is unreadable on mobile.
+
+Convert to reconciliation cards.
+
+Example:
+
+Apr 23, 2026
+
+Projects Reconciled: 1
+Revenue Added: $511
+Profit Added: $74
+Reconciled By: Katalyst Ko
+
+One reconciliation per card.
+
+---
+
+QUICK EXPORTS
+
+Increase:
+
+* Vertical spacing
+* Touch targets
+* Padding
+
+Rows should feel like tappable menu items.
+
+---
+
+## CUSTOMERS TAB
+
+Current issues:
+
+* Customer Revenue Rankings table is cramped.
+* Customer Lifetime Value table is cramped.
+
+Required changes:
+
+CUSTOMER REVENUE RANKINGS
+
+Convert to customer cards.
+
+Example:
+
+Josh G
+
+Revenue: $511
+Profit Contribution: 99.9%
+Orders: 1
+Last Order: 1 month ago
+
+---
+
+CUSTOMER LIFETIME VALUE
+
+Convert to customer cards.
+
+Example:
+
+Josh G
+
+Revenue: $511
+Orders: 1
+First Order: Apr 21, 2026
+
+---
+
+Maintain:
+
+View All Customers →
+
+in section header.
+
+---
+
+## SERVICES TAB
+
+Current issues:
+
+This is currently the worst offender.
+
+Headers are running together.
+
+Examples:
+
+RevenueProfit
+MarginOrders
+Avg Order
+
+are becoming unreadable.
+
+Required changes:
+
+DO NOT DISPLAY SERVICE TABLES ON MOBILE.
+
+Instead:
+
+Convert all service rows into cards.
+
+Example:
+
+Direct to Film
+
+Revenue: $511
+% Revenue: 99.9%
+Profit: $74
+Margin: 14.5%
+Orders: 1
+Avg Order: $511
+
+---
+
+SERVICE VOLUME
+
+Convert to cards.
+
+Example:
+
+Direct to Film
+
+Total Quantity: 37
+% of Total: 78.7%
+Orders: 1
+Avg PCS: 37
+
+---
+
+This section should never render as a compressed table on mobile.
+
+---
+
+## EXPORTS TAB
+
+Current issues:
+
+Columns are compressed.
+
+Descriptions collide.
+
+Format badges feel squeezed.
+
+Required changes:
+
+Convert export rows into cards.
+
+Example:
+
+Quotes Report
+
+Description:
+All quotes within selected date range
+
+Includes:
+Quotes, Clients, Totals, Status
+
+Actions:
+
+[ CSV ]
+[ Excel ]
+
+---
+
+One export report per card.
+
+Avoid all table layouts on mobile.
+
+---
+
+## TABLE RESPONSIVENESS STANDARD
+
+For ALL Reports tabs:
+
+Desktop:
+Keep tables.
+
+Mobile:
+Convert tables into cards.
+
+DO NOT horizontally compress tables.
+
+DO NOT reduce font sizes to force tables to fit.
+
+DO NOT truncate critical data.
+
+Instead:
+
+Transform rows into stacked information cards.
+
+This pattern is already used successfully elsewhere in Katalyst OS and should be reused here.
+
+---
+
+## TYPOGRAPHY
+
+Increase readability:
+
+Section Header Titles
+
+* Slightly larger
+
+Table/Card Labels
+
+* Medium weight
+
+Primary Values
+
+* Larger
+* Easier to scan
+
+Maintain existing brand styling.
+
+---
+
+## SUCCESS CRITERIA
+
+After implementation:
+
+* No overlapping text
+* No merged column headers
+* No unreadable tables
+* No horizontal crowding
+* No awkward wrapping
+* Consistent spacing
+* Consistent mobile card layouts
+* Reports page feels native to Katalyst OS
+
+The mobile Reports experience should prioritize readability and scanning speed over showing traditional desktop tables.
