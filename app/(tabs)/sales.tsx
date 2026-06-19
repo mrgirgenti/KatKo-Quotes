@@ -257,6 +257,14 @@ function SaleRow({ quote, effectiveStatus, onPress, onDelete, onRevert, onEdit, 
           {lineItemServices.length > 0 ? lineItemServices.join('\n') : '—'}
         </Text>
       </View>
+      <View style={styles.colApplicator}>
+        <Text style={styles.tableServices} numberOfLines={3}>
+          {(() => {
+            const apps = [...new Set(quote.lineItems.map((i: any) => i.applicator).filter(Boolean))];
+            return apps.length > 0 ? apps.join('\n') : '—';
+          })()}
+        </Text>
+      </View>
       <View style={styles.colPcs}>
         <Text style={styles.tablePcs}>
           {lineItemPcs.map(n => n > 0 ? `${n} pcs` : '—').join('\n')}
@@ -819,6 +827,7 @@ export default function SalesScreen() {
                 <View style={styles.colProject}><SortBtn field="project" label="Project" /></View>
                 <View style={styles.colQuote}><SortBtn field="invoice" label="Invoice #" /></View>
                 <View style={styles.colServices}><SortBtn field="services" label="Service(s)" /></View>
+                <View style={styles.colApplicator}><Text style={styles.thText}>Applicator(s)</Text></View>
                 <View style={styles.colPcs}><SortBtn field="pcs" label="# PCS" /></View>
                 <View style={styles.colRevenue}><SortBtn field="revenue" label="Total" /></View>
                 <View style={styles.colPerPcs}><Text style={styles.thText}>Per PCS</Text></View>
@@ -985,6 +994,7 @@ const styles = StyleSheet.create({
   colProject:   { flex: 1.2 },
   colQuote:     { width: 90 },
   colServices:  { flex: 1.0 },
+  colApplicator: { flex: 0.9 },
   colPcs:       { width: 72 },
   colPerPcs:    { width: 85, alignItems: 'flex-end' },
   colRevenue:   { width: 95, alignItems: 'flex-end' },

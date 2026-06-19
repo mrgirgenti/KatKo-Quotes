@@ -65,6 +65,7 @@ type SortDir = 'asc' | 'desc';
 function PersonRow({ person, onPress, isSelected, onToggleSelect }: {
   person: Person; onPress: () => void; isSelected: boolean; onToggleSelect: () => void;
 }) {
+  const router = useRouter();
   const name = `${person.firstName} ${person.lastName}`.trim() || 'Unnamed';
   const last = fmtLastLogin(person.lastLoginAt);
   return (
@@ -105,13 +106,20 @@ function PersonRow({ person, onPress, isSelected, onToggleSelect }: {
       <View style={{ width: COL_WIDTHS.lastLogin }}>
         {last ? <Text style={styles.cell} numberOfLines={1}>{last}</Text> : <Text style={styles.dim}>—</Text>}
       </View>
-      <View style={{ width: 90, flexDirection: 'row', justifyContent: 'flex-end' }}>
+      <View style={{ width: 120, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 }}>
         <TouchableOpacity
           style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: Colors.light.tint, height: 30, justifyContent: 'center', alignItems: 'center' }}
           onPress={onPress}
           activeOpacity={0.7}
         >
           <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>View</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ width: 30, height: 30, borderRadius: 6, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: Colors.light.surface, alignItems: 'center', justifyContent: 'center' }}
+          onPress={(e) => { e.stopPropagation?.(); router.push(`/crm/${person.orgId}` as any); }}
+          activeOpacity={0.7}
+        >
+          <ChevronDown size={14} color={Colors.light.textSecondary} />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>

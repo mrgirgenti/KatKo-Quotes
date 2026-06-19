@@ -40,8 +40,8 @@ const FILTER_TABS: (CrmStatus | 'All')[] = ['All', 'Cold', 'Working', 'Active Cl
 const AVATAR_W = 48;
 const CHECKBOX_W = 36;
 const COL_WIDTHS: Record<ColId, number> = {
-  org: 192, bizType: 120, contact: 150, phone: 130,
-  email: 170, status: 132, hub: 110, campaign: 130, actions: 110,
+  org: 192, bizType: 120, contact: 150, email: 170,
+  phone: 130, status: 132, hub: 110, campaign: 130, actions: 110,
 };
 const COL_FLEX: Partial<Record<ColId, number>> = { org: 2.0, bizType: 1.5, contact: 1.5 };
 
@@ -49,13 +49,13 @@ const TOGGLEABLE_COLS: { id: ColId; label: string }[] = [
   { id: 'org', label: 'Organization' },
   { id: 'bizType', label: 'Business Type' },
   { id: 'contact', label: 'Contact Name' },
-  { id: 'phone', label: 'Phone Number' },
   { id: 'email', label: 'Email Address' },
+  { id: 'phone', label: 'Phone Number' },
   { id: 'status', label: 'Status' },
   { id: 'hub', label: 'Client Hub' },
   { id: 'campaign', label: 'Campaign' },
 ];
-const DEFAULT_VISIBLE: ColId[] = ['org', 'bizType', 'contact', 'phone', 'email', 'status', 'hub', 'actions'];
+const DEFAULT_VISIBLE: ColId[] = ['org', 'bizType', 'contact', 'email', 'phone', 'status', 'hub', 'actions'];
 
 const EMPTY_ORG_FORM = { name: '', type: '', city: '', state: '', notes: '', status: 'Cold' as CrmStatus };
 const EMPTY_CONTACT_FORM = { firstName: '', lastName: '', phone: '', email: '', role: '' };
@@ -126,12 +126,12 @@ function OrgRow({ org, onPress, onDelete, visibleCols, isSelected, onToggleSelec
           ? <Text style={styles.tableCell} numberOfLines={1}>{primaryContact.firstName} {primaryContact.lastName}</Text>
           : <Text style={styles.tableDim}>No contact</Text>
         )}
-        {col('phone', primaryContact?.phone
-          ? <Text style={styles.tableCell} numberOfLines={1}>{formatPhone(primaryContact.phone)}</Text>
-          : <Text style={styles.tableDim}>—</Text>
-        )}
         {col('email', primaryContact?.email
           ? <Text style={styles.tableCell} numberOfLines={1}>{primaryContact.email}</Text>
+          : <Text style={styles.tableDim}>—</Text>
+        )}
+        {col('phone', primaryContact?.phone
+          ? <Text style={styles.tableCell} numberOfLines={1}>{formatPhone(primaryContact.phone)}</Text>
           : <Text style={styles.tableDim}>—</Text>
         )}
         {col('campaign', activeCampaign
@@ -393,8 +393,8 @@ function OrganizationsScreen() {
             {col.id === 'org' && <SortBtn field="name" label="Organization" />}
             {col.id === 'bizType' && <SortBtn field="type" label="Business Type" />}
             {col.id === 'contact' && <SortBtn field="contact" label="Contact" />}
-            {col.id === 'phone' && <Text style={styles.sortBtnText}>Phone</Text>}
             {col.id === 'email' && <Text style={styles.sortBtnText}>Email</Text>}
+            {col.id === 'phone' && <Text style={styles.sortBtnText}>Phone</Text>}
             {col.id === 'status' && <SortBtn field="status" label="Status" />}
             {col.id === 'hub' && <SortBtn field="hub" label="Client Hub" />}
             {col.id === 'campaign' && <SortBtn field="campaign" label="Campaign" />}
