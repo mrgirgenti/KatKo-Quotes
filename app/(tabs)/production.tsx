@@ -358,11 +358,11 @@ const styles = StyleSheet.create({
   viewsBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, height: 40, borderRadius: DS.radius.md, borderWidth: 1.5, borderColor: Colors.light.tint, backgroundColor: '#FFF4EE' },
   viewsBtnText: { fontSize: 14, fontWeight: '700', color: Colors.light.tint },
 
-  statsBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: DS.spacing.lg, marginBottom: DS.spacing.md, backgroundColor: '#EBEBEB', borderRadius: DS.radius.md, paddingVertical: 12, paddingHorizontal: 16 },
-  statItem: { flex: 1, alignItems: 'center' },
+  statsBar: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginHorizontal: DS.spacing.lg, marginBottom: DS.spacing.md, backgroundColor: '#EBEBEB', borderRadius: 12, padding: 16 },
+  statItem: { flex: 1, minWidth: 120, borderRadius: 10, paddingVertical: 14, paddingHorizontal: 12, backgroundColor: Colors.light.surface, alignItems: 'center' },
   statValue: { fontSize: 20, fontWeight: '800', lineHeight: 24 },
   statLabel: { fontSize: 11, color: Colors.light.textSecondary, fontWeight: '600', marginTop: 2 },
-  statDivider: { width: 1, height: 28, backgroundColor: '#BBBBBB' },
+  statDivider: { display: 'none' as any },
 
   tabsRow: { flexDirection: 'row', gap: DS.spacing.sm, paddingHorizontal: DS.spacing.xl, paddingBottom: DS.spacing.md },
   tab: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: Colors.light.background },
