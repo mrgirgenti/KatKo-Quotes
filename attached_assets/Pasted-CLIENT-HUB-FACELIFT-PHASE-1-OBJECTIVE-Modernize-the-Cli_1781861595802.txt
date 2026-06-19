@@ -1,0 +1,384 @@
+CLIENT HUB FACELIFT – PHASE 1
+
+OBJECTIVE
+
+Modernize the Client Hub experience while preserving all existing functionality.
+
+The goal is to make the portal feel like a premium Katalyst Ko experience rather than a generic client portal.
+
+IMPORTANT
+
+Do NOT redesign or restructure the Submit a Project Request form itself.
+
+The current form structure should remain unchanged.
+
+Only apply the changes specifically outlined below.
+
+---
+
+## GLOBAL DESIGN DIRECTION
+
+Use the approved Client Hub redesign direction.
+
+Design language:
+
+* Black sidebar
+* White content area
+* Orange primary actions (#FF5A00)
+* Clean cards
+* Strong visual hierarchy
+* More intentional spacing
+* Consistent typography
+* Better use of whitespace
+
+The Client Hub should visually feel like Katalyst OS.
+
+---
+
+## SIDEBAR
+
+Keep current navigation structure:
+
+Dashboard
+Submit a Project
+My Projects
+Media Bin
+Product Catalogs
+
+Maintain:
+
+* Organization logo
+* Organization name
+* User profile at bottom
+
+Refine spacing and typography to match Katalyst OS.
+
+---
+
+## DASHBOARD
+
+Add a Quick Actions section directly beneath the welcome message.
+
+Actions:
+
+* Start Project
+* View Quotes
+* Upload Files
+* Browse Catalogs
+
+Display as clean action cards.
+
+---
+
+Dashboard Layout
+
+LEFT COLUMN
+
+Active Projects
+
+RIGHT COLUMN
+
+Quotes & Invoices
+
+---
+
+BOTTOM ROW
+
+Product Catalogs
+Media Bin
+
+---
+
+Reduce empty whitespace.
+
+Dashboard should feel like a client command center.
+
+---
+
+## SUBMIT A PROJECT REQUEST
+
+DO NOT redesign the existing form.
+
+DO NOT change:
+
+* Form structure
+* Fields
+* Workflow
+* Products + Sizes
+* Line Item functionality
+* Service selection
+
+Keep everything exactly as it exists today.
+
+---
+
+ADD a right-side helper card.
+
+Title:
+
+Need Help?
+
+Contents:
+
+Not sure what you need?
+Tell us about your project.
+
+Have questions?
+We'll help you find the right products.
+
+Need assistance?
+Call us directly.
+
+Display:
+
+480-202-3407
+
+This card should remain visible while filling out the form.
+
+---
+
+## MY PROJECTS
+
+Redesign from a spreadsheet/table feel to a project-card experience.
+
+Current project workflow and statuses remain unchanged.
+
+Each project card should display:
+
+* Project Name
+* Status
+* Submitted Date
+* In Hands Date
+* Total PCS
+* Total Value
+* Project Timeline
+* View Project button
+
+Cards should be:
+
+* Easy to scan
+* Mobile friendly
+* Consistent with Katalyst OS cards
+
+Maintain existing project status logic.
+
+---
+
+Add:
+
+Reorder button for completed projects.
+
+Purpose:
+
+Allow clients to quickly reorder previous projects.
+
+This can be a Phase 2 enhancement if needed.
+
+---
+
+## MEDIA BIN
+
+Keep existing functionality.
+
+Add filter chips:
+
+* All
+* Logos
+* Artwork
+* Proofs
+* Invoices
+* Mockups
+
+---
+
+Add sorting:
+
+* Newest
+* Oldest
+* A-Z
+
+---
+
+Add view toggle:
+
+* Grid
+* List
+
+---
+
+Improve visual presentation only.
+
+Do not change functionality.
+
+---
+
+## PRODUCT CATALOGS
+
+IMPORTANT
+
+Maintain vendor-first structure.
+
+Do NOT reorganize around categories like:
+
+* T-Shirts
+* Hoodies
+* Polos
+* Hats
+
+Most vendors carry the same categories.
+
+A category-first system would create duplication and confusion.
+
+---
+
+Add catalog search bar.
+
+Placeholder:
+
+Search catalogs by brand or product...
+
+---
+
+Add filter chips:
+
+* All
+* Apparel
+* Streetwear
+* Promotional
+* Workwear
+
+---
+
+Redesign vendor cards.
+
+Each card should include:
+
+Vendor Logo
+
+Vendor Name
+
+Short Description
+
+Primary Specialty Badge
+
+---
+
+Examples:
+
+S&S Activewear
+
+Massive apparel catalog with thousands of styles and colors.
+
+Badge:
+Apparel
+
+---
+
+SanMar
+
+Top brands and everyday favorites for every need.
+
+Badge:
+Apparel
+
+---
+
+Shaka Wear
+
+Heavyweight streetwear apparel built for comfort and durability.
+
+Badge:
+Streetwear
+
+---
+
+Independent Trading Co.
+
+Premium hoodies, jackets and outerwear essentials.
+
+Badge:
+Outerwear
+
+---
+
+Katalyst Ko Promotional Products
+
+Bags, drinkware, pens, signs, stickers and branded merchandise.
+
+Badge:
+Promotional
+
+---
+
+Keep:
+
+Open Catalog button
+
+Website button
+
+---
+
+Add top-right action:
+
+Request a Product
+
+Purpose:
+
+Allow clients to request an item they cannot find.
+
+---
+
+Add bottom CTA section:
+
+Can't find what you're looking for?
+
+Request a specific product and we'll help you find the perfect solution.
+
+[ Request a Product ]
+
+---
+
+This page should feel like a premium vendor marketplace rather than a list of links.
+
+---
+
+## GENERAL REQUIREMENTS
+
+Improve:
+
+* Spacing
+* Typography
+* Card design
+* Visual hierarchy
+* Mobile responsiveness
+
+Maintain:
+
+* Existing permissions
+* Existing workflows
+* Existing business logic
+
+No functionality should be removed.
+
+This phase is a UI/UX modernization pass.
+
+---
+
+## SUCCESS CRITERIA
+
+The Client Hub should feel:
+
+* Professional
+* Premium
+* Easy to navigate
+* Consistent with Katalyst OS
+
+Clients should immediately understand:
+
+* What projects they have
+* Where to submit work
+* Where to find files
+* How to browse products
+* How to contact Katalyst Ko
+
+without needing additional explanation.
