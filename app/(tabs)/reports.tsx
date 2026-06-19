@@ -460,17 +460,19 @@ function KpiCard({
   change,
   compareLabel,
   icon: Icon,
+  style,
 }: {
   label: string;
   value: string;
   change: number | null;
   compareLabel: string;
   icon: React.ComponentType<{ size?: number; color?: string }>;
+  style?: object;
 }) {
   const hasChange = change !== null;
   const positive = (change ?? 0) >= 0;
   return (
-    <View style={s.kpiCard}>
+    <View style={[s.kpiCard, style]}>
       <View style={s.kpiTopRow}>
         <View style={s.kpiLabelRow}>
           <Text style={s.kpiLabel}>{label}</Text>
@@ -1243,6 +1245,7 @@ function OverviewTab({
             change={k.prevRaw !== null ? pctChange(k.raw, k.prevRaw) : null}
             compareLabel={compareLabel}
             icon={k.icon}
+            style={mounted && !isDesktop ? { flexBasis: '48%', minWidth: 0, flexGrow: 0 } : undefined}
           />
         ))}
       </View>
