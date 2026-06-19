@@ -5170,16 +5170,16 @@ const styles = StyleSheet.create({
   },
 
   revenueStatsRow: {
-    flexDirection: 'row' as const, alignItems: 'center' as const,
-    backgroundColor: '#EBEBEB', borderRadius: 10,
+    flexDirection: 'row' as const, flexWrap: 'wrap' as const,
+    gap: 10, backgroundColor: '#EBEBEB', borderRadius: 12,
     padding: 12, marginBottom: 12,
   },
-  revenueStatBox: { flex: 1, alignItems: 'center' as const, gap: 3 },
+  revenueStatBox: { flex: 1, minWidth: 80, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 10, backgroundColor: Colors.light.surface, alignItems: 'center' as const, gap: 3 },
   // Metric typography is standardized app-wide — keep these as aliases of the
   // shared constants in components/Metric.tsx so sections never drift.
   revenueStatValue: { ...metricValueStyle },
   revenueStatLabel: { ...metricLabelStyle },
-  revenueStatDivider: { width: 1, height: 32, backgroundColor: Colors.light.border },
+  revenueStatDivider: { display: 'none' as any },
 
   portalPanel: {
     backgroundColor: Colors.light.background,
@@ -5520,10 +5520,11 @@ const styles = StyleSheet.create({
   },
   v2SecondaryStats: {
     flexDirection: 'row' as const,
-    alignItems: 'center' as const,
+    flexWrap: 'wrap' as const,
+    gap: 10,
     backgroundColor: '#EBEBEB',
-    borderRadius: 9,
-    padding: 10,
+    borderRadius: 12,
+    padding: 12,
     marginBottom: 10,
   },
   v2SecondaryStatValue: { ...metricValueStyle },
@@ -6196,16 +6197,21 @@ const styles = StyleSheet.create({
   },
   hubMetricsRow: {
     flexDirection: 'row' as const,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    flexWrap: 'wrap' as const,
+    gap: 10,
     backgroundColor: '#EBEBEB',
-    borderRadius: 8,
+    borderRadius: 12,
+    padding: 12,
     marginHorizontal: 10,
     marginBottom: 8,
-    alignItems: 'center' as const,
   },
   hubMetricItem: {
     flex: 1,
+    minWidth: 70,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    backgroundColor: Colors.light.surface,
     alignItems: 'center' as const,
   },
   hubMetricVal: {
@@ -6221,9 +6227,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   hubMetricDiv: {
-    width: 1,
-    height: 28,
-    backgroundColor: '#BBBBBB',
+    display: 'none' as any,
   },
   hubCollapseHeader: {
     flexDirection: 'row' as const,
