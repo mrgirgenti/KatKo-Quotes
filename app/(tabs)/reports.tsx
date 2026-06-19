@@ -216,6 +216,7 @@ interface CustomerRow {
   profit: number;
   orders: number;
   lastOrderDate: string | null;
+  firstOrderDate: string | null;
 }
 
 function computeTopCustomers(quotes: Quote[]): CustomerRow[] {
@@ -228,15 +229,18 @@ function computeTopCustomers(quotes: Quote[]): CustomerRow[] {
       profit: 0,
       orders: 0,
       lastOrderDate: null,
+      firstOrderDate: null,
     };
     existing.revenue += getRevenue(q);
     existing.profit += getProfit(q);
     existing.orders += 1;
-    if (
-      q.orderDate &&
-      (!existing.lastOrderDate || q.orderDate > existing.lastOrderDate)
-    ) {
-      existing.lastOrderDate = q.orderDate as string;
+    if (q.orderDate) {
+      if (!existing.lastOrderDate || q.orderDate > existing.lastOrderDate) {
+        existing.lastOrderDate = q.orderDate as string;
+      }
+      if (!existing.firstOrderDate || q.orderDate < existing.firstOrderDate) {
+        existing.firstOrderDate = q.orderDate as string;
+      }
     }
     map.set(name, existing);
   }
@@ -1431,9 +1435,10 @@ function FinancialTab({
       </View>
       <View style={s.tableHead}>
         <Text style={[s.thCell, { flex: 1.4 }]}>Date</Text>
-        <Text style={[s.thCell, s.thRight]}>Projects</Text>
-        <Text style={[s.thCell, s.thRight]}>Revenue</Text>
-        <Text style={[s.thCell, s.thRight]}>Profit</Text>
+        <Text style={[s.thCell, s.thRight]}>Projects Reconciled</Text>
+        <Text style={[s.thCell, s.thRight]}>Revenue Added</Text>
+        <Text style={[s.thCell, s.thRight]}>Profit Added</Text>
+        <Text style={[s.thCell, { flex: 1.4 }]}>Reconciled By</Text>
       </View>
       {reconHistory.length === 0 ? (
         <Text style={s.emptyMsg}>No reconciled projects in this period.</Text>
@@ -1443,6 +1448,7 @@ function FinancialTab({
           <Text style={[s.tdCell, s.tdRight]}>{r.count}</Text>
           <Text style={[s.tdCell, s.tdRight]}>{fmtMoney(r.revenue)}</Text>
           <Text style={[s.tdCell, s.tdRight, s.marginGreen]}>{fmtMoney(r.profit)}</Text>
+          <Text style={[s.tdCell, s.tdSm, { flex: 1.4 }]}>Katalyst Ko</Text>
         </View>
       ))}
     </View>
@@ -1528,6 +1534,7 @@ function CustomersTab({
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const { isDesktop } = useBreakpoint();
+  const twoCol = mounted && isDesktop;
 
   const totalRevenue = customers.reduce((s, c) => s + c.revenue, 0);
   const newCustomers = customers.filter((c) => c.orders === 1).length;
@@ -1544,6 +1551,78 @@ function CustomersTab({
   const top10 = customers.slice(0, 10);
   const top8 = customers.slice(0, 8);
 
+  const rankingsPanel = (
+    <View style={s.panel}>
+      <View style={s.panelHeader}>
+        <Text style={s.panelTitle}>CUSTOMER REVENUE RANKINGS</Text>
+        <TouchableOpacity style={s.panelActionBtn} onPress={() => router.push('/(tabs)/clients' as any)}>
+          <Text style={s.panelAction}>View All Customers</Text>
+          <ChevronRight size={13} color={Colors.light.tint} />
+        </TouchableOpacity>
+      </View>
+      <View style={s.tableHead}>
+        <Text style={[s.thCell, { flex: 2 }]}>Customer</Text>
+        <Text style={[s.thCell, s.thRight]}>Revenue</Text>
+        <Text style={[s.thCell, s.thRight]}>% of Total</Text>
+        <Text style={[s.thCell, s.thRight]}>Orders</Text>
+        <Text style={[s.thCell, s.thRight, { flex: 1.3 }]}>Last Order</Text>
+      </View>
+      {top10.length === 0 ? (
+        <Text style={s.emptyMsg}>No customer data for this period.</Text>
+      ) : top10.map((c, i) => (
+        <View key={c.name} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
+          <View style={[s.custCell, { flex: 2 }]}>
+            <Text style={s.custName} numberOfLines={1}>{c.name}</Text>
+          </View>
+          <Text style={[s.tdCell, s.tdRight]}>{fmtMoney(c.revenue)}</Text>
+          <Text style={[s.tdCell, s.tdRight, s.tdSm]}>
+            {totalRevenue > 0 ? ((c.revenue / totalRevenue) * 100).toFixed(1) : '0.0'}%
+          </Text>
+          <Text style={[s.tdCell, s.tdRight]}>{c.orders}</Text>
+          <Text style={[s.tdCell, s.tdRight, s.tdSm, { flex: 1.3 }]}>
+            {c.lastOrderDate ? fmtRelative(c.lastOrderDate) : '—'}
+          </Text>
+        </View>
+      ))}
+      <View style={s.panelFooter}>
+        <Text style={s.panelFooterText}>
+          Showing top {Math.min(top10.length, 10)} of {customers.length} customers
+        </Text>
+      </View>
+    </View>
+  );
+
+  const ltvPanel = (
+    <View style={s.panel}>
+      <View style={s.panelHeader}>
+        <Text style={s.panelTitle}>CUSTOMER LIFETIME VALUE</Text>
+      </View>
+      <View style={s.tableHead}>
+        <Text style={[s.thCell, { flex: 2 }]}>Customer</Text>
+        <Text style={[s.thCell, s.thRight]}>Revenue</Text>
+        <Text style={[s.thCell, s.thRight]}>Orders</Text>
+        <Text style={[s.thCell, s.thRight, { flex: 1.5 }]}>First Order</Text>
+      </View>
+      {top8.length === 0 ? (
+        <Text style={s.emptyMsg}>No customer data for this period.</Text>
+      ) : top8.map((c, i) => (
+        <View key={c.name} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
+          <Text style={[s.tdCell, { flex: 2, fontWeight: '600' }]} numberOfLines={1}>{c.name}</Text>
+          <Text style={[s.tdCell, s.tdRight]}>{fmtMoney(c.revenue)}</Text>
+          <Text style={[s.tdCell, s.tdRight]}>{c.orders}</Text>
+          <Text style={[s.tdCell, s.tdRight, s.tdSm, { flex: 1.5 }]}>
+            {c.firstOrderDate ? fmtDate(c.firstOrderDate) : '—'}
+          </Text>
+        </View>
+      ))}
+      <View style={s.panelFooter}>
+        <Text style={s.panelFooterText}>
+          Showing {Math.min(top8.length, 8)} of {customers.length} customers
+        </Text>
+      </View>
+    </View>
+  );
+
   return (
     <View>
       {/* KPIs */}
@@ -1561,79 +1640,19 @@ function CustomersTab({
         ))}
       </View>
 
-      {/* Customer Revenue Rankings */}
-      <View style={s.panelOuter}>
-        <View style={s.panel}>
-          <View style={s.panelHeader}>
-            <Text style={s.panelTitle}>CUSTOMER REVENUE RANKINGS</Text>
-            <TouchableOpacity style={s.panelActionBtn} onPress={() => router.push('/(tabs)/clients')}>
-              <Text style={s.panelAction}>View All Customers</Text>
-              <ChevronRight size={13} color={Colors.light.tint} />
-            </TouchableOpacity>
-          </View>
-          <View style={s.tableHead}>
-            <Text style={[s.thCell, { flex: 2 }]}>Customer</Text>
-            <Text style={[s.thCell, s.thRight]}>Revenue</Text>
-            <Text style={[s.thCell, s.thRight]}>% of Total</Text>
-            <Text style={[s.thCell, s.thRight]}>Orders</Text>
-            <Text style={[s.thCell, s.thRight, { flex: 1.3 }]}>Last Order</Text>
-          </View>
-          {top10.length === 0 ? (
-            <Text style={s.emptyMsg}>No customer data for this period.</Text>
-          ) : top10.map((c, i) => (
-            <View key={c.name} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
-              <View style={[s.custCell, { flex: 2 }]}>
-                <Text style={s.custName} numberOfLines={1}>{c.name}</Text>
-              </View>
-              <Text style={[s.tdCell, s.tdRight]}>{fmtMoney(c.revenue)}</Text>
-              <Text style={[s.tdCell, s.tdRight, s.tdSm]}>
-                {totalRevenue > 0 ? ((c.revenue / totalRevenue) * 100).toFixed(1) : '0.0'}%
-              </Text>
-              <Text style={[s.tdCell, s.tdRight]}>{c.orders}</Text>
-              <Text style={[s.tdCell, s.tdRight, s.tdSm, { flex: 1.3 }]}>
-                {c.lastOrderDate ? fmtRelative(c.lastOrderDate) : '—'}
-              </Text>
-            </View>
-          ))}
-          <View style={s.panelFooter}>
-            <Text style={s.panelFooterText}>
-              Showing top {Math.min(top10.length, 10)} of {customers.length} customers
-            </Text>
-          </View>
+      {/* Customer Revenue Rankings + Customer Lifetime Value (two-column on desktop) */}
+      {twoCol ? (
+        <View style={[s.twoColRow, { alignItems: 'flex-start' }]}>
+          <View style={s.col}>{rankingsPanel}</View>
+          <View style={s.col}>{ltvPanel}</View>
         </View>
-      </View>
-
-      {/* Customer Lifetime Value */}
-      <View style={s.panelOuter}>
-        <View style={s.panel}>
-          <View style={s.panelHeader}>
-            <Text style={s.panelTitle}>CUSTOMER LIFETIME VALUE</Text>
-          </View>
-          <View style={s.tableHead}>
-            <Text style={[s.thCell, { flex: 2 }]}>Customer</Text>
-            <Text style={[s.thCell, s.thRight]}>Revenue</Text>
-            <Text style={[s.thCell, s.thRight]}>Orders</Text>
-            <Text style={[s.thCell, s.thRight, { flex: 1.5 }]}>Last Order</Text>
-          </View>
-          {top8.length === 0 ? (
-            <Text style={s.emptyMsg}>No customer data for this period.</Text>
-          ) : top8.map((c, i) => (
-            <View key={c.name} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
-              <Text style={[s.tdCell, { flex: 2, fontWeight: '600' }]} numberOfLines={1}>{c.name}</Text>
-              <Text style={[s.tdCell, s.tdRight]}>{fmtMoney(c.revenue)}</Text>
-              <Text style={[s.tdCell, s.tdRight]}>{c.orders}</Text>
-              <Text style={[s.tdCell, s.tdRight, s.tdSm, { flex: 1.5 }]}>
-                {c.lastOrderDate ? fmtDate(c.lastOrderDate) : '—'}
-              </Text>
-            </View>
-          ))}
-          <View style={s.panelFooter}>
-            <Text style={s.panelFooterText}>
-              Showing {Math.min(top8.length, 8)} of {customers.length} customers
-            </Text>
-          </View>
+      ) : (
+        <View style={s.panelOuter}>
+          {rankingsPanel}
+          <View style={{ height: 12 }} />
+          {ltvPanel}
         </View>
-      </View>
+      )}
       <View style={{ height: 40 }} />
     </View>
   );
@@ -1644,6 +1663,7 @@ function ServicesTab({ services }: { services: ServiceRow[] }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const { isDesktop } = useBreakpoint();
+  const twoCol = mounted && isDesktop;
 
   const serviceRevenue = services.reduce((s, sv) => s + sv.revenue, 0);
   const serviceProfit = services.reduce((s, sv) => s + sv.profit, 0);
@@ -1660,6 +1680,77 @@ function ServicesTab({ services }: { services: ServiceRow[] }) {
 
   const byVolume = services.slice().sort((a, b) => b.totalPcs - a.totalPcs);
 
+  const profitabilityPanel = (
+    <View style={s.panel}>
+      <View style={s.panelHeader}>
+        <Text style={s.panelTitle}>SERVICE PROFITABILITY</Text>
+      </View>
+      <View style={s.tableHead}>
+        <Text style={[s.thCell, { flex: 1.5 }]}>Service</Text>
+        <Text style={[s.thCell, s.thRight]}>Revenue</Text>
+        <Text style={[s.thCell, s.thRight]}>% of Total</Text>
+        <Text style={[s.thCell, s.thRight]}>Profit</Text>
+        <Text style={[s.thCell, s.thRight]}>Margin</Text>
+        <Text style={[s.thCell, s.thRight]}>Orders</Text>
+        <Text style={[s.thCell, s.thRight]}>Avg Order</Text>
+      </View>
+      {services.length === 0 ? (
+        <Text style={s.emptyMsg}>No service data for this period.</Text>
+      ) : services.map((sv, i) => {
+        const margin = sv.revenue > 0 ? (sv.profit / sv.revenue) * 100 : 0;
+        return (
+          <View key={sv.service} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
+            <Text style={[s.tdCell, { flex: 1.5, fontWeight: '600' }]} numberOfLines={1}>{sv.service}</Text>
+            <Text style={[s.tdCell, s.tdRight]}>{fmtMoney(sv.revenue)}</Text>
+            <Text style={[s.tdCell, s.tdRight, s.tdSm]}>
+              {serviceRevenue > 0 ? ((sv.revenue / serviceRevenue) * 100).toFixed(1) : '0.0'}%
+            </Text>
+            <Text style={[s.tdCell, s.tdRight, s.marginGreen]}>{fmtMoney(sv.profit)}</Text>
+            <Text style={[s.tdCell, s.tdRight]}>{fmtPct(margin)}</Text>
+            <Text style={[s.tdCell, s.tdRight]}>{sv.orders}</Text>
+            <Text style={[s.tdCell, s.tdRight]}>{sv.orders > 0 ? fmtMoney(sv.revenue / sv.orders) : '—'}</Text>
+          </View>
+        );
+      })}
+      <View style={s.panelFooter}>
+        <Text style={s.panelFooterText}>Showing all {services.length} services</Text>
+      </View>
+    </View>
+  );
+
+  const volumePanel = (
+    <View style={s.panel}>
+      <View style={s.panelHeader}>
+        <Text style={s.panelTitle}>SERVICE VOLUME (by Quantity)</Text>
+      </View>
+      <View style={s.tableHead}>
+        <Text style={[s.thCell, { flex: 1.5 }]}>Service</Text>
+        <Text style={[s.thCell, s.thRight]}>Total Quantity</Text>
+        <Text style={[s.thCell, s.thRight]}>% of Total</Text>
+        <Text style={[s.thCell, s.thRight]}>Orders</Text>
+        <Text style={[s.thCell, s.thRight]}>Avg per Order</Text>
+      </View>
+      {byVolume.length === 0 ? (
+        <Text style={s.emptyMsg}>No service data for this period.</Text>
+      ) : byVolume.map((sv, i) => (
+        <View key={sv.service} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
+          <Text style={[s.tdCell, { flex: 1.5, fontWeight: '600' }]} numberOfLines={1}>{sv.service}</Text>
+          <Text style={[s.tdCell, s.tdRight]}>{Math.round(sv.totalPcs)}</Text>
+          <Text style={[s.tdCell, s.tdRight, s.tdSm]}>
+            {totalPcs > 0 ? ((sv.totalPcs / totalPcs) * 100).toFixed(1) : '0.0'}%
+          </Text>
+          <Text style={[s.tdCell, s.tdRight]}>{sv.orders}</Text>
+          <Text style={[s.tdCell, s.tdRight]}>
+            {sv.orders > 0 ? (sv.totalPcs / sv.orders).toFixed(0) : '—'}
+          </Text>
+        </View>
+      ))}
+      <View style={s.panelFooter}>
+        <Text style={s.panelFooterText}>Showing all {services.length} services</Text>
+      </View>
+    </View>
+  );
+
   return (
     <View>
       {/* KPIs */}
@@ -1677,78 +1768,19 @@ function ServicesTab({ services }: { services: ServiceRow[] }) {
         ))}
       </View>
 
-      {/* Service Profitability */}
-      <View style={s.panelOuter}>
-        <View style={s.panel}>
-          <View style={s.panelHeader}>
-            <Text style={s.panelTitle}>SERVICE PROFITABILITY</Text>
-          </View>
-          <View style={s.tableHead}>
-            <Text style={[s.thCell, { flex: 1.5 }]}>Service</Text>
-            <Text style={[s.thCell, s.thRight]}>Revenue</Text>
-            <Text style={[s.thCell, s.thRight]}>% of Total</Text>
-            <Text style={[s.thCell, s.thRight]}>Profit</Text>
-            <Text style={[s.thCell, s.thRight]}>Margin</Text>
-            <Text style={[s.thCell, s.thRight]}>Orders</Text>
-            <Text style={[s.thCell, s.thRight]}>Avg Order</Text>
-          </View>
-          {services.length === 0 ? (
-            <Text style={s.emptyMsg}>No service data for this period.</Text>
-          ) : services.map((sv, i) => {
-            const margin = sv.revenue > 0 ? (sv.profit / sv.revenue) * 100 : 0;
-            return (
-              <View key={sv.service} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
-                <Text style={[s.tdCell, { flex: 1.5, fontWeight: '600' }]} numberOfLines={1}>{sv.service}</Text>
-                <Text style={[s.tdCell, s.tdRight]}>{fmtMoney(sv.revenue)}</Text>
-                <Text style={[s.tdCell, s.tdRight, s.tdSm]}>
-                  {serviceRevenue > 0 ? ((sv.revenue / serviceRevenue) * 100).toFixed(1) : '0.0'}%
-                </Text>
-                <Text style={[s.tdCell, s.tdRight, s.marginGreen]}>{fmtMoney(sv.profit)}</Text>
-                <Text style={[s.tdCell, s.tdRight]}>{fmtPct(margin)}</Text>
-                <Text style={[s.tdCell, s.tdRight]}>{sv.orders}</Text>
-                <Text style={[s.tdCell, s.tdRight]}>{sv.orders > 0 ? fmtMoney(sv.revenue / sv.orders) : '—'}</Text>
-              </View>
-            );
-          })}
-          <View style={s.panelFooter}>
-            <Text style={s.panelFooterText}>Showing all {services.length} services</Text>
-          </View>
+      {/* Service Profitability + Service Volume (two-column on desktop) */}
+      {twoCol ? (
+        <View style={[s.twoColRow, { alignItems: 'flex-start' }]}>
+          <View style={s.col}>{profitabilityPanel}</View>
+          <View style={s.col}>{volumePanel}</View>
         </View>
-      </View>
-
-      {/* Service Volume (by Quantity) */}
-      <View style={s.panelOuter}>
-        <View style={s.panel}>
-          <View style={s.panelHeader}>
-            <Text style={s.panelTitle}>SERVICE VOLUME (by Quantity)</Text>
-          </View>
-          <View style={s.tableHead}>
-            <Text style={[s.thCell, { flex: 1.5 }]}>Service</Text>
-            <Text style={[s.thCell, s.thRight]}>Total Qty</Text>
-            <Text style={[s.thCell, s.thRight]}>% of Total</Text>
-            <Text style={[s.thCell, s.thRight]}>Orders</Text>
-            <Text style={[s.thCell, s.thRight]}>Avg per Order</Text>
-          </View>
-          {byVolume.length === 0 ? (
-            <Text style={s.emptyMsg}>No service data for this period.</Text>
-          ) : byVolume.map((sv, i) => (
-            <View key={sv.service} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
-              <Text style={[s.tdCell, { flex: 1.5, fontWeight: '600' }]} numberOfLines={1}>{sv.service}</Text>
-              <Text style={[s.tdCell, s.tdRight]}>{Math.round(sv.totalPcs)}</Text>
-              <Text style={[s.tdCell, s.tdRight, s.tdSm]}>
-                {totalPcs > 0 ? ((sv.totalPcs / totalPcs) * 100).toFixed(1) : '0.0'}%
-              </Text>
-              <Text style={[s.tdCell, s.tdRight]}>{sv.orders}</Text>
-              <Text style={[s.tdCell, s.tdRight]}>
-                {sv.orders > 0 ? (sv.totalPcs / sv.orders).toFixed(0) : '—'}
-              </Text>
-            </View>
-          ))}
-          <View style={s.panelFooter}>
-            <Text style={s.panelFooterText}>Showing all {services.length} services</Text>
-          </View>
+      ) : (
+        <View style={s.panelOuter}>
+          {profitabilityPanel}
+          <View style={{ height: 12 }} />
+          {volumePanel}
         </View>
-      </View>
+      )}
       <View style={{ height: 40 }} />
     </View>
   );
