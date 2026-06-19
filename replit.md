@@ -2,6 +2,11 @@
 
 A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custom apparel print shop.
 
+## Project Rules
+
+### AUTHENTICATION LOCK
+Clerk is complete and approved. The agent must not inspect, modify, validate, regenerate, or revisit any Clerk implementation unless specifically requested by the user. All future tasks must ignore authentication entirely.
+
 ## Run & Operate
 
 To run the application, use the following command:
