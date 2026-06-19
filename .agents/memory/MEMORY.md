@@ -9,7 +9,6 @@
 - [Prisma db push drift](prisma-push-drift.md) — db push wants to DROP unrelated drifted columns (e.g. Quote.projectNumber); for additive changes use a targeted ALTER, never --accept-data-loss.
 - [Safari WebKit scrollbar](safari-scrollbar-fix.md) — scrollbar-width:none is Firefox/Chrome only; add *::-webkit-scrollbar{display:none} in both SSR head (+html.tsx) and runtime CSS injection (_layout.tsx) to kill the blue track in Safari.
 - [Expo SSR deployment](expo-ssr-deployment.md) — autoscale prod run MUST be `expo serve` (not `expo start`) or health check fails; never use `static` target (kills API routes).
-- [Clerk sign-in flow](clerk-signin-flow.md) — Clerk "Identifier First" instances return needs_first_factor (not complete) even when password is passed to create(); must call attemptFirstFactor next. Also verifyToken needs clockSkewInMs:5000.
-- [Clerk auth architecture](clerk-auth-architecture.md) — Clerk = identity only; DB User is source of truth for roles. authenticateRequest() in lib/auth.ts verifies token + upserts DB row. POST/PUT/DELETE on projects require auth; priority/assignee changes require org_admin role.
+- [Clerk auth FROZEN](clerk-frozen.md) — Auth is complete & frozen. Never plan, touch, validate, or mention Clerk/auth unless user explicitly requests it.
 - [Quote sub-route lookups](quote-subroute-lookups.md) — no 'sale' status exists (don't gate on it); Production Mode is navigation-only vs Start Production (mutating); sub-routes lack detail page's directQuote fallback.
 - [CRM org-header variants](crm-org-header-variants.md) — only v2LPHeader/v2MobileHeader render (FLAG_ORG_LAYOUT_V2=true); legacy leftPanel is dead code; logo Change/Remove live in OrgLogoUploader (hideActions to hide).
