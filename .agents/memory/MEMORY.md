@@ -12,3 +12,4 @@
 - [Clerk auth FROZEN](clerk-frozen.md) — Auth is complete & frozen. Never plan, touch, validate, or mention Clerk/auth unless user explicitly requests it.
 - [Quote sub-route lookups](quote-subroute-lookups.md) — no 'sale' status exists (don't gate on it); Production Mode is navigation-only vs Start Production (mutating); sub-routes lack detail page's directQuote fallback.
 - [CRM org-header variants](crm-org-header-variants.md) — only v2LPHeader/v2MobileHeader render (FLAG_ORG_LAYOUT_V2=true); legacy leftPanel is dead code; logo Change/Remove live in OrgLogoUploader (hideActions to hide).
+- [Portal upload auth bypass](portal-upload-auth.md) — portal file uploads/deletes need portal-specific API routes; /api/files is Clerk-gated and portal has no Clerk token.

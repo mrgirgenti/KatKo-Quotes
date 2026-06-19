@@ -930,6 +930,7 @@ export default function ClientPortal() {
   const [mediaBinFiles, setMediaBinFiles] = useState<MediaFile[]>([]);
   const [mediaBinLoading, setMediaBinLoading] = useState(false);
   const [mediaBinUploading, setMediaBinUploading] = useState(false);
+  const [isDraggingMB, setIsDraggingMB] = useState(false);
   const [mediaBinSearch, setMediaBinSearch] = useState('');
   const [mediaBinFilter, setMediaBinFilter] = useState<string>('All');
   const [mediaBinSort, setMediaBinSort] = useState<'Newest' | 'Oldest' | 'A-Z'>('Newest');
@@ -1181,18 +1182,22 @@ export default function ClientPortal() {
   useEffect(() => {
     if (Platform.OS !== 'web' || !mediaBinDropRef.current) return;
     const el = mediaBinDropRef.current as any;
-    const onDragOver = (e: any) => { e.preventDefault(); };
+    const onDragOver = (e: any) => { e.preventDefault(); setIsDraggingMB(true); };
+    const onDragLeave = (e: any) => { if (!el.contains(e.relatedTarget)) setIsDraggingMB(false); };
     const onDrop = (e: any) => {
       e.preventDefault();
+      setIsDraggingMB(false);
       if (!session) return;
       const files = Array.from((e.dataTransfer?.files || []) as globalThis.File[]);
       if (files.length === 0) return;
       handleMediaBinUpload(files);
     };
     el.addEventListener('dragover', onDragOver);
+    el.addEventListener('dragleave', onDragLeave);
     el.addEventListener('drop', onDrop);
     return () => {
       el.removeEventListener('dragover', onDragOver);
+      el.removeEventListener('dragleave', onDragLeave);
       el.removeEventListener('drop', onDrop);
     };
   }, [activeView, session]);
@@ -1209,11 +1214,10 @@ export default function ClientPortal() {
     for (const f of allowed) {
       const fd = new FormData();
       fd.append('file', f);
-      fd.append('orgId', session.orgId);
       fd.append('uploadedByUserId', session.userId);
       fd.append('fileType', 'ARTWORK');
       fd.append('visibility', 'CLIENT_VISIBLE');
-      await fetch('/api/files', { method: 'POST', body: fd }).catch(() => {});
+      await fetch(`/api/portal/${session.orgId}/upload`, { method: 'POST', body: fd }).catch(() => {});
     }
     await fetchMediaBin(session.orgId);
     setMediaBinUploading(false);
@@ -1221,7 +1225,7 @@ export default function ClientPortal() {
 
   const deleteMediaBinFile = useCallback(async (fileId: string) => {
     if (!session) return;
-    await fetch(`/api/files/${fileId}`, { method: 'DELETE' }).catch(() => {});
+    await fetch(`/api/portal/${session.orgId}/files/${fileId}`, { method: 'DELETE' }).catch(() => {});
     setMediaBinFiles(prev => prev.filter(f => f.id !== fileId));
   }, [session]);
 
@@ -1807,6 +1811,64 @@ export default function ClientPortal() {
 
     const advFilterCount = [mpDateFrom || mpDateTo, mpCostMin || mpCostMax].filter(Boolean).length;
 
+    const ACTIVE_STATUSES = ['NEEDS_REVIEW', 'QUOTING', 'QUOTED', 'INVOICE_SENT', 'IN_PRODUCTION'];
+    const COMPLETED_STATUSES = ['COMPLETED', 'EXPIRED', 'CANCELLED'];
+    const activeProjects = sortedDisplayed.filter(p => ACTIVE_STATUSES.includes(normalSt(p.status)));
+    const completedProjects = sortedDisplayed.filter(p => COMPLETED_STATUSES.includes(normalSt(p.status)));
+    const numCols = isMobile ? 1 : isTablet ? 2 : 4;
+    const cardW = isMobile ? '100%' : isTablet ? '48%' : '23.5%';
+
+    const renderPCard = (p: typeof orgProjects[0]) => {
+      const canView = isQuoteStatus(p.status);
+      const cost = p.totalCost && parseFloat(p.totalCost) > 0 ? `$${parseFloat(p.totalCost).toFixed(2)}` : null;
+      const pcs = p.lineItemCount > 0 ? p.lineItemCount : null;
+      const cfg = PORTAL_STATUS_CONFIG[normalSt(p.status)] as any;
+      return (
+        <View key={p.id} style={[pcStyles.card, { width: cardW as any }]}>
+          <View style={pcStyles.cardTop}>
+            <Text style={pcStyles.projectName} numberOfLines={2}>{p.title}</Text>
+            <StatusPill status={p.status} />
+          </View>
+          {cfg && (
+            <View style={[pcStyles.thumbBanner, { backgroundColor: cfg.bg }]}>
+              <Text style={[pcStyles.thumbBannerLabel, { color: cfg.color }]}>{cfg.label.toUpperCase()}</Text>
+            </View>
+          )}
+          <View style={pcStyles.metaGrid}>
+            <View style={pcStyles.metaItem2}><Text style={pcStyles.metaLabel}>SUBMITTED</Text><Text style={pcStyles.metaValue}>{formatDate(p.createdAt)}</Text></View>
+            <View style={pcStyles.metaItem2}><Text style={pcStyles.metaLabel}>IN HANDS</Text><Text style={pcStyles.metaValue}>{p.inHandsDate ? formatDate(p.inHandsDate) : '—'}</Text></View>
+            <View style={pcStyles.metaItem2}><Text style={pcStyles.metaLabel}>PCS</Text><Text style={pcStyles.metaValue}>{pcs ?? '—'}</Text></View>
+            <View style={pcStyles.metaItem2}><Text style={pcStyles.metaLabel}>VALUE</Text><Text style={[pcStyles.metaValue, cost ? { color: BRAND } : {}]}>{cost ?? '—'}</Text></View>
+          </View>
+          <ProjectPipeline status={p.status} />
+          <View style={pcStyles.cardFooter}>
+            {canView ? (
+              <TouchableOpacity style={pcStyles.viewBtn} onPress={() => handleViewProject(p.id)} activeOpacity={0.85}>
+                <Text style={pcStyles.viewBtnText}>View Project →</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={pcStyles.pendingBadge}><Text style={pcStyles.pendingBadgeText}>Pending Quote</Text></View>
+            )}
+          </View>
+        </View>
+      );
+    };
+
+    const renderSection = (title: string, count: number, projects: typeof orgProjects) => {
+      if (projects.length === 0) return null;
+      return (
+        <View style={pcStyles.section}>
+          <View style={pcStyles.sectionHeader}>
+            <Text style={pcStyles.sectionTitle}>{title}</Text>
+            <View style={pcStyles.sectionBadge}><Text style={pcStyles.sectionBadgeText}>{count}</Text></View>
+          </View>
+          <View style={[pcStyles.cardGrid, numCols === 1 && { gap: 12 }]}>
+            {projects.map(renderPCard)}
+          </View>
+        </View>
+      );
+    };
+
     return (
       <View style={{ flex: 1 }}>
         {/* White header matching admin */}
@@ -1967,66 +2029,16 @@ export default function ClientPortal() {
               )}
             </View>
           ) : (
-            sortedDisplayed.map(p => {
-              const canView = isQuoteStatus(p.status);
-              const cost = p.totalCost && parseFloat(p.totalCost) > 0 ? `$${parseFloat(p.totalCost).toFixed(2)}` : null;
-              const pcs = p.lineItemCount > 0 ? p.lineItemCount : null;
-              return (
-                <View key={p.id} style={pcStyles.card}>
-                  {/* Top: project name + status badge */}
-                  <View style={pcStyles.cardTop}>
-                    <Text style={pcStyles.projectName} numberOfLines={1}>{p.title}</Text>
-                    <StatusPill status={p.status} />
-                  </View>
-
-                  {/* Meta row */}
-                  <View style={pcStyles.metaRow}>
-                    <View style={pcStyles.metaItem}>
-                      <Text style={pcStyles.metaLabel}>SUBMITTED</Text>
-                      <Text style={pcStyles.metaValue}>{formatDate(p.createdAt)}</Text>
-                    </View>
-                    <View style={pcStyles.metaDivider} />
-                    <View style={pcStyles.metaItem}>
-                      <Text style={pcStyles.metaLabel}>IN HANDS</Text>
-                      <Text style={pcStyles.metaValue}>{p.inHandsDate ? formatDate(p.inHandsDate) : '—'}</Text>
-                    </View>
-                    <View style={pcStyles.metaDivider} />
-                    <View style={pcStyles.metaItem}>
-                      <Text style={pcStyles.metaLabel}>TOTAL PCS</Text>
-                      <Text style={pcStyles.metaValue}>{pcs ?? '—'}</Text>
-                    </View>
-                    <View style={pcStyles.metaDivider} />
-                    <View style={pcStyles.metaItem}>
-                      <Text style={pcStyles.metaLabel}>VALUE</Text>
-                      <Text style={[pcStyles.metaValue, cost ? { color: BRAND, fontWeight: '700' } : {}]}>{cost ?? '—'}</Text>
-                    </View>
-                  </View>
-
-                  {/* Pipeline timeline */}
-                  <ProjectPipeline status={p.status} />
-
-                  {/* Footer */}
-                  <View style={pcStyles.cardFooter}>
-                    {canView ? (
-                      <TouchableOpacity style={pcStyles.viewBtn} onPress={() => handleViewProject(p.id)} activeOpacity={0.85}>
-                        <Text style={pcStyles.viewBtnText}>View Project →</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <View style={pcStyles.pendingBadge}>
-                        <Text style={pcStyles.pendingBadgeText}>Pending Quote</Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              );
-            })
-          )}
-
-          {sortedDisplayed.length > 0 && (
-            <Text style={mpStyles.resultCount}>
-              {sortedDisplayed.length} project{sortedDisplayed.length !== 1 ? 's' : ''}
-              {orgProjects.length !== sortedDisplayed.length ? ` of ${orgProjects.length}` : ''}
-            </Text>
+            <View style={{ gap: 28 }}>
+              {renderSection('ACTIVE PROJECTS', activeProjects.length, activeProjects)}
+              {renderSection('COMPLETED PROJECTS', completedProjects.length, completedProjects)}
+              {sortedDisplayed.length > 0 && (
+                <Text style={mpStyles.resultCount}>
+                  {sortedDisplayed.length} project{sortedDisplayed.length !== 1 ? 's' : ''}
+                  {orgProjects.length !== sortedDisplayed.length ? ` of ${orgProjects.length}` : ''}
+                </Text>
+              )}
+            </View>
           )}
         </ScrollView>
       </View>
@@ -2401,9 +2413,11 @@ export default function ClientPortal() {
             onChange={(e: any) => { const files = Array.from((e.target.files || []) as globalThis.File[]); if (files.length > 0) handleMediaBinUpload(files); e.target.value = ''; }}
           />
         )}
-        <View ref={mediaBinDropRef} style={mbStyles.dropZone}>
-          <Upload size={18} color="#9CA3AF" />
-          <Text style={mbStyles.dropZoneText}>Drop files here to upload  ·  AI, SVG, PNG, JPG, PDF</Text>
+        <View ref={mediaBinDropRef} style={[mbStyles.dropZone, isDraggingMB && mbStyles.dropZoneActive]}>
+          <Upload size={18} color={isDraggingMB ? BRAND : '#9CA3AF'} />
+          <Text style={[mbStyles.dropZoneText, isDraggingMB && { color: BRAND }]}>
+            {isDraggingMB ? 'Release to upload' : 'Drop files here to upload  ·  AI, SVG, PNG, JPG, PDF'}
+          </Text>
         </View>
 
         {/* Search */}
@@ -2448,11 +2462,22 @@ export default function ClientPortal() {
         ) : filtered.length === 0 && (mediaBinSearch || mediaBinFilter !== 'All') ? (
           <EmptyState icon={<Search size={32} color="#D1D5DB" />} title="No matching files" sub="Try a different search or filter." />
         ) : mediaBinFiles.length === 0 ? (
-          <EmptyState icon={<Layers size={40} color="#D1D5DB" />} title="No files in your Media Bin" sub="Upload reusable artwork and design files here. They'll be available for your team and future projects." />
+          <View style={mbStyles.uploadFirstEmpty}>
+            <View style={mbStyles.uploadFirstIcon}>
+              <Upload size={32} color={BRAND} />
+            </View>
+            <Text style={mbStyles.uploadFirstTitle}>Upload your first file</Text>
+            <Text style={mbStyles.uploadFirstSub}>Store logos, artwork, proofs, and mockups here. Files are available across all your projects.</Text>
+            <TouchableOpacity style={mbStyles.uploadFirstBtn} onPress={() => mediaBinInputRef.current?.click?.()} disabled={mediaBinUploading} activeOpacity={0.85}>
+              <Upload size={14} color="#fff" />
+              <Text style={mbStyles.uploadFirstBtnText}>Upload Files</Text>
+            </TouchableOpacity>
+            <Text style={mbStyles.uploadFirstTypes}>AI · SVG · PNG · JPG · PDF</Text>
+          </View>
         ) : mediaBinViewMode === 'grid' ? (
           <View style={mbStyles.visualGrid}>
             {filtered.map(file => (
-              <View key={file.id} style={mbStyles.visualCard}>
+              <View key={file.id} style={[mbStyles.visualCard, isMobile ? { width: '48%' } : isTablet ? { width: '31%' } : { width: '23%' }]}>
                 <View style={mbStyles.visualThumb}>
                   {isImageMime(file.mimeType) ? (
                     <Image source={{ uri: `/api/files/${file.id}?inline=true` }} style={mbStyles.visualThumbImg} resizeMode="cover" />
@@ -2471,8 +2496,12 @@ export default function ClientPortal() {
                   </View>
                 </View>
                 <View style={mbStyles.visualMeta}>
-                  <Text style={mbStyles.visualFileName} numberOfLines={1}>{file.originalName}</Text>
-                  <Text style={mbStyles.visualFileSub}>{formatBytes(file.fileSize)} · {formatDate(file.createdAt)}</Text>
+                  <View style={mbStyles.visualTypeBadge}>
+                    <Text style={mbStyles.visualTypeBadgeText}>{getMimeLabel(file.mimeType, file.originalName)}</Text>
+                  </View>
+                  <Text style={mbStyles.visualFileName} numberOfLines={2}>{file.originalName}</Text>
+                  <Text style={mbStyles.visualFileSub}>{formatDate(file.createdAt)}</Text>
+                  <Text style={mbStyles.visualFileSub}>{formatBytes(file.fileSize)}</Text>
                 </View>
               </View>
             ))}
@@ -4143,11 +4172,29 @@ const mbStyles = StyleSheet.create({
   uploadBtnText: { fontSize: 13, fontWeight: '600', color: '#fff' },
   dropZone: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    borderWidth: 1, borderColor: '#E5E7EB', borderStyle: 'dashed',
+    borderWidth: 1.5, borderColor: '#E5E7EB', borderStyle: 'dashed',
     borderRadius: 10, paddingVertical: 14, paddingHorizontal: 16,
-    backgroundColor: '#FAFAFA', marginBottom: 12,
+    backgroundColor: '#FAFAFA', marginBottom: 12, transitionDuration: '150ms' as any,
   },
-  dropZoneText: { fontSize: 12, color: TEXT_LIGHT },
+  dropZoneActive: {
+    borderColor: BRAND, backgroundColor: '#FFF4EE',
+  },
+  dropZoneText: { fontSize: 12, color: TEXT_LIGHT, flex: 1 },
+  uploadFirstEmpty: {
+    alignItems: 'center', paddingVertical: 48, paddingHorizontal: 24, gap: 10,
+  },
+  uploadFirstIcon: {
+    width: 64, height: 64, borderRadius: 16, backgroundColor: '#FFF4EE',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+  },
+  uploadFirstTitle: { fontSize: 17, fontWeight: '700', color: TEXT },
+  uploadFirstSub: { fontSize: 13, color: TEXT_LIGHT, textAlign: 'center', lineHeight: 19, maxWidth: 340 },
+  uploadFirstBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: BRAND, paddingHorizontal: 20, paddingVertical: 11, borderRadius: 8, marginTop: 6,
+  },
+  uploadFirstBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  uploadFirstTypes: { fontSize: 11, color: TEXT_PLACEHOLDER, letterSpacing: 0.5, marginTop: 2 },
   searchRow: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB',
@@ -4156,17 +4203,17 @@ const mbStyles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 13, color: TEXT },
   visualGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 3,
+    flexDirection: 'row', flexWrap: 'wrap', gap: 10,
   },
   visualCard: {
-    width: 'calc(38% - 3px)' as any,
+    width: '23%',
     backgroundColor: '#fff',
-    borderRadius: 6,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04, shadowRadius: 2, elevation: 1,
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
   },
   visualThumb: {
     width: '100%',
@@ -4193,13 +4240,18 @@ const mbStyles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   visualMeta: {
-    padding: 5, gap: 1,
+    padding: 8, gap: 3,
   },
+  visualTypeBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#F3F4F6', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2, marginBottom: 2,
+  },
+  visualTypeBadgeText: { fontSize: 8, fontWeight: '800', color: BRAND, letterSpacing: 0.5 },
   visualFileName: {
-    fontSize: 10, fontWeight: '600', color: TEXT, lineHeight: 14,
+    fontSize: 11, fontWeight: '600', color: TEXT, lineHeight: 15,
   },
   visualFileSub: {
-    fontSize: 9, color: TEXT_LIGHT,
+    fontSize: 10, color: TEXT_LIGHT,
   },
   fileGrid: { gap: 10 },
   fileCard: {
@@ -4931,18 +4983,48 @@ const homeStyles = StyleSheet.create({
 });
 
 const pcStyles = StyleSheet.create({
+  section: { gap: 12 },
+  sectionHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingBottom: 4,
+    borderBottomWidth: 2, borderBottomColor: '#111827',
+  },
+  sectionTitle: {
+    fontSize: 11, fontWeight: '800', color: '#111827', letterSpacing: 1.2,
+  },
+  sectionBadge: {
+    backgroundColor: '#111827', borderRadius: 10, minWidth: 22, height: 22,
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6,
+  },
+  sectionBadgeText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  cardGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 4,
+  },
   card: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 18, gap: 12,
+    backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
     borderWidth: 1, borderColor: BORDER,
   },
   cardTop: {
     flexDirection: 'row', alignItems: 'flex-start',
-    justifyContent: 'space-between', gap: 12,
+    justifyContent: 'space-between', gap: 8,
   },
   projectName: {
-    flex: 1, fontSize: 17, fontWeight: '700', color: TEXT, lineHeight: 22,
+    flex: 1, fontSize: 14, fontWeight: '700', color: TEXT, lineHeight: 19,
+  },
+  thumbBanner: {
+    height: 44, borderRadius: 8, alignItems: 'center', justifyContent: 'center',
+  },
+  thumbBannerLabel: {
+    fontSize: 10, fontWeight: '800', letterSpacing: 1,
+  },
+  metaGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 6,
+    backgroundColor: '#F9FAFB', borderRadius: 8, padding: 10,
+  },
+  metaItem2: {
+    width: '48%', gap: 2,
   },
   metaRow: {
     flexDirection: 'row', alignItems: 'center',
@@ -4958,20 +5040,23 @@ const pcStyles = StyleSheet.create({
     fontSize: 9, fontWeight: '700', color: TEXT_LIGHT, letterSpacing: 0.6,
   },
   metaValue: {
-    fontSize: 13, fontWeight: '600', color: TEXT,
+    fontSize: 12, fontWeight: '600', color: TEXT,
   },
   cardFooter: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end',
+    marginTop: 2,
   },
   viewBtn: {
-    backgroundColor: BRAND, paddingHorizontal: 18, paddingVertical: 9, borderRadius: 8,
+    flex: 1, backgroundColor: BRAND, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 8,
+    alignItems: 'center',
   },
   viewBtnText: {
-    fontSize: 13, fontWeight: '700', color: '#fff',
+    fontSize: 12, fontWeight: '700', color: '#fff',
   },
   pendingBadge: {
-    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8,
+    flex: 1, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 8,
     backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: BORDER,
+    alignItems: 'center',
   },
   pendingBadgeText: {
     fontSize: 12, fontWeight: '600', color: TEXT_LIGHT,
