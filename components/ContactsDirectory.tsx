@@ -8,8 +8,8 @@ import { OrgAvatar } from '@/components/OrgAvatar';
 import OverlayMenu from '@/components/OverlayMenu';
 import {
   Search, X, Users, ChevronDown, Check,
-  Wifi, ShieldCheck, Mail, Ban, MinusCircle, Building2, ArrowUpDown, Trash2,
-  Plus, FileText, Upload, Edit3,
+  Wifi, ShieldCheck, Mail, Ban, MinusCircle, ArrowUpDown, Trash2,
+  Plus, FileText, Upload, Edit3, Settings2, SlidersHorizontal,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { DS } from '@/constants/designSystem';
@@ -39,6 +39,24 @@ const COL_WIDTHS: Record<ColId, number> = {
 };
 const COL_FLEX: Partial<Record<ColId, number>> = { name: 2, org: 1.8, email: 1.6 };
 
+const CONTACT_TOGGLEABLE_COLS: { id: ColId; label: string }[] = [
+  { id: 'name', label: 'Contact Name' },
+  { id: 'org', label: 'Organization' },
+  { id: 'role', label: 'Title / Role' },
+  { id: 'email', label: 'Email Address' },
+  { id: 'phone', label: 'Phone Number' },
+  { id: 'status', label: 'Status' },
+  { id: 'hub', label: 'Hub Status' },
+  { id: 'lastLogin', label: 'Last Login' },
+];
+const DEFAULT_VISIBLE_COLS: ColId[] = ['name', 'org', 'role', 'email', 'phone', 'status', 'hub', 'lastLogin'];
+
+type ContactFilterState = {
+  name: string; phone: string; email: string;
+  status: ('active' | 'inactive')[]; hub: HubStatus[];
+};
+const EMPTY_CONTACT_FILTERS: ContactFilterState = { name: '', phone: '', email: '', status: [], hub: [] };
+
 function HubBadge({ status }: { status: HubStatus }) {
   const cfg = HUB_CFG[status];
   const Icon = cfg.Icon;
@@ -61,14 +79,26 @@ const HUB_RANK: Record<HubStatus, number> = { 'Active': 0, 'Invited': 1, 'Disabl
 
 type SortDir = 'asc' | 'desc';
 
+function colStyle(id: ColId): any {
+  return COL_FLEX[id] != null
+    ? { flex: COL_FLEX[id], minWidth: COL_WIDTHS[id] }
+    : { width: COL_WIDTHS[id] };
+}
+
 // ── Desktop row ──
-function PersonRow({ person, onPress, isSelected, onToggleSelect }: {
-  person: Person; onPress: () => void; isSelected: boolean; onToggleSelect: () => void;
+function PersonRow({ person, onPress, isSelected, onToggleSelect, visibleCols }: {
+  person: Person; onPress: () => void; isSelected: boolean; onToggleSelect: () => void; visibleCols: ColId[];
 }) {
   const router = useRouter();
   const { deleteContact } = useCrm();
   const name = `${person.firstName} ${person.lastName}`.trim() || 'Unnamed';
   const last = fmtLastLogin(person.lastLoginAt);
+
+  const col = (id: ColId, content: React.ReactNode) => {
+    if (!visibleCols.includes(id)) return null;
+    return <View style={colStyle(id)}>{content}</View>;
+  };
+
   return (
     <TouchableOpacity style={[styles.tableRow, isSelected && styles.tableRowSelected]} onPress={onPress} activeOpacity={0.7}>
       <TouchableOpacity style={styles.colCheckbox} onPress={(e) => { e.stopPropagation?.(); onToggleSelect(); }} activeOpacity={0.7}>
@@ -79,34 +109,20 @@ function PersonRow({ person, onPress, isSelected, onToggleSelect }: {
       <View style={{ width: 44 }}>
         <OrgAvatar name={name} size={32} shape="circle" />
       </View>
-      <View style={COL_FLEX.name != null ? { flex: COL_FLEX.name, minWidth: COL_WIDTHS.name } : { width: COL_WIDTHS.name }}>
-        <Text style={styles.cellName}>{name}</Text>
-      </View>
-      <View style={COL_FLEX.org != null ? { flex: COL_FLEX.org, minWidth: COL_WIDTHS.org } : { width: COL_WIDTHS.org }}>
-        <Text style={styles.cell}>{person.orgName}</Text>
-      </View>
-      <View style={{ width: COL_WIDTHS.role }}>
-        {person.role ? <Text style={styles.cell}>{person.role}</Text> : <Text style={styles.dim}>—</Text>}
-      </View>
-      <View style={COL_FLEX.email != null ? { flex: COL_FLEX.email, minWidth: COL_WIDTHS.email } : { width: COL_WIDTHS.email }}>
-        {person.email ? <Text style={styles.cell}>{person.email}</Text> : <Text style={styles.dim}>—</Text>}
-      </View>
-      <View style={{ width: COL_WIDTHS.phone }}>
-        {person.phone ? <Text style={styles.cell}>{formatPhone(person.phone)}</Text> : <Text style={styles.dim}>—</Text>}
-      </View>
-      <View style={{ width: COL_WIDTHS.status }}>
+      {col('name', <Text style={styles.cellName}>{name}</Text>)}
+      {col('org', <Text style={styles.cell}>{person.orgName}</Text>)}
+      {col('role', person.role ? <Text style={styles.cell}>{person.role}</Text> : <Text style={styles.dim}>—</Text>)}
+      {col('email', person.email ? <Text style={styles.cell}>{person.email}</Text> : <Text style={styles.dim}>—</Text>)}
+      {col('phone', person.phone ? <Text style={styles.cell}>{formatPhone(person.phone)}</Text> : <Text style={styles.dim}>—</Text>)}
+      {col('status',
         <View style={[styles.statusPill, person.status === 'inactive' ? styles.statusInactive : styles.statusActive]}>
           <Text style={[styles.statusPillText, person.status === 'inactive' ? { color: '#6B7280' } : { color: '#15803D' }]}>
             {person.status === 'inactive' ? 'Inactive' : 'Active'}
           </Text>
         </View>
-      </View>
-      <View style={{ width: COL_WIDTHS.hub }}>
-        <HubBadge status={person.hubStatus || 'No Access'} />
-      </View>
-      <View style={{ width: COL_WIDTHS.lastLogin }}>
-        {last ? <Text style={styles.cell}>{last}</Text> : <Text style={styles.dim}>—</Text>}
-      </View>
+      )}
+      {col('hub', <HubBadge status={person.hubStatus || 'No Access'} />)}
+      {col('lastLogin', last ? <Text style={styles.cell}>{last}</Text> : <Text style={styles.dim}>—</Text>)}
       <View style={{ width: 120, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 }}>
         <TouchableOpacity
           style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: Colors.light.tint, height: 30, justifyContent: 'center', alignItems: 'center' }}
@@ -174,12 +190,13 @@ export default function ContactsDirectory() {
 
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<Tab>('All');
-  const [orgFilter, setOrgFilter] = useState<string>('');
-  const [roleFilter, setRoleFilter] = useState<string>('');
-  const [orgDropOpen, setOrgDropOpen] = useState(false);
-  const [roleDropOpen, setRoleDropOpen] = useState(false);
   const [sortField, setSortField] = useState<ColId>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  const [visibleCols, setVisibleCols] = useState<ColId[]>(DEFAULT_VISIBLE_COLS);
+  const [showColPicker, setShowColPicker] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [colFilters, setColFilters] = useState<ContactFilterState>(EMPTY_CONTACT_FILTERS);
 
   const [contactModalVisible, setContactModalVisible] = useState(false);
   const [contactForm, setContactForm] = useState(EMPTY_CONTACT_FORM);
@@ -240,12 +257,6 @@ export default function ContactsDirectory() {
 
   const isPortal = (p: Person) => !!p.hubStatus && p.hubStatus !== 'No Access';
 
-  const roles = useMemo(() => {
-    const set = new Set<string>();
-    people.forEach((p) => { if (p.role) set.add(p.role); });
-    return Array.from(set).sort();
-  }, [people]);
-
   const stats = useMemo(() => ({
     total: people.length,
     portal: people.filter(isPortal).length,
@@ -261,6 +272,16 @@ export default function ContactsDirectory() {
     'Inactive': people.filter((p) => p.status === 'inactive').length,
   }), [people]);
 
+  const activeFilterCount = useMemo(() => {
+    let n = 0;
+    if (colFilters.name) n++;
+    if (colFilters.phone) n++;
+    if (colFilters.email) n++;
+    if (colFilters.status.length) n++;
+    if (colFilters.hub.length) n++;
+    return n;
+  }, [colFilters]);
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     const list = people.filter((p) => {
@@ -268,8 +289,6 @@ export default function ContactsDirectory() {
       if (tab === 'Non-Portal' && isPortal(p)) return false;
       if (tab === 'Active' && p.status === 'inactive') return false;
       if (tab === 'Inactive' && p.status !== 'inactive') return false;
-      if (orgFilter && p.orgId !== orgFilter) return false;
-      if (roleFilter && p.role !== roleFilter) return false;
       if (q) {
         const hit =
           `${p.firstName} ${p.lastName}`.toLowerCase().includes(q) ||
@@ -278,6 +297,18 @@ export default function ContactsDirectory() {
           (p.phone || '').toLowerCase().includes(q) ||
           (p.role || '').toLowerCase().includes(q);
         if (!hit) return false;
+      }
+      const fullName = `${p.firstName} ${p.lastName}`.toLowerCase();
+      if (colFilters.name && !fullName.includes(colFilters.name.toLowerCase())) return false;
+      if (colFilters.phone && !(p.phone || '').includes(colFilters.phone)) return false;
+      if (colFilters.email && !(p.email || '').toLowerCase().includes(colFilters.email.toLowerCase())) return false;
+      if (colFilters.status.length) {
+        const s = p.status === 'inactive' ? 'inactive' : 'active';
+        if (!colFilters.status.includes(s as any)) return false;
+      }
+      if (colFilters.hub.length) {
+        const h = p.hubStatus || 'No Access';
+        if (!colFilters.hub.includes(h)) return false;
       }
       return true;
     });
@@ -308,10 +339,8 @@ export default function ContactsDirectory() {
       if (cmp === 0) cmp = nameKey(a).localeCompare(nameKey(b));
       return cmp * dir;
     });
-  }, [people, tab, search, orgFilter, roleFilter, sortField, sortDir]);
+  }, [people, tab, search, colFilters, sortField, sortDir]);
 
-  // Selection UI is driven by the intersection with the currently visible rows,
-  // so filter/search/tab changes never leave a stale checked/indeterminate header.
   const visibleSelectedCount = useMemo(
     () => filtered.reduce((n, p) => (selectedIds.has(p.id) ? n + 1 : n), 0),
     [filtered, selectedIds],
@@ -326,12 +355,22 @@ export default function ContactsDirectory() {
 
   const goToPerson = useCallback((p: Person) => router.push(`/crm/${p.orgId}` as any), [router]);
 
-  const orgName = orgFilter ? orgs.find((o) => o.id === orgFilter)?.name : null;
-
   const toggleSort = useCallback((field: ColId) => {
     if (sortField === field) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     else { setSortField(field); setSortDir('asc'); }
   }, [sortField]);
+
+  const toggleCol = useCallback((id: ColId) => {
+    setVisibleCols((prev) => prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]);
+  }, []);
+
+  const clearFilters = useCallback(() => setColFilters(EMPTY_CONTACT_FILTERS), []);
+
+  const toggleStatusFilter = (s: 'active' | 'inactive') =>
+    setColFilters((f) => ({ ...f, status: f.status.includes(s) ? f.status.filter((x) => x !== s) : [...f.status, s] }));
+
+  const toggleHubFilter = (h: HubStatus) =>
+    setColFilters((f) => ({ ...f, hub: f.hub.includes(h) ? f.hub.filter((x) => x !== h) : [...f.hub, h] }));
 
   const SortBtn = ({ field, label }: { field: ColId; label: string }) => (
     <TouchableOpacity style={styles.sortBtn} onPress={() => toggleSort(field)} activeOpacity={0.7}>
@@ -351,17 +390,23 @@ export default function ContactsDirectory() {
         </View>
       </TouchableOpacity>
       <View style={{ width: 44 }} />
-      <View style={COL_FLEX.name != null ? { flex: COL_FLEX.name, minWidth: COL_WIDTHS.name } : { width: COL_WIDTHS.name }}><SortBtn field="name" label="Name" /></View>
-      <View style={COL_FLEX.org != null ? { flex: COL_FLEX.org, minWidth: COL_WIDTHS.org } : { width: COL_WIDTHS.org }}><SortBtn field="org" label="Organization" /></View>
-      <View style={{ width: COL_WIDTHS.role }}><SortBtn field="role" label="Title / Role" /></View>
-      <View style={COL_FLEX.email != null ? { flex: COL_FLEX.email, minWidth: COL_WIDTHS.email } : { width: COL_WIDTHS.email }}><SortBtn field="email" label="Email" /></View>
-      <View style={{ width: COL_WIDTHS.phone }}><SortBtn field="phone" label="Phone" /></View>
-      <View style={{ width: COL_WIDTHS.status }}><SortBtn field="status" label="Status" /></View>
-      <View style={{ width: COL_WIDTHS.hub }}><SortBtn field="hub" label="Hub Status" /></View>
-      <View style={{ width: COL_WIDTHS.lastLogin }}><SortBtn field="lastLogin" label="Last Login" /></View>
-      <View style={{ width: 90 }}><Text style={styles.headText}>Actions</Text></View>
+      {CONTACT_TOGGLEABLE_COLS.filter((c) => visibleCols.includes(c.id)).map((c) => (
+        <View key={c.id} style={colStyle(c.id)}>
+          {c.id === 'name' && <SortBtn field="name" label="Name" />}
+          {c.id === 'org' && <SortBtn field="org" label="Organization" />}
+          {c.id === 'role' && <SortBtn field="role" label="Title / Role" />}
+          {c.id === 'email' && <SortBtn field="email" label="Email" />}
+          {c.id === 'phone' && <SortBtn field="phone" label="Phone" />}
+          {c.id === 'status' && <SortBtn field="status" label="Status" />}
+          {c.id === 'hub' && <SortBtn field="hub" label="Hub Status" />}
+          {c.id === 'lastLogin' && <SortBtn field="lastLogin" label="Last Login" />}
+        </View>
+      ))}
+      <View style={{ width: 120 }}><Text style={styles.headText}>Actions</Text></View>
     </View>
   );
+
+  const hasActiveFilters = activeFilterCount > 0;
 
   return (
     <View style={styles.container}>
@@ -444,68 +489,78 @@ export default function ContactsDirectory() {
             {search ? <TouchableOpacity onPress={() => setSearch('')}><X size={15} color={Colors.light.textSecondary} /></TouchableOpacity> : null}
           </View>
           {isDesktop && (<>
-            <TouchableOpacity style={[styles.toolBtn, !!orgFilter && styles.toolBtnActive]} onPress={() => { setOrgDropOpen((v) => !v); setRoleDropOpen(false); }}>
-              <Building2 size={14} color={orgFilter ? Colors.light.tint : Colors.light.textSecondary} />
-              <Text style={[styles.toolBtnText, !!orgFilter && styles.toolBtnTextActive]} numberOfLines={1}>{orgName || 'Organization'}</Text>
-              <ChevronDown size={13} color={Colors.light.textSecondary} />
+            <TouchableOpacity style={[styles.toolBtn, showFilters && styles.toolBtnActive]} onPress={() => setShowFilters((v) => !v)}>
+              <SlidersHorizontal size={14} color={showFilters ? Colors.light.tint : Colors.light.textSecondary} />
+              <Text style={[styles.toolBtnText, showFilters && styles.toolBtnTextActive]}>Filters</Text>
+              {activeFilterCount > 0 && <View style={styles.toolBadge}><Text style={styles.toolBadgeText}>{activeFilterCount}</Text></View>}
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.toolBtn, !!roleFilter && styles.toolBtnActive]} onPress={() => { setRoleDropOpen((v) => !v); setOrgDropOpen(false); }}>
-              <Text style={[styles.toolBtnText, !!roleFilter && styles.toolBtnTextActive]} numberOfLines={1}>{roleFilter || 'Role'}</Text>
-              <ChevronDown size={13} color={Colors.light.textSecondary} />
+            <TouchableOpacity style={[styles.toolBtn, showColPicker && styles.toolBtnActive]} onPress={() => setShowColPicker((v) => !v)}>
+              <Settings2 size={14} color={showColPicker ? Colors.light.tint : Colors.light.textSecondary} />
+              <Text style={[styles.toolBtnText, showColPicker && styles.toolBtnTextActive]}>Columns</Text>
             </TouchableOpacity>
           </>)}
         </View>
       </View>
 
-      {/* Org filter dropdown */}
-      <Modal visible={orgDropOpen} transparent animationType="fade" onRequestClose={() => setOrgDropOpen(false)}>
-        <Pressable style={styles.dropOverlay} onPress={() => setOrgDropOpen(false)}>
-          <Pressable style={styles.dropCard} onPress={() => {}}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Filter by Organization</Text>
-              <TouchableOpacity onPress={() => setOrgDropOpen(false)}><X size={20} color={Colors.light.textSecondary} /></TouchableOpacity>
+      {/* ── Filter Panel ── */}
+      {showFilters && isDesktop && (
+        <View style={styles.filterPanel}>
+          <View style={styles.filterRow}>
+            {[
+              { key: 'name', label: 'Contact Name', val: colFilters.name, set: (v: string) => setColFilters((f) => ({ ...f, name: v })) },
+              { key: 'phone', label: 'Phone', val: colFilters.phone, set: (v: string) => setColFilters((f) => ({ ...f, phone: v })) },
+              { key: 'email', label: 'Email', val: colFilters.email, set: (v: string) => setColFilters((f) => ({ ...f, email: v })) },
+            ].map(({ key, label, val, set }) => (
+              <View key={key} style={styles.filterGroup}>
+                <Text style={styles.filterGroupLabel}>{label}</Text>
+                <View style={styles.filterInputBox}>
+                  <Search size={12} color={Colors.light.textSecondary} />
+                  <TextInput style={styles.filterInput} value={val} onChangeText={set} placeholder="Search…" placeholderTextColor={Colors.light.textSecondary} />
+                  {val ? <TouchableOpacity onPress={() => set('')}><X size={11} color={Colors.light.textSecondary} /></TouchableOpacity> : null}
+                </View>
+              </View>
+            ))}
+          </View>
+          <View style={styles.filterRow}>
+            <View style={styles.filterGroup}>
+              <Text style={styles.filterGroupLabel}>Status</Text>
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                {([['active', 'Active'], ['inactive', 'Inactive']] as const).map(([k, l]) => {
+                  const on = colFilters.status.includes(k);
+                  const activeStyle = k === 'active'
+                    ? { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }
+                    : { backgroundColor: '#F3F4F6', borderColor: '#D1D5DB' };
+                  const activeTextStyle = k === 'active' ? { color: '#15803D' } : { color: '#374151' };
+                  return (
+                    <TouchableOpacity key={k} style={[styles.filterChip, on && activeStyle]} onPress={() => toggleStatusFilter(k)}>
+                      <Text style={[styles.filterChipText, on && activeTextStyle]}>{l}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
-            <ScrollView style={{ maxHeight: 360 }}>
-              <TouchableOpacity style={styles.dropRow} onPress={() => { setOrgFilter(''); setOrgDropOpen(false); }}>
-                <Text style={[styles.dropRowText, !orgFilter && styles.dropRowTextOn]}>All Organizations</Text>
-                {!orgFilter && <Check size={15} color={Colors.light.tint} />}
-              </TouchableOpacity>
-              {orgs.slice().sort((a, b) => a.name.localeCompare(b.name)).map((o) => (
-                <TouchableOpacity key={o.id} style={styles.dropRow} onPress={() => { setOrgFilter(o.id); setOrgDropOpen(false); }}>
-                  <Text style={[styles.dropRowText, orgFilter === o.id && styles.dropRowTextOn]} numberOfLines={1}>{o.name}</Text>
-                  {orgFilter === o.id && <Check size={15} color={Colors.light.tint} />}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      {/* Role filter dropdown */}
-      <Modal visible={roleDropOpen} transparent animationType="fade" onRequestClose={() => setRoleDropOpen(false)}>
-        <Pressable style={styles.dropOverlay} onPress={() => setRoleDropOpen(false)}>
-          <Pressable style={styles.dropCard} onPress={() => {}}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Filter by Role</Text>
-              <TouchableOpacity onPress={() => setRoleDropOpen(false)}><X size={20} color={Colors.light.textSecondary} /></TouchableOpacity>
+            <View style={styles.filterGroup}>
+              <Text style={styles.filterGroupLabel}>Hub Status</Text>
+              <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+                {(['Active', 'Invited', 'Disabled', 'No Access'] as HubStatus[]).map((h) => {
+                  const on = colFilters.hub.includes(h);
+                  const cfg = HUB_CFG[h];
+                  return (
+                    <TouchableOpacity key={h} style={[styles.filterChip, on && { backgroundColor: cfg.bg, borderColor: cfg.border }]} onPress={() => toggleHubFilter(h)}>
+                      <Text style={[styles.filterChipText, on && { color: cfg.color }]}>{h}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
-            <ScrollView style={{ maxHeight: 360 }}>
-              <TouchableOpacity style={styles.dropRow} onPress={() => { setRoleFilter(''); setRoleDropOpen(false); }}>
-                <Text style={[styles.dropRowText, !roleFilter && styles.dropRowTextOn]}>All Roles</Text>
-                {!roleFilter && <Check size={15} color={Colors.light.tint} />}
+            {hasActiveFilters && (
+              <TouchableOpacity style={styles.clearFiltersBtn} onPress={clearFilters}>
+                <X size={12} color={Colors.light.error} /><Text style={styles.clearFiltersBtnText}>Clear all</Text>
               </TouchableOpacity>
-              {roles.length === 0 ? (
-                <Text style={styles.dropEmpty}>No roles assigned yet.</Text>
-              ) : roles.map((r) => (
-                <TouchableOpacity key={r} style={styles.dropRow} onPress={() => { setRoleFilter(r); setRoleDropOpen(false); }}>
-                  <Text style={[styles.dropRowText, roleFilter === r && styles.dropRowTextOn]} numberOfLines={1}>{r}</Text>
-                  {roleFilter === r && <Check size={15} color={Colors.light.tint} />}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
+            )}
+          </View>
+        </View>
+      )}
 
       {/* ── Bulk action bar ── */}
       {selectionMode && (
@@ -537,9 +592,9 @@ export default function ContactsDirectory() {
       {filtered.length === 0 ? (
         <View style={styles.emptyState}>
           <Users size={40} color={Colors.light.border} />
-          <Text style={styles.emptyTitle}>{search || orgFilter || roleFilter ? 'No matching contacts' : 'No contacts yet'}</Text>
-          <Text style={styles.emptyText}>{search || orgFilter || roleFilter ? 'Try adjusting your filters or search.' : 'Add contacts using the button above.'}</Text>
-          {!search && !orgFilter && !roleFilter && (
+          <Text style={styles.emptyTitle}>{search || hasActiveFilters ? 'No matching contacts' : 'No contacts yet'}</Text>
+          <Text style={styles.emptyText}>{search || hasActiveFilters ? 'Try adjusting your filters or search.' : 'Add contacts using the button above.'}</Text>
+          {!search && !hasActiveFilters && (
             <TouchableOpacity style={styles.addBtn} onPress={openContactModal}>
               <Plus size={15} color="#fff" /><Text style={styles.addBtnText}>Add Contact</Text>
             </TouchableOpacity>
@@ -558,6 +613,7 @@ export default function ContactsDirectory() {
                       onPress={() => goToPerson(p)}
                       isSelected={selectedIds.has(p.id)}
                       onToggleSelect={() => toggleSelect(p.id)}
+                      visibleCols={visibleCols}
                     />
                     {idx < filtered.length - 1 && <View style={styles.divider} />}
                   </View>
@@ -568,6 +624,31 @@ export default function ContactsDirectory() {
           <View style={{ height: 40 }} />
         </ScrollView>
       )}
+
+      {/* ── Column Picker Modal ── */}
+      <Modal visible={showColPicker} transparent animationType="fade" onRequestClose={() => setShowColPicker(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowColPicker(false)}>
+          <Pressable style={styles.colPickerCard} onPress={() => {}}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Customize Columns</Text>
+              <TouchableOpacity onPress={() => setShowColPicker(false)}><X size={20} color={Colors.light.textSecondary} /></TouchableOpacity>
+            </View>
+            <Text style={styles.colPickerSub}>Toggle which columns appear. Actions is always shown.</Text>
+            {CONTACT_TOGGLEABLE_COLS.map((c) => {
+              const on = visibleCols.includes(c.id);
+              return (
+                <TouchableOpacity key={c.id} style={styles.colPickerRow} onPress={() => toggleCol(c.id)}>
+                  <View style={[styles.colPickerCheck, on && styles.colPickerCheckOn]}>{on && <Check size={12} color="#fff" />}</View>
+                  <Text style={[styles.colPickerLabel, on && styles.colPickerLabelOn]}>{c.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+            <TouchableOpacity style={styles.colPickerReset} onPress={() => setVisibleCols(DEFAULT_VISIBLE_COLS)}>
+              <Text style={styles.colPickerResetText}>Reset to defaults</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* ── Add Contact Modal ── */}
       <Modal visible={contactModalVisible} transparent animationType="fade" onRequestClose={() => setContactModalVisible(false)}>
@@ -724,10 +805,23 @@ const styles = StyleSheet.create({
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: DS.spacing.sm, paddingHorizontal: DS.spacing.xl, paddingBottom: DS.spacing.md },
   searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, height: 40, backgroundColor: '#F5F5F5', borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border },
   searchInput: { flex: 1, fontSize: 14, color: Colors.light.text, outlineStyle: 'none' as any },
-  toolBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, height: 40, maxWidth: 200, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: '#fff' },
+  toolBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: Colors.light.surface, height: 40 },
   toolBtnActive: { borderColor: Colors.light.tint, backgroundColor: '#FFF4EE' },
-  toolBtnText: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.textSecondary, maxWidth: 130 },
+  toolBtnText: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.textSecondary },
   toolBtnTextActive: { color: Colors.light.tint },
+  toolBadge: { backgroundColor: Colors.light.tint, borderRadius: 8, minWidth: 16, height: 16, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3 },
+  toolBadgeText: { fontSize: 10, fontWeight: '700' as const, color: '#fff' },
+
+  filterPanel: { backgroundColor: Colors.light.surface, borderBottomWidth: 1, borderBottomColor: Colors.light.border, paddingHorizontal: DS.spacing.xl, paddingVertical: DS.spacing.md, gap: 10 },
+  filterRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' },
+  filterGroup: { gap: 5 },
+  filterGroupLabel: { fontSize: 11, fontWeight: '700' as const, color: Colors.light.textSecondary, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
+  filterInputBox: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.light.background, borderRadius: DS.radius.sm, borderWidth: 1, borderColor: Colors.light.border, paddingHorizontal: 10, paddingVertical: 8, minWidth: 150 },
+  filterInput: { flex: 1, fontSize: 13, color: Colors.light.text, outlineStyle: 'none' as any },
+  filterChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: DS.radius.sm, borderWidth: 1.5, borderColor: Colors.light.border, backgroundColor: Colors.light.background },
+  filterChipText: { fontSize: 12, fontWeight: '600' as const, color: Colors.light.textSecondary },
+  clearFiltersBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: DS.radius.sm, borderWidth: 1, borderColor: Colors.light.error + '44', backgroundColor: '#FFF5F5' },
+  clearFiltersBtnText: { fontSize: 12, fontWeight: '600' as const, color: Colors.light.error },
 
   tableHeader: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 20, backgroundColor: '#000000' },
   headText: { fontSize: 11, fontWeight: '700' as const, color: '#ffffff', textTransform: 'uppercase' as const, letterSpacing: 0.5 },
@@ -767,13 +861,6 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 17, fontWeight: '700' as const, color: Colors.light.text },
   emptyText: { fontSize: 13, color: Colors.light.textSecondary, textAlign: 'center' as const },
 
-  dropOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  dropCard: { width: '100%', maxWidth: 420, backgroundColor: '#fff', borderRadius: DS.radius.lg, padding: 16 },
-  dropRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 6, borderBottomWidth: 1, borderBottomColor: '#F1F1F1' },
-  dropRowText: { fontSize: 14, color: Colors.light.text, flex: 1 },
-  dropRowTextOn: { fontWeight: '700' as const, color: Colors.light.tint },
-  dropEmpty: { fontSize: 13, color: Colors.light.textSecondary, padding: 12, textAlign: 'center' as const },
-
   headerBtns: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8 },
   actionsBtn: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6, paddingHorizontal: 12, height: 40, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: Colors.light.surface },
   actionsBtnText: { fontSize: 13, fontWeight: '600' as const, color: Colors.light.text },
@@ -782,6 +869,16 @@ const styles = StyleSheet.create({
   rowMenuDivider: { height: 1, backgroundColor: Colors.light.border, marginVertical: 2 },
   addBtn: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6, backgroundColor: Colors.light.tint, paddingHorizontal: 16, borderRadius: DS.radius.md, height: 40 },
   addBtnText: { fontSize: 14, fontWeight: '700' as const, color: '#fff' },
+
+  colPickerCard: { backgroundColor: '#fff', borderRadius: DS.radius.lg, padding: 20, maxHeight: '80%' as any, width: '100%', maxWidth: 360, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 12 },
+  colPickerSub: { fontSize: 12, color: Colors.light.textSecondary, marginBottom: 12 },
+  colPickerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.light.border },
+  colPickerCheck: { width: 20, height: 20, borderRadius: 4, borderWidth: 1.5, borderColor: Colors.light.border, alignItems: 'center', justifyContent: 'center' },
+  colPickerCheckOn: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
+  colPickerLabel: { fontSize: 14, color: Colors.light.textSecondary },
+  colPickerLabelOn: { color: Colors.light.text, fontWeight: '600' as const },
+  colPickerReset: { marginTop: 12, alignItems: 'center' },
+  colPickerResetText: { fontSize: 13, color: Colors.light.tint, fontWeight: '600' as const },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalKAV: { width: '100%', maxWidth: 520, alignSelf: 'center' as const },
