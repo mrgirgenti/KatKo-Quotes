@@ -1019,7 +1019,15 @@ export default function ClientPortal() {
       })
       .then(data => {
         if (!data) return;
-        if (data.logoUrl) setOrgLogoUrl(data.logoUrl);
+        if (data.logoUrl) {
+          // Rewrite Clerk-gated /api/files/{id} → public /api/portal/{orgId}/files/{id}
+          const raw: string = data.logoUrl;
+          const m = raw.match(/\/api\/files\/([^?]+)/);
+          const publicUrl = m
+            ? `/api/portal/${orgId}/files/${m[1]}?inline=true`
+            : raw;
+          setOrgLogoUrl(publicUrl);
+        }
         if (data.name) setOrgDisplayName(data.name);
       })
       .catch(() => {});
@@ -3024,7 +3032,7 @@ export default function ClientPortal() {
         const uploadRes = await fetch('/api/files', { method: 'POST', body: fd });
         const uploadData = await uploadRes.json();
         if (uploadRes.ok && uploadData.file?.id) {
-          const logoUrl = `/api/files/${uploadData.file.id}?inline=true`;
+          const logoUrl = `/api/portal/${session.orgId}/files/${uploadData.file.id}?inline=true`;
           await fetch(`/api/portal/${session.orgId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
