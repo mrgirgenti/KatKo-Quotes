@@ -225,7 +225,7 @@ function SavedViewsMenu({
       trigger={({ open }) => (
         <TouchableOpacity style={styles.toolBtn} onPress={open}>
           <Bookmark size={15} color={Colors.light.textSecondary} />
-          <Text style={styles.toolBtnText}>Saved Views</Text>
+          <Text style={styles.toolBtnText}>Views</Text>
           <ChevronDown size={14} color={Colors.light.textSecondary} />
         </TouchableOpacity>
       )}

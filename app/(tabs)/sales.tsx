@@ -30,9 +30,9 @@ import {
   Minus,
   Lock,
   Unlock,
-  BarChart3,
   Plus,
 } from 'lucide-react-native';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import Colors from '@/constants/colors';
 import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
 import { useQuotes } from '@/contexts/QuotesContext';
@@ -117,7 +117,6 @@ interface SaleRowProps {
   quote: Quote;
   effectiveStatus: QuoteStatus;
   onPress: () => void;
-  onTrack: () => void;
   onDelete: () => void;
   onRevert: () => void;
   onEdit: () => void;
@@ -131,7 +130,7 @@ interface SaleRowProps {
   selectionMode: boolean;
 }
 
-function SaleRow({ quote, effectiveStatus, onPress, onTrack, onDelete, onRevert, onEdit, onLock, onUnlock, onExportPDF, onExportSheets, onPrint, isSelected, onToggleSelect, selectionMode }: SaleRowProps) {
+function SaleRow({ quote, effectiveStatus, onPress, onDelete, onRevert, onEdit, onLock, onUnlock, onExportPDF, onExportSheets, onPrint, isSelected, onToggleSelect, selectionMode }: SaleRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const menuBtnRef = useRef<View>(null);
@@ -140,6 +139,8 @@ function SaleRow({ quote, effectiveStatus, onPress, onTrack, onDelete, onRevert,
     Object.values(i.sizes || {}).reduce((s: number, v: any) => s + (Number(v) || 0), 0)
   );
   const revenue = getSalesRevenue(quote);
+  const totalPcs = lineItemPcs.reduce((s: number, n: number) => s + n, 0);
+  const perPcs = totalPcs > 0 ? revenue / totalPcs : null;
   const profit = getSalesProfit(quote);
   const profitPositive = profit >= 0;
   const isLocked = quote.isLocked === true;
@@ -261,6 +262,9 @@ function SaleRow({ quote, effectiveStatus, onPress, onTrack, onDelete, onRevert,
           {lineItemPcs.map(n => n > 0 ? `${n} pcs` : '—').join('\n')}
         </Text>
       </View>
+      <View style={styles.colPerPcs}>
+        <Text style={styles.tablePerPcs}>{perPcs != null ? formatCurrency(perPcs) : '—'}</Text>
+      </View>
       <View style={styles.colRevenue}>
         <Text style={styles.tableTotal}>{formatCurrency(revenue)}</Text>
       </View>
@@ -268,12 +272,6 @@ function SaleRow({ quote, effectiveStatus, onPress, onTrack, onDelete, onRevert,
         <Text style={[styles.tableProfit, !profitPositive && styles.tableProfitNeg]}>{formatCurrency(profit)}</Text>
       </View>
       <View style={styles.colActions}>
-        {!isLocked && (
-          <TouchableOpacity style={styles.trackBtn} onPress={onTrack}>
-            <BarChart3 size={12} color="#fff" />
-            <Text style={styles.trackBtnText}>Track</Text>
-          </TouchableOpacity>
-        )}
         <TouchableOpacity style={styles.viewBtn} onPress={onPress}>
           <Text style={styles.viewBtnText}>View</Text>
         </TouchableOpacity>
@@ -337,6 +335,7 @@ function BulkActionBar({
 
 export default function SalesScreen() {
   const router = useRouter();
+  const { isDesktop } = useBreakpoint();
   const { sales, deleteQuote, convertToQuote, unlockSale, lockSale, markExportedToSheets, isLoading } = useQuotes();
   const { currentUser, orgAdmin } = useUser();
 
@@ -468,14 +467,6 @@ export default function SalesScreen() {
   // ── Row actions ──
   const handleView = useCallback((quote: Quote) => {
     router.push(`/quote/${quote.id}`);
-  }, [router]);
-
-  const handleTrack = useCallback((quote: Quote) => {
-    if (quote.isLocked) {
-      Alert.alert('Sale Locked', 'This sale is locked and cannot be edited.');
-      return;
-    }
-    router.push({ pathname: '/quote/sales-tracking', params: { id: quote.id } });
   }, [router]);
 
   const handleEdit = useCallback((quote: Quote) => {
@@ -645,7 +636,7 @@ export default function SalesScreen() {
             <Text style={[styles.statValue, { color: '#DC2626' }]}>
               {statusCounts['needs_review'] ?? 0}
             </Text>
-            <Text style={styles.statLabel}>Needs Review</Text>
+            <Text style={styles.statLabel}>{isDesktop ? 'Needs Review' : 'Review'}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
@@ -659,7 +650,7 @@ export default function SalesScreen() {
             <Text style={[styles.statValue, { color: '#6D28D9' }]}>
               {statusCounts['invoice_sent'] ?? 0}
             </Text>
-            <Text style={styles.statLabel}>Invoice Sent</Text>
+            <Text style={styles.statLabel}>{isDesktop ? 'Invoice Sent' : 'Inv. Sent'}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
@@ -812,7 +803,7 @@ export default function SalesScreen() {
       ) : (
         <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
           <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }} style={{ outlineStyle: 'none' } as any}>
-            <View style={{ minWidth: 1180, flexGrow: 1 }}>
+            <View style={{ minWidth: 1280, flexGrow: 1 }}>
               <View style={styles.tableHeader}>
                 <View style={styles.colCheckbox}>
                   <Checkbox
@@ -826,10 +817,11 @@ export default function SalesScreen() {
                 <View style={styles.colDueDate}><SortBtn field="inHands" label="Due Date" /></View>
                 <View style={styles.colClient}><SortBtn field="client" label="Client" /></View>
                 <View style={styles.colProject}><SortBtn field="project" label="Project" /></View>
-                <View style={styles.colQuote}><SortBtn field="invoice" label="Quote #" /></View>
+                <View style={styles.colQuote}><SortBtn field="invoice" label="Invoice #" /></View>
                 <View style={styles.colServices}><SortBtn field="services" label="Service(s)" /></View>
                 <View style={styles.colPcs}><SortBtn field="pcs" label="# PCS" /></View>
-                <View style={styles.colRevenue}><SortBtn field="revenue" label="Revenue" /></View>
+                <View style={styles.colPerPcs}><Text style={styles.thText}>Per PCS</Text></View>
+                <View style={styles.colRevenue}><SortBtn field="revenue" label="Total" /></View>
                 <View style={styles.colProfit}><SortBtn field="profit" label="Profit" /></View>
                 <View style={styles.colActions}><Text style={styles.thText}>Actions</Text></View>
               </View>
@@ -841,7 +833,6 @@ export default function SalesScreen() {
                       quote={quote}
                       effectiveStatus={effectiveStatus}
                       onPress={() => handleView(quote)}
-                      onTrack={() => handleTrack(quote)}
                       onDelete={() => handleDelete(quote)}
                       onRevert={() => handleRevert(quote)}
                       onEdit={() => handleEdit(quote)}
@@ -995,6 +986,7 @@ const styles = StyleSheet.create({
   colQuote:     { width: 90 },
   colServices:  { flex: 1.0 },
   colPcs:       { width: 72 },
+  colPerPcs:    { width: 85, alignItems: 'flex-end' },
   colRevenue:   { width: 95, alignItems: 'flex-end' },
   colProfit:    { width: 95, alignItems: 'flex-end' },
   colActions:   { width: 160, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
@@ -1005,6 +997,7 @@ const styles = StyleSheet.create({
   tableInvoice: { fontSize: 13, color: Colors.light.textSecondary },
   tableServices:{ fontSize: 12, color: Colors.light.tint, fontWeight: '600', lineHeight: 18 },
   tablePcs:     { fontSize: 12, color: Colors.light.text, lineHeight: 18 },
+  tablePerPcs:  { fontSize: 13, fontWeight: '600', color: Colors.light.text },
   tableTotal:   { fontSize: 14, fontWeight: '700', color: Colors.light.text },
   tableProfit:  { fontSize: 13, fontWeight: '700', color: '#16A34A' },
   tableProfitNeg: { color: '#DC2626' },

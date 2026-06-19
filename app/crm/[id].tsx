@@ -261,6 +261,7 @@ export default function OrgProfileScreen() {
 
   // Local optimistic state for hub toggle so it responds instantly on web
   const [localHubEnabled, setLocalHubEnabled] = useState(org?.hubEnabled ?? false);
+  const [legacyCollapsed, setLegacyCollapsed] = useState(!isDesktop && !isTablet);
   useEffect(() => {
     setLocalHubEnabled(org?.hubEnabled ?? false);
   }, [org?.hubEnabled]);
@@ -1451,7 +1452,7 @@ export default function OrgProfileScreen() {
     const cardBasis = cols === 6 ? '15.5%' : cols === 3 ? '31.5%' : '47%';
     return (
       <View style={styles.infoCard}>
-        <View style={styles.infoCardHeader}>
+        <TouchableOpacity style={styles.infoCardHeader} onPress={() => setLegacyCollapsed(v => !v)} activeOpacity={0.8}>
           <View style={styles.infoCardHeaderLeft}>
             <Award size={14} color="#fff" />
             <Text style={styles.infoCardTitle}>Client Legacy</Text>
@@ -1459,7 +1460,8 @@ export default function OrgProfileScreen() {
               <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{legacyMetrics.totalProjects}</Text></View>
             )}
           </View>
-        </View>
+          <ChevronDown size={16} color="rgba(255,255,255,0.7)" style={{ transform: [{ rotate: legacyCollapsed ? '0deg' : '180deg' }] } as any} />
+        </TouchableOpacity>
         <View style={styles.v2SecondaryStats}>
           <View style={styles.revenueStatBox}>
             <Text style={styles.v2SecondaryStatValue}>{legacyMetrics.totalProjects}</Text>
@@ -1476,33 +1478,35 @@ export default function OrgProfileScreen() {
             <Text style={styles.revenueStatLabel}>Profit</Text>
           </View>
         </View>
-        <View style={styles.legacyKpiGrid}>
-          {legacyMetrics.services.map((svc) => (
-            <View key={svc.name} style={[styles.legacyKpiCard, { flexBasis: cardBasis as any }]}>
-              <View style={styles.legacyKpiHead}>
-                <View style={[styles.legacyKpiDot, { backgroundColor: svc.color }]} />
-                <Text style={styles.legacyKpiName} numberOfLines={1}>{svc.name}</Text>
-              </View>
-              <Text style={styles.legacyKpiPct}>{svc.pct}%</Text>
-              <View style={styles.legacyKpiStats}>
-                <View style={styles.legacyKpiStatRow}>
-                  <Text style={styles.legacyKpiStatLabel}>Projects</Text>
-                  <Text style={styles.legacyKpiStatVal}>{svc.projectCount}</Text>
+        {!legacyCollapsed && (
+          <View style={styles.legacyKpiGrid}>
+            {legacyMetrics.services.map((svc) => (
+              <View key={svc.name} style={[styles.legacyKpiCard, { flexBasis: cardBasis as any }]}>
+                <View style={styles.legacyKpiHead}>
+                  <View style={[styles.legacyKpiDot, { backgroundColor: svc.color }]} />
+                  <Text style={styles.legacyKpiName} numberOfLines={1}>{svc.name}</Text>
                 </View>
-                <View style={styles.legacyKpiStatRow}>
-                  <Text style={styles.legacyKpiStatLabel}>Revenue</Text>
-                  <Text style={styles.legacyKpiStatVal}>{formatCurrency(svc.revenue)}</Text>
-                </View>
-                {SERVICE_HAS_PCS[svc.name] !== false && (
+                <Text style={styles.legacyKpiPct}>{svc.pct}%</Text>
+                <View style={styles.legacyKpiStats}>
                   <View style={styles.legacyKpiStatRow}>
-                    <Text style={styles.legacyKpiStatLabel}>PCS</Text>
-                    <Text style={styles.legacyKpiStatVal}>{svc.pcs.toLocaleString()}</Text>
+                    <Text style={styles.legacyKpiStatLabel}>Projects</Text>
+                    <Text style={styles.legacyKpiStatVal}>{svc.projectCount}</Text>
                   </View>
-                )}
+                  <View style={styles.legacyKpiStatRow}>
+                    <Text style={styles.legacyKpiStatLabel}>Revenue</Text>
+                    <Text style={styles.legacyKpiStatVal}>{formatCurrency(svc.revenue)}</Text>
+                  </View>
+                  {SERVICE_HAS_PCS[svc.name] !== false && (
+                    <View style={styles.legacyKpiStatRow}>
+                      <Text style={styles.legacyKpiStatLabel}>PCS</Text>
+                      <Text style={styles.legacyKpiStatVal}>{svc.pcs.toLocaleString()}</Text>
+                    </View>
+                  )}
+                </View>
               </View>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        )}
       </View>
     );
   };

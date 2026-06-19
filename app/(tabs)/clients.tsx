@@ -446,7 +446,7 @@ function OrganizationsScreen() {
               )}
             </OverlayMenu>
             <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
-              <Plus size={15} color="#fff" /><Text style={styles.addBtnText}>Add Organization</Text>
+              <Plus size={15} color="#fff" /><Text style={styles.addBtnText}>{isDesktop ? 'Add Organization' : 'Organization'}</Text>
             </TouchableOpacity>
           </View>
         </View>

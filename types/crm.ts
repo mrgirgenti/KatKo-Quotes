@@ -144,7 +144,7 @@ export interface CampaignTemplate {
 
 export const CRM_STATUS_CONFIG: Record<CrmStatus, { label: string; color: string; bg: string; border: string; dot: string }> = {
   'Cold':         { label: 'Cold',         color: '#6B7280', bg: '#F3F4F6', border: '#D1D5DB', dot: '#9CA3AF' },
-  'Working':      { label: 'Working',      color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE', dot: '#3B82F6' },
+  'Working':      { label: 'Working',      color: '#FFFFFF', bg: '#2563EB', border: '#1D4ED8', dot: '#2563EB' },
   'Active Client':{ label: 'Active Client',color: '#FFFFFF', bg: '#FF5A00', border: '#FF5A00', dot: '#FF5A00' },
   'Past Client':  { label: 'Past Client',  color: '#374151', bg: '#E5E7EB', border: '#9CA3AF', dot: '#6B7280' },
 };

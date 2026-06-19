@@ -9,7 +9,7 @@ import OverlayMenu from '@/components/OverlayMenu';
 import {
   Search, X, Users, ChevronDown, Check,
   Wifi, ShieldCheck, Mail, Ban, MinusCircle, Building2, ArrowUpDown, Trash2,
-  Plus, FileText, Upload,
+  Plus, FileText, Upload, Edit3,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { DS } from '@/constants/designSystem';
@@ -37,7 +37,7 @@ const CHECKBOX_W = 36;
 const COL_WIDTHS: Record<ColId, number> = {
   name: 180, org: 170, role: 130, email: 200, phone: 130, hub: 120, lastLogin: 130, status: 100,
 };
-const COL_FLEX: Partial<Record<ColId, number>> = { name: 1.6, org: 1.4, email: 1.6 };
+const COL_FLEX: Partial<Record<ColId, number>> = { name: 2, org: 1.8, email: 1.6 };
 
 function HubBadge({ status }: { status: HubStatus }) {
   const cfg = HUB_CFG[status];
@@ -92,18 +92,27 @@ function PersonRow({ person, onPress, isSelected, onToggleSelect }: {
       <View style={{ width: COL_WIDTHS.phone }}>
         {person.phone ? <Text style={styles.cell} numberOfLines={1}>{formatPhone(person.phone)}</Text> : <Text style={styles.dim}>—</Text>}
       </View>
-      <View style={{ width: COL_WIDTHS.hub }}>
-        <HubBadge status={person.hubStatus || 'No Access'} />
-      </View>
-      <View style={{ width: COL_WIDTHS.lastLogin }}>
-        {last ? <Text style={styles.cell} numberOfLines={1}>{last}</Text> : <Text style={styles.dim}>—</Text>}
-      </View>
       <View style={{ width: COL_WIDTHS.status }}>
         <View style={[styles.statusPill, person.status === 'inactive' ? styles.statusInactive : styles.statusActive]}>
           <Text style={[styles.statusPillText, person.status === 'inactive' ? { color: '#6B7280' } : { color: '#15803D' }]}>
             {person.status === 'inactive' ? 'Inactive' : 'Active'}
           </Text>
         </View>
+      </View>
+      <View style={{ width: COL_WIDTHS.hub }}>
+        <HubBadge status={person.hubStatus || 'No Access'} />
+      </View>
+      <View style={{ width: COL_WIDTHS.lastLogin }}>
+        {last ? <Text style={styles.cell} numberOfLines={1}>{last}</Text> : <Text style={styles.dim}>—</Text>}
+      </View>
+      <View style={{ width: 90, flexDirection: 'row', justifyContent: 'flex-end' }}>
+        <TouchableOpacity
+          style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: Colors.light.tint, height: 30, justifyContent: 'center', alignItems: 'center' }}
+          onPress={onPress}
+          activeOpacity={0.7}
+        >
+          <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>View</Text>
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -307,9 +316,10 @@ export default function ContactsDirectory() {
       <View style={{ width: COL_WIDTHS.role }}><SortBtn field="role" label="Title / Role" /></View>
       <View style={COL_FLEX.email != null ? { flex: COL_FLEX.email } : { width: COL_WIDTHS.email }}><SortBtn field="email" label="Email" /></View>
       <View style={{ width: COL_WIDTHS.phone }}><SortBtn field="phone" label="Phone" /></View>
+      <View style={{ width: COL_WIDTHS.status }}><SortBtn field="status" label="Status" /></View>
       <View style={{ width: COL_WIDTHS.hub }}><SortBtn field="hub" label="Hub Status" /></View>
       <View style={{ width: COL_WIDTHS.lastLogin }}><SortBtn field="lastLogin" label="Last Login" /></View>
-      <View style={{ width: COL_WIDTHS.status }}><SortBtn field="status" label="Status" /></View>
+      <View style={{ width: 90 }}><Text style={styles.headText}>Actions</Text></View>
     </View>
   );
 
@@ -335,9 +345,17 @@ export default function ContactsDirectory() {
                     <Upload size={14} color={Colors.light.text} />
                     <Text style={styles.actionsMenuItemText}>Import Contacts</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.actionsMenuItem, { borderBottomWidth: 0 }]} onPress={close}>
+                  <TouchableOpacity style={styles.actionsMenuItem} onPress={close}>
                     <FileText size={14} color={Colors.light.text} />
                     <Text style={styles.actionsMenuItemText}>Export CSV</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.actionsMenuItem} onPress={close}>
+                    <Edit3 size={14} color={Colors.light.text} />
+                    <Text style={styles.actionsMenuItemText}>Bulk Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.actionsMenuItem, { borderBottomWidth: 0 }]} onPress={close}>
+                    <Trash2 size={14} color="#DC2626" />
+                    <Text style={[styles.actionsMenuItemText, { color: '#DC2626' }]}>Bulk Delete</Text>
                   </TouchableOpacity>
                 </>
               )}

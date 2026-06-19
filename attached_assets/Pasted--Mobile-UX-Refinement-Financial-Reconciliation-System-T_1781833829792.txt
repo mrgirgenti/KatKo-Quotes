@@ -1,0 +1,685 @@
+# Mobile UX Refinement + Financial Reconciliation System
+
+This is a refinement pass. Preserve existing functionality, branding, colors, navigation structure, and overall design language. Focus on usability, consistency, and operational workflow improvements.
+
+---
+
+# 1. Organizations Page Header (Mobile)
+
+## Current Issue
+
+The Organizations page header is the only page where the title and action buttons become crowded.
+
+Current:
+
+Organizations | Actions | Add Organization
+
+The Add Organization button gets clipped and feels cramped.
+
+## Requirements
+
+Mobile only:
+
+Change:
+
+* Add Organization
+
+To:
+
+* Organization
+
+Keep:
+
+* Existing one-row layout
+* Existing Actions button
+* Existing spacing behavior used throughout the app
+
+Goal:
+
+Allow the page title and actions to fit comfortably without creating a unique mobile header pattern.
+
+---
+
+# 2. Contacts Table Readability (Mobile)
+
+## Current Issue
+
+Important information is being truncated even though horizontal scrolling already exists.
+
+Examples:
+
+* John Jinglehymersm...
+* Riverside High Sch...
+
+This creates unnecessary guessing.
+
+## Requirements
+
+Mobile only:
+
+* Increase minimum width of Name column
+* Increase minimum width of Organization column
+* Allow table width to grow naturally
+* Preserve horizontal scrolling behavior
+* Prioritize readability over fitting everything on screen
+
+Goal:
+
+If users are already scrolling horizontally, they should be able to read full names.
+
+---
+
+# 3. Contacts Actions Menu
+
+## Current Issue
+
+Organizations page includes:
+
+* Bulk Edit
+* Bulk Delete
+
+Contacts page does not.
+
+## Requirements
+
+Add to Contacts Actions menu:
+
+* Bulk Edit
+* Bulk Delete
+
+Maintain parity with Organizations.
+
+---
+
+# 4. Contacts Table Structure
+
+## Current Issue
+
+Contacts page is missing the Actions column found on Organizations.
+
+Current order:
+
+Hub Status
+Last Login
+Status
+
+## Requirements
+
+Reorder to:
+
+Status
+Hub Status
+Last Login
+Actions
+
+Add Actions column:
+
+[ View ] [ ▼ ]
+
+Use same pattern as Organizations page.
+
+---
+
+# 5. Client Legacy (Mobile)
+
+## Current Issue
+
+The six service breakdown cards dominate the mobile viewport and push more important information down the page.
+
+## Requirements
+
+Mobile only.
+
+Keep visible:
+
+* Done
+* Revenue
+* Profit
+
+Collapse service breakdown cards by default.
+
+Add toggle:
+
+Details ▼
+
+or
+
+View Service Breakdown ▼
+
+When expanded:
+
+Show all six service cards exactly as they exist today.
+
+Desktop remains unchanged.
+
+Goal:
+
+Reduce vertical space while preserving access to service-level reporting.
+
+---
+
+# 6. Projects & Quotes KPI Metrics (Mobile)
+
+## Current Issue
+
+Metric labels wrap onto multiple lines causing uneven alignment.
+
+## Requirements
+
+Mobile only.
+
+Use single-line labels.
+
+### Projects
+
+Current:
+
+* Completed
+* In Production
+* Active Projects
+* Quoted
+* Needs Review
+
+Change to:
+
+* Completed
+* Production
+* Active
+* Quoted
+* Review
+
+### Quotes
+
+Current:
+
+* Needs Review
+* Quoted
+* Invoice Sent
+* Paid
+* Expired
+
+Change to:
+
+* Review
+* Quoted
+* Invoices
+* Paid
+* Expired
+
+Requirements:
+
+* No wrapping
+* Equal-width metric cells
+* Centered labels
+* Centered values
+* Desktop unchanged
+
+---
+
+# 7. Production Page Controls (Mobile)
+
+## Current Issue
+
+Search field feels cramped.
+
+Current:
+
+Filters
+Saved Views
+
+## Requirements
+
+Mobile only.
+
+Change:
+
+Saved Views
+
+To:
+
+Views
+
+Keep:
+
+Filters
+
+unchanged.
+
+Goal:
+
+Provide more room for search field content.
+
+---
+
+# 8. Global Status System Standardization
+
+## Current Issue
+
+Status pills use inconsistent colors and styles throughout the application.
+
+The same concept is displayed differently depending on page.
+
+## Requirements
+
+Create one unified status design system.
+
+Every status must have:
+
+* Approved background color
+* Approved text color
+* Approved border radius
+* Approved padding
+* Approved font sizing
+
+Apply globally.
+
+---
+
+## Approved Status Colors
+
+### Active Client
+
+Background:
+Brand Orange (#FF5A00)
+
+Text:
+White
+
+---
+
+### Completed
+
+Background:
+Green
+
+Text:
+White
+
+---
+
+### In Production
+
+Background:
+Purple
+
+Text:
+White
+
+---
+
+### Accepted
+
+Background:
+Blue
+
+Text:
+White
+
+---
+
+### Paid
+
+Background:
+Green
+
+Text:
+White
+
+---
+
+### Quoted
+
+Background:
+Gray
+
+Text:
+White
+
+---
+
+### Needs Review
+
+Background:
+Red
+
+Text:
+White
+
+---
+
+### Invoice Sent
+
+Background:
+Indigo / Blue
+
+Text:
+White
+
+---
+
+### Portal User / Live
+
+Background:
+Green
+
+Text:
+White
+
+---
+
+### Inactive
+
+Background:
+Dark Gray
+
+Text:
+White
+
+---
+
+### Cold
+
+Background:
+Light Gray
+
+Text:
+Dark Gray
+
+---
+
+### Working
+
+Background:
+Blue
+
+Text:
+White
+
+---
+
+# 9. Status Naming Audit
+
+Review all statuses across:
+
+* Organizations
+* Contacts
+* Projects
+* Quotes
+* Production
+* Client Hub
+
+Ensure:
+
+* Similar concepts use the same naming
+* Similar concepts use the same styling
+* No duplicate meanings with different labels
+
+Goal:
+
+Create one status language throughout Katalyst OS.
+
+---
+
+# 10. Quotes Page Actions
+
+## Current Issue
+
+Track button is displayed in Quotes.
+
+Quotes are not tracked.
+
+Projects are tracked.
+
+Additionally, Track crowds the Profit column.
+
+## Requirements
+
+Remove Track button completely from Quotes page.
+
+Actions become:
+
+[ View ] [ ▼ ]
+
+Keep quote-specific actions inside dropdown.
+
+Examples:
+
+* View
+* Edit
+* Duplicate
+* Send Quote
+* Send Invoice
+* Archive
+* Delete
+
+Goal:
+
+Quotes are for management and conversion.
+Projects are for execution and reconciliation.
+
+---
+
+# 11. Rename Quote # Column
+
+## Current Issue
+
+Quote # and Invoice # represent the same permanent record identifier.
+
+## Requirements
+
+Change:
+
+Quote #
+
+To:
+
+Invoice #
+
+On Quotes page.
+
+Use same terminology everywhere.
+
+---
+
+# 12. Projects & Quotes Column Order
+
+## Quotes Page
+
+Reorder to:
+
+Service(s)
+
+# PCS
+
+Applicator(s)
+
+## Projects Page
+
+Add:
+
+Applicator(s)
+
+Then align similar ordering with Quotes page.
+
+Goal:
+
+Consistency between operational tables.
+
+---
+
+# 13. Financial Terminology Standardization
+
+## Current Issue
+
+Some pages use:
+
+Revenue
+
+Others use:
+
+Total
+
+Some use:
+
+Markup
+
+Others use:
+
+Profit
+
+## Requirements
+
+Projects and Quotes pages:
+
+Revenue → Total
+
+Markup → Profit
+
+Use these labels consistently throughout both pages.
+
+---
+
+# 14. Add Per PCS Column
+
+## Projects & Quotes
+
+Add new column:
+
+Per PCS
+
+Position:
+
+Total
+Per PCS
+Profit
+
+Calculation:
+
+Total ÷ PCS
+
+Example:
+
+$511.45 ÷ 37 = $13.82
+
+Display as currency.
+
+---
+
+# 15. Financial Reconciliation Workflow
+
+This is a new operational workflow.
+
+---
+
+## Financial Statuses
+
+Add:
+
+Needs Reconciliation
+Reconciled
+
+These are NOT project statuses.
+
+They are financial statuses.
+
+---
+
+## Automatic Workflow
+
+When Project Status becomes:
+
+Completed
+
+Automatically set:
+
+Financial Status = Needs Reconciliation
+
+---
+
+## Reconciliation Action
+
+Add action to Project dropdown:
+
+Financial Reconciliation
+
+Do NOT create a standalone button.
+
+Keep it inside the Actions menu.
+
+---
+
+## Reconciled State
+
+When user marks project as:
+
+Reconciled
+
+Automatically:
+
+* Lock invoice financial information
+* Prevent edits to:
+
+  * Revenue
+  * Costs
+  * Fees
+  * Profit
+  * Quantities
+
+This should leverage existing invoice locking behavior if already implemented.
+
+---
+
+## Unlock Workflow
+
+Add action:
+
+Unlock Reconciliation
+
+Confirmation modal:
+
+"This project has already been reconciled. Unlocking will remove the reconciled status and allow financial edits. Continue?"
+
+If confirmed:
+
+Financial Status = Needs Reconciliation
+
+Invoice Locked = False
+
+User can edit and reconcile again later.
+
+---
+
+## Reporting Queue
+
+Inside Reports:
+
+Add:
+
+Tracking Queue
+
+or
+
+Reconciliation Queue
+
+Display:
+
+All completed projects with:
+
+Financial Status = Needs Reconciliation
+
+Goal:
+
+Provide a centralized operational list for reviewing actual profitability.
+
+---
+
+# 16. Future-Proofing Note
+
+The purpose of reconciliation is to compare:
+
+* Estimated quote profitability
+* Actual project profitability
+
+and establish a reliable source of truth for business reporting.
+
+The reconciled values should be treated as the final financial record for that project.

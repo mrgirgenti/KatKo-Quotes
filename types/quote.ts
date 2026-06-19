@@ -386,12 +386,12 @@ export function getEffectiveStatus(quote: Quote): QuoteStatus {
 
 export const STATUS_CONFIG: Record<QuoteStatus, { label: string; color: string; bg: string; borderColor: string }> = {
   draft:              { label: 'Draft',         color: '#6B7280', bg: '#F3F4F6', borderColor: '#D1D5DB' },
-  needs_review:       { label: 'Needs Review',  color: '#92400E', bg: '#FEF3C7', borderColor: '#FDE68A' },
+  needs_review:       { label: 'Needs Review',  color: '#FFFFFF', bg: '#DC2626', borderColor: '#B91C1C' },
   quoting:            { label: 'Quoting',        color: '#1D4ED8', bg: '#DBEAFE', borderColor: '#93C5FD' },
-  quoted:             { label: 'Quoted',         color: '#2563EB', bg: '#EFF6FF', borderColor: '#BFDBFE' },
-  invoice_sent:       { label: 'Invoice Sent',   color: '#6D28D9', bg: '#EDE9FE', borderColor: '#C4B5FD' },
+  quoted:             { label: 'Quoted',         color: '#FFFFFF', bg: '#6B7280', borderColor: '#4B5563' },
+  invoice_sent:       { label: 'Invoice Sent',   color: '#FFFFFF', bg: '#4F46E5', borderColor: '#4338CA' },
   paid:               { label: 'Paid',           color: '#FFFFFF', bg: '#16A34A', borderColor: '#16A34A' },
-  active:             { label: 'In Production',  color: '#FFFFFF', bg: '#FF5A00', borderColor: '#FF5A00' },
+  active:             { label: 'In Production',  color: '#FFFFFF', bg: '#7C3AED', borderColor: '#6D28D9' },
   production_started: { label: 'In Production',  color: '#FFFFFF', bg: '#7C3AED', borderColor: '#7C3AED' },
   completed:          { label: 'Completed',       color: '#FFFFFF', bg: '#16A34A', borderColor: '#16A34A' },
   expired:            { label: 'Expired',         color: '#9CA3AF', bg: '#F9FAFB', borderColor: '#E5E7EB' },

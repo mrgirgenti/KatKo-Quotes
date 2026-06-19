@@ -35,6 +35,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { Quote, QuoteStatus, getEffectiveStatus, STATUS_CONFIG, OperationalProjectStatus, OPERATIONAL_STATUS_CONFIG, OPERATIONAL_STATUSES } from '@/types/quote';
 import { formatCurrency } from '@/utils/quoteCalculations';
@@ -122,6 +123,8 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
     Object.values(i.sizes || {}).reduce((s: number, v: any) => s + (Number(v) || 0), 0)
   );
   const total = quote.calculations?.total ?? 0;
+  const totalPcs = lineItemPcs.reduce((s: number, n: number) => s + n, 0);
+  const perPcs = totalPcs > 0 ? total / totalPcs : null;
   const isActive = effectiveStatus === 'active' || effectiveStatus === 'production_started';
   const isCompleted = effectiveStatus === 'completed';
 
@@ -179,6 +182,9 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
           <Text style={styles.tablePcs}>
             {lineItemPcs.map(n => n > 0 ? `${n} pcs` : '—').join('\n')}
           </Text>
+        </View>
+        <View style={styles.colPerPcs}>
+          <Text style={styles.tablePerPcs}>{perPcs != null ? formatCurrency(perPcs) : '—'}</Text>
         </View>
         <View style={styles.colTotal}>
           <Text style={styles.tableTotal}>{formatCurrency(total)}</Text>
@@ -335,6 +341,7 @@ function BulkActionBar({
 
 export default function ProjectsScreen() {
   const router = useRouter();
+  const { isDesktop } = useBreakpoint();
   const { projects, deleteQuote, convertToSale, convertToQuote, markProjectComplete, isLoading } = useQuotes();
 
   const [search, setSearch] = useState('');
@@ -663,7 +670,7 @@ export default function ProjectsScreen() {
             <Text style={[styles.statValue, { color: Colors.light.text }]}>
               {resolvedProjects.length}
             </Text>
-            <Text style={styles.statLabel}>Active Projects</Text>
+            <Text style={styles.statLabel}>{isDesktop ? 'Active Projects' : 'Active'}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
@@ -677,7 +684,7 @@ export default function ProjectsScreen() {
             <Text style={[styles.statValue, { color: '#DC2626' }]}>
               {statusCounts['needs_review'] ?? 0}
             </Text>
-            <Text style={styles.statLabel}>Needs Review</Text>
+            <Text style={styles.statLabel}>{isDesktop ? 'Needs Review' : 'Review'}</Text>
           </View>
         </View>
 
@@ -840,7 +847,7 @@ export default function ProjectsScreen() {
       ) : (
         <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
           <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }} style={{ outlineStyle: 'none' } as any}>
-            <View style={{ minWidth: 1320, flexGrow: 1 }}>
+            <View style={{ minWidth: 1420, flexGrow: 1 }}>
               <View style={styles.tableHeader}>
                 <View style={styles.colCheckbox}>
                   <Checkbox
@@ -874,11 +881,14 @@ export default function ProjectsScreen() {
                 <View style={styles.colPcs}>
                   <SortBtn field="pcs" label="# PCS" />
                 </View>
+                <View style={styles.colPerPcs}>
+                  <Text style={styles.thText}>Per PCS</Text>
+                </View>
                 <View style={styles.colTotal}>
                   <SortBtn field="total" label="Total" />
                 </View>
                 <View style={styles.colMarkup}>
-                  <SortBtn field="markup" label="Markup" />
+                  <SortBtn field="markup" label="Profit" />
                 </View>
                 <View style={styles.colActions}><Text style={styles.thText}>Actions</Text></View>
               </View>
@@ -978,7 +988,7 @@ const styles = StyleSheet.create({
   searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F5F5F5', borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, paddingHorizontal: 12, height: 40 },
   searchInput: { flex: 1, fontSize: 14, color: Colors.light.text, outlineStyle: 'none' as any },
   startProjectBtn: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6, backgroundColor: Colors.light.tint, paddingHorizontal: 16, borderRadius: DS.radius.md, height: 40 },
-  startProjectBtnText: { fontSize: 14, fontWeight: '700' as const, color: '#fff', whiteSpace: 'nowrap' as any },
+  startProjectBtnText: { fontSize: 14, fontWeight: '700' as const, color: '#fff' },
   filterBtn: { width: 40, height: 40, borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: Colors.light.background, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   filterBtnActive: { borderColor: Colors.light.tint, backgroundColor: '#FFF4EE' },
   filterBadge: { position: 'absolute', top: -4, right: -4, width: 15, height: 15, borderRadius: 8, backgroundColor: Colors.light.tint, alignItems: 'center', justifyContent: 'center' },
@@ -1012,6 +1022,7 @@ const styles = StyleSheet.create({
   colApplicator:{ flex: 1.2 },
   colServices:  { flex: 1.0 },
   colPcs:       { width: 72 },
+  colPerPcs:    { width: 85, alignItems: 'flex-end' },
   colTotal:     { width: 85, alignItems: 'flex-end' },
   colMarkup:    { width: 85, alignItems: 'flex-end' },
   colActions:   { width: 100, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
@@ -1023,6 +1034,7 @@ const styles = StyleSheet.create({
   tableApplicator: { fontSize: 12, color: Colors.light.text, lineHeight: 18 },
   tableServices:   { fontSize: 12, color: Colors.light.tint, fontWeight: '600', lineHeight: 18 },
   tablePcs:        { fontSize: 12, color: Colors.light.text, lineHeight: 18 },
+  tablePerPcs:     { fontSize: 13, fontWeight: '600', color: Colors.light.text },
   tableTotal:      { fontSize: 14, fontWeight: '700', color: Colors.light.text },
   tableMarkup:     { fontSize: 13, fontWeight: '700', color: '#16A34A' },
   tableMarkupPct:  { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
