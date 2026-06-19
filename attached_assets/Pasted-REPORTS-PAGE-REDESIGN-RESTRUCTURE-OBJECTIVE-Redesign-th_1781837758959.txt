@@ -1,0 +1,357 @@
+REPORTS PAGE REDESIGN & RESTRUCTURE
+
+OBJECTIVE
+
+Redesign the Reports page to better match the Katalyst OS design language, improve usability on desktop and mobile, eliminate redundant information, and focus on actionable business intelligence rather than dashboard clutter.
+
+The final Reports page should feel like the rest of Katalyst OS:
+
+* Black section headers
+* Orange action links/buttons
+* Compact layout
+* Mobile-friendly
+* Consistent typography and spacing
+* Business-focused metrics
+* No oversized charts or wasted whitespace
+
+---
+
+## PAGE STRUCTURE
+
+Add sub-navigation directly inside the Reports page (NOT in the sidebar).
+
+Tabs:
+
+* Overview
+* Financial
+* Customers
+* Services
+
+These should appear at the top of the Reports page similar to the tab structure used throughout the platform.
+
+---
+
+## HEADER CONTROLS
+
+Top right controls:
+
+* Date Range ▼
+* Compare ▼
+* Export ▼
+
+Use existing Katalyst OS button styling.
+
+Comparison options should support:
+
+* Previous Period
+* Same Period Last Year
+* Custom Comparison
+
+Example:
+
+Jan 1 – Jun 30, 2026
+vs
+Jan 1 – Jun 30, 2025
+
+---
+
+## OVERVIEW TAB
+
+TOP KPI ROW
+
+Use 5 KPI cards.
+
+Each KPI should display:
+
+* Current Value
+* Percentage Change
+* Comparison Period
+
+KPIs:
+
+1. Revenue
+2. Profit
+3. Orders
+4. Avg Order
+5. Avg PCS
+
+Calculations:
+
+Revenue
+= Total Revenue
+
+Profit
+= Total Profit
+
+Orders
+= Total Orders
+
+Avg Order
+= Revenue ÷ Orders
+
+Avg PCS
+= Total PCS ÷ Orders
+
+Example:
+
+Revenue
+$118,420
+▲ 22.4%
+
+Profit
+$24,880
+▲ 18.1%
+
+Orders
+147
+▲ 11.3%
+
+Avg Order
+$806
+▲ 9.8%
+
+Avg PCS
+42
+▲ 15.2%
+
+IMPORTANT:
+
+Remove PCS from the primary metrics area elsewhere on the Reports page.
+
+Avg PCS replaces PCS as the more meaningful business KPI.
+
+---
+
+SECTION:
+RECONCILIATION QUEUE
+--------------------
+
+Use standard black section header.
+
+Title:
+
+RECONCILIATION QUEUE
+
+Display:
+
+* Projects Pending Reconciliation
+* Revenue Waiting
+* Profit Waiting
+
+Example:
+
+Pending Projects: 7
+Revenue Waiting: $5,480
+Profit Waiting: $1,320
+
+Action:
+
+View Queue →
+
+This should link directly into the reconciliation workflow.
+
+---
+
+SECTION:
+TOP CUSTOMERS
+-------------
+
+Use standard black section header.
+
+Title:
+
+TOP CUSTOMERS
+
+Columns:
+
+* Customer
+* Revenue
+* Profit
+* Orders
+* Last Order Date
+
+Action:
+
+View All Customers →
+
+Sort by Revenue descending by default.
+
+---
+
+SECTION:
+SERVICE SNAPSHOT
+----------------
+
+Use standard black section header.
+
+Title:
+
+SERVICE SNAPSHOT
+
+This replaces the previously discussed "Top Performing Projects" section.
+
+Columns:
+
+* Service
+* Revenue
+* Profit
+* Orders
+* Avg PCS
+
+Example:
+
+DTF
+Revenue: $17,850
+Profit: $5,280
+Orders: 20
+Avg PCS: 62
+
+Screen Print
+Revenue: $12,640
+Profit: $2,880
+Orders: 14
+Avg PCS: 70
+
+Action:
+
+View All Services →
+
+---
+
+## REMOVE
+
+Remove:
+
+* Revenue by Month chart
+* Profit by Month chart
+* Margin Over Time chart
+* Revenue Trend chart
+* Customer Growth chart
+* Top Performing Projects section
+* Any large visual charts that consume significant vertical space
+
+Do NOT replace them with additional charts.
+
+Keep Reports focused on actionable business data.
+
+---
+
+## FINANCIAL TAB
+
+Purpose:
+
+Financial performance and reconciliation.
+
+Sections:
+
+Financial Summary
+
+* Revenue
+* Profit
+* Orders
+* Avg Order
+* Avg PCS
+
+Reconciliation Queue
+
+Reconciled Revenue
+
+Reconciled Profit
+
+Export Options
+
+Exports:
+
+* Sales Report
+* Financial Summary Report
+* Reconciliation Report
+
+---
+
+## CUSTOMERS TAB
+
+Purpose:
+
+Customer intelligence.
+
+Sections:
+
+Top Customers
+
+Customer Revenue Rankings
+
+Customer Profit Rankings
+
+Inactive Customers
+
+Columns:
+
+* Customer
+* Revenue
+* Profit
+* Orders
+* Last Order Date
+
+Optional:
+
+Show customers who have not ordered in:
+
+* 30 Days
+* 60 Days
+* 90 Days+
+
+---
+
+## SERVICES TAB
+
+Purpose:
+
+Evaluate service performance.
+
+Display services such as:
+
+* Direct to Film
+* Screen Printing
+* Embroidery
+* Promotional Products
+* Engraving
+* Design Work
+
+Columns:
+
+* Revenue
+* Profit
+* Orders
+* Avg Order
+* Avg PCS
+
+Sort by Revenue descending by default.
+
+---
+
+## DESIGN REQUIREMENTS
+
+Match existing Katalyst OS patterns:
+
+* Black section headers
+* White content cards
+* Orange actions
+* Consistent typography
+* Consistent spacing
+* Consistent border radius
+
+Avoid oversized cards.
+
+Reduce vertical whitespace wherever possible.
+
+Design should work equally well on:
+
+* Desktop
+* Tablet
+* Mobile
+
+without requiring major layout changes.
+
+Prioritize information density and usability over decorative analytics visuals.
+
+The Reports page should feel like an operational business intelligence center, not a generic SaaS analytics dashboard.
