@@ -1727,7 +1727,17 @@ export default function ClientPortal() {
               : <View style={{ gap: 8 }}>
                   {mediaBinFiles.slice(0, 4).map(f => (
                     <View key={f.id} style={homeStyles.previewRow}>
-                      <View style={[homeStyles.previewDot, { backgroundColor: isImageMime(f.mimeType) ? '#10B981' : '#6366F1' }]} />
+                      {isImageMime(f.mimeType) ? (
+                        <Image
+                          source={{ uri: `/api/portal/${session?.orgId}/files/${f.id}?inline=true` }}
+                          style={homeStyles.previewThumb}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={homeStyles.previewThumbPlaceholder}>
+                          <Text style={homeStyles.previewThumbLabel}>{getMimeLabel(f.mimeType, f.originalName)}</Text>
+                        </View>
+                      )}
                       <Text style={homeStyles.previewName} numberOfLines={1}>{f.originalName}</Text>
                       <View style={[homeStyles.previewBadge, { backgroundColor: '#F3F4F6' }]}>
                         <Text style={[homeStyles.previewBadgeText, { color: '#6B7280' }]}>{getMimeLabel(f.mimeType, f.originalName)}</Text>
@@ -5087,8 +5097,16 @@ const homeStyles = StyleSheet.create({
   previewRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4,
   },
-  previewDot: {
-    width: 8, height: 8, borderRadius: 4, flexShrink: 0,
+  previewThumb: {
+    width: 40, height: 40, borderRadius: 6, flexShrink: 0,
+    backgroundColor: '#F3F4F6',
+  },
+  previewThumbPlaceholder: {
+    width: 40, height: 40, borderRadius: 6, flexShrink: 0,
+    backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center',
+  },
+  previewThumbLabel: {
+    fontSize: 8, fontWeight: '800', color: BRAND, letterSpacing: 0.5,
   },
   previewName: {
     flex: 1, fontSize: 12, color: TEXT, fontWeight: '500',
