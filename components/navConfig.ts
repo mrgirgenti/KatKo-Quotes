@@ -25,7 +25,8 @@ export interface NavItem {
 }
 
 export interface NavGroup {
-  title?: string;
+  collapsible?: boolean;
+  drawerLabel?: string;
   items: NavItem[];
 }
 
@@ -34,40 +35,33 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [{ label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' }],
   },
   {
-    title: 'CRM',
     items: [
       { label: 'Organizations', icon: Building2, href: '/clients' },
       { label: 'Contacts', icon: Users, href: '/clients?view=contacts' },
     ],
   },
   {
-    title: 'Sales',
-    items: [{ label: 'Quotes', icon: FileText, href: '/sales' }],
-  },
-  {
-    title: 'Operations',
     items: [
+      { label: 'Quotes', icon: FileText, href: '/sales' },
       { label: 'Projects', icon: FolderKanban, href: '/projects' },
       { label: 'Production', icon: Factory, href: '/production' },
     ],
   },
   {
-    title: 'Finance',
     items: [
       { label: 'Invoices', icon: Receipt, href: '/invoices' },
       { label: 'Payments', icon: CreditCard, href: '/payments' },
     ],
   },
   {
-    title: 'Client Experience',
     items: [
       { label: 'Client Hubs', icon: Globe, href: '/client-hubs' },
-      // Reserved future module — placeholder only, no implementation.
       { label: 'Web Stores', icon: Store, href: '#', disabled: true, soon: true },
     ],
   },
   {
-    title: 'System',
+    collapsible: true,
+    drawerLabel: 'System',
     items: [
       { label: 'Tasks', icon: ListTodo, href: '/tasks' },
       { label: 'Reports', icon: BarChart3, href: '/reports' },
@@ -76,6 +70,8 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
 ];
+
+export const SYSTEM_HREFS = ['/tasks', '/reports', '/catalogs', '/settings'];
 
 export function baseHref(href: string): string {
   return href.split('?')[0];

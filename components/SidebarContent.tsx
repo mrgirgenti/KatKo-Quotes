@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useRouter, usePathname, useGlobalSearchParams } from 'expo-router';
-import { User, Plus, LogOut } from 'lucide-react-native';
+import { User, Plus, LogOut, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { useClerk } from '@clerk/clerk-expo';
-import { NAV_GROUPS, isItemActive, NavItem } from '@/components/navConfig';
+import { NAV_GROUPS, SYSTEM_HREFS, isItemActive, NavItem } from '@/components/navConfig';
 import { useUser } from '@/contexts/UserContext';
 
 export const SB = {
@@ -69,62 +69,85 @@ export function SidebarNav({ collapsed = false, onNavigate }: NavProps) {
   const params = useGlobalSearchParams<{ view?: string }>();
   const view = typeof params.view === 'string' ? params.view : null;
 
+  const isOnSystemPage = SYSTEM_HREFS.some((h) => pathname.startsWith(h));
+  const [systemOpen, setSystemOpen] = useState(isOnSystemPage);
+
+  useEffect(() => {
+    if (isOnSystemPage) setSystemOpen(true);
+  }, [isOnSystemPage]);
+
   const go = (item: NavItem) => {
     if (item.disabled) return;
     router.push(item.href as any);
     onNavigate?.();
   };
 
+  const renderItem = (item: NavItem, nested = false) => {
+    const active = isItemActive(item.href, pathname, view);
+    const Icon = item.icon;
+    return (
+      <TouchableOpacity
+        key={item.label}
+        {...KK_NAV_DATASET}
+        style={[
+          styles.navItem,
+          active && styles.navItemActive,
+          collapsed && styles.navItemCollapsed,
+          item.disabled && styles.navItemDisabled,
+          nested && !collapsed && styles.navItemNested,
+        ]}
+        onPress={() => go(item)}
+        disabled={item.disabled}
+        activeOpacity={0.7}
+      >
+        {active && !collapsed && <View style={styles.activeBar} />}
+        <Icon size={19} color={active ? '#FFFFFF' : SB.iconColor} />
+        {!collapsed && (
+          <Text
+            style={[
+              styles.navLabel,
+              active && styles.navLabelActive,
+              item.disabled && styles.navLabelDisabled,
+            ]}
+            numberOfLines={1}
+          >
+            {item.label}
+          </Text>
+        )}
+        {!collapsed && item.soon && (
+          <View style={styles.soonBadge}>
+            <Text style={styles.soonText}>Soon</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <>
       {NAV_GROUPS.map((group, gi) => (
-        <View key={group.title ?? `group-${gi}`} style={styles.group}>
-          {group.title ? (
-            collapsed ? (
-              <View style={styles.groupDivider} />
-            ) : (
-              <Text style={styles.sectionLabel}>{group.title}</Text>
-            )
-          ) : null}
-          {group.items.map((item) => {
-            const active = isItemActive(item.href, pathname, view);
-            const Icon = item.icon;
-            return (
+        <View key={`group-${gi}`}>
+          {gi > 0 && <View style={styles.groupDivider} />}
+
+          {group.collapsible && !collapsed ? (
+            <>
               <TouchableOpacity
-                key={item.label}
                 {...KK_NAV_DATASET}
-                style={[
-                  styles.navItem,
-                  active && styles.navItemActive,
-                  collapsed && styles.navItemCollapsed,
-                  item.disabled && styles.navItemDisabled,
-                ]}
-                onPress={() => go(item)}
-                disabled={item.disabled}
+                style={styles.systemToggle}
+                onPress={() => setSystemOpen((o) => !o)}
                 activeOpacity={0.7}
               >
-                {active && !collapsed && <View style={styles.activeBar} />}
-                <Icon size={19} color={active ? '#FFFFFF' : SB.iconColor} />
-                {!collapsed && (
-                  <Text
-                    style={[
-                      styles.navLabel,
-                      active && styles.navLabelActive,
-                      item.disabled && styles.navLabelDisabled,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {item.label}
-                  </Text>
-                )}
-                {!collapsed && item.soon && (
-                  <View style={styles.soonBadge}>
-                    <Text style={styles.soonText}>Soon</Text>
-                  </View>
-                )}
+                <Text style={styles.systemToggleLabel}>System</Text>
+                {systemOpen
+                  ? <ChevronUp size={12} color={SB.sectionLabel} />
+                  : <ChevronDown size={12} color={SB.sectionLabel} />
+                }
               </TouchableOpacity>
-            );
-          })}
+              {systemOpen && group.items.map((item) => renderItem(item, true))}
+            </>
+          ) : (
+            group.items.map((item) => renderItem(item, false))
+          )}
         </View>
       ))}
     </>
@@ -223,24 +246,10 @@ export function NewQuoteButton({ collapsed = false, onNavigate }: NavProps) {
 }
 
 const styles = StyleSheet.create({
-  group: {
-    marginBottom: 2,
-  },
-  sectionLabel: {
-    fontSize: 10.5,
-    fontWeight: '700' as const,
-    color: SB.sectionLabel,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase' as const,
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 6,
-  },
   groupDivider: {
     height: 1,
     backgroundColor: SB.borderColor,
-    marginVertical: 6,
-    marginHorizontal: 12,
+    marginVertical: 5,
   },
   navItem: {
     flexDirection: 'row',
@@ -261,6 +270,9 @@ const styles = StyleSheet.create({
   },
   navItemDisabled: {
     opacity: 0.45,
+  },
+  navItemNested: {
+    paddingLeft: 28,
   },
   activeBar: {
     position: 'absolute',
@@ -296,6 +308,21 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: SB.text,
     letterSpacing: 0.5,
+    textTransform: 'uppercase' as const,
+  },
+  systemToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 7,
+    outlineStyle: 'none' as any,
+  },
+  systemToggleLabel: {
+    fontSize: 10.5,
+    fontWeight: '700' as const,
+    color: SB.sectionLabel,
+    letterSpacing: 0.7,
     textTransform: 'uppercase' as const,
   },
   profileFooterRow: {
