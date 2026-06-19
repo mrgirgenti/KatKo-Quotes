@@ -932,6 +932,7 @@ export default function ClientPortal() {
   const [mediaBinLoading, setMediaBinLoading] = useState(false);
   const [mediaBinUploading, setMediaBinUploading] = useState(false);
   const [isDraggingMB, setIsDraggingMB] = useState(false);
+  const [isDraggingDashMB, setIsDraggingDashMB] = useState(false);
   const [mediaBinSearch, setMediaBinSearch] = useState('');
   const [mediaBinFilter, setMediaBinFilter] = useState<string>('All');
   const [mediaBinSort, setMediaBinSort] = useState<'Newest' | 'Oldest' | 'A-Z'>('Newest');
@@ -977,6 +978,7 @@ export default function ClientPortal() {
   const mediaBinInputRef = useRef<any>(null);
   const dropZoneRef = useRef<any>(null);
   const mediaBinDropRef = useRef<any>(null);
+  const dashMBDropRef = useRef<any>(null);
 
   const [activeView, setActiveView] = useState<ActiveView>('home');
   const [orgProjects, setOrgProjects] = useState<PortalProject[]>([]);
@@ -1182,13 +1184,35 @@ export default function ClientPortal() {
   }, [handleFilesAdded, activeView]);
 
   useEffect(() => {
-    if (Platform.OS !== 'web' || !mediaBinDropRef.current) return;
-    const el = mediaBinDropRef.current as any;
+    if (Platform.OS !== 'web' || activeView !== 'artwork') return;
     const onDragOver = (e: any) => { e.preventDefault(); setIsDraggingMB(true); };
-    const onDragLeave = (e: any) => { if (!el.contains(e.relatedTarget)) setIsDraggingMB(false); };
+    const onDragLeave = (e: any) => { if (!e.relatedTarget) setIsDraggingMB(false); };
     const onDrop = (e: any) => {
       e.preventDefault();
       setIsDraggingMB(false);
+      if (!session) return;
+      const files = Array.from((e.dataTransfer?.files || []) as globalThis.File[]);
+      if (files.length === 0) return;
+      handleMediaBinUpload(files);
+    };
+    document.addEventListener('dragover', onDragOver);
+    document.addEventListener('dragleave', onDragLeave);
+    document.addEventListener('drop', onDrop);
+    return () => {
+      document.removeEventListener('dragover', onDragOver);
+      document.removeEventListener('dragleave', onDragLeave);
+      document.removeEventListener('drop', onDrop);
+    };
+  }, [activeView, session]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !dashMBDropRef.current) return;
+    const el = dashMBDropRef.current as any;
+    const onDragOver = (e: any) => { e.preventDefault(); setIsDraggingDashMB(true); };
+    const onDragLeave = (e: any) => { if (!el.contains(e.relatedTarget)) setIsDraggingDashMB(false); };
+    const onDrop = (e: any) => {
+      e.preventDefault();
+      setIsDraggingDashMB(false);
       if (!session) return;
       const files = Array.from((e.dataTransfer?.files || []) as globalThis.File[]);
       if (files.length === 0) return;
@@ -1202,7 +1226,7 @@ export default function ClientPortal() {
       el.removeEventListener('dragleave', onDragLeave);
       el.removeEventListener('drop', onDrop);
     };
-  }, [activeView, session]);
+  }, [session, handleMediaBinUpload]);
 
   const handleMediaBinUpload = useCallback(async (rawFiles: globalThis.File[]) => {
     if (!session) return;
@@ -1662,27 +1686,27 @@ export default function ClientPortal() {
             }
           </SectionCard>
         </View>
-        <View style={{ flex: 1, minWidth: 200 }}>
+        <View ref={dashMBDropRef} style={{ flex: 1, minWidth: 200 }}>
           <SectionCard title="Media Bin" onViewAll={() => { setActiveView('artwork'); if (session) fetchMediaBin(session.orgId); }}>
+            {Platform.OS === 'web' && (
+              <input ref={mediaBinInputRef} type="file" accept=".ai,.svg,.ps,.png,.jpg,.jpeg,.pdf,.emb,.dst,.pes" multiple style={{ display: 'none' }}
+                onChange={(e: any) => { const files = Array.from((e.target.files || []) as globalThis.File[]); if (files.length > 0) handleMediaBinUpload(files); e.target.value = ''; }}
+              />
+            )}
             {mediaBinFiles.length === 0
               ? (
-                <View style={homeStyles.mbUploadEmpty}>
-                  {Platform.OS === 'web' && (
-                    <input ref={mediaBinInputRef} type="file" accept=".ai,.svg,.ps,.png,.jpg,.jpeg,.pdf,.emb,.dst,.pes" multiple style={{ display: 'none' }}
-                      onChange={(e: any) => { const files = Array.from((e.target.files || []) as globalThis.File[]); if (files.length > 0) { setActiveView('artwork'); handleMediaBinUpload(files); } e.target.value = ''; }}
-                    />
-                  )}
+                <View style={[homeStyles.mbUploadEmpty, isDraggingDashMB && { borderColor: BRAND, borderWidth: 2, borderRadius: 8 }]}>
                   <TouchableOpacity
                     style={homeStyles.mbUploadBtn}
-                    onPress={() => { setActiveView('artwork'); if (session) fetchMediaBin(session.orgId); mediaBinInputRef.current?.click?.(); }}
+                    onPress={() => mediaBinInputRef.current?.click?.()}
                     activeOpacity={0.85}
                   >
                     <Upload size={14} color="#fff" />
                     <Text style={homeStyles.mbUploadBtnText}>Upload Files</Text>
                   </TouchableOpacity>
                   <View style={homeStyles.mbDropZone}>
-                    <Upload size={18} color="#9CA3AF" />
-                    <Text style={homeStyles.mbDropZoneText}>Drag & drop artwork here</Text>
+                    <Upload size={18} color={isDraggingDashMB ? BRAND : '#9CA3AF'} />
+                    <Text style={[homeStyles.mbDropZoneText, isDraggingDashMB && { color: BRAND }]}>Drag & drop artwork here</Text>
                     <Text style={homeStyles.mbDropZoneSub}>AI · SVG · PS · PNG · JPG · PDF · EMB · DST · PES</Text>
                   </View>
                 </View>
@@ -2389,7 +2413,7 @@ export default function ClientPortal() {
       <View key={file.id} style={mbStyles.fileCard}>
         <View style={mbStyles.filePreview}>
           {isImageMime(file.mimeType) ? (
-            <Image source={{ uri: `/api/files/${file.id}?inline=true` }} style={mbStyles.previewImage} resizeMode="cover" />
+            <Image source={{ uri: `/api/portal/${session?.orgId}/files/${file.id}?inline=true` }} style={mbStyles.previewImage} resizeMode="cover" />
           ) : (
             <View style={mbStyles.fileTypeBox}>
               <Text style={mbStyles.fileTypeLabel}>{getMimeLabel(file.mimeType, file.originalName)}</Text>
@@ -2401,7 +2425,7 @@ export default function ClientPortal() {
           <Text style={mbStyles.fileSize}>{formatBytes(file.fileSize)} · {formatDate(file.createdAt)}</Text>
         </View>
         <View style={mbStyles.fileActions}>
-          <TouchableOpacity style={mbStyles.fileActionBtn} onPress={() => { if (Platform.OS === 'web') { const a = document.createElement('a'); a.href = `/api/files/${file.id}`; a.download = file.originalName; a.click(); } }}>
+          <TouchableOpacity style={mbStyles.fileActionBtn} onPress={() => { if (Platform.OS === 'web') { const a = document.createElement('a'); a.href = `/api/portal/${session?.orgId}/files/${file.id}`; a.download = file.originalName; a.click(); } }}>
             <Download size={14} color={TEXT_LIGHT} />
           </TouchableOpacity>
           <TouchableOpacity style={[mbStyles.fileActionBtn, { borderColor: '#FECACA', backgroundColor: '#FEF2F2' }]} onPress={() => deleteMediaBinFile(file.id)}>
@@ -2412,7 +2436,7 @@ export default function ClientPortal() {
     );
 
     return (
-      <ScrollView ref={mediaBinDropRef} contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
         <View style={dash.pageTitleRow}>
           <Text style={dash.pageTitle}>Media Bin</Text>
           <TouchableOpacity style={mbStyles.uploadBtn} onPress={() => mediaBinInputRef.current?.click?.()} disabled={mediaBinUploading}>
@@ -2488,14 +2512,14 @@ export default function ClientPortal() {
               <View key={file.id} style={[mbStyles.visualCard, isMobile ? { width: '48%' } : isTablet ? { width: '31%' } : { width: '23%' }]}>
                 <View style={mbStyles.visualThumb}>
                   {isImageMime(file.mimeType) ? (
-                    <Image source={{ uri: `/api/files/${file.id}?inline=true` }} style={mbStyles.visualThumbImg} resizeMode="cover" />
+                    <Image source={{ uri: `/api/portal/${session?.orgId}/files/${file.id}?inline=true` }} style={mbStyles.visualThumbImg} resizeMode="cover" />
                   ) : (
                     <View style={mbStyles.visualThumbPlaceholder}>
                       <Text style={mbStyles.visualThumbLabel}>{getMimeLabel(file.mimeType, file.originalName)}</Text>
                     </View>
                   )}
                   <View style={mbStyles.visualThumbActions}>
-                    <TouchableOpacity style={mbStyles.visualThumbBtn} onPress={() => { if (Platform.OS === 'web') { const a = document.createElement('a'); a.href = `/api/files/${file.id}`; a.download = file.originalName; a.click(); } }}>
+                    <TouchableOpacity style={mbStyles.visualThumbBtn} onPress={() => { if (Platform.OS === 'web') { const a = document.createElement('a'); a.href = `/api/portal/${session?.orgId}/files/${file.id}`; a.download = file.originalName; a.click(); } }}>
                       <Download size={13} color="#fff" />
                     </TouchableOpacity>
                     <TouchableOpacity style={[mbStyles.visualThumbBtn, { backgroundColor: 'rgba(220,38,38,0.8)' }]} onPress={() => deleteMediaBinFile(file.id)}>

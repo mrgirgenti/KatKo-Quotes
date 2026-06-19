@@ -1,5 +1,33 @@
 import { pool } from '@/lib/pool';
-import { deleteUpload } from '@/lib/files';
+import { readUpload, deleteUpload } from '@/lib/files';
+
+export async function GET(_request: Request, { orgId, fileId }: { orgId: string; fileId: string }) {
+  if (!orgId || !fileId) return Response.json({ error: 'orgId and fileId required' }, { status: 400 });
+
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `SELECT "storageKey", "mimeType", "originalName" FROM "File" WHERE id = $1 AND "organizationId" = $2`,
+      [fileId, orgId],
+    );
+    if (!result.rows[0]) return Response.json({ error: 'File not found' }, { status: 404 });
+
+    const { storageKey, mimeType, originalName } = result.rows[0];
+    const buffer = readUpload(storageKey);
+    if (!buffer) return Response.json({ error: 'File not found on disk' }, { status: 404 });
+
+    const contentType = mimeType || 'application/octet-stream';
+    return new Response(buffer, {
+      headers: {
+        'Content-Type': contentType,
+        'Content-Disposition': `inline; filename="${originalName}"`,
+        'Cache-Control': 'private, max-age=3600',
+      },
+    });
+  } finally {
+    client.release();
+  }
+}
 
 export async function DELETE(_request: Request, { orgId, fileId }: { orgId: string; fileId: string }) {
   if (!orgId || !fileId) return Response.json({ error: 'orgId and fileId required' }, { status: 400 });
