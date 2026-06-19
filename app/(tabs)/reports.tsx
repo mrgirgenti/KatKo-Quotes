@@ -1632,7 +1632,7 @@ const s = StyleSheet.create({
   scroll: { flex: 1 },
   content: { paddingBottom: 60 },
 
-  pageHeader: { backgroundColor: Colors.light.surface, borderBottomWidth: 1, borderBottomColor: Colors.light.border },
+  pageHeader: { backgroundColor: Colors.light.surface, borderBottomWidth: 1, borderBottomColor: Colors.light.border, zIndex: 100 },
   pageHeaderTop: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1642,11 +1642,12 @@ const s = StyleSheet.create({
     paddingBottom: DS.spacing.md,
     flexWrap: 'wrap',
     gap: DS.spacing.sm,
+    zIndex: 100,
   },
   pageTitle: { fontSize: 24, fontWeight: '800', color: Colors.light.text },
-  headerControls: { flexDirection: 'row', gap: DS.spacing.sm, alignItems: 'center', flexWrap: 'wrap' },
+  headerControls: { flexDirection: 'row', gap: DS.spacing.sm, alignItems: 'center', flexWrap: 'wrap', zIndex: 100 },
 
-  ddWrap: { position: 'relative' },
+  ddWrap: { position: 'relative', zIndex: 20 },
   ddWrapRight: {},
   headerBtn: {
     flexDirection: 'row',

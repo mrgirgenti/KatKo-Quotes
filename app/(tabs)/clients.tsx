@@ -426,7 +426,7 @@ function OrganizationsScreen() {
             </OverlayMenu>
             <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
               <Plus size={15} color="#fff" />
-              <Text style={styles.addBtnText}>Add Organization</Text>
+              <Text style={styles.addBtnText}>Add Org</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -578,7 +578,7 @@ function OrganizationsScreen() {
           <Building2 size={40} color={Colors.light.border} />
           <Text style={styles.emptyTitle}>{search ? 'No results found' : filter !== 'All' ? `No ${filter} contacts` : 'No contacts yet'}</Text>
           <Text style={styles.emptyText}>{search ? 'Try a different search term.' : filter !== 'All' ? `Add a new contact and set status to ${filter}.` : 'Add your first organization or contact to get started.'}</Text>
-          {!search && <TouchableOpacity style={styles.emptyAddBtn} onPress={openAddModal}><Plus size={15} color="#fff" /><Text style={styles.emptyAddBtnText}>Add Organization</Text></TouchableOpacity>}
+          {!search && <TouchableOpacity style={styles.emptyAddBtn} onPress={openAddModal}><Plus size={15} color="#fff" /><Text style={styles.emptyAddBtnText}>Add Org</Text></TouchableOpacity>}
         </View>
       ) : (
         <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
