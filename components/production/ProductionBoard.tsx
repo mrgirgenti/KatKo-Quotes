@@ -53,7 +53,7 @@ export function ProductionBoard({ projects, onSetStatus }: Props) {
         return (
           <View
             key={col.key}
-            style={[styles.column, dragOverCol === col.key && styles.columnDragOver, { borderLeftWidth: 3, borderLeftColor: col.accent }]}
+            style={[styles.column, dragOverCol === col.key && styles.columnDragOver]}
             {...dropProps}
           >
             <View style={styles.columnHeader}>
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
 
   card: { backgroundColor: Colors.light.surface, borderRadius: DS.radius.lg, borderWidth: 1, borderColor: Colors.light.border, ...DS.shadow.small, cursor: 'grab' as any },
   cardRow: { flexDirection: 'row', alignItems: 'stretch', minHeight: 100 },
-  statusStrip: { width: 5, borderTopLeftRadius: DS.radius.lg, borderBottomLeftRadius: DS.radius.lg },
+  statusStrip: { width: 8, borderTopLeftRadius: DS.radius.lg, borderBottomLeftRadius: DS.radius.lg },
 
   mockupWrap: { width: 76, padding: 7, position: 'relative' },
   mockupBox: { flex: 1, borderRadius: DS.radius.md, backgroundColor: '#E8F0FE', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
