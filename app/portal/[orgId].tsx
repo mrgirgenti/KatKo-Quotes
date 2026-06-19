@@ -62,6 +62,7 @@ import {
   ArrowUpDown,
   ChevronUp,
   Grid2x2,
+  LayoutGrid,
   List,
 } from 'lucide-react-native';
 import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
@@ -937,6 +938,8 @@ export default function ClientPortal() {
   const [mediaBinFilter, setMediaBinFilter] = useState<string>('All');
   const [mediaBinSort, setMediaBinSort] = useState<'Newest' | 'Oldest' | 'A-Z'>('Newest');
   const [mediaBinViewMode, setMediaBinViewMode] = useState<'grid' | 'list'>('grid');
+  const [mediaBinGridSize, setMediaBinGridSize] = useState<'large' | 'small'>('large');
+  const [mediaBinSortOpen, setMediaBinSortOpen] = useState(false);
   const [catSearch, setCatSearch] = useState('');
   const [catFilter, setCatFilter] = useState('All');
 
@@ -2448,7 +2451,10 @@ export default function ClientPortal() {
     return (
       <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
         <View style={dash.pageTitleRow}>
-          <Text style={dash.pageTitle}>Media Bin</Text>
+          <View>
+            <Text style={dash.pageTitle}>Media Bin</Text>
+            <Text style={mbStyles.pageSubtitle}>Store and manage your artwork, logos, and files.</Text>
+          </View>
           <TouchableOpacity style={mbStyles.uploadBtn} onPress={() => mediaBinInputRef.current?.click?.()} disabled={mediaBinUploading}>
             {mediaBinUploading
               ? <ActivityIndicator size="small" color="#fff" />
@@ -2462,19 +2468,10 @@ export default function ClientPortal() {
           />
         )}
 
-        {/* Search */}
-        <View style={mbStyles.searchRow}>
-          <Search size={14} color={TEXT_PLACEHOLDER} style={{ marginRight: 8 }} />
-          <TextInput style={mbStyles.searchInput} placeholder="Search files…" placeholderTextColor={TEXT_PLACEHOLDER} value={mediaBinSearch} onChangeText={setMediaBinSearch} />
-          {mediaBinSearch.length > 0 && (
-            <TouchableOpacity onPress={() => setMediaBinSearch('')} style={{ padding: 4 }}><X size={14} color={TEXT_LIGHT} /></TouchableOpacity>
-          )}
-        </View>
-
-        {/* Filter chips + Sort + View toggle */}
-        <View style={mbStyles.controlBar}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', gap: 6 }}>
+        {/* Unified toolbar: chips left · search + sort + sizing right */}
+        <View style={mbStyles.toolbar}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1, flexShrink: 1 }}>
+            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
               {MB_FILTER_CHIPS.map(chip => (
                 <TouchableOpacity key={chip} style={[mbStyles.filterChip, mediaBinFilter === chip && mbStyles.filterChipActive]} onPress={() => setMediaBinFilter(chip)} activeOpacity={0.8}>
                   <Text style={[mbStyles.filterChipText, mediaBinFilter === chip && mbStyles.filterChipTextActive]}>{chip}</Text>
@@ -2482,18 +2479,56 @@ export default function ClientPortal() {
               ))}
             </View>
           </ScrollView>
-          <View style={mbStyles.controlRight}>
-            {MB_SORT_OPTIONS.map(s => (
-              <TouchableOpacity key={s} style={[mbStyles.sortBtn, mediaBinSort === s && mbStyles.sortBtnActive]} onPress={() => setMediaBinSort(s)} activeOpacity={0.8}>
-                <Text style={[mbStyles.sortBtnText, mediaBinSort === s && mbStyles.sortBtnTextActive]}>{s}</Text>
+
+          <View style={mbStyles.toolbarRight}>
+            {/* Search */}
+            <View style={mbStyles.searchBox}>
+              <Search size={13} color={TEXT_PLACEHOLDER} />
+              <TextInput
+                style={mbStyles.searchInput}
+                placeholder="Search files…"
+                placeholderTextColor={TEXT_PLACEHOLDER}
+                value={mediaBinSearch}
+                onChangeText={setMediaBinSearch}
+              />
+              {mediaBinSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setMediaBinSearch('')} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                  <X size={12} color={TEXT_LIGHT} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Sort dropdown */}
+            <View style={mbStyles.sortWrap}>
+              <TouchableOpacity style={mbStyles.sortDropBtn} onPress={() => setMediaBinSortOpen(v => !v)} activeOpacity={0.8}>
+                <ArrowUpDown size={13} color={TEXT_MED} />
+                <Text style={mbStyles.sortDropBtnText}>{mediaBinSort}</Text>
+                <ChevronDown size={12} color={TEXT_LIGHT} />
               </TouchableOpacity>
-            ))}
+              {mediaBinSortOpen && (
+                <View style={mbStyles.sortDropMenu}>
+                  {MB_SORT_OPTIONS.map(s => (
+                    <TouchableOpacity
+                      key={s}
+                      style={[mbStyles.sortDropItem, mediaBinSort === s && mbStyles.sortDropItemActive]}
+                      onPress={() => { setMediaBinSort(s); setMediaBinSortOpen(false); }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[mbStyles.sortDropItemText, mediaBinSort === s && mbStyles.sortDropItemTextActive]}>{s}</Text>
+                      {mediaBinSort === s && <Check size={12} color={BRAND} />}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            {/* Grid size toggle */}
             <View style={mbStyles.viewToggle}>
-              <TouchableOpacity style={[mbStyles.viewToggleBtn, mediaBinViewMode === 'grid' && mbStyles.viewToggleBtnActive]} onPress={() => setMediaBinViewMode('grid')}>
-                <Grid2x2 size={14} color={mediaBinViewMode === 'grid' ? BRAND : TEXT_LIGHT} />
+              <TouchableOpacity style={[mbStyles.viewToggleBtn, mediaBinGridSize === 'large' && mbStyles.viewToggleBtnActive]} onPress={() => setMediaBinGridSize('large')}>
+                <Grid2x2 size={14} color={mediaBinGridSize === 'large' ? BRAND : TEXT_LIGHT} />
               </TouchableOpacity>
-              <TouchableOpacity style={[mbStyles.viewToggleBtn, mediaBinViewMode === 'list' && mbStyles.viewToggleBtnActive]} onPress={() => setMediaBinViewMode('list')}>
-                <List size={14} color={mediaBinViewMode === 'list' ? BRAND : TEXT_LIGHT} />
+              <TouchableOpacity style={[mbStyles.viewToggleBtn, mediaBinGridSize === 'small' && mbStyles.viewToggleBtnActive]} onPress={() => setMediaBinGridSize('small')}>
+                <LayoutGrid size={14} color={mediaBinGridSize === 'small' ? BRAND : TEXT_LIGHT} />
               </TouchableOpacity>
             </View>
           </View>
@@ -2519,7 +2554,10 @@ export default function ClientPortal() {
         ) : mediaBinViewMode === 'grid' ? (
           <View style={mbStyles.visualGrid}>
             {filtered.map(file => (
-              <View key={file.id} style={[mbStyles.visualCard, isMobile ? { width: '48%' } : isTablet ? { width: '31%' } : { width: '23%' }]}>
+              <View key={file.id} style={[mbStyles.visualCard, mediaBinGridSize === 'large'
+                ? (isMobile ? { width: '48%' } : isTablet ? { width: '48%' } : { width: '31%' })
+                : (isMobile ? { width: '48%' } : isTablet ? { width: '31%' } : { width: '18%' })
+              ]}>
                 <View style={mbStyles.visualThumb}>
                   {isImageMime(file.mimeType) ? (
                     <Image source={{ uri: `/api/portal/${session?.orgId}/files/${file.id}?inline=true` }} style={mbStyles.visualThumbImg} resizeMode="cover" />
@@ -4268,13 +4306,42 @@ const mbStyles = StyleSheet.create({
   },
   uploadFirstBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
   uploadFirstTypes: { fontSize: 11, color: TEXT_PLACEHOLDER, letterSpacing: 0.5, marginTop: 2 },
-  searchRow: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB',
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
-    marginBottom: 16, gap: 6,
+  pageSubtitle: { fontSize: 12, color: TEXT_LIGHT, marginTop: 2 },
+  toolbar: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginBottom: 16, flexWrap: 'nowrap' as any,
   },
-  searchInput: { flex: 1, fontSize: 13, color: TEXT },
+  toolbarRight: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0,
+  },
+  searchBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#fff', borderWidth: 1, borderColor: BORDER,
+    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
+    minWidth: 150,
+  },
+  searchInput: { fontSize: 13, color: TEXT, minWidth: 100, outlineStyle: 'none' } as any,
+  sortWrap: { position: 'relative' as any, zIndex: 100 },
+  sortDropBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#fff', borderWidth: 1, borderColor: BORDER,
+    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
+  },
+  sortDropBtnText: { fontSize: 12, fontWeight: '500', color: TEXT_MED },
+  sortDropMenu: {
+    position: 'absolute' as any, top: '110%' as any, right: 0,
+    backgroundColor: '#fff', borderWidth: 1, borderColor: BORDER,
+    borderRadius: 10, minWidth: 110, zIndex: 200,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1, shadowRadius: 8, elevation: 8,
+  },
+  sortDropItem: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 14, paddingVertical: 10, gap: 8,
+  },
+  sortDropItemActive: { backgroundColor: '#FFF4EE' },
+  sortDropItemText: { fontSize: 13, color: TEXT_MED },
+  sortDropItemTextActive: { color: BRAND, fontWeight: '700' },
   visualGrid: {
     flexDirection: 'row', flexWrap: 'wrap', gap: 10,
   },
