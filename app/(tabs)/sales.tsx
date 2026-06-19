@@ -945,7 +945,7 @@ const styles = StyleSheet.create({
   header: { backgroundColor: Colors.light.surface, borderBottomWidth: 1, borderBottomColor: Colors.light.border, paddingTop: Platform.OS === 'web' ? 0 : 48 },
   headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: DS.spacing.xl, paddingTop: DS.spacing.xl, paddingBottom: DS.spacing.md },
   title: { fontSize: 24, fontWeight: '800', color: Colors.light.text },
-  statsBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: DS.spacing.lg, marginBottom: DS.spacing.md, backgroundColor: '#FAFAFA', borderRadius: DS.radius.md, borderWidth: 1, borderColor: Colors.light.border, paddingVertical: 12, paddingHorizontal: 16 },
+  statsBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: DS.spacing.lg, marginBottom: DS.spacing.md, backgroundColor: '#EBEBEB', borderRadius: DS.radius.md, paddingVertical: 12, paddingHorizontal: 16 },
   statItem: { flex: 1, alignItems: 'center' },
   statValue: { ...metricValueStyle },
   statLabel: { ...metricLabelStyle, marginTop: 2 },

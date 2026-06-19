@@ -5171,7 +5171,7 @@ const styles = StyleSheet.create({
 
   revenueStatsRow: {
     flexDirection: 'row' as const, alignItems: 'center' as const,
-    backgroundColor: Colors.light.background, borderRadius: 10,
+    backgroundColor: '#EBEBEB', borderRadius: 10,
     padding: 12, marginBottom: 12,
   },
   revenueStatBox: { flex: 1, alignItems: 'center' as const, gap: 3 },
@@ -5521,7 +5521,7 @@ const styles = StyleSheet.create({
   v2SecondaryStats: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    backgroundColor: Colors.light.background,
+    backgroundColor: '#EBEBEB',
     borderRadius: 9,
     padding: 10,
     marginBottom: 10,
