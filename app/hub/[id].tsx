@@ -48,7 +48,6 @@ import {
   MessageSquare,
   Rocket,
 } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
 import { useQuotes } from '@/contexts/QuotesContext';
@@ -464,14 +463,7 @@ export default function HubManagementScreen() {
 
         {/* ── Hero ── */}
         <View style={styles.heroCard}>
-          <LinearGradient
-            colors={['#111111', '#1a1a1a', '#111111']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroGradientBg}
-          >
-            {/* Orange glow right side */}
-            <View style={[styles.heroGlowRight, { pointerEvents: 'none' }]} />
+          <View style={styles.heroGradientBg}>
 
             <View style={styles.heroTop}>
               {/* Logo Card */}
@@ -576,7 +568,7 @@ export default function HubManagementScreen() {
                 </View>
               ) : null}
             </View>
-          </LinearGradient>
+          </View>
         </View>
 
         {/* ── KPI Row ── */}
@@ -708,45 +700,50 @@ export default function HubManagementScreen() {
             </View>
           </View>
 
-          {/* Branding */}
-          <View style={[styles.gridCard, !isDesktop && styles.gridCardFull]}>
-            <View style={styles.cardHeader}>
-              <ImageIcon size={16} color={TINT} />
-              <Text style={styles.cardTitle}>Branding</Text>
-            </View>
-            <Text style={styles.cardDesc}>Manage the organization logo used throughout the hub.</Text>
-            {org.logoUrl ? (
-              <View style={styles.brandingLogoRow}>
-                <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={48} shape="square" />
-                <View style={{ flex: 1, gap: 2 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <CheckCircle2 size={12} color="#16A34A" />
-                    <Text style={styles.brandingLogoSetText}>Logo Configured</Text>
-                  </View>
-                  {(org as any).updatedAt ? (
-                    <Text style={styles.brandingUpdatedText}>Last updated {fmt((org as any).updatedAt)}</Text>
-                  ) : null}
-                </View>
-              </View>
-            ) : (
-              <View style={styles.noAdminBox}>
-                <AlertTriangle size={12} color="#D97706" />
-                <Text style={[styles.noAdminText, { color: '#92400E' }]}>No logo uploaded.</Text>
-              </View>
-            )}
-            <TouchableOpacity
-              style={styles.cardBtnOutline}
-              onPress={() => router.push(`/crm/${org.id}` as any)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.cardBtnOutlineText}>Edit in Organization Details</Text>
-              <ChevronRight size={13} color={TINT} />
-            </TouchableOpacity>
-          </View>
         </View>
 
-        {/* ── Bottom two columns ── */}
+        {/* ── Bottom three columns ── */}
         <View style={[styles.bottomColumns, !isDesktop && styles.bottomColumnsMobile]}>
+
+          {/* Branding */}
+          <View style={[styles.bottomBranding, !isDesktop && styles.colFull]}>
+            <View style={styles.sectionTitleRow}>
+              <View style={styles.sectionTitleLeft}>
+                <ImageIcon size={14} color={TINT} />
+                <Text style={styles.sectionTitleText}>Branding</Text>
+              </View>
+            </View>
+            <View style={styles.brandingCard}>
+              <Text style={styles.cardDesc}>Manage the organization logo used throughout the hub.</Text>
+              {org.logoUrl ? (
+                <View style={styles.brandingLogoRow}>
+                  <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={48} shape="square" />
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <CheckCircle2 size={12} color="#16A34A" />
+                      <Text style={styles.brandingLogoSetText}>Logo Configured</Text>
+                    </View>
+                    {(org as any).updatedAt ? (
+                      <Text style={styles.brandingUpdatedText}>Last updated {fmt((org as any).updatedAt)}</Text>
+                    ) : null}
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.noAdminBox}>
+                  <AlertTriangle size={12} color="#D97706" />
+                  <Text style={[styles.noAdminText, { color: '#92400E' }]}>No logo uploaded.</Text>
+                </View>
+              )}
+              <TouchableOpacity
+                style={styles.cardBtnOutline}
+                onPress={() => router.push(`/crm/${org.id}` as any)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.cardBtnOutlineText}>Edit in Org Details</Text>
+                <ChevronRight size={13} color={TINT} />
+              </TouchableOpacity>
+            </View>
+          </View>
 
           {/* Recent Activity */}
           <View style={[styles.bottomLeft, !isDesktop && styles.colFull]}>
@@ -1104,6 +1101,7 @@ const styles = StyleSheet.create({
   },
   heroGradientBg: {
     borderRadius: 16,
+    backgroundColor: '#000',
   },
   heroGlowRight: {
     position: 'absolute' as const,
@@ -1111,7 +1109,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: '45%',
-    backgroundColor: 'rgba(255, 90, 0, 0.08)',
+    backgroundColor: 'transparent',
     borderTopRightRadius: 16,
     borderBottomRightRadius: 16,
   },
@@ -1328,9 +1326,18 @@ const styles = StyleSheet.create({
   // ── Bottom columns ──
   bottomColumns: { flexDirection: 'row' as const, gap: 16, alignItems: 'flex-start' as const },
   bottomColumnsMobile: { flexDirection: 'column' as const },
+  bottomBranding: { flex: 2 },
   bottomLeft: { flex: 3 },
   bottomRight: { flex: 2 },
   colFull: { flex: 0 },
+  brandingCard: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    padding: 14,
+    gap: 10,
+  },
 
   sectionTitleRow: {
     flexDirection: 'row' as const,
