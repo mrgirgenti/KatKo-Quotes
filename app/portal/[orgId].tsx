@@ -1234,7 +1234,7 @@ export default function ClientPortal() {
       el.removeEventListener('dragleave', onDragLeave);
       el.removeEventListener('drop', onDrop);
     };
-  }, [session, handleMediaBinUpload]);
+  }, [session]);
 
   const handleMediaBinUpload = useCallback(async (rawFiles: globalThis.File[]) => {
     if (!session) return;
@@ -1686,7 +1686,8 @@ export default function ClientPortal() {
                           <View style={[homeStyles.catAvatar, { backgroundColor: color }]}>
                             <Text style={homeStyles.catAvatarText}>{initials}</Text>
                           </View>
-                          <Text style={homeStyles.catName} numberOfLines={2}>{cat.vendorName || cat.name}</Text>
+                          <Text style={homeStyles.catName} numberOfLines={1}>{cat.vendorName || cat.name}</Text>
+                          <ChevronRight size={14} color="#9CA3AF" />
                         </TouchableOpacity>
                       );
                     })}
@@ -4999,22 +5000,21 @@ const homeStyles = StyleSheet.create({
   },
 
   catGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 8,
-    paddingHorizontal: 18, paddingVertical: 14,
+    flexDirection: 'row', flexWrap: 'wrap',
+    paddingHorizontal: 14, paddingVertical: 10,
   },
   catCell: {
-    width: '30%', flexGrow: 1,
-    alignItems: 'center', gap: 6,
-    paddingVertical: 10, paddingHorizontal: 4,
-    borderRadius: 10, borderWidth: 1, borderColor: BORDER,
-    backgroundColor: BG,
+    width: '33.33%',
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingVertical: 7, paddingHorizontal: 6,
   },
   catAvatar: {
-    width: 36, height: 36, borderRadius: 8,
+    width: 34, height: 34, borderRadius: 8,
     alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
   },
   catAvatarText: { fontSize: 11, fontWeight: '800', color: '#fff' },
-  catName: { fontSize: 10, fontWeight: '600', color: TEXT, textAlign: 'center', lineHeight: 13 },
+  catName: { flex: 1, fontSize: 12, fontWeight: '600', color: TEXT, lineHeight: 15 },
 
   mbUploadEmpty: {
     paddingHorizontal: 18, paddingVertical: 14, gap: 10,
