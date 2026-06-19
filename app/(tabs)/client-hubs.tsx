@@ -552,14 +552,13 @@ const styles = StyleSheet.create({
 
   // Metrics
   statsBar: {
-    flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 12,
-    backgroundColor: '#EBEBEB', borderRadius: 10,
-    paddingVertical: 12, paddingHorizontal: 16,
+    flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginHorizontal: 16, marginBottom: 12,
+    backgroundColor: '#EBEBEB', borderRadius: 12, padding: 16,
   },
-  statItem: { flex: 1, alignItems: 'center', gap: 3 },
+  statItem: { flex: 1, minWidth: 120, borderRadius: 10, paddingVertical: 14, paddingHorizontal: 12, backgroundColor: '#fff', alignItems: 'center' as const, gap: 3 },
   statValue: { ...metricValueStyle },
   statLabel: { ...metricLabelStyle, textAlign: 'center' as const },
-  statDivider: { width: 1, height: 28, backgroundColor: '#BBBBBB' },
+  statDivider: { display: 'none' as any },
 
   // Chips
   chipsScroll: { flexGrow: 0, marginBottom: 12 },

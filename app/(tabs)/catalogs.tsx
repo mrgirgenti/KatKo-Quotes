@@ -1010,17 +1010,17 @@ const s = StyleSheet.create({
 
   statsBar: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
     backgroundColor: '#EBEBEB',
     borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    padding: 16,
     marginBottom: 20,
-    alignItems: 'center',
   },
-  statItem: { flex: 1, alignItems: 'center' },
+  statItem: { flex: 1, minWidth: 120, borderRadius: 10, paddingVertical: 14, paddingHorizontal: 12, backgroundColor: SURFACE, alignItems: 'center' },
   statValue: { fontSize: 17, fontWeight: '800', color: TEXT },
   statLabel: { fontSize: 10, color: TEXT_LIGHT, marginTop: 2 },
-  statDivider: { width: 1, height: 26, backgroundColor: '#BBBBBB' },
+  statDivider: { display: 'none' as any },
 
   filterRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
   searchBox: {
