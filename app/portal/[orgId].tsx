@@ -182,7 +182,7 @@ function ProjectPipeline({ status }: { status: string }) {
 
 const NAV_ITEMS: { id: ActiveView; label: string; Icon: React.ComponentType<any> }[] = [
   { id: 'home',     label: 'Dashboard',       Icon: LayoutDashboard },
-  { id: 'submit',   label: 'Submit a Project', Icon: ClipboardList },
+  { id: 'submit',   label: 'Start a Project',  Icon: ClipboardList },
   { id: 'projects', label: 'My Projects',      Icon: Folder },
   { id: 'artwork',  label: 'Media Bin',        Icon: Layers },
   { id: 'catalogs', label: 'Product Catalogs', Icon: BookOpen },
@@ -2412,7 +2412,7 @@ export default function ClientPortal() {
     );
 
     return (
-      <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
+      <ScrollView ref={mediaBinDropRef} contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
         <View style={dash.pageTitleRow}>
           <Text style={dash.pageTitle}>Media Bin</Text>
           <TouchableOpacity style={mbStyles.uploadBtn} onPress={() => mediaBinInputRef.current?.click?.()} disabled={mediaBinUploading}>
@@ -2427,12 +2427,6 @@ export default function ClientPortal() {
             onChange={(e: any) => { const files = Array.from((e.target.files || []) as globalThis.File[]); if (files.length > 0) handleMediaBinUpload(files); e.target.value = ''; }}
           />
         )}
-        <View ref={mediaBinDropRef} style={[mbStyles.dropZone, isDraggingMB && mbStyles.dropZoneActive]}>
-          <Upload size={18} color={isDraggingMB ? BRAND : '#9CA3AF'} />
-          <Text style={[mbStyles.dropZoneText, isDraggingMB && { color: BRAND }]}>
-            {isDraggingMB ? 'Release to upload' : 'Drop files here to upload  ·  AI, SVG, PS, PNG, JPG, PDF, EMB, DST, PES'}
-          </Text>
-        </View>
 
         {/* Search */}
         <View style={mbStyles.searchRow}>
@@ -2544,22 +2538,37 @@ export default function ClientPortal() {
 
     const NeedHelpCard = () => (
       <View style={catStyles.needHelpCard}>
-        <Text style={catStyles.needHelpTitle}>Need Help?</Text>
-        <Text style={catStyles.needHelpSub}>Not finding what you need? We'll help source products and recommend the best options.</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Shield size={16} color={BRAND} />
+          <Text style={catStyles.needHelpTitle}>Need Help?</Text>
+        </View>
+        <Text style={catStyles.needHelpSub}>Our team is here to help you get the perfect print.</Text>
+        {([
+          { heading: 'Not sure what you need?', body: "Describe your project — we'll suggest the right options." },
+          { heading: 'Want to see samples?',    body: 'We can set up a call or arrange a sample run.' },
+          { heading: 'Tight deadline?',         body: "Tell us your date and we'll make it work." },
+        ] as { heading: string; body: string }[]).map(({ heading, body }) => (
+          <View key={heading} style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
+            <CheckCircle2 size={14} color={BRAND} style={{ marginTop: 2 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={catStyles.needHelpItemTitle}>{heading}</Text>
+              <Text style={catStyles.needHelpItemBody}>{body}</Text>
+            </View>
+          </View>
+        ))}
         <View style={catStyles.needHelpDivider} />
-        <Text style={catStyles.needHelpContactLabel}>CALL</Text>
+        <Text style={catStyles.needHelpContactLabel}>CONTACT US</Text>
         <TouchableOpacity style={catStyles.needHelpPhoneBtn} onPress={() => Linking.openURL('tel:4805599033')} activeOpacity={0.85}>
           <Text style={catStyles.needHelpPhoneText}>(480) 559-9033</Text>
         </TouchableOpacity>
-        <Text style={catStyles.needHelpContactLabel}>EMAIL</Text>
         <TouchableOpacity style={catStyles.needHelpEmailBtn} onPress={() => Linking.openURL('mailto:jobs@katalystko.com')} activeOpacity={0.85}>
-          <Mail size={13} color={BRAND} />
-          <Text style={catStyles.needHelpEmailText}>jobs@katalystko.com</Text>
+          <Mail size={13} color="#fff" />
+          <Text style={catStyles.needHelpEmailText}>Email Us</Text>
         </TouchableOpacity>
         <View style={catStyles.needHelpDivider} />
         <TouchableOpacity style={catStyles.needHelpCTABtn} onPress={() => setActiveView('submit')} activeOpacity={0.85}>
           <ClipboardList size={14} color="#fff" />
-          <Text style={catStyles.needHelpCTAText}>Submit a Project Request</Text>
+          <Text style={catStyles.needHelpCTAText}>Start a Project</Text>
         </TouchableOpacity>
       </View>
     );
@@ -2575,7 +2584,7 @@ export default function ClientPortal() {
             </View>
             <TouchableOpacity style={catStyles.requestBtn} onPress={() => setActiveView('submit')} activeOpacity={0.85}>
               <Plus size={14} color="#fff" />
-              <Text style={catStyles.requestBtnText}>Request a Product</Text>
+              <Text style={catStyles.requestBtnText}>Start a Project</Text>
             </TouchableOpacity>
           </View>
 
@@ -2882,7 +2891,7 @@ export default function ClientPortal() {
                   <Text style={svStyles.helperPhoneText}>(480) 559-9033</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={svStyles.helperEmailBtn} onPress={() => Linking.openURL('mailto:jobs@katalystko.com')} activeOpacity={0.85}>
-                  <Mail size={14} color={BRAND} />
+                  <Mail size={14} color="#fff" />
                   <Text style={svStyles.helperEmailText}>Email Us</Text>
                 </TouchableOpacity>
               </View>
@@ -4004,7 +4013,7 @@ const dash = StyleSheet.create({
     backgroundColor: SIDEBAR_BG,
     flexDirection: 'column',
     overflow: 'hidden' as any,
-    ...Platform.select({ web: { position: 'sticky' as any, top: 0, height: '100vh' as any }, default: {} }),
+    ...Platform.select({ web: { position: 'sticky' as any, top: 0, minHeight: '100vh' as any, alignSelf: 'flex-start' as any }, default: {} }),
   },
   sidebarHamburgerRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -4419,12 +4428,14 @@ const catStyles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   needHelpPhoneText: { fontSize: 14, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
+  needHelpItemTitle: { fontSize: 13, fontWeight: '700', color: TEXT },
+  needHelpItemBody: { fontSize: 12, color: TEXT_LIGHT, lineHeight: 17, marginTop: 2 },
   needHelpEmailBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
-    borderWidth: 1, borderColor: BRAND, borderRadius: 8, paddingVertical: 8,
-    backgroundColor: '#FFF4EE',
+    borderRadius: 8, paddingVertical: 8,
+    backgroundColor: '#000',
   },
-  needHelpEmailText: { fontSize: 12, fontWeight: '600', color: BRAND },
+  needHelpEmailText: { fontSize: 12, fontWeight: '600', color: '#fff' },
   needHelpCTABtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     backgroundColor: '#111827', borderRadius: 8, paddingVertical: 10,
@@ -5123,10 +5134,10 @@ const svStyles = StyleSheet.create({
   },
   helperEmailBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    borderWidth: 1, borderColor: BRAND, borderRadius: 8, paddingVertical: 9,
-    backgroundColor: '#FFF4EE',
+    borderRadius: 8, paddingVertical: 9,
+    backgroundColor: '#000',
   },
   helperEmailText: {
-    fontSize: 13, fontWeight: '700', color: BRAND,
+    fontSize: 13, fontWeight: '700', color: '#fff',
   },
 });
