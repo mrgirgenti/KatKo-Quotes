@@ -22,6 +22,9 @@ import {
   Receipt,
   Info,
   FileWarning,
+  Percent,
+  BarChart2,
+  FileText,
 } from 'lucide-react-native';
 import Svg, { Path, Circle, Defs, LinearGradient as SvgGradient, Stop, Line as SvgLine, Text as SvgText, Rect } from 'react-native-svg';
 import { useRouter } from 'expo-router';
@@ -43,7 +46,7 @@ import { OrgAvatar } from '@/components/OrgAvatar';
 import { useCrm } from '@/contexts/CrmContext';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-type ReportTab = 'overview' | 'financial' | 'customers' | 'services';
+type ReportTab = 'overview' | 'financial' | 'customers' | 'services' | 'exports';
 type DateRangeKey = 'all' | 'this_month' | 'this_quarter' | 'this_year' | 'last_30' | 'last_90' | 'custom';
 type CompareKey = 'none' | 'prev_period' | 'prev_year';
 
@@ -308,6 +311,25 @@ function computeReconciliationQueue(quotes: Quote[]) {
   };
 }
 
+// ── Reconciliation History ────────────────────────────────────────────────────
+function computeReconHistory(quotes: Quote[]) {
+  const byDate = new Map<string, { count: number; revenue: number; profit: number }>();
+  for (const q of quotes) {
+    if (!q.salesData) continue;
+    const day = (q.orderDate as string | undefined)?.slice(0, 10) ?? '';
+    if (!day) continue;
+    const ex = byDate.get(day) ?? { count: 0, revenue: 0, profit: 0 };
+    ex.count++;
+    ex.revenue += getRevenue(q);
+    ex.profit += getProfit(q);
+    byDate.set(day, ex);
+  }
+  return [...byDate.entries()]
+    .map(([date, data]) => ({ date, ...data }))
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 8);
+}
+
 // ── Top Performing Projects ─────────────────────────────────────────────────────
 interface ProjectRow {
   id: string;
@@ -363,6 +385,10 @@ function fmtDate(iso: string | null): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '—';
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function fmtPct(v: number): string {
+  return `${v.toFixed(1)}%`;
 }
 
 // ── Monthly data for chart ─────────────────────────────────────────────────────
@@ -1315,147 +1341,297 @@ function OverviewTab({
 // ── Financial Tab ──────────────────────────────────────────────────────────────
 function FinancialTab({
   curr,
+  prev,
   recon,
+  filteredQuotes,
   onExport,
   router,
 }: {
   curr: Metrics;
+  prev: Metrics | null;
   recon: ReturnType<typeof computeReconciliationQueue>;
+  filteredQuotes: Quote[];
   onExport: (type: 'quotes' | 'sales' | 'lineItems') => void;
   router: ReturnType<typeof useRouter>;
 }) {
-  const summaryRows: Array<{ label: string; value: string; bold?: boolean; color?: string }> = [
-    { label: 'Revenue', value: formatCurrency(curr.revenue) },
-    { label: 'Profit', value: formatCurrency(curr.profit), bold: true, color: curr.profit >= 0 ? Colors.light.success : Colors.light.error },
-    { label: 'Orders', value: String(curr.orders) },
-    { label: 'Avg Order', value: formatCurrency(curr.avgOrder) },
-    { label: 'Avg PCS', value: curr.avgPcs > 0 ? curr.avgPcs.toFixed(1) : '—' },
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const { isDesktop } = useBreakpoint();
+  const twoCol = mounted && isDesktop;
+
+  const costs = curr.revenue - curr.profit;
+  const margin = curr.revenue > 0 ? (curr.profit / curr.revenue) * 100 : 0;
+  const prevCosts = prev ? prev.revenue - prev.profit : null;
+  const prevMargin = prev && prev.revenue > 0 ? (prev.profit / prev.revenue) * 100 : null;
+
+  const reconHistory = useMemo(() => computeReconHistory(filteredQuotes), [filteredQuotes]);
+
+  const kpis = [
+    { label: 'Total Revenue', value: fmtMoney(curr.revenue), raw: curr.revenue, prevRaw: prev?.revenue ?? null, icon: DollarSign },
+    { label: 'Gross Profit', value: fmtMoney(curr.profit), raw: curr.profit, prevRaw: prev?.profit ?? null, icon: TrendingUp },
+    { label: 'Gross Margin', value: fmtPct(margin), raw: margin, prevRaw: prevMargin, icon: Percent },
+    { label: 'Total Costs', value: fmtMoney(costs), raw: costs, prevRaw: prevCosts, icon: Receipt },
   ];
 
-  const exports: Array<{ key: 'quotes' | 'sales' | 'lineItems'; label: string; desc: string }> = [
-    { key: 'quotes', label: 'Sales Report', desc: 'All project summaries with pricing' },
-    { key: 'sales', label: 'Financial Summary Report', desc: 'Actual costs, profits & tracking data' },
-    { key: 'lineItems', label: 'Reconciliation Report', desc: 'Detailed breakdown of all line items' },
+  type SummaryRowDef = { label: string; curr: number; prev: number | null; fmt: (v: number) => string; bold?: boolean; note?: boolean };
+
+  const revRows: SummaryRowDef[] = [
+    { label: 'Revenue', curr: curr.revenue, prev: prev?.revenue ?? null, fmt: fmtMoney },
+    { label: 'Cost of Goods Sold', curr: costs, prev: prevCosts, fmt: fmtMoney },
+    { label: 'Gross Profit', curr: curr.profit, prev: prev?.profit ?? null, fmt: fmtMoney, bold: true },
   ];
+
+  const profitRows: SummaryRowDef[] = [
+    { label: 'Gross Profit', curr: curr.profit, prev: prev?.profit ?? null, fmt: fmtMoney },
+    { label: 'Operating Expenses', curr: 0, prev: null, fmt: fmtMoney, note: true },
+    { label: 'Net Profit', curr: curr.profit, prev: prev?.profit ?? null, fmt: fmtMoney, bold: true },
+    { label: 'Gross Margin', curr: margin, prev: prevMargin, fmt: fmtPct },
+    { label: 'Net Margin', curr: margin, prev: prevMargin, fmt: fmtPct },
+  ];
+
+  const renderSummaryPanel = (title: string, rows: SummaryRowDef[]) => (
+    <View style={s.panel}>
+      <View style={s.panelHeader}>
+        <Text style={s.panelTitle}>{title}</Text>
+      </View>
+      <View style={s.tableHead}>
+        <Text style={[s.thCell, { flex: 1.6 }]} />
+        <Text style={[s.thCell, s.thRight]}>Current</Text>
+        <Text style={[s.thCell, s.thRight]}>Last Year</Text>
+        <Text style={[s.thCell, s.thRight]}>Change</Text>
+      </View>
+      {rows.map((r, i) => {
+        const chg = !r.note && r.prev !== null ? pctChange(r.curr, r.prev) : null;
+        return (
+          <View key={r.label} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
+            <Text style={[s.tdCell, { flex: 1.6, fontWeight: r.bold ? '700' : '400' }]} numberOfLines={2}>{r.label}</Text>
+            <Text style={[s.tdCell, s.tdRight, r.bold ? { fontWeight: '700' } : null]}>{r.note ? '—' : r.fmt(r.curr)}</Text>
+            <Text style={[s.tdCell, s.tdRight, s.tdSm]}>{r.prev !== null ? r.fmt(r.prev) : '—'}</Text>
+            {chg !== null ? (
+              <Text style={[s.tdCell, s.tdRight, { color: chg >= 0 ? Colors.light.success : Colors.light.error, fontWeight: '700', fontSize: 12 }]}>
+                {chg >= 0 ? '▲' : '▼'}{Math.abs(chg).toFixed(1)}%
+              </Text>
+            ) : (
+              <Text style={[s.tdCell, s.tdRight, s.tdSm]}>—</Text>
+            )}
+          </View>
+        );
+      })}
+    </View>
+  );
+
+  const reconPanel = (
+    <View style={s.panel}>
+      <View style={s.panelHeader}>
+        <Text style={s.panelTitle}>RECONCILIATION HISTORY</Text>
+        <TouchableOpacity style={s.panelActionBtn} onPress={() => router.push('/(tabs)/projects')}>
+          <Text style={s.panelAction}>View Full History</Text>
+          <ChevronRight size={13} color={Colors.light.tint} />
+        </TouchableOpacity>
+      </View>
+      <View style={s.tableHead}>
+        <Text style={[s.thCell, { flex: 1.4 }]}>Date</Text>
+        <Text style={[s.thCell, s.thRight]}>Projects</Text>
+        <Text style={[s.thCell, s.thRight]}>Revenue</Text>
+        <Text style={[s.thCell, s.thRight]}>Profit</Text>
+      </View>
+      {reconHistory.length === 0 ? (
+        <Text style={s.emptyMsg}>No reconciled projects in this period.</Text>
+      ) : reconHistory.map((r, i) => (
+        <View key={r.date} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
+          <Text style={[s.tdCell, s.tdSm, { flex: 1.4 }]}>{fmtDate(r.date)}</Text>
+          <Text style={[s.tdCell, s.tdRight]}>{r.count}</Text>
+          <Text style={[s.tdCell, s.tdRight]}>{fmtMoney(r.revenue)}</Text>
+          <Text style={[s.tdCell, s.tdRight, s.marginGreen]}>{fmtMoney(r.profit)}</Text>
+        </View>
+      ))}
+    </View>
+  );
+
+  const quickExportsPanel = (
+    <View style={s.panel}>
+      <View style={s.panelHeader}>
+        <Text style={s.panelTitle}>QUICK EXPORTS</Text>
+      </View>
+      {([
+        { label: 'Export Financial Summary', key: 'sales' as const },
+        { label: 'Export Profit & Loss Report', key: 'sales' as const },
+        { label: 'Export Reconciliation Report', key: 'lineItems' as const },
+        { label: 'Export Tax Summary', key: 'quotes' as const },
+      ]).map((e, i) => (
+        <TouchableOpacity key={e.label} style={[s.quickExportItem, i > 0 && s.tableRowBorder]} onPress={() => onExport(e.key)}>
+          <FileText size={15} color={Colors.light.tint} />
+          <Text style={s.quickExportText} numberOfLines={2}>{e.label}</Text>
+          <ChevronRight size={13} color={Colors.light.tint} />
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
 
   return (
     <View>
-      <View style={s.sectionWrap}>
-        <SectionHeader title="FINANCIAL SUMMARY" />
-        <View style={s.card}>
-          {summaryRows.map((r, i) => (
-            <View key={r.label} style={[s.summaryRow, i > 0 && s.summaryRowBorder]}>
-              <Text style={[s.summaryLabel, r.bold && s.summaryLabelBold]}>{r.label}</Text>
-              <Text style={[s.summaryValue, r.bold && s.summaryValueBold, r.color ? { color: r.color } : null]}>
-                {r.value}
-              </Text>
-            </View>
-          ))}
-        </View>
+      {/* KPIs */}
+      <View style={s.kpiRow}>
+        {kpis.map((k) => (
+          <KpiCard
+            key={k.label}
+            label={k.label}
+            value={k.value}
+            change={k.prevRaw !== null ? pctChange(k.raw, k.prevRaw) : null}
+            compareLabel=""
+            icon={k.icon}
+            style={mounted && !isDesktop ? { flexBasis: '48%', minWidth: 0, flexGrow: 0 } : undefined}
+          />
+        ))}
       </View>
 
-      <View style={s.sectionWrap}>
-        <NeedsReconciliationSection recon={recon} onViewQueue={() => router.push('/(tabs)/projects')} />
-      </View>
-
-      <View style={s.sectionWrap}>
-        <SectionHeader title="EXPORT OPTIONS" />
-        <View style={s.card}>
-          {exports.map((e, i) => (
-            <TouchableOpacity key={e.key} style={[s.exportRow, i > 0 && s.exportRowBorder]} onPress={() => onExport(e.key)}>
-              <View style={{ flex: 1 }}>
-                <Text style={s.exportLabel}>{e.label}</Text>
-                <Text style={s.exportDesc}>{e.desc}</Text>
-              </View>
-              <View style={s.exportBtn}>
-                <Download size={13} color="#fff" />
-                <Text style={s.exportBtnText}>CSV</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+      {/* Revenue + Profit Summary */}
+      {twoCol ? (
+        <View style={s.twoColRow}>
+          <View style={s.col}>{renderSummaryPanel('REVENUE SUMMARY', revRows)}</View>
+          <View style={s.col}>{renderSummaryPanel('PROFIT SUMMARY', profitRows)}</View>
         </View>
-      </View>
+      ) : (
+        <View style={s.panelOuter}>
+          {renderSummaryPanel('REVENUE SUMMARY', revRows)}
+          <View style={{ height: 12 }} />
+          {renderSummaryPanel('PROFIT SUMMARY', profitRows)}
+        </View>
+      )}
+
+      {/* Reconciliation History + Quick Exports */}
+      {twoCol ? (
+        <View style={[s.twoColRow, { alignItems: 'flex-start' }]}>
+          <View style={{ flex: 2, minWidth: 0 }}>{reconPanel}</View>
+          <View style={{ flex: 1, minWidth: 0 }}>{quickExportsPanel}</View>
+        </View>
+      ) : (
+        <View style={s.panelOuter}>
+          {reconPanel}
+          <View style={{ height: 12 }} />
+          {quickExportsPanel}
+        </View>
+      )}
       <View style={{ height: 40 }} />
     </View>
   );
 }
 
 // ── Customers Tab ──────────────────────────────────────────────────────────────
-function CustomersTab({ customers, router }: { customers: CustomerRow[]; router: ReturnType<typeof useRouter> }) {
-  const [inactiveFilter, setInactiveFilter] = useState<30 | 60 | 90 | null>(null);
+function CustomersTab({
+  customers,
+  router,
+}: {
+  customers: CustomerRow[];
+  router: ReturnType<typeof useRouter>;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const { isDesktop } = useBreakpoint();
 
-  const inactive = useMemo(() => {
-    if (!inactiveFilter) return [];
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - inactiveFilter);
-    return customers.filter((c) => !c.lastOrderDate || new Date(c.lastOrderDate) < cutoff);
-  }, [customers, inactiveFilter]);
+  const totalRevenue = customers.reduce((s, c) => s + c.revenue, 0);
+  const newCustomers = customers.filter((c) => c.orders === 1).length;
+  const activeCustomers = customers.length;
+  const repeatPct = activeCustomers > 0 ? (customers.filter((c) => c.orders > 1).length / activeCustomers) * 100 : 0;
 
-  const cols = [
-    { label: 'Customer', flex: 2 },
-    { label: 'Revenue', right: true },
-    { label: 'Profit', right: true },
-    { label: 'Orders', right: true },
-    { label: 'Last Order', flex: 1.3, right: true },
+  const kpis = [
+    { label: 'Total Customer Revenue', value: fmtMoney(totalRevenue), icon: DollarSign },
+    { label: 'New Customers', value: String(newCustomers), icon: Users },
+    { label: 'Active Customers', value: String(activeCustomers), icon: Users },
+    { label: 'Repeat Customer %', value: fmtPct(repeatPct), icon: TrendingUp },
   ];
+
+  const top10 = customers.slice(0, 10);
+  const top8 = customers.slice(0, 8);
 
   return (
     <View>
-      <View style={s.sectionWrap}>
-        <SectionHeader title="TOP CUSTOMERS" action="View All →" onAction={() => router.push('/(tabs)/clients')} />
-        <View style={s.card}>
-          <TableHead cols={cols} />
-          {customers.map((c, i) => (
+      {/* KPIs */}
+      <View style={s.kpiRow}>
+        {kpis.map((k) => (
+          <KpiCard
+            key={k.label}
+            label={k.label}
+            value={k.value}
+            change={null}
+            compareLabel=""
+            icon={k.icon}
+            style={mounted && !isDesktop ? { flexBasis: '48%', minWidth: 0, flexGrow: 0 } : undefined}
+          />
+        ))}
+      </View>
+
+      {/* Customer Revenue Rankings */}
+      <View style={s.panelOuter}>
+        <View style={s.panel}>
+          <View style={s.panelHeader}>
+            <Text style={s.panelTitle}>CUSTOMER REVENUE RANKINGS</Text>
+            <TouchableOpacity style={s.panelActionBtn} onPress={() => router.push('/(tabs)/clients')}>
+              <Text style={s.panelAction}>View All Customers</Text>
+              <ChevronRight size={13} color={Colors.light.tint} />
+            </TouchableOpacity>
+          </View>
+          <View style={s.tableHead}>
+            <Text style={[s.thCell, { flex: 2 }]}>Customer</Text>
+            <Text style={[s.thCell, s.thRight]}>Revenue</Text>
+            <Text style={[s.thCell, s.thRight]}>% of Total</Text>
+            <Text style={[s.thCell, s.thRight]}>Orders</Text>
+            <Text style={[s.thCell, s.thRight, { flex: 1.3 }]}>Last Order</Text>
+          </View>
+          {top10.length === 0 ? (
+            <Text style={s.emptyMsg}>No customer data for this period.</Text>
+          ) : top10.map((c, i) => (
             <View key={c.name} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
-              <Text style={[s.tdCell, { flex: 2 }]} numberOfLines={1}>{c.name}</Text>
-              <Text style={[s.tdCell, s.tdRight]}>{formatCurrency(c.revenue)}</Text>
-              <Text style={[s.tdCell, s.tdRight, { color: c.profit >= 0 ? Colors.light.success : Colors.light.error }]}>
-                {formatCurrency(c.profit)}
+              <View style={[s.custCell, { flex: 2 }]}>
+                <Text style={s.custName} numberOfLines={1}>{c.name}</Text>
+              </View>
+              <Text style={[s.tdCell, s.tdRight]}>{fmtMoney(c.revenue)}</Text>
+              <Text style={[s.tdCell, s.tdRight, s.tdSm]}>
+                {totalRevenue > 0 ? ((c.revenue / totalRevenue) * 100).toFixed(1) : '0.0'}%
               </Text>
               <Text style={[s.tdCell, s.tdRight]}>{c.orders}</Text>
               <Text style={[s.tdCell, s.tdRight, s.tdSm, { flex: 1.3 }]}>
-                {c.lastOrderDate ? new Date(c.lastOrderDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—'}
+                {c.lastOrderDate ? fmtRelative(c.lastOrderDate) : '—'}
               </Text>
             </View>
           ))}
-          {customers.length === 0 && <Text style={s.emptyMsg}>No customer data for this period.</Text>}
+          <View style={s.panelFooter}>
+            <Text style={s.panelFooterText}>
+              Showing top {Math.min(top10.length, 10)} of {customers.length} customers
+            </Text>
+          </View>
         </View>
       </View>
 
-      <View style={s.sectionWrap}>
-        <SectionHeader title="INACTIVE CUSTOMERS" />
-        <View style={s.card}>
-          <View style={s.inactiveFilterRow}>
-            <Text style={s.inactiveFilterLabel}>Inactive for:</Text>
-            {([30, 60, 90] as const).map((days) => (
-              <TouchableOpacity
-                key={days}
-                style={[s.inactivePill, inactiveFilter === days && s.inactivePillActive]}
-                onPress={() => setInactiveFilter((f) => (f === days ? null : days))}
-              >
-                <Text style={[s.inactivePillText, inactiveFilter === days && s.inactivePillTextActive]}>
-                  {days}+ days
-                </Text>
-              </TouchableOpacity>
-            ))}
+      {/* Customer Lifetime Value */}
+      <View style={s.panelOuter}>
+        <View style={s.panel}>
+          <View style={s.panelHeader}>
+            <Text style={s.panelTitle}>CUSTOMER LIFETIME VALUE</Text>
           </View>
-          {inactiveFilter ? (
-            inactive.length > 0 ? (
-              inactive.map((c, i) => (
-                <View key={c.name} style={[s.tableRow, { borderTopWidth: 1, borderTopColor: Colors.light.border }]}>
-                  <Text style={[s.tdCell, { flex: 2 }]} numberOfLines={1}>{c.name}</Text>
-                  <Text style={[s.tdCell, s.tdRight]}>{c.orders} order{c.orders !== 1 ? 's' : ''}</Text>
-                  <Text style={[s.tdCell, s.tdRight, s.tdSm, { flex: 1.5 }]}>
-                    Last: {c.lastOrderDate ? new Date(c.lastOrderDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : 'Never'}
-                  </Text>
-                </View>
-              ))
-            ) : (
-              <Text style={s.emptyMsg}>No customers inactive for {inactiveFilter}+ days.</Text>
-            )
-          ) : (
-            <Text style={s.emptyMsg}>Select a timeframe above to view inactive customers.</Text>
-          )}
+          <View style={s.tableHead}>
+            <Text style={[s.thCell, { flex: 2 }]}>Customer</Text>
+            <Text style={[s.thCell, s.thRight]}>Revenue</Text>
+            <Text style={[s.thCell, s.thRight]}>Orders</Text>
+            <Text style={[s.thCell, s.thRight, { flex: 1.5 }]}>Last Order</Text>
+          </View>
+          {top8.length === 0 ? (
+            <Text style={s.emptyMsg}>No customer data for this period.</Text>
+          ) : top8.map((c, i) => (
+            <View key={c.name} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
+              <Text style={[s.tdCell, { flex: 2, fontWeight: '600' }]} numberOfLines={1}>{c.name}</Text>
+              <Text style={[s.tdCell, s.tdRight]}>{fmtMoney(c.revenue)}</Text>
+              <Text style={[s.tdCell, s.tdRight]}>{c.orders}</Text>
+              <Text style={[s.tdCell, s.tdRight, s.tdSm, { flex: 1.5 }]}>
+                {c.lastOrderDate ? fmtDate(c.lastOrderDate) : '—'}
+              </Text>
+            </View>
+          ))}
+          <View style={s.panelFooter}>
+            <Text style={s.panelFooterText}>
+              Showing {Math.min(top8.length, 8)} of {customers.length} customers
+            </Text>
+          </View>
         </View>
       </View>
       <View style={{ height: 40 }} />
@@ -1465,34 +1641,173 @@ function CustomersTab({ customers, router }: { customers: CustomerRow[]; router:
 
 // ── Services Tab ───────────────────────────────────────────────────────────────
 function ServicesTab({ services }: { services: ServiceRow[] }) {
-  const cols = [
-    { label: 'Service', flex: 2 },
-    { label: 'Revenue', right: true },
-    { label: 'Profit', right: true },
-    { label: 'Orders', right: true },
-    { label: 'Avg Order', right: true },
-    { label: 'Avg PCS', right: true },
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const { isDesktop } = useBreakpoint();
+
+  const serviceRevenue = services.reduce((s, sv) => s + sv.revenue, 0);
+  const serviceProfit = services.reduce((s, sv) => s + sv.profit, 0);
+  const totalServiceOrders = services.reduce((s, sv) => s + sv.orders, 0);
+  const totalPcs = services.reduce((s, sv) => s + sv.totalPcs, 0);
+  const avgMargin = serviceRevenue > 0 ? (serviceProfit / serviceRevenue) * 100 : 0;
+
+  const kpis = [
+    { label: 'Service Revenue', value: fmtMoney(serviceRevenue), icon: DollarSign },
+    { label: 'Service Profit', value: fmtMoney(serviceProfit), icon: TrendingUp },
+    { label: 'Avg Service Margin', value: fmtPct(avgMargin), icon: Percent },
+    { label: 'Total Services Sold', value: String(totalServiceOrders), icon: BarChart2 },
+  ];
+
+  const byVolume = services.slice().sort((a, b) => b.totalPcs - a.totalPcs);
+
+  return (
+    <View>
+      {/* KPIs */}
+      <View style={s.kpiRow}>
+        {kpis.map((k) => (
+          <KpiCard
+            key={k.label}
+            label={k.label}
+            value={k.value}
+            change={null}
+            compareLabel=""
+            icon={k.icon}
+            style={mounted && !isDesktop ? { flexBasis: '48%', minWidth: 0, flexGrow: 0 } : undefined}
+          />
+        ))}
+      </View>
+
+      {/* Service Profitability */}
+      <View style={s.panelOuter}>
+        <View style={s.panel}>
+          <View style={s.panelHeader}>
+            <Text style={s.panelTitle}>SERVICE PROFITABILITY</Text>
+          </View>
+          <View style={s.tableHead}>
+            <Text style={[s.thCell, { flex: 1.5 }]}>Service</Text>
+            <Text style={[s.thCell, s.thRight]}>Revenue</Text>
+            <Text style={[s.thCell, s.thRight]}>% of Total</Text>
+            <Text style={[s.thCell, s.thRight]}>Profit</Text>
+            <Text style={[s.thCell, s.thRight]}>Margin</Text>
+            <Text style={[s.thCell, s.thRight]}>Orders</Text>
+            <Text style={[s.thCell, s.thRight]}>Avg Order</Text>
+          </View>
+          {services.length === 0 ? (
+            <Text style={s.emptyMsg}>No service data for this period.</Text>
+          ) : services.map((sv, i) => {
+            const margin = sv.revenue > 0 ? (sv.profit / sv.revenue) * 100 : 0;
+            return (
+              <View key={sv.service} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
+                <Text style={[s.tdCell, { flex: 1.5, fontWeight: '600' }]} numberOfLines={1}>{sv.service}</Text>
+                <Text style={[s.tdCell, s.tdRight]}>{fmtMoney(sv.revenue)}</Text>
+                <Text style={[s.tdCell, s.tdRight, s.tdSm]}>
+                  {serviceRevenue > 0 ? ((sv.revenue / serviceRevenue) * 100).toFixed(1) : '0.0'}%
+                </Text>
+                <Text style={[s.tdCell, s.tdRight, s.marginGreen]}>{fmtMoney(sv.profit)}</Text>
+                <Text style={[s.tdCell, s.tdRight]}>{fmtPct(margin)}</Text>
+                <Text style={[s.tdCell, s.tdRight]}>{sv.orders}</Text>
+                <Text style={[s.tdCell, s.tdRight]}>{sv.orders > 0 ? fmtMoney(sv.revenue / sv.orders) : '—'}</Text>
+              </View>
+            );
+          })}
+          <View style={s.panelFooter}>
+            <Text style={s.panelFooterText}>Showing all {services.length} services</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Service Volume (by Quantity) */}
+      <View style={s.panelOuter}>
+        <View style={s.panel}>
+          <View style={s.panelHeader}>
+            <Text style={s.panelTitle}>SERVICE VOLUME (by Quantity)</Text>
+          </View>
+          <View style={s.tableHead}>
+            <Text style={[s.thCell, { flex: 1.5 }]}>Service</Text>
+            <Text style={[s.thCell, s.thRight]}>Total Qty</Text>
+            <Text style={[s.thCell, s.thRight]}>% of Total</Text>
+            <Text style={[s.thCell, s.thRight]}>Orders</Text>
+            <Text style={[s.thCell, s.thRight]}>Avg per Order</Text>
+          </View>
+          {byVolume.length === 0 ? (
+            <Text style={s.emptyMsg}>No service data for this period.</Text>
+          ) : byVolume.map((sv, i) => (
+            <View key={sv.service} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
+              <Text style={[s.tdCell, { flex: 1.5, fontWeight: '600' }]} numberOfLines={1}>{sv.service}</Text>
+              <Text style={[s.tdCell, s.tdRight]}>{Math.round(sv.totalPcs)}</Text>
+              <Text style={[s.tdCell, s.tdRight, s.tdSm]}>
+                {totalPcs > 0 ? ((sv.totalPcs / totalPcs) * 100).toFixed(1) : '0.0'}%
+              </Text>
+              <Text style={[s.tdCell, s.tdRight]}>{sv.orders}</Text>
+              <Text style={[s.tdCell, s.tdRight]}>
+                {sv.orders > 0 ? (sv.totalPcs / sv.orders).toFixed(0) : '—'}
+              </Text>
+            </View>
+          ))}
+          <View style={s.panelFooter}>
+            <Text style={s.panelFooterText}>Showing all {services.length} services</Text>
+          </View>
+        </View>
+      </View>
+      <View style={{ height: 40 }} />
+    </View>
+  );
+}
+
+// ── Exports Tab ─────────────────────────────────────────────────────────────────
+function ExportsTab({ onExport }: { onExport: (type: 'quotes' | 'sales' | 'lineItems') => void }) {
+  const items: Array<{
+    label: string;
+    description: string;
+    includes: string;
+    key: 'quotes' | 'sales' | 'lineItems';
+  }> = [
+    { label: 'Quotes Report', description: 'All quotes within selected date range', includes: 'Quotes, clients, totals, status', key: 'quotes' },
+    { label: 'Line Items Report', description: 'All line items from projects', includes: 'Products, quantities, prices, costs', key: 'lineItems' },
+    { label: 'Profitability Report', description: 'Project profitability breakdown', includes: 'Revenue, costs, profit, margin', key: 'sales' },
+    { label: 'Customer Report', description: 'Customer summary and history', includes: 'Customer, revenue, orders, LTV', key: 'quotes' },
+    { label: 'Service Report', description: 'Service performance summary', includes: 'Revenue, profit, margin, volume', key: 'quotes' },
+    { label: 'Reconciliation Report', description: 'Reconciliation queue and history', includes: 'Projects, revenue, status', key: 'lineItems' },
+    { label: 'Tax Summary', description: 'Sales tax collected summary', includes: 'Tax collected by jurisdiction', key: 'sales' },
   ];
 
   return (
     <View>
-      <View style={s.sectionWrap}>
-        <SectionHeader title="SERVICE PERFORMANCE" />
-        <View style={s.card}>
-          <TableHead cols={cols} />
-          {services.map((sv, i) => (
-            <View key={sv.service} style={[s.tableRow, i > 0 && s.tableRowBorder]}>
-              <Text style={[s.tdCell, { flex: 2 }]} numberOfLines={1}>{sv.service}</Text>
-              <Text style={[s.tdCell, s.tdRight]}>{formatCurrency(sv.revenue)}</Text>
-              <Text style={[s.tdCell, s.tdRight, { color: sv.profit >= 0 ? Colors.light.success : Colors.light.error }]}>
-                {formatCurrency(sv.profit)}
-              </Text>
-              <Text style={[s.tdCell, s.tdRight]}>{sv.orders}</Text>
-              <Text style={[s.tdCell, s.tdRight]}>{sv.orders > 0 ? formatCurrency(sv.revenue / sv.orders) : '—'}</Text>
-              <Text style={[s.tdCell, s.tdRight]}>{sv.orders > 0 ? (sv.totalPcs / sv.orders).toFixed(0) : '—'}</Text>
+      <View style={s.panelOuter}>
+        <View style={s.panel}>
+          <View style={s.panelHeader}>
+            <Text style={s.panelTitle}>AVAILABLE EXPORTS</Text>
+          </View>
+          <View style={s.tableHead}>
+            <Text style={[s.thCell, { flex: 1.4 }]}>Report</Text>
+            <Text style={[s.thCell, { flex: 2 }]}>Description</Text>
+            <Text style={[s.thCell, { flex: 2 }]}>Includes</Text>
+            <Text style={[s.thCell, { flex: 1.2, textAlign: 'center' as const }]}>Format</Text>
+          </View>
+          {items.map((e, i) => (
+            <View key={e.label} style={[s.tableRow, i > 0 && s.tableRowBorder, { alignItems: 'flex-start', paddingVertical: 13 }]}>
+              <Text style={[s.tdCell, { flex: 1.4, fontWeight: '600' }]} numberOfLines={2}>{e.label}</Text>
+              <Text style={[s.tdCell, s.tdSm, { flex: 2 }]} numberOfLines={3}>{e.description}</Text>
+              <Text style={[s.tdCell, s.tdSm, { flex: 2 }]} numberOfLines={2}>{e.includes}</Text>
+              <View style={{ flex: 1.2, flexDirection: 'row', gap: 5, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <TouchableOpacity style={s.exportFormatBtn} onPress={() => onExport(e.key)}>
+                  <Text style={s.exportFormatBtnText}>CSV</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[s.exportFormatBtn, s.exportFormatBtnExcel]} onPress={() => onExport(e.key)}>
+                  <Text style={s.exportFormatBtnText}>Excel</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ))}
-          {services.length === 0 && <Text style={s.emptyMsg}>No service data for this period.</Text>}
+        </View>
+      </View>
+
+      <View style={s.panelOuter}>
+        <View style={s.exportTipBox}>
+          <Info size={16} color="#92400E" />
+          <Text style={s.exportTipText}>
+            Tip: Use the date range and compare options above to customize your export data.
+          </Text>
         </View>
       </View>
       <View style={{ height: 40 }} />
@@ -1569,6 +1884,7 @@ export default function ReportsScreen() {
     { key: 'financial', label: 'Financial' },
     { key: 'customers', label: 'Customers' },
     { key: 'services', label: 'Services' },
+    { key: 'exports', label: 'Exports' },
   ];
 
   return (
@@ -1620,10 +1936,18 @@ export default function ReportsScreen() {
           />
         )}
         {activeTab === 'financial' && (
-          <FinancialTab curr={currMetrics} recon={recon} onExport={handleExport} router={router} />
+          <FinancialTab
+            curr={currMetrics}
+            prev={prevMetrics}
+            recon={recon}
+            filteredQuotes={filteredQuotes}
+            onExport={handleExport}
+            router={router}
+          />
         )}
         {activeTab === 'customers' && <CustomersTab customers={customers} router={router} />}
         {activeTab === 'services' && <ServicesTab services={services} />}
+        {activeTab === 'exports' && <ExportsTab onExport={handleExport} />}
       </ScrollView>
     </View>
   );
@@ -1977,4 +2301,51 @@ const s = StyleSheet.create({
   tdBadgeWrap: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   statusBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1 },
   statusBadgeText: { fontSize: 11, fontWeight: '700' },
+
+  // ── Quick Exports panel ──
+  quickExportItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+  },
+  quickExportText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.light.tint,
+  },
+
+  // ── Exports Tab ──
+  exportFormatBtn: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    backgroundColor: Colors.light.tint,
+    borderRadius: DS.radius.sm,
+  },
+  exportFormatBtnExcel: {
+    backgroundColor: '#1D6F42',
+  },
+  exportFormatBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  exportTipBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    padding: 14,
+    backgroundColor: '#FEF3C7',
+    borderRadius: DS.radius.lg,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  exportTipText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#92400E',
+    lineHeight: 20,
+  },
 });
