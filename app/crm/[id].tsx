@@ -5481,8 +5481,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: Colors.light.border,
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.light.tint,
     paddingTop: 0,
     paddingHorizontal: 16,
     paddingBottom: 16,
