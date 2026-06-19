@@ -14,6 +14,7 @@ import {
   Image,
   Linking,
   Animated,
+  Alert,
 } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -830,7 +831,7 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
               <input
                 ref={liFileInputRef}
                 type="file"
-                accept=".ai,.svg,.png,.jpg,.jpeg,.pdf"
+                accept=".ai,.svg,.ps,.png,.jpg,.jpeg,.pdf,.emb,.dst,.pes"
                 multiple={false}
                 style={{ display: 'none' }}
                 onChange={(e: any) => {
@@ -873,7 +874,7 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
                 >
                   <Upload size={16} color="#9CA3AF" />
                   <Text style={liStyles.artworkDropText}>Click to attach a mockup (1 file)</Text>
-                  <Text style={liStyles.artworkDropSub}>AI · SVG · PNG · JPG · PDF</Text>
+                  <Text style={liStyles.artworkDropSub}>AI · SVG · PS · PNG · JPG · PDF · EMB · DST · PES</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={liStyles.binPickLink}
@@ -1144,8 +1145,9 @@ export default function ClientPortal() {
   const handleFilesAdded = useCallback((rawFiles: globalThis.File[]) => {
     const allowed = rawFiles.filter(f => {
       const n = f.name.toLowerCase();
-      return n.endsWith('.ai') || n.endsWith('.svg') || n.endsWith('.png')
-        || n.endsWith('.jpg') || n.endsWith('.jpeg') || n.endsWith('.pdf');
+      return n.endsWith('.ai') || n.endsWith('.svg') || n.endsWith('.ps')
+        || n.endsWith('.png') || n.endsWith('.jpg') || n.endsWith('.jpeg')
+        || n.endsWith('.pdf') || n.endsWith('.emb') || n.endsWith('.dst') || n.endsWith('.pes');
     });
     if (allowed.length === 0) return;
     setPendingFiles(prev => [
@@ -1206,10 +1208,14 @@ export default function ClientPortal() {
     if (!session) return;
     const allowed = rawFiles.filter(f => {
       const n = f.name.toLowerCase();
-      return n.endsWith('.ai') || n.endsWith('.svg') || n.endsWith('.png')
-        || n.endsWith('.jpg') || n.endsWith('.jpeg') || n.endsWith('.pdf');
+      return n.endsWith('.ai') || n.endsWith('.svg') || n.endsWith('.ps')
+        || n.endsWith('.png') || n.endsWith('.jpg') || n.endsWith('.jpeg')
+        || n.endsWith('.pdf') || n.endsWith('.emb') || n.endsWith('.dst') || n.endsWith('.pes');
     });
-    if (allowed.length === 0) return;
+    if (allowed.length === 0) {
+      Alert.alert('Unsupported file type', 'Allowed: AI, SVG, PS, PNG, JPG, PDF, EMB, DST, PES');
+      return;
+    }
     setMediaBinUploading(true);
     for (const f of allowed) {
       const fd = new FormData();
@@ -1217,7 +1223,15 @@ export default function ClientPortal() {
       fd.append('uploadedByUserId', session.userId);
       fd.append('fileType', 'ARTWORK');
       fd.append('visibility', 'CLIENT_VISIBLE');
-      await fetch(`/api/portal/${session.orgId}/upload`, { method: 'POST', body: fd }).catch(() => {});
+      try {
+        const res = await fetch(`/api/portal/${session.orgId}/upload`, { method: 'POST', body: fd });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          Alert.alert('Upload failed', err?.error || `Could not upload "${f.name}".`);
+        }
+      } catch {
+        Alert.alert('Upload failed', `Network error uploading "${f.name}".`);
+      }
     }
     await fetchMediaBin(session.orgId);
     setMediaBinUploading(false);
@@ -1502,7 +1516,7 @@ export default function ClientPortal() {
 
   function getMimeLabel(mime: string | null, name: string): string {
     const ext = name.split('.').pop()?.toUpperCase();
-    if (ext && ['AI', 'SVG', 'PNG', 'JPG', 'JPEG', 'PDF'].includes(ext)) return ext === 'JPEG' ? 'JPG' : ext;
+    if (ext && ['AI', 'SVG', 'PS', 'PNG', 'JPG', 'JPEG', 'PDF', 'EMB', 'DST', 'PES'].includes(ext)) return ext === 'JPEG' ? 'JPG' : ext;
     if (!mime) return 'FILE';
     const map: Record<string, string> = {
       'image/png': 'PNG', 'image/jpeg': 'JPG', 'image/svg+xml': 'SVG',
@@ -1654,7 +1668,7 @@ export default function ClientPortal() {
               ? (
                 <View style={homeStyles.mbUploadEmpty}>
                   {Platform.OS === 'web' && (
-                    <input ref={mediaBinInputRef} type="file" accept=".ai,.svg,.png,.jpg,.jpeg,.pdf" multiple style={{ display: 'none' }}
+                    <input ref={mediaBinInputRef} type="file" accept=".ai,.svg,.ps,.png,.jpg,.jpeg,.pdf,.emb,.dst,.pes" multiple style={{ display: 'none' }}
                       onChange={(e: any) => { const files = Array.from((e.target.files || []) as globalThis.File[]); if (files.length > 0) { setActiveView('artwork'); handleMediaBinUpload(files); } e.target.value = ''; }}
                     />
                   )}
@@ -1669,7 +1683,7 @@ export default function ClientPortal() {
                   <View style={homeStyles.mbDropZone}>
                     <Upload size={18} color="#9CA3AF" />
                     <Text style={homeStyles.mbDropZoneText}>Drag & drop artwork here</Text>
-                    <Text style={homeStyles.mbDropZoneSub}>AI · SVG · PNG · JPG · PDF</Text>
+                    <Text style={homeStyles.mbDropZoneSub}>AI · SVG · PS · PNG · JPG · PDF · EMB · DST · PES</Text>
                   </View>
                 </View>
               )
@@ -2409,14 +2423,14 @@ export default function ClientPortal() {
           </TouchableOpacity>
         </View>
         {Platform.OS === 'web' && (
-          <input ref={mediaBinInputRef} type="file" accept=".ai,.svg,.png,.jpg,.jpeg,.pdf" multiple style={{ display: 'none' }}
+          <input ref={mediaBinInputRef} type="file" accept=".ai,.svg,.ps,.png,.jpg,.jpeg,.pdf,.emb,.dst,.pes" multiple style={{ display: 'none' }}
             onChange={(e: any) => { const files = Array.from((e.target.files || []) as globalThis.File[]); if (files.length > 0) handleMediaBinUpload(files); e.target.value = ''; }}
           />
         )}
         <View ref={mediaBinDropRef} style={[mbStyles.dropZone, isDraggingMB && mbStyles.dropZoneActive]}>
           <Upload size={18} color={isDraggingMB ? BRAND : '#9CA3AF'} />
           <Text style={[mbStyles.dropZoneText, isDraggingMB && { color: BRAND }]}>
-            {isDraggingMB ? 'Release to upload' : 'Drop files here to upload  ·  AI, SVG, PNG, JPG, PDF'}
+            {isDraggingMB ? 'Release to upload' : 'Drop files here to upload  ·  AI, SVG, PS, PNG, JPG, PDF, EMB, DST, PES'}
           </Text>
         </View>
 
@@ -2472,7 +2486,7 @@ export default function ClientPortal() {
               <Upload size={14} color="#fff" />
               <Text style={mbStyles.uploadFirstBtnText}>Upload Files</Text>
             </TouchableOpacity>
-            <Text style={mbStyles.uploadFirstTypes}>AI · SVG · PNG · JPG · PDF</Text>
+            <Text style={mbStyles.uploadFirstTypes}>AI · SVG · PS · PNG · JPG · PDF · EMB · DST · PES</Text>
           </View>
         ) : mediaBinViewMode === 'grid' ? (
           <View style={mbStyles.visualGrid}>
@@ -2764,12 +2778,12 @@ export default function ClientPortal() {
             {/* Artwork Upload Zone */}
             <View style={[pFields.container, { marginTop: 4 }]}>
               <Text style={pFields.label}>Attach Artwork Files</Text>
-              <Text style={pFields.hint}>AI, SVG, PNG, JPG, PDF, DST, EMB · Multiple files supported</Text>
+              <Text style={pFields.hint}>AI, SVG, PS, PNG, JPG, PDF, EMB, DST, PES · Multiple files supported</Text>
               {Platform.OS === 'web' && (
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".ai,.svg,.png,.jpg,.jpeg,.pdf,.dst,.emb"
+                  accept=".ai,.svg,.ps,.png,.jpg,.jpeg,.pdf,.emb,.dst,.pes"
                   multiple
                   style={{ display: 'none' }}
                   onChange={(e: any) => {
@@ -2789,7 +2803,7 @@ export default function ClientPortal() {
                 <Text style={[upStyles.dropZoneText, isDraggingOver && { color: BRAND }]}>
                   {isDraggingOver ? 'Drop to add files' : 'Click or drag files here'}
                 </Text>
-                <Text style={upStyles.dropZoneSub}>AI · SVG · PNG · JPG · PDF · DST · EMB</Text>
+                <Text style={upStyles.dropZoneSub}>AI · SVG · PS · PNG · JPG · PDF · EMB · DST · PES</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={liStyles.binPickLink}

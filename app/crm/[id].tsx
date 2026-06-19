@@ -375,22 +375,25 @@ export default function OrgProfileScreen() {
   const [quotesStatusFilter, setQuotesStatusFilter] = useState<'all' | QuoteStatus>('all');
   const [quotesServiceFilter, setQuotesServiceFilter] = useState<string>('all');
 
-  const handleOrgFileUpload = useCallback(async (file: File) => {
+  const handleOrgFileUpload = useCallback(async (fileOrFiles: File | File[]) => {
     if (!org) return;
+    const files = Array.isArray(fileOrFiles) ? fileOrFiles : [fileOrFiles];
+    if (files.length === 0) return;
     setOrgFilesUploading(true);
     try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('orgId', org.id);
-      fd.append('fileType', 'ARTWORK');
-      fd.append('visibility', 'CLIENT_VISIBLE');
-      const res = await fetch('/api/files', { method: 'POST', body: fd, headers: await getAuthHeaders() });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        Alert.alert('Upload failed', err?.error || 'Could not upload file.');
-      } else {
-        refetchOrgFiles();
+      for (const file of files) {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('orgId', org.id);
+        fd.append('fileType', 'ARTWORK');
+        fd.append('visibility', 'CLIENT_VISIBLE');
+        const res = await fetch('/api/files', { method: 'POST', body: fd, headers: await getAuthHeaders() });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          Alert.alert('Upload failed', err?.error || 'Could not upload file.');
+        }
       }
+      refetchOrgFiles();
     } catch {
       Alert.alert('Upload failed', 'Something went wrong.');
     } finally {
@@ -1805,10 +1808,11 @@ export default function OrgProfileScreen() {
                 if (typeof document === 'undefined') return;
                 const input = document.createElement('input');
                 input.type = 'file';
-                input.accept = '.ai,.svg,.png,.jpg,.jpeg,.pdf,.dst,.emb';
+                input.accept = '.ai,.svg,.ps,.png,.jpg,.jpeg,.pdf,.emb,.dst,.pes';
+                input.multiple = true;
                 input.onchange = (e: any) => {
-                  const file = e.target?.files?.[0];
-                  if (file) handleOrgFileUpload(file);
+                  const files = Array.from(e.target?.files || []) as File[];
+                  if (files.length > 0) handleOrgFileUpload(files);
                 };
                 input.click();
               }}
@@ -1826,8 +1830,8 @@ export default function OrgProfileScreen() {
             onDrop={(e: any) => {
               e.preventDefault();
               setOrgFilesDragOver(false);
-              const file = e.dataTransfer?.files?.[0];
-              if (file) handleOrgFileUpload(file);
+              const files = Array.from(e.dataTransfer?.files || []) as File[];
+              if (files.length > 0) handleOrgFileUpload(files);
             }}
           >
             <View style={[styles.mediaDot, { top: 18, left: 28, width: 5, height: 5 }]} />
@@ -1847,7 +1851,7 @@ export default function OrgProfileScreen() {
               </View>
             </View>
             <Text style={styles.mediaBinEmptyText}>Drag and drop your media here</Text>
-            <Text style={styles.mediaBinEmptySub}>AI · SVG · PNG · JPG · PDF · DST · EMB</Text>
+            <Text style={styles.mediaBinEmptySub}>AI · SVG · PS · PNG · JPG · PDF · EMB · DST · PES</Text>
           </View>
         ) : (
           <View
@@ -1857,8 +1861,8 @@ export default function OrgProfileScreen() {
             onDrop={(e: any) => {
               e.preventDefault();
               setOrgFilesDragOver(false);
-              const file = e.dataTransfer?.files?.[0];
-              if (file) handleOrgFileUpload(file);
+              const files = Array.from(e.dataTransfer?.files || []) as File[];
+              if (files.length > 0) handleOrgFileUpload(files);
             }}
           >
             {orgFiles.map((f: any) => {
@@ -2249,10 +2253,11 @@ export default function OrgProfileScreen() {
                 if (typeof document === 'undefined') return;
                 const input = document.createElement('input');
                 input.type = 'file';
-                input.accept = '.ai,.svg,.png,.jpg,.jpeg,.pdf,.dst,.emb';
+                input.accept = '.ai,.svg,.ps,.png,.jpg,.jpeg,.pdf,.emb,.dst,.pes';
+                input.multiple = true;
                 input.onchange = (e: any) => {
-                  const file = e.target?.files?.[0];
-                  if (file) handleOrgFileUpload(file);
+                  const files = Array.from(e.target?.files || []) as File[];
+                  if (files.length > 0) handleOrgFileUpload(files);
                 };
                 input.click();
               }}
@@ -2270,8 +2275,8 @@ export default function OrgProfileScreen() {
             onDrop={(e: any) => {
               e.preventDefault();
               setOrgFilesDragOver(false);
-              const file = e.dataTransfer?.files?.[0];
-              if (file) handleOrgFileUpload(file);
+              const files = Array.from(e.dataTransfer?.files || []) as File[];
+              if (files.length > 0) handleOrgFileUpload(files);
             }}
           >
             {/* Floating accent dots */}
@@ -2293,7 +2298,7 @@ export default function OrgProfileScreen() {
               </View>
             </View>
             <Text style={styles.mediaBinEmptyText}>Drag and drop your media here</Text>
-            <Text style={styles.mediaBinEmptySub}>AI · SVG · PNG · JPG · PDF · DST · EMB</Text>
+            <Text style={styles.mediaBinEmptySub}>AI · SVG · PS · PNG · JPG · PDF · EMB · DST · PES</Text>
           </View>
         ) : (
           <View
@@ -2303,8 +2308,8 @@ export default function OrgProfileScreen() {
             onDrop={(e: any) => {
               e.preventDefault();
               setOrgFilesDragOver(false);
-              const file = e.dataTransfer?.files?.[0];
-              if (file) handleOrgFileUpload(file);
+              const files = Array.from(e.dataTransfer?.files || []) as File[];
+              if (files.length > 0) handleOrgFileUpload(files);
             }}
           >
             {orgFiles.map((f: any) => {
@@ -2706,10 +2711,11 @@ export default function OrgProfileScreen() {
                         if (typeof document === 'undefined') return;
                         const input = document.createElement('input');
                         input.type = 'file';
-                        input.accept = '.ai,.svg,.png,.jpg,.jpeg,.pdf,.dst,.emb';
+                        input.accept = '.ai,.svg,.ps,.png,.jpg,.jpeg,.pdf,.emb,.dst,.pes';
+                        input.multiple = true;
                         input.onchange = (e: any) => {
-                          const file = e.target?.files?.[0];
-                          if (file) handleOrgFileUpload(file);
+                          const files = Array.from(e.target?.files || []) as File[];
+                          if (files.length > 0) handleOrgFileUpload(files);
                         };
                         input.click();
                       }}
@@ -2720,7 +2726,31 @@ export default function OrgProfileScreen() {
                   )}
                 </View>
                 {orgFiles.length === 0 ? (
-                  <Text style={styles.v2LPNotesText}>No files uploaded yet.</Text>
+                  <View
+                    style={[styles.orgMediaEmptyBin, orgFilesDragOver && styles.orgMediaDropZoneActive]}
+                    onDragOver={(e: any) => { e.preventDefault(); setOrgFilesDragOver(true); }}
+                    onDragLeave={() => setOrgFilesDragOver(false)}
+                    onDrop={(e: any) => {
+                      e.preventDefault();
+                      setOrgFilesDragOver(false);
+                      const files = Array.from(e.dataTransfer?.files || []) as File[];
+                      if (files.length > 0) handleOrgFileUpload(files);
+                    }}
+                  >
+                    <View style={styles.mediaBinIconRow}>
+                      <View style={[styles.mediaBinCard, { transform: [{ rotate: '-10deg' }], marginRight: -12, zIndex: 1 }]}>
+                        <LucideImage size={26} color="#888888" />
+                      </View>
+                      <View style={[styles.mediaBinCard, styles.mediaBinCardCenter, { zIndex: 3 }]}>
+                        <Film size={26} color="#AAAAAA" />
+                      </View>
+                      <View style={[styles.mediaBinCard, { transform: [{ rotate: '10deg' }], marginLeft: -12, zIndex: 1 }]}>
+                        <Music size={26} color="#888888" />
+                      </View>
+                    </View>
+                    <Text style={styles.mediaBinEmptyText}>Drag and drop your media here</Text>
+                    <Text style={styles.mediaBinEmptySub}>AI · SVG · PS · PNG · JPG · PDF · EMB · DST · PES</Text>
+                  </View>
                 ) : (
                   <View style={styles.v2MediaGrid}>
                     {orgFiles.slice(0, 9).map((f: any) => {
@@ -3522,10 +3552,11 @@ export default function OrgProfileScreen() {
                           if (typeof document === 'undefined') return;
                           const input = document.createElement('input');
                           input.type = 'file';
-                          input.accept = '.ai,.svg,.png,.jpg,.jpeg,.pdf,.dst,.emb';
+                          input.accept = '.ai,.svg,.ps,.png,.jpg,.jpeg,.pdf,.emb,.dst,.pes';
+                          input.multiple = true;
                           input.onchange = (e: any) => {
-                            const file = e.target?.files?.[0];
-                            if (file) handleOrgFileUpload(file);
+                            const files = Array.from(e.target?.files || []) as File[];
+                            if (files.length > 0) handleOrgFileUpload(files);
                           };
                           input.click();
                         }}
@@ -3536,7 +3567,17 @@ export default function OrgProfileScreen() {
                     )}
                   </View>
                   {orgFiles.length === 0 ? (
-                    <View style={styles.orgMediaEmptyBin}>
+                    <View
+                      style={[styles.orgMediaEmptyBin, orgFilesDragOver && styles.orgMediaDropZoneActive]}
+                      onDragOver={(e: any) => { e.preventDefault(); setOrgFilesDragOver(true); }}
+                      onDragLeave={() => setOrgFilesDragOver(false)}
+                      onDrop={(e: any) => {
+                        e.preventDefault();
+                        setOrgFilesDragOver(false);
+                        const files = Array.from(e.dataTransfer?.files || []) as File[];
+                        if (files.length > 0) handleOrgFileUpload(files);
+                      }}
+                    >
                       <View style={styles.mediaBinIconRow}>
                         <View style={[styles.mediaBinCard, { transform: [{ rotate: '-10deg' }], marginRight: -12, zIndex: 1 }]}>
                           <LucideImage size={26} color="#888888" />
@@ -3548,8 +3589,8 @@ export default function OrgProfileScreen() {
                           <Music size={26} color="#888888" />
                         </View>
                       </View>
-                      <Text style={styles.mediaBinEmptyText}>No media files yet</Text>
-                      <Text style={styles.mediaBinEmptySub}>AI · SVG · PNG · JPG · PDF · DST · EMB</Text>
+                      <Text style={styles.mediaBinEmptyText}>Drag and drop your media here</Text>
+                      <Text style={styles.mediaBinEmptySub}>AI · SVG · PS · PNG · JPG · PDF · EMB · DST · PES</Text>
                     </View>
                   ) : (
                     <View style={styles.orgMediaGrid}>

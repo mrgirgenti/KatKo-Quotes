@@ -79,11 +79,11 @@ export async function POST(request: Request) {
   const mimeType = fileEntry.type || 'application/octet-stream';
   if (!ALLOWED_MIME_TYPES[mimeType]) {
     const name = fileEntry.name.toLowerCase();
-    const isAllowedExt = name.endsWith('.ai') || name.endsWith('.svg') || name.endsWith('.png')
-      || name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.pdf')
-      || name.endsWith('.dst') || name.endsWith('.emb');
+    const isAllowedExt = name.endsWith('.ai') || name.endsWith('.svg') || name.endsWith('.ps')
+      || name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg')
+      || name.endsWith('.pdf') || name.endsWith('.emb') || name.endsWith('.dst') || name.endsWith('.pes');
     if (!isAllowedExt) {
-      return Response.json({ error: 'File type not allowed. Supported: AI, SVG, PNG, JPG, PDF, DST, EMB.' }, { status: 400 });
+      return Response.json({ error: 'File type not allowed. Supported: AI, SVG, PS, PNG, JPG, PDF, EMB, DST, PES.' }, { status: 400 });
     }
   }
 

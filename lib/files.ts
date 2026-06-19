@@ -47,7 +47,14 @@ export const ALLOWED_MIME_TYPES: Record<string, string> = {
   'image/vnd.adobe.photoshop':  'psd',
 };
 
-export function getMimeLabel(mimeType: string | null): string {
+export function getMimeLabel(mimeType: string | null, fileName?: string): string {
+  if (fileName) {
+    const n = fileName.toLowerCase();
+    if (n.endsWith('.ps')) return 'PS';
+    if (n.endsWith('.emb')) return 'EMB';
+    if (n.endsWith('.dst')) return 'DST';
+    if (n.endsWith('.pes')) return 'PES';
+  }
   if (!mimeType) return 'FILE';
   const ext = ALLOWED_MIME_TYPES[mimeType];
   return ext ? ext.toUpperCase() : 'FILE';
