@@ -21,6 +21,8 @@ export interface MediaCardProps {
   dateLabel?: string;
   /** Formatted file size (e.g. "1.2 MB"). */
   sizeLabel?: string;
+  /** Show the orange file-type badge above the name. Defaults to true. */
+  showTypeBadge?: boolean;
   /** Width / margin overrides for grid layout. */
   style?: any;
 
@@ -47,6 +49,7 @@ export default function MediaCard({
   typeLabel,
   dateLabel,
   sizeLabel,
+  showTypeBadge = true,
   style,
   onDownload,
   onDelete,
@@ -90,9 +93,11 @@ export default function MediaCard({
       </View>
 
       <View style={styles.meta}>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{typeLabel}</Text>
-        </View>
+        {showTypeBadge && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{typeLabel}</Text>
+          </View>
+        )}
 
         {isRenaming ? (
           <View style={styles.renameRow}>
