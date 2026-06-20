@@ -19,6 +19,8 @@ A **blue rectangle matching the sidebar's dimensions (240×100vh), only visible 
 
 **Conclusion:** Do not chase iframe-only artifacts with app code. **Why:** wasted multiple sessions on 4-layer CSS resets + gesture zone investigations that could never fix a browser iframe boundary behavior.
 
+**Definitive proof (scanner result):** A `getComputedStyle` scan of every DOM element at the moment the blue line is visible returns `outline="rgb(0,0,0) none 2.77778px"`, `box-shadow="none"`, `border-left="0px none rgb(0,0,0)"` — all undrawn. The blue line has **zero presence in computed CSS**. It is painted by the parent page's browser engine at the iframe boundary, outside the iframe's own document, unreachable by any CSS or JS inside the app. This was verified on a blank page with zero app layout.
+
 ## Why CSS-only approaches fail
 
 `outlineStyle: 'none'` as a React Native inline style prop translates to `outline-style: none` on the DOM element's `style` attribute. **RN Web (react-native-web) internally applies focus styles via JavaScript (`element.style.outline = ...`) after the component renders, overwriting our prop.** A stylesheet rule with `!important` does NOT override a JS-set inline style (inline styles always win over stylesheet rules regardless of `!important`).
