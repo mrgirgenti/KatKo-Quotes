@@ -77,7 +77,7 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
   };
 
   return (
-    <Animated.View style={[styles.sidebar, { width: widthAnim }, { backgroundColor: 'rgba(255,0,0,0.15)' } as any]} {...KK_SIDEBAR_DATASET}>
+    <Animated.View style={[styles.sidebar, { width: widthAnim }]} {...KK_SIDEBAR_DATASET}>
       <View style={styles.header}>
         <TouchableOpacity onPress={toggle} style={styles.hamburger} {...KK_NAV_DATASET}>
           <Menu size={22} color={SB.headerText} />

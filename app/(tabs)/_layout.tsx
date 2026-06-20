@@ -19,7 +19,7 @@ export default function TabLayout() {
 
   if (!useMobileShell) {
     return (
-      <View style={[styles.webLayout, { backgroundColor: 'rgba(0,255,0,0.07)' } as any]}>
+      <View style={styles.webLayout}>
         {/* Remount once after hydration so tablet's default-collapsed applies. */}
         <Sidebar key={mounted ? 'sidebar' : 'sidebar-init'} defaultCollapsed={isTablet} />
         <View style={styles.webContent}>

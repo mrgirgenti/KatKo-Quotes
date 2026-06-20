@@ -251,7 +251,7 @@ export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
       <QueryClientProvider client={queryClient}>
-        <GestureHandlerRootView style={{ flex: 1, backgroundColor: 'rgba(0,0,255,0.04)' }}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
           <UserProvider>
             <QuotesProvider>
               <CrmProvider>
