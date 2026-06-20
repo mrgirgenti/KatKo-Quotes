@@ -16,3 +16,4 @@
 - [Quote sub-route lookups](quote-subroute-lookups.md) — no 'sale' status exists (don't gate on it); Production Mode is navigation-only vs Start Production (mutating); sub-routes lack detail page's directQuote fallback.
 - [CRM org-header variants](crm-org-header-variants.md) — only v2LPHeader/v2MobileHeader render (FLAG_ORG_LAYOUT_V2=true); legacy leftPanel is dead code; logo Change/Remove live in OrgLogoUploader (hideActions to hide).
 - [Portal upload auth bypass](portal-upload-auth.md) — portal file uploads/deletes need portal-specific API routes; /api/files is Clerk-gated and portal has no Clerk token.
+- [R2 storage abstraction](r2-storage-abstraction.md) — storage layer lives in lib/storage/; STORAGE_PROVIDER=r2 to enable; dev container cannot reach R2 (TLS blocked by Cloudflare), test only via deployed env.

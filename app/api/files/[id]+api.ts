@@ -17,7 +17,7 @@ export async function GET(request: Request, { id }: { id: string }) {
       return new Response('Not found', { status: 404 });
     }
     const file = result.rows[0];
-    const buffer = readUpload(file.storageKey);
+    const buffer = await readUpload(file.storageKey);
     if (!buffer) {
       return new Response('File not found on server', { status: 404 });
     }
@@ -84,7 +84,7 @@ export async function DELETE(request: Request, { id }: { id: string }) {
       return Response.json({ error: 'Not found' }, { status: 404 });
     }
     const file = result.rows[0];
-    deleteUpload(file.storageKey);
+    await deleteUpload(file.storageKey);
     await client.query(`DELETE FROM "File" WHERE id = $1`, [id]);
     return Response.json({ success: true });
   } finally {

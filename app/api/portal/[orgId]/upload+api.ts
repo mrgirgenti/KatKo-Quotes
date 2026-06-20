@@ -32,7 +32,8 @@ export async function POST(request: Request, { orgId }: { orgId: string }) {
   }
 
   const buffer = Buffer.from(await fileEntry.arrayBuffer());
-  const storageKey = writeUpload(orgId, fileEntry.name, buffer);
+  const isPublic = visibility === 'CLIENT_VISIBLE';
+  const storageKey = await writeUpload(orgId, fileEntry.name, buffer, isPublic);
 
   const client = await pool.connect();
   try {

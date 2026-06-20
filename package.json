@@ -9,6 +9,7 @@
     "lint": "expo lint"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1073.0",
     "@clerk/backend": "^3.7.1",
     "@clerk/clerk-expo": "^2.19.31",
     "@expo/vector-icons": "^15.0.3",

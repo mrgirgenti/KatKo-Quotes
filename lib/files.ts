@@ -1,40 +1,15 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { randomUUID } from 'crypto';
+import { storage } from './storage';
 
-const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
-
-export function ensureOrgDir(orgId: string): string {
-  const dir = path.join(UPLOADS_DIR, orgId);
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
+export async function writeUpload(orgId: string, originalName: string, buffer: Buffer, isPublic = false): Promise<string> {
+  return storage.write(orgId, originalName, buffer, isPublic);
 }
 
-export function writeUpload(orgId: string, originalName: string, buffer: Buffer): string {
-  ensureOrgDir(orgId);
-  const uuid = randomUUID();
-  const safeName = originalName.replace(/[^a-zA-Z0-9._\-]/g, '_');
-  const filename = `${uuid}-${safeName}`;
-  const filepath = path.join(UPLOADS_DIR, orgId, filename);
-  fs.writeFileSync(filepath, buffer);
-  return `${orgId}/${filename}`;
+export async function readUpload(storageKey: string): Promise<Buffer | null> {
+  return storage.read(storageKey);
 }
 
-export function readUpload(storageKey: string): Buffer | null {
-  try {
-    const filepath = path.join(UPLOADS_DIR, storageKey);
-    return fs.readFileSync(filepath);
-  } catch {
-    return null;
-  }
-}
-
-export function deleteUpload(storageKey: string): void {
-  try {
-    const filepath = path.join(UPLOADS_DIR, storageKey);
-    fs.unlinkSync(filepath);
-  } catch {
-  }
+export async function deleteUpload(storageKey: string): Promise<void> {
+  return storage.delete(storageKey);
 }
 
 export const ALLOWED_MIME_TYPES: Record<string, string> = {

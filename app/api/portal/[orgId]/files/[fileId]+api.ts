@@ -13,7 +13,7 @@ export async function GET(_request: Request, { orgId, fileId }: { orgId: string;
     if (!result.rows[0]) return Response.json({ error: 'File not found' }, { status: 404 });
 
     const { storageKey, mimeType, originalName } = result.rows[0];
-    const buffer = readUpload(storageKey);
+    const buffer = await readUpload(storageKey);
     if (!buffer) return Response.json({ error: 'File not found on disk' }, { status: 404 });
 
     const contentType = mimeType || 'application/octet-stream';
@@ -70,7 +70,7 @@ export async function DELETE(_request: Request, { orgId, fileId }: { orgId: stri
     }
     const storageKey = check.rows[0].storageKey;
     await client.query(`DELETE FROM "File" WHERE id = $1`, [fileId]);
-    deleteUpload(storageKey);
+    await deleteUpload(storageKey);
     return Response.json({ ok: true });
   } finally {
     client.release();
