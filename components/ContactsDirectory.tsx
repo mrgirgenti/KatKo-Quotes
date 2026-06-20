@@ -37,7 +37,7 @@ const HUB_CFG: Record<HubStatus, { label: string; color: string; bg: string; bor
 type ColId = 'name' | 'org' | 'role' | 'email' | 'phone' | 'hub' | 'lastLogin' | 'status';
 const CHECKBOX_W = 36;
 const COL_STYLE: Record<ColId, any> = {
-  name:      { ...TABLE_COL.textPrimary, ...TABLE_CELL.left },
+  name:      { ...TABLE_COL.textPrimary, ...TABLE_CELL.left, flexBasis: 240, minWidth: 195, maxWidth: 315 },
   org:       { ...TABLE_COL.text, ...TABLE_CELL.left },
   role:      { ...TABLE_COL.text, ...TABLE_CELL.left },
   email:     { ...TABLE_COL.text, ...TABLE_CELL.left },
@@ -48,7 +48,7 @@ const COL_STYLE: Record<ColId, any> = {
 };
 
 const CONTACT_TOGGLEABLE_COLS: { id: ColId; label: string }[] = [
-  { id: 'name', label: 'Contact Name' },
+  { id: 'name', label: 'Client Name' },
   { id: 'org', label: 'Organization' },
   { id: 'role', label: 'Title / Role' },
   { id: 'email', label: 'Email Address' },
@@ -386,7 +386,7 @@ export default function ContactsDirectory() {
         const cs: any = { ...colStyle(c.id), ...(isCentered ? { alignItems: 'center' } : {}) };
         return (
           <View key={c.id} style={cs}>
-            {c.id === 'name' && <SortBtn field="name" label="Name" />}
+            {c.id === 'name' && <SortBtn field="name" label="Client Name" />}
             {c.id === 'org' && <SortBtn field="org" label="Organization" />}
             {c.id === 'role' && <SortBtn field="role" label="Title / Role" />}
             {c.id === 'email' && <SortBtn field="email" label="Email" />}

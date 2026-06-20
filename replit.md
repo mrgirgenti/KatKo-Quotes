@@ -75,6 +75,11 @@ _Populate as you build_
 - **Interaction**: Ask for clarification before implementing significant changes or making assumptions about design.
 - **Code reviews**: Detailed explanations of changes and their impact are appreciated.
 
+## UI Conventions
+
+- **MediaCard `showTypeBadge`**: Always pass `showTypeBadge={false}` when rendering `<MediaCard>` inside any media bin grid (Org Details left panel, org media tab, project media bins). The file type is already shown in the `typeLabel` metadata line — the pill above the name is redundant and clutters the card. The default is `true` (safe for one-off usages), so the prop must be explicit on every grid rendering site.
+- **Table column widths**: Primary identifier columns (`textPrimary` token) use per-table overrides of `flexBasis/minWidth/maxWidth` rather than the global default (320/260/420). Current overrides: Organizations `org` col −25% (240/195/315), Contacts `name` col −25% (240/195/315), Quotes/Projects `colProject` col −45% (176/143/231), Client Hubs `colOrg` col −60% (`flex: 0.8, minWidth: 88`).
+
 ## Gotchas
 
 - **DB Column Mismatch**: Always ensure `prisma/schema.prisma` matches the actual PostgreSQL database schema. Missing columns (e.g., `quoteSentAt`, `waveInvoiceLink`) can cause silent failures or 500 errors on save. Run `npx prisma db push` after schema changes.

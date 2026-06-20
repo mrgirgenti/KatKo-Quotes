@@ -477,6 +477,7 @@ export default function OrgProfileScreen() {
       <View key={f.id} style={{ width: `${100 / cols}%`, paddingHorizontal: 5, marginBottom: 10 }}>
         <MediaCard
           file={f}
+          showTypeBadge={false}
           thumbnail={isImage
             ? <AuthedImage fileId={f.id} style={{ width: '100%', height: '100%' }} />
             : <Text style={styles.orgMediaCardExt}>{ext}</Text>}
@@ -2603,10 +2604,10 @@ export default function OrgProfileScreen() {
 
         {isDesktop ? (
           /* ── DESKTOP: 2-column CRM layout ── */
-          <View style={styles.v2Layout}>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.v2Layout, { alignItems: 'flex-start' }]}>
 
             {/* ── LEFT PANEL: Identity + Contacts ── */}
-            <ScrollView style={styles.v2LeftPanel} contentContainerStyle={styles.v2LeftPanelContent} showsVerticalScrollIndicator={false}>
+            <View style={[styles.v2LeftPanel, styles.v2LeftPanelContent]}>
 
               {/* Header: Logo (left) + [Actions / Name / Info] (right) */}
               <View style={styles.v2LPHeader}>
@@ -2838,7 +2839,7 @@ export default function OrgProfileScreen() {
               </View>
 
               <View style={{ height: 32 }} />
-            </ScrollView>
+            </View>
 
             {/* ── RIGHT PANEL: Tabs + Content ── */}
             <View style={styles.v2RightPanel}>
@@ -2870,7 +2871,7 @@ export default function OrgProfileScreen() {
 
               {/* Overview tab */}
               {activeTab === 'overview' && (
-                <ScrollView style={styles.v2OverviewScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.v2OverviewContent}>
+                <View style={[styles.v2OverviewScroll, styles.v2OverviewContent]}>
 
             {renderClientLegacy()}
 
@@ -3150,12 +3151,12 @@ export default function OrgProfileScreen() {
             </View>
 
                   <View style={{ height: 32 }} />
-                </ScrollView>
+                </View>
               )}
 
               {/* Activity tab */}
               {activeTab === 'activity' && (
-                <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
+                <View style={[styles.tabContentScroll, styles.tabContentPad]}>
                   <View style={styles.tabContentHeader}>
                     <Text style={styles.tabContentTitle}>Activity Log</Text>
                     <TouchableOpacity style={styles.addItemBtn} onPress={() => setActivityModal(true)}>
@@ -3244,12 +3245,12 @@ export default function OrgProfileScreen() {
                     </View>
                   )}
                   <View style={{ height: 24 }} />
-                </ScrollView>
+                </View>
               )}
 
               {/* Notes tab */}
               {activeTab === 'notes' && (
-                <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
+                <View style={[styles.tabContentScroll, styles.tabContentPad]}>
                   <View style={styles.tabContentHeader}>
                     <Text style={styles.tabContentTitle}>Notes</Text>
                     <TouchableOpacity style={styles.addItemBtn} onPress={() => { setActivityForm((f) => ({ ...f, type: 'note' })); setActivityModal(true); }}>
@@ -3272,12 +3273,12 @@ export default function OrgProfileScreen() {
                     noteEntries.map((entry) => renderActivityEntry(entry))
                   )}
                   <View style={{ height: 24 }} />
-                </ScrollView>
+                </View>
               )}
 
               {/* Communications tab (Emails + Calls) */}
               {activeTab === 'comms' && (
-                <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
+                <View style={[styles.tabContentScroll, styles.tabContentPad]}>
                   {/* Emails section */}
                   <View style={styles.tabContentHeader}>
                     <Text style={styles.tabContentTitle}>Emails</Text>
@@ -3321,12 +3322,12 @@ export default function OrgProfileScreen() {
                     callEntries.map((entry) => renderActivityEntry(entry))
                   )}
                   <View style={{ height: 24 }} />
-                </ScrollView>
+                </View>
               )}
 
               {/* Projects tab */}
               {activeTab === 'projects' && (
-                <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
+                <View style={[styles.tabContentScroll, styles.tabContentPad]}>
                   <View style={styles.tabContentHeader}>
                     <Text style={styles.tabContentTitle}>All Projects</Text>
                     <TouchableOpacity
@@ -3394,11 +3395,11 @@ export default function OrgProfileScreen() {
                     ));
                   })()}
                   <View style={{ height: 24 }} />
-                </ScrollView>
+                </View>
               )}
 
             </View>
-          </View>
+          </ScrollView>
 
         ) : (
           /* ── MOBILE: stacked layout ── */
@@ -5907,15 +5908,13 @@ const styles = StyleSheet.create({
 
   // ── V2 Two-Column Layout ──────────────────────────────────────────────────
   v2Layout: {
-    flex: 1,
     flexDirection: 'row' as const,
-    overflow: 'hidden' as const,
     backgroundColor: Colors.light.background,
   },
 
-  // Left panel — RN-web ScrollView ships flexGrow:1 in its base style, so we MUST
-  // pin flexGrow:0 here or the panel grows and eats ~58% of the row. Basis 44%
-  // (clamped) keeps the identity/contacts column at ~44% with breathing room,
+  // Left panel — flexGrow:0 is critical even as a plain View: without it the panel
+  // grows to fill the row. Basis 44% (clamped) keeps the identity/contacts column
+  // at ~44% with breathing room,
   // while the operational right panel (Client Legacy / Active Projects) stays dominant at ~56%.
   v2LeftPanel: {
     flexGrow: 0,

@@ -42,7 +42,7 @@ const FILTER_TABS: (CrmStatus | 'All')[] = ['All', 'Cold', 'Working', 'Active Cl
 const AVATAR_W = 48;
 const CHECKBOX_W = 36;
 const COL_STYLE: Record<ColId, any> = {
-  org:      { ...TABLE_COL.textPrimary, ...TABLE_CELL.left },
+  org:      { ...TABLE_COL.textPrimary, ...TABLE_CELL.left, flexBasis: 240, minWidth: 195, maxWidth: 315 },
   bizType:  { ...TABLE_COL.text, ...TABLE_CELL.left },
   contact:  { ...TABLE_COL.text, ...TABLE_CELL.left },
   email:    { ...TABLE_COL.text, ...TABLE_CELL.left },

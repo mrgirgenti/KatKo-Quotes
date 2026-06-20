@@ -1000,7 +1000,7 @@ const styles = StyleSheet.create({
   colOrderDate: { ...TABLE_COL.date, ...TABLE_CELL.center },
   colDueDate:   { ...TABLE_COL.date, ...TABLE_CELL.center },
   colClient:    { ...TABLE_COL.text, ...TABLE_CELL.left },
-  colProject:   { ...TABLE_COL.textPrimary, ...TABLE_CELL.left },
+  colProject:   { ...TABLE_COL.textPrimary, ...TABLE_CELL.left, flexBasis: 176, minWidth: 143, maxWidth: 231 },
   colQuote:     { ...TABLE_COL.numeric, ...TABLE_CELL.center },
   colServices:  { ...TABLE_COL.text, ...TABLE_CELL.left },
   colApplicator: { ...TABLE_COL.text, ...TABLE_CELL.left },

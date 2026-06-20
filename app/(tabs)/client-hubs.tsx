@@ -617,7 +617,7 @@ const styles = StyleSheet.create({
 
   // Columns
   colAvatar: { width: AVATAR_W },
-  colOrg: { flex: 2, minWidth: 220, paddingRight: 12 },
+  colOrg: { flex: 0.8, minWidth: 88, paddingRight: 12 },
   colUsers: { width: COL.users },
   colLastLogin: { width: COL.lastLogin },
   colInvites: { width: COL.invites },
