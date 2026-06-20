@@ -1,0 +1,208 @@
+IMPLEMENTATION MODE
+
+Do not analyze.
+Do not create plans.
+Do not investigate.
+
+Begin implementation immediately.
+
+When complete:
+
+* Report files changed
+* Report reusable components created
+* Report tables converted
+* Stop
+
+---
+
+## GLOBAL TABLE SYSTEM
+
+Katalyst OS currently has inconsistent table layouts.
+
+Each page appears to be handling column sizing independently.
+
+This is creating recurring problems across:
+
+* Organizations
+* Contacts
+* Quotes
+* Projects
+* Production
+* Reports
+* Client Hub tables
+
+We need a reusable table sizing system.
+
+---
+
+## OBJECTIVE
+
+Create a shared table layout standard.
+
+Future tables should inherit consistent sizing behavior rather than requiring page-by-page fixes.
+
+---
+
+## TABLE COLUMN CATEGORIES
+
+TEXT COLUMNS
+
+Examples:
+
+* Organization
+* Contact
+* Project
+* Client
+* Service
+* Email
+
+Rules:
+
+* Flexible width
+* Min width required
+* Max width required
+* Truncate with ellipsis when necessary
+* Never consume all available table space
+
+---
+
+STATUS COLUMNS
+
+Examples:
+
+* Status
+* Client Hub
+* Workflow Status
+
+Rules:
+
+Width:
+140–180px
+
+Content:
+Centered
+
+Status pills:
+Centered
+
+---
+
+DATE COLUMNS
+
+Examples:
+
+* Submitted
+* Order Date
+* Due Date
+* Last Login
+
+Rules:
+
+Width:
+120–150px
+
+Content:
+Centered
+
+---
+
+NUMERIC COLUMNS
+
+Examples:
+
+* PCS
+* Revenue
+* Profit
+* Total
+* Per PCS
+* Orders
+
+Rules:
+
+Width:
+90–130px
+
+Content:
+Centered
+
+---
+
+ACTION COLUMNS
+
+Examples:
+
+* View
+* Track
+* Actions
+
+Rules:
+
+Minimum width:
+150–180px
+
+Must comfortably fit:
+
+Button
++
+Overflow menu
+
+No crowding.
+
+No compression.
+
+---
+
+## LAYOUT RULES
+
+Do NOT use equal-width columns.
+
+Do NOT use fully flexible layouts that allow important columns to collapse.
+
+Use intentional widths.
+
+Example:
+
+Project
+Status
+Date
+Date
+PCS
+Total
+Action
+
+Should not distribute equally.
+
+---
+
+## RESPONSIVE BEHAVIOR
+
+Desktop:
+
+Maintain intentional sizing.
+
+Tablet:
+
+Maintain intentional sizing.
+
+Mobile:
+
+Horizontal scrolling is acceptable.
+
+Do not compress columns until unreadable.
+
+---
+
+## SUCCESS CRITERIA
+
+A user should immediately be able to scan:
+
+* Names
+* Statuses
+* Dates
+* Revenue
+* Profit
+* Actions
+
+without columns feeling crowded, uneven, or randomly spaced.
+
+This system should become the standard used throughout Katalyst OS and Client Hubs going forward.
