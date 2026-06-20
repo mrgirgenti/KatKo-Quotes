@@ -75,15 +75,15 @@ function injectFocusReset() {
   // line is the iframe ring drawn by the parent page — unreachable from CSS here
   // and absent when the app runs in its own tab). Stripping inline styles is
   // enough; the CSS in Layer 1 already removes real in-app focus outlines.
+  // Spare real form controls so keyboard users keep their native focus ring.
+  // Everything else (RN-web div wrappers, ScrollViews, Pressables, root containers)
+  // gets its inline outline/box-shadow stripped.
+  const isFormControl = (el: HTMLElement) => {
+    const t = el.tagName?.toLowerCase() ?? '';
+    return t === 'input' || t === 'textarea' || t === 'select';
+  };
   if (!(window as any).__kkFocusListenerBound) {
     (window as any).__kkFocusListenerBound = true;
-    // Spare real form controls so keyboard users keep their native focus ring.
-    // Everything else (RN-web div wrappers, ScrollViews, Pressables, root containers)
-    // gets its inline outline/box-shadow stripped.
-    const isFormControl = (el: HTMLElement) => {
-      const t = el.tagName?.toLowerCase() ?? '';
-      return t === 'input' || t === 'textarea' || t === 'select';
-    };
     const kkStripFocus = (el: HTMLElement | null) => {
       if (!el || !el.style || isFormControl(el)) return;
       el.style.setProperty('outline', 'none', 'important');
@@ -99,18 +99,34 @@ function injectFocusReset() {
       requestAnimationFrame(() => kkStripFocus(t));
     }, true);
   }
-  // Layer 4: style MutationObserver — catches any inline outline added after render.
+  // Layer 3: Head MutationObserver — keep our style tag LAST in <head> at all times.
+  // RN Web lazily injects component CSS class rules when components first mount (e.g.
+  // the Animated.View sidebar container hover box-shadow class). Those <style> tags are
+  // appended to <head> AFTER this function has already run. In CSS, when two rules both
+  // carry !important and equal specificity, the LATER declaration wins — so any RN Web
+  // class appended after our tag would override our hover suppression. Watching head and
+  // moving our tag to the end on every insertion guarantees our rules always win.
+  if (!(window as any).__kkHeadObserverBound) {
+    (window as any).__kkHeadObserverBound = true;
+    const reorderKkStyle = () => {
+      const s = document.getElementById('kk-global-focus-reset');
+      if (s && document.head.lastChild !== s) document.head.appendChild(s);
+    };
+    new MutationObserver(reorderKkStyle).observe(document.head, { childList: true });
+  }
+  // Layer 4: Body style MutationObserver — catches any inline outline OR box-shadow
+  // added to elements after render (RN Web may set these via JS on focus/hover).
   if (!(window as any).__kkStyleObserverBound) {
     (window as any).__kkStyleObserverBound = true;
     const styleObserver = new MutationObserver((mutations) => {
       for (const m of mutations) {
         const el = m.target as HTMLElement;
-        if (el.style) {
-          const o = el.style.getPropertyValue('outline');
-          if (o && o !== 'none') {
-            el.style.setProperty('outline', 'none', 'important');
-            el.style.setProperty('box-shadow', 'none', 'important');
-          }
+        if (!el.style || isFormControl(el)) continue;
+        const o = el.style.getPropertyValue('outline');
+        const bs = el.style.getPropertyValue('box-shadow');
+        if ((o && o !== 'none') || (bs && bs !== 'none')) {
+          el.style.setProperty('outline', 'none', 'important');
+          el.style.setProperty('box-shadow', 'none', 'important');
         }
       }
     });
