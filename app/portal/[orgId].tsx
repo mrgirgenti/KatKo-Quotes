@@ -73,6 +73,7 @@ import {
 } from 'lucide-react-native';
 import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
 import MediaPickerModal from '@/components/MediaPickerModal';
+import MediaCard from '@/components/MediaCard';
 
 const BRAND = '#FF5A00';
 const BRAND_DARK = '#CC4700';
@@ -944,8 +945,7 @@ export default function ClientPortal() {
   const [mediaBinSearch, setMediaBinSearch] = useState('');
   const [mediaBinFilter, setMediaBinFilter] = useState<string>('All');
   const [mediaBinSort, setMediaBinSort] = useState<'Newest' | 'Oldest' | 'A-Z'>('Newest');
-  const [mediaBinViewMode, setMediaBinViewMode] = useState<'grid' | 'list'>('grid');
-  const [mediaBinGridSize, setMediaBinGridSize] = useState<'large' | 'small'>('large');
+  const [mediaBinGridSize, setMediaBinGridSize] = useState<4 | 6 | 8>(6);
   const [mediaBinSortOpen, setMediaBinSortOpen] = useState(false);
   const [catSearch, setCatSearch] = useState('');
   const [catFilter, setCatFilter] = useState('All');
@@ -1593,6 +1593,37 @@ export default function ClientPortal() {
     return !!mime && ['image/png', 'image/jpeg', 'image/svg+xml'].includes(mime);
   }
 
+  const downloadPortalFile = (file: MediaFile) => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    const a = document.createElement('a');
+    a.href = `/api/portal/${session?.orgId}/files/${file.id}`;
+    a.download = file.originalName;
+    a.click();
+  };
+
+  const renderPortalMediaCard = (file: MediaFile, cardStyle: any) => (
+    <MediaCard
+      key={file.id}
+      file={file}
+      style={cardStyle}
+      thumbnail={isImageMime(file.mimeType)
+        ? <Image source={{ uri: `/api/portal/${session?.orgId}/files/${file.id}?inline=true` }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        : <Text style={mbStyles.visualThumbLabel}>{getMimeLabel(file.mimeType, file.originalName)}</Text>}
+      typeLabel={getMimeLabel(file.mimeType, file.originalName)}
+      dateLabel={formatDate(file.createdAt)}
+      sizeLabel={formatBytes(file.fileSize)}
+      onDownload={() => downloadPortalFile(file)}
+      onDelete={() => deleteMediaBinFile(file.id)}
+      renamable
+      isRenaming={renamingPortalFileId === file.id}
+      renameValue={renamePortalText}
+      onRenameChange={setRenamePortalText}
+      onRenameStart={() => { setRenamingPortalFileId(file.id); setRenamePortalText(file.originalName); }}
+      onRenameSubmit={() => handleRenamePortalFile(file.id, renamePortalText)}
+      onRenameCancel={() => setRenamingPortalFileId(null)}
+    />
+  );
+
   function ProjectCard({ project }: { project: PortalProject }) {
     return (
       <View style={dash.projectCard}>
@@ -1756,26 +1787,8 @@ export default function ClientPortal() {
                   <Text style={mbStyles.mediaBinEmptySub}>AI · SVG · PS · PNG · JPG · PDF · EMB · DST · PES</Text>
                 </View>
               )
-              : <View style={{ gap: 8 }}>
-                  {mediaBinFiles.slice(0, 4).map(f => (
-                    <View key={f.id} style={homeStyles.previewRow}>
-                      {isImageMime(f.mimeType) ? (
-                        <Image
-                          source={{ uri: `/api/portal/${session?.orgId}/files/${f.id}?inline=true` }}
-                          style={homeStyles.previewThumb}
-                          resizeMode="cover"
-                        />
-                      ) : (
-                        <View style={homeStyles.previewThumbPlaceholder}>
-                          <Text style={homeStyles.previewThumbLabel}>{getMimeLabel(f.mimeType, f.originalName)}</Text>
-                        </View>
-                      )}
-                      <Text style={homeStyles.previewName} numberOfLines={1}>{f.originalName}</Text>
-                      <View style={[homeStyles.previewBadge, { backgroundColor: '#F3F4F6' }]}>
-                        <Text style={[homeStyles.previewBadgeText, { color: '#6B7280' }]}>{getMimeLabel(f.mimeType, f.originalName)}</Text>
-                      </View>
-                    </View>
-                  ))}
+              : <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {mediaBinFiles.slice(0, 4).map(f => renderPortalMediaCard(f, { width: '48%' }))}
                 </View>
             }
           </SectionCard>
@@ -2501,56 +2514,11 @@ export default function ClientPortal() {
       return a.originalName.localeCompare(b.originalName);
     });
 
-    const renderFileCard = (file: MediaFile) => (
-      <View key={file.id} style={mbStyles.fileCard}>
-        <View style={mbStyles.filePreview}>
-          {isImageMime(file.mimeType) ? (
-            <Image source={{ uri: `/api/portal/${session?.orgId}/files/${file.id}?inline=true` }} style={mbStyles.previewImage} resizeMode="cover" />
-          ) : (
-            <View style={mbStyles.fileTypeBox}>
-              <Text style={mbStyles.fileTypeLabel}>{getMimeLabel(file.mimeType, file.originalName)}</Text>
-            </View>
-          )}
-        </View>
-        <View style={mbStyles.fileMeta}>
-          {renamingPortalFileId === file.id ? (
-            <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center', flex: 1 }}>
-              <TextInput
-                value={renamePortalText}
-                onChangeText={setRenamePortalText}
-                style={[mbStyles.fileName, { flex: 1, borderBottomWidth: 1, borderBottomColor: BRAND, paddingVertical: 0 }]}
-                autoFocus
-                selectTextOnFocus
-                onSubmitEditing={() => handleRenamePortalFile(file.id, renamePortalText)}
-                onBlur={() => handleRenamePortalFile(file.id, renamePortalText)}
-              />
-              <TouchableOpacity onPress={() => handleRenamePortalFile(file.id, renamePortalText)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-                <Check size={13} color="#16A34A" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setRenamingPortalFileId(null)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-                <X size={13} color="#DC2626" />
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Text style={[mbStyles.fileName, { flex: 1 }]} numberOfLines={1}>{file.originalName}</Text>
-              <TouchableOpacity onPress={() => { setRenamingPortalFileId(file.id); setRenamePortalText(file.originalName); }} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-                <Edit2 size={12} color={TEXT_LIGHT} />
-              </TouchableOpacity>
-            </View>
-          )}
-          <Text style={mbStyles.fileSize}>{formatBytes(file.fileSize)} · {formatDate(file.createdAt)}</Text>
-        </View>
-        <View style={mbStyles.fileActions}>
-          <TouchableOpacity style={mbStyles.fileActionBtn} onPress={() => { if (Platform.OS === 'web') { const a = document.createElement('a'); a.href = `/api/portal/${session?.orgId}/files/${file.id}`; a.download = file.originalName; a.click(); } }}>
-            <Download size={14} color={TEXT_LIGHT} />
-          </TouchableOpacity>
-          <TouchableOpacity style={[mbStyles.fileActionBtn, { borderColor: '#FECACA', backgroundColor: '#FEF2F2' }]} onPress={() => deleteMediaBinFile(file.id)}>
-            <Trash2 size={14} color="#DC2626" />
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
+    const gridCols = isMobile
+      ? (mediaBinGridSize === 4 ? 2 : mediaBinGridSize === 6 ? 3 : 4)
+      : isTablet
+      ? (mediaBinGridSize === 4 ? 3 : mediaBinGridSize === 6 ? 4 : 6)
+      : mediaBinGridSize;
 
     return (
       <ScrollView contentContainerStyle={dash.viewContent} showsVerticalScrollIndicator={false}>
@@ -2628,12 +2596,15 @@ export default function ClientPortal() {
 
             {/* Grid size toggle */}
             <View style={mbStyles.viewToggle}>
-              <TouchableOpacity style={[mbStyles.viewToggleBtn, mediaBinGridSize === 'large' && mbStyles.viewToggleBtnActive]} onPress={() => setMediaBinGridSize('large')}>
-                <Grid2x2 size={14} color={mediaBinGridSize === 'large' ? BRAND : TEXT_LIGHT} />
-              </TouchableOpacity>
-              <TouchableOpacity style={[mbStyles.viewToggleBtn, mediaBinGridSize === 'small' && mbStyles.viewToggleBtnActive]} onPress={() => setMediaBinGridSize('small')}>
-                <LayoutGrid size={14} color={mediaBinGridSize === 'small' ? BRAND : TEXT_LIGHT} />
-              </TouchableOpacity>
+              {([4, 6, 8] as const).map(n => (
+                <TouchableOpacity
+                  key={n}
+                  style={[mbStyles.viewToggleBtn, mediaBinGridSize === n && mbStyles.viewToggleBtnActive]}
+                  onPress={() => setMediaBinGridSize(n)}
+                >
+                  <Text style={[mbStyles.viewToggleNum, mediaBinGridSize === n && mbStyles.viewToggleNumActive]}>{n}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
         </View>
@@ -2663,68 +2634,14 @@ export default function ClientPortal() {
             <Text style={mbStyles.mediaBinEmptyText}>Drag and drop your media here</Text>
             <Text style={mbStyles.mediaBinEmptySub}>AI · SVG · PS · PNG · JPG · PDF · EMB · DST · PES</Text>
           </View>
-        ) : mediaBinViewMode === 'grid' ? (
+        ) : (
           <View style={mbStyles.visualGrid}>
             {filtered.map(file => (
-              <View key={file.id} style={[mbStyles.visualCard, mediaBinGridSize === 'large'
-                ? (isMobile ? { width: '48%' } : isTablet ? { width: '31.5%' } : { width: '23.5%' })
-                : (isMobile ? { width: '31.5%' } : isTablet ? { width: '23.5%' } : { width: '15.5%' })
-              ]}>
-                <View style={mbStyles.visualThumb}>
-                  {isImageMime(file.mimeType) ? (
-                    <Image source={{ uri: `/api/portal/${session?.orgId}/files/${file.id}?inline=true` }} style={mbStyles.visualThumbImg} resizeMode="cover" />
-                  ) : (
-                    <View style={mbStyles.visualThumbPlaceholder}>
-                      <Text style={mbStyles.visualThumbLabel}>{getMimeLabel(file.mimeType, file.originalName)}</Text>
-                    </View>
-                  )}
-                  <View style={mbStyles.visualThumbActions}>
-                    <TouchableOpacity style={mbStyles.visualThumbBtn} onPress={() => { if (Platform.OS === 'web') { const a = document.createElement('a'); a.href = `/api/portal/${session?.orgId}/files/${file.id}`; a.download = file.originalName; a.click(); } }}>
-                      <Download size={13} color="#fff" />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[mbStyles.visualThumbBtn, { backgroundColor: 'rgba(220,38,38,0.8)' }]} onPress={() => deleteMediaBinFile(file.id)}>
-                      <Trash2 size={13} color="#fff" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-                <View style={mbStyles.visualMeta}>
-                  <View style={mbStyles.visualTypeBadge}>
-                    <Text style={mbStyles.visualTypeBadgeText}>{getMimeLabel(file.mimeType, file.originalName)}</Text>
-                  </View>
-                  {renamingPortalFileId === file.id ? (
-                    <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
-                      <TextInput
-                        value={renamePortalText}
-                        onChangeText={setRenamePortalText}
-                        style={[mbStyles.visualFileName, { flex: 1, borderBottomWidth: 1, borderBottomColor: BRAND, paddingVertical: 0 }]}
-                        autoFocus
-                        selectTextOnFocus
-                        onSubmitEditing={() => handleRenamePortalFile(file.id, renamePortalText)}
-                        onBlur={() => handleRenamePortalFile(file.id, renamePortalText)}
-                      />
-                      <TouchableOpacity onPress={() => handleRenamePortalFile(file.id, renamePortalText)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-                        <Check size={11} color="#16A34A" />
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => setRenamingPortalFileId(null)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-                        <X size={11} color="#DC2626" />
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 3 }}>
-                      <Text style={[mbStyles.visualFileName, { flex: 1 }]} numberOfLines={2}>{file.originalName}</Text>
-                      <TouchableOpacity onPress={() => { setRenamingPortalFileId(file.id); setRenamePortalText(file.originalName); }} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} style={{ paddingTop: 2 }}>
-                        <Edit2 size={11} color={TEXT_LIGHT} />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                  <Text style={mbStyles.visualFileSub}>{formatDate(file.createdAt)}</Text>
-                  <Text style={mbStyles.visualFileSub}>{formatBytes(file.fileSize)}</Text>
-                </View>
+              <View key={file.id} style={{ width: `${100 / gridCols}%`, paddingHorizontal: 5, marginBottom: 10 }}>
+                {renderPortalMediaCard(file, { width: '100%' })}
               </View>
             ))}
           </View>
-        ) : (
-          <View style={mbStyles.fileGrid}>{filtered.map(renderFileCard)}</View>
         )}
       </ScrollView>
     );
@@ -4604,7 +4521,7 @@ const mbStyles = StyleSheet.create({
   sortDropItemText: { fontSize: 13, color: TEXT_MED },
   sortDropItemTextActive: { color: BRAND, fontWeight: '700' },
   visualGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 10,
+    flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -5,
   },
   visualCard: {
     width: '23%',
@@ -4700,8 +4617,10 @@ const mbStyles = StyleSheet.create({
     flexDirection: 'row', borderRadius: 8, overflow: 'hidden',
     borderWidth: 1, borderColor: BORDER, marginLeft: 4,
   },
-  viewToggleBtn: { padding: 7, backgroundColor: BG },
+  viewToggleBtn: { paddingVertical: 6, paddingHorizontal: 11, backgroundColor: BG, alignItems: 'center', justifyContent: 'center' },
   viewToggleBtnActive: { backgroundColor: '#FFF4EE' },
+  viewToggleNum: { fontSize: 12, fontWeight: '700' as const, color: TEXT_LIGHT },
+  viewToggleNumActive: { color: BRAND },
   mbEmptyBin: {
     position: 'relative' as const,
     alignItems: 'center' as const,

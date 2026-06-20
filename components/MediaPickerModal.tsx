@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { X, Search, Film } from 'lucide-react-native';
+import MediaCard from '@/components/MediaCard';
 
 const BRAND = '#FF5A00';
 
@@ -48,6 +49,18 @@ function getMimeLabel(mime?: string, name?: string): string {
   if (mime === 'application/pdf') return 'PDF';
   if (mime?.includes('illustrator') || (name || '').toLowerCase().endsWith('.ai')) return 'AI';
   return (mime?.split('/').pop()?.toUpperCase() || 'FILE').substring(0, 4);
+}
+
+function formatDate(iso?: string): string {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatBytes(bytes?: number | null): string {
+  if (bytes == null || isNaN(bytes)) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export default function MediaPickerModal({
@@ -116,42 +129,18 @@ export default function MediaPickerModal({
               </View>
             ) : (
               filtered.map(f => (
-                <TouchableOpacity
+                <MediaCard
                   key={f.id}
-                  style={{
-                    width: cardWidth,
-                    borderRadius: 10,
-                    overflow: 'hidden',
-                    borderWidth: 1,
-                    borderColor: '#E5E7EB',
-                    backgroundColor: '#F9FAFB',
-                  }}
-                  onPress={() => { onSelect(f); }}
-                  activeOpacity={0.72}
-                >
-                  <View style={{ width: '100%', aspectRatio: 1, backgroundColor: '#F3F4F6' }}>
-                    {isImageMime(f.mimeType) ? (
-                      <Image
-                        source={{ uri: `/api/portal/${orgId}/files/${f.id}?inline=true` }}
-                        style={{ width: '100%', height: '100%' }}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                        <View style={{ backgroundColor: '#FFF7ED', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 }}>
-                          <Text style={{ fontSize: 11, fontWeight: '700', color: BRAND, letterSpacing: 0.5 }}>
-                            {getMimeLabel(f.mimeType, f.originalName)}
-                          </Text>
-                        </View>
-                      </View>
-                    )}
-                  </View>
-                  <View style={{ paddingHorizontal: 7, paddingVertical: 6 }}>
-                    <Text style={{ fontSize: 10, fontWeight: '600', color: '#111827', lineHeight: 13 }} numberOfLines={2}>
-                      {f.originalName}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+                  file={f}
+                  style={{ width: cardWidth }}
+                  thumbnail={isImageMime(f.mimeType)
+                    ? <Image source={{ uri: `/api/portal/${orgId}/files/${f.id}?inline=true` }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                    : <Text style={{ fontSize: 13, fontWeight: '800', color: BRAND, letterSpacing: 0.5 }}>{getMimeLabel(f.mimeType, f.originalName)}</Text>}
+                  typeLabel={getMimeLabel(f.mimeType, f.originalName)}
+                  dateLabel={formatDate(f.createdAt)}
+                  sizeLabel={formatBytes(f.fileSize)}
+                  onPress={() => onSelect(f)}
+                />
               ))
             )}
           </ScrollView>

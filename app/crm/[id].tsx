@@ -92,6 +92,7 @@ import {
 
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { apiFetch, getAuthHeaders } from '@/lib/apiFetch';
+import MediaCard from '@/components/MediaCard';
 import { FLAG_ORG_LAYOUT_V2 } from '@/constants/featureFlags';
 import { STATUS_CONFIG, getEffectiveStatus, QuoteStatus } from '@/types/quote';
 import {
@@ -141,6 +142,13 @@ function formatDate(iso?: string, withTime = false): string {
       ' at ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   }
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatBytes(bytes?: number | null): string {
+  if (bytes == null || isNaN(bytes)) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function AuthedImage({ fileId, style }: { fileId: string; style: any }) {
@@ -435,6 +443,21 @@ export default function OrgProfileScreen() {
       refetchOrgFiles();
     } catch {}
   }, [refetchOrgFiles]);
+
+  const handleOrgFileDownload = useCallback(async (file: { id: string; originalName: string }) => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    try {
+      const res = await fetch(`/api/files/${file.id}`, { headers: await getAuthHeaders() });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.originalName;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {}
+  }, []);
 
   const handleRenameFile = useCallback(async (fileId: string, newName: string) => {
     if (!newName.trim()) { setRenamingFileId(null); return; }
@@ -3707,58 +3730,27 @@ export default function OrgProfileScreen() {
                       {orgFiles.map((f: any) => {
                         const isImage = f.mimeType?.startsWith('image/');
                         const ext = (f.originalName || '').split('.').pop()?.toUpperCase() || 'FILE';
+                        const cols = isDesktop ? 6 : isTablet ? 4 : 2;
                         return (
-                          <View key={f.id} style={styles.orgMediaItem}>
-                            <TouchableOpacity onPress={() => Platform.OS === 'web' && typeof window !== 'undefined' && window.open(`/api/files/${f.id}?inline=true`, '_blank')}>
-                              {isImage ? (
-                                <AuthedImage fileId={f.id} style={styles.orgMediaThumb} />
-                              ) : (
-                                <View style={styles.orgMediaIcon}>
-                                  <FileText size={18} color={Colors.light.tint} />
-                                  <Text style={styles.orgMediaExt}>{ext}</Text>
-                                </View>
-                              )}
-                            </TouchableOpacity>
-                            {renamingFileId === f.id ? (
-                              <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
-                                <TextInput
-                                  value={renameText}
-                                  onChangeText={setRenameText}
-                                  style={[styles.orgMediaName, { flex: 1, borderBottomWidth: 1, borderBottomColor: Colors.light.tint, paddingVertical: 0 }]}
-                                  autoFocus
-                                  selectTextOnFocus
-                                  onSubmitEditing={() => handleRenameFile(f.id, renameText)}
-                                  onBlur={() => handleRenameFile(f.id, renameText)}
-                                />
-                                <TouchableOpacity onPress={() => handleRenameFile(f.id, renameText)} style={styles.orgMediaActionBtn}>
-                                  <CheckCircle2 size={12} color={Colors.light.success} />
-                                </TouchableOpacity>
-                                <TouchableOpacity onPress={() => setRenamingFileId(null)} style={styles.orgMediaActionBtn}>
-                                  <X size={12} color={Colors.light.error} />
-                                </TouchableOpacity>
-                              </View>
-                            ) : (
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                                <Text style={[styles.orgMediaName, { flex: 1 }]} numberOfLines={1}>{f.originalName}</Text>
-                                <TouchableOpacity onPress={() => { setRenamingFileId(f.id); setRenameText(f.originalName); }} style={styles.orgMediaActionBtn}>
-                                  <Edit3 size={10} color={Colors.light.textSecondary} />
-                                </TouchableOpacity>
-                              </View>
-                            )}
-                            <Text style={styles.orgMediaMeta}>{formatDate(f.createdAt)} · {ext}</Text>
-                            <View style={styles.orgMediaActions}>
-                              {Platform.OS === 'web' && (
-                                <TouchableOpacity
-                                  onPress={() => (typeof window !== 'undefined') && window.open(`/api/files/${f.id}?inline=true`, '_blank')}
-                                  style={styles.orgMediaActionBtn}
-                                >
-                                  <ExternalLink size={12} color={Colors.light.textSecondary} />
-                                </TouchableOpacity>
-                              )}
-                              <TouchableOpacity onPress={() => handleOrgFileDelete(f.id)} style={styles.orgMediaActionBtn}>
-                                <Trash2 size={12} color={Colors.light.error} />
-                              </TouchableOpacity>
-                            </View>
+                          <View key={f.id} style={{ width: `${100 / cols}%`, paddingHorizontal: 5, marginBottom: 10 }}>
+                            <MediaCard
+                              file={f}
+                              thumbnail={isImage
+                                ? <AuthedImage fileId={f.id} style={{ width: '100%', height: '100%' }} />
+                                : <Text style={styles.orgMediaCardExt}>{ext}</Text>}
+                              typeLabel={ext}
+                              dateLabel={formatDate(f.createdAt)}
+                              sizeLabel={formatBytes(f.fileSize)}
+                              onDownload={() => handleOrgFileDownload(f)}
+                              onDelete={() => handleOrgFileDelete(f.id)}
+                              renamable
+                              isRenaming={renamingFileId === f.id}
+                              renameValue={renameText}
+                              onRenameChange={setRenameText}
+                              onRenameStart={() => { setRenamingFileId(f.id); setRenameText(f.originalName); }}
+                              onRenameSubmit={() => handleRenameFile(f.id, renameText)}
+                              onRenameCancel={() => setRenamingFileId(null)}
+                            />
                           </View>
                         );
                       })}
@@ -5474,8 +5466,14 @@ const styles = StyleSheet.create({
   orgMediaGrid: {
     flexDirection: 'row' as const,
     flexWrap: 'wrap' as const,
-    gap: 10,
+    marginHorizontal: -5,
     marginTop: 10,
+  },
+  orgMediaCardExt: {
+    fontSize: 13,
+    fontWeight: '800' as const,
+    color: Colors.light.tint,
+    letterSpacing: 0.5,
   },
   orgMediaItem: {
     width: Platform.OS === 'web' ? 176 : 135,
