@@ -20,6 +20,14 @@ ChevronLeft(20)+"Back" 15/500, white title 17/600). To migrate a page: set
 at the top of the page's main return.
 **Why:** standardization, not redesign — users must not notice a change on already-correct pages.
 
+## Two parallel mobile nav drawers — keep them in sync
+The main app uses `components/MobileDrawer.tsx` (`MobileShell`: hamburger top bar → slide-in
+drawer with logo header, nav, profile footer). The **Client Hub portal** (`app/portal/[orgId].tsx`,
+dashboard step) has its OWN inline copy of that pattern (top bar = hamburger + "Client Hub" text,
+its own `mobileDrawer*` styles + open/close Animated state) — it does NOT import MobileShell.
+**How to apply:** a change to one mobile nav (drawer behavior, footer actions, scrim) usually
+needs mirroring in the other. Both use the plain-`View`+responder scrim (never `Pressable`).
+
 ## Gotcha: crm/[id] (and similar huge pages) hydrate slowly on web
 `app/crm/[id].tsx` is ~6000+ lines. On Expo web it can sit on its own "Loading…" branch
 (`directOrgLoading && !org`, Clock icon) for a long time while the client bundle hydrates +

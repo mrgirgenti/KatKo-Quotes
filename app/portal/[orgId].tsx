@@ -1006,6 +1006,10 @@ export default function ClientPortal() {
   const [projectViewLoading, setProjectViewLoading] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const sidebarWidthAnim = useRef(new Animated.Value(210)).current;
+  // Mobile nav drawer (Client Hub) — emulates the main-site mobile sidebar
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const mobileDrawerTx = useRef(new Animated.Value(-MOBILE_DRAWER_W)).current;
+  const mobileScrimOpacity = useRef(new Animated.Value(0)).current;
 
   const [clientCatalogs, setClientCatalogs] = useState<Array<{
     id: string; name: string; description: string | null; vendorName: string | null;
@@ -1326,6 +1330,30 @@ export default function ClientPortal() {
     }).start();
     setSidebarCollapsed(c => !c);
   }, [sidebarCollapsed, sidebarWidthAnim]);
+
+  const openMobileNav = useCallback(() => {
+    setMobileNavOpen(true);
+    Animated.parallel([
+      Animated.timing(mobileDrawerTx, { toValue: 0, duration: 220, useNativeDriver: false }),
+      Animated.timing(mobileScrimOpacity, { toValue: 1, duration: 220, useNativeDriver: false }),
+    ]).start();
+  }, [mobileDrawerTx, mobileScrimOpacity]);
+
+  const closeMobileNav = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(mobileDrawerTx, { toValue: -MOBILE_DRAWER_W, duration: 200, useNativeDriver: false }),
+      Animated.timing(mobileScrimOpacity, { toValue: 0, duration: 200, useNativeDriver: false }),
+    ]).start(() => setMobileNavOpen(false));
+  }, [mobileDrawerTx, mobileScrimOpacity]);
+
+  // Reset the mobile drawer instantly if the viewport grows past the mobile breakpoint
+  useEffect(() => {
+    if (!isMobile && mobileNavOpen) {
+      setMobileNavOpen(false);
+      mobileDrawerTx.setValue(-MOBILE_DRAWER_W);
+      mobileScrimOpacity.setValue(0);
+    }
+  }, [isMobile, mobileNavOpen, mobileDrawerTx, mobileScrimOpacity]);
 
   const handleForgotPassword = useCallback(async () => {
     const trimmed = email.trim();
@@ -3890,19 +3918,20 @@ export default function ClientPortal() {
             </Animated.View>
           )}
 
-          {/* Mobile: Top bar */}
+          {/* Mobile: Top bar — hamburger + "Client Hub" */}
           {isMobile && (
             <View style={dash.mobileTopBar}>
               <View style={dash.mobileTopBarLeft}>
-                {logoSrc ? (
-                  <Image source={{ uri: logoSrc }} style={dash.mobileTopLogo} resizeMode="contain" />
-                ) : (
-                  <Text style={dash.mobileTopOrgName} numberOfLines={1}>{displayName.toUpperCase()}</Text>
-                )}
+                <TouchableOpacity
+                  onPress={openMobileNav}
+                  style={dash.mobileMenuBtn}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  activeOpacity={0.7}
+                >
+                  <Menu size={24} color="#fff" />
+                </TouchableOpacity>
+                <Text style={dash.mobileTopTitle} numberOfLines={1}>Client Hub</Text>
               </View>
-              <TouchableOpacity onPress={handleSignOut} style={dash.signOutBtn}>
-                <LogOut size={18} color="#9CA3AF" />
-              </TouchableOpacity>
             </View>
           )}
 
@@ -3917,27 +3946,81 @@ export default function ClientPortal() {
             {activeView === 'profile'      && <ProfileView />}
           </View>
 
-          {/* Mobile: Bottom tab bar */}
-          {isMobile && (
-            <View style={dash.mobileBottomBar}>
-              {NAV_ITEMS.map(({ id, label, Icon }) => {
-                const isActive = activeView === id;
-                const shortLabel = id === 'submit' ? 'Submit' : id === 'projects' ? 'Projects' : id === 'artwork' ? 'Media' : id === 'catalogs' ? 'Catalogs' : label;
-                return (
-                  <TouchableOpacity
-                    key={id}
-                    style={dash.mobileNavItem}
-                    onPress={() => {
-                      setActiveView(id);
-                      if (id === 'artwork' && session) fetchMediaBin(session.orgId);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Icon size={20} color={isActive ? BRAND : '#9CA3AF'} />
-                    <Text style={[dash.mobileNavLabel, isActive && dash.mobileNavLabelActive]}>{shortLabel}</Text>
+          {/* Mobile: Slide-in nav drawer (logo lives here) */}
+          {isMobile && mobileNavOpen && (
+            <View style={StyleSheet.absoluteFill as any} pointerEvents="box-none">
+              <Animated.View style={[dash.mobileScrim, { opacity: mobileScrimOpacity }]}>
+                <View
+                  style={StyleSheet.absoluteFill as any}
+                  onStartShouldSetResponder={() => true}
+                  onResponderRelease={closeMobileNav}
+                />
+              </Animated.View>
+              <Animated.View style={[dash.mobileDrawer, { transform: [{ translateX: mobileDrawerTx }] }]}>
+                {/* Logo header + close */}
+                <View style={dash.mobileDrawerHeader}>
+                  {logoSrc ? (
+                    <Image source={{ uri: logoSrc }} style={dash.mobileDrawerLogo} resizeMode="contain" />
+                  ) : (
+                    <View style={{ flex: 1 }}>
+                      <Text style={dash.sidebarLogoText}>{displayName.toUpperCase()}</Text>
+                      <Text style={dash.sidebarLogoBrand}>Client Hub by Katalyst Ko Printshop</Text>
+                    </View>
+                  )}
+                  <TouchableOpacity onPress={closeMobileNav} style={dash.mobileDrawerClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <X size={22} color="#9CA3AF" />
                   </TouchableOpacity>
-                );
-              })}
+                </View>
+
+                {/* Nav */}
+                <ScrollView style={dash.mobileDrawerNav} contentContainerStyle={{ paddingVertical: 8 }} showsVerticalScrollIndicator={false}>
+                  {NAV_ITEMS.map(({ id, label, Icon }, idx) => {
+                    const isActive = activeView === id;
+                    const showDivider = idx === 1 || idx === 3 || idx === 5;
+                    return (
+                      <React.Fragment key={id}>
+                        {showDivider && <View style={dash.navDivider} />}
+                        <TouchableOpacity
+                          style={[dash.navItem, isActive && dash.navItemActive]}
+                          onPress={() => {
+                            setActiveView(id);
+                            if (id === 'artwork' && session) fetchMediaBin(session.orgId);
+                            closeMobileNav();
+                          }}
+                        >
+                          <Icon size={16} color={isActive ? '#fff' : '#9CA3AF'} />
+                          <Text style={[dash.navLabel, isActive && dash.navLabelActive]}>{label}</Text>
+                        </TouchableOpacity>
+                      </React.Fragment>
+                    );
+                  })}
+                </ScrollView>
+
+                {/* Footer: profile + sign out */}
+                <View style={dash.mobileDrawerFooter}>
+                  <TouchableOpacity
+                    style={dash.userRow}
+                    onPress={() => { setActiveView('profile'); fetchTeam(session.orgId); closeMobileNav(); }}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[dash.userAvatar, { backgroundColor: profileAvatarColor }, activeView === 'profile' && { borderWidth: 2, borderColor: BRAND }]}>
+                      {profilePicUri ? (
+                        <Image source={{ uri: profilePicUri }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+                      ) : (
+                        <Text style={dash.userAvatarText}>{session.userName[0]?.toUpperCase() || '?'}</Text>
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={dash.userName} numberOfLines={1}>{session.userName}</Text>
+                      <Text style={dash.userOrg} numberOfLines={1}>{session.orgName}</Text>
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={dash.mobileDrawerSignOut} onPress={() => { closeMobileNav(); handleSignOut(); }} activeOpacity={0.8}>
+                    <LogOut size={16} color="#EF4444" />
+                    <Text style={dash.mobileDrawerSignOutText}>Sign Out</Text>
+                  </TouchableOpacity>
+                </View>
+              </Animated.View>
             </View>
           )}
         </View>
@@ -4351,51 +4434,60 @@ const styles = StyleSheet.create({
 
 const SIDEBAR_BG = '#000000';
 const SIDEBAR_ACTIVE = '#FF5A00';
+const MOBILE_DRAWER_W = 280;
 
 const dash = StyleSheet.create({
   layout: { flex: 1, flexDirection: 'row', backgroundColor: '#F3F4F6' },
   layoutMobile: { flexDirection: 'column' },
 
-  // Mobile top bar
+  // Mobile top bar — hamburger + title
   mobileTopBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: SIDEBAR_BG,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
     ...Platform.select({ web: { position: 'sticky' as any, top: 0, zIndex: 10 } as any, default: {} }),
   },
-  mobileTopBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  mobileTopLogo: { width: 100, height: 28 },
-  mobileTopOrgName: { color: '#fff', fontSize: 13, fontWeight: '800', letterSpacing: 1.2 },
+  mobileTopBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 },
+  mobileMenuBtn: { padding: 2, outlineStyle: 'none' as any },
+  mobileTopTitle: { fontSize: 15, fontWeight: '700', color: '#fff', letterSpacing: 0.3, flex: 1 },
 
-  // Mobile bottom tab bar
-  mobileBottomBar: {
-    flexDirection: 'row',
+  // Mobile nav drawer
+  mobileScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    ...Platform.select({ web: { zIndex: 50 } as any, default: {} }),
+  },
+  mobileDrawer: {
+    position: 'absolute', left: 0, top: 0, bottom: 0,
+    width: MOBILE_DRAWER_W,
     backgroundColor: SIDEBAR_BG,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.08)',
-    ...Platform.select({ web: { position: 'sticky' as any, bottom: 0, zIndex: 10 } as any, default: {} }),
+    flexDirection: 'column',
+    borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.06)',
+    ...Platform.select({ web: { zIndex: 51 } as any, default: {} }),
   },
-  mobileNavItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    gap: 3,
+  mobileDrawerHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+    paddingHorizontal: 18, paddingTop: 16, paddingBottom: 16,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)',
   },
-  mobileNavLabel: {
-    fontSize: 9,
-    fontWeight: '500',
-    color: '#9CA3AF',
+  mobileDrawerLogo: { width: 140, height: 40 },
+  mobileDrawerClose: { padding: 2, outlineStyle: 'none' as any },
+  mobileDrawerNav: { flex: 1, paddingHorizontal: 10, outlineStyle: 'none' as any },
+  mobileDrawerFooter: {
+    paddingHorizontal: 10, paddingTop: 12, paddingBottom: 16, gap: 8,
+    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)',
   },
-  mobileNavLabelActive: {
-    color: BRAND,
-    fontWeight: '700',
+  mobileDrawerSignOut: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8,
   },
+  mobileDrawerSignOutText: { fontSize: 13, color: '#EF4444', fontWeight: '600' },
 
-  // Main content: add bottom padding on mobile for the tab bar
+  // Main content on mobile
   mainMobile: {
     paddingBottom: 0,
   },
@@ -4452,7 +4544,6 @@ const dash = StyleSheet.create({
   userAvatarText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   userName: { fontSize: 12, fontWeight: '600', color: '#E5E7EB' },
   userOrg: { fontSize: 10, color: '#6B7280', marginTop: 1 },
-  signOutBtn: { padding: 6 },
 
   main: { flex: 1, backgroundColor: '#F3F4F6', overflow: 'hidden' as any },
 
