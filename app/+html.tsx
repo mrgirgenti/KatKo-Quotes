@@ -23,6 +23,14 @@ const FOCUS_RESET_CSS =
   '*::-webkit-scrollbar-thumb{background:transparent!important;}' +
   '*::-webkit-scrollbar-corner{background:transparent!important;}';
 
+// App-wide 90% zoom. This MUST live in the SSR <head> so it applies on the very
+// first paint. Previously it was set in a post-hydration useEffect
+// (document.documentElement.style.zoom = '0.9'), which made every page render at
+// 100% and then visibly snap down to 90% — most noticeable on the portal's
+// single centered login card ("large → small" resize flash). Declaring it here
+// removes the flash entirely.
+const APP_ZOOM_CSS = 'html{zoom:0.9;}';
+
 export default function Root({ children }: PropsWithChildren) {
   return (
     <html lang="en">
@@ -31,6 +39,7 @@ export default function Root({ children }: PropsWithChildren) {
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
         <ScrollViewStyleReset />
+        <style dangerouslySetInnerHTML={{ __html: APP_ZOOM_CSS }} />
         <style dangerouslySetInnerHTML={{ __html: FOCUS_RESET_CSS }} />
       </head>
       <body>{children}</body>

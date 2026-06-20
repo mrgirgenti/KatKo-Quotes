@@ -222,7 +222,10 @@ export default function RootLayout() {
   useEffect(() => {
     SplashScreen.hideAsync();
     if (typeof document !== 'undefined') {
-      document.documentElement.style.zoom = '0.9';
+      // NOTE: the app-wide 90% zoom is declared in the SSR <head> (app/+html.tsx,
+      // APP_ZOOM_CSS) so it applies on first paint. It used to be set here in a
+      // post-hydration effect, which caused a visible "large → small" resize flash
+      // on every load (most noticeable on the portal login card). Do not re-add it.
       // Re-assert the focus-artifact reset after hydration (idempotent; the same
       // block is also injected at module scope above so it covers first paint).
       injectFocusReset();
