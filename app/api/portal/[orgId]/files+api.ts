@@ -11,6 +11,7 @@ export async function GET(_request: Request, { orgId }: { orgId: string }) {
        FROM "File"
        WHERE "organizationId" = $1
          AND "projectId" IS NULL
+         AND "visibility" = 'CLIENT_VISIBLE'
        ORDER BY "createdAt" DESC`,
       [orgId],
     );

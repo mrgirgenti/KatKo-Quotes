@@ -7,7 +7,8 @@ export async function GET(_request: Request, { orgId, fileId }: { orgId: string;
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `SELECT "storageKey", "mimeType", "originalName" FROM "File" WHERE id = $1 AND "organizationId" = $2`,
+      `SELECT "storageKey", "mimeType", "originalName" FROM "File"
+       WHERE id = $1 AND "organizationId" = $2 AND "visibility" = 'CLIENT_VISIBLE'`,
       [fileId, orgId],
     );
     if (!result.rows[0]) return Response.json({ error: 'File not found' }, { status: 404 });
@@ -41,7 +42,7 @@ export async function PATCH(request: Request, { orgId, fileId }: { orgId: string
   const client = await pool.connect();
   try {
     const check = await client.query(
-      `SELECT id FROM "File" WHERE id = $1 AND "organizationId" = $2`,
+      `SELECT id FROM "File" WHERE id = $1 AND "organizationId" = $2 AND "visibility" = 'CLIENT_VISIBLE'`,
       [fileId, orgId]
     );
     if (!check.rows[0]) return Response.json({ error: 'File not found' }, { status: 404 });
@@ -62,7 +63,7 @@ export async function DELETE(_request: Request, { orgId, fileId }: { orgId: stri
   const client = await pool.connect();
   try {
     const check = await client.query(
-      `SELECT id, "storageKey" FROM "File" WHERE id = $1 AND "organizationId" = $2`,
+      `SELECT id, "storageKey" FROM "File" WHERE id = $1 AND "organizationId" = $2 AND "visibility" = 'CLIENT_VISIBLE'`,
       [fileId, orgId]
     );
     if (!check.rows[0]) {
