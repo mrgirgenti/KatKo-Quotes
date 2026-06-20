@@ -11,12 +11,13 @@ RN Web renders `<ScrollView>`, `<Pressable>`, and other interactive components a
 
 A **thin vertical blue line at a FIXED viewport x-position (~40px), full-height, on EVERY page regardless of layout, that flashes when the mouse enters the preview from the LEFT (editor→preview side)** is NOT an app bug. It is **Chrome's focus ring on the Replit preview `<iframe>` itself** — you cannot style across the iframe boundary from inside, which is why no amount of `outline:none`/`box-shadow:none` CSS removes it.
 
-**Definitive triage (do this BEFORE writing any CSS/JS fix):**
-- Add a temp DOM scan on window-focus/focusin/mousemove; if it reports `activeElement=body` and finds NO thin-tall/blue element in the DOM at the moment the line is visible → the line is outside the app DOM.
-- Ask the user to open the app in its **own browser tab** (not the Replit preview pane). If the line **disappears** → confirmed iframe artifact. It also persists in a Chrome **Guest** window (no extensions) but only while inside the preview pane.
-- Extensions (e.g. reading-ruler tools) can *amplify* it (bigger line in normal profile, smaller in incognito) but are not the root cause.
+A **blue rectangle matching the sidebar's dimensions (240×100vh), only visible when entering the preview from the left** is ALSO an iframe artifact — Chrome's native focus behavior forwarding focus to the sidebar `Animated.View` (the first DOM element) when the cursor crosses from the Replit agent panel into the preview pane. Confirmed: **not visible at `$REPLIT_DEV_DOMAIN` opened in a standalone browser tab, and never visible in production.** Do not investigate.
 
-**Conclusion:** End users never see it (published/standalone app has no embedding iframe). Do not chase it with app code. **Why:** wasted multiple sessions adding 4-layer CSS resets that could never work because the line is rendered by the browser around the iframe, outside our stylable DOM.
+**Definitive triage (do this BEFORE writing any CSS/JS fix):**
+- Open the app at `$REPLIT_DEV_DOMAIN` directly in a standalone browser tab (not the Replit preview pane). If the artifact **disappears** → confirmed iframe artifact. Stop all investigation.
+- End users never see iframe artifacts — the published/standalone app has no embedding iframe.
+
+**Conclusion:** Do not chase iframe-only artifacts with app code. **Why:** wasted multiple sessions on 4-layer CSS resets + gesture zone investigations that could never fix a browser iframe boundary behavior.
 
 ## Why CSS-only approaches fail
 
