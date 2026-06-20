@@ -316,7 +316,6 @@ export default function OrgProfileScreen() {
   const [editOrgModal, setEditOrgModal] = useState(false);
   const [orgForm, setOrgForm] = useState({ name: '', type: '', address: '', city: '', state: '', website: '', notes: '', status: 'Cold' as CrmStatus });
   const [showOrgTypeDropdown, setShowOrgTypeDropdown] = useState(false);
-  const [showOrgMenu, setShowOrgMenu] = useState(false);
 
   const [contactModal, setContactModal] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
@@ -350,7 +349,6 @@ export default function OrgProfileScreen() {
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
   const [hubUsersOpen, setHubUsersOpen] = useState(true);
   const [hubInvitesOpen, setHubInvitesOpen] = useState(true);
-  const [hubActionMenuId, setHubActionMenuId] = useState<string | null>(null);
   const [inviteTab, setInviteTab] = useState<'email' | 'link' | 'message'>('email');
   const [resetPasswordSending, setResetPasswordSending] = useState<string | null>(null);
   const [promotingId, setPromotingId] = useState<string | null>(null);
@@ -634,7 +632,6 @@ export default function OrgProfileScreen() {
   const handlePromoteMember = useCallback(async (m: OrgMembership) => {
     if (!org) return;
     setPromotingId(m.id);
-    setHubActionMenuId(null);
     try {
       const newRole = m.role === 'ORG_ADMIN' ? 'MEMBER' : 'ORG_ADMIN';
       await fetch(`/api/memberships/${m.id}`, {
@@ -1120,50 +1117,46 @@ export default function OrgProfileScreen() {
                   </Text>
                 </View>
               </View>
-              <View style={{ position: 'relative' as any }}>
-                <TouchableOpacity
-                  style={styles.hubActionMenuBtn}
-                  onPress={() => setHubActionMenuId((id) => id === m.id ? null : m.id)}
-                >
-                  <MoreHorizontal size={13} color={Colors.light.textSecondary} />
-                </TouchableOpacity>
-                {hubActionMenuId === m.id && (
+              <OverlayMenu
+                align="right"
+                menuWidth={200}
+                trigger={({ open }) => (
+                  <TouchableOpacity style={styles.hubActionMenuBtn} onPress={open}>
+                    <MoreHorizontal size={13} color={Colors.light.textSecondary} />
+                  </TouchableOpacity>
+                )}
+              >
+                {({ close }) => (
                   <>
-                    <Pressable
-                      style={{ position: 'fixed' as any, top: 0, left: 0, right: 0, bottom: 0, zIndex: 98 }}
-                      onPress={() => setHubActionMenuId(null)}
-                    />
-                    <View style={styles.hubActionMenu}>
-                      <TouchableOpacity style={styles.hubActionMenuItem} onPress={() => { handleResetPassword(m); setHubActionMenuId(null); }}>
-                        <Text style={styles.hubActionMenuItemText}>{resetPasswordSending === m.id ? 'Sending…' : 'Reset Password'}</Text>
+                    <TouchableOpacity style={styles.hubActionMenuItem} onPress={() => { close(); handleResetPassword(m); }}>
+                      <Text style={styles.hubActionMenuItemText}>{resetPasswordSending === m.id ? 'Sending…' : 'Reset Password'}</Text>
+                    </TouchableOpacity>
+                    {m.userStatus !== 'DISABLED' && (
+                      <TouchableOpacity style={styles.hubActionMenuItem} onPress={() => { close(); handleResendInvite(m); }}>
+                        <Text style={styles.hubActionMenuItemText}>Resend Invite</Text>
                       </TouchableOpacity>
-                      {m.userStatus !== 'DISABLED' && (
-                        <TouchableOpacity style={styles.hubActionMenuItem} onPress={() => { handleResendInvite(m); setHubActionMenuId(null); }}>
-                          <Text style={styles.hubActionMenuItemText}>Resend Invite</Text>
-                        </TouchableOpacity>
-                      )}
-                      <TouchableOpacity style={styles.hubActionMenuItem} onPress={() => { handleToggleClientUserStatus(m); setHubActionMenuId(null); }}>
-                        <Text style={styles.hubActionMenuItemText}>{m.userStatus === 'DISABLED' ? 'Enable Access' : 'Disable Access'}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.hubActionMenuItem} onPress={() => handlePromoteMember(m)}>
-                        <Text style={styles.hubActionMenuItemText}>{promotingId === m.id ? 'Updating…' : m.role === 'ORG_ADMIN' ? 'Demote to Member' : 'Promote to Admin'}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.hubActionMenuItem, { borderBottomWidth: 0 }]}
-                        onPress={() => {
-                          setHubActionMenuId(null);
-                          Alert.alert('Remove Client', `Remove ${m.userName || 'this client'} from the hub?`, [
-                            { text: 'Cancel', style: 'cancel' },
-                            { text: 'Remove', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
-                          ]);
-                        }}
-                      >
-                        <Text style={[styles.hubActionMenuItemText, { color: Colors.light.error }]}>Remove User</Text>
-                      </TouchableOpacity>
-                    </View>
+                    )}
+                    <TouchableOpacity style={styles.hubActionMenuItem} onPress={() => { close(); handleToggleClientUserStatus(m); }}>
+                      <Text style={styles.hubActionMenuItemText}>{m.userStatus === 'DISABLED' ? 'Enable Access' : 'Disable Access'}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.hubActionMenuItem} onPress={() => { close(); handlePromoteMember(m); }}>
+                      <Text style={styles.hubActionMenuItemText}>{promotingId === m.id ? 'Updating…' : m.role === 'ORG_ADMIN' ? 'Demote to Member' : 'Promote to Admin'}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.hubActionMenuItem, { borderBottomWidth: 0 }]}
+                      onPress={() => {
+                        close();
+                        Alert.alert('Remove Client', `Remove ${m.userName || 'this client'} from the hub?`, [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Remove', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
+                        ]);
+                      }}
+                    >
+                      <Text style={[styles.hubActionMenuItemText, { color: Colors.light.error }]}>Remove User</Text>
+                    </TouchableOpacity>
                   </>
                 )}
-              </View>
+              </OverlayMenu>
             </View>
           ))
         )
@@ -1218,46 +1211,49 @@ export default function OrgProfileScreen() {
       {/* Identity card */}
       <View style={styles.orgIdentityCard}>
         {/* Actions menu */}
-        <TouchableOpacity
-          style={styles.orgMenuBtn}
-          onPress={() => setShowOrgMenu((v) => !v)}
-        >
-          <MoreHorizontal size={18} color={Colors.light.textSecondary} />
-        </TouchableOpacity>
-        {showOrgMenu && (
-          <>
-            <Pressable
-              style={{ position: 'fixed' as any, top: 0, left: 0, right: 0, bottom: 0, zIndex: 98 }}
-              onPress={() => setShowOrgMenu(false)}
-            />
-            <View style={styles.orgMenuDropdown}>
+        <View style={styles.orgMenuBtn}>
+          <OverlayMenu
+            align="right"
+            menuWidth={170}
+            trigger={({ open }) => (
               <TouchableOpacity
-                style={styles.orgMenuItem}
-                onPress={() => {
-                  setShowOrgMenu(false);
-                  router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } });
-                }}
+                style={{ width: 30, height: 30, justifyContent: 'center', alignItems: 'center' }}
+                onPress={open}
               >
-                <Plus size={14} color={Colors.light.tint} />
-                <Text style={styles.orgMenuItemText}>New Quote</Text>
+                <MoreHorizontal size={18} color={Colors.light.textSecondary} />
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.orgMenuItem}
-                onPress={() => { setShowOrgMenu(false); openEditOrg(); }}
-              >
-                <Edit3 size={14} color={Colors.light.text} />
-                <Text style={styles.orgMenuItemText}>Edit Profile</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.orgMenuItem, styles.orgMenuItemDanger]}
-                onPress={() => { setShowOrgMenu(false); handleDeleteOrg(); }}
-              >
-                <Trash2 size={14} color={Colors.light.error} />
-                <Text style={[styles.orgMenuItemText, { color: Colors.light.error }]}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
+            )}
+          >
+            {({ close }) => (
+              <>
+                <TouchableOpacity
+                  style={styles.orgMenuItem}
+                  onPress={() => {
+                    close();
+                    router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } });
+                  }}
+                >
+                  <Plus size={14} color={Colors.light.tint} />
+                  <Text style={styles.orgMenuItemText}>New Quote</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.orgMenuItem}
+                  onPress={() => { close(); openEditOrg(); }}
+                >
+                  <Edit3 size={14} color={Colors.light.text} />
+                  <Text style={styles.orgMenuItemText}>Edit Profile</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.orgMenuItem, styles.orgMenuItemDanger]}
+                  onPress={() => { close(); handleDeleteOrg(); }}
+                >
+                  <Trash2 size={14} color={Colors.light.error} />
+                  <Text style={[styles.orgMenuItemText, { color: Colors.light.error }]}>Delete</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </OverlayMenu>
+        </View>
         {/* Status badge — top-left */}
         <View style={styles.orgStatusBadge}>
           <StatusBadge status={org.status} />

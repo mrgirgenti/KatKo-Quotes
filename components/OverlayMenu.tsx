@@ -5,6 +5,8 @@ import {
   Pressable,
   StyleSheet,
   useWindowDimensions,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
 import Colors from '@/constants/colors';
 
@@ -18,6 +20,8 @@ interface OverlayMenuProps {
   menuWidth?: number;
   /** Horizontal alignment of the menu relative to the trigger. */
   align?: 'left' | 'right';
+  /** Optional style override merged onto the menu container (e.g. dark theme). */
+  menuStyle?: StyleProp<ViewStyle>;
 }
 
 /**
@@ -34,6 +38,7 @@ export default function OverlayMenu({
   children,
   menuWidth = 220,
   align = 'right',
+  menuStyle,
 }: OverlayMenuProps) {
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
@@ -85,7 +90,7 @@ export default function OverlayMenu({
       >
         <Pressable style={styles.backdrop} onPress={close}>
           <View
-            style={[styles.menu, { top, left, width: menuWidth }]}
+            style={[styles.menu, { top, left, width: menuWidth }, menuStyle]}
             onStartShouldSetResponder={() => true}
             onLayout={(e) => {
               const h = e.nativeEvent.layout.height;

@@ -1,0 +1,540 @@
+IMPLEMENTATION MODE
+
+Do not create a planning report.
+Do not analyze.
+Do not investigate.
+Do not create phases.
+
+Begin implementation immediately.
+
+Only stop if:
+1. A required file cannot be located.
+2. Existing functionality would break.
+3. A dependency blocks implementation.
+
+Otherwise:
+- Edit code
+- Save files
+- Implement requested UI
+
+Report:
+- Files changed
+- Components changed
+- Desktop changes implemented
+- Mobile changes implemented
+
+Then stop.
+
+==================================================
+CLIENT HUB - MY PROFILE REDESIGN
+==================================================
+
+The attached mobile mockup is now the source of truth for the mobile experience.
+
+The desktop design previously approved remains in place.
+
+==================================================
+DESKTOP LAYOUT
+==================================================
+
+ROW 1
+
+Three equal width cards:
+
+1. Organization Branding
+2. Organization Information
+3. Client Hub Settings
+
+All three cards must have:
+
+- Black header bars
+- White header text
+- Consistent header height
+- Same styling used throughout Katalyst OS
+
+--------------------------------------------------
+ORGANIZATION BRANDING
+--------------------------------------------------
+
+Rename card:
+
+ORGANIZATION BRANDING
+
+This logo must sync directly with the Organization logo in Katalyst OS.
+
+Do NOT create a separate Client Hub logo system.
+
+Display:
+
+Current Logo
+
+Square logo preview
+
+Recommended: 500 × 500 PNG
+
+Admin View:
+- Upload Logo
+- Remove Logo
+
+Non-Admin View:
+- No upload controls
+- Display:
+  "Organization logo managed by your Org Admin."
+
+--------------------------------------------------
+ORGANIZATION INFORMATION
+--------------------------------------------------
+
+Display:
+
+- Organization Name
+- Primary Contact
+- Phone
+- Email
+- Account Representative
+
+Read-only.
+
+--------------------------------------------------
+CLIENT HUB SETTINGS
+--------------------------------------------------
+
+Display:
+
+- Hub Status
+- Hub URL
+- Copy Link button
+- Organization Admin
+- Total Members
+
+No notification settings.
+
+No additional preferences.
+
+==================================================
+DESKTOP ROW 2
+==================================================
+
+Split into two columns.
+
+LEFT COLUMN = My Profile
+
+RIGHT COLUMN = Need Help
+
+Width ratio:
+
+My Profile = 75%
+
+Need Help = 25%
+
+--------------------------------------------------
+MY PROFILE
+--------------------------------------------------
+
+Black header bar.
+
+Layout:
+
+LEFT SIDE
+- Profile Photo
+- Avatar Color Picker
+- Upload Photo
+- Remove Photo
+
+RIGHT SIDE
+- Full Name
+- Email Address
+- Organization
+- Role
+- Mobile Number
+
+Keep compact.
+
+Do not waste horizontal space.
+
+--------------------------------------------------
+NEED HELP
+--------------------------------------------------
+
+Black header bar.
+
+Title:
+
+NEED HELP?
+
+Text:
+
+Need assistance with your project, artwork, products, or account?
+
+Buttons:
+
+Call Us
+(480) 559-9033
+
+Email Us
+jobs@katalystko.com
+
+Buttons must match existing Katalyst button styling.
+
+Links:
+
+tel:4805599033
+
+mailto:jobs@katalystko.com
+
+==================================================
+DESKTOP ROW 3
+==================================================
+
+Admin Only
+
+TEAM MANAGEMENT
+
+Black header bar.
+
+Invite User button in header.
+
+Columns:
+
+User
+Email
+Role
+Status
+Actions
+
+When inviting a user:
+
+1. Create or update Organization Contact
+2. Enable Client Hub Access
+3. Send Invitation
+4. Add user to Team Management
+
+If contact already exists:
+- Do not duplicate
+- Enable Client Hub Access
+- Send invite
+
+If removed:
+- Remove Client Hub Access
+- Do not delete Contact record
+
+==================================================
+REMOVE
+==================================================
+
+Remove:
+
+- Notification Preferences
+- Large Sign Out card
+- Legacy My Team card
+
+Sign Out should only exist inside sidebar user dropdown.
+
+Sidebar dropdown:
+
+My Profile
+Switch Organization
+Sign Out
+
+==================================================
+MOBILE EXPERIENCE
+==================================================
+
+The attached mobile mockup is the approved design.
+
+Do NOT create your own mobile layout.
+
+Do NOT simply stack desktop cards vertically.
+
+Do NOT use desktop tables on mobile.
+
+==================================================
+MOBILE PAGE STRUCTURE
+==================================================
+
+Order:
+
+My Profile Header
+
+Organization Branding
+Organization Information
+Client Hub Settings
+
+My Profile
+
+Need Help
+
+Team Management (Admin Only)
+
+All sections use:
+
+- Black header bars
+- White header text
+- White cards
+- Orange actions
+- Rounded corners
+
+==================================================
+MOBILE ACCORDIONS
+==================================================
+
+The following sections become accordion cards:
+
+1. Organization Branding
+2. Organization Information
+3. Client Hub Settings
+
+All three:
+
+- Collapsed by default
+- Chevron on right
+- Expand individually
+
+--------------------------------------------------
+Organization Branding
+--------------------------------------------------
+
+When expanded:
+
+Show:
+
+Current Logo
+
+Square Logo Preview
+
+Recommended: 500 × 500 PNG
+
+Admin:
+- Upload Logo
+- Remove Logo
+
+Non Admin:
+- Organization logo managed by your Org Admin
+
+--------------------------------------------------
+Organization Information
+--------------------------------------------------
+
+When expanded:
+
+Show:
+
+- Organization Name
+- Primary Contact
+- Phone
+- Email
+- Account Representative
+
+--------------------------------------------------
+Client Hub Settings
+--------------------------------------------------
+
+When expanded:
+
+Show:
+
+- Hub Status
+- Hub URL
+- Copy Link button
+- Organization Admin
+- Total Members
+
+==================================================
+MOBILE MY PROFILE
+==================================================
+
+This section is NOT an accordion.
+
+Always visible.
+
+Black section header:
+
+MY PROFILE
+
+Layout:
+
+Top:
+
+Centered avatar/profile image
+
+Below avatar:
+
+Avatar Color row
+
+Single horizontal row of color circles.
+
+Below colors:
+
+Upload Photo button
+
+Remove Photo button
+
+Buttons should be stacked vertically.
+
+Full width.
+
+Below buttons:
+
+Profile fields displayed as stacked rows:
+
+- Full Name
+- Email Address
+- Organization
+- Role
+- Mobile Number
+
+Use full-width layout.
+
+Do NOT attempt desktop-style columns.
+
+==================================================
+MOBILE NEED HELP
+==================================================
+
+Always visible.
+
+Black section header:
+
+NEED HELP?
+
+Text:
+
+Need assistance with your project, artwork, products, or account?
+
+Buttons:
+
+[ Call Us (480) 559-9033 ]
+
+[ Email Us jobs@katalystko.com ]
+
+Requirements:
+
+- Full width
+- Stacked vertically
+- Thumb-friendly
+- Match Katalyst styling
+
+Links:
+
+tel:4805599033
+
+mailto:jobs@katalystko.com
+
+==================================================
+MOBILE TEAM MANAGEMENT
+==================================================
+
+ADMIN ONLY
+
+Do NOT use tables.
+
+Convert users into member cards.
+
+Example:
+
+[Avatar]
+
+Josh Girgenti
+josh@katalystko.com
+
+[Admin] [Active]
+
+(...)
+
+Invited users:
+
+[Member] [Invited]
+
+Show:
+
+Resend Invite
+
+Current user:
+
+Show small "You" badge.
+
+Header:
+
+TEAM MANAGEMENT
+
+[ + Invite User ]
+
+==================================================
+MOBILE USER MENU
+==================================================
+
+User profile area in sidebar opens:
+
+My Profile
+
+Switch Organization
+
+Sign Out
+
+Sign Out should NOT appear as a standalone card.
+
+==================================================
+MOBILE DESIGN RULES
+==================================================
+
+- No horizontal scrolling
+- No compressed tables
+- No desktop layouts squeezed onto mobile
+- No overflowing content
+- Minimum 16px padding
+- Thumb-friendly controls
+- Square logo previews
+- Consistent black headers
+- Consistent orange actions
+
+==================================================
+VALIDATION
+==================================================
+
+Verify:
+
+✓ Desktop layout matches approved design
+
+✓ Mobile matches approved mockup
+
+✓ Organization Branding accordion works
+
+✓ Organization Information accordion works
+
+✓ Client Hub Settings accordion works
+
+✓ My Profile remains expanded
+
+✓ Need Help remains expanded
+
+✓ Team Management uses member cards
+
+✓ Organization logo syncs with Organization Details
+
+✓ Profile photo upload works
+
+✓ Avatar color selection works
+
+✓ Invite User creates/updates Organization Contact
+
+✓ Need Help buttons function correctly
+
+✓ Sidebar dropdown contains Sign Out
+
+✓ No notification preferences remain
+
+✓ No horizontal overflow exists
+
+==================================================
+REPORT BACK
+==================================================
+
+When complete provide:
+
+- Files changed
+- Components changed
+- Desktop changes implemented
+- Mobile changes implemented
+- Any blockers
+
+Then stop.

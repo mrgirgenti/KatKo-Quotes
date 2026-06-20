@@ -75,6 +75,7 @@ import {
 import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
 import MediaPickerModal from '@/components/MediaPickerModal';
 import MediaCard from '@/components/MediaCard';
+import OverlayMenu from '@/components/OverlayMenu';
 
 const BRAND = '#FF5A00';
 const BRAND_DARK = '#CC4700';
@@ -976,7 +977,6 @@ export default function ClientPortal() {
   const [orgLogoSaveMsg, setOrgLogoSaveMsg] = useState('');
   const [orgPhone, setOrgPhone] = useState<string | null>(null);
   const [orgEmail, setOrgEmail] = useState<string | null>(null);
-  const [sidebarDropdownOpen, setSidebarDropdownOpen] = useState(false);
   const profilePicInputRef = useRef<any>(null);
   const orgLogoInputRef = useRef<any>(null);
 
@@ -3735,48 +3735,56 @@ export default function ClientPortal() {
               </View>
 
               <View style={[dash.sidebarFooter, sidebarCollapsed && { alignItems: 'center', paddingHorizontal: 0 }]}>
-                {sidebarDropdownOpen && !sidebarCollapsed && (
-                  <View style={profStyles.sidebarDropdown}>
-                    <TouchableOpacity style={profStyles.sidebarDropdownItem} onPress={() => { setSidebarDropdownOpen(false); setActiveView('profile'); fetchTeam(session.orgId); }} activeOpacity={0.75}>
-                      <User size={14} color="#D1D5DB" />
-                      <Text style={profStyles.sidebarDropdownText}>My Profile</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={profStyles.sidebarDropdownItem} onPress={() => { setSidebarDropdownOpen(false); handleSignOut(); }} activeOpacity={0.75}>
-                      <LogOut size={14} color="#D1D5DB" />
-                      <Text style={profStyles.sidebarDropdownText}>Switch Organization</Text>
-                    </TouchableOpacity>
-                    <View style={profStyles.sidebarDropdownSep} />
-                    <TouchableOpacity style={profStyles.sidebarDropdownItem} onPress={() => { setSidebarDropdownOpen(false); handleSignOut(); }} activeOpacity={0.75}>
-                      <LogOut size={14} color="#EF4444" />
-                      <Text style={[profStyles.sidebarDropdownText, { color: '#EF4444' }]}>Sign Out</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-                <TouchableOpacity
-                  style={[dash.userRow, sidebarCollapsed && { justifyContent: 'center' }]}
-                  onPress={() => {
-                    if (sidebarCollapsed) { setActiveView('profile'); fetchTeam(session.orgId); }
-                    else { setSidebarDropdownOpen(v => !v); }
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <View style={[dash.userAvatar, { backgroundColor: profileAvatarColor }, activeView === 'profile' && { borderWidth: 2, borderColor: BRAND }]}>
-                    {profilePicUri ? (
-                      <Image source={{ uri: profilePicUri }} style={{ width: 32, height: 32, borderRadius: 16 }} />
-                    ) : (
-                      <Text style={dash.userAvatarText}>{session.userName[0]?.toUpperCase() || '?'}</Text>
-                    )}
-                  </View>
-                  {!sidebarCollapsed && (
-                    <>
-                      <View style={{ flex: 1 }}>
-                        <Text style={dash.userName} numberOfLines={1}>{session.userName}</Text>
-                        <Text style={dash.userOrg} numberOfLines={1}>{session.orgName}</Text>
+                <OverlayMenu
+                  align="left"
+                  menuWidth={210}
+                  menuStyle={{ backgroundColor: '#1C1C1E', borderColor: '#2A2A2A' }}
+                  trigger={({ open, isOpen }) => (
+                    <TouchableOpacity
+                      style={[dash.userRow, sidebarCollapsed && { justifyContent: 'center' }]}
+                      onPress={() => {
+                        if (sidebarCollapsed) { setActiveView('profile'); fetchTeam(session.orgId); }
+                        else { open(); }
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <View style={[dash.userAvatar, { backgroundColor: profileAvatarColor }, activeView === 'profile' && { borderWidth: 2, borderColor: BRAND }]}>
+                        {profilePicUri ? (
+                          <Image source={{ uri: profilePicUri }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+                        ) : (
+                          <Text style={dash.userAvatarText}>{session.userName[0]?.toUpperCase() || '?'}</Text>
+                        )}
                       </View>
-                      {sidebarDropdownOpen ? <ChevronDown size={12} color="#6B7280" /> : <ChevronUp size={12} color="#6B7280" />}
+                      {!sidebarCollapsed && (
+                        <>
+                          <View style={{ flex: 1 }}>
+                            <Text style={dash.userName} numberOfLines={1}>{session.userName}</Text>
+                            <Text style={dash.userOrg} numberOfLines={1}>{session.orgName}</Text>
+                          </View>
+                          {isOpen ? <ChevronDown size={12} color="#6B7280" /> : <ChevronUp size={12} color="#6B7280" />}
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                >
+                  {({ close }) => (
+                    <>
+                      <TouchableOpacity style={profStyles.sidebarDropdownItem} onPress={() => { close(); setActiveView('profile'); fetchTeam(session.orgId); }} activeOpacity={0.75}>
+                        <User size={14} color="#D1D5DB" />
+                        <Text style={profStyles.sidebarDropdownText}>My Profile</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={profStyles.sidebarDropdownItem} onPress={() => { close(); handleSignOut(); }} activeOpacity={0.75}>
+                        <LogOut size={14} color="#D1D5DB" />
+                        <Text style={profStyles.sidebarDropdownText}>Switch Organization</Text>
+                      </TouchableOpacity>
+                      <View style={profStyles.sidebarDropdownSep} />
+                      <TouchableOpacity style={profStyles.sidebarDropdownItem} onPress={() => { close(); handleSignOut(); }} activeOpacity={0.75}>
+                        <LogOut size={14} color="#EF4444" />
+                        <Text style={[profStyles.sidebarDropdownText, { color: '#EF4444' }]}>Sign Out</Text>
+                      </TouchableOpacity>
                     </>
                   )}
-                </TouchableOpacity>
+                </OverlayMenu>
               </View>
             </Animated.View>
           )}
