@@ -20,6 +20,7 @@ export async function GET(_req: Request, { orgId }: { orgId: string }) {
           ELSE p.status::text
         END AS status,
         p."inHandsDate",
+        p."orderDate",
         p."createdAt",
         (
           SELECT COUNT(*)::int

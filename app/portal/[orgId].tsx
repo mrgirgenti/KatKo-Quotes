@@ -111,6 +111,7 @@ interface PortalProject {
   title: string;
   status: string;
   inHandsDate: string | null;
+  orderDate: string | null;
   createdAt: string;
   lineItemCount: number;
   totalCost: string | null;
@@ -1891,23 +1892,27 @@ export default function ClientPortal() {
 
     const THUMB_COLORS = ['#FF5A00', '#2563EB', '#7C3AED', '#059669', '#DC2626', '#D97706', '#0891B2'];
 
-    const SortTh = ({ field, label, width, flex, align }: {
+    const SortTh = ({ field, label, style, align }: {
       field: typeof mpSortField; label: string;
-      width?: number; flex?: number; align?: 'left' | 'right';
+      style?: any; align?: 'left' | 'right';
     }) => {
       const active = mpSortField === field;
       const dir = mpSortDir;
       return (
         <TouchableOpacity
           onPress={() => toggleSort(field)}
-          style={[mpStyles.thBtn, width ? { width } : undefined, flex ? { flex } : undefined]}
+          style={[
+            mpStyles.thBtn,
+            style,
+            align === 'right' && { justifyContent: 'flex-end' },
+          ]}
         >
           <Text style={[mpStyles.thText, active && mpStyles.thTextActive, align === 'right' && { textAlign: 'right' }]}>
             {label}
           </Text>
           {active
             ? (dir === 'asc' ? <ChevronUp size={10} color="#FF5A00" /> : <ChevronDown size={10} color="#FF5A00" />)
-            : <ArrowUpDown size={10} color="rgba(255,255,255,0.4)" />
+            : <ArrowUpDown size={10} color="rgba(17,24,39,0.35)" />
           }
         </TouchableOpacity>
       );
@@ -1916,15 +1921,18 @@ export default function ClientPortal() {
     const ColHeaders = () => (
       <View style={mpStyles.tableHeader}>
         <View style={mpStyles.thumbCol} />
-        <SortTh field="project" label="PROJECT" flex={2} />
-        <SortTh field="status" label="STATUS" width={128} />
-        <SortTh field="inHands" label="DUE DATE" width={154} />
-        <SortTh field="items" label="PCS" width={58} align="right" />
-        <SortTh field="total" label="TOTAL" width={88} align="right" />
-        <View style={{ width: 88 }}>
+        <SortTh field="project" label="PROJECT" style={mpStyles.colProject} />
+        <SortTh field="status" label="STATUS" style={mpStyles.colStatus} />
+        <View style={mpStyles.colOrderDate}>
+          <Text style={mpStyles.thText}>ORDER DATE</Text>
+        </View>
+        <SortTh field="inHands" label="DUE DATE" style={mpStyles.colDueDate} />
+        <SortTh field="items" label="PCS" style={mpStyles.colPcs} align="right" />
+        <SortTh field="total" label="TOTAL" style={mpStyles.colTotal} align="right" />
+        <View style={mpStyles.colPerPcs}>
           <Text style={[mpStyles.thText, { textAlign: 'right' }]}>PER PCS</Text>
         </View>
-        <View style={{ width: 148 }}>
+        <View style={mpStyles.colActions}>
           <Text style={[mpStyles.thText, { textAlign: 'right' }]}>ACTION</Text>
         </View>
       </View>
@@ -1943,28 +1951,30 @@ export default function ClientPortal() {
               <Text style={[mpStyles.thumbInitial, { color: thumbColor }]}>{initial}</Text>
             </View>
           </View>
-          <View style={{ flex: 2, paddingRight: 10, justifyContent: 'center' }}>
+          <View style={[mpStyles.colProject, mpStyles.tdCell, { paddingRight: 10 }]}>
             <Text style={mpStyles.tRowName} numberOfLines={2}>{p.title}</Text>
           </View>
-          <View style={{ width: 128, justifyContent: 'center' }}>
+          <View style={[mpStyles.colStatus, mpStyles.tdCell]}>
             <StatusPill status={p.status} />
           </View>
-          <View style={{ width: 154, justifyContent: 'center' }}>
-            <Text style={mpStyles.tDue}>Due {p.inHandsDate ? formatDate(p.inHandsDate) : '\u2014'}</Text>
-            <Text style={mpStyles.tDueSub}>In Hands: {p.inHandsDate ? formatDate(p.inHandsDate) : '\u2014'}</Text>
+          <View style={[mpStyles.colOrderDate, mpStyles.tdCell]}>
+            <Text style={mpStyles.tDue}>{p.orderDate ? formatDate(p.orderDate) : '\u2014'}</Text>
           </View>
-          <View style={{ width: 58, alignItems: 'flex-end', justifyContent: 'center' }}>
+          <View style={[mpStyles.colDueDate, mpStyles.tdCell]}>
+            <Text style={mpStyles.tDue}>Due {p.inHandsDate ? formatDate(p.inHandsDate) : '\u2014'}</Text>
+          </View>
+          <View style={[mpStyles.colPcs, mpStyles.tdCellRight]}>
             <Text style={mpStyles.tNum}>{pcs ?? '\u2014'}</Text>
           </View>
-          <View style={{ width: 88, alignItems: 'flex-end', justifyContent: 'center' }}>
+          <View style={[mpStyles.colTotal, mpStyles.tdCellRight]}>
             <Text style={[mpStyles.tNum, cost ? mpStyles.tNumBold : undefined]}>
               {cost ? `$${cost.toFixed(2)}` : '\u2014'}
             </Text>
           </View>
-          <View style={{ width: 88, alignItems: 'flex-end', justifyContent: 'center' }}>
+          <View style={[mpStyles.colPerPcs, mpStyles.tdCellRight]}>
             <Text style={mpStyles.tNum}>{perPcs ? `$${perPcs.toFixed(2)}` : '\u2014'}</Text>
           </View>
-          <View style={{ width: 148, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+          <View style={[mpStyles.colActions, mpStyles.tdCellActions]}>
             <TouchableOpacity style={mpStyles.viewBtn} onPress={() => handleViewProject(p.id)} activeOpacity={0.85}>
               <Text style={mpStyles.viewBtnText}>View Project</Text>
             </TouchableOpacity>
@@ -1993,8 +2003,12 @@ export default function ClientPortal() {
               <Text style={mpStyles.viewAllLink}>{viewAllLabel} {String.fromCharCode(8594)}</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={isMobile}>
-            <View style={{ minWidth: 780 }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ flexGrow: 1 }}
+          >
+            <View style={{ minWidth: 1014, flexGrow: 1 }}>
               <ColHeaders />
               {pagedRows.map((p, i) => renderRow(p, i))}
             </View>
@@ -5019,12 +5033,12 @@ const mpStyles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#1F2937',
+    backgroundColor: '#F3F4F6',
   },
   thText: {
     fontSize: 10,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.7)',
+    color: '#4B5563',
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
@@ -5051,11 +5065,22 @@ const mpStyles = StyleSheet.create({
     backgroundColor: '#FAFAFA',
   },
   thumbCol: {
-    width: 52,
-    paddingRight: 8,
+    width: 58,
+    paddingRight: 14,
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
+  colProject: { flex: 1.4, minWidth: 200 },
+  colStatus: { width: 120 },
+  colOrderDate: { width: 112 },
+  colDueDate: { width: 112 },
+  colPcs: { width: 64 },
+  colTotal: { width: 88 },
+  colPerPcs: { width: 88 },
+  colActions: { width: 140 },
+  tdCell: { justifyContent: 'center' },
+  tdCellRight: { justifyContent: 'center', alignItems: 'flex-end' },
+  tdCellActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8 },
   thumb: {
     width: 44,
     height: 44,
@@ -5077,11 +5102,6 @@ const mpStyles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: TEXT,
-  },
-  tDueSub: {
-    fontSize: 11,
-    color: TEXT_LIGHT,
-    marginTop: 3,
   },
   tNum: {
     fontSize: 13,
