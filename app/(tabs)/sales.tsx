@@ -34,6 +34,7 @@ import {
 } from 'lucide-react-native';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import Colors from '@/constants/colors';
+import { TABLE_COL, TABLE_CELL } from '@/constants/tableLayout';
 import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { useUser } from '@/contexts/UserContext';
@@ -819,7 +820,7 @@ export default function SalesScreen() {
       ) : (
         <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
           <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }} style={{ outlineStyle: 'none' } as any}>
-            <View style={{ minWidth: 1500, flexGrow: 1 }}>
+            <View style={{ minWidth: 2090, flexGrow: 1 }}>
               <View style={styles.tableHeader}>
                 <View style={styles.colCheckbox}>
                   <Checkbox
@@ -994,20 +995,20 @@ const styles = StyleSheet.create({
   tableRowSelected: { backgroundColor: '#FFF4EE' },
   tableRowLocked: { backgroundColor: '#FAFAFA' },
   colCheckbox: { width: 36, alignItems: 'center', justifyContent: 'center' },
-  colStatus:    { width: 100, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  colStatus:    { ...TABLE_COL.status, ...TABLE_CELL.center, flexDirection: 'row', gap: 6 },
   statusIcons:  { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  colOrderDate: { width: 125 },
-  colDueDate:   { width: 110 },
-  colClient:    { flex: 1.2, minWidth: 150 },
-  colProject:   { flex: 1.2, minWidth: 160 },
-  colQuote:     { width: 90 },
-  colServices:  { flex: 1.0, minWidth: 140 },
-  colApplicator: { flex: 1.2, minWidth: 150 },
-  colPcs:       { width: 72 },
-  colPerPcs:    { width: 85, alignItems: 'flex-end' },
-  colRevenue:   { width: 85, alignItems: 'flex-end' },
-  colProfit:    { width: 85, alignItems: 'flex-end' },
-  colActions:   { width: 100, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
+  colOrderDate: { ...TABLE_COL.date, ...TABLE_CELL.center },
+  colDueDate:   { ...TABLE_COL.date, ...TABLE_CELL.center },
+  colClient:    { ...TABLE_COL.text, ...TABLE_CELL.left },
+  colProject:   { ...TABLE_COL.textPrimary, ...TABLE_CELL.left },
+  colQuote:     { ...TABLE_COL.numeric, ...TABLE_CELL.center },
+  colServices:  { ...TABLE_COL.text, ...TABLE_CELL.left },
+  colApplicator: { ...TABLE_COL.text, ...TABLE_CELL.left },
+  colPcs:       { ...TABLE_COL.numeric, ...TABLE_CELL.center },
+  colPerPcs:    { ...TABLE_COL.numericWide, ...TABLE_CELL.center },
+  colRevenue:   { ...TABLE_COL.numericWide, ...TABLE_CELL.center },
+  colProfit:    { ...TABLE_COL.numericWide, ...TABLE_CELL.center },
+  colActions:   { ...TABLE_COL.action, ...TABLE_CELL.center, flexDirection: 'row', gap: 4 },
 
   tableDate:    { fontSize: 13, color: Colors.light.text },
   tableClient:  { fontSize: 13, color: Colors.light.text },

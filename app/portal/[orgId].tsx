@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { TABLE_COL, TABLE_CELL } from '@/constants/tableLayout';
 import {
   CheckCircle,
   Send,
@@ -1927,13 +1928,13 @@ export default function ClientPortal() {
           <Text style={mpStyles.thText}>ORDER DATE</Text>
         </View>
         <SortTh field="inHands" label="DUE DATE" style={mpStyles.colDueDate} />
-        <SortTh field="items" label="PCS" style={mpStyles.colPcs} align="right" />
-        <SortTh field="total" label="TOTAL" style={mpStyles.colTotal} align="right" />
+        <SortTh field="items" label="PCS" style={mpStyles.colPcs} />
+        <SortTh field="total" label="TOTAL" style={mpStyles.colTotal} />
         <View style={mpStyles.colPerPcs}>
-          <Text style={[mpStyles.thText, { textAlign: 'right' }]}>PER PCS</Text>
+          <Text style={mpStyles.thText}>PER PCS</Text>
         </View>
         <View style={mpStyles.colActions}>
-          <Text style={[mpStyles.thText, { textAlign: 'right' }]}>ACTION</Text>
+          <Text style={mpStyles.thText}>ACTION</Text>
         </View>
       </View>
     );
@@ -2008,7 +2009,7 @@ export default function ClientPortal() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ flexGrow: 1 }}
           >
-            <View style={{ minWidth: 1014, flexGrow: 1 }}>
+            <View style={{ minWidth: 1360, flexGrow: 1 }}>
               <ColHeaders />
               {pagedRows.map((p, i) => renderRow(p, i))}
             </View>
@@ -5070,17 +5071,17 @@ const mpStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
-  colProject: { flex: 1.4, minWidth: 200 },
-  colStatus: { width: 120 },
-  colOrderDate: { width: 112 },
-  colDueDate: { width: 112 },
-  colPcs: { width: 64 },
-  colTotal: { width: 88 },
-  colPerPcs: { width: 88 },
-  colActions: { width: 140 },
+  colProject: { ...TABLE_COL.textPrimary, ...TABLE_CELL.left },
+  colStatus: { ...TABLE_COL.status, ...TABLE_CELL.center },
+  colOrderDate: { ...TABLE_COL.date, ...TABLE_CELL.center },
+  colDueDate: { ...TABLE_COL.date, ...TABLE_CELL.center },
+  colPcs: { ...TABLE_COL.numeric, ...TABLE_CELL.center },
+  colTotal: { ...TABLE_COL.numericWide, ...TABLE_CELL.center },
+  colPerPcs: { ...TABLE_COL.numericWide, ...TABLE_CELL.center },
+  colActions: { ...TABLE_COL.action, ...TABLE_CELL.center },
   tdCell: { justifyContent: 'center' },
-  tdCellRight: { justifyContent: 'center', alignItems: 'flex-end' },
-  tdCellActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8 },
+  tdCellRight: { justifyContent: 'center', alignItems: 'center' },
+  tdCellActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   thumb: {
     width: 44,
     height: 44,

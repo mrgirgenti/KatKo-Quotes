@@ -15,6 +15,7 @@ import {
 } from 'lucide-react-native';
 import { OrgStatusBadge, OrgHubBadge } from '@/components/StatusBadge';
 import Colors from '@/constants/colors';
+import { TABLE_COL, TABLE_CELL } from '@/constants/tableLayout';
 import { DS } from '@/constants/designSystem';
 import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
 import { useCrm } from '@/contexts/CrmContext';
@@ -40,11 +41,17 @@ const FILTER_TABS: (CrmStatus | 'All')[] = ['All', 'Cold', 'Working', 'Active Cl
 
 const AVATAR_W = 48;
 const CHECKBOX_W = 36;
-const COL_WIDTHS: Record<ColId, number> = {
-  org: 192, bizType: 120, contact: 150, email: 170,
-  phone: 130, status: 132, hub: 110, campaign: 130, actions: 110,
+const COL_STYLE: Record<ColId, any> = {
+  org:      { ...TABLE_COL.textPrimary, ...TABLE_CELL.left },
+  bizType:  { ...TABLE_COL.text, ...TABLE_CELL.left },
+  contact:  { ...TABLE_COL.text, ...TABLE_CELL.left },
+  email:    { ...TABLE_COL.text, ...TABLE_CELL.left },
+  phone:    { ...TABLE_COL.text, ...TABLE_CELL.left },
+  status:   { ...TABLE_COL.status, ...TABLE_CELL.center },
+  hub:      { ...TABLE_COL.status, ...TABLE_CELL.center },
+  campaign: { ...TABLE_COL.text, ...TABLE_CELL.left },
+  actions:  { ...TABLE_COL.action, ...TABLE_CELL.center },
 };
-const COL_FLEX: Partial<Record<ColId, number>> = { org: 2.0, bizType: 1.5, contact: 1.5 };
 
 const TOGGLEABLE_COLS: { id: ColId; label: string }[] = [
   { id: 'org', label: 'Organization' },
@@ -81,8 +88,8 @@ function OrgRow({ org, onPress, onDelete, visibleCols, isSelected, onToggleSelec
 
   const col = (id: ColId, content: React.ReactNode, align?: 'center' | 'left') => {
     if (!visibleCols.includes(id)) return null;
-    const style: any = COL_FLEX[id] != null ? { flex: COL_FLEX[id] } : { width: COL_WIDTHS[id] };
-    if (align === 'center') style.alignItems = 'center';
+    const style: any = { ...COL_STYLE[id] };
+    if (align === 'center') { style.alignItems = 'center'; style.justifyContent = 'center'; }
     return <View style={style}>{content}</View>;
   };
 
@@ -97,30 +104,30 @@ function OrgRow({ org, onPress, onDelete, visibleCols, isSelected, onToggleSelec
         <View style={{ width: AVATAR_W }}>
           <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={36} shape="circle" />
         </View>
-        {col('org', <Text style={styles.tableOrgName}>{org.name}</Text>)}
+        {col('org', <Text style={styles.tableOrgName} numberOfLines={1}>{org.name}</Text>)}
         {col('bizType', org.type
-          ? <Text style={styles.tableCell}>{org.type}</Text>
+          ? <Text style={styles.tableCell} numberOfLines={1}>{org.type}</Text>
           : <Text style={styles.tableDim}>—</Text>
         )}
         {col('contact', primaryContact
-          ? <Text style={styles.tableCell}>{primaryContact.firstName} {primaryContact.lastName}</Text>
+          ? <Text style={styles.tableCell} numberOfLines={1}>{primaryContact.firstName} {primaryContact.lastName}</Text>
           : <Text style={styles.tableDim}>No contact</Text>
         )}
         {col('email', primaryContact?.email
-          ? <Text style={styles.tableCell}>{primaryContact.email}</Text>
+          ? <Text style={styles.tableCell} numberOfLines={1}>{primaryContact.email}</Text>
           : <Text style={styles.tableDim}>—</Text>
         )}
         {col('phone', primaryContact?.phone
-          ? <Text style={styles.tableCell}>{formatPhone(primaryContact.phone)}</Text>
+          ? <Text style={styles.tableCell} numberOfLines={1}>{formatPhone(primaryContact.phone)}</Text>
           : <Text style={styles.tableDim}>—</Text>
         )}
         {col('campaign', activeCampaign
-          ? <Text style={styles.tableCampaignActive}>{activeCampaign.templateName}</Text>
+          ? <Text style={styles.tableCampaignActive} numberOfLines={1}>{activeCampaign.templateName}</Text>
           : <Text style={styles.tableDim}>—</Text>
         )}
         {col('status', <OrgStatusBadge status={org.status} />, 'center')}
         {col('hub', <OrgHubBadge live={!!org.hubEnabled} />, 'center')}
-        <View style={{ width: COL_WIDTHS.actions, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+        <View style={{ ...COL_STYLE.actions, flexDirection: 'row', gap: 4 }}>
           <TouchableOpacity style={styles.viewBtn} onPress={() => router.push(`/crm/${org.id}` as any)}>
             <Text style={styles.viewBtnText}>View</Text>
           </TouchableOpacity>
@@ -362,11 +369,7 @@ function OrganizationsScreen() {
       </TouchableOpacity>
       <View style={{ width: AVATAR_W }} />
       {TOGGLEABLE_COLS.filter((c) => effectiveCols.includes(c.id)).map((col) => {
-        const isCentered = col.id === 'status' || col.id === 'hub';
-        const colStyle: any = {
-          ...(COL_FLEX[col.id] != null ? { flex: COL_FLEX[col.id] } : { width: COL_WIDTHS[col.id] }),
-          ...(isCentered ? { alignItems: 'center' } : {}),
-        };
+        const colStyle: any = { ...COL_STYLE[col.id] };
         return (
           <View key={col.id} style={colStyle}>
             {col.id === 'org' && <SortBtn field="name" label="Organization" />}
@@ -380,7 +383,7 @@ function OrganizationsScreen() {
           </View>
         );
       })}
-      <View style={{ width: COL_WIDTHS.actions, alignItems: 'center' }}>
+      <View style={COL_STYLE.actions}>
         <Text style={styles.sortBtnText}>ACTIONS</Text>
       </View>
     </View>
@@ -575,7 +578,7 @@ function OrganizationsScreen() {
       ) : (
         <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
           <ScrollView horizontal showsHorizontalScrollIndicator={true} contentContainerStyle={{ flexGrow: 1 }} style={{ outlineStyle: 'none' } as any}>
-            <View style={{ minWidth: 1200, flexGrow: 1 }}>
+            <View style={{ minWidth: 1600, flexGrow: 1 }}>
               {tableHeaderRow}
               <View style={styles.tableBody}>
                 {filtered.map((org, idx) => (

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react-native';
 import { ContactStatusBadge, HubStatusBadge } from '@/components/StatusBadge';
 import Colors from '@/constants/colors';
+import { TABLE_COL, TABLE_CELL } from '@/constants/tableLayout';
 import { DS } from '@/constants/designSystem';
 import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
 import { useCrm } from '@/contexts/CrmContext';
@@ -35,10 +36,16 @@ const HUB_CFG: Record<HubStatus, { label: string; color: string; bg: string; bor
 
 type ColId = 'name' | 'org' | 'role' | 'email' | 'phone' | 'hub' | 'lastLogin' | 'status';
 const CHECKBOX_W = 36;
-const COL_WIDTHS: Record<ColId, number> = {
-  name: 180, org: 170, role: 130, email: 200, phone: 130, hub: 120, lastLogin: 130, status: 100,
+const COL_STYLE: Record<ColId, any> = {
+  name:      { ...TABLE_COL.textPrimary, ...TABLE_CELL.left },
+  org:       { ...TABLE_COL.text, ...TABLE_CELL.left },
+  role:      { ...TABLE_COL.text, ...TABLE_CELL.left },
+  email:     { ...TABLE_COL.text, ...TABLE_CELL.left },
+  phone:     { ...TABLE_COL.text, ...TABLE_CELL.left },
+  status:    { ...TABLE_COL.status, ...TABLE_CELL.center },
+  hub:       { ...TABLE_COL.status, ...TABLE_CELL.center },
+  lastLogin: { ...TABLE_COL.date, ...TABLE_CELL.center },
 };
-const COL_FLEX: Partial<Record<ColId, number>> = { name: 2, org: 1.8, email: 1.6 };
 
 const CONTACT_TOGGLEABLE_COLS: { id: ColId; label: string }[] = [
   { id: 'name', label: 'Contact Name' },
@@ -70,9 +77,7 @@ const HUB_RANK: Record<HubStatus, number> = { 'Active': 0, 'Invited': 1, 'Disabl
 type SortDir = 'asc' | 'desc';
 
 function colStyle(id: ColId): any {
-  return COL_FLEX[id] != null
-    ? { flex: COL_FLEX[id], minWidth: COL_WIDTHS[id] }
-    : { width: COL_WIDTHS[id] };
+  return { ...COL_STYLE[id] };
 }
 
 // ── Desktop row ──
@@ -101,15 +106,15 @@ function PersonRow({ person, onPress, isSelected, onToggleSelect, visibleCols }:
       <View style={{ width: 44 }}>
         <OrgAvatar name={name} size={32} shape="circle" />
       </View>
-      {col('name', <Text style={styles.cellName}>{name}</Text>)}
-      {col('org', <Text style={styles.cell}>{person.orgName}</Text>)}
-      {col('role', person.role ? <Text style={styles.cell}>{person.role}</Text> : <Text style={styles.dim}>—</Text>)}
-      {col('email', person.email ? <Text style={styles.cell}>{person.email}</Text> : <Text style={styles.dim}>—</Text>)}
-      {col('phone', person.phone ? <Text style={styles.cell}>{formatPhone(person.phone)}</Text> : <Text style={styles.dim}>—</Text>)}
+      {col('name', <Text style={styles.cellName} numberOfLines={1}>{name}</Text>)}
+      {col('org', <Text style={styles.cell} numberOfLines={1}>{person.orgName}</Text>)}
+      {col('role', person.role ? <Text style={styles.cell} numberOfLines={1}>{person.role}</Text> : <Text style={styles.dim}>—</Text>)}
+      {col('email', person.email ? <Text style={styles.cell} numberOfLines={1}>{person.email}</Text> : <Text style={styles.dim}>—</Text>)}
+      {col('phone', person.phone ? <Text style={styles.cell} numberOfLines={1}>{formatPhone(person.phone)}</Text> : <Text style={styles.dim}>—</Text>)}
       {col('status', <ContactStatusBadge status={person.status} />, 'center')}
       {col('hub', <HubStatusBadge status={person.hubStatus || 'No Access'} />, 'center')}
-      {col('lastLogin', last ? <Text style={styles.cell}>{last}</Text> : <Text style={styles.dim}>—</Text>, 'center')}
-      <View style={{ width: 120, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 4 }}>
+      {col('lastLogin', last ? <Text style={styles.cell} numberOfLines={1}>{last}</Text> : <Text style={styles.dim}>—</Text>, 'center')}
+      <View style={{ ...TABLE_COL.action, ...TABLE_CELL.center, flexDirection: 'row', gap: 4 }}>
         <TouchableOpacity
           style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: Colors.light.tint, height: 30, justifyContent: 'center', alignItems: 'center' }}
           onPress={onPress}
@@ -392,7 +397,7 @@ export default function ContactsDirectory() {
           </View>
         );
       })}
-      <View style={{ width: 120, alignItems: 'center' }}><Text style={styles.headText}>Actions</Text></View>
+      <View style={{ ...TABLE_COL.action, ...TABLE_CELL.center }}><Text style={styles.headText}>Actions</Text></View>
     </View>
   );
 
@@ -593,7 +598,7 @@ export default function ContactsDirectory() {
       ) : (
         <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
           <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }} style={{ outlineStyle: 'none' } as any}>
-            <View style={{ minWidth: 1360, flexGrow: 1 }}>
+            <View style={{ minWidth: 1730, flexGrow: 1 }}>
               {tableHeader}
               <View style={styles.tableBody}>
                 {filtered.map((p, idx) => (

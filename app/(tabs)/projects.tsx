@@ -34,6 +34,7 @@ import {
   FolderPlus,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { TABLE_COL, TABLE_CELL } from '@/constants/tableLayout';
 import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useQuotes } from '@/contexts/QuotesContext';
@@ -160,10 +161,10 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
           <Text style={styles.tableDate}>{quote.inHandsDate ? formatDate(quote.inHandsDate) : '—'}</Text>
         </View>
         <View style={styles.colClient}>
-          <Text style={styles.tableClient}>{quote.personOrganization}</Text>
+          <Text style={styles.tableClient} numberOfLines={1}>{quote.personOrganization}</Text>
         </View>
         <View style={styles.colProject}>
-          <Text style={styles.tableProject}>{quote.projectName}</Text>
+          <Text style={styles.tableProject} numberOfLines={1}>{quote.projectName}</Text>
         </View>
         <View style={styles.colInvoice}>
           <Text style={styles.tableInvoice}>{quote.projectNumber || quote.invoiceNumber || '—'}</Text>
@@ -859,7 +860,7 @@ export default function ProjectsScreen() {
       ) : (
         <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
           <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }} style={{ outlineStyle: 'none' } as any}>
-            <View style={{ minWidth: 1500, flexGrow: 1 }}>
+            <View style={{ minWidth: 2090, flexGrow: 1 }}>
               <View style={styles.tableHeader}>
                 <View style={styles.colCheckbox}>
                   <Checkbox
@@ -1025,19 +1026,19 @@ const styles = StyleSheet.create({
   tableDivider: { height: 1, backgroundColor: Colors.light.border, marginHorizontal: DS.spacing.xl },
 
   tableRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: DS.spacing.xl, paddingVertical: 12, backgroundColor: Colors.light.surface },
-  colStatus:    { width: 100 },
-  colOrderDate: { width: 125 },
-  colDueDate:   { width: 110 },
-  colClient:    { flex: 1.2, minWidth: 150 },
-  colProject:   { flex: 1.2, minWidth: 160 },
-  colInvoice:   { width: 90 },
-  colApplicator:{ flex: 1.2, minWidth: 150 },
-  colServices:  { flex: 1.0, minWidth: 140 },
-  colPcs:       { width: 72 },
-  colPerPcs:    { width: 85, alignItems: 'flex-end' },
-  colTotal:     { width: 85, alignItems: 'flex-end' },
-  colMarkup:    { width: 85, alignItems: 'flex-end' },
-  colActions:   { width: 100, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
+  colStatus:    { ...TABLE_COL.status, ...TABLE_CELL.center },
+  colOrderDate: { ...TABLE_COL.date, ...TABLE_CELL.center },
+  colDueDate:   { ...TABLE_COL.date, ...TABLE_CELL.center },
+  colClient:    { ...TABLE_COL.text, ...TABLE_CELL.left },
+  colProject:   { ...TABLE_COL.textPrimary, ...TABLE_CELL.left },
+  colInvoice:   { ...TABLE_COL.numeric, ...TABLE_CELL.center },
+  colApplicator:{ ...TABLE_COL.text, ...TABLE_CELL.left },
+  colServices:  { ...TABLE_COL.text, ...TABLE_CELL.left },
+  colPcs:       { ...TABLE_COL.numeric, ...TABLE_CELL.center },
+  colPerPcs:    { ...TABLE_COL.numericWide, ...TABLE_CELL.center },
+  colTotal:     { ...TABLE_COL.numericWide, ...TABLE_CELL.center },
+  colMarkup:    { ...TABLE_COL.numericWide, ...TABLE_CELL.center },
+  colActions:   { ...TABLE_COL.action, ...TABLE_CELL.center, flexDirection: 'row', gap: 4 },
 
   tableDate:       { fontSize: 13, color: Colors.light.text },
   tableClient:     { fontSize: 13, color: Colors.light.text },

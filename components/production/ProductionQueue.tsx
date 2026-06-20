@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import { useRouter } from 'expo-router';
 import { ArrowUpDown, Check } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { TABLE_COL, TABLE_CELL } from '@/constants/tableLayout';
 import { DS } from '@/constants/designSystem';
 import { formatDate } from '@/utils/textFormatting';
 import { OPERATIONAL_STATUSES, OPERATIONAL_STATUS_CONFIG } from '@/types/quote';
@@ -100,7 +101,7 @@ export function ProductionQueue({
 
       <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
         <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }} style={{ outlineStyle: 'none' } as any}>
-          <View style={{ minWidth: 1560, flexGrow: 1 }}>
+          <View style={{ minWidth: 1900, flexGrow: 1 }}>
             <View style={styles.tableHeader}>
               <View style={styles.colCheck}>
                 <Checkbox checked={allSelected} onPress={onToggleSelectAll} />
@@ -225,18 +226,18 @@ const styles = StyleSheet.create({
   tableRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: DS.spacing.xl, paddingVertical: 12, backgroundColor: Colors.light.surface },
   tableRowSelected: { backgroundColor: '#FFF8F4' },
 
-  colCheck:    { width: 40 },
-  colPriority: { width: 120 },
-  colNum:      { width: 120 },
-  colProject:  { flex: 1.4 },
-  colClient:   { flex: 1.2 },
-  colStatus:   { width: 170 },
-  colService:  { width: 150 },
-  colPcs:      { width: 60 },
-  colOrder:    { width: 120 },
-  colDue:      { width: 120 },
-  colAssignee: { width: 180 },
-  colDelivery: { width: 130 },
+  colCheck:    { width: 40, ...TABLE_CELL.center },
+  colPriority: { ...TABLE_COL.status, ...TABLE_CELL.center },
+  colNum:      { ...TABLE_COL.numericWide, ...TABLE_CELL.center },
+  colProject:  { ...TABLE_COL.textPrimary, ...TABLE_CELL.left },
+  colClient:   { ...TABLE_COL.text, ...TABLE_CELL.left },
+  colStatus:   { ...TABLE_COL.status, ...TABLE_CELL.center },
+  colService:  { ...TABLE_COL.text, ...TABLE_CELL.left },
+  colPcs:      { ...TABLE_COL.numeric, ...TABLE_CELL.center },
+  colOrder:    { ...TABLE_COL.date, ...TABLE_CELL.center },
+  colDue:      { ...TABLE_COL.date, ...TABLE_CELL.center },
+  colAssignee: { ...TABLE_COL.text, ...TABLE_CELL.left },
+  colDelivery: { ...TABLE_COL.text, ...TABLE_CELL.left },
 
   cell: { fontSize: 13, color: Colors.light.text },
   cellStrong: { fontSize: 13, fontWeight: '700', color: Colors.light.text },
