@@ -143,6 +143,32 @@ function formatDate(iso?: string, withTime = false): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function AuthedImage({ fileId, style }: { fileId: string; style: any }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    let objectUrl: string | null = null;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getAuthHeaders } = await import('@/lib/apiFetch');
+        const headers = await getAuthHeaders();
+        const res = await fetch(`/api/files/${fileId}?inline=true`, { headers });
+        if (!res.ok || cancelled) return;
+        const blob = await res.blob();
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setSrc(objectUrl);
+      } catch { /* silent */ }
+    })();
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [fileId]);
+  if (!src) return <View style={[style, { backgroundColor: '#E5E7EB' }]} />;
+  return <Image source={{ uri: src }} style={style} resizeMode="cover" />;
+}
+
 function StatusBadge({ status }: { status: CrmStatus }) {
   const cfg = CRM_STATUS_CONFIG[status];
   return (
@@ -1871,11 +1897,7 @@ export default function OrgProfileScreen() {
               return (
                 <View key={f.id} style={styles.orgMediaItem}>
                   {isImage ? (
-                    <Image
-                      source={{ uri: `/api/files/${f.id}?inline=true` }}
-                      style={styles.orgMediaThumb}
-                      resizeMode="cover"
-                    />
+                    <AuthedImage fileId={f.id} style={styles.orgMediaThumb} />
                   ) : (
                     <View style={styles.orgMediaIcon}>
                       <FileText size={18} color={Colors.light.tint} />
@@ -1883,6 +1905,7 @@ export default function OrgProfileScreen() {
                     </View>
                   )}
                   <Text style={styles.orgMediaName} numberOfLines={1}>{f.originalName}</Text>
+                  <Text style={styles.orgMediaMeta}>{formatDate(f.createdAt)} · {ext}</Text>
                   <View style={styles.orgMediaActions}>
                     {Platform.OS === 'web' && (
                       <TouchableOpacity
@@ -2318,11 +2341,7 @@ export default function OrgProfileScreen() {
               return (
                 <View key={f.id} style={styles.orgMediaItem}>
                   {isImage ? (
-                    <Image
-                      source={{ uri: `/api/files/${f.id}?inline=true` }}
-                      style={styles.orgMediaThumb}
-                      resizeMode="cover"
-                    />
+                    <AuthedImage fileId={f.id} style={styles.orgMediaThumb} />
                   ) : (
                     <View style={styles.orgMediaIcon}>
                       <FileText size={18} color={Colors.light.tint} />
@@ -2330,6 +2349,7 @@ export default function OrgProfileScreen() {
                     </View>
                   )}
                   <Text style={styles.orgMediaName} numberOfLines={1}>{f.originalName}</Text>
+                  <Text style={styles.orgMediaMeta}>{formatDate(f.createdAt)} · {ext}</Text>
                   <View style={styles.orgMediaActions}>
                     {Platform.OS === 'web' && (
                       <TouchableOpacity
@@ -3604,13 +3624,15 @@ export default function OrgProfileScreen() {
                             onPress={() => Platform.OS === 'web' && typeof window !== 'undefined' && window.open(`/api/files/${f.id}?inline=true`, '_blank')}
                           >
                             {isImage ? (
-                              <Image source={{ uri: `/api/files/${f.id}?inline=true` }} style={styles.orgMediaThumb} resizeMode="cover" />
+                              <AuthedImage fileId={f.id} style={styles.orgMediaThumb} />
                             ) : (
                               <View style={styles.orgMediaIcon}>
+                                <FileText size={18} color={Colors.light.tint} />
                                 <Text style={styles.orgMediaExt}>{ext}</Text>
                               </View>
                             )}
                             <Text style={styles.orgMediaName} numberOfLines={1}>{f.originalName}</Text>
+                            <Text style={styles.orgMediaMeta}>{formatDate(f.createdAt)} · {ext}</Text>
                           </TouchableOpacity>
                         );
                       })}
@@ -5357,6 +5379,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   orgMediaName: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: Colors.light.text,
+    lineHeight: 14,
+  },
+  orgMediaMeta: {
     fontSize: 10,
     color: Colors.light.textSecondary,
     lineHeight: 13,
