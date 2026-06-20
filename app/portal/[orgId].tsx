@@ -66,6 +66,10 @@ import {
   List,
   Film,
   Music,
+  Building2,
+  Phone,
+  Copy,
+  Users,
 } from 'lucide-react-native';
 import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
 
@@ -965,6 +969,9 @@ export default function ClientPortal() {
   const [profileSaveMsg, setProfileSaveMsg] = useState('');
   const [orgLogoSaving, setOrgLogoSaving] = useState(false);
   const [orgLogoSaveMsg, setOrgLogoSaveMsg] = useState('');
+  const [orgPhone, setOrgPhone] = useState<string | null>(null);
+  const [orgEmail, setOrgEmail] = useState<string | null>(null);
+  const [sidebarDropdownOpen, setSidebarDropdownOpen] = useState(false);
   const profilePicInputRef = useRef<any>(null);
   const orgLogoInputRef = useRef<any>(null);
 
@@ -1036,6 +1043,8 @@ export default function ClientPortal() {
           setOrgLogoUrl(publicUrl);
         }
         if (data.name) setOrgDisplayName(data.name);
+        if (data.phone) setOrgPhone(data.phone);
+        if (data.email) setOrgEmail(data.email);
       })
       .catch(() => {});
   }, [orgId]);
@@ -3063,6 +3072,9 @@ export default function ClientPortal() {
   ];
 
   const ProfileView = () => {
+    const [showInviteInput, setShowInviteInput] = useState(false);
+    const [copied, setCopied] = useState(false);
+
     const handleInvite = async () => {
       if (!session || !teamInviteEmail.trim()) return;
       setTeamInviting(true);
@@ -3076,9 +3088,25 @@ export default function ClientPortal() {
         });
         const d = await res.json();
         if (!res.ok) { setTeamInviteError(d.error || 'Failed to add member.'); }
-        else { setTeamInviteSuccess(`${teamInviteEmail.trim()} has been added.`); setTeamInviteEmail(''); fetchTeam(session.orgId); }
+        else { setTeamInviteSuccess(`${teamInviteEmail.trim()} has been added.`); setTeamInviteEmail(''); setShowInviteInput(false); fetchTeam(session.orgId); }
       } catch { setTeamInviteError('Connection error. Please try again.'); }
       setTeamInviting(false);
+    };
+
+    const handleResendInvite = async (email: string) => {
+      if (!session) return;
+      setTeamInviteError('');
+      setTeamInviteSuccess('');
+      try {
+        const res = await fetch('/api/portal/team', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orgId: session.orgId, callerUserId: session.userId, email }),
+        });
+        const d = await res.json();
+        if (!res.ok) { setTeamInviteError(d.error || 'Failed to resend.'); }
+        else { setTeamInviteSuccess(`Invite resent to ${email}.`); fetchTeam(session.orgId); }
+      } catch { setTeamInviteError('Connection error.'); }
     };
 
     const handleRemove = async (userId: string) => {
@@ -3192,232 +3220,355 @@ export default function ClientPortal() {
       ORG_ADMIN: 'Admin', MEMBER: 'Member', BILLING_CONTACT: 'Billing', APPROVER: 'Approver',
     };
 
-    return (
-      <ScrollView style={{ flex: 1, backgroundColor: '#F9FAFB' }} contentContainerStyle={{ padding: 28, paddingBottom: 60, maxWidth: 680, alignSelf: 'center', width: '100%' }}>
+    const primaryAdmin = teamMembers.find(m => m.role === 'ORG_ADMIN');
+    const hubUrl = typeof window !== 'undefined'
+      ? `${window.location.origin}/portal/${session?.orgId}`
+      : `/portal/${session?.orgId}`;
 
-        {/* Hidden file inputs for web */}
+    const copyHubUrl = () => {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        navigator.clipboard.writeText(hubUrl).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        }).catch(() => {});
+      }
+    };
+
+    return (
+      <ScrollView
+        style={{ flex: 1, backgroundColor: '#F9FAFB' }}
+        contentContainerStyle={{ padding: 24, paddingBottom: 60, maxWidth: 980, alignSelf: 'center', width: '100%' }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Hidden file inputs */}
         {Platform.OS === 'web' && (
           <View style={{ height: 0, overflow: 'hidden' }}>
-            <input
-              ref={profilePicInputRef}
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={handleProfilePicFile}
-            />
-            <input
-              ref={orgLogoInputRef}
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={handleOrgLogoFile}
-            />
+            <input ref={profilePicInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleProfilePicFile} />
+            <input ref={orgLogoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleOrgLogoFile} />
           </View>
         )}
 
-        {/* Profile header */}
-        <View style={profStyles.section}>
-          <View style={profStyles.sectionHeader}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <User size={16} color={BRAND} />
-              <Text style={profStyles.sectionTitle}>My Profile</Text>
-            </View>
-          </View>
+        {/* Page header */}
+        <View style={{ marginBottom: 22 }}>
+          <Text style={profStyles.pageTitle}>My Profile</Text>
+          <Text style={profStyles.pageSubtitle}>
+            {isOrgAdmin
+              ? 'Manage your account, team and organization settings.'
+              : 'Manage your account and organization information.'}
+          </Text>
+        </View>
 
-          {/* Centered avatar — matches backend profile card style */}
-          <View style={{ alignItems: 'center', paddingBottom: 20 }}>
-            <View style={[profStyles.avatarLarge, { backgroundColor: profileAvatarColor }]}>
-              {profilePicUri ? (
-                <Image source={{ uri: profilePicUri }} style={{ width: 88, height: 88, borderRadius: 10 }} />
+        {/* ROW 1: 3 equal cards */}
+        <View style={[profStyles.row3, (isMobile || isTablet) && { flexDirection: 'column' }]}>
+
+          {/* Card 1: Organization Branding */}
+          <View style={[profStyles.card, { flex: 1 }]}>
+            <Text style={profStyles.cardLabel}>ORGANIZATION BRANDING</Text>
+            <View style={profStyles.logoSquare}>
+              {orgLogoUrl ? (
+                <Image source={{ uri: orgLogoUrl }} style={{ width: '100%', height: '100%' } as any} resizeMode="contain" />
               ) : (
-                <Text style={profStyles.avatarLargeText}>{session?.userName[0]?.toUpperCase() || '?'}</Text>
+                <View style={profStyles.logoSquareEmpty}>
+                  <Text style={profStyles.logoInitials}>{(session?.orgName || '?')[0].toUpperCase()}</Text>
+                </View>
               )}
             </View>
-            <Text style={[profStyles.userName, { marginTop: 14, textAlign: 'center' }]}>{session?.userName}</Text>
-            <Text style={[profStyles.userEmail, { textAlign: 'center', marginBottom: 8 }]}>{session?.userEmail}</Text>
-            <View style={profStyles.orgBadge}>
-              <Text style={profStyles.orgBadgeText}>{session?.orgName}</Text>
+            <Text style={profStyles.logoHint}>Recommended: 500 × 500 PNG</Text>
+            {isOrgAdmin ? (
+              <View style={{ gap: 8, marginTop: 14 }}>
+                <TouchableOpacity style={profStyles.outlineBtn} onPress={() => orgLogoInputRef.current?.click()} disabled={orgLogoSaving} activeOpacity={0.8}>
+                  {orgLogoSaving ? <ActivityIndicator size="small" color={BRAND} /> : <Upload size={13} color={BRAND} />}
+                  <Text style={profStyles.outlineBtnText}>{orgLogoUrl ? 'Change Logo' : 'Upload Logo'}</Text>
+                </TouchableOpacity>
+                {orgLogoUrl && (
+                  <TouchableOpacity style={profStyles.destructiveBtn} onPress={handleRemoveOrgLogo} disabled={orgLogoSaving} activeOpacity={0.8}>
+                    <X size={13} color="#DC2626" />
+                    <Text style={profStyles.destructiveBtnText}>Remove Logo</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : (
+              <Text style={profStyles.logoManagedNote}>Organization logo managed by your Org Admin.</Text>
+            )}
+            {orgLogoSaveMsg ? <Text style={profStyles.successText}>{orgLogoSaveMsg}</Text> : null}
+          </View>
+
+          {/* Card 2: Organization Information */}
+          <View style={[profStyles.card, { flex: 1 }]}>
+            <Text style={profStyles.cardLabel}>ORGANIZATION INFORMATION</Text>
+            <View style={{ gap: 14, marginTop: 6 }}>
+              <View style={profStyles.orgInfoRow}>
+                <Building2 size={14} color={TEXT_PLACEHOLDER} />
+                <View style={{ flex: 1 }}>
+                  <Text style={profStyles.infoLabel}>Organization Name</Text>
+                  <Text style={profStyles.infoValue}>{session?.orgName}</Text>
+                </View>
+              </View>
+              <View style={profStyles.orgInfoRow}>
+                <User size={14} color={TEXT_PLACEHOLDER} />
+                <View style={{ flex: 1 }}>
+                  <Text style={profStyles.infoLabel}>Primary Contact</Text>
+                  <Text style={profStyles.infoValue}>{primaryAdmin?.name || '—'}</Text>
+                  {primaryAdmin?.email ? <Text style={profStyles.infoSub}>{primaryAdmin.email}</Text> : null}
+                </View>
+              </View>
+              <View style={profStyles.orgInfoRow}>
+                <Phone size={14} color={TEXT_PLACEHOLDER} />
+                <View style={{ flex: 1 }}>
+                  <Text style={profStyles.infoLabel}>Phone</Text>
+                  <Text style={profStyles.infoValue}>{orgPhone || '—'}</Text>
+                </View>
+              </View>
+              <View style={profStyles.orgInfoRow}>
+                <Mail size={14} color={TEXT_PLACEHOLDER} />
+                <View style={{ flex: 1 }}>
+                  <Text style={profStyles.infoLabel}>Email</Text>
+                  <Text style={profStyles.infoValue}>{orgEmail || '—'}</Text>
+                </View>
+              </View>
+              <View style={profStyles.orgInfoRow}>
+                <Shield size={14} color={TEXT_PLACEHOLDER} />
+                <View style={{ flex: 1 }}>
+                  <Text style={profStyles.infoLabel}>Account Representative</Text>
+                  <Text style={profStyles.infoValue}>Katalyst Ko Team</Text>
+                </View>
+              </View>
             </View>
           </View>
 
-          {/* Two-column: Profile Picture | Avatar Color */}
-          <View style={{ flexDirection: 'row', gap: 16, marginTop: 4 }}>
-            {/* Left column: Profile Picture */}
-            <View style={{ flex: 1 }}>
-              <Text style={profStyles.editLabel}>PROFILE PICTURE</Text>
-              <View style={{ gap: 8, marginTop: 8 }}>
-                <TouchableOpacity
-                  style={profStyles.editBtn}
-                  onPress={() => profilePicInputRef.current?.click()}
-                  disabled={profileSaving}
-                >
+          {/* Card 3: Client Hub Settings */}
+          <View style={[profStyles.card, { flex: 1 }]}>
+            <Text style={profStyles.cardLabel}>CLIENT HUB SETTINGS</Text>
+            <View style={{ gap: 14, marginTop: 6 }}>
+              <View>
+                <Text style={profStyles.infoLabel}>Hub Status</Text>
+                <View style={profStyles.statusLivePill}>
+                  <View style={profStyles.statusLiveDot} />
+                  <Text style={profStyles.statusLiveText}>Live</Text>
+                </View>
+              </View>
+              <View>
+                <Text style={profStyles.infoLabel}>Hub URL</Text>
+                <View style={profStyles.hubUrlRow}>
+                  <Text style={profStyles.hubUrlText} numberOfLines={1}>{hubUrl}</Text>
+                  <TouchableOpacity onPress={copyHubUrl} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    {copied ? <CheckCircle size={14} color="#16A34A" /> : <Copy size={14} color={BRAND} />}
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <View style={profStyles.orgInfoRow}>
+                <Shield size={14} color={TEXT_PLACEHOLDER} />
+                <View style={{ flex: 1 }}>
+                  <Text style={profStyles.infoLabel}>Organization Admin</Text>
+                  <Text style={profStyles.infoValue}>{primaryAdmin?.name || '—'}</Text>
+                  {primaryAdmin?.email ? <Text style={profStyles.infoSub}>{primaryAdmin.email}</Text> : null}
+                </View>
+              </View>
+              <View style={profStyles.orgInfoRow}>
+                <Users size={14} color={TEXT_PLACEHOLDER} />
+                <View style={{ flex: 1 }}>
+                  <Text style={profStyles.infoLabel}>Total Members</Text>
+                  <Text style={profStyles.infoValue}>{teamMembers.length} Active Member{teamMembers.length !== 1 ? 's' : ''}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+        </View>
+
+        {/* ROW 2: My Profile (full-width, 2 columns) */}
+        <View style={profStyles.card}>
+          <Text style={profStyles.cardLabel}>MY PROFILE</Text>
+          <View style={[profStyles.myProfileRow, isMobile && { flexDirection: 'column', gap: 20 }]}>
+
+            {/* LEFT: Square avatar + color picker + upload/remove */}
+            <View style={profStyles.profileLeft}>
+              <View style={[profStyles.avatarSquare, { backgroundColor: profileAvatarColor }]}>
+                {profilePicUri ? (
+                  <Image source={{ uri: profilePicUri }} style={{ width: 120, height: 120, borderRadius: 12 }} resizeMode="cover" />
+                ) : (
+                  <Text style={profStyles.avatarSquareText}>{(session?.userName[0] || '?').toUpperCase()}</Text>
+                )}
+              </View>
+              <Text style={[profStyles.infoLabel, { marginTop: 14 }]}>AVATAR COLOR</Text>
+              <View style={profStyles.colorSwatches}>
+                {AVATAR_COLORS.map(c => (
+                  <TouchableOpacity
+                    key={c}
+                    onPress={() => handleAvatarColorChange(c)}
+                    style={[profStyles.colorSwatch, { backgroundColor: c }, profileAvatarColor === c && profStyles.colorSwatchSelected]}
+                  >
+                    {profileAvatarColor === c && <Check size={11} color="#fff" strokeWidth={3} />}
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={{ gap: 8, marginTop: 14 }}>
+                <TouchableOpacity style={profStyles.outlineBtn} onPress={() => profilePicInputRef.current?.click()} disabled={profileSaving} activeOpacity={0.8}>
                   {profileSaving ? <ActivityIndicator size="small" color={BRAND} /> : <Upload size={13} color={BRAND} />}
-                  <Text style={profStyles.editBtnText}>{profilePicUri ? 'Change Photo' : 'Upload Photo'}</Text>
+                  <Text style={profStyles.outlineBtnText}>{profilePicUri ? 'Change Photo' : 'Upload Photo'}</Text>
                 </TouchableOpacity>
                 {profilePicUri && (
-                  <TouchableOpacity style={profStyles.editBtnDestructive} onPress={handleRemoveProfilePic} disabled={profileSaving}>
+                  <TouchableOpacity style={profStyles.destructiveBtn} onPress={handleRemoveProfilePic} disabled={profileSaving} activeOpacity={0.8}>
                     <X size={13} color="#DC2626" />
-                    <Text style={profStyles.editBtnDestructiveText}>Remove</Text>
+                    <Text style={profStyles.destructiveBtnText}>Remove Photo</Text>
                   </TouchableOpacity>
                 )}
               </View>
               {profileSaveMsg ? <Text style={profStyles.successText}>{profileSaveMsg}</Text> : null}
             </View>
 
-            {/* Right column: Avatar Color */}
-            <View style={{ flex: 1 }}>
-              <Text style={profStyles.editLabel}>AVATAR COLOR</Text>
-              <View style={[profStyles.colorSwatches, { marginTop: 8 }]}>
-                {AVATAR_COLORS.map(c => (
-                  <TouchableOpacity
-                    key={c}
-                    onPress={() => handleAvatarColorChange(c)}
-                    style={[
-                      profStyles.colorSwatch,
-                      { backgroundColor: c },
-                      profileAvatarColor === c && profStyles.colorSwatchSelected,
-                    ]}
-                  >
-                    {profileAvatarColor === c && <Check size={12} color="#fff" strokeWidth={3} />}
-                  </TouchableOpacity>
-                ))}
+            {/* Vertical divider */}
+            {!isMobile && <View style={profStyles.profileDivider} />}
+
+            {/* RIGHT: User info */}
+            <View style={profStyles.profileRight}>
+              <View style={profStyles.profileField}>
+                <Text style={profStyles.profileFieldLabel}>Full Name</Text>
+                <Text style={profStyles.profileFieldValue}>{session?.userName}</Text>
+              </View>
+              <View style={profStyles.profileField}>
+                <Text style={profStyles.profileFieldLabel}>Email Address</Text>
+                <Text style={profStyles.profileFieldValue}>{session?.userEmail}</Text>
+              </View>
+              <View style={profStyles.profileField}>
+                <Text style={profStyles.profileFieldLabel}>Organization</Text>
+                <Text style={profStyles.profileFieldValue}>{session?.orgName}</Text>
+              </View>
+              <View style={profStyles.profileField}>
+                <Text style={profStyles.profileFieldLabel}>Role</Text>
+                <View style={[profStyles.rolePill, isOrgAdmin && profStyles.rolePillAdmin]}>
+                  <Text style={[profStyles.rolePillText, isOrgAdmin && profStyles.rolePillTextAdmin]}>
+                    {isOrgAdmin ? 'Admin' : 'Member'}
+                  </Text>
+                </View>
               </View>
             </View>
+
           </View>
         </View>
 
-        {/* Organization Logo (ORG_ADMIN only) */}
+        {/* ROW 3: Team Management (admin only) */}
         {isOrgAdmin && (
-          <View style={profStyles.section}>
-            <View style={profStyles.sectionHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <ImageIcon size={16} color={BRAND} />
-                <Text style={profStyles.sectionTitle}>Organization Logo</Text>
+          <View style={profStyles.card}>
+            <View style={profStyles.cardHeaderRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={profStyles.cardLabel}>TEAM MANAGEMENT</Text>
+                <Text style={profStyles.cardSubtitle}>Manage users with access to your Client Hub.</Text>
               </View>
+              <TouchableOpacity style={profStyles.primaryBtn} onPress={() => setShowInviteInput(v => !v)} activeOpacity={0.85}>
+                <UserPlus size={13} color="#fff" />
+                <Text style={profStyles.primaryBtnText}>Invite User</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={{ fontSize: 12, color: TEXT_LIGHT, marginBottom: 14 }}>
-              Your organization logo appears in the Client Hub sidebar for all team members.
-            </Text>
-            {orgLogoUrl ? (
-              <View style={profStyles.orgLogoPreview}>
-                <Image source={{ uri: orgLogoUrl }} style={{ width: 200, height: 80 }} resizeMode="contain" />
-              </View>
-            ) : (
-              <View style={profStyles.orgLogoEmpty}>
-                <ImageIcon size={28} color="#D1D5DB" />
-                <Text style={{ fontSize: 12, color: TEXT_PLACEHOLDER, marginTop: 6 }}>No logo uploaded</Text>
+
+            {showInviteInput && (
+              <View style={[profStyles.inviteRow, { marginBottom: 12 }]}>
+                <View style={profStyles.inviteInputWrap}>
+                  <Mail size={14} color={TEXT_PLACEHOLDER} />
+                  <TextInput
+                    style={profStyles.inviteInput}
+                    value={teamInviteEmail}
+                    onChangeText={setTeamInviteEmail}
+                    placeholder="Enter email to invite…"
+                    placeholderTextColor={TEXT_PLACEHOLDER}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
+                <TouchableOpacity
+                  style={[profStyles.primaryBtn, (teamInviting || !teamInviteEmail.trim()) && { opacity: 0.5 }]}
+                  onPress={handleInvite}
+                  disabled={teamInviting || !teamInviteEmail.trim()}
+                  activeOpacity={0.85}
+                >
+                  {teamInviting
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <Text style={profStyles.primaryBtnText}>Send Invite</Text>
+                  }
+                </TouchableOpacity>
               </View>
             )}
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
-              <TouchableOpacity
-                style={profStyles.editBtn}
-                onPress={() => orgLogoInputRef.current?.click()}
-                disabled={orgLogoSaving}
-              >
-                {orgLogoSaving ? <ActivityIndicator size="small" color={BRAND} /> : <Upload size={13} color={BRAND} />}
-                <Text style={profStyles.editBtnText}>{orgLogoUrl ? 'Change Logo' : 'Upload Logo'}</Text>
-              </TouchableOpacity>
-              {orgLogoUrl && (
-                <TouchableOpacity style={profStyles.editBtnDestructive} onPress={handleRemoveOrgLogo} disabled={orgLogoSaving}>
-                  <X size={13} color="#DC2626" />
-                  <Text style={profStyles.editBtnDestructiveText}>Remove</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            {orgLogoSaveMsg ? <Text style={profStyles.successText}>{orgLogoSaveMsg}</Text> : null}
+            {teamInviteError ? <Text style={profStyles.errorText}>{teamInviteError}</Text> : null}
+            {teamInviteSuccess ? <Text style={profStyles.successText}>{teamInviteSuccess}</Text> : null}
+
+            {teamLoading ? (
+              <ActivityIndicator color={BRAND} style={{ marginTop: 20 }} />
+            ) : teamMembers.length === 0 ? (
+              <View style={profStyles.emptyTeam}>
+                <Text style={profStyles.emptyTeamText}>No team members yet. Invite someone to get started.</Text>
+              </View>
+            ) : (
+              <View style={profStyles.teamTable}>
+                <View style={[profStyles.teamRow, profStyles.teamHeaderRow]}>
+                  <Text style={[profStyles.teamCell, profStyles.teamHeaderCell, { flex: 2 }]}>USER</Text>
+                  <Text style={[profStyles.teamCell, profStyles.teamHeaderCell, { flex: 2 }]}>EMAIL</Text>
+                  <Text style={[profStyles.teamCell, profStyles.teamHeaderCell, { flex: 1 }]}>ROLE</Text>
+                  <Text style={[profStyles.teamCell, profStyles.teamHeaderCell, { flex: 1 }]}>STATUS</Text>
+                  <Text style={[profStyles.teamCell, profStyles.teamHeaderCell, { flex: 1 }]}>ACTIONS</Text>
+                </View>
+                {teamMembers.map((m, idx) => (
+                  <View key={m.id} style={[profStyles.teamRow, idx % 2 === 1 && profStyles.teamRowAlt]}>
+                    <View style={[profStyles.teamCell, { flex: 2, flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+                      <View style={profStyles.memberAvatar}>
+                        <Text style={profStyles.memberAvatarText}>{(m.name || m.email)[0]?.toUpperCase() || '?'}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                          <Text style={profStyles.memberName} numberOfLines={1}>{m.name || m.email}</Text>
+                          {m.id === session?.userId && (
+                            <View style={profStyles.youBadge}><Text style={profStyles.youBadgeText}>You</Text></View>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+                    <Text style={[profStyles.teamCell, profStyles.memberEmail, { flex: 2 }]} numberOfLines={1}>{m.email}</Text>
+                    <View style={[profStyles.teamCell, { flex: 1 }]}>
+                      <View style={[profStyles.rolePill, m.role === 'ORG_ADMIN' && profStyles.rolePillAdmin]}>
+                        <Text style={[profStyles.rolePillText, m.role === 'ORG_ADMIN' && profStyles.rolePillTextAdmin]}>
+                          {ROLE_LABELS[m.role] || m.role}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={[profStyles.teamCell, { flex: 1 }]}>
+                      {m.status === 'INVITED'
+                        ? <View style={profStyles.invitedBadge}><Text style={profStyles.invitedBadgeText}>Invited</Text></View>
+                        : <View style={profStyles.activeBadge}><Text style={profStyles.activeBadgeText}>Active</Text></View>
+                      }
+                    </View>
+                    <View style={[profStyles.teamCell, { flex: 1, flexDirection: 'row', gap: 4, alignItems: 'center' }]}>
+                      {m.status === 'INVITED' && (
+                        <TouchableOpacity style={profStyles.actionBtn} onPress={() => handleResendInvite(m.email)} activeOpacity={0.8}>
+                          <Text style={profStyles.actionBtnText}>Resend</Text>
+                        </TouchableOpacity>
+                      )}
+                      {m.id !== session?.userId && (
+                        <TouchableOpacity style={profStyles.removeBtn} onPress={() => handleRemove(m.id)} activeOpacity={0.8}>
+                          <UserMinus size={13} color="#DC2626" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         )}
 
-        {/* My Team */}
-        <View style={profStyles.section}>
-          <View style={profStyles.sectionHeader}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Shield size={16} color={BRAND} />
-              <Text style={profStyles.sectionTitle}>My Team</Text>
-            </View>
-            <Text style={profStyles.memberCount}>{teamMembers.length} member{teamMembers.length !== 1 ? 's' : ''}</Text>
+        {/* ROW 4: Need Help */}
+        <View style={profStyles.card}>
+          <Text style={profStyles.cardLabel}>NEED HELP?</Text>
+          <Text style={profStyles.cardSubtitle}>Need assistance with your project, artwork, products, or account?</Text>
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 16, flexWrap: 'wrap' }}>
+            <TouchableOpacity style={profStyles.helpBtn} onPress={() => Linking.openURL('tel:4805599033')} activeOpacity={0.85}>
+              <Phone size={14} color="#fff" />
+              <Text style={profStyles.helpBtnText}>Call Us: (480) 559-9033</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={profStyles.helpBtn} onPress={() => Linking.openURL('mailto:jobs@katalystko.com')} activeOpacity={0.85}>
+              <Mail size={14} color="#fff" />
+              <Text style={profStyles.helpBtnText}>Email Us: jobs@katalystko.com</Text>
+            </TouchableOpacity>
           </View>
-
-          {isOrgAdmin && (
-            <View style={profStyles.inviteRow}>
-              <View style={profStyles.inviteInputWrap}>
-                <Mail size={14} color={TEXT_PLACEHOLDER} />
-                <TextInput
-                  style={profStyles.inviteInput}
-                  value={teamInviteEmail}
-                  onChangeText={setTeamInviteEmail}
-                  placeholder="Enter email to invite…"
-                  placeholderTextColor={TEXT_PLACEHOLDER}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
-              <TouchableOpacity
-                style={[profStyles.inviteBtn, (teamInviting || !teamInviteEmail.trim()) && profStyles.inviteBtnDisabled]}
-                onPress={handleInvite}
-                disabled={teamInviting || !teamInviteEmail.trim()}
-              >
-                {teamInviting ? <ActivityIndicator size="small" color="#fff" /> : (
-                  <>
-                    <UserPlus size={14} color="#fff" />
-                    <Text style={profStyles.inviteBtnText}>Add</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
-          {teamInviteError ? <Text style={profStyles.errorText}>{teamInviteError}</Text> : null}
-          {teamInviteSuccess ? <Text style={profStyles.successText}>{teamInviteSuccess}</Text> : null}
-
-          {teamLoading ? (
-            <ActivityIndicator color={BRAND} style={{ marginTop: 20 }} />
-          ) : teamMembers.length === 0 ? (
-            <View style={profStyles.emptyTeam}>
-              <Text style={profStyles.emptyTeamText}>No team members found.</Text>
-            </View>
-          ) : (
-            <View style={profStyles.memberList}>
-              {teamMembers.map((m, idx) => (
-                <View key={m.id} style={[profStyles.memberRow, idx % 2 === 1 && profStyles.memberRowAlt]}>
-                  <View style={profStyles.memberAvatar}>
-                    <Text style={profStyles.memberAvatarText}>{(m.name || m.email)[0]?.toUpperCase() || '?'}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={profStyles.memberName}>{m.name || m.email}</Text>
-                    <Text style={profStyles.memberEmail}>{m.email}</Text>
-                  </View>
-                  <View style={profStyles.memberMeta}>
-                    <View style={[profStyles.rolePill, m.role === 'ORG_ADMIN' && profStyles.rolePillAdmin]}>
-                      <Text style={[profStyles.rolePillText, m.role === 'ORG_ADMIN' && profStyles.rolePillTextAdmin]}>
-                        {ROLE_LABELS[m.role] || m.role}
-                      </Text>
-                    </View>
-                    {m.status === 'INVITED' && (
-                      <View style={profStyles.invitedBadge}>
-                        <Text style={profStyles.invitedBadgeText}>Invited</Text>
-                      </View>
-                    )}
-                  </View>
-                  {isOrgAdmin && m.id !== session?.userId && (
-                    <TouchableOpacity style={profStyles.removeBtn} onPress={() => handleRemove(m.id)}>
-                      <UserMinus size={14} color="#DC2626" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              ))}
-            </View>
-          )}
         </View>
-
-        {/* Sign Out */}
-        <TouchableOpacity
-          style={profStyles.signOutBlock}
-          onPress={handleSignOut}
-          activeOpacity={0.8}
-        >
-          <LogOut size={16} color="#DC2626" />
-          <Text style={profStyles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
 
       </ScrollView>
     );
@@ -3629,9 +3780,29 @@ export default function ClientPortal() {
               </View>
 
               <View style={[dash.sidebarFooter, sidebarCollapsed && { alignItems: 'center', paddingHorizontal: 0 }]}>
+                {sidebarDropdownOpen && !sidebarCollapsed && (
+                  <View style={profStyles.sidebarDropdown}>
+                    <TouchableOpacity style={profStyles.sidebarDropdownItem} onPress={() => { setSidebarDropdownOpen(false); setActiveView('profile'); fetchTeam(session.orgId); }} activeOpacity={0.75}>
+                      <User size={14} color="#D1D5DB" />
+                      <Text style={profStyles.sidebarDropdownText}>My Profile</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={profStyles.sidebarDropdownItem} onPress={() => { setSidebarDropdownOpen(false); handleSignOut(); }} activeOpacity={0.75}>
+                      <LogOut size={14} color="#D1D5DB" />
+                      <Text style={profStyles.sidebarDropdownText}>Switch Organization</Text>
+                    </TouchableOpacity>
+                    <View style={profStyles.sidebarDropdownSep} />
+                    <TouchableOpacity style={profStyles.sidebarDropdownItem} onPress={() => { setSidebarDropdownOpen(false); handleSignOut(); }} activeOpacity={0.75}>
+                      <LogOut size={14} color="#EF4444" />
+                      <Text style={[profStyles.sidebarDropdownText, { color: '#EF4444' }]}>Sign Out</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
                 <TouchableOpacity
                   style={[dash.userRow, sidebarCollapsed && { justifyContent: 'center' }]}
-                  onPress={() => { setActiveView('profile'); fetchTeam(session.orgId); }}
+                  onPress={() => {
+                    if (sidebarCollapsed) { setActiveView('profile'); fetchTeam(session.orgId); }
+                    else { setSidebarDropdownOpen(v => !v); }
+                  }}
                   activeOpacity={0.8}
                 >
                   <View style={[dash.userAvatar, { backgroundColor: profileAvatarColor }, activeView === 'profile' && { borderWidth: 2, borderColor: BRAND }]}>
@@ -3642,10 +3813,13 @@ export default function ClientPortal() {
                     )}
                   </View>
                   {!sidebarCollapsed && (
-                    <View style={{ flex: 1 }}>
-                      <Text style={dash.userName} numberOfLines={1}>{session.userName}</Text>
-                      <Text style={dash.userOrg} numberOfLines={1}>{session.orgName}</Text>
-                    </View>
+                    <>
+                      <View style={{ flex: 1 }}>
+                        <Text style={dash.userName} numberOfLines={1}>{session.userName}</Text>
+                        <Text style={dash.userOrg} numberOfLines={1}>{session.orgName}</Text>
+                      </View>
+                      {sidebarDropdownOpen ? <ChevronDown size={12} color="#6B7280" /> : <ChevronUp size={12} color="#6B7280" />}
+                    </>
                   )}
                 </TouchableOpacity>
               </View>
@@ -5086,6 +5260,191 @@ const mpStyles = StyleSheet.create({
 });
 
 const profStyles = StyleSheet.create({
+  // ── Page ──────────────────────────────────────────────────────────────────
+  pageTitle: { fontSize: 22, fontWeight: '800', color: TEXT, marginBottom: 4 },
+  pageSubtitle: { fontSize: 13, color: TEXT_LIGHT, lineHeight: 18 },
+
+  // ── Card base ─────────────────────────────────────────────────────────────
+  card: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 22, marginBottom: 16,
+    borderWidth: 1, borderColor: BORDER,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4,
+  },
+  cardLabel: {
+    fontSize: 10, fontWeight: '800' as const, color: TEXT_PLACEHOLDER,
+    textTransform: 'uppercase' as const, letterSpacing: 0.8, marginBottom: 14,
+  },
+  cardSubtitle: { fontSize: 12, color: TEXT_LIGHT, marginBottom: 14, marginTop: -8, lineHeight: 17 },
+  cardHeaderRow: {
+    flexDirection: 'row' as const, alignItems: 'flex-start' as const,
+    justifyContent: 'space-between' as const, marginBottom: 16, flexWrap: 'wrap' as const, gap: 10,
+  },
+
+  // ── Row-1: 3 equal cards ──────────────────────────────────────────────────
+  row3: { flexDirection: 'row' as const, gap: 14, marginBottom: 16 },
+
+  // ── Org Branding card ─────────────────────────────────────────────────────
+  logoSquare: {
+    width: 120, height: 120, borderRadius: 12, borderWidth: 1, borderColor: BORDER,
+    backgroundColor: '#F9FAFB', overflow: 'hidden' as const,
+    alignItems: 'center' as const, justifyContent: 'center' as const, marginTop: 4,
+  },
+  logoSquareEmpty: {
+    width: '100%' as any, height: '100%' as any,
+    alignItems: 'center' as const, justifyContent: 'center' as const, backgroundColor: '#F3F4F6',
+  },
+  logoInitials: { fontSize: 40, fontWeight: '800' as const, color: '#D1D5DB' },
+  logoHint: { fontSize: 10, color: TEXT_PLACEHOLDER, marginTop: 6 },
+  logoManagedNote: { fontSize: 11, color: TEXT_PLACEHOLDER, fontStyle: 'italic' as const, marginTop: 12, lineHeight: 16 },
+
+  // ── Org Information card ──────────────────────────────────────────────────
+  orgInfoRow: { flexDirection: 'row' as const, alignItems: 'flex-start' as const, gap: 10 },
+  infoLabel: {
+    fontSize: 10, fontWeight: '700' as const, color: TEXT_PLACEHOLDER,
+    textTransform: 'uppercase' as const, letterSpacing: 0.5, marginBottom: 2,
+  },
+  infoValue: { fontSize: 13, fontWeight: '600' as const, color: TEXT },
+  infoSub: { fontSize: 11, color: TEXT_LIGHT, marginTop: 1 },
+
+  // ── Hub Settings card ─────────────────────────────────────────────────────
+  statusLivePill: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 5,
+    alignSelf: 'flex-start' as const,
+    backgroundColor: '#F0FDF4', borderWidth: 1, borderColor: '#BBF7D0',
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, marginTop: 3,
+  },
+  statusLiveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#16A34A' },
+  statusLiveText: { fontSize: 11, fontWeight: '700' as const, color: '#16A34A' },
+  hubUrlRow: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8,
+    backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: BORDER,
+    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, marginTop: 3,
+  },
+  hubUrlText: { flex: 1, fontSize: 11, color: TEXT_LIGHT, fontFamily: 'monospace' as any },
+
+  // ── My Profile card ───────────────────────────────────────────────────────
+  myProfileRow: { flexDirection: 'row' as const, gap: 28, marginTop: 8 },
+  profileLeft: { alignItems: 'flex-start' as const, width: 160 },
+  profileRight: { flex: 1, gap: 16 },
+  profileDivider: { width: 1, backgroundColor: BORDER, alignSelf: 'stretch' as const },
+  profileField: { gap: 3 },
+  profileFieldLabel: {
+    fontSize: 10, fontWeight: '700' as const, color: TEXT_PLACEHOLDER,
+    textTransform: 'uppercase' as const, letterSpacing: 0.5,
+  },
+  profileFieldValue: { fontSize: 14, fontWeight: '600' as const, color: TEXT },
+  avatarSquare: {
+    width: 120, height: 120, borderRadius: 12,
+    alignItems: 'center' as const, justifyContent: 'center' as const, overflow: 'hidden' as const,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6,
+  },
+  avatarSquareText: { fontSize: 44, fontWeight: '800' as const, color: '#fff' },
+  colorSwatches: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 8, marginTop: 8 },
+  colorSwatch: { width: 26, height: 26, borderRadius: 13, alignItems: 'center' as const, justifyContent: 'center' as const },
+  colorSwatchSelected: {
+    borderWidth: 3, borderColor: '#fff',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 4,
+  },
+
+  // ── Team Management card ──────────────────────────────────────────────────
+  teamTable: { borderRadius: 10, overflow: 'hidden' as const, borderWidth: 1, borderColor: BORDER, marginTop: 4 },
+  teamRow: {
+    flexDirection: 'row' as const, alignItems: 'center' as const,
+    paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#fff',
+  },
+  teamRowAlt: { backgroundColor: '#FAFAFA' },
+  teamHeaderRow: { backgroundColor: '#F9FAFB', paddingVertical: 8 },
+  teamCell: { paddingRight: 8 },
+  teamHeaderCell: {
+    fontSize: 10, fontWeight: '800' as const, color: TEXT_PLACEHOLDER,
+    textTransform: 'uppercase' as const, letterSpacing: 0.5,
+  },
+  memberAvatar: {
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: '#E5E7EB', alignItems: 'center' as const, justifyContent: 'center' as const, flexShrink: 0,
+  },
+  memberAvatarText: { fontSize: 12, fontWeight: '700' as const, color: TEXT_MED },
+  memberName: { fontSize: 13, fontWeight: '600' as const, color: TEXT },
+  memberEmail: { fontSize: 12, color: TEXT_LIGHT },
+  youBadge: {
+    backgroundColor: '#FFF4EE', borderRadius: 10,
+    paddingHorizontal: 5, paddingVertical: 1, borderWidth: 1, borderColor: '#FFD5BB',
+  },
+  youBadgeText: { fontSize: 9, fontWeight: '700' as const, color: BRAND },
+  rolePill: {
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20,
+    backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: BORDER, alignSelf: 'flex-start' as const,
+  },
+  rolePillAdmin: { backgroundColor: '#FFF4EE', borderColor: '#FFD5BB' },
+  rolePillText: { fontSize: 10, fontWeight: '600' as const, color: TEXT_LIGHT },
+  rolePillTextAdmin: { color: BRAND },
+  invitedBadge: {
+    paddingHorizontal: 7, paddingVertical: 2, borderRadius: 20,
+    backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE', alignSelf: 'flex-start' as const,
+  },
+  invitedBadgeText: { fontSize: 10, fontWeight: '600' as const, color: '#2563EB' },
+  activeBadge: {
+    paddingHorizontal: 7, paddingVertical: 2, borderRadius: 20,
+    backgroundColor: '#F0FDF4', borderWidth: 1, borderColor: '#BBF7D0', alignSelf: 'flex-start' as const,
+  },
+  activeBadgeText: { fontSize: 10, fontWeight: '600' as const, color: '#16A34A' },
+  actionBtn: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: BRAND },
+  actionBtnText: { fontSize: 10, fontWeight: '600' as const, color: BRAND },
+  removeBtn: { padding: 6, borderRadius: 6, backgroundColor: '#FEF2F2' },
+  emptyTeam: { alignItems: 'center' as const, paddingVertical: 28 },
+  emptyTeamText: { fontSize: 13, color: TEXT_LIGHT },
+
+  // ── Invite row (inline) ───────────────────────────────────────────────────
+  inviteRow: { flexDirection: 'row' as const, gap: 8 },
+  inviteInputWrap: {
+    flex: 1, flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8,
+    borderWidth: 1, borderColor: BORDER, borderRadius: 9,
+    paddingHorizontal: 12, paddingVertical: 9, backgroundColor: BG,
+  },
+  inviteInput: { flex: 1, fontSize: 13, color: TEXT, outlineStyle: 'none' } as any,
+
+  // ── Shared buttons ────────────────────────────────────────────────────────
+  outlineBtn: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6,
+    borderWidth: 1, borderColor: BRAND, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8,
+  },
+  outlineBtnText: { fontSize: 12, fontWeight: '600' as const, color: BRAND },
+  destructiveBtn: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6,
+    borderWidth: 1, borderColor: '#FECACA', borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#FEF2F2',
+  },
+  destructiveBtnText: { fontSize: 12, fontWeight: '600' as const, color: '#DC2626' },
+  primaryBtn: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6,
+    backgroundColor: BRAND, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 9,
+  },
+  primaryBtnText: { fontSize: 13, fontWeight: '700' as const, color: '#fff' },
+  helpBtn: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8,
+    backgroundColor: BRAND, borderRadius: 9, paddingHorizontal: 18, paddingVertical: 11,
+  },
+  helpBtnText: { fontSize: 13, fontWeight: '700' as const, color: '#fff' },
+
+  // ── Feedback ──────────────────────────────────────────────────────────────
+  successText: { fontSize: 12, color: '#16A34A', marginTop: 8 },
+  errorText: { fontSize: 12, color: '#DC2626', marginBottom: 8 },
+
+  // ── Sidebar dropdown ──────────────────────────────────────────────────────
+  sidebarDropdown: {
+    position: 'absolute' as const, bottom: 64, left: 0, right: 0,
+    backgroundColor: '#1C1C1E', borderRadius: 12, borderWidth: 1, borderColor: '#2A2A2A',
+    padding: 4, zIndex: 999,
+    shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.4, shadowRadius: 16,
+  },
+  sidebarDropdownItem: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 10,
+    paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8,
+  },
+  sidebarDropdownText: { fontSize: 13, fontWeight: '500' as const, color: '#E5E7EB' },
+  sidebarDropdownSep: { height: 1, backgroundColor: '#2A2A2A', marginVertical: 2, marginHorizontal: 4 },
+
+  // ── LEGACY stubs (kept so any stale references don't error) ───────────────
   section: {
     backgroundColor: '#fff', borderRadius: 14, padding: 22,
     marginBottom: 18, borderWidth: 1, borderColor: BORDER,

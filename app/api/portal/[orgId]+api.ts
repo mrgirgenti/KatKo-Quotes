@@ -3,7 +3,7 @@ import { pool } from '@/lib/pool';
 export async function GET(_request: Request, { orgId }: { orgId: string }) {
   try {
     const result = await pool.query(
-      `SELECT id, name, "hubEnabled", "logoUrl", "internalLogoUrl" FROM "Organization" WHERE id = $1`,
+      `SELECT id, name, "hubEnabled", "logoUrl", "internalLogoUrl", phone, email FROM "Organization" WHERE id = $1`,
       [orgId]
     );
     if (!result.rows[0]) {
@@ -18,6 +18,8 @@ export async function GET(_request: Request, { orgId }: { orgId: string }) {
       name: org.name,
       logoUrl: org.logoUrl || null,
       internalLogoUrl: org.internalLogoUrl || null,
+      phone: org.phone || null,
+      email: org.email || null,
     });
   } catch (err) {
     console.error('[GET /api/portal/[orgId]]', err);

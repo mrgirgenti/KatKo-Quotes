@@ -1,0 +1,582 @@
+Use this as one focused Replit task.
+
+IMPLEMENTATION MODE — CLIENT HUB MY PROFILE REDESIGN
+
+Do not create a planning report.
+Do not spend time re-analyzing the whole app.
+Do not modify unrelated Client Hub pages.
+Do not revisit Clerk/auth setup.
+Do not re-provision secrets.
+
+Begin implementation immediately.
+
+Only work on the Client Hub My Profile / Account page and the supporting components required for this page.
+
+When complete, report:
+
+* Files changed
+* Components changed
+* Features implemented
+* Any blocked items
+
+---
+
+## OBJECTIVE
+
+Redesign the Client Hub “My Profile” page based on the approved mockup.
+
+This page needs two role-based realities:
+
+1. Organization Admin View
+2. Non-Admin / Team Member View
+
+The page should feel clean, compact, premium, and consistent with the rest of Katalyst OS / Client Hub.
+
+Use:
+
+* Black sidebar
+* White cards
+* Light gray page background
+* Orange #FF5A00 for primary actions
+* Orange outline buttons where appropriate
+* Rounded cards
+* Consistent spacing
+* Clear hierarchy
+
+---
+
+## GLOBAL PAGE STRUCTURE
+
+Page title:
+
+My Profile
+
+Subtitle:
+
+Manage your account, team and organization settings.
+
+For non-admins, use:
+
+Manage your account and organization information.
+
+The main page should be centered inside the content area and should not feel overly stretched.
+
+Keep the current Client Hub sidebar.
+
+Move “Sign Out” out of the page content and into the sidebar user dropdown.
+
+Sidebar user dropdown should include:
+
+* My Profile
+* Switch Organization
+* Sign Out
+
+Do not display a large Sign Out card/button inside the page content.
+
+---
+
+## ROLE LOGIC
+
+Determine whether the current user is the organization admin.
+
+If current user is Org Admin:
+Show full admin page.
+
+If current user is not Org Admin:
+Show simplified non-admin page.
+
+Non-admins may view organization information and hub settings, but cannot edit organization branding or manage users.
+
+---
+
+## ADMIN VIEW LAYOUT
+
+Admin page structure:
+
+ROW 1:
+Three equal-width cards.
+
+Column 1:
+Organization Branding
+
+Column 2:
+Organization Information
+
+Column 3:
+Client Hub Settings
+
+ROW 2:
+My Profile full-width card
+
+ROW 3:
+Team Management full-width card
+
+ROW 4:
+Need Help full-width card
+
+---
+
+## NON-ADMIN VIEW LAYOUT
+
+Non-admin page structure:
+
+ROW 1:
+Three equal-width cards.
+
+Column 1:
+Organization Branding view-only
+
+Column 2:
+Organization Information
+
+Column 3:
+Client Hub Settings
+
+ROW 2:
+My Profile full-width card
+
+ROW 3:
+Need Help full-width card
+
+Do not show Team Management to non-admins.
+
+---
+
+## ROW 1 — ORGANIZATION BRANDING CARD
+
+Card title:
+
+ORGANIZATION BRANDING
+
+This logo must be the same logo used by the Organization profile in the main Katalyst OS system.
+
+Do not create a separate Client Hub logo system.
+
+Logo data should read/write to the Organization logo field.
+
+Logo preview must be square.
+
+Do NOT use a rectangle logo preview.
+
+Display:
+
+Current Logo
+
+Square logo preview
+
+Recommended text directly underneath logo:
+
+Recommended: 500 × 500 PNG
+
+Use small muted text.
+
+Admin view:
+
+Show:
+
+* Upload Logo button
+* Remove Logo button
+
+Upload Logo should:
+
+* Upload/update the Organization logo
+* Reflect immediately in the Client Hub sidebar
+* Reflect in the main Organization Details logo
+* Preserve aspect ratio
+* Fit inside square container
+* No stretching
+* No cropping
+
+Remove Logo should:
+
+* Remove the Organization logo
+* Fall back to initials/avatar if applicable
+
+Non-admin view:
+
+Show the square logo preview.
+Do NOT show Upload Logo button.
+Do NOT show Remove Logo button.
+
+Instead show a small muted message:
+
+Organization logo managed by your Org Admin.
+
+---
+
+## ROW 1 — ORGANIZATION INFORMATION CARD
+
+Card title:
+
+ORGANIZATION INFORMATION
+
+Display:
+
+* Organization Name
+* Primary Contact
+* Phone
+* Email
+* Account Representative
+
+Use small icons on the left like the mockup.
+
+Use compact stacked rows.
+
+Example:
+
+Organization Name
+Battlestar Coffee Co
+
+Primary Contact
+Josh Girgenti
+[josh@katalystko.com](mailto:josh@katalystko.com)
+
+Phone
+(480) 559-9033
+
+Email
+[jobs@katalystko.com](mailto:jobs@katalystko.com)
+
+Account Representative
+Katalyst Ko Team
+
+This card is read-only for both admin and non-admin users.
+
+---
+
+## ROW 1 — CLIENT HUB SETTINGS CARD
+
+Card title:
+
+CLIENT HUB SETTINGS
+
+Display:
+
+Hub Status
+
+* Live / Disabled
+
+Hub URL
+
+* Hub URL text
+* Copy button
+
+Organization Admin
+
+* Admin name
+* Admin email
+
+Total Members
+
+* Example: 5 Active Members
+
+For admin view:
+
+* Admin may copy Hub URL.
+* Do not add complex settings unless already supported.
+
+For non-admin view:
+
+* View only.
+* Copy Hub URL is okay if access is allowed.
+
+Do not add notification preferences.
+
+Do not add fake settings.
+
+---
+
+## ROW 2 — MY PROFILE CARD
+
+Card title:
+
+MY PROFILE
+
+This card should be full-width.
+
+Inside the card, use two columns.
+
+LEFT COLUMN:
+
+* Profile Photo / Avatar Preview
+* Avatar Color Picker
+* Upload Photo button
+* Remove Photo button
+
+RIGHT COLUMN:
+
+* Full Name
+* Email Address
+* Organization
+* Role
+* Mobile Number optional
+
+Profile photo / avatar preview:
+
+* Square
+* Orange default if no image
+* Initials displayed if no uploaded photo
+
+Avatar color picker:
+
+* Small color circles
+* Selected color should show clear active state
+* Users can choose avatar color if no photo uploaded
+
+Upload Photo:
+
+* Allows user to upload their own profile photo
+* Applies only to the current user profile/avatar
+
+Remove Photo:
+
+* Removes uploaded user photo
+* Reverts to initials/avatar color
+
+Important:
+All users, admin and non-admin, can update their own profile photo and avatar color.
+
+Do not allow users to change other people’s profile photos here.
+
+---
+
+## ROW 3 — TEAM MANAGEMENT CARD
+
+Admin view only.
+
+Card title:
+
+TEAM MANAGEMENT
+
+Subtitle:
+
+Manage users with access to your Client Hub.
+
+Top right button:
+
+* Invite User
+
+Table columns:
+
+* User
+* Email
+* Role
+* Status
+* Actions
+
+User row should include:
+
+* Avatar/initials
+* Name
+* “You” badge if current user
+
+Roles:
+
+* Admin
+* Member
+
+Statuses:
+
+* Active
+* Invited
+
+Actions:
+
+* Resend Invite for invited users
+* Promote to Admin
+* Remove User
+* Optional dropdown for row actions
+
+Important business logic:
+
+When an Org Admin invites a user from Client Hub Team Management:
+
+1. Create or update a Contact in the main Katalyst OS Organization Details contact section.
+2. Link that contact to the correct Organization.
+3. Enable Client Hub access for that contact.
+4. Send the Client Hub invitation.
+5. Display the invited user in Team Management with status Invited.
+
+This prevents duplicate work between Client Hub users and Organization Contacts.
+
+If the contact already exists:
+
+* Do not create duplicate contact.
+* Update existing contact to enable Client Hub access.
+* Send or resend invite.
+
+If user is removed:
+
+* Remove Client Hub access.
+* Do not delete the Contact record from the Organization unless existing app behavior already supports that explicitly.
+
+---
+
+## ROW 4 — NEED HELP CARD
+
+Show to both Admins and Non-Admins.
+
+Card title:
+
+NEED HELP?
+
+Text:
+
+Need assistance with your project, artwork, products, or account?
+
+Buttons should be side-by-side.
+
+Button 1:
+
+Call Us: (480) 559-9033
+
+Button 2:
+
+Email Us: [jobs@katalystko.com](mailto:jobs@katalystko.com)
+
+Buttons must match existing Client Hub/Katalyst OS button branding.
+
+Use orange branding.
+
+Do not use weak generic styling.
+
+Call button should link to:
+
+tel:4805599033
+
+Email button should link to:
+
+mailto:jobs@katalystko.com
+
+---
+
+## REMOVE
+
+Remove from the profile page:
+
+* Notification Preferences
+* Large Sign Out content card
+* Any fake settings that are not supported
+* Any redundant “My Team” placeholder card
+
+Sign Out should live only in the sidebar user dropdown.
+
+---
+
+## SIDEBAR USER DROPDOWN
+
+At the bottom of the sidebar, the user section should open a dropdown.
+
+Dropdown items:
+
+My Profile
+Switch Organization
+Sign Out
+
+Use existing dark dropdown styling if available.
+
+Sign Out should trigger the existing Clerk/session sign-out behavior.
+
+Do not modify Clerk configuration.
+
+Do not reconfigure authentication.
+
+---
+
+## RESPONSIVE REQUIREMENTS
+
+Desktop:
+
+* Admin Row 1 = 3 columns
+* Non-admin Row 1 = 3 columns
+* My Profile = 2-column internal layout
+* Team Management = full-width
+* Need Help = full-width
+
+Tablet:
+
+* Row 1 may collapse to 2 columns if needed
+* Maintain readable cards
+
+Mobile:
+
+* Stack all cards vertically
+* My Profile left/right columns stack vertically
+* Need Help buttons stack if needed
+* No horizontal overflow
+* Logo previews remain square
+
+---
+
+## DESIGN REQUIREMENTS
+
+Use consistent Katalyst OS styling:
+
+* White cards
+* Light gray background
+* Thin gray borders
+* Rounded corners
+* Subtle shadow if already used elsewhere
+* Orange #FF5A00 for primary actions
+* Black text hierarchy
+* Muted gray helper text
+* Consistent label styling
+
+Card titles should be uppercase, compact, and bold.
+
+Do not make cards overly tall.
+
+Keep page compact and scannable.
+
+---
+
+## VALIDATION CHECKLIST
+
+After implementation verify:
+
+Admin user sees:
+
+* Organization Branding with Upload/Remove Logo
+* Organization Information
+* Client Hub Settings
+* My Profile
+* Team Management
+* Need Help
+* Sidebar dropdown with Sign Out
+
+Non-admin user sees:
+
+* Organization Branding view-only
+* Organization Information
+* Client Hub Settings
+* My Profile
+* Need Help
+* No Team Management
+* No logo upload/remove controls
+* Sidebar dropdown with Sign Out
+
+Verify:
+
+* Organization logo preview is square
+* Organization logo syncs with main Organization profile
+* User profile photo upload works
+* Avatar color selection works
+* Invite user creates/updates Organization Contact
+* Invited users get Client Hub access
+* Need Help buttons link correctly
+* No notification preferences remain
+* No Sign Out card remains on page
+
+---
+
+## REPORT BACK
+
+When complete, report:
+
+* Files changed
+* Components changed
+* Admin-only features implemented
+* Non-admin view implemented
+* Any limitations or blocked items
+
+Then stop.
