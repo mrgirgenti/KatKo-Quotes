@@ -1,5 +1,6 @@
 - [Metro restart loop](metro-restart-loop.md) — .expo/types, .agents, .local must be in metro.config.js blockList or Expo type-gen + Replit tooling writes trigger mid-compile bundle resets → white screen.
 - [Screenshot load gate](screenshot-load-gate.md) — the app's global "Loading…" (UserContext) gate often blocks the screenshot tool on this SSR Expo web app; verify via code + tsc instead.
+- [White-screen triage](white-screen-diagnosis.md) — "won't load / white screen" is usually an EXPIRED Clerk session (check /api/auth/me 401), not your edit; AuthGate skips portal routes; fix = re-login.
 - [Operational table pages](operational-table-pages.md) — Quotes (`sales.tsx`) & Projects (`projects.tsx`) are sibling operational tables; keep in sync. Bulk selection must derive from full dataset; row menu must flip/clamp.
 - [SSR responsive shell](ssr-responsive-shell.md) — useWindowDimensions=0 on SSR reads as mobile; gate shell switch behind a `mounted` flag.
 - [Portal sidebar full-height](portal-sidebar-height.md) — set height:100vh on dash.layout (not flex:1+minHeight on sidebar); sidebar stretches naturally, no sticky needed.
