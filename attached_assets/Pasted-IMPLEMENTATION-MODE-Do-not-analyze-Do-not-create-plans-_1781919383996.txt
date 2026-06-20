@@ -1,0 +1,416 @@
+IMPLEMENTATION MODE
+
+Do not analyze.
+Do not create plans.
+Do not create architecture reports.
+Do not perform additional investigation unless a required file cannot be located.
+
+Begin implementation immediately.
+
+Only stop if:
+
+1. A required file cannot be found.
+2. A dependency blocks implementation.
+3. A database migration is required.
+
+Otherwise:
+
+* Edit code.
+* Save files.
+* Implement changes.
+
+When complete:
+
+* List files changed.
+* List components changed.
+* Report any remaining issues.
+* Stop.
+
+==================================================
+MEDIA BIN STANDARDIZATION PASS
+==============================
+
+OBJECTIVE
+
+Create a single, unified Media Bin experience throughout Katalyst OS and Client Hubs.
+
+Currently there are multiple Media Bin implementations that behave and display differently.
+
+The goal is to create ONE shared media system used everywhere.
+
+This task should NOT redesign unrelated pages.
+
+This task should focus only on:
+
+* Media display
+* Media upload
+* Media management
+* Media selection
+* Responsive behavior
+
+==================================================
+GLOBAL MEDIA BIN STANDARD
+=========================
+
+These standards apply everywhere media is displayed, selected, uploaded, managed, or referenced.
+
+Applies to:
+
+* Organization Details Media Bin
+* Contact Media Bin
+* Client Hub Dashboard Media Bin
+* Client Hub Media Bin Page
+* Media Picker Modal
+* Project Artwork Attachments
+* Future Web Stores
+* Future Artwork Approval systems
+* Future media-related modules
+
+==================================================
+PHASE 1
+FIX ORGANIZATION DETAILS MEDIA BIN
+==================================
+
+Current issue:
+
+Media exists and displays correctly on:
+
+* Mobile
+* Tablet
+
+But does NOT display correctly on:
+
+* Desktop/Web
+
+This appears to be a rendering/layout issue rather than a data issue.
+
+Investigate and fix.
+
+Success criteria:
+
+Organization Details Media Bin displays correctly on:
+
+* Desktop
+* Tablet
+* Mobile
+
+using the same card layout as all other media bins.
+
+==================================================
+PHASE 2
+CREATE SHARED MEDIA COMPONENTS
+==============================
+
+Create shared reusable components:
+
+MediaCard
+
+MediaGrid
+
+MediaPickerModal
+
+MediaUploadZone
+
+MediaEmptyState
+
+All Media Bin implementations should use these components.
+
+Eliminate duplicate implementations wherever possible.
+
+Future media systems should inherit these components.
+
+==================================================
+PHASE 3
+MEDIA CARD STANDARDIZATION
+==========================
+
+Use the same media card everywhere.
+
+Required content:
+
+Thumbnail
+
+File Type Badge
+
+File Name
+
+Upload Date
+
+File Size
+
+Required actions:
+
+Rename
+
+Download
+
+Delete
+
+==================================================
+
+Rename functionality
+
+Current state:
+
+Some locations allow download/delete but not rename.
+
+Requirement:
+
+Every media asset everywhere must be renameable.
+
+Add pencil/edit action.
+
+Behavior:
+
+Click Rename
+
+Inline edit field appears
+
+Save
+
+Cancel
+
+No separate screen required.
+
+==================================================
+PHASE 4
+MEDIA PICKER MODAL REDESIGN
+===========================
+
+Current implementation:
+
+When selecting artwork from Media Bin:
+
+Choose from Media Bin
+
+filename.png
+filename.svg
+filename.pdf
+
+This is not acceptable.
+
+Users need visual artwork selection.
+
+==================================================
+
+Replace list view with image-based card view.
+
+Display:
+
+Thumbnail
+
+File Name
+
+File Type
+
+Date
+
+Select
+
+==================================================
+
+Media Picker should visually match Media Bin cards.
+
+The experience should feel like selecting artwork.
+
+Not browsing a file directory.
+
+==================================================
+PHASE 5
+EMPTY STATE STANDARD
+====================
+
+Whenever a Media Bin contains zero files:
+
+Display the standard Katalyst Media Empty State.
+
+Use the approved upload graphic currently being deployed.
+
+Requirements:
+
+* Orange background
+* Approximately 10% lighter than brand orange (#FF5A00)
+* Centered upload illustration
+* Consistent spacing
+* Consistent sizing
+
+Display:
+
+Drag and drop your media here
+
+AI • SVG • PS • PNG • JPG • PDF • EMB • DST • PES
+
+==================================================
+
+This empty state should appear everywhere.
+
+Applies to:
+
+* Organization Details
+* Contacts
+* Client Hub Dashboard
+* Client Hub Media Bin
+* Media Picker
+* Future Media Modules
+
+==================================================
+
+Do NOT create custom empty states.
+
+Do NOT display:
+
+"No files"
+
+"No media"
+
+"Empty"
+
+"No uploads"
+
+Use only the standardized Katalyst Media Empty State.
+
+==================================================
+PHASE 6
+UPLOAD STANDARDIZATION
+======================
+
+Every Media Bin everywhere must support:
+
+1. Upload Button
+
+Visible at all times.
+
+Label:
+
+Upload Media
+
+or
+
+Upload
+
+depending on available space.
+
+==================================================
+
+2. Drag & Drop Upload
+
+Users must be able to drag files directly into:
+
+* Media Bin page
+* Organization Media Bin
+* Contact Media Bin
+* Client Hub Media Bin
+* Client Hub Dashboard Media Bin
+* Media Picker upload zones
+
+without navigating elsewhere.
+
+==================================================
+
+This behavior should be consistent throughout the platform.
+
+==================================================
+PHASE 7
+RESPONSIVE GRID STANDARDS
+=========================
+
+Organization Details Media Bin
+
+Desktop:
+4 columns
+
+Tablet:
+4 columns
+
+Mobile:
+3 columns
+
+==================================================
+
+Client Hub Dashboard Media Bin
+
+Desktop:
+4 columns
+
+Tablet:
+4 columns
+
+Mobile:
+3 columns
+
+==================================================
+
+Client Hub Media Bin Page
+
+Desktop:
+6 columns
+
+Tablet:
+4 columns
+
+Mobile:
+3 columns
+
+==================================================
+
+Media Picker Modal
+
+Desktop:
+4 columns
+
+Tablet:
+3 columns
+
+Mobile:
+2 columns
+
+==================================================
+PHASE 8
+VISUAL CONSISTENCY AUDIT
+========================
+
+After implementation:
+
+Audit every media surface.
+
+Verify consistency across:
+
+* Organization Details
+* Contacts
+* Client Hub Dashboard
+* Client Hub Media Bin
+* Media Picker Modal
+* Artwork Selection
+
+Verify:
+
+✓ Same card layout
+
+✓ Same metadata
+
+✓ Same actions
+
+✓ Same upload behavior
+
+✓ Same empty state
+
+✓ Same responsive behavior
+
+==================================================
+SUCCESS CRITERIA
+================
+
+A user should have the exact same experience when interacting with media anywhere in Katalyst OS or Client Hubs.
+
+Media should always:
+
+* Display consistently
+* Upload consistently
+* Select consistently
+* Rename consistently
+* Download consistently
+* Delete consistently
+
+No page-specific media systems should remain.
+
+The Media Bin should feel like a single unified platform-wide system.

@@ -72,6 +72,7 @@ import {
   Users,
 } from 'lucide-react-native';
 import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
+import MediaPickerModal from '@/components/MediaPickerModal';
 
 const BRAND = '#FF5A00';
 const BRAND_DARK = '#CC4700';
@@ -954,6 +955,8 @@ export default function ClientPortal() {
   const [binPickerTarget, setBinPickerTarget] = useState<'mockup' | 'artwork'>('artwork');
   const [binPickerLineItemId, setBinPickerLineItemId] = useState<string | null>(null);
   const [binPickerSearch, setBinPickerSearch] = useState('');
+  const [renamingPortalFileId, setRenamingPortalFileId] = useState<string | null>(null);
+  const [renamePortalText, setRenamePortalText] = useState('');
 
   const [teamMembers, setTeamMembers] = useState<Array<{
     id: string; name: string; email: string; status: string; role: string;
@@ -1167,6 +1170,19 @@ export default function ClientPortal() {
       setArtworkFromBin(prev => prev.find(f => f.id === file.id) ? prev : [...prev, file]);
     }
   }, [binPickerTarget, binPickerLineItemId]);
+
+  const handleRenamePortalFile = useCallback(async (fileId: string, newName: string) => {
+    if (!session || !newName.trim()) { setRenamingPortalFileId(null); return; }
+    setMediaBinFiles(prev => prev.map(f => f.id === fileId ? { ...f, originalName: newName.trim() } : f));
+    setRenamingPortalFileId(null);
+    try {
+      await fetch(`/api/portal/${session.orgId}/files/${fileId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ originalName: newName.trim() }),
+      });
+    } catch {}
+  }, [session]);
 
   const handleFilesAdded = useCallback((rawFiles: globalThis.File[]) => {
     const allowed = rawFiles.filter(f => {
@@ -2497,7 +2513,32 @@ export default function ClientPortal() {
           )}
         </View>
         <View style={mbStyles.fileMeta}>
-          <Text style={mbStyles.fileName} numberOfLines={1}>{file.originalName}</Text>
+          {renamingPortalFileId === file.id ? (
+            <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center', flex: 1 }}>
+              <TextInput
+                value={renamePortalText}
+                onChangeText={setRenamePortalText}
+                style={[mbStyles.fileName, { flex: 1, borderBottomWidth: 1, borderBottomColor: BRAND, paddingVertical: 0 }]}
+                autoFocus
+                selectTextOnFocus
+                onSubmitEditing={() => handleRenamePortalFile(file.id, renamePortalText)}
+                onBlur={() => handleRenamePortalFile(file.id, renamePortalText)}
+              />
+              <TouchableOpacity onPress={() => handleRenamePortalFile(file.id, renamePortalText)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                <Check size={13} color="#16A34A" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setRenamingPortalFileId(null)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                <X size={13} color="#DC2626" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={[mbStyles.fileName, { flex: 1 }]} numberOfLines={1}>{file.originalName}</Text>
+              <TouchableOpacity onPress={() => { setRenamingPortalFileId(file.id); setRenamePortalText(file.originalName); }} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                <Edit2 size={12} color={TEXT_LIGHT} />
+              </TouchableOpacity>
+            </View>
+          )}
           <Text style={mbStyles.fileSize}>{formatBytes(file.fileSize)} · {formatDate(file.createdAt)}</Text>
         </View>
         <View style={mbStyles.fileActions}>
@@ -2626,8 +2667,8 @@ export default function ClientPortal() {
           <View style={mbStyles.visualGrid}>
             {filtered.map(file => (
               <View key={file.id} style={[mbStyles.visualCard, mediaBinGridSize === 'large'
-                ? (isMobile ? { width: '48%' } : isTablet ? { width: '48%' } : { width: '31%' })
-                : (isMobile ? { width: '48%' } : isTablet ? { width: '31%' } : { width: '18%' })
+                ? (isMobile ? { width: '48%' } : isTablet ? { width: '31.5%' } : { width: '23.5%' })
+                : (isMobile ? { width: '31.5%' } : isTablet ? { width: '23.5%' } : { width: '15.5%' })
               ]}>
                 <View style={mbStyles.visualThumb}>
                   {isImageMime(file.mimeType) ? (
@@ -2650,7 +2691,32 @@ export default function ClientPortal() {
                   <View style={mbStyles.visualTypeBadge}>
                     <Text style={mbStyles.visualTypeBadgeText}>{getMimeLabel(file.mimeType, file.originalName)}</Text>
                   </View>
-                  <Text style={mbStyles.visualFileName} numberOfLines={2}>{file.originalName}</Text>
+                  {renamingPortalFileId === file.id ? (
+                    <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
+                      <TextInput
+                        value={renamePortalText}
+                        onChangeText={setRenamePortalText}
+                        style={[mbStyles.visualFileName, { flex: 1, borderBottomWidth: 1, borderBottomColor: BRAND, paddingVertical: 0 }]}
+                        autoFocus
+                        selectTextOnFocus
+                        onSubmitEditing={() => handleRenamePortalFile(file.id, renamePortalText)}
+                        onBlur={() => handleRenamePortalFile(file.id, renamePortalText)}
+                      />
+                      <TouchableOpacity onPress={() => handleRenamePortalFile(file.id, renamePortalText)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                        <Check size={11} color="#16A34A" />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => setRenamingPortalFileId(null)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                        <X size={11} color="#DC2626" />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 3 }}>
+                      <Text style={[mbStyles.visualFileName, { flex: 1 }]} numberOfLines={2}>{file.originalName}</Text>
+                      <TouchableOpacity onPress={() => { setRenamingPortalFileId(file.id); setRenamePortalText(file.originalName); }} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} style={{ paddingTop: 2 }}>
+                        <Edit2 size={11} color={TEXT_LIGHT} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
                   <Text style={mbStyles.visualFileSub}>{formatDate(file.createdAt)}</Text>
                   <Text style={mbStyles.visualFileSub}>{formatBytes(file.fileSize)}</Text>
                 </View>
@@ -3574,62 +3640,19 @@ export default function ClientPortal() {
     );
   };
 
-  const BinPickerModal = () => {
-    const filtered = binPickerSearch.trim()
-      ? mediaBinFiles.filter(f => f.originalName.toLowerCase().includes(binPickerSearch.toLowerCase()))
-      : mediaBinFiles;
-    return (
-      <Modal visible={binPickerVisible} transparent animationType="fade" onRequestClose={() => setBinPickerVisible(false)}>
-        <Pressable style={binPickStyles.overlay} onPress={() => setBinPickerVisible(false)}>
-          <Pressable style={binPickStyles.sheet} onPress={() => {}}>
-            <View style={binPickStyles.header}>
-              <Text style={binPickStyles.title}>Choose from Media Bin</Text>
-              <TouchableOpacity onPress={() => setBinPickerVisible(false)}>
-                <X size={18} color={TEXT_LIGHT} />
-              </TouchableOpacity>
-            </View>
-            <View style={binPickStyles.searchRow}>
-              <Search size={14} color={TEXT_PLACEHOLDER} />
-              <TextInput
-                style={binPickStyles.searchInput}
-                value={binPickerSearch}
-                onChangeText={setBinPickerSearch}
-                placeholder="Search files…"
-                placeholderTextColor={TEXT_PLACEHOLDER}
-              />
-            </View>
-            <ScrollView style={{ maxHeight: 360 }}>
-              {mediaBinLoading ? (
-                <ActivityIndicator color={BRAND} style={{ margin: 24 }} />
-              ) : filtered.length === 0 ? (
-                <View style={{ padding: 24, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, color: TEXT_LIGHT }}>
-                    {mediaBinFiles.length === 0 ? 'No files in your Media Bin yet.' : 'No matching files.'}
-                  </Text>
-                </View>
-              ) : (
-                filtered.map((f, idx) => (
-                  <TouchableOpacity
-                    key={f.id}
-                    style={[binPickStyles.fileRow, idx % 2 === 1 && binPickStyles.fileRowAlt]}
-                    onPress={() => handleBinPickerSelect(f)}
-                    activeOpacity={0.75}
-                  >
-                    <Library size={15} color={BRAND} style={{ flexShrink: 0 }} />
-                    <View style={{ flex: 1, marginLeft: 10 }}>
-                      <Text style={binPickStyles.fileName} numberOfLines={1}>{f.originalName}</Text>
-                      {f.fileSize && <Text style={binPickStyles.fileMeta}>{f.fileSize < 1048576 ? `${(f.fileSize / 1024).toFixed(0)} KB` : `${(f.fileSize / 1048576).toFixed(1)} MB`}</Text>}
-                    </View>
-                    <Check size={14} color={BRAND} style={{ opacity: 0 }} />
-                  </TouchableOpacity>
-                ))
-              )}
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
-    );
-  };
+  const BinPickerModal = () => (
+    <MediaPickerModal
+      visible={binPickerVisible}
+      onClose={() => setBinPickerVisible(false)}
+      onSelect={handleBinPickerSelect}
+      files={mediaBinFiles}
+      loading={mediaBinLoading}
+      orgId={session?.orgId || ''}
+      isMobile={isMobile}
+      isTablet={isTablet}
+      title={binPickerTarget === 'mockup' ? 'Choose Mockup from Media Bin' : 'Choose from Media Bin'}
+    />
+  );
 
   if (hubDisabled) {
     return (

@@ -29,6 +29,33 @@ export async function GET(_request: Request, { orgId, fileId }: { orgId: string;
   }
 }
 
+export async function PATCH(request: Request, { orgId, fileId }: { orgId: string; fileId: string }) {
+  if (!orgId || !fileId) return Response.json({ error: 'orgId and fileId required' }, { status: 400 });
+
+  const body = await request.json().catch(() => ({}));
+  const { originalName } = body;
+  if (!originalName || !originalName.trim()) {
+    return Response.json({ error: 'originalName required' }, { status: 400 });
+  }
+
+  const client = await pool.connect();
+  try {
+    const check = await client.query(
+      `SELECT id FROM "File" WHERE id = $1 AND "organizationId" = $2`,
+      [fileId, orgId]
+    );
+    if (!check.rows[0]) return Response.json({ error: 'File not found' }, { status: 404 });
+
+    await client.query(
+      `UPDATE "File" SET "originalName" = $1 WHERE id = $2`,
+      [originalName.trim(), fileId]
+    );
+    return Response.json({ success: true });
+  } finally {
+    client.release();
+  }
+}
+
 export async function DELETE(_request: Request, { orgId, fileId }: { orgId: string; fileId: string }) {
   if (!orgId || !fileId) return Response.json({ error: 'orgId and fileId required' }, { status: 400 });
 

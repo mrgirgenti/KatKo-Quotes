@@ -393,6 +393,8 @@ export default function OrgProfileScreen() {
   const [orgFilesUploading, setOrgFilesUploading] = useState(false);
   const [orgFilesDragOver, setOrgFilesDragOver] = useState(false);
   const [hoveredLegacyKey, setHoveredLegacyKey] = useState<string | null>(null);
+  const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
+  const [renameText, setRenameText] = useState('');
 
   const [activeProjectSearch, setActiveProjectSearch] = useState('');
   const [activeProjectStatusFilter, setActiveProjectStatusFilter] = useState<'all' | QuoteStatus>('all');
@@ -430,6 +432,19 @@ export default function OrgProfileScreen() {
   const handleOrgFileDelete = useCallback(async (fileId: string) => {
     try {
       await fetch(`/api/files/${fileId}`, { method: 'DELETE', headers: await getAuthHeaders() });
+      refetchOrgFiles();
+    } catch {}
+  }, [refetchOrgFiles]);
+
+  const handleRenameFile = useCallback(async (fileId: string, newName: string) => {
+    if (!newName.trim()) { setRenamingFileId(null); return; }
+    setRenamingFileId(null);
+    try {
+      await fetch(`/api/files/${fileId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...await getAuthHeaders() },
+        body: JSON.stringify({ originalName: newName.trim() }),
+      });
       refetchOrgFiles();
     } catch {}
   }, [refetchOrgFiles]);
@@ -1904,7 +1919,32 @@ export default function OrgProfileScreen() {
                       <Text style={styles.orgMediaExt}>{ext}</Text>
                     </View>
                   )}
-                  <Text style={styles.orgMediaName} numberOfLines={1}>{f.originalName}</Text>
+                  {renamingFileId === f.id ? (
+                    <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
+                      <TextInput
+                        value={renameText}
+                        onChangeText={setRenameText}
+                        style={[styles.orgMediaName, { flex: 1, borderBottomWidth: 1, borderBottomColor: Colors.light.tint, paddingVertical: 0 }]}
+                        autoFocus
+                        selectTextOnFocus
+                        onSubmitEditing={() => handleRenameFile(f.id, renameText)}
+                        onBlur={() => handleRenameFile(f.id, renameText)}
+                      />
+                      <TouchableOpacity onPress={() => handleRenameFile(f.id, renameText)} style={styles.orgMediaActionBtn}>
+                        <CheckCircle2 size={12} color={Colors.light.success} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => setRenamingFileId(null)} style={styles.orgMediaActionBtn}>
+                        <X size={12} color={Colors.light.error} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                      <Text style={[styles.orgMediaName, { flex: 1 }]} numberOfLines={1}>{f.originalName}</Text>
+                      <TouchableOpacity onPress={() => { setRenamingFileId(f.id); setRenameText(f.originalName); }} style={styles.orgMediaActionBtn}>
+                        <Edit3 size={10} color={Colors.light.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
                   <Text style={styles.orgMediaMeta}>{formatDate(f.createdAt)} · {ext}</Text>
                   <View style={styles.orgMediaActions}>
                     {Platform.OS === 'web' && (
@@ -2348,7 +2388,32 @@ export default function OrgProfileScreen() {
                       <Text style={styles.orgMediaExt}>{ext}</Text>
                     </View>
                   )}
-                  <Text style={styles.orgMediaName} numberOfLines={1}>{f.originalName}</Text>
+                  {renamingFileId === f.id ? (
+                    <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
+                      <TextInput
+                        value={renameText}
+                        onChangeText={setRenameText}
+                        style={[styles.orgMediaName, { flex: 1, borderBottomWidth: 1, borderBottomColor: Colors.light.tint, paddingVertical: 0 }]}
+                        autoFocus
+                        selectTextOnFocus
+                        onSubmitEditing={() => handleRenameFile(f.id, renameText)}
+                        onBlur={() => handleRenameFile(f.id, renameText)}
+                      />
+                      <TouchableOpacity onPress={() => handleRenameFile(f.id, renameText)} style={styles.orgMediaActionBtn}>
+                        <CheckCircle2 size={12} color={Colors.light.success} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => setRenamingFileId(null)} style={styles.orgMediaActionBtn}>
+                        <X size={12} color={Colors.light.error} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                      <Text style={[styles.orgMediaName, { flex: 1 }]} numberOfLines={1}>{f.originalName}</Text>
+                      <TouchableOpacity onPress={() => { setRenamingFileId(f.id); setRenameText(f.originalName); }} style={styles.orgMediaActionBtn}>
+                        <Edit3 size={10} color={Colors.light.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
                   <Text style={styles.orgMediaMeta}>{formatDate(f.createdAt)} · {ext}</Text>
                   <View style={styles.orgMediaActions}>
                     {Platform.OS === 'web' && (
@@ -2777,20 +2842,45 @@ export default function OrgProfileScreen() {
                       const isImage = f.mimeType?.startsWith('image/');
                       const ext = (f.originalName || '').split('.').pop()?.toUpperCase() || 'FILE';
                       return (
-                        <TouchableOpacity
-                          key={f.id}
-                          style={styles.v2MediaItem}
-                          onPress={() => Platform.OS === 'web' && typeof window !== 'undefined' && window.open(`/api/files/${f.id}?inline=true`, '_blank')}
-                        >
-                          {isImage ? (
-                            <Image source={{ uri: `/api/files/${f.id}?inline=true` }} style={styles.v2MediaThumb} resizeMode="cover" />
+                        <View key={f.id} style={styles.v2MediaItem}>
+                          <TouchableOpacity
+                            onPress={() => Platform.OS === 'web' && typeof window !== 'undefined' && window.open(`/api/files/${f.id}?inline=true`, '_blank')}
+                          >
+                            {isImage ? (
+                              <AuthedImage fileId={f.id} style={styles.v2MediaThumb} />
+                            ) : (
+                              <View style={styles.v2MediaIcon}>
+                                <Text style={styles.v2MediaExt}>{ext}</Text>
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                          {renamingFileId === f.id ? (
+                            <View style={{ flexDirection: 'row', gap: 3, alignItems: 'center' }}>
+                              <TextInput
+                                value={renameText}
+                                onChangeText={setRenameText}
+                                style={[styles.v2MediaName, { flex: 1, borderBottomWidth: 1, borderBottomColor: Colors.light.tint, paddingVertical: 0 }]}
+                                autoFocus
+                                selectTextOnFocus
+                                onSubmitEditing={() => handleRenameFile(f.id, renameText)}
+                                onBlur={() => handleRenameFile(f.id, renameText)}
+                              />
+                              <TouchableOpacity onPress={() => handleRenameFile(f.id, renameText)}>
+                                <CheckCircle2 size={10} color={Colors.light.success} />
+                              </TouchableOpacity>
+                              <TouchableOpacity onPress={() => setRenamingFileId(null)}>
+                                <X size={10} color={Colors.light.error} />
+                              </TouchableOpacity>
+                            </View>
                           ) : (
-                            <View style={styles.v2MediaIcon}>
-                              <Text style={styles.v2MediaExt}>{ext}</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                              <Text style={[styles.v2MediaName, { flex: 1 }]} numberOfLines={1}>{f.originalName}</Text>
+                              <TouchableOpacity onPress={() => { setRenamingFileId(f.id); setRenameText(f.originalName); }}>
+                                <Edit3 size={9} color={Colors.light.textSecondary} />
+                              </TouchableOpacity>
                             </View>
                           )}
-                          <Text style={styles.v2MediaName} numberOfLines={1}>{f.originalName}</Text>
-                        </TouchableOpacity>
+                        </View>
                       );
                     })}
                   </View>
@@ -3618,22 +3708,58 @@ export default function OrgProfileScreen() {
                         const isImage = f.mimeType?.startsWith('image/');
                         const ext = (f.originalName || '').split('.').pop()?.toUpperCase() || 'FILE';
                         return (
-                          <TouchableOpacity
-                            key={f.id}
-                            style={styles.orgMediaItem}
-                            onPress={() => Platform.OS === 'web' && typeof window !== 'undefined' && window.open(`/api/files/${f.id}?inline=true`, '_blank')}
-                          >
-                            {isImage ? (
-                              <AuthedImage fileId={f.id} style={styles.orgMediaThumb} />
+                          <View key={f.id} style={styles.orgMediaItem}>
+                            <TouchableOpacity onPress={() => Platform.OS === 'web' && typeof window !== 'undefined' && window.open(`/api/files/${f.id}?inline=true`, '_blank')}>
+                              {isImage ? (
+                                <AuthedImage fileId={f.id} style={styles.orgMediaThumb} />
+                              ) : (
+                                <View style={styles.orgMediaIcon}>
+                                  <FileText size={18} color={Colors.light.tint} />
+                                  <Text style={styles.orgMediaExt}>{ext}</Text>
+                                </View>
+                              )}
+                            </TouchableOpacity>
+                            {renamingFileId === f.id ? (
+                              <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
+                                <TextInput
+                                  value={renameText}
+                                  onChangeText={setRenameText}
+                                  style={[styles.orgMediaName, { flex: 1, borderBottomWidth: 1, borderBottomColor: Colors.light.tint, paddingVertical: 0 }]}
+                                  autoFocus
+                                  selectTextOnFocus
+                                  onSubmitEditing={() => handleRenameFile(f.id, renameText)}
+                                  onBlur={() => handleRenameFile(f.id, renameText)}
+                                />
+                                <TouchableOpacity onPress={() => handleRenameFile(f.id, renameText)} style={styles.orgMediaActionBtn}>
+                                  <CheckCircle2 size={12} color={Colors.light.success} />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => setRenamingFileId(null)} style={styles.orgMediaActionBtn}>
+                                  <X size={12} color={Colors.light.error} />
+                                </TouchableOpacity>
+                              </View>
                             ) : (
-                              <View style={styles.orgMediaIcon}>
-                                <FileText size={18} color={Colors.light.tint} />
-                                <Text style={styles.orgMediaExt}>{ext}</Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                                <Text style={[styles.orgMediaName, { flex: 1 }]} numberOfLines={1}>{f.originalName}</Text>
+                                <TouchableOpacity onPress={() => { setRenamingFileId(f.id); setRenameText(f.originalName); }} style={styles.orgMediaActionBtn}>
+                                  <Edit3 size={10} color={Colors.light.textSecondary} />
+                                </TouchableOpacity>
                               </View>
                             )}
-                            <Text style={styles.orgMediaName} numberOfLines={1}>{f.originalName}</Text>
                             <Text style={styles.orgMediaMeta}>{formatDate(f.createdAt)} · {ext}</Text>
-                          </TouchableOpacity>
+                            <View style={styles.orgMediaActions}>
+                              {Platform.OS === 'web' && (
+                                <TouchableOpacity
+                                  onPress={() => (typeof window !== 'undefined') && window.open(`/api/files/${f.id}?inline=true`, '_blank')}
+                                  style={styles.orgMediaActionBtn}
+                                >
+                                  <ExternalLink size={12} color={Colors.light.textSecondary} />
+                                </TouchableOpacity>
+                              )}
+                              <TouchableOpacity onPress={() => handleOrgFileDelete(f.id)} style={styles.orgMediaActionBtn}>
+                                <Trash2 size={12} color={Colors.light.error} />
+                              </TouchableOpacity>
+                            </View>
+                          </View>
                         );
                       })}
                     </View>
