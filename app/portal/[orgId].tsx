@@ -1817,8 +1817,12 @@ export default function ClientPortal() {
                   <Text style={mbStyles.mediaBinEmptySub}>AI · SVG · PS · PNG · JPG · PDF · EMB · DST · PES</Text>
                 </View>
               )
-              : <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {mediaBinFiles.slice(0, 4).map(f => renderPortalMediaCard(f, { width: '48%' }))}
+              : <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -5 }}>
+                  {mediaBinFiles.slice(0, 4).map(f => (
+                    <View key={f.id} style={{ width: '25%', paddingHorizontal: 5, marginBottom: 10 }}>
+                      {renderPortalMediaCard(f, { width: '100%' })}
+                    </View>
+                  ))}
                 </View>
             }
           </SectionCard>

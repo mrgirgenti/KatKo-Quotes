@@ -470,6 +470,33 @@ export default function OrgProfileScreen() {
     } catch {}
   }, [refetchOrgFiles]);
 
+  const renderOrgMediaCard = (f: any, cols: number) => {
+    const isImage = f.mimeType?.startsWith('image/');
+    const ext = (f.originalName || '').split('.').pop()?.toUpperCase() || 'FILE';
+    return (
+      <View key={f.id} style={{ width: `${100 / cols}%`, paddingHorizontal: 5, marginBottom: 10 }}>
+        <MediaCard
+          file={f}
+          thumbnail={isImage
+            ? <AuthedImage fileId={f.id} style={{ width: '100%', height: '100%' }} />
+            : <Text style={styles.orgMediaCardExt}>{ext}</Text>}
+          typeLabel={ext}
+          dateLabel={formatDate(f.createdAt)}
+          sizeLabel={formatBytes(f.fileSize)}
+          onDownload={() => handleOrgFileDownload(f)}
+          onDelete={() => handleOrgFileDelete(f.id)}
+          renamable
+          isRenaming={renamingFileId === f.id}
+          renameValue={renameText}
+          onRenameChange={setRenameText}
+          onRenameStart={() => { setRenamingFileId(f.id); setRenameText(f.originalName); }}
+          onRenameSubmit={() => handleRenameFile(f.id, renameText)}
+          onRenameCancel={() => setRenamingFileId(null)}
+        />
+      </View>
+    );
+  };
+
   const handleAddMember = useCallback(async () => {
     if (!org || !memberForm.userId) return;
     try {
@@ -1925,62 +1952,7 @@ export default function OrgProfileScreen() {
               if (files.length > 0) handleOrgFileUpload(files);
             }}
           >
-            {orgFiles.map((f: any) => {
-              const isImage = f.mimeType?.startsWith('image/');
-              const ext = (f.originalName || '').split('.').pop()?.toUpperCase() || 'FILE';
-              return (
-                <View key={f.id} style={styles.orgMediaItem}>
-                  {isImage ? (
-                    <AuthedImage fileId={f.id} style={styles.orgMediaThumb} />
-                  ) : (
-                    <View style={styles.orgMediaIcon}>
-                      <FileText size={18} color={Colors.light.tint} />
-                      <Text style={styles.orgMediaExt}>{ext}</Text>
-                    </View>
-                  )}
-                  {renamingFileId === f.id ? (
-                    <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
-                      <TextInput
-                        value={renameText}
-                        onChangeText={setRenameText}
-                        style={[styles.orgMediaName, { flex: 1, borderBottomWidth: 1, borderBottomColor: Colors.light.tint, paddingVertical: 0 }]}
-                        autoFocus
-                        selectTextOnFocus
-                        onSubmitEditing={() => handleRenameFile(f.id, renameText)}
-                        onBlur={() => handleRenameFile(f.id, renameText)}
-                      />
-                      <TouchableOpacity onPress={() => handleRenameFile(f.id, renameText)} style={styles.orgMediaActionBtn}>
-                        <CheckCircle2 size={12} color={Colors.light.success} />
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => setRenamingFileId(null)} style={styles.orgMediaActionBtn}>
-                        <X size={12} color={Colors.light.error} />
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                      <Text style={[styles.orgMediaName, { flex: 1 }]} numberOfLines={1}>{f.originalName}</Text>
-                      <TouchableOpacity onPress={() => { setRenamingFileId(f.id); setRenameText(f.originalName); }} style={styles.orgMediaActionBtn}>
-                        <Edit3 size={10} color={Colors.light.textSecondary} />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                  <Text style={styles.orgMediaMeta}>{formatDate(f.createdAt)} · {ext}</Text>
-                  <View style={styles.orgMediaActions}>
-                    {Platform.OS === 'web' && (
-                      <TouchableOpacity
-                        onPress={() => (typeof window !== 'undefined') && window.open(`/api/files/${f.id}?inline=true`, '_blank')}
-                        style={styles.orgMediaActionBtn}
-                      >
-                        <ExternalLink size={12} color={Colors.light.textSecondary} />
-                      </TouchableOpacity>
-                    )}
-                    <TouchableOpacity onPress={() => handleOrgFileDelete(f.id)} style={styles.orgMediaActionBtn}>
-                      <Trash2 size={12} color={Colors.light.error} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              );
-            })}
+            {orgFiles.map((f: any) => renderOrgMediaCard(f, isTablet ? 4 : 2))}
           </View>
         )}
       </View>
@@ -2856,52 +2828,8 @@ export default function OrgProfileScreen() {
                     <Text style={styles.mediaBinEmptySub}>AI · SVG · PS · PNG · JPG · PDF · EMB · DST · PES</Text>
                   </View>
                 ) : (
-                  <View style={styles.v2MediaGrid}>
-                    {orgFiles.slice(0, 9).map((f: any) => {
-                      const isImage = f.mimeType?.startsWith('image/');
-                      const ext = (f.originalName || '').split('.').pop()?.toUpperCase() || 'FILE';
-                      return (
-                        <View key={f.id} style={styles.v2MediaItem}>
-                          <TouchableOpacity
-                            onPress={() => Platform.OS === 'web' && typeof window !== 'undefined' && window.open(`/api/files/${f.id}?inline=true`, '_blank')}
-                          >
-                            {isImage ? (
-                              <AuthedImage fileId={f.id} style={styles.v2MediaThumb} />
-                            ) : (
-                              <View style={styles.v2MediaIcon}>
-                                <Text style={styles.v2MediaExt}>{ext}</Text>
-                              </View>
-                            )}
-                          </TouchableOpacity>
-                          {renamingFileId === f.id ? (
-                            <View style={{ flexDirection: 'row', gap: 3, alignItems: 'center' }}>
-                              <TextInput
-                                value={renameText}
-                                onChangeText={setRenameText}
-                                style={[styles.v2MediaName, { flex: 1, borderBottomWidth: 1, borderBottomColor: Colors.light.tint, paddingVertical: 0 }]}
-                                autoFocus
-                                selectTextOnFocus
-                                onSubmitEditing={() => handleRenameFile(f.id, renameText)}
-                                onBlur={() => handleRenameFile(f.id, renameText)}
-                              />
-                              <TouchableOpacity onPress={() => handleRenameFile(f.id, renameText)}>
-                                <CheckCircle2 size={10} color={Colors.light.success} />
-                              </TouchableOpacity>
-                              <TouchableOpacity onPress={() => setRenamingFileId(null)}>
-                                <X size={10} color={Colors.light.error} />
-                              </TouchableOpacity>
-                            </View>
-                          ) : (
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                              <Text style={[styles.v2MediaName, { flex: 1 }]} numberOfLines={1}>{f.originalName}</Text>
-                              <TouchableOpacity onPress={() => { setRenamingFileId(f.id); setRenameText(f.originalName); }}>
-                                <Edit3 size={9} color={Colors.light.textSecondary} />
-                              </TouchableOpacity>
-                            </View>
-                          )}
-                        </View>
-                      );
-                    })}
+                  <View style={styles.orgMediaGrid}>
+                    {orgFiles.slice(0, 9).map((f: any) => renderOrgMediaCard(f, 3))}
                   </View>
                 )}
                 {orgFiles.length > 9 && (
