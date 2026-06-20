@@ -987,7 +987,7 @@ export default function ClientPortal() {
   const [mpCostMin, setMpCostMin] = useState('');
   const [mpCostMax, setMpCostMax] = useState('');
   const [mpShowFilters, setMpShowFilters] = useState(false);
-  type MpSortField = 'status' | 'project' | 'submitted' | 'inHands' | 'items' | 'total';
+  type MpSortField = 'status' | 'project' | 'submitted' | 'order' | 'inHands' | 'items' | 'total';
   const [mpSortField, setMpSortField] = useState<MpSortField>('submitted');
   const [mpSortDir, setMpSortDir] = useState<'asc' | 'desc'>('desc');
   const [mpPage, setMpPage] = useState(1);
@@ -1845,6 +1845,9 @@ export default function ClientPortal() {
         case 'status': valA = normalSt(a.status); valB = normalSt(b.status); break;
         case 'project': valA = (a.title || '').toLowerCase(); valB = (b.title || '').toLowerCase(); break;
         case 'submitted': valA = new Date(a.createdAt).getTime(); valB = new Date(b.createdAt).getTime(); break;
+        case 'order':
+          valA = a.orderDate ? new Date(a.orderDate).getTime() : 0;
+          valB = b.orderDate ? new Date(b.orderDate).getTime() : 0; break;
         case 'inHands':
           valA = a.inHandsDate ? new Date(a.inHandsDate).getTime() : 0;
           valB = b.inHandsDate ? new Date(b.inHandsDate).getTime() : 0; break;
@@ -1924,9 +1927,7 @@ export default function ClientPortal() {
         <View style={mpStyles.thumbCol} />
         <SortTh field="project" label="PROJECT" style={mpStyles.colProject} />
         <SortTh field="status" label="STATUS" style={mpStyles.colStatus} />
-        <View style={mpStyles.colOrderDate}>
-          <Text style={mpStyles.thText}>ORDER DATE</Text>
-        </View>
+        <SortTh field="order" label="ORDER DATE" style={mpStyles.colOrderDate} />
         <SortTh field="inHands" label="DUE DATE" style={mpStyles.colDueDate} />
         <SortTh field="items" label="PCS" style={mpStyles.colPcs} />
         <SortTh field="total" label="TOTAL" style={mpStyles.colTotal} />
