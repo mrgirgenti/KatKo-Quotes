@@ -64,6 +64,8 @@ import {
   Grid2x2,
   LayoutGrid,
   List,
+  Film,
+  Music,
 } from 'lucide-react-native';
 import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
 
@@ -1709,20 +1711,24 @@ export default function ClientPortal() {
             )}
             {mediaBinFiles.length === 0
               ? (
-                <View style={[homeStyles.mbUploadEmpty, isDraggingDashMB && { borderColor: BRAND, borderWidth: 2, borderRadius: 8 }]}>
-                  <TouchableOpacity
-                    style={homeStyles.mbUploadBtn}
-                    onPress={() => mediaBinInputRef.current?.click?.()}
-                    activeOpacity={0.85}
-                  >
-                    <Upload size={14} color="#fff" />
-                    <Text style={homeStyles.mbUploadBtnText}>Upload Files</Text>
-                  </TouchableOpacity>
-                  <View style={homeStyles.mbDropZone}>
-                    <Upload size={18} color={isDraggingDashMB ? BRAND : '#9CA3AF'} />
-                    <Text style={[homeStyles.mbDropZoneText, isDraggingDashMB && { color: BRAND }]}>Drag & drop artwork here</Text>
-                    <Text style={homeStyles.mbDropZoneSub}>AI · SVG · PS · PNG · JPG · PDF · EMB · DST · PES</Text>
+                <View style={[mbStyles.mbEmptyBin, isDraggingDashMB && { borderWidth: 2, borderColor: '#1A1210' }]}>
+                  <View style={[mbStyles.mediaDot, { top: 14, left: 20, width: 4, height: 4 }]} />
+                  <View style={[mbStyles.mediaDot, { top: 10, right: 40, width: 3, height: 3 }]} />
+                  <View style={[mbStyles.mediaDot, { bottom: 30, left: 14, width: 3, height: 3, opacity: 0.35 }]} />
+                  <View style={[mbStyles.mediaDot, { bottom: 20, right: 16, width: 4, height: 4, opacity: 0.5 }]} />
+                  <View style={mbStyles.mediaBinIconRow}>
+                    <View style={[mbStyles.mediaBinCard, { transform: [{ rotate: '-10deg' }], marginRight: -10, zIndex: 1 }]}>
+                      <ImageIcon size={20} color="#9CA3AF" />
+                    </View>
+                    <View style={[mbStyles.mediaBinCard, mbStyles.mediaBinCardCenter, { zIndex: 3 }]}>
+                      <Film size={24} color="#9CA3AF" />
+                    </View>
+                    <View style={[mbStyles.mediaBinCard, { transform: [{ rotate: '10deg' }], marginLeft: -10, zIndex: 1 }]}>
+                      <Music size={20} color="#9CA3AF" />
+                    </View>
                   </View>
+                  <Text style={mbStyles.mediaBinEmptyText}>Drag and drop your media here</Text>
+                  <Text style={mbStyles.mediaBinEmptySub}>AI · SVG · PS · PNG · JPG · PDF · EMB · DST · PES</Text>
                 </View>
               )
               : <View style={{ gap: 8 }}>
@@ -2587,17 +2593,25 @@ export default function ClientPortal() {
         ) : filtered.length === 0 && (mediaBinSearch || mediaBinFilter !== 'All') ? (
           <EmptyState icon={<Search size={32} color="#D1D5DB" />} title="No matching files" sub="Try a different search or filter." />
         ) : mediaBinFiles.length === 0 ? (
-          <View style={mbStyles.uploadFirstEmpty}>
-            <View style={mbStyles.uploadFirstIcon}>
-              <Upload size={32} color={BRAND} />
+          <View style={mbStyles.mbEmptyBin}>
+            <View style={[mbStyles.mediaDot, { top: 18, left: 28, width: 5, height: 5 }]} />
+            <View style={[mbStyles.mediaDot, { top: 12, right: 60, width: 4, height: 4 }]} />
+            <View style={[mbStyles.mediaDot, { top: 30, right: 32, width: 6, height: 6, opacity: 0.4 }]} />
+            <View style={[mbStyles.mediaDot, { bottom: 44, left: 18, width: 4, height: 4, opacity: 0.35 }]} />
+            <View style={[mbStyles.mediaDot, { bottom: 30, right: 20, width: 5, height: 5, opacity: 0.5 }]} />
+            <View style={mbStyles.mediaBinIconRow}>
+              <View style={[mbStyles.mediaBinCard, { transform: [{ rotate: '-10deg' }], marginRight: -12, zIndex: 1 }]}>
+                <ImageIcon size={22} color="#9CA3AF" />
+              </View>
+              <View style={[mbStyles.mediaBinCard, mbStyles.mediaBinCardCenter, { zIndex: 3 }]}>
+                <Film size={26} color="#9CA3AF" />
+              </View>
+              <View style={[mbStyles.mediaBinCard, { transform: [{ rotate: '10deg' }], marginLeft: -12, zIndex: 1 }]}>
+                <Music size={22} color="#9CA3AF" />
+              </View>
             </View>
-            <Text style={mbStyles.uploadFirstTitle}>Upload your first file</Text>
-            <Text style={mbStyles.uploadFirstSub}>Store logos, artwork, proofs, and mockups here. Files are available across all your projects.</Text>
-            <TouchableOpacity style={mbStyles.uploadFirstBtn} onPress={() => mediaBinInputRef.current?.click?.()} disabled={mediaBinUploading} activeOpacity={0.85}>
-              <Upload size={14} color="#fff" />
-              <Text style={mbStyles.uploadFirstBtnText}>Upload Files</Text>
-            </TouchableOpacity>
-            <Text style={mbStyles.uploadFirstTypes}>AI · SVG · PS · PNG · JPG · PDF · EMB · DST · PES</Text>
+            <Text style={mbStyles.mediaBinEmptyText}>Drag and drop your media here</Text>
+            <Text style={mbStyles.mediaBinEmptySub}>AI · SVG · PS · PNG · JPG · PDF · EMB · DST · PES</Text>
           </View>
         ) : mediaBinViewMode === 'grid' ? (
           <View style={mbStyles.visualGrid}>
@@ -4491,6 +4505,45 @@ const mbStyles = StyleSheet.create({
   },
   viewToggleBtn: { padding: 7, backgroundColor: BG },
   viewToggleBtnActive: { backgroundColor: '#FFF4EE' },
+  mbEmptyBin: {
+    position: 'relative' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    paddingVertical: 36,
+    paddingHorizontal: 12,
+    gap: 14,
+    marginTop: 10,
+    borderRadius: 12,
+    backgroundColor: '#FF7B33',
+    overflow: 'hidden' as const,
+  },
+  mediaDot: {
+    position: 'absolute' as const,
+    borderRadius: 999,
+    backgroundColor: '#1A1210',
+    opacity: 0.3,
+  },
+  mediaBinIconRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-end' as const,
+    justifyContent: 'center' as const,
+    marginBottom: 4,
+  },
+  mediaBinCard: {
+    width: 58, height: 58, borderRadius: 12,
+    backgroundColor: '#1C1C1C', borderWidth: 1, borderColor: '#2A2A2A',
+    alignItems: 'center' as const, justifyContent: 'center' as const,
+  },
+  mediaBinCardCenter: {
+    width: 66, height: 66, borderRadius: 14,
+    backgroundColor: '#222222', borderColor: '#333333', zIndex: 3,
+  },
+  mediaBinEmptyText: {
+    fontSize: 13, fontWeight: '600' as const, color: '#1A1210', textAlign: 'center' as const,
+  },
+  mediaBinEmptySub: {
+    fontSize: 11, color: '#3A2218', textAlign: 'center' as const, marginTop: -6,
+  },
 });
 
 const catStyles = StyleSheet.create({

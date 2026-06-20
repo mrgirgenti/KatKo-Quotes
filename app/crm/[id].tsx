@@ -5295,13 +5295,13 @@ const styles = StyleSheet.create({
     gap: 14,
     marginTop: 10,
     borderRadius: 12,
-    backgroundColor: '#FF5A00',
+    backgroundColor: '#FF7B33',
     overflow: 'hidden' as const,
   },
   orgMediaDropZoneActive: {
     borderWidth: 1.5,
     borderColor: '#1A1210',
-    backgroundColor: '#B85020',
+    backgroundColor: '#CC6A40',
   },
   mediaDot: {
     position: 'absolute' as const,
