@@ -502,3 +502,103 @@ model EmailNotification {
   @@index([relatedInvoiceId])
   @@index([status])
 }
+
+// ─── Product Catalog ─────────────────────────────────────────────────────────
+
+enum ProductAssetType {
+  FRONT_FLAT
+  BACK_FLAT
+  FRONT_REALISTIC
+  BACK_REALISTIC
+  THUMBNAIL
+}
+
+enum PlacementType {
+  LEFT_CHEST
+  FULL_FRONT
+  FULL_BACK
+  YOKE
+  SLEEVE_LEFT
+  SLEEVE_RIGHT
+}
+
+enum GarmentSide {
+  FRONT
+  BACK
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  styleNumber String   @unique
+  vendor      String
+  brand       String
+  name        String
+  category    String
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  colors     ProductColor[]
+  placements ProductPlacement[]
+
+  @@index([styleNumber])
+  @@index([brand])
+  @@index([vendor])
+  @@index([category])
+  @@index([isActive])
+}
+
+model ProductColor {
+  id        String   @id @default(uuid())
+  productId String
+  colorCode String
+  colorName String
+  hex       String?
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  assets  ProductAsset[]
+
+  @@unique([productId, colorCode])
+  @@index([productId])
+  @@index([productId, isActive])
+}
+
+model ProductAsset {
+  id             String           @id @default(uuid())
+  productColorId String
+  assetType      ProductAssetType
+  storageKey     String
+  sortOrder      Int              @default(0)
+  createdAt      DateTime         @default(now())
+
+  productColor ProductColor @relation(fields: [productColorId], references: [id], onDelete: Cascade)
+
+  @@index([productColorId])
+  @@index([productColorId, assetType])
+}
+
+model ProductPlacement {
+  id            String        @id @default(uuid())
+  productId     String
+  placementType PlacementType
+  side          GarmentSide
+  x             Float
+  y             Float
+  width         Float
+  height        Float
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, placementType, side])
+  @@index([productId])
+  @@index([productId, side])
+  @@index([productId, isActive])
+}

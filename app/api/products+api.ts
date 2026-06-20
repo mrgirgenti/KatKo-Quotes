@@ -1,0 +1,136 @@
+import { pool } from '@/lib/pool';
+import { authenticateRequest, unauthorized } from '@/lib/auth';
+
+export async function GET(request: Request) {
+  const authedUser = await authenticateRequest(request);
+  if (!authedUser) return unauthorized();
+
+  const url = new URL(request.url);
+  const active = url.searchParams.get('active');
+  const brand = url.searchParams.get('brand');
+  const vendor = url.searchParams.get('vendor');
+  const category = url.searchParams.get('category');
+  const q = url.searchParams.get('q');
+  const include = url.searchParams.get('include') || '';
+
+  const conditions: string[] = [];
+  const values: unknown[] = [];
+  let idx = 1;
+
+  if (active !== 'false') {
+    conditions.push(`p."isActive" = true`);
+  }
+  if (brand) {
+    conditions.push(`p.brand ILIKE $${idx++}`);
+    values.push(`%${brand}%`);
+  }
+  if (vendor) {
+    conditions.push(`p.vendor ILIKE $${idx++}`);
+    values.push(`%${vendor}%`);
+  }
+  if (category) {
+    conditions.push(`p.category ILIKE $${idx++}`);
+    values.push(`%${category}%`);
+  }
+  if (q) {
+    conditions.push(`(p."styleNumber" ILIKE $${idx} OR p.name ILIKE $${idx} OR p.brand ILIKE $${idx})`);
+    values.push(`%${q}%`);
+    idx++;
+  }
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `SELECT p.* FROM "Product" p ${where} ORDER BY p."sortOrder" ASC, p.brand ASC, p.name ASC`,
+      values,
+    );
+
+    const products = result.rows;
+
+    if (include.includes('colors')) {
+      const ids = products.map((p: { id: string }) => p.id);
+      if (ids.length > 0) {
+        const colorRes = await client.query(
+          `SELECT c.* FROM "ProductColor" c WHERE c."productId" = ANY($1::uuid[]) AND c."isActive" = true ORDER BY c."sortOrder" ASC, c."colorName" ASC`,
+          [ids],
+        );
+        const colorsByProduct: Record<string, unknown[]> = {};
+        for (const c of colorRes.rows) {
+          if (!colorsByProduct[c.productId]) colorsByProduct[c.productId] = [];
+          colorsByProduct[c.productId].push(c);
+        }
+
+        if (include.includes('assets')) {
+          const colorIds = colorRes.rows.map((c: { id: string }) => c.id);
+          if (colorIds.length > 0) {
+            const assetRes = await client.query(
+              `SELECT a.* FROM "ProductAsset" a WHERE a."productColorId" = ANY($1::uuid[]) ORDER BY a."sortOrder" ASC`,
+              [colorIds],
+            );
+            const assetsByColor: Record<string, unknown[]> = {};
+            for (const a of assetRes.rows) {
+              if (!assetsByColor[a.productColorId]) assetsByColor[a.productColorId] = [];
+              assetsByColor[a.productColorId].push(a);
+            }
+            for (const c of colorRes.rows) {
+              (c as Record<string, unknown>).assets = assetsByColor[c.id] || [];
+            }
+          }
+        }
+
+        for (const p of products) {
+          (p as Record<string, unknown>).colors = colorsByProduct[p.id] || [];
+        }
+      }
+    }
+
+    return Response.json({ products });
+  } catch (err) {
+    console.error('[GET /api/products]', err);
+    return Response.json({ error: 'Failed to load products' }, { status: 500 });
+  } finally {
+    client.release();
+  }
+}
+
+export async function POST(request: Request) {
+  const authedUser = await authenticateRequest(request);
+  if (!authedUser) return unauthorized();
+
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  const { styleNumber, vendor, brand, name, category, sortOrder } = body as Record<string, string>;
+
+  if (!styleNumber?.trim()) return Response.json({ error: 'styleNumber is required' }, { status: 400 });
+  if (!vendor?.trim())      return Response.json({ error: 'vendor is required' }, { status: 400 });
+  if (!brand?.trim())       return Response.json({ error: 'brand is required' }, { status: 400 });
+  if (!name?.trim())        return Response.json({ error: 'name is required' }, { status: 400 });
+  if (!category?.trim())    return Response.json({ error: 'category is required' }, { status: 400 });
+
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `INSERT INTO "Product" (id, "styleNumber", vendor, brand, name, category, "isActive", "sortOrder", "createdAt", "updatedAt")
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, true, $6, NOW(), NOW())
+       RETURNING *`,
+      [styleNumber.trim(), vendor.trim(), brand.trim(), name.trim(), category.trim(), sortOrder ?? 0],
+    );
+    return Response.json({ product: result.rows[0] }, { status: 201 });
+  } catch (err: unknown) {
+    const pg = err as { code?: string };
+    if (pg?.code === '23505') {
+      return Response.json({ error: `Style number "${styleNumber}" already exists` }, { status: 409 });
+    }
+    console.error('[POST /api/products]', err);
+    return Response.json({ error: 'Failed to create product' }, { status: 500 });
+  } finally {
+    client.release();
+  }
+}

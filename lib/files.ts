@@ -1,5 +1,9 @@
 import { storage } from './storage';
 
+export async function writeProductAsset(originalName: string, buffer: Buffer): Promise<string> {
+  return storage.write('products', originalName, buffer, true);
+}
+
 export async function writeUpload(orgId: string, originalName: string, buffer: Buffer, isPublic = false): Promise<string> {
   return storage.write(orgId, originalName, buffer, isPublic);
 }
