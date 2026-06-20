@@ -3073,6 +3073,26 @@ export default function ClientPortal() {
   const ProfileView = () => {
     const [showInviteInput, setShowInviteInput] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [openSections, setOpenSections] = useState<{ branding: boolean; info: boolean; settings: boolean }>({ branding: false, info: false, settings: false });
+    const toggleSection = (k: 'branding' | 'info' | 'settings') => setOpenSections((s) => ({ ...s, [k]: !s[k] }));
+    const showBranding = !isMobile || openSections.branding;
+    const showInfo = !isMobile || openSections.info;
+    const showSettings = !isMobile || openSections.settings;
+
+    const CardHead = ({ title, right, collapsible, expanded, onToggle }: { title: string; right?: React.ReactNode; collapsible?: boolean; expanded?: boolean; onToggle?: () => void }) => {
+      const inner = (
+        <View style={profStyles.cardHead}>
+          <Text style={profStyles.cardHeadText}>{title}</Text>
+          <View style={profStyles.cardHeadRight}>
+            {right}
+            {collapsible ? (expanded ? <ChevronUp size={18} color="#fff" /> : <ChevronDown size={18} color="#fff" />) : null}
+          </View>
+        </View>
+      );
+      return collapsible
+        ? <TouchableOpacity activeOpacity={0.85} onPress={onToggle}>{inner}</TouchableOpacity>
+        : inner;
+    };
 
     const handleInvite = async () => {
       if (!session || !teamInviteEmail.trim()) return;
@@ -3236,7 +3256,7 @@ export default function ClientPortal() {
     return (
       <ScrollView
         style={{ flex: 1, backgroundColor: '#F9FAFB' }}
-        contentContainerStyle={{ padding: 24, paddingBottom: 60, maxWidth: 980, alignSelf: 'center', width: '100%' }}
+        contentContainerStyle={{ padding: isMobile ? 16 : 24, paddingBottom: 60, maxWidth: 980, alignSelf: 'center', width: '100%' }}
         showsVerticalScrollIndicator={false}
       >
         {/* Hidden file inputs */}
@@ -3257,317 +3277,397 @@ export default function ClientPortal() {
           </Text>
         </View>
 
-        {/* ROW 1: 3 equal cards */}
+        {/* ROW 1: 3 equal cards (accordions on mobile) */}
         <View style={[profStyles.row3, (isMobile || isTablet) && { flexDirection: 'column' }]}>
 
           {/* Card 1: Organization Branding */}
           <View style={[profStyles.card, { flex: 1 }]}>
-            <Text style={profStyles.cardLabel}>ORGANIZATION BRANDING</Text>
-            <View style={profStyles.logoSquare}>
-              {orgLogoUrl ? (
-                <Image source={{ uri: orgLogoUrl }} style={{ width: '100%', height: '100%' } as any} resizeMode="contain" />
-              ) : (
-                <View style={profStyles.logoSquareEmpty}>
-                  <Text style={profStyles.logoInitials}>{(session?.orgName || '?')[0].toUpperCase()}</Text>
+            <CardHead title="ORGANIZATION BRANDING" collapsible={isMobile} expanded={openSections.branding} onToggle={() => toggleSection('branding')} />
+            {showBranding && (
+              <View style={[profStyles.cardBody, isMobile && profStyles.cardBodyMobile]}>
+                <View style={[profStyles.logoSquare, isMobile && { alignSelf: 'center' }]}>
+                  {orgLogoUrl ? (
+                    <Image source={{ uri: orgLogoUrl }} style={{ width: '100%', height: '100%' } as any} resizeMode="contain" />
+                  ) : (
+                    <View style={profStyles.logoSquareEmpty}>
+                      <Text style={profStyles.logoInitials}>{(session?.orgName || '?')[0].toUpperCase()}</Text>
+                    </View>
+                  )}
                 </View>
-              )}
-            </View>
-            <Text style={profStyles.logoHint}>Recommended: 500 × 500 PNG</Text>
-            {isOrgAdmin ? (
-              <View style={{ gap: 8, marginTop: 14 }}>
-                <TouchableOpacity style={profStyles.outlineBtn} onPress={() => orgLogoInputRef.current?.click()} disabled={orgLogoSaving} activeOpacity={0.8}>
-                  {orgLogoSaving ? <ActivityIndicator size="small" color={BRAND} /> : <Upload size={13} color={BRAND} />}
-                  <Text style={profStyles.outlineBtnText}>{orgLogoUrl ? 'Change Logo' : 'Upload Logo'}</Text>
-                </TouchableOpacity>
-                {orgLogoUrl && (
-                  <TouchableOpacity style={profStyles.destructiveBtn} onPress={handleRemoveOrgLogo} disabled={orgLogoSaving} activeOpacity={0.8}>
-                    <X size={13} color="#DC2626" />
-                    <Text style={profStyles.destructiveBtnText}>Remove Logo</Text>
-                  </TouchableOpacity>
+                <Text style={[profStyles.logoHint, isMobile && { textAlign: 'center' }]}>Recommended: 500 × 500 PNG</Text>
+                {isOrgAdmin ? (
+                  <View style={{ gap: 8, marginTop: 14 }}>
+                    <TouchableOpacity style={[profStyles.outlineBtn, isMobile && profStyles.btnFull]} onPress={() => orgLogoInputRef.current?.click()} disabled={orgLogoSaving} activeOpacity={0.8}>
+                      {orgLogoSaving ? <ActivityIndicator size="small" color={BRAND} /> : <Upload size={13} color={BRAND} />}
+                      <Text style={profStyles.outlineBtnText}>{orgLogoUrl ? 'Change Logo' : 'Upload Logo'}</Text>
+                    </TouchableOpacity>
+                    {orgLogoUrl && (
+                      <TouchableOpacity style={[profStyles.destructiveBtn, isMobile && profStyles.btnFull]} onPress={handleRemoveOrgLogo} disabled={orgLogoSaving} activeOpacity={0.8}>
+                        <X size={13} color="#DC2626" />
+                        <Text style={profStyles.destructiveBtnText}>Remove Logo</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ) : (
+                  <Text style={profStyles.logoManagedNote}>Organization logo managed by your Org Admin.</Text>
                 )}
+                {orgLogoSaveMsg ? <Text style={profStyles.successText}>{orgLogoSaveMsg}</Text> : null}
               </View>
-            ) : (
-              <Text style={profStyles.logoManagedNote}>Organization logo managed by your Org Admin.</Text>
             )}
-            {orgLogoSaveMsg ? <Text style={profStyles.successText}>{orgLogoSaveMsg}</Text> : null}
           </View>
 
           {/* Card 2: Organization Information */}
           <View style={[profStyles.card, { flex: 1 }]}>
-            <Text style={profStyles.cardLabel}>ORGANIZATION INFORMATION</Text>
-            <View style={{ gap: 14, marginTop: 6 }}>
-              <View style={profStyles.orgInfoRow}>
-                <Building2 size={14} color={TEXT_PLACEHOLDER} />
-                <View style={{ flex: 1 }}>
-                  <Text style={profStyles.infoLabel}>Organization Name</Text>
-                  <Text style={profStyles.infoValue}>{session?.orgName}</Text>
+            <CardHead title="ORGANIZATION INFORMATION" collapsible={isMobile} expanded={openSections.info} onToggle={() => toggleSection('info')} />
+            {showInfo && (
+              <View style={[profStyles.cardBody, isMobile && profStyles.cardBodyMobile]}>
+                <View style={{ gap: 14 }}>
+                  <View style={profStyles.orgInfoRow}>
+                    <Building2 size={14} color={TEXT_PLACEHOLDER} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={profStyles.infoLabel}>Organization Name</Text>
+                      <Text style={profStyles.infoValue}>{session?.orgName}</Text>
+                    </View>
+                  </View>
+                  <View style={profStyles.orgInfoRow}>
+                    <User size={14} color={TEXT_PLACEHOLDER} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={profStyles.infoLabel}>Primary Contact</Text>
+                      <Text style={profStyles.infoValue}>{primaryAdmin?.name || '—'}</Text>
+                      {primaryAdmin?.email ? <Text style={profStyles.infoSub}>{primaryAdmin.email}</Text> : null}
+                    </View>
+                  </View>
+                  <View style={profStyles.orgInfoRow}>
+                    <Phone size={14} color={TEXT_PLACEHOLDER} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={profStyles.infoLabel}>Phone</Text>
+                      <Text style={profStyles.infoValue}>{orgPhone || '—'}</Text>
+                    </View>
+                  </View>
+                  <View style={profStyles.orgInfoRow}>
+                    <Mail size={14} color={TEXT_PLACEHOLDER} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={profStyles.infoLabel}>Email</Text>
+                      <Text style={profStyles.infoValue}>{orgEmail || '—'}</Text>
+                    </View>
+                  </View>
+                  <View style={profStyles.orgInfoRow}>
+                    <Shield size={14} color={TEXT_PLACEHOLDER} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={profStyles.infoLabel}>Account Representative</Text>
+                      <Text style={profStyles.infoValue}>Katalyst Ko Team</Text>
+                    </View>
+                  </View>
                 </View>
               </View>
-              <View style={profStyles.orgInfoRow}>
-                <User size={14} color={TEXT_PLACEHOLDER} />
-                <View style={{ flex: 1 }}>
-                  <Text style={profStyles.infoLabel}>Primary Contact</Text>
-                  <Text style={profStyles.infoValue}>{primaryAdmin?.name || '—'}</Text>
-                  {primaryAdmin?.email ? <Text style={profStyles.infoSub}>{primaryAdmin.email}</Text> : null}
-                </View>
-              </View>
-              <View style={profStyles.orgInfoRow}>
-                <Phone size={14} color={TEXT_PLACEHOLDER} />
-                <View style={{ flex: 1 }}>
-                  <Text style={profStyles.infoLabel}>Phone</Text>
-                  <Text style={profStyles.infoValue}>{orgPhone || '—'}</Text>
-                </View>
-              </View>
-              <View style={profStyles.orgInfoRow}>
-                <Mail size={14} color={TEXT_PLACEHOLDER} />
-                <View style={{ flex: 1 }}>
-                  <Text style={profStyles.infoLabel}>Email</Text>
-                  <Text style={profStyles.infoValue}>{orgEmail || '—'}</Text>
-                </View>
-              </View>
-              <View style={profStyles.orgInfoRow}>
-                <Shield size={14} color={TEXT_PLACEHOLDER} />
-                <View style={{ flex: 1 }}>
-                  <Text style={profStyles.infoLabel}>Account Representative</Text>
-                  <Text style={profStyles.infoValue}>Katalyst Ko Team</Text>
-                </View>
-              </View>
-            </View>
+            )}
           </View>
 
           {/* Card 3: Client Hub Settings */}
           <View style={[profStyles.card, { flex: 1 }]}>
-            <Text style={profStyles.cardLabel}>CLIENT HUB SETTINGS</Text>
-            <View style={{ gap: 14, marginTop: 6 }}>
-              <View>
-                <Text style={profStyles.infoLabel}>Hub Status</Text>
-                <View style={profStyles.statusLivePill}>
-                  <View style={profStyles.statusLiveDot} />
-                  <Text style={profStyles.statusLiveText}>Live</Text>
+            <CardHead title="CLIENT HUB SETTINGS" collapsible={isMobile} expanded={openSections.settings} onToggle={() => toggleSection('settings')} />
+            {showSettings && (
+              <View style={[profStyles.cardBody, isMobile && profStyles.cardBodyMobile]}>
+                <View style={{ gap: 14 }}>
+                  <View>
+                    <Text style={profStyles.infoLabel}>Hub Status</Text>
+                    <View style={profStyles.statusLivePill}>
+                      <View style={profStyles.statusLiveDot} />
+                      <Text style={profStyles.statusLiveText}>Live</Text>
+                    </View>
+                  </View>
+                  <View>
+                    <Text style={profStyles.infoLabel}>Hub URL</Text>
+                    <View style={profStyles.hubUrlRow}>
+                      <Text style={profStyles.hubUrlText} numberOfLines={1}>{hubUrl}</Text>
+                      <TouchableOpacity onPress={copyHubUrl} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        {copied ? <CheckCircle size={14} color="#16A34A" /> : <Copy size={14} color={BRAND} />}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  <View style={profStyles.orgInfoRow}>
+                    <Shield size={14} color={TEXT_PLACEHOLDER} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={profStyles.infoLabel}>Organization Admin</Text>
+                      <Text style={profStyles.infoValue}>{primaryAdmin?.name || '—'}</Text>
+                      {primaryAdmin?.email ? <Text style={profStyles.infoSub}>{primaryAdmin.email}</Text> : null}
+                    </View>
+                  </View>
+                  <View style={profStyles.orgInfoRow}>
+                    <Users size={14} color={TEXT_PLACEHOLDER} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={profStyles.infoLabel}>Total Members</Text>
+                      <Text style={profStyles.infoValue}>{teamMembers.length} Active Member{teamMembers.length !== 1 ? 's' : ''}</Text>
+                    </View>
+                  </View>
                 </View>
               </View>
-              <View>
-                <Text style={profStyles.infoLabel}>Hub URL</Text>
-                <View style={profStyles.hubUrlRow}>
-                  <Text style={profStyles.hubUrlText} numberOfLines={1}>{hubUrl}</Text>
-                  <TouchableOpacity onPress={copyHubUrl} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    {copied ? <CheckCircle size={14} color="#16A34A" /> : <Copy size={14} color={BRAND} />}
-                  </TouchableOpacity>
-                </View>
-              </View>
-              <View style={profStyles.orgInfoRow}>
-                <Shield size={14} color={TEXT_PLACEHOLDER} />
-                <View style={{ flex: 1 }}>
-                  <Text style={profStyles.infoLabel}>Organization Admin</Text>
-                  <Text style={profStyles.infoValue}>{primaryAdmin?.name || '—'}</Text>
-                  {primaryAdmin?.email ? <Text style={profStyles.infoSub}>{primaryAdmin.email}</Text> : null}
-                </View>
-              </View>
-              <View style={profStyles.orgInfoRow}>
-                <Users size={14} color={TEXT_PLACEHOLDER} />
-                <View style={{ flex: 1 }}>
-                  <Text style={profStyles.infoLabel}>Total Members</Text>
-                  <Text style={profStyles.infoValue}>{teamMembers.length} Active Member{teamMembers.length !== 1 ? 's' : ''}</Text>
-                </View>
-              </View>
-            </View>
+            )}
           </View>
 
         </View>
 
-        {/* ROW 2: My Profile (full-width, 2 columns) */}
-        <View style={profStyles.card}>
-          <Text style={profStyles.cardLabel}>MY PROFILE</Text>
-          <View style={[profStyles.myProfileRow, isMobile && { flexDirection: 'column', gap: 20 }]}>
+        {/* ROW 2: My Profile (75%) + Need Help (25%) */}
+        <View style={[profStyles.row2, (isMobile || isTablet) && { flexDirection: 'column' }]}>
 
-            {/* LEFT: Square avatar + color picker + upload/remove */}
-            <View style={profStyles.profileLeft}>
-              <View style={[profStyles.avatarSquare, { backgroundColor: profileAvatarColor }]}>
-                {profilePicUri ? (
-                  <Image source={{ uri: profilePicUri }} style={{ width: 120, height: 120, borderRadius: 12 }} resizeMode="cover" />
-                ) : (
-                  <Text style={profStyles.avatarSquareText}>{(session?.userName[0] || '?').toUpperCase()}</Text>
-                )}
-              </View>
-              <Text style={[profStyles.infoLabel, { marginTop: 14 }]}>AVATAR COLOR</Text>
-              <View style={profStyles.colorSwatches}>
-                {AVATAR_COLORS.map(c => (
-                  <TouchableOpacity
-                    key={c}
-                    onPress={() => handleAvatarColorChange(c)}
-                    style={[profStyles.colorSwatch, { backgroundColor: c }, profileAvatarColor === c && profStyles.colorSwatchSelected]}
-                  >
-                    {profileAvatarColor === c && <Check size={11} color="#fff" strokeWidth={3} />}
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <View style={{ gap: 8, marginTop: 14 }}>
-                <TouchableOpacity style={profStyles.outlineBtn} onPress={() => profilePicInputRef.current?.click()} disabled={profileSaving} activeOpacity={0.8}>
-                  {profileSaving ? <ActivityIndicator size="small" color={BRAND} /> : <Upload size={13} color={BRAND} />}
-                  <Text style={profStyles.outlineBtnText}>{profilePicUri ? 'Change Photo' : 'Upload Photo'}</Text>
-                </TouchableOpacity>
-                {profilePicUri && (
-                  <TouchableOpacity style={profStyles.destructiveBtn} onPress={handleRemoveProfilePic} disabled={profileSaving} activeOpacity={0.8}>
-                    <X size={13} color="#DC2626" />
-                    <Text style={profStyles.destructiveBtnText}>Remove Photo</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-              {profileSaveMsg ? <Text style={profStyles.successText}>{profileSaveMsg}</Text> : null}
-            </View>
+          {/* My Profile */}
+          <View style={[profStyles.card, !(isMobile || isTablet) && { flex: 3 }]}>
+            <CardHead title="MY PROFILE" />
+            <View style={[profStyles.cardBody, isMobile && profStyles.cardBodyMobile]}>
+              <View style={[profStyles.myProfileRow, isMobile && profStyles.myProfileRowMobile]}>
 
-            {/* Vertical divider */}
-            {!isMobile && <View style={profStyles.profileDivider} />}
-
-            {/* RIGHT: User info */}
-            <View style={profStyles.profileRight}>
-              <View style={profStyles.profileField}>
-                <Text style={profStyles.profileFieldLabel}>Full Name</Text>
-                <Text style={profStyles.profileFieldValue}>{session?.userName}</Text>
-              </View>
-              <View style={profStyles.profileField}>
-                <Text style={profStyles.profileFieldLabel}>Email Address</Text>
-                <Text style={profStyles.profileFieldValue}>{session?.userEmail}</Text>
-              </View>
-              <View style={profStyles.profileField}>
-                <Text style={profStyles.profileFieldLabel}>Organization</Text>
-                <Text style={profStyles.profileFieldValue}>{session?.orgName}</Text>
-              </View>
-              <View style={profStyles.profileField}>
-                <Text style={profStyles.profileFieldLabel}>Role</Text>
-                <View style={[profStyles.rolePill, isOrgAdmin && profStyles.rolePillAdmin]}>
-                  <Text style={[profStyles.rolePillText, isOrgAdmin && profStyles.rolePillTextAdmin]}>
-                    {isOrgAdmin ? 'Admin' : 'Member'}
-                  </Text>
+                {/* LEFT: Square avatar + color picker + upload/remove */}
+                <View style={[profStyles.profileLeft, isMobile && profStyles.profileLeftMobile]}>
+                  <View style={[profStyles.avatarSquare, { backgroundColor: profileAvatarColor }]}>
+                    {profilePicUri ? (
+                      <Image source={{ uri: profilePicUri }} style={{ width: 120, height: 120, borderRadius: 12 }} resizeMode="cover" />
+                    ) : (
+                      <Text style={profStyles.avatarSquareText}>{(session?.userName[0] || '?').toUpperCase()}</Text>
+                    )}
+                  </View>
+                  <Text style={[profStyles.infoLabel, { marginTop: 14 }, isMobile && { textAlign: 'center' }]}>AVATAR COLOR</Text>
+                  <View style={[profStyles.colorSwatches, isMobile && { justifyContent: 'center' }]}>
+                    {AVATAR_COLORS.map(c => (
+                      <TouchableOpacity
+                        key={c}
+                        onPress={() => handleAvatarColorChange(c)}
+                        style={[profStyles.colorSwatch, { backgroundColor: c }, profileAvatarColor === c && profStyles.colorSwatchSelected]}
+                      >
+                        {profileAvatarColor === c && <Check size={11} color="#fff" strokeWidth={3} />}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <View style={[{ gap: 8, marginTop: 14 }, isMobile && { width: '100%' }]}>
+                    <TouchableOpacity style={[profStyles.outlineBtn, isMobile && profStyles.btnFull]} onPress={() => profilePicInputRef.current?.click()} disabled={profileSaving} activeOpacity={0.8}>
+                      {profileSaving ? <ActivityIndicator size="small" color={BRAND} /> : <Upload size={13} color={BRAND} />}
+                      <Text style={profStyles.outlineBtnText}>{profilePicUri ? 'Change Photo' : 'Upload Photo'}</Text>
+                    </TouchableOpacity>
+                    {profilePicUri && (
+                      <TouchableOpacity style={[profStyles.destructiveBtn, isMobile && profStyles.btnFull]} onPress={handleRemoveProfilePic} disabled={profileSaving} activeOpacity={0.8}>
+                        <X size={13} color="#DC2626" />
+                        <Text style={profStyles.destructiveBtnText}>Remove Photo</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  {profileSaveMsg ? <Text style={profStyles.successText}>{profileSaveMsg}</Text> : null}
                 </View>
+
+                {/* Vertical divider */}
+                {!isMobile && <View style={profStyles.profileDivider} />}
+
+                {/* RIGHT: User info */}
+                <View style={[profStyles.profileRight, isMobile && { width: '100%' }]}>
+                  <View style={profStyles.profileField}>
+                    <Text style={profStyles.profileFieldLabel}>Full Name</Text>
+                    <Text style={profStyles.profileFieldValue}>{session?.userName}</Text>
+                  </View>
+                  <View style={profStyles.profileField}>
+                    <Text style={profStyles.profileFieldLabel}>Email Address</Text>
+                    <Text style={profStyles.profileFieldValue}>{session?.userEmail}</Text>
+                  </View>
+                  <View style={profStyles.profileField}>
+                    <Text style={profStyles.profileFieldLabel}>Organization</Text>
+                    <Text style={profStyles.profileFieldValue}>{session?.orgName}</Text>
+                  </View>
+                  <View style={profStyles.profileField}>
+                    <Text style={profStyles.profileFieldLabel}>Role</Text>
+                    <View style={[profStyles.rolePill, isOrgAdmin && profStyles.rolePillAdmin]}>
+                      <Text style={[profStyles.rolePillText, isOrgAdmin && profStyles.rolePillTextAdmin]}>
+                        {isOrgAdmin ? 'Admin' : 'Member'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={profStyles.profileField}>
+                    <Text style={profStyles.profileFieldLabel}>Mobile Number</Text>
+                    <Text style={profStyles.profileFieldValue}>—</Text>
+                  </View>
+                </View>
+
               </View>
             </View>
-
           </View>
+
+          {/* Need Help */}
+          <View style={[profStyles.card, !(isMobile || isTablet) && { flex: 1 }]}>
+            <CardHead title="NEED HELP?" />
+            <View style={[profStyles.cardBody, isMobile && profStyles.cardBodyMobile]}>
+              <Text style={profStyles.cardSubtitle}>Need assistance with your project, artwork, products, or account?</Text>
+              <View style={{ gap: 10, marginTop: 4 }}>
+                <TouchableOpacity style={profStyles.helpBtn} onPress={() => Linking.openURL('tel:4805599033')} activeOpacity={0.85}>
+                  <Phone size={16} color="#fff" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={profStyles.helpBtnLabel}>Call Us</Text>
+                    <Text style={profStyles.helpBtnValue}>(480) 559-9033</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity style={profStyles.helpBtn} onPress={() => Linking.openURL('mailto:jobs@katalystko.com')} activeOpacity={0.85}>
+                  <Mail size={16} color="#fff" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={profStyles.helpBtnLabel}>Email Us</Text>
+                    <Text style={profStyles.helpBtnValue}>jobs@katalystko.com</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
         </View>
 
         {/* ROW 3: Team Management (admin only) */}
         {isOrgAdmin && (
           <View style={profStyles.card}>
-            <View style={profStyles.cardHeaderRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={profStyles.cardLabel}>TEAM MANAGEMENT</Text>
-                <Text style={profStyles.cardSubtitle}>Manage users with access to your Client Hub.</Text>
-              </View>
-              <TouchableOpacity style={profStyles.primaryBtn} onPress={() => setShowInviteInput(v => !v)} activeOpacity={0.85}>
-                <UserPlus size={13} color="#fff" />
-                <Text style={profStyles.primaryBtnText}>Invite User</Text>
-              </TouchableOpacity>
-            </View>
-
-            {showInviteInput && (
-              <View style={[profStyles.inviteRow, { marginBottom: 12 }]}>
-                <View style={profStyles.inviteInputWrap}>
-                  <Mail size={14} color={TEXT_PLACEHOLDER} />
-                  <TextInput
-                    style={profStyles.inviteInput}
-                    value={teamInviteEmail}
-                    onChangeText={setTeamInviteEmail}
-                    placeholder="Enter email to invite…"
-                    placeholderTextColor={TEXT_PLACEHOLDER}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                </View>
-                <TouchableOpacity
-                  style={[profStyles.primaryBtn, (teamInviting || !teamInviteEmail.trim()) && { opacity: 0.5 }]}
-                  onPress={handleInvite}
-                  disabled={teamInviting || !teamInviteEmail.trim()}
-                  activeOpacity={0.85}
-                >
-                  {teamInviting
-                    ? <ActivityIndicator size="small" color="#fff" />
-                    : <Text style={profStyles.primaryBtnText}>Send Invite</Text>
-                  }
+            <CardHead
+              title="TEAM MANAGEMENT"
+              right={
+                <TouchableOpacity style={profStyles.primaryBtn} onPress={() => setShowInviteInput(v => !v)} activeOpacity={0.85}>
+                  <UserPlus size={13} color="#fff" />
+                  <Text style={profStyles.primaryBtnText}>Invite User</Text>
                 </TouchableOpacity>
-              </View>
-            )}
-            {teamInviteError ? <Text style={profStyles.errorText}>{teamInviteError}</Text> : null}
-            {teamInviteSuccess ? <Text style={profStyles.successText}>{teamInviteSuccess}</Text> : null}
+              }
+            />
+            <View style={[profStyles.cardBody, isMobile && profStyles.cardBodyMobile]}>
+              <Text style={profStyles.cardSubtitle}>Manage users with access to your Client Hub.</Text>
 
-            {teamLoading ? (
-              <ActivityIndicator color={BRAND} style={{ marginTop: 20 }} />
-            ) : teamMembers.length === 0 ? (
-              <View style={profStyles.emptyTeam}>
-                <Text style={profStyles.emptyTeamText}>No team members yet. Invite someone to get started.</Text>
-              </View>
-            ) : (
-              <View style={profStyles.teamTable}>
-                <View style={[profStyles.teamRow, profStyles.teamHeaderRow]}>
-                  <Text style={[profStyles.teamCell, profStyles.teamHeaderCell, { flex: 2 }]}>USER</Text>
-                  <Text style={[profStyles.teamCell, profStyles.teamHeaderCell, { flex: 2 }]}>EMAIL</Text>
-                  <Text style={[profStyles.teamCell, profStyles.teamHeaderCell, { flex: 1 }]}>ROLE</Text>
-                  <Text style={[profStyles.teamCell, profStyles.teamHeaderCell, { flex: 1 }]}>STATUS</Text>
-                  <Text style={[profStyles.teamCell, profStyles.teamHeaderCell, { flex: 1 }]}>ACTIONS</Text>
+              {showInviteInput && (
+                <View style={[profStyles.inviteRow, isMobile && { flexDirection: 'column' }, { marginBottom: 12 }]}>
+                  <View style={profStyles.inviteInputWrap}>
+                    <Mail size={14} color={TEXT_PLACEHOLDER} />
+                    <TextInput
+                      style={profStyles.inviteInput}
+                      value={teamInviteEmail}
+                      onChangeText={setTeamInviteEmail}
+                      placeholder="Enter email to invite…"
+                      placeholderTextColor={TEXT_PLACEHOLDER}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+                  </View>
+                  <TouchableOpacity
+                    style={[profStyles.primaryBtn, isMobile && profStyles.btnFull, (teamInviting || !teamInviteEmail.trim()) && { opacity: 0.5 }]}
+                    onPress={handleInvite}
+                    disabled={teamInviting || !teamInviteEmail.trim()}
+                    activeOpacity={0.85}
+                  >
+                    {teamInviting
+                      ? <ActivityIndicator size="small" color="#fff" />
+                      : <Text style={profStyles.primaryBtnText}>Send Invite</Text>
+                    }
+                  </TouchableOpacity>
                 </View>
-                {teamMembers.map((m, idx) => (
-                  <View key={m.id} style={[profStyles.teamRow, idx % 2 === 1 && profStyles.teamRowAlt]}>
-                    <View style={[profStyles.teamCell, { flex: 2, flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
-                      <View style={profStyles.memberAvatar}>
-                        <Text style={profStyles.memberAvatarText}>{(m.name || m.email)[0]?.toUpperCase() || '?'}</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                          <Text style={profStyles.memberName} numberOfLines={1}>{m.name || m.email}</Text>
-                          {m.id === session?.userId && (
-                            <View style={profStyles.youBadge}><Text style={profStyles.youBadgeText}>You</Text></View>
-                          )}
+              )}
+              {teamInviteError ? <Text style={profStyles.errorText}>{teamInviteError}</Text> : null}
+              {teamInviteSuccess ? <Text style={profStyles.successText}>{teamInviteSuccess}</Text> : null}
+
+              {teamLoading ? (
+                <ActivityIndicator color={BRAND} style={{ marginTop: 20 }} />
+              ) : teamMembers.length === 0 ? (
+                <View style={profStyles.emptyTeam}>
+                  <Text style={profStyles.emptyTeamText}>No team members yet. Invite someone to get started.</Text>
+                </View>
+              ) : isMobile ? (
+                <View style={{ gap: 10, marginTop: 4 }}>
+                  {teamMembers.map((m) => (
+                    <View key={m.id} style={profStyles.memberCard}>
+                      <View style={profStyles.memberCardTop}>
+                        <View style={profStyles.memberAvatar}>
+                          <Text style={profStyles.memberAvatarText}>{(m.name || m.email)[0]?.toUpperCase() || '?'}</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                            <Text style={profStyles.memberName} numberOfLines={1}>{m.name || m.email}</Text>
+                            {m.id === session?.userId && (
+                              <View style={profStyles.youBadge}><Text style={profStyles.youBadgeText}>You</Text></View>
+                            )}
+                          </View>
+                          <Text style={profStyles.memberEmail} numberOfLines={1}>{m.email}</Text>
                         </View>
                       </View>
+                      <View style={profStyles.memberCardBadges}>
+                        <View style={[profStyles.rolePill, m.role === 'ORG_ADMIN' && profStyles.rolePillAdmin]}>
+                          <Text style={[profStyles.rolePillText, m.role === 'ORG_ADMIN' && profStyles.rolePillTextAdmin]}>
+                            {ROLE_LABELS[m.role] || m.role}
+                          </Text>
+                        </View>
+                        {m.status === 'INVITED'
+                          ? <View style={profStyles.invitedBadge}><Text style={profStyles.invitedBadgeText}>Invited</Text></View>
+                          : <View style={profStyles.activeBadge}><Text style={profStyles.activeBadgeText}>Active</Text></View>
+                        }
+                      </View>
+                      {(m.status === 'INVITED' || m.id !== session?.userId) && (
+                        <View style={profStyles.memberCardActions}>
+                          {m.status === 'INVITED' && (
+                            <TouchableOpacity style={profStyles.resendBtn} onPress={() => handleResendInvite(m.email)} activeOpacity={0.85}>
+                              <Text style={profStyles.resendBtnText}>Resend Invite</Text>
+                            </TouchableOpacity>
+                          )}
+                          {m.id !== session?.userId && (
+                            <TouchableOpacity style={[profStyles.removeBtnLg, m.status !== 'INVITED' && { flex: 1 }]} onPress={() => handleRemove(m.id)} activeOpacity={0.85}>
+                              <UserMinus size={13} color="#DC2626" />
+                              <Text style={profStyles.removeBtnLgText}>Remove</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      )}
                     </View>
-                    <Text style={[profStyles.teamCell, profStyles.memberEmail, { flex: 2 }]} numberOfLines={1}>{m.email}</Text>
-                    <View style={[profStyles.teamCell, { flex: 1 }]}>
-                      <View style={[profStyles.rolePill, m.role === 'ORG_ADMIN' && profStyles.rolePillAdmin]}>
-                        <Text style={[profStyles.rolePillText, m.role === 'ORG_ADMIN' && profStyles.rolePillTextAdmin]}>
-                          {ROLE_LABELS[m.role] || m.role}
-                        </Text>
+                  ))}
+                </View>
+              ) : (
+                <View style={profStyles.teamTable}>
+                  <View style={[profStyles.teamRow, profStyles.teamHeaderRow]}>
+                    <Text style={[profStyles.teamCell, profStyles.teamHeaderCell, { flex: 2 }]}>USER</Text>
+                    <Text style={[profStyles.teamCell, profStyles.teamHeaderCell, { flex: 2 }]}>EMAIL</Text>
+                    <Text style={[profStyles.teamCell, profStyles.teamHeaderCell, { flex: 1 }]}>ROLE</Text>
+                    <Text style={[profStyles.teamCell, profStyles.teamHeaderCell, { flex: 1 }]}>STATUS</Text>
+                    <Text style={[profStyles.teamCell, profStyles.teamHeaderCell, { flex: 1 }]}>ACTIONS</Text>
+                  </View>
+                  {teamMembers.map((m, idx) => (
+                    <View key={m.id} style={[profStyles.teamRow, idx % 2 === 1 && profStyles.teamRowAlt]}>
+                      <View style={[profStyles.teamCell, { flex: 2, flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+                        <View style={profStyles.memberAvatar}>
+                          <Text style={profStyles.memberAvatarText}>{(m.name || m.email)[0]?.toUpperCase() || '?'}</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                            <Text style={profStyles.memberName} numberOfLines={1}>{m.name || m.email}</Text>
+                            {m.id === session?.userId && (
+                              <View style={profStyles.youBadge}><Text style={profStyles.youBadgeText}>You</Text></View>
+                            )}
+                          </View>
+                        </View>
+                      </View>
+                      <Text style={[profStyles.teamCell, profStyles.memberEmail, { flex: 2 }]} numberOfLines={1}>{m.email}</Text>
+                      <View style={[profStyles.teamCell, { flex: 1 }]}>
+                        <View style={[profStyles.rolePill, m.role === 'ORG_ADMIN' && profStyles.rolePillAdmin]}>
+                          <Text style={[profStyles.rolePillText, m.role === 'ORG_ADMIN' && profStyles.rolePillTextAdmin]}>
+                            {ROLE_LABELS[m.role] || m.role}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={[profStyles.teamCell, { flex: 1 }]}>
+                        {m.status === 'INVITED'
+                          ? <View style={profStyles.invitedBadge}><Text style={profStyles.invitedBadgeText}>Invited</Text></View>
+                          : <View style={profStyles.activeBadge}><Text style={profStyles.activeBadgeText}>Active</Text></View>
+                        }
+                      </View>
+                      <View style={[profStyles.teamCell, { flex: 1, flexDirection: 'row', gap: 4, alignItems: 'center' }]}>
+                        {m.status === 'INVITED' && (
+                          <TouchableOpacity style={profStyles.actionBtn} onPress={() => handleResendInvite(m.email)} activeOpacity={0.8}>
+                            <Text style={profStyles.actionBtnText}>Resend</Text>
+                          </TouchableOpacity>
+                        )}
+                        {m.id !== session?.userId && (
+                          <TouchableOpacity style={profStyles.removeBtn} onPress={() => handleRemove(m.id)} activeOpacity={0.8}>
+                            <UserMinus size={13} color="#DC2626" />
+                          </TouchableOpacity>
+                        )}
                       </View>
                     </View>
-                    <View style={[profStyles.teamCell, { flex: 1 }]}>
-                      {m.status === 'INVITED'
-                        ? <View style={profStyles.invitedBadge}><Text style={profStyles.invitedBadgeText}>Invited</Text></View>
-                        : <View style={profStyles.activeBadge}><Text style={profStyles.activeBadgeText}>Active</Text></View>
-                      }
-                    </View>
-                    <View style={[profStyles.teamCell, { flex: 1, flexDirection: 'row', gap: 4, alignItems: 'center' }]}>
-                      {m.status === 'INVITED' && (
-                        <TouchableOpacity style={profStyles.actionBtn} onPress={() => handleResendInvite(m.email)} activeOpacity={0.8}>
-                          <Text style={profStyles.actionBtnText}>Resend</Text>
-                        </TouchableOpacity>
-                      )}
-                      {m.id !== session?.userId && (
-                        <TouchableOpacity style={profStyles.removeBtn} onPress={() => handleRemove(m.id)} activeOpacity={0.8}>
-                          <UserMinus size={13} color="#DC2626" />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </View>
-                ))}
-              </View>
-            )}
+                  ))}
+                </View>
+              )}
+            </View>
           </View>
         )}
-
-        {/* ROW 4: Need Help */}
-        <View style={profStyles.card}>
-          <Text style={profStyles.cardLabel}>NEED HELP?</Text>
-          <Text style={profStyles.cardSubtitle}>Need assistance with your project, artwork, products, or account?</Text>
-          <View style={{ flexDirection: 'row', gap: 12, marginTop: 16, flexWrap: 'wrap' }}>
-            <TouchableOpacity style={profStyles.helpBtn} onPress={() => Linking.openURL('tel:4805599033')} activeOpacity={0.85}>
-              <Phone size={14} color="#fff" />
-              <Text style={profStyles.helpBtnText}>Call Us: (480) 559-9033</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={profStyles.helpBtn} onPress={() => Linking.openURL('mailto:jobs@katalystko.com')} activeOpacity={0.85}>
-              <Mail size={14} color="#fff" />
-              <Text style={profStyles.helpBtnText}>Email Us: jobs@katalystko.com</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
 
       </ScrollView>
     );
@@ -5238,15 +5338,26 @@ const profStyles = StyleSheet.create({
 
   // ── Card base ─────────────────────────────────────────────────────────────
   card: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 22, marginBottom: 16,
+    backgroundColor: '#fff', borderRadius: 14, marginBottom: 16, overflow: 'hidden' as const,
     borderWidth: 1, borderColor: BORDER,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4,
   },
+  cardBody: { padding: 22 },
+  cardBodyMobile: { padding: 18 },
+  cardHead: {
+    backgroundColor: '#000', minHeight: 46, paddingHorizontal: 18, paddingVertical: 8,
+    flexDirection: 'row' as const, alignItems: 'center' as const,
+    justifyContent: 'space-between' as const, gap: 10,
+  },
+  cardHeadText: {
+    fontSize: 12, fontWeight: '800' as const, color: '#fff',
+    textTransform: 'uppercase' as const, letterSpacing: 0.8,
+  },
+  cardHeadRight: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 10 },
   cardLabel: {
     fontSize: 10, fontWeight: '800' as const, color: TEXT_PLACEHOLDER,
     textTransform: 'uppercase' as const, letterSpacing: 0.8, marginBottom: 14,
   },
-  cardSubtitle: { fontSize: 12, color: TEXT_LIGHT, marginBottom: 14, marginTop: -8, lineHeight: 17 },
+  cardSubtitle: { fontSize: 12, color: TEXT_LIGHT, marginBottom: 14, lineHeight: 17 },
   cardHeaderRow: {
     flexDirection: 'row' as const, alignItems: 'flex-start' as const,
     justifyContent: 'space-between' as const, marginBottom: 16, flexWrap: 'wrap' as const, gap: 10,
@@ -5254,6 +5365,8 @@ const profStyles = StyleSheet.create({
 
   // ── Row-1: 3 equal cards ──────────────────────────────────────────────────
   row3: { flexDirection: 'row' as const, gap: 14, marginBottom: 16 },
+  // ── Row-2: My Profile (75%) + Need Help (25%) ─────────────────────────────
+  row2: { flexDirection: 'row' as const, gap: 14, alignItems: 'flex-start' as const },
 
   // ── Org Branding card ─────────────────────────────────────────────────────
   logoSquare: {
@@ -5393,10 +5506,37 @@ const profStyles = StyleSheet.create({
   },
   primaryBtnText: { fontSize: 13, fontWeight: '700' as const, color: '#fff' },
   helpBtn: {
-    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8,
-    backgroundColor: BRAND, borderRadius: 9, paddingHorizontal: 18, paddingVertical: 11,
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 10,
+    backgroundColor: BRAND, borderRadius: 9, paddingHorizontal: 16, paddingVertical: 11,
   },
   helpBtnText: { fontSize: 13, fontWeight: '700' as const, color: '#fff' },
+  helpBtnLabel: { fontSize: 13, fontWeight: '800' as const, color: '#fff' },
+  helpBtnValue: { fontSize: 12, fontWeight: '600' as const, color: 'rgba(255,255,255,0.85)' as any, marginTop: 1 },
+
+  // ── Full-width button (mobile) ────────────────────────────────────────────
+  btnFull: { alignSelf: 'stretch' as const, justifyContent: 'center' as const },
+
+  // ── My Profile (mobile centered) ──────────────────────────────────────────
+  myProfileRowMobile: { flexDirection: 'column' as const, gap: 20, alignItems: 'center' as const },
+  profileLeftMobile: { width: '100%' as any, alignItems: 'center' as const },
+
+  // ── Team member cards (mobile) ────────────────────────────────────────────
+  memberCard: {
+    borderWidth: 1, borderColor: BORDER, borderRadius: 12, padding: 14, gap: 12, backgroundColor: '#fff',
+  },
+  memberCardTop: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 10 },
+  memberCardBadges: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, flexWrap: 'wrap' as const },
+  memberCardActions: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8 },
+  resendBtn: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'center' as const, gap: 6,
+    borderWidth: 1, borderColor: BRAND, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, flex: 1,
+  },
+  resendBtnText: { fontSize: 12, fontWeight: '700' as const, color: BRAND },
+  removeBtnLg: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'center' as const, gap: 6,
+    borderWidth: 1, borderColor: '#FECACA', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, backgroundColor: '#FEF2F2',
+  },
+  removeBtnLgText: { fontSize: 12, fontWeight: '700' as const, color: '#DC2626' },
 
   // ── Feedback ──────────────────────────────────────────────────────────────
   successText: { fontSize: 12, color: '#16A34A', marginTop: 8 },
