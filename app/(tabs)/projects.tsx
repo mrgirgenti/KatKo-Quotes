@@ -1040,8 +1040,8 @@ const styles = StyleSheet.create({
   colActions:   { width: 100, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
 
   tableDate:       { fontSize: 13, color: Colors.light.text },
-  tableClient:     { fontSize: 13, fontWeight: '700', color: Colors.light.text },
-  tableProject:    { fontSize: 13, color: Colors.light.text },
+  tableClient:     { fontSize: 13, color: Colors.light.text },
+  tableProject:    { fontSize: 13, fontWeight: '700', color: Colors.light.text },
   tableInvoice:    { fontSize: 13, color: Colors.light.textSecondary },
   tableApplicator: { fontSize: 12, color: Colors.light.text, lineHeight: 18 },
   tableServices:   { fontSize: 12, color: Colors.light.text, lineHeight: 18 },

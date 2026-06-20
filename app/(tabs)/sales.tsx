@@ -819,7 +819,7 @@ export default function SalesScreen() {
       ) : (
         <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
           <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }} style={{ outlineStyle: 'none' } as any}>
-            <View style={{ minWidth: 1280, flexGrow: 1 }}>
+            <View style={{ minWidth: 1500, flexGrow: 1 }}>
               <View style={styles.tableHeader}>
                 <View style={styles.colCheckbox}>
                   <Checkbox
@@ -998,11 +998,11 @@ const styles = StyleSheet.create({
   statusIcons:  { flexDirection: 'row', alignItems: 'center', gap: 3 },
   colOrderDate: { width: 125 },
   colDueDate:   { width: 110 },
-  colClient:    { flex: 1.2 },
-  colProject:   { flex: 1.2 },
+  colClient:    { flex: 1.2, minWidth: 150 },
+  colProject:   { flex: 1.2, minWidth: 160 },
   colQuote:     { width: 90 },
-  colServices:  { flex: 1.0 },
-  colApplicator: { flex: 1.2 },
+  colServices:  { flex: 1.0, minWidth: 140 },
+  colApplicator: { flex: 1.2, minWidth: 150 },
   colPcs:       { width: 72 },
   colPerPcs:    { width: 85, alignItems: 'flex-end' },
   colRevenue:   { width: 85, alignItems: 'flex-end' },
@@ -1010,8 +1010,8 @@ const styles = StyleSheet.create({
   colActions:   { width: 100, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
 
   tableDate:    { fontSize: 13, color: Colors.light.text },
-  tableClient:  { fontSize: 13, fontWeight: '700', color: Colors.light.text },
-  tableProject: { fontSize: 13, color: Colors.light.text },
+  tableClient:  { fontSize: 13, color: Colors.light.text },
+  tableProject: { fontSize: 13, fontWeight: '700', color: Colors.light.text },
   tableInvoice: { fontSize: 13, color: Colors.light.textSecondary },
   tableServices:{ fontSize: 12, color: Colors.light.text, lineHeight: 18 },
   tablePcs:     { fontSize: 12, color: Colors.light.text, lineHeight: 18 },

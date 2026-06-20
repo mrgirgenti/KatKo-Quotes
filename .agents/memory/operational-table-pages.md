@@ -73,13 +73,22 @@ Canonical pattern (all four use it):
   </ScrollView>
 </ScrollView>
 ```
-Pixel `minWidth` (Projects 1320, Quotes 1180, Orgs 1200, Contacts 1156 — was 1120 before
-the checkbox column) forces horizontal
-scroll on phones; `flexGrow:1` (on BOTH the h-scroll contentContainer AND the inner View)
-lets it stretch to fill wide desktops so desktop stays effectively identical. `minWidth:'100%'`
+A pixel `minWidth` on the inner View forces horizontal scroll on phones; `flexGrow:1`
+(on BOTH the h-scroll contentContainer AND the inner View) lets it stretch to fill wide
+desktops so desktop stays effectively identical. `minWidth:'100%'`
 is WRONG here — it collapses to viewport on mobile and never scrolls. Keep Client/Project/
 Service columns as `flex` (they distribute within the px width). Lists render via `.map`
 (not FlatList) so a vertical FlatList isn't nested in the h-ScrollView.
+
+## Quotes ↔ Projects column-width + name-weight parity (Projects is canonical)
+Quotes (`sales.tsx`) must replicate Projects' (`projects.tsx`) column layout — Projects is
+the source of truth. The shared flex columns carry the SAME `minWidth` (Client 150,
+Project 160, Services 140, Applicator 150) and the inner-View container `minWidth` matches
+between the two pages, so the tables line up despite Quotes' domain cols (Revenue/Profit)
+vs Projects' (Total/Markup) — all the trailing money cols are width 85 so totals match.
+**Name weight:** Project Name is BOLD (`fontWeight:'700'`), Client Name is NORMAL — on BOTH
+pages (`tableProject` bold, `tableClient` not). **Why:** user wants the project to be the
+visual anchor of each row, and the two pages perceived as one system.
 
 **Why:** user explicitly REVERSED the earlier "tablet=compact table / mobile=labeled cards"
 plan — production staff need true desktop-table parity on tablet/mobile, scroll over cards.
