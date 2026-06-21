@@ -35,7 +35,8 @@ import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
 import { Organization, Contact } from '@/types/crm';
 import { OrgAvatar } from '@/components/OrgAvatar';
-import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
+import { metricValueStyle, metricLabelStyle, metricValueStyleMobile, metricLabelStyleMobile } from '@/components/Metric';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 function getPrimaryContact(org: Organization): Contact | undefined {
   return org.contacts.find((c) => c.isPrimary) ?? org.contacts[0];
@@ -247,6 +248,7 @@ export default function ClientHubsScreen() {
   const [sortField, setSortField] = useState<SortField>('status');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const { isMobile } = useBreakpoint();
 
   const now = Date.now();
 
@@ -402,24 +404,24 @@ export default function ClientHubsScreen() {
       {/* ── Page header ── */}
       <View style={styles.pageHeader}>
         <View style={styles.headerTop}>
-          <Text style={styles.pageTitle}>Client Hubs</Text>
+          <Text style={[styles.pageTitle, isMobile && styles.pageTitleMobile]}>Client Hubs</Text>
         </View>
 
         {/* Metrics row */}
-        <View style={styles.statsBar}>
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: Colors.light.tint }]}>{metrics.totalHubs}</Text>
-            <Text style={styles.statLabel}>Total Hubs</Text>
+        <View style={[styles.statsBar, isMobile && styles.statBarMobile]}>
+          <View style={[styles.statItem, isMobile && styles.statItemMobile]}>
+            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: Colors.light.tint }]}>{metrics.totalHubs}</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Total Hubs</Text>
           </View>
           <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: '#16A34A' }]}>{metrics.loggedIn30}</Text>
-            <Text style={styles.statLabel}>Logged In (30 Days)</Text>
+          <View style={[styles.statItem, isMobile && styles.statItemMobile]}>
+            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: '#16A34A' }]}>{metrics.loggedIn30}</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Logged In (30 Days)</Text>
           </View>
           <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: '#D97706' }]}>{metrics.pendingInvites}</Text>
-            <Text style={styles.statLabel}>Pending Invites</Text>
+          <View style={[styles.statItem, isMobile && styles.statItemMobile]}>
+            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: '#D97706' }]}>{metrics.pendingInvites}</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Pending Invites</Text>
           </View>
         </View>
 
@@ -559,6 +561,11 @@ const styles = StyleSheet.create({
   statValue: { ...metricValueStyle },
   statLabel: { ...metricLabelStyle, textAlign: 'center' as const },
   statDivider: { display: 'none' as any },
+  pageTitleMobile: { fontSize: 20 },
+  statValueMobile: { ...metricValueStyleMobile },
+  statLabelMobile: { ...metricLabelStyleMobile, textAlign: 'center' as const },
+  statBarMobile: { padding: 13, gap: 10 },
+  statItemMobile: { paddingVertical: 12, paddingHorizontal: 10 },
 
   // Chips
   chipsScroll: { flexGrow: 0, marginBottom: 12 },

@@ -11,6 +11,7 @@ import { Search, SlidersHorizontal, Plus } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 interface PlaceholderMetric {
   label: string;
@@ -37,12 +38,13 @@ export function PlaceholderPage({
   emptyMessage,
 }: PlaceholderPageProps) {
   const [search, setSearch] = useState('');
+  const { isMobile } = useBreakpoint();
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scroll, isMobile && { padding: 16 }]} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
-          <Text style={styles.title}>{title}</Text>
+          <Text style={[styles.title, isMobile && { fontSize: 22 }]}>{title}</Text>
           {primaryActionLabel ? (
             <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.85}>
               <Plus size={16} color="#fff" />
@@ -52,11 +54,11 @@ export function PlaceholderPage({
         </View>
 
         {metrics && metrics.length > 0 ? (
-          <View style={styles.metricsRow}>
+          <View style={[styles.metricsRow, isMobile && { padding: 13, gap: 10 }]}>
             {metrics.map((m) => (
-              <View key={m.label} style={styles.metricCard}>
-                <Text style={styles.metricValue}>{m.value ?? '—'}</Text>
-                <Text style={styles.metricLabel}>{m.label}</Text>
+              <View key={m.label} style={[styles.metricCard, isMobile && { paddingVertical: 12, paddingHorizontal: 10 }]}>
+                <Text style={[styles.metricValue, isMobile && { fontSize: 15, lineHeight: 19 }]}>{m.value ?? '—'}</Text>
+                <Text style={[styles.metricLabel, isMobile && { fontSize: 9 }]}>{m.label}</Text>
               </View>
             ))}
           </View>

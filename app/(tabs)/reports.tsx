@@ -500,6 +500,7 @@ function KpiCard({
   icon: React.ComponentType<{ size?: number; color?: string }>;
   style?: object;
 }) {
+  const { isMobile } = useBreakpoint();
   const hasChange = change !== null;
   const positive = (change ?? 0) >= 0;
   return (
@@ -513,7 +514,7 @@ function KpiCard({
           <Icon size={18} color="#059669" />
         </View>
       </View>
-      <Text style={s.kpiValue} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
+      <Text style={[s.kpiValue, isMobile && { fontSize: 19, lineHeight: 24 }]} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
       {hasChange && (
         <View style={s.kpiChangeRow}>
           {positive ? (
@@ -967,6 +968,7 @@ function CustomerConcentrationSection({
 }: {
   concentration: { top1: number; top5: number; top10: number };
 }) {
+  const { isMobile } = useBreakpoint();
   const items = [
     { label: 'Top Customer', value: `${concentration.top1}%`, hint: 'of total revenue' },
     { label: 'Top 5 Customers', value: `${concentration.top5}%`, hint: 'of total revenue' },
@@ -981,6 +983,7 @@ function CustomerConcentrationSection({
             <Text style={s.concLabel}>{item.label}</Text>
             <Text style={[
               s.concValue,
+              isMobile && { fontSize: 21, lineHeight: 26 },
               { color: item.value === '0%' ? Colors.light.textSecondary : Colors.light.text },
             ]}>{item.value}</Text>
             <Text style={s.concHint}>{item.hint}</Text>
@@ -2102,6 +2105,7 @@ export default function ReportsScreen() {
   const router = useRouter();
   const { quotes } = useQuotes();
   const { orgs } = useCrm();
+  const { isMobile } = useBreakpoint();
 
   const [activeTab, setActiveTab] = useState<ReportTab>('overview');
   const [dateRangeKey, setDateRangeKey] = useState<DateRangeKey>('this_year');
@@ -2175,7 +2179,7 @@ export default function ReportsScreen() {
       {/* ── Page Header ── */}
       <View style={s.pageHeader}>
         <View style={s.pageHeaderTop}>
-          <Text style={s.pageTitle}>Reports</Text>
+          <Text style={[s.pageTitle, isMobile && { fontSize: 20 }]}>Reports</Text>
           <View style={s.headerControls}>
             <DateRangeMenu
               selected={dateRangeKey}
