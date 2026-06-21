@@ -18,3 +18,4 @@
 - [Portal upload auth bypass](portal-upload-auth.md) — portal file uploads/deletes need portal-specific API routes; /api/files is Clerk-gated and portal has no Clerk token.
 - [R2 storage abstraction](r2-storage-abstraction.md) — storage layer lives in lib/storage/; STORAGE_PROVIDER=r2 to enable; dev container cannot reach R2 (TLS blocked by Cloudflare), test only via deployed env.
 - [Prisma String = PostgreSQL text](prisma-string-is-text.md) — Prisma `String @id @default(uuid())` maps to PostgreSQL `text`, NOT `uuid`. Never use `col = $1::uuid` in WHERE — that's `=(text,uuid)` which has no operator. Use plain `col = $1` (both text). For ANY() arrays use `= ANY($1::text[])`.
+- [Vendor source model](vendor-source-model.md) — Product.vendor = manufacturer label; ProductVendor = supply chain distributors. Setting isPreferred must clear siblings in the same API call.

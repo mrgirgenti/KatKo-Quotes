@@ -59,6 +59,8 @@ interface Product {
   subcategory?: string | null;
   productType?: string | null;
   gender?: string | null;
+  vendorCount?: number;
+  preferredVendorName?: string | null;
 }
 
 function ProductFormModal({
@@ -111,7 +113,7 @@ function ProductFormModal({
   const handleSave = async () => {
     if (!form.styleNumber.trim()) { setError('Style number is required.'); return; }
     if (!form.brand.trim())       { setError('Brand is required.'); return; }
-    if (!form.vendor.trim())      { setError('Vendor is required.'); return; }
+    if (!form.vendor.trim())      { setError('Manufacturer is required.'); return; }
     if (!form.name.trim())        { setError('Product name is required.'); return; }
     setError('');
     setSaving(true);
@@ -149,9 +151,9 @@ function ProductFormModal({
             <TextInput style={fm.input} value={form.brand} onChangeText={v => upd('brand', v)}
               placeholder="e.g. Next Level" placeholderTextColor="#9CA3AF" />
 
-            <Text style={fm.label}>Vendor <Text style={{ color: BRAND }}>*</Text></Text>
+            <Text style={fm.label}>Manufacturer <Text style={{ color: BRAND }}>*</Text></Text>
             <TextInput style={fm.input} value={form.vendor} onChangeText={v => upd('vendor', v)}
-              placeholder="e.g. SanMar" placeholderTextColor="#9CA3AF" />
+              placeholder="e.g. Next Level" placeholderTextColor="#9CA3AF" />
 
             <Text style={fm.label}>Product Name <Text style={{ color: BRAND }}>*</Text></Text>
             <TextInput style={fm.input} value={form.name} onChangeText={v => upd('name', v)}
@@ -411,7 +413,7 @@ export default function CatalogAdminScreen() {
       <View style={s.tableHeader}>
         <Text style={[s.th, s.cStyle]}>Style #</Text>
         <Text style={[s.th, s.cBrand]}>Brand</Text>
-        <Text style={[s.th, s.cVendor]}>Vendor</Text>
+        <Text style={[s.th, s.cVendor]}>Sources</Text>
         <Text style={[s.th, s.cName]}>Product Name</Text>
         <Text style={[s.th, s.cCat]}>Category</Text>
         <Text style={[s.th, s.cStatus]}>Status</Text>
@@ -451,9 +453,16 @@ export default function CatalogAdminScreen() {
               <Text style={[s.td, s.cBrand]} numberOfLines={1}>
                 {product.brand}
               </Text>
-              <Text style={[s.td, s.cVendor]} numberOfLines={1}>
-                {product.vendor}
-              </Text>
+              <View style={s.cVendor}>
+                <Text style={s.td} numberOfLines={1}>
+                  {product.preferredVendorName ?? '—'}
+                </Text>
+                {(product.vendorCount ?? 0) > 0 && (
+                  <Text style={s.tdSub} numberOfLines={1}>
+                    {product.vendorCount} {product.vendorCount === 1 ? 'source' : 'sources'}
+                  </Text>
+                )}
+              </View>
               <Text style={[s.td, s.cName]} numberOfLines={1}>
                 {product.name}
               </Text>
@@ -656,7 +665,7 @@ const s = StyleSheet.create({
 
   cStyle:   { width: 100, marginRight: 16 },
   cBrand:   { width: 130, marginRight: 16 },
-  cVendor:  { width: 120, marginRight: 16 },
+  cVendor:  { width: 150, marginRight: 16, justifyContent: 'center' as any },
   cName:    { flex: 1, minWidth: 140, marginRight: 16 },
   cCat:     { width: 130, marginRight: 16, justifyContent: 'center' as any },
   cStatus:  { width: 80, marginRight: 8 },

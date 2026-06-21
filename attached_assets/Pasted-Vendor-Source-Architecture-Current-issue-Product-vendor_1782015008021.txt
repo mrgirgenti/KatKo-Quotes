@@ -1,0 +1,137 @@
+Vendor Source Architecture
+
+Current issue:
+
+Product.vendor is currently being used inconsistently and appears to represent brand/manufacturer in some cases.
+
+Business requirement:
+
+A product/style can be available from multiple vendors/distributors.
+
+Example:
+
+NL6210
+
+* S&S Activewear
+* SanMar
+* AlphaBroder
+* McCreary's
+
+The Product record should represent the actual garment/style.
+
+The Vendor Source records should represent where we can purchase that product.
+
+This matters for:
+
+* quoting
+* blank garment cost
+* ordering
+* production tracking
+* future vendor API integration
+* inventory lookup
+* preferred vendor selection
+
+Architecture goal:
+
+Do not duplicate products just because multiple vendors sell the same style.
+
+Implement a sustainable vendor-source model.
+
+Evaluate and implement:
+
+1. Rename or clarify Product.vendor.
+
+   * If it actually means manufacturer/brand, recommend renaming or deprecating.
+   * Product should retain brand/manufacturer separately from supplier/vendor.
+
+2. Create Vendor model.
+
+Suggested fields:
+
+* id
+* name
+* website
+* isActive
+* createdAt
+* updatedAt
+
+Seed initial vendors:
+
+* S&S Activewear
+* SanMar
+* AlphaBroder
+* McCreary's
+* Hit Promotional
+* Starline
+* Other
+
+3. Create ProductVendor or ProductSource model.
+
+Suggested fields:
+
+* id
+* productId
+* vendorId
+* vendorSku
+* vendorProductUrl
+* preferredVendor
+* active
+* notes
+* createdAt
+* updatedAt
+
+4. Update Product detail UI.
+
+Add a Vendors / Sources tab where staff can:
+
+* Add vendor source
+* Edit vendor source
+* Mark preferred vendor
+* Disable vendor source
+* Store vendor SKU
+* Store vendor product URL
+* Add notes
+
+5. Update Product list UI.
+
+Do not show Product.vendor as if it is the supplier.
+
+Instead show:
+
+* Brand
+* Product Name
+* Category
+* Available Vendors count
+* Preferred Vendor if one exists
+
+6. Seed vendor sources for existing hero products where reasonable.
+
+Do not invent exact SKUs if unknown.
+Use style number as vendorSku only when reasonable.
+If unsure, leave vendorSku blank and note unresolved.
+
+7. Future quote integration requirement.
+
+When quote line items become catalog-aware, they must be able to select:
+
+Product
+→ Product Color
+→ Vendor Source
+
+Quote line item should eventually store selected ProductVendor/ProductSource ID.
+
+Do not build quote integration yet.
+
+Do not build vendor API integration yet.
+
+Do not build inventory sync yet.
+
+Output:
+
+* schema changes
+* files changed
+* migration strategy
+* seeded vendors
+* seeded product sources
+* UI changes
+* testing checklist

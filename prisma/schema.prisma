@@ -530,6 +530,41 @@ enum GarmentSide {
   RIGHT
 }
 
+model Vendor {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  website   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sources ProductVendor[]
+
+  @@index([isActive])
+}
+
+model ProductVendor {
+  id               String   @id @default(uuid())
+  productId        String
+  vendorId         String
+  vendorSku        String?
+  vendorProductUrl String?
+  isPreferred      Boolean  @default(false)
+  isActive         Boolean  @default(true)
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  vendor  Vendor  @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+
+  @@unique([productId, vendorId])
+  @@index([productId])
+  @@index([vendorId])
+  @@index([productId, isPreferred])
+}
+
+/// vendor here means manufacturer/brand label — supply chain vendors live in ProductVendor
 model Product {
   id          String   @id @default(uuid())
   styleNumber String   @unique
@@ -546,9 +581,10 @@ model Product {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  colors     ProductColor[]
-  placements ProductPlacement[]
-  template   PlacementTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  colors        ProductColor[]
+  placements    ProductPlacement[]
+  vendorSources ProductVendor[]
+  template      PlacementTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
 
   @@index([styleNumber])
   @@index([brand])

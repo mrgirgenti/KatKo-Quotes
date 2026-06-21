@@ -13,7 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Pencil, Plus, X, ChevronDown, Upload, Palette, Layers } from 'lucide-react-native';
+import { Pencil, Plus, X, ChevronDown, Upload, Palette, Layers, Building2, Star } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { apiFetch, getAuthHeaders } from '@/lib/apiFetch';
 import PageBackHeader from '@/components/PageBackHeader';
@@ -40,8 +40,9 @@ const TABS = [
   { key: 'colors' as const, label: 'Colors', Icon: Palette },
   { key: 'assets' as const, label: 'Assets', Icon: Upload },
   { key: 'placements' as const, label: 'Placements', Icon: Layers },
+  { key: 'sources' as const, label: 'Sources', Icon: Building2 },
 ];
-type TabKey = 'colors' | 'assets' | 'placements';
+type TabKey = 'colors' | 'assets' | 'placements' | 'sources';
 
 interface ProductData {
   id: string;
@@ -55,6 +56,34 @@ interface ProductData {
   subcategory?: string | null;
   productType?: string | null;
   gender?: string | null;
+}
+
+interface Vendor {
+  id: string;
+  name: string;
+  website: string | null;
+  isActive: boolean;
+}
+
+interface VendorSource {
+  id: string;
+  productId: string;
+  vendorId: string;
+  vendorSku: string | null;
+  vendorProductUrl: string | null;
+  isPreferred: boolean;
+  isActive: boolean;
+  notes: string | null;
+  vendorName: string;
+  vendorWebsite: string | null;
+}
+
+interface SourceForm {
+  vendorId: string;
+  vendorSku: string;
+  vendorProductUrl: string;
+  isPreferred: boolean;
+  notes: string;
 }
 
 interface EffectivePlacement extends ZoneData {
@@ -175,9 +204,9 @@ function EditProductModal({
             <TextInput style={fm.input} value={form.brand} onChangeText={v => upd('brand', v)}
               placeholder="e.g. Next Level" placeholderTextColor="#9CA3AF" />
 
-            <Text style={fm.label}>Vendor <Text style={{ color: BRAND }}>*</Text></Text>
+            <Text style={fm.label}>Manufacturer <Text style={{ color: BRAND }}>*</Text></Text>
             <TextInput style={fm.input} value={form.vendor} onChangeText={v => upd('vendor', v)}
-              placeholder="e.g. SanMar" placeholderTextColor="#9CA3AF" />
+              placeholder="e.g. Next Level" placeholderTextColor="#9CA3AF" />
 
             <Text style={fm.label}>Product Name <Text style={{ color: BRAND }}>*</Text></Text>
             <TextInput style={fm.input} value={form.name} onChangeText={v => upd('name', v)}
@@ -598,6 +627,146 @@ function AssetsTab({
   );
 }
 
+// ── VendorSourceModal ─────────────────────────────────────────────────────────
+function VendorSourceModal({
+  visible, initial, vendors, onSave, onClose,
+}: {
+  visible: boolean;
+  initial: VendorSource | null;
+  vendors: Vendor[];
+  onSave: (form: SourceForm) => Promise<void>;
+  onClose: () => void;
+}) {
+  const EMPTY: SourceForm = { vendorId: '', vendorSku: '', vendorProductUrl: '', isPreferred: false, notes: '' };
+  const [form, setForm] = useState<SourceForm>(EMPTY);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [vendorDrop, setVendorDrop] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      setForm(initial
+        ? { vendorId: initial.vendorId, vendorSku: initial.vendorSku ?? '', vendorProductUrl: initial.vendorProductUrl ?? '', isPreferred: initial.isPreferred, notes: initial.notes ?? '' }
+        : EMPTY,
+      );
+      setError('');
+      setSaving(false);
+      setVendorDrop(false);
+    }
+  }, [visible]);
+
+  const upd = <K extends keyof SourceForm>(k: K, v: SourceForm[K]) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSave = async () => {
+    if (!form.vendorId) { setError('Please select a vendor.'); return; }
+    setSaving(true);
+    try { await onSave(form); onClose(); }
+    catch (e: any) { setError(e.message || 'Failed to save.'); }
+    finally { setSaving(false); }
+  };
+
+  const selectedVendor = vendors.find(v => v.id === form.vendorId);
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={fm.overlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} style={fm.sheet} onPress={() => setVendorDrop(false)}>
+          <View style={fm.header}>
+            <Text style={fm.title}>{initial ? 'Edit Source' : 'Add Vendor Source'}</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={20} color={TEXT_LIGHT} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={fm.body} keyboardShouldPersistTaps="handled">
+            {!!error && <View style={fm.errorBox}><Text style={fm.errorText}>{error}</Text></View>}
+
+            <Text style={fm.label}>Vendor <Text style={{ color: BRAND }}>*</Text></Text>
+            <TouchableOpacity
+              style={[fm.select, !!initial && { opacity: 0.6 }]}
+              onPress={() => !initial && setVendorDrop(d => !d)}
+              disabled={!!initial}
+            >
+              <Text style={[fm.selectText, !form.vendorId && { color: '#9CA3AF' }]}>
+                {selectedVendor?.name ?? 'Select vendor…'}
+              </Text>
+              <ChevronDown size={16} color={TEXT_LIGHT} />
+            </TouchableOpacity>
+            {vendorDrop && !initial && (
+              <View style={fm.dropdown}>
+                {vendors.map(v => (
+                  <TouchableOpacity
+                    key={v.id}
+                    style={[fm.dropOption, form.vendorId === v.id && fm.dropOptionActive]}
+                    onPress={() => { upd('vendorId', v.id); setVendorDrop(false); }}
+                  >
+                    <Text style={[fm.dropOptionText, form.vendorId === v.id && fm.dropOptionTextActive]}>{v.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            <Text style={fm.label}>Vendor SKU</Text>
+            <TextInput
+              style={fm.input}
+              value={form.vendorSku}
+              onChangeText={v => upd('vendorSku', v)}
+              placeholder="e.g. NL6210"
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="characters"
+            />
+
+            <Text style={fm.label}>Product URL</Text>
+            <TextInput
+              style={fm.input}
+              value={form.vendorProductUrl}
+              onChangeText={v => upd('vendorProductUrl', v)}
+              placeholder="https://…"
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="none"
+              keyboardType="url"
+            />
+
+            <Text style={fm.label}>Notes</Text>
+            <TextInput
+              style={[fm.input, { minHeight: 60 }]}
+              value={form.notes}
+              onChangeText={v => upd('notes', v)}
+              placeholder="Optional notes…"
+              placeholderTextColor="#9CA3AF"
+              multiline
+            />
+
+            <TouchableOpacity style={s.srcCheckRow} onPress={() => upd('isPreferred', !form.isPreferred)}>
+              <View style={[s.srcCheckbox, form.isPreferred && s.srcCheckboxOn]}>
+                {form.isPreferred && <Text style={s.srcCheckmark}>✓</Text>}
+              </View>
+              <Text style={s.srcCheckLabel}>Mark as preferred vendor</Text>
+            </TouchableOpacity>
+            <View style={{ height: 24 }} />
+          </ScrollView>
+
+          <View style={fm.footer}>
+            <TouchableOpacity style={fm.btnCancel} onPress={onClose}>
+              <Text style={fm.btnCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[fm.btnSave, saving && { opacity: 0.6 }]}
+              onPress={handleSave}
+              disabled={saving}
+            >
+              {saving
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={fm.btnSaveText}>{initial ? 'Save Changes' : 'Add Source'}</Text>
+              }
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -623,6 +792,12 @@ export default function ProductDetailScreen() {
   const [templateAssigning, setTemplateAssigning] = useState(false);
   const [templateSource, setTemplateSource] = useState<string | null>(null);
   const [resolvedTemplateKey, setResolvedTemplateKey] = useState<string | null>(null);
+
+  const [sources, setSources] = useState<VendorSource[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [sourcesLoading, setSourcesLoading] = useState(false);
+  const [sourceModal, setSourceModal] = useState(false);
+  const [editingSource, setEditingSource] = useState<VendorSource | null>(null);
 
   const loadAll = useCallback(async () => {
     if (!productId) return;
@@ -694,6 +869,30 @@ export default function ProductDetailScreen() {
     }
   };
 
+  const loadSources = useCallback(async () => {
+    if (!productId) return;
+    setSourcesLoading(true);
+    try {
+      const data = await apiFetch(`/api/products/${productId}/vendor-sources`);
+      setSources((data.sources || []) as VendorSource[]);
+    } catch { }
+    finally { setSourcesLoading(false); }
+  }, [productId]);
+
+  const loadVendors = useCallback(async () => {
+    try {
+      const data = await apiFetch('/api/vendors');
+      setVendors((data.vendors || []) as Vendor[]);
+    } catch { }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'sources') {
+      loadSources();
+      if (vendors.length === 0) loadVendors();
+    }
+  }, [activeTab, loadSources, loadVendors, vendors.length]);
+
   const frontAssetId = useMemo(() => {
     for (const c of colors) {
       const a = (c.assets || []).find(a => a.assetType === 'FRONT');
@@ -716,6 +915,37 @@ export default function ProductDetailScreen() {
       body: JSON.stringify(form),
     });
     await loadAll();
+  };
+
+  const handleAddSource = async (form: SourceForm) => {
+    await apiFetch(`/api/products/${productId}/vendor-sources`, {
+      method: 'POST',
+      body: JSON.stringify(form),
+    });
+    await loadSources();
+  };
+
+  const handleUpdateSource = async (vsId: string, form: SourceForm) => {
+    await apiFetch(`/api/products/${productId}/vendor-sources/${vsId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(form),
+    });
+    await loadSources();
+  };
+
+  const handleDeleteSource = async (vsId: string) => {
+    await apiFetch(`/api/products/${productId}/vendor-sources/${vsId}`, {
+      method: 'DELETE',
+    });
+    await loadSources();
+  };
+
+  const handleSetPreferred = async (vsId: string) => {
+    await apiFetch(`/api/products/${productId}/vendor-sources/${vsId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isPreferred: true }),
+    });
+    await loadSources();
   };
 
   const handleSaveColor = async (form: {
@@ -867,7 +1097,7 @@ export default function ProductDetailScreen() {
           </View>
           <View style={s.infoSep} />
           <View style={s.infoChip}>
-            <Text style={s.infoChipLabel}>Vendor</Text>
+            <Text style={s.infoChipLabel}>Manufacturer</Text>
             <Text style={s.infoChipValue}>{product.vendor}</Text>
           </View>
           {!!product.category && (
@@ -1040,6 +1270,91 @@ export default function ProductDetailScreen() {
         </ScrollView>
       )}
 
+      {/* ── Sources tab ─────────────────────────────────── */}
+      {activeTab === 'sources' && (
+        <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
+          <View style={s.srcHeader}>
+            <Text style={s.srcTitle}>Vendor Sources</Text>
+            <TouchableOpacity
+              style={s.srcAddBtn}
+              onPress={() => { setEditingSource(null); setSourceModal(true); }}
+            >
+              <Plus size={14} color="#fff" />
+              <Text style={s.srcAddBtnText}>Add Source</Text>
+            </TouchableOpacity>
+          </View>
+
+          {sourcesLoading ? (
+            <View style={s.epLoadBox}><ActivityIndicator color={BRAND} /></View>
+          ) : sources.length === 0 ? (
+            <View style={s.srcEmpty}>
+              <Building2 size={36} color={BORDER} />
+              <Text style={s.srcEmptyTitle}>No vendor sources yet</Text>
+              <Text style={s.srcEmptySubtitle}>Add where this product can be purchased.</Text>
+            </View>
+          ) : (
+            sources.map(src => (
+              <View key={src.id} style={[s.srcRow, !src.isActive && s.srcRowInactive]}>
+                <View style={s.srcLeft}>
+                  <View style={s.srcNameRow}>
+                    {src.isPreferred && <Star size={13} color="#F59E0B" fill="#F59E0B" />}
+                    <Text style={[s.srcName, src.isPreferred && s.srcNamePreferred]} numberOfLines={1}>
+                      {src.vendorName}
+                    </Text>
+                    {src.isPreferred && (
+                      <View style={s.srcPrefBadge}><Text style={s.srcPrefBadgeText}>preferred</Text></View>
+                    )}
+                    {!src.isActive && (
+                      <View style={s.srcOffBadge}><Text style={s.srcOffBadgeText}>inactive</Text></View>
+                    )}
+                  </View>
+                  {!!src.vendorSku && <Text style={s.srcMeta}>SKU: {src.vendorSku}</Text>}
+                  {!!src.vendorProductUrl && (
+                    <Text style={s.srcLink} numberOfLines={1}>{src.vendorProductUrl}</Text>
+                  )}
+                  {!!src.notes && <Text style={s.srcNotes} numberOfLines={2}>{src.notes}</Text>}
+                </View>
+
+                <View style={s.srcActions}>
+                  {!src.isPreferred && src.isActive && (
+                    <TouchableOpacity
+                      style={s.srcActionBtn}
+                      onPress={() => handleSetPreferred(src.id)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={s.srcPreferText}>★ Prefer</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    style={s.srcActionBtn}
+                    onPress={() => { setEditingSource(src); setSourceModal(true); }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Pencil size={14} color={TEXT_LIGHT} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={s.srcActionBtn}
+                    onPress={() =>
+                      Alert.alert(
+                        'Remove Source',
+                        `Remove ${src.vendorName} as a source for this product?`,
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Remove', style: 'destructive', onPress: () => handleDeleteSource(src.id) },
+                        ],
+                      )
+                    }
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <X size={14} color="#DC2626" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
+          )}
+        </ScrollView>
+      )}
+
       <EditProductModal
         visible={editProductModal}
         product={product}
@@ -1051,6 +1366,19 @@ export default function ProductDetailScreen() {
         initial={editingColor}
         onSave={handleSaveColor}
         onClose={() => { setColorModal(false); setEditingColor(null); }}
+      />
+      <VendorSourceModal
+        visible={sourceModal}
+        initial={editingSource}
+        vendors={vendors}
+        onSave={async form => {
+          if (editingSource) {
+            await handleUpdateSource(editingSource.id, form);
+          } else {
+            await handleAddSource(form);
+          }
+        }}
+        onClose={() => { setSourceModal(false); setEditingSource(null); }}
       />
     </View>
   );
@@ -1308,6 +1636,68 @@ const s = StyleSheet.create({
   assetSlotLabel: { fontSize: 11, fontWeight: '600', color: TEXT_LIGHT, textAlign: 'center' },
   assetReplaceBtn: { alignItems: 'center' },
   assetReplaceBtnText: { fontSize: 11, color: BRAND, fontWeight: '500' },
+
+  srcHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  srcTitle: { fontSize: 15, fontWeight: '700', color: TEXT },
+  srcAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: BRAND,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  srcAddBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+
+  srcEmpty: { alignItems: 'center', paddingVertical: 52, gap: 8 },
+  srcEmptyTitle: { fontSize: 15, fontWeight: '600', color: TEXT },
+  srcEmptySubtitle: { fontSize: 13, color: TEXT_LIGHT },
+
+  srcRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    backgroundColor: SURFACE,
+    gap: 10,
+  },
+  srcRowInactive: { opacity: 0.5 },
+  srcLeft: { flex: 1, gap: 4 },
+  srcNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  srcName: { fontSize: 14, fontWeight: '600', color: TEXT },
+  srcNamePreferred: { color: BRAND },
+  srcPrefBadge: { backgroundColor: '#EFF6FF', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  srcPrefBadgeText: { fontSize: 10, fontWeight: '700', color: '#2563EB' },
+  srcOffBadge: { backgroundColor: '#F3F4F6', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  srcOffBadgeText: { fontSize: 10, fontWeight: '600', color: '#6B7280' },
+  srcMeta: { fontSize: 12, color: TEXT_LIGHT },
+  srcLink: { fontSize: 12, color: BRAND },
+  srcNotes: { fontSize: 12, color: TEXT_LIGHT, fontStyle: 'italic' },
+  srcActions: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 2 },
+  srcActionBtn: { padding: 4 },
+  srcPreferText: { fontSize: 12, color: '#F59E0B', fontWeight: '600' },
+
+  srcCheckRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14 },
+  srcCheckbox: {
+    width: 20, height: 20, borderRadius: 4,
+    borderWidth: 2, borderColor: BORDER,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  srcCheckboxOn: { backgroundColor: BRAND, borderColor: BRAND },
+  srcCheckmark: { color: '#fff', fontSize: 13, fontWeight: '700', lineHeight: 16 },
+  srcCheckLabel: { fontSize: 14, color: TEXT },
 });
 
 const fm = StyleSheet.create({

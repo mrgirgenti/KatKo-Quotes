@@ -43,7 +43,21 @@ export async function GET(request: Request) {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `SELECT p.* FROM "Product" p ${where} ORDER BY p."sortOrder" ASC, p.brand ASC, p.name ASC`,
+      `SELECT p.*,
+          COALESCE(vc.cnt, 0)::int            AS "vendorCount",
+          pv_pref.vendor_name                 AS "preferredVendorName"
+       FROM "Product" p
+       LEFT JOIN (
+         SELECT "productId", COUNT(*)::int AS cnt
+         FROM "ProductVendor" WHERE "isActive" = true GROUP BY "productId"
+       ) vc ON vc."productId" = p.id
+       LEFT JOIN (
+         SELECT pv."productId", v.name AS vendor_name
+         FROM "ProductVendor" pv
+         JOIN "Vendor" v ON v.id = pv."vendorId"
+         WHERE pv."isPreferred" = true AND pv."isActive" = true
+       ) pv_pref ON pv_pref."productId" = p.id
+       ${where} ORDER BY p."sortOrder" ASC, p.brand ASC, p.name ASC`,
       values,
     );
 
