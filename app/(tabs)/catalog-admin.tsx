@@ -61,6 +61,12 @@ interface Product {
   gender?: string | null;
   vendorCount?: number;
   preferredVendorName?: string | null;
+  defaultBlankCost?: number | string | null;
+  lastCostUpdatedAt?: string | null;
+  colorCount?: number;
+  assetCount?: number;
+  placementCount?: number;
+  templateId?: string | null;
 }
 
 function ProductFormModal({
@@ -416,6 +422,7 @@ export default function CatalogAdminScreen() {
         <Text style={[s.th, s.cVendor]}>Sources</Text>
         <Text style={[s.th, s.cName]}>Product Name</Text>
         <Text style={[s.th, s.cCat]}>Category</Text>
+        <Text style={[s.th, s.cCost]}>Cost</Text>
         <Text style={[s.th, s.cStatus]}>Status</Text>
         <View style={s.cActions} />
       </View>
@@ -474,6 +481,27 @@ export default function CatalogAdminScreen() {
                   <Text style={s.tdSub} numberOfLines={1}>{product.productType}</Text>
                 )}
               </View>
+              {/* Cost + health dots */}
+              <View style={s.cCost}>
+                {product.defaultBlankCost != null ? (
+                  <Text style={s.costCell} numberOfLines={1}>
+                    ${parseFloat(String(product.defaultBlankCost)).toFixed(2)}
+                  </Text>
+                ) : (
+                  <Text style={s.costCellMissing} numberOfLines={1}>No cost</Text>
+                )}
+                <View style={s.healthDots}>
+                  {/* $ cost */}
+                  <View style={[s.dot, product.defaultBlankCost != null ? s.dotOk : s.dotWarn]} />
+                  {/* colors */}
+                  <View style={[s.dot, (product.colorCount ?? 0) > 0 ? s.dotOk : s.dotWarn]} />
+                  {/* assets */}
+                  <View style={[s.dot, (product.assetCount ?? 0) > 0 ? s.dotOk : s.dotMute]} />
+                  {/* template/placements */}
+                  <View style={[s.dot, (product.templateId || (product.placementCount ?? 0) > 0) ? s.dotOk : s.dotMute]} />
+                </View>
+              </View>
+
               <View style={s.cStatus}>
                 <View
                   style={[
@@ -669,6 +697,15 @@ const s = StyleSheet.create({
   cName:    { flex: 1, minWidth: 140, marginRight: 16 },
   cCat:     { width: 130, marginRight: 16, justifyContent: 'center' as any },
   cStatus:  { width: 80, marginRight: 8 },
+  cCost: { width: 88, justifyContent: 'center' as any },
+  costCell: { fontSize: 13, fontWeight: '600', color: TEXT },
+  costCellMissing: { fontSize: 12, color: '#D97706', fontWeight: '500' },
+  healthDots: { flexDirection: 'row', gap: 4, marginTop: 5 },
+  dot: { width: 7, height: 7, borderRadius: 4 },
+  dotOk:   { backgroundColor: '#10B981' },
+  dotWarn: { backgroundColor: '#F59E0B' },
+  dotMute: { backgroundColor: '#D1D5DB' },
+
   cActions: { width: 44, alignItems: 'center', position: 'relative' as any },
   tdSub:    { fontSize: 11, color: TEXT_LIGHT, marginTop: 1 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },

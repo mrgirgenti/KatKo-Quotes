@@ -566,20 +566,22 @@ model ProductVendor {
 
 /// vendor here means manufacturer/brand label — supply chain vendors live in ProductVendor
 model Product {
-  id          String   @id @default(uuid())
-  styleNumber String   @unique
-  vendor      String
-  brand       String
-  name        String
-  category    String
-  isActive     Boolean  @default(true)
-  sortOrder    Int      @default(0)
-  templateId   String?
-  subcategory  String?
-  productType  String?
-  gender       String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                String    @id @default(uuid())
+  styleNumber       String    @unique
+  vendor            String
+  brand             String
+  name              String
+  category          String
+  isActive          Boolean   @default(true)
+  sortOrder         Int       @default(0)
+  templateId        String?
+  subcategory       String?
+  productType       String?
+  gender            String?
+  defaultBlankCost  Decimal?  @db.Decimal(10, 2)
+  lastCostUpdatedAt DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   colors        ProductColor[]
   placements    ProductPlacement[]

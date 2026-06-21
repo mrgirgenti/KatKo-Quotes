@@ -45,7 +45,10 @@ export async function GET(request: Request) {
     const result = await client.query(
       `SELECT p.*,
           COALESCE(vc.cnt, 0)::int            AS "vendorCount",
-          pv_pref.vendor_name                 AS "preferredVendorName"
+          pv_pref.vendor_name                 AS "preferredVendorName",
+          COALESCE(color_ct.cnt, 0)::int      AS "colorCount",
+          COALESCE(asset_ct.cnt, 0)::int      AS "assetCount",
+          COALESCE(placement_ct.cnt, 0)::int  AS "placementCount"
        FROM "Product" p
        LEFT JOIN (
          SELECT "productId", COUNT(*)::int AS cnt
@@ -57,6 +60,20 @@ export async function GET(request: Request) {
          JOIN "Vendor" v ON v.id = pv."vendorId"
          WHERE pv."isPreferred" = true AND pv."isActive" = true
        ) pv_pref ON pv_pref."productId" = p.id
+       LEFT JOIN (
+         SELECT "productId", COUNT(*)::int AS cnt
+         FROM "ProductColor" WHERE "isActive" = true GROUP BY "productId"
+       ) color_ct ON color_ct."productId" = p.id
+       LEFT JOIN (
+         SELECT pc."productId", COUNT(pa.id)::int AS cnt
+         FROM "ProductColor" pc
+         JOIN "ProductAsset" pa ON pa."productColorId" = pc.id
+         GROUP BY pc."productId"
+       ) asset_ct ON asset_ct."productId" = p.id
+       LEFT JOIN (
+         SELECT "productId", COUNT(*)::int AS cnt
+         FROM "ProductPlacement" WHERE "isActive" = true GROUP BY "productId"
+       ) placement_ct ON placement_ct."productId" = p.id
        ${where} ORDER BY p."sortOrder" ASC, p.brand ASC, p.name ASC`,
       values,
     );

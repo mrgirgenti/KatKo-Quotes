@@ -1,0 +1,190 @@
+Product Cost Architecture
+
+Current state:
+
+The Product Catalog is now functional and includes:
+
+* Products
+* Colors
+* Assets
+* Placement Templates
+* Product Sources
+* Product Classification
+
+Business objective:
+
+The catalog exists to support:
+
+* Product discovery
+* Mockup generation
+* Quoting
+* Ordering
+* Production
+
+We are not building a full ERP, inventory system, or product information management platform.
+
+This phase focuses on making products quote-ready.
+
+Implementation Requirements
+
+1. Product Default Cost
+
+Add to Product:
+
+* defaultBlankCost
+* lastCostUpdatedAt
+
+Purpose:
+
+Store the typical blank garment cost used for quoting.
+
+This is NOT vendor-specific pricing.
+
+Examples:
+
+NL6210 → $6.25
+3001 → $5.90
+5000 → $4.15
+18500 → $18.50
+
+This value should auto-populate future quote line items when a product is selected.
+
+Users must still be able to override costs manually inside quotes.
+
+2. Product Detail Page
+
+Add a Cost section.
+
+Display:
+
+* Default Blank Cost
+* Last Updated
+
+Allow editing.
+
+3. Catalog Admin
+
+Add:
+
+* Default Cost column
+
+Display:
+
+* Missing Cost indicator
+* Last Updated indicator
+
+Allow quick editing if practical.
+
+4. Product Health Indicators
+
+Add catalog readiness indicators:
+
+* Missing Cost
+* Missing Colors
+* Missing Assets
+* Missing Template
+
+Goal:
+
+Quickly identify products that are not quote-ready or mockup-ready.
+
+5. Product Readiness Audit
+
+Create an audit endpoint or report returning:
+
+* Products missing costs
+* Products missing assets
+* Products missing colors
+* Products missing templates
+* Products never updated
+* Products with stale costs
+
+6. Future Vendor Pricing Review (Architecture Only)
+
+Evaluate but DO NOT implement:
+
+Vendor-specific pricing.
+
+Review:
+
+Option A:
+ProductVendor.cost
+
+Option B:
+ProductVendorCost table
+
+Document:
+
+* Pros
+* Cons
+* Recommended future architecture
+
+No implementation.
+
+7. Catalog Source Management Planning (Architecture Only)
+
+Current concern:
+
+Products can be sourced from multiple vendors.
+
+Future imports and API integrations will originate from catalog sources.
+
+Examples:
+
+* S&S Activewear
+* SanMar
+* McCreary's
+* Hit Promotional
+* Starline
+
+Evaluate:
+
+How a future Catalog Sources area should work.
+
+Potential responsibilities:
+
+* Manage active suppliers
+* Manage catalog references
+* Manage future API connections
+* Manage product imports
+* Manage synchronization settings
+
+Provide recommendation only.
+
+Do NOT implement Catalog Sources yet.
+
+8. Preserve Existing Architecture
+
+Do not modify:
+
+* Product Assets
+* Product Colors
+* Placement Templates
+* Product Sources
+
+Do not build:
+
+* Quote integration
+* Vendor API integrations
+* Inventory management
+* Purchasing workflows
+* Ordering workflows
+
+Required Verification
+
+* Default cost saves correctly.
+* Default cost updates correctly.
+* Last updated timestamp updates correctly.
+* Catalog Admin displays cost values.
+* Missing-cost products are clearly identified.
+* Existing products, colors, assets, templates, and product sources continue functioning without regression.
+
+Output
+
+* Schema changes
+* Files changed
+* UI changes
+* Product readiness audit functionality
+* Future vendor pricing recommendation
+* Future catalog source recommendation
+* Testing checklist

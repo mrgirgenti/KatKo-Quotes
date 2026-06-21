@@ -13,7 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Pencil, Plus, X, ChevronDown, Upload, Palette, Layers, Building2, Star } from 'lucide-react-native';
+import { Pencil, Plus, X, ChevronDown, Upload, Palette, Layers, Building2, Star, DollarSign } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { apiFetch, getAuthHeaders } from '@/lib/apiFetch';
 import PageBackHeader from '@/components/PageBackHeader';
@@ -56,6 +56,14 @@ interface ProductData {
   subcategory?: string | null;
   productType?: string | null;
   gender?: string | null;
+  defaultBlankCost?: number | string | null;
+  lastCostUpdatedAt?: string | null;
+}
+
+function formatCostDate(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 interface Vendor {
@@ -767,6 +775,90 @@ function VendorSourceModal({
   );
 }
 
+// ── CostEditModal ─────────────────────────────────────────────────────────────
+function CostEditModal({
+  visible, current, onSave, onClose,
+}: {
+  visible: boolean;
+  current: string;
+  onSave: (cost: string) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (visible) { setValue(current); setError(''); setSaving(false); }
+  }, [visible, current]);
+
+  const handleSave = async () => {
+    if (value.trim() !== '' && isNaN(parseFloat(value))) {
+      setError('Enter a valid dollar amount (e.g. 6.25).');
+      return;
+    }
+    setError('');
+    setSaving(true);
+    try {
+      await onSave(value.trim());
+      onClose();
+    } catch (e: any) {
+      setError(e.message || 'Failed to save.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={fm.overlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} style={[fm.sheet, { width: 340 }]} onPress={() => {}}>
+          <View style={fm.header}>
+            <Text style={fm.title}>Default Blank Cost</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={20} color={TEXT_LIGHT} />
+            </TouchableOpacity>
+          </View>
+          <View style={[fm.body, { paddingBottom: 20 }]}>
+            {!!error && <View style={fm.errorBox}><Text style={fm.errorText}>{error}</Text></View>}
+            <Text style={fm.label}>Cost per blank garment (USD)</Text>
+            <View style={s.costInputRow}>
+              <Text style={s.costInputPrefix}>$</Text>
+              <TextInput
+                style={[fm.input, { flex: 1, marginBottom: 0 }]}
+                value={value}
+                onChangeText={setValue}
+                placeholder="0.00"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="decimal-pad"
+                autoFocus
+              />
+            </View>
+            <Text style={s.costHint}>Used to pre-fill quote line items. Staff can always override.</Text>
+            <View style={s.costModalActions}>
+              {value.trim() !== '' && (
+                <TouchableOpacity style={s.costClearBtn} onPress={() => setValue('')}>
+                  <Text style={s.costClearBtnText}>Clear cost</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[fm.btnSave, saving && { opacity: 0.6 }]}
+                onPress={handleSave}
+                disabled={saving}
+              >
+                {saving
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={fm.btnSaveText}>Save</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -798,6 +890,9 @@ export default function ProductDetailScreen() {
   const [sourcesLoading, setSourcesLoading] = useState(false);
   const [sourceModal, setSourceModal] = useState(false);
   const [editingSource, setEditingSource] = useState<VendorSource | null>(null);
+
+  const [costModal, setCostModal] = useState(false);
+  const [costInput, setCostInput] = useState('');
 
   const loadAll = useCallback(async () => {
     if (!productId) return;
@@ -1039,6 +1134,15 @@ export default function ProductDetailScreen() {
     });
   };
 
+  const handleSaveCost = async (costStr: string) => {
+    const costVal = costStr.trim() === '' ? null : parseFloat(costStr);
+    await apiFetch(`/api/products/${productId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ defaultBlankCost: costVal }),
+    });
+    await loadAll();
+  };
+
   // ── Loading / error states ────────────────────────────────────────────────
   if (loading) {
     return (
@@ -1147,6 +1251,43 @@ export default function ProductDetailScreen() {
           </View>
         </View>
         <Text style={s.productName}>{product.name}</Text>
+      </View>
+
+      {/* Cost row */}
+      <View style={s.costRow}>
+        <View style={s.costInfo}>
+          <DollarSign size={14} color={product.defaultBlankCost != null ? BRAND : '#D97706'} style={{ marginTop: 1 }} />
+          <View style={s.costTextBlock}>
+            <Text style={s.costLabel}>Default Blank Cost</Text>
+            {product.defaultBlankCost != null ? (
+              <View style={s.costValueRow}>
+                <Text style={s.costValue}>
+                  ${parseFloat(String(product.defaultBlankCost)).toFixed(2)}
+                </Text>
+                {!!product.lastCostUpdatedAt && (
+                  <Text style={s.costUpdatedText}>
+                    · Updated {formatCostDate(product.lastCostUpdatedAt)}
+                  </Text>
+                )}
+              </View>
+            ) : (
+              <Text style={s.costMissingText}>Not set — needed for quoting</Text>
+            )}
+          </View>
+        </View>
+        <TouchableOpacity
+          style={s.costEditBtn}
+          onPress={() => {
+            setCostInput(product.defaultBlankCost != null ? String(product.defaultBlankCost) : '');
+            setCostModal(true);
+          }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Pencil size={13} color={BRAND} />
+          <Text style={s.costEditBtnText}>
+            {product.defaultBlankCost != null ? 'Edit' : 'Add'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Tab bar */}
@@ -1380,6 +1521,13 @@ export default function ProductDetailScreen() {
         }}
         onClose={() => { setSourceModal(false); setEditingSource(null); }}
       />
+
+      <CostEditModal
+        visible={costModal}
+        current={costInput}
+        onSave={handleSaveCost}
+        onClose={() => setCostModal(false)}
+      />
     </View>
   );
 }
@@ -1417,6 +1565,44 @@ const s = StyleSheet.create({
   infoChipValue: { fontSize: 13, color: TEXT, fontWeight: '600' },
   infoSep: { width: 1, height: 14, backgroundColor: BORDER },
   productName: { fontSize: 15, fontWeight: '700', color: TEXT, marginTop: 2 },
+
+  costRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: SURFACE,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    gap: 12,
+  },
+  costInfo: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, flex: 1 },
+  costTextBlock: { flex: 1 },
+  costLabel: { fontSize: 11, fontWeight: '600', color: TEXT_LIGHT, textTransform: 'uppercase', letterSpacing: 0.3 },
+  costValueRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
+  costValue: { fontSize: 18, fontWeight: '700', color: TEXT },
+  costUpdatedText: { fontSize: 12, color: TEXT_LIGHT },
+  costMissingText: { fontSize: 13, color: '#D97706', fontWeight: '500', marginTop: 2 },
+  costEditBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    borderWidth: 1, borderColor: BRAND, borderRadius: 6,
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  costEditBtnText: { fontSize: 13, color: BRAND, fontWeight: '600' },
+  costInputRow: {
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1, borderColor: BORDER, borderRadius: 8,
+    paddingHorizontal: 10, marginBottom: 8, backgroundColor: '#fff',
+  },
+  costInputPrefix: { fontSize: 16, color: TEXT, fontWeight: '600', marginRight: 4 },
+  costHint: { fontSize: 12, color: TEXT_LIGHT, marginBottom: 16 },
+  costModalActions: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 10 },
+  costClearBtn: {
+    paddingVertical: 8, paddingHorizontal: 12,
+    borderRadius: 7, borderWidth: 1, borderColor: BORDER,
+  },
+  costClearBtnText: { fontSize: 14, color: TEXT_LIGHT },
 
   statusBadge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
   statusActive: { backgroundColor: '#D1FAE5' },

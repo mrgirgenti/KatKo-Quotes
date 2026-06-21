@@ -1,0 +1,114 @@
+import { pool } from '@/lib/pool';
+import { authenticateRequest, unauthorized } from '@/lib/auth';
+
+export async function GET(request: Request) {
+  const authedUser = await authenticateRequest(request);
+  if (!authedUser) return unauthorized();
+
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT
+        p.id,
+        p."styleNumber",
+        p.brand,
+        p.name,
+        p.category,
+        p."isActive",
+        p."defaultBlankCost",
+        p."lastCostUpdatedAt",
+        p."templateId",
+        p."updatedAt",
+        COALESCE(color_ct.cnt, 0)::int    AS "colorCount",
+        COALESCE(asset_ct.cnt, 0)::int    AS "assetCount",
+        COALESCE(placement_ct.cnt, 0)::int AS "placementCount"
+      FROM "Product" p
+      LEFT JOIN (
+        SELECT "productId", COUNT(*)::int AS cnt
+        FROM "ProductColor" WHERE "isActive" = true GROUP BY "productId"
+      ) color_ct ON color_ct."productId" = p.id
+      LEFT JOIN (
+        SELECT pc."productId", COUNT(pa.id)::int AS cnt
+        FROM "ProductColor" pc
+        JOIN "ProductAsset" pa ON pa."productColorId" = pc.id
+        GROUP BY pc."productId"
+      ) asset_ct ON asset_ct."productId" = p.id
+      LEFT JOIN (
+        SELECT "productId", COUNT(*)::int AS cnt
+        FROM "ProductPlacement" WHERE "isActive" = true GROUP BY "productId"
+      ) placement_ct ON placement_ct."productId" = p.id
+      WHERE p."isActive" = true
+      ORDER BY p."sortOrder" ASC, p.brand ASC, p.name ASC
+    `);
+
+    const products = result.rows;
+    const now = new Date();
+    const staleThresholdDays = 90;
+
+    const missingCost:     typeof products = [];
+    const missingColors:   typeof products = [];
+    const missingAssets:   typeof products = [];
+    const missingTemplate: typeof products = [];
+    const staleCost:       typeof products = [];
+    const neverUpdated:    typeof products = [];
+
+    for (const p of products) {
+      if (p.defaultBlankCost === null || p.defaultBlankCost === undefined) {
+        missingCost.push(p);
+      } else if (p.lastCostUpdatedAt) {
+        const daysSince = (now.getTime() - new Date(p.lastCostUpdatedAt).getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSince > staleThresholdDays) staleCost.push(p);
+      }
+
+      if (p.colorCount === 0) missingColors.push(p);
+      if (p.assetCount === 0) missingAssets.push(p);
+      if (!p.templateId && p.placementCount === 0) missingTemplate.push(p);
+
+      const daysSinceUpdate = (now.getTime() - new Date(p.updatedAt).getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSinceUpdate > 180) neverUpdated.push(p);
+    }
+
+    const summary = {
+      totalActive: products.length,
+      quoteReady: products.filter(p =>
+        p.defaultBlankCost !== null &&
+        p.colorCount > 0
+      ).length,
+      mockupReady: products.filter(p =>
+        p.colorCount > 0 &&
+        p.assetCount > 0 &&
+        (p.templateId || p.placementCount > 0)
+      ).length,
+    };
+
+    const slim = (rows: typeof products) =>
+      rows.map(p => ({
+        id: p.id,
+        styleNumber: p.styleNumber,
+        brand: p.brand,
+        name: p.name,
+        defaultBlankCost: p.defaultBlankCost,
+        lastCostUpdatedAt: p.lastCostUpdatedAt,
+        colorCount: p.colorCount,
+        assetCount: p.assetCount,
+        placementCount: p.placementCount,
+        templateId: p.templateId,
+        updatedAt: p.updatedAt,
+      }));
+
+    return Response.json({
+      summary,
+      missingCost:     slim(missingCost),
+      missingColors:   slim(missingColors),
+      missingAssets:   slim(missingAssets),
+      missingTemplate: slim(missingTemplate),
+      staleCost:       slim(staleCost),
+      neverUpdated:    slim(neverUpdated),
+    });
+  } catch (err) {
+    console.error('[GET /api/products/audit]', err);
+    return Response.json({ error: 'Failed to run audit' }, { status: 500 });
+  } finally {
+    client.release();
+  }
+}

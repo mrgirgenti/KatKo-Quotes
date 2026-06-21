@@ -72,23 +72,31 @@ export async function PATCH(request: Request, { id }: { id: string }) {
   }
 
   const { styleNumber, vendor, brand, name, category, isActive, sortOrder, templateId,
-          subcategory, productType, gender } = body;
+          subcategory, productType, gender, defaultBlankCost } = body;
 
   const updates: string[] = [];
   const values: unknown[] = [];
   let idx = 1;
 
-  if (styleNumber !== undefined)  { updates.push(`"styleNumber" = $${idx++}`);  values.push(styleNumber); }
-  if (vendor !== undefined)       { updates.push(`vendor = $${idx++}`);         values.push(vendor); }
-  if (brand !== undefined)        { updates.push(`brand = $${idx++}`);          values.push(brand); }
-  if (name !== undefined)         { updates.push(`name = $${idx++}`);           values.push(name); }
-  if (category !== undefined)     { updates.push(`category = $${idx++}`);       values.push(category); }
-  if (isActive !== undefined)     { updates.push(`"isActive" = $${idx++}`);     values.push(isActive); }
-  if (sortOrder !== undefined)    { updates.push(`"sortOrder" = $${idx++}`);    values.push(sortOrder); }
-  if ('templateId' in body)       { updates.push(`"templateId" = $${idx++}`);   values.push(templateId ?? null); }
-  if ('subcategory' in body)      { updates.push(`subcategory = $${idx++}`);    values.push(subcategory ?? null); }
-  if ('productType' in body)      { updates.push(`"productType" = $${idx++}`);  values.push(productType ?? null); }
-  if ('gender' in body)           { updates.push(`gender = $${idx++}`);         values.push(gender ?? null); }
+  if (styleNumber !== undefined)      { updates.push(`"styleNumber" = $${idx++}`);       values.push(styleNumber); }
+  if (vendor !== undefined)           { updates.push(`vendor = $${idx++}`);              values.push(vendor); }
+  if (brand !== undefined)            { updates.push(`brand = $${idx++}`);               values.push(brand); }
+  if (name !== undefined)             { updates.push(`name = $${idx++}`);                values.push(name); }
+  if (category !== undefined)         { updates.push(`category = $${idx++}`);            values.push(category); }
+  if (isActive !== undefined)         { updates.push(`"isActive" = $${idx++}`);          values.push(isActive); }
+  if (sortOrder !== undefined)        { updates.push(`"sortOrder" = $${idx++}`);         values.push(sortOrder); }
+  if ('templateId' in body)           { updates.push(`"templateId" = $${idx++}`);        values.push(templateId ?? null); }
+  if ('subcategory' in body)          { updates.push(`subcategory = $${idx++}`);         values.push(subcategory ?? null); }
+  if ('productType' in body)          { updates.push(`"productType" = $${idx++}`);       values.push(productType ?? null); }
+  if ('gender' in body)               { updates.push(`gender = $${idx++}`);              values.push(gender ?? null); }
+  if ('defaultBlankCost' in body) {
+    const costVal = defaultBlankCost !== null && defaultBlankCost !== undefined
+      ? parseFloat(String(defaultBlankCost))
+      : null;
+    updates.push(`"defaultBlankCost" = $${idx++}`);
+    values.push(isNaN(costVal as number) ? null : costVal);
+    updates.push(`"lastCostUpdatedAt" = NOW()`);
+  }
 
   if (updates.length === 0) return Response.json({ error: 'No fields to update' }, { status: 400 });
 
