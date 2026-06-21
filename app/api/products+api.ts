@@ -53,7 +53,7 @@ export async function GET(request: Request) {
       const ids = products.map((p: { id: string }) => p.id);
       if (ids.length > 0) {
         const colorRes = await client.query(
-          `SELECT c.* FROM "ProductColor" c WHERE c."productId" = ANY($1::uuid[]) AND c."isActive" = true ORDER BY c."sortOrder" ASC, c."colorName" ASC`,
+          `SELECT c.* FROM "ProductColor" c WHERE c."productId" = ANY($1::text[]) AND c."isActive" = true ORDER BY c."sortOrder" ASC, c."colorName" ASC`,
           [ids],
         );
         const colorsByProduct: Record<string, unknown[]> = {};
@@ -66,7 +66,7 @@ export async function GET(request: Request) {
           const colorIds = colorRes.rows.map((c: { id: string }) => c.id);
           if (colorIds.length > 0) {
             const assetRes = await client.query(
-              `SELECT a.* FROM "ProductAsset" a WHERE a."productColorId" = ANY($1::uuid[]) ORDER BY a."sortOrder" ASC`,
+              `SELECT a.* FROM "ProductAsset" a WHERE a."productColorId" = ANY($1::text[]) ORDER BY a."sortOrder" ASC`,
               [colorIds],
             );
             const assetsByColor: Record<string, unknown[]> = {};

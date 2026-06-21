@@ -26,10 +26,10 @@ export async function PATCH(
       `UPDATE "ProductAsset" a
        SET "sortOrder" = $1
        FROM "ProductColor" c
-       WHERE a.id = $2::uuid
+       WHERE a.id = $2
          AND a."productColorId" = c.id
-         AND c.id = $3::uuid
-         AND c."productId" = $4::uuid
+         AND c.id = $3
+         AND c."productId" = $4
        RETURNING a.*`,
       [sortOrder, assetId, colorId, id],
     );
@@ -57,7 +57,7 @@ export async function DELETE(
       `SELECT a."storageKey"
        FROM "ProductAsset" a
        JOIN "ProductColor" c ON c.id = a."productColorId"
-       WHERE a.id = $1::uuid AND c.id = $2::uuid AND c."productId" = $3::uuid`,
+       WHERE a.id = $1 AND c.id = $2 AND c."productId" = $3`,
       [assetId, colorId, id],
     );
     if (findRes.rows.length === 0) return Response.json({ error: 'Asset not found' }, { status: 404 });
@@ -67,7 +67,7 @@ export async function DELETE(
       console.error('[DELETE asset] storage cleanup failed for', storageKey, err),
     );
 
-    await client.query(`DELETE FROM "ProductAsset" WHERE id = $1::uuid`, [assetId]);
+    await client.query(`DELETE FROM "ProductAsset" WHERE id = $1`, [assetId]);
     return Response.json({ ok: true });
   } catch (err) {
     console.error('[DELETE /api/products/:id/colors/:colorId/assets/:assetId]', err);
