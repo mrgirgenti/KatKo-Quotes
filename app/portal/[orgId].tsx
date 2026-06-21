@@ -2705,7 +2705,7 @@ export default function ClientPortal() {
   const CAT_FILTER_CHIPS = ['All', 'Apparel', 'Streetwear', 'Promotional', 'Workwear'];
 
   const CatalogsView = () => {
-    const numCols = isMobile ? 1 : isTablet ? 2 : 4;
+    const numCols = isMobile ? 2 : isTablet ? 2 : 4;
     const displayed = clientCatalogs.filter(cat => {
       const matchesCat = catFilter === 'All' || cat.category === catFilter;
       const q = catSearch.trim().toLowerCase();
@@ -2899,7 +2899,7 @@ export default function ClientPortal() {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={svStyles.formRow}>
+          <View style={[svStyles.formRow, isMobile && { flexDirection: 'column' as any }]}>
             <View style={[styles.card, { flex: 1, maxWidth: 680 }]}>
             <Text style={styles.formTitle}>Submit a Project Request</Text>
             <Text style={styles.formSub}>Fill in the details below — your submission will come straight into Ko OS ready for pricing.</Text>
@@ -3061,8 +3061,7 @@ export default function ClientPortal() {
               )}
             </TouchableOpacity>
             </View>
-            {!isMobile && (
-              <View style={svStyles.helperCard}>
+            <View style={[svStyles.helperCard, isMobile && svStyles.helperCardMobile]}>
                 <View style={svStyles.helperBrand}>
                   <Shield size={16} color={BRAND} />
                   <Text style={svStyles.helperBrandText}>Need Help?</Text>
@@ -3090,8 +3089,7 @@ export default function ClientPortal() {
                   <Mail size={14} color="#fff" />
                   <Text style={svStyles.helperEmailText}>Email Us</Text>
                 </TouchableOpacity>
-              </View>
-            )}
+            </View>
           </View>
         )}
       </ScrollView>
@@ -6009,6 +6007,11 @@ const svStyles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
     ...Platform.select({ web: { position: 'sticky' as any, top: 20, alignSelf: 'flex-start' as any } }),
+  },
+  helperCardMobile: {
+    flexBasis: 'auto' as any, flexShrink: 1, flexGrow: 1, minWidth: 0,
+    width: '100%' as any,
+    ...Platform.select({ web: { position: 'relative' as any, top: 0, alignSelf: 'stretch' as any } }),
   },
   helperBrand: {
     flexDirection: 'row', alignItems: 'center', gap: 8,

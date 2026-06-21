@@ -640,11 +640,11 @@ export default function CatalogsScreen() {
         onScrollBeginDrag={closeMenus}
       >
         {/* Page Header */}
-        <View style={s.pageHeader}>
-          <View style={{ flex: 1 }}>
-            <Text style={s.pageTitle}>Vendor Management</Text>
+        <View style={[s.pageHeader, isMobile && s.pageHeaderMobile]}>
+          <View style={isMobile ? { width: '100%' } : { flex: 1 }}>
+            <Text style={[s.pageTitle, isMobile && s.pageTitleMobile]}>Vendor Management</Text>
           </View>
-          <View style={s.headerActions}>
+          <View style={[s.headerActions, isMobile && s.headerActionsMobile]}>
             {/* Sourcing vendors manager */}
             <TouchableOpacity style={s.actionsBtn} onPress={() => router.push('/sourcing-vendors')}>
               <Truck size={15} color={TEXT_LIGHT} />
@@ -693,24 +693,24 @@ export default function CatalogsScreen() {
 
         {/* Stats Bar */}
         <View style={s.statsBar}>
-          <View style={s.statItem}>
-            <Text style={s.statValue}>{vendors.length}</Text>
-            <Text style={s.statLabel}>Total Vendors</Text>
+          <View style={[s.statItem, isMobile && s.statItemMobile]}>
+            <Text style={[s.statValue, isMobile && s.statValueMobile]}>{vendors.length}</Text>
+            <Text style={[s.statLabel, isMobile && s.statLabelMobile]}>Total Vendors</Text>
           </View>
           <View style={s.statDivider} />
-          <View style={s.statItem}>
-            <Text style={[s.statValue, { color: BRAND }]}>{hubVisible}</Text>
-            <Text style={s.statLabel}>In Client Hub</Text>
+          <View style={[s.statItem, isMobile && s.statItemMobile]}>
+            <Text style={[s.statValue, isMobile && s.statValueMobile, { color: BRAND }]}>{hubVisible}</Text>
+            <Text style={[s.statLabel, isMobile && s.statLabelMobile]}>In Client Hub</Text>
           </View>
           <View style={s.statDivider} />
-          <View style={s.statItem}>
-            <Text style={[s.statValue, { color: '#F59E0B' }]}>{featured}</Text>
-            <Text style={s.statLabel}>Featured</Text>
+          <View style={[s.statItem, isMobile && s.statItemMobile]}>
+            <Text style={[s.statValue, isMobile && s.statValueMobile, { color: '#F59E0B' }]}>{featured}</Text>
+            <Text style={[s.statLabel, isMobile && s.statLabelMobile]}>Featured</Text>
           </View>
           <View style={s.statDivider} />
-          <View style={s.statItem}>
-            <Text style={s.statValue}>{CATEGORIES.filter(c => vendors.some(v => v.category === c)).length}</Text>
-            <Text style={s.statLabel}>Categories</Text>
+          <View style={[s.statItem, isMobile && s.statItemMobile]}>
+            <Text style={[s.statValue, isMobile && s.statValueMobile]}>{CATEGORIES.filter(c => vendors.some(v => v.category === c)).length}</Text>
+            <Text style={[s.statLabel, isMobile && s.statLabelMobile]}>Categories</Text>
           </View>
         </View>
 
@@ -1030,6 +1030,12 @@ const s = StyleSheet.create({
   statValue: { fontSize: 17, fontWeight: '800', color: TEXT },
   statLabel: { fontSize: 10, color: TEXT_LIGHT, marginTop: 2 },
   statDivider: { display: 'none' as any },
+  pageHeaderMobile: { flexDirection: 'column', alignItems: 'flex-start', gap: 10 },
+  pageTitleMobile: { fontSize: 22 },
+  headerActionsMobile: { flexWrap: 'wrap' as any, gap: 8 },
+  statValueMobile: { fontSize: 13 },
+  statLabelMobile: { fontSize: 8 },
+  statItemMobile: { paddingVertical: 10, paddingHorizontal: 9 },
 
   filterRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
   searchBox: {

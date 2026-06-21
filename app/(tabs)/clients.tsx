@@ -17,7 +17,7 @@ import { OrgStatusBadge, OrgHubBadge } from '@/components/StatusBadge';
 import Colors from '@/constants/colors';
 import { TABLE_COL, TABLE_CELL } from '@/constants/tableLayout';
 import { DS } from '@/constants/designSystem';
-import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
+import { metricValueStyle, metricLabelStyle, metricValueStyleMobile, metricLabelStyleMobile } from '@/components/Metric';
 import { useCrm } from '@/contexts/CrmContext';
 import { Organization, CrmStatus, CRM_STATUS_CONFIG, ORG_TYPES } from '@/types/crm';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -182,7 +182,7 @@ export default function ClientsScreen() {
 function OrganizationsScreen() {
   const router = useRouter();
   const { orgs, addOrg, addOrgWithContact, addContact, deleteOrg } = useCrm();
-  const { isDesktop } = useBreakpoint();
+  const { isDesktop, isMobile } = useBreakpoint();
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<CrmStatus | 'All'>('All');
@@ -394,7 +394,7 @@ function OrganizationsScreen() {
       {/* ── Page Header ── */}
       <View style={styles.pageHeader}>
         <View style={styles.headerTop}>
-          <Text style={styles.pageTitle}>Organizations</Text>
+          <Text style={[styles.pageTitle, isMobile && styles.pageTitleMobile]}>Organizations</Text>
           <View style={styles.headerBtns}>
             <OverlayMenu
               align="right"
@@ -426,20 +426,20 @@ function OrganizationsScreen() {
           </View>
         </View>
 
-        <View style={styles.statsBar}>
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: Colors.light.tint }]}>{stats.total}</Text>
-            <Text style={styles.statLabel}>Total Orgs</Text>
+        <View style={[styles.statsBar, isMobile && styles.statBarMobile]}>
+          <View style={[styles.statItem, isMobile && styles.statItemMobile]}>
+            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: Colors.light.tint }]}>{stats.total}</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Total Orgs</Text>
           </View>
           <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: '#2563EB' }]}>{stats.totalPeople}</Text>
-            <Text style={styles.statLabel}>Total People</Text>
+          <View style={[styles.statItem, isMobile && styles.statItemMobile]}>
+            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: '#2563EB' }]}>{stats.totalPeople}</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Total People</Text>
           </View>
           <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: '#16A34A' }]}>{stats.liveHubs}</Text>
-            <Text style={styles.statLabel}>Live Client Hubs</Text>
+          <View style={[styles.statItem, isMobile && styles.statItemMobile]}>
+            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: '#16A34A' }]}>{stats.liveHubs}</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Live Client Hubs</Text>
           </View>
         </View>
 
@@ -764,6 +764,11 @@ const styles = StyleSheet.create({
   statItem: { flex: 1, minWidth: 120, borderRadius: 10, paddingVertical: 14, paddingHorizontal: 12, backgroundColor: Colors.light.surface, alignItems: 'center' },
   statValue: { ...metricValueStyle },
   statLabel: { ...metricLabelStyle, marginTop: 2 },
+  pageTitleMobile: { fontSize: 20 },
+  statValueMobile: { ...metricValueStyleMobile },
+  statLabelMobile: { ...metricLabelStyleMobile, marginTop: 2 },
+  statBarMobile: { padding: 13, gap: 10 },
+  statItemMobile: { paddingVertical: 12, paddingHorizontal: 10 },
   statDivider: { display: 'none' as any },
 
   pillsScroll: { maxHeight: 44 },

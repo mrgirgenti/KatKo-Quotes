@@ -9,6 +9,7 @@ import {
   X,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { DS } from '@/constants/designSystem';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { useUser } from '@/contexts/UserContext';
@@ -272,10 +273,11 @@ export default function ProductionScreen() {
 }
 
 function Stat({ value, label, color }: { value: number; label: string; color: string }) {
+  const { isMobile } = useBreakpoint();
   return (
-    <View style={styles.statItem}>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+    <View style={[styles.statItem, isMobile && styles.statItemMobile]}>
+      <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color }]}>{value}</Text>
+      <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>{label}</Text>
     </View>
   );
 }
@@ -362,6 +364,9 @@ const styles = StyleSheet.create({
   statItem: { flex: 1, minWidth: 120, borderRadius: 10, paddingVertical: 14, paddingHorizontal: 12, backgroundColor: Colors.light.surface, alignItems: 'center' },
   statValue: { fontSize: 20, fontWeight: '800', lineHeight: 24 },
   statLabel: { fontSize: 11, color: Colors.light.textSecondary, fontWeight: '600', marginTop: 2 },
+  statValueMobile: { fontSize: 15, lineHeight: 19 },
+  statLabelMobile: { fontSize: 9 },
+  statItemMobile: { paddingVertical: 12, paddingHorizontal: 10 },
   statDivider: { display: 'none' as any },
 
   tabsRow: { flexDirection: 'row', gap: DS.spacing.sm, paddingHorizontal: DS.spacing.xl, paddingBottom: DS.spacing.md },

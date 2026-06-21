@@ -35,7 +35,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { TABLE_COL, TABLE_CELL } from '@/constants/tableLayout';
-import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
+import { metricValueStyle, metricLabelStyle, metricValueStyleMobile, metricLabelStyleMobile } from '@/components/Metric';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { Quote, QuoteStatus, getEffectiveStatus, STATUS_CONFIG, OperationalProjectStatus, OPERATIONAL_STATUS_CONFIG, OPERATIONAL_STATUSES } from '@/types/quote';
@@ -342,7 +342,7 @@ function BulkActionBar({
 
 export default function ProjectsScreen() {
   const router = useRouter();
-  const { isDesktop } = useBreakpoint();
+  const { isDesktop, isMobile } = useBreakpoint();
   const { projects, deleteQuote, convertToSale, convertToQuote, markProjectComplete, isLoading } = useQuotes();
 
   const [search, setSearch] = useState('');
@@ -656,7 +656,7 @@ export default function ProjectsScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <Text style={styles.title}>Projects</Text>
+          <Text style={[styles.title, isMobile && styles.titleMobile]}>Projects</Text>
           <TouchableOpacity style={styles.startProjectBtn} onPress={() => router.push('/')}>
             <FolderPlus size={15} color="#fff" />
             <Text style={styles.startProjectBtnText}>Start Project</Text>
@@ -664,40 +664,40 @@ export default function ProjectsScreen() {
         </View>
 
         {/* Stats Bar */}
-        <View style={styles.statsBar}>
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: '#16A34A' }]}>
+        <View style={[styles.statsBar, isMobile && styles.statBarMobile]}>
+          <View style={[styles.statItem, isMobile && styles.statItemMobile]}>
+            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: '#16A34A' }]}>
               {statusCounts['completed'] ?? 0}
             </Text>
-            <Text style={styles.statLabel}>Completed</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Completed</Text>
           </View>
           <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: Colors.light.tint }]}>
+          <View style={[styles.statItem, isMobile && styles.statItemMobile]}>
+            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: Colors.light.tint }]}>
               {(statusCounts['active'] ?? 0) + (statusCounts['production_started'] ?? 0)}
             </Text>
-            <Text style={styles.statLabel}>{isDesktop ? 'In Production' : 'Production'}</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>{isDesktop ? 'In Production' : 'Production'}</Text>
           </View>
           <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: Colors.light.text }]}>
+          <View style={[styles.statItem, isMobile && styles.statItemMobile]}>
+            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: Colors.light.text }]}>
               {resolvedProjects.length}
             </Text>
-            <Text style={styles.statLabel}>{isDesktop ? 'Active Projects' : 'Active'}</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>{isDesktop ? 'Active Projects' : 'Active'}</Text>
           </View>
           <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: '#2563EB' }]}>
+          <View style={[styles.statItem, isMobile && styles.statItemMobile]}>
+            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: '#2563EB' }]}>
               {(statusCounts['quoting'] ?? 0) + (statusCounts['quoted'] ?? 0)}
             </Text>
-            <Text style={styles.statLabel}>Quoted</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Quoted</Text>
           </View>
           <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: '#DC2626' }]}>
+          <View style={[styles.statItem, isMobile && styles.statItemMobile]}>
+            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: '#DC2626' }]}>
               {statusCounts['needs_review'] ?? 0}
             </Text>
-            <Text style={styles.statLabel}>{isDesktop ? 'Needs Review' : 'Review'}</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>{isDesktop ? 'Needs Review' : 'Review'}</Text>
           </View>
         </View>
 
@@ -985,6 +985,11 @@ const styles = StyleSheet.create({
   statValue: { ...metricValueStyle },
   statLabel: { ...metricLabelStyle, marginTop: 2 },
   statDivider: { display: 'none' as any },
+  titleMobile: { fontSize: 20 },
+  statValueMobile: { ...metricValueStyleMobile },
+  statLabelMobile: { ...metricLabelStyleMobile, marginTop: 2 },
+  statBarMobile: { padding: 13, gap: 10 },
+  statItemMobile: { paddingVertical: 12, paddingHorizontal: 10 },
 
   pillsScroll: { maxHeight: 44 },
   pillsRow: { flexDirection: 'row', gap: DS.spacing.sm, paddingHorizontal: DS.spacing.xl, paddingBottom: DS.spacing.md },

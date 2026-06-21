@@ -205,7 +205,7 @@ export default function DashboardScreen() {
                       <View style={[styles.serviceIconWrap, { backgroundColor: cfg.bg }]}>
                         <IconComponent size={20} color={cfg.color} />
                       </View>
-                      <Text style={styles.serviceCount}>{count}</Text>
+                      <Text style={[styles.serviceCount, isMobile && styles.serviceCountMobile]}>{count}</Text>
                       <Text style={styles.serviceLabel}>{label}</Text>
                       <Text style={styles.serviceSub}>{count === 1 ? 'project' : 'projects'}</Text>
                     </View>
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
   },
   pageTitleMobile: {
-    fontSize: 22,
+    fontSize: 19,
   },
   pageSubtitle: {
     fontSize: 13,
@@ -356,8 +356,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.border,
   },
   statCardMobile: {
-    padding: 14,
-    borderRadius: 12,
+    padding: 11,
+    borderRadius: 10,
   },
   statIconWrap: {
     width: 40,
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   statValueMobile: {
-    fontSize: 20,
+    fontSize: 18,
   },
   statLabel: {
     fontSize: 12,
@@ -437,6 +437,9 @@ const styles = StyleSheet.create({
     fontWeight: '800' as const,
     color: Colors.light.text,
     marginBottom: 2,
+  },
+  serviceCountMobile: {
+    fontSize: 21,
   },
   serviceLabel: {
     fontSize: 12,

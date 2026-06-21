@@ -22,6 +22,19 @@ export const metricLabelStyle: TextStyle = {
   color: Colors.light.textSecondary,
 };
 
+export const metricValueStyleMobile: TextStyle = {
+  fontSize: 15,
+  fontWeight: '800',
+  color: Colors.light.text,
+  lineHeight: 19,
+};
+
+export const metricLabelStyleMobile: TextStyle = {
+  fontSize: 9,
+  fontWeight: '600',
+  color: Colors.light.textSecondary,
+};
+
 export function MetricValue({
   children,
   color,

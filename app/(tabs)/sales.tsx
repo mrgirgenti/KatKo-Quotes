@@ -35,7 +35,7 @@ import {
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import Colors from '@/constants/colors';
 import { TABLE_COL, TABLE_CELL } from '@/constants/tableLayout';
-import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
+import { metricValueStyle, metricLabelStyle, metricValueStyleMobile, metricLabelStyleMobile } from '@/components/Metric';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { useUser } from '@/contexts/UserContext';
 import { Quote, QuoteStatus, getEffectiveStatus, STATUS_CONFIG } from '@/types/quote';
@@ -344,7 +344,7 @@ function BulkActionBar({
 
 export default function SalesScreen() {
   const router = useRouter();
-  const { isDesktop } = useBreakpoint();
+  const { isDesktop, isMobile } = useBreakpoint();
   const { sales, deleteQuote, convertToQuote, unlockSale, lockSale, markExportedToSheets, isLoading } = useQuotes();
   const { currentUser, orgAdmin } = useUser();
 
@@ -640,7 +640,7 @@ export default function SalesScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <Text style={styles.title}>Quotes</Text>
+          <Text style={[styles.title, isMobile && styles.titleMobile]}>Quotes</Text>
           <TouchableOpacity style={styles.startProjectBtn} onPress={() => router.push('/')}>
             <Plus size={15} color="#fff" />
             <Text style={styles.startProjectBtnText}>New Quote</Text>
@@ -648,40 +648,40 @@ export default function SalesScreen() {
         </View>
 
         {/* Stats Bar */}
-        <View style={styles.statsBar}>
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: '#DC2626' }]}>
+        <View style={[styles.statsBar, isMobile && styles.statBarMobile]}>
+          <View style={[styles.statItem, isMobile && styles.statItemMobile]}>
+            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: '#DC2626' }]}>
               {statusCounts['needs_review'] ?? 0}
             </Text>
-            <Text style={styles.statLabel}>{isDesktop ? 'Needs Review' : 'Review'}</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>{isDesktop ? 'Needs Review' : 'Review'}</Text>
           </View>
           <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: '#2563EB' }]}>
+          <View style={[styles.statItem, isMobile && styles.statItemMobile]}>
+            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: '#2563EB' }]}>
               {statusCounts['quoted'] ?? 0}
             </Text>
-            <Text style={styles.statLabel}>Quoted</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Quoted</Text>
           </View>
           <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: '#6D28D9' }]}>
+          <View style={[styles.statItem, isMobile && styles.statItemMobile]}>
+            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: '#6D28D9' }]}>
               {statusCounts['invoice_sent'] ?? 0}
             </Text>
-            <Text style={styles.statLabel}>{isDesktop ? 'Invoice Sent' : 'Invoices'}</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>{isDesktop ? 'Invoice Sent' : 'Invoices'}</Text>
           </View>
           <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: '#16A34A' }]}>
+          <View style={[styles.statItem, isMobile && styles.statItemMobile]}>
+            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: '#16A34A' }]}>
               {statusCounts['paid'] ?? 0}
             </Text>
-            <Text style={styles.statLabel}>Paid</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Paid</Text>
           </View>
           <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: '#9CA3AF' }]}>
+          <View style={[styles.statItem, isMobile && styles.statItemMobile]}>
+            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: '#9CA3AF' }]}>
               {statusCounts['expired'] ?? 0}
             </Text>
-            <Text style={styles.statLabel}>Expired</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Expired</Text>
           </View>
         </View>
 
@@ -951,6 +951,11 @@ const styles = StyleSheet.create({
   statValue: { ...metricValueStyle },
   statLabel: { ...metricLabelStyle, marginTop: 2 },
   statDivider: { display: 'none' as any },
+  titleMobile: { fontSize: 20 },
+  statValueMobile: { ...metricValueStyleMobile },
+  statLabelMobile: { ...metricLabelStyleMobile, marginTop: 2 },
+  statBarMobile: { padding: 13, gap: 10 },
+  statItemMobile: { paddingVertical: 12, paddingHorizontal: 10 },
 
   pillsScroll: { maxHeight: 44 },
   pillsRow: { flexDirection: 'row', gap: DS.spacing.sm, paddingHorizontal: DS.spacing.xl, paddingBottom: DS.spacing.md },
