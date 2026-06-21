@@ -700,6 +700,7 @@ export default function CatalogAdminScreen() {
   const [costEdits, setCostEdits] = useState<Map<string, string>>(new Map());
   const [costSaving, setCostSaving] = useState<Set<string>>(new Set());
   const [costSaved, setCostSaved] = useState<Set<string>>(new Set());
+  const [costEditAll, setCostEditAll] = useState(false);
 
   const [bulkCostModal, setBulkCostModal] = useState<'set' | 'increase' | 'decrease' | null>(null);
   const [bulkVendorModal, setBulkVendorModal] = useState<'assign' | 'preferred' | null>(null);
@@ -855,6 +856,12 @@ export default function CatalogAdminScreen() {
     setCostEdits(prev => new Map(prev).set(id, val));
   };
 
+  const handleEnterCostEditAll = () => setCostEditAll(true);
+  const handleExitCostEditAll = () => {
+    setCostEditAll(false);
+    setCostEdits(new Map());
+  };
+
   const saveCostEdit = async (id: string) => {
     const raw = costEdits.get(id);
     if (raw === undefined) return;
@@ -998,6 +1005,11 @@ export default function CatalogAdminScreen() {
           >
             {({ close }) => (
               <>
+                <TouchableOpacity style={s.floatItem} onPress={() => { close(); handleEnterCostEditAll(); }}>
+                  <DollarSign size={15} color={TEXT_LIGHT} />
+                  <Text style={s.floatItemText}>Edit Costs</Text>
+                </TouchableOpacity>
+                <View style={s.floatDivider} />
                 <TouchableOpacity style={s.floatItem} onPress={() => { close(); router.push('/catalog-audit' as any); }}>
                   <ClipboardList size={15} color={TEXT_LIGHT} />
                   <Text style={s.floatItemText}>Product Audit</Text>
@@ -1182,6 +1194,17 @@ export default function CatalogAdminScreen() {
         </View>
       )}
 
+      {/* Cost edit mode banner */}
+      {costEditAll && (
+        <View style={s.costEditBar}>
+          <DollarSign size={14} color="#92400E" />
+          <Text style={s.costEditBarText}>Cost editing — double-click any cost to edit, or tap a cell directly</Text>
+          <TouchableOpacity style={s.costEditDoneBtn} onPress={handleExitCostEditAll}>
+            <Text style={s.costEditDoneBtnText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Table header */}
       <View style={s.tableHeader}>
         <View style={s.cCheck}>
@@ -1256,15 +1279,17 @@ export default function CatalogAdminScreen() {
                 )}
               </View>
               <View style={s.cCost}>
-                {costEdits.has(product.id) ? (
+                {(costEdits.has(product.id) || costEditAll) ? (
                   <TextInput
                     style={s.costInput}
-                    value={costEdits.get(product.id) ?? ''}
+                    value={costEdits.has(product.id)
+                      ? (costEdits.get(product.id) ?? '')
+                      : (product.defaultBlankCost != null ? parseFloat(String(product.defaultBlankCost)).toFixed(2) : '')}
                     onChangeText={v => setCostEdits(prev => new Map(prev).set(product.id, v))}
                     onBlur={() => saveCostEdit(product.id)}
                     onSubmitEditing={() => saveCostEdit(product.id)}
                     keyboardType="decimal-pad"
-                    autoFocus
+                    autoFocus={costEdits.has(product.id) && !costEditAll}
                     selectTextOnFocus
                     placeholder="0.00"
                     placeholderTextColor="#D1D5DB"
@@ -1279,9 +1304,13 @@ export default function CatalogAdminScreen() {
                     </Text>
                   </View>
                 ) : (
-                  <TouchableOpacity
-                    onPress={(e: any) => { e.stopPropagation?.(); enterCostEdit(product.id, product.defaultBlankCost); }}
-                    activeOpacity={0.7}
+                  <View
+                    {...(Platform.OS === 'web' ? {
+                      onDoubleClick: (e: any) => {
+                        e.stopPropagation();
+                        enterCostEdit(product.id, product.defaultBlankCost);
+                      },
+                    } as any : {})}
                   >
                     {product.defaultBlankCost != null ? (
                       <Text style={s.costCell} numberOfLines={1}>
@@ -1290,7 +1319,7 @@ export default function CatalogAdminScreen() {
                     ) : (
                       <Text style={s.costCellMissing}>—</Text>
                     )}
-                  </TouchableOpacity>
+                  </View>
                 )}
               </View>
               <View style={s.cStatus}>
@@ -1549,6 +1578,19 @@ const s = StyleSheet.create({
 
   costCell: { fontSize: 13, fontWeight: '600', color: TEXT },
   costCellMissing: { fontSize: 13, color: '#D1D5DB', borderBottomWidth: 1, borderBottomColor: '#D1D5DB', borderStyle: 'dashed' as any },
+
+  costEditBar: {
+    flexDirection: 'row' as any, alignItems: 'center' as any, gap: 8,
+    paddingHorizontal: 20, paddingVertical: 10,
+    backgroundColor: '#FFFBEB',
+    borderBottomWidth: 1, borderBottomColor: '#FDE68A',
+  },
+  costEditBarText: { flex: 1, fontSize: 13, color: '#92400E' },
+  costEditDoneBtn: {
+    borderRadius: 6, paddingVertical: 5, paddingHorizontal: 14,
+    backgroundColor: '#D97706',
+  },
+  costEditDoneBtnText: { fontSize: 13, fontWeight: '600' as any, color: '#fff' },
   costInput: {
     fontSize: 13, fontWeight: '600', color: TEXT,
     borderWidth: 1, borderColor: BRAND, borderRadius: 4,
