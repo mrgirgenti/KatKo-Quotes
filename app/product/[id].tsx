@@ -939,12 +939,6 @@ export default function ProductDetailScreen() {
     } catch { /* silent */ }
   }, []);
 
-  useEffect(() => {
-    loadTemplates();
-    loadSources();
-    loadVendors();
-  }, [loadTemplates, loadSources, loadVendors]);
-
   const handleAssignTemplate = async (templateId: string | null) => {
     setTemplateAssigning(true);
     try {
@@ -978,6 +972,12 @@ export default function ProductDetailScreen() {
       setVendors(((data.vendors || []) as Vendor[]).filter(v => v.isActive !== false));
     } catch { }
   }, []);
+
+  useEffect(() => {
+    loadTemplates();
+    loadSources();
+    loadVendors();
+  }, [loadTemplates, loadSources, loadVendors]);
 
 
   const frontAssetId = useMemo(() => {

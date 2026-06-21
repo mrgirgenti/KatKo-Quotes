@@ -21,3 +21,4 @@
 - [Vendor source model](vendor-source-model.md) — Product.vendor = manufacturer label; ProductVendor = supply chain distributors. Setting isPreferred must clear siblings in the same API call.
 - [Products ≠ product universe](product-catalog-not-universe.md) — quoting/mockups already free-text + hardcoded lists, NO productId FK; Products is a curated enhancement layer. At integration: soft optional link, snapshot at quote time, never gate on catalog.
 - [Two vendor systems](two-vendor-systems.md) — `Vendor` table (sourcing, /api/vendors, GET-only) vs `ClientCatalog` (Catalogs tab, full CRUD). Don't confuse them. Approved apparel vendors = 7 named; no auto-seeding.
+- [useEffect dep TDZ](react-effect-tdz.md) — a useEffect whose dep array lists useCallback fns must be declared AFTER them; dep array evals at render → crash "Cannot access X before initialization". LSP won't catch it.
