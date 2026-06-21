@@ -77,6 +77,35 @@ _Populate as you build_
 
 ## UI Conventions
 
+### OVERLAY / DROPDOWN LAW — NON-NEGOTIABLE
+Every dropdown menu, action popover, row context menu, or any floating panel MUST use `<OverlayMenu>` from `@/components/OverlayMenu`. This is an absolute rule with no exceptions.
+
+**Why:** React Native's layout system clips `position: 'absolute'` children at the nearest ancestor that forms a stacking context (ScrollView, overflow:hidden View, etc.). Using a plain absolutely-positioned sibling for a dropdown will always clip behind rows below it in a table, behind sticky headers, or behind sibling layout boxes. `OverlayMenu` renders via a `Modal` (portal) so it floats above the entire page unconditionally.
+
+**The pattern — always:**
+```tsx
+import OverlayMenu from '@/components/OverlayMenu';
+
+<OverlayMenu menuWidth={180} align="right"
+  trigger={({ open }) => (
+    <TouchableOpacity onPress={open}>...</TouchableOpacity>
+  )}
+>
+  {({ close }) => (
+    <>
+      <TouchableOpacity onPress={() => { close(); doSomething(); }}>...</TouchableOpacity>
+    </>
+  )}
+</OverlayMenu>
+```
+
+**Never use:**
+- `position: 'absolute'` siblings of a trigger button (clips inside ScrollViews)
+- Manual `zIndex` + conditional `{isOpen && <View style={{ position: 'absolute' }}>}` patterns
+- `position: 'relative'` wrappers with an absolute child dropdown
+
+This rule applies to every file, every screen, every new feature going forward.
+
 - **MediaCard `showTypeBadge`**: Always pass `showTypeBadge={false}` when rendering `<MediaCard>` inside any media bin grid (Org Details left panel, org media tab, project media bins). The file type is already shown in the `typeLabel` metadata line — the pill above the name is redundant and clutters the card. The default is `true` (safe for one-off usages), so the prop must be explicit on every grid rendering site.
 - **Table column widths**: Primary identifier columns (`textPrimary` token) use per-table overrides of `flexBasis/minWidth/maxWidth` rather than the global default (320/260/420). Current overrides: Organizations `org` col −25% (240/195/315), Contacts `name` col −25% (240/195/315), Quotes/Projects `colProject` col −45% (176/143/231), Client Hubs `colOrg` col −60% (`flex: 0.8, minWidth: 88`).
 

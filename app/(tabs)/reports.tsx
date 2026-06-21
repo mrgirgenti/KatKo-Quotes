@@ -44,6 +44,7 @@ import type { Quote, QuoteStatus } from '@/types/quote';
 import { STATUS_CONFIG, getEffectiveStatus } from '@/types/quote';
 import { OrgAvatar } from '@/components/OrgAvatar';
 import { useCrm } from '@/contexts/CrmContext';
+import OverlayMenu from '@/components/OverlayMenu';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type ReportTab = 'overview' | 'financial' | 'customers' | 'services' | 'exports';
@@ -566,7 +567,6 @@ function DateRangeMenu({
   onCustomFrom: (v: string) => void;
   onCustomTo: (v: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const options: DateRangeKey[] = [
     'all',
     'this_month',
@@ -577,20 +577,23 @@ function DateRangeMenu({
     'custom',
   ];
   return (
-    <View style={s.ddWrap}>
-      <TouchableOpacity style={s.headerBtn} onPress={() => setOpen((o) => !o)}>
-        <Text style={s.headerBtnText}>{DATE_RANGE_LABELS[selected]}</Text>
-        <ChevronDown size={13} color={Colors.light.textSecondary} />
-      </TouchableOpacity>
-      {open && (
-        <View style={s.dropdown}>
+    <OverlayMenu menuWidth={220} align="left"
+      trigger={({ open: openMenu }) => (
+        <TouchableOpacity style={s.headerBtn} onPress={openMenu}>
+          <Text style={s.headerBtnText}>{DATE_RANGE_LABELS[selected]}</Text>
+          <ChevronDown size={13} color={Colors.light.textSecondary} />
+        </TouchableOpacity>
+      )}
+    >
+      {({ close }) => (
+        <>
           {options.map((k) => (
             <TouchableOpacity
               key={k}
               style={s.ddItem}
               onPress={() => {
                 onChange(k);
-                if (k !== 'custom') setOpen(false);
+                if (k !== 'custom') close();
               }}
             >
               <Text style={[s.ddItemText, selected === k && s.ddItemActive]}>
@@ -615,14 +618,14 @@ function DateRangeMenu({
                 placeholder="YYYY-MM-DD"
                 placeholderTextColor={Colors.light.textSecondary}
               />
-              <TouchableOpacity style={s.customDateApply} onPress={() => setOpen(false)}>
+              <TouchableOpacity style={s.customDateApply} onPress={close}>
                 <Text style={s.customDateApplyText}>Apply</Text>
               </TouchableOpacity>
             </View>
           )}
-        </View>
+        </>
       )}
-    </View>
+    </OverlayMenu>
   );
 }
 
@@ -634,24 +637,26 @@ function CompareMenu({
   selected: CompareKey;
   onChange: (k: CompareKey) => void;
 }) {
-  const [open, setOpen] = useState(false);
   return (
-    <View style={s.ddWrap}>
-      <TouchableOpacity style={s.headerBtn} onPress={() => setOpen((o) => !o)}>
-        <Text style={s.headerBtnText}>
-          {selected === 'none' ? 'Compare' : COMPARE_LABELS[selected]}
-        </Text>
-        <ChevronDown size={13} color={Colors.light.textSecondary} />
-      </TouchableOpacity>
-      {open && (
-        <View style={s.dropdown}>
+    <OverlayMenu menuWidth={200} align="left"
+      trigger={({ open: openMenu }) => (
+        <TouchableOpacity style={s.headerBtn} onPress={openMenu}>
+          <Text style={s.headerBtnText}>
+            {selected === 'none' ? 'Compare' : COMPARE_LABELS[selected]}
+          </Text>
+          <ChevronDown size={13} color={Colors.light.textSecondary} />
+        </TouchableOpacity>
+      )}
+    >
+      {({ close }) => (
+        <>
           {(['none', 'prev_period', 'prev_year'] as CompareKey[]).map((k) => (
             <TouchableOpacity
               key={k}
               style={s.ddItem}
               onPress={() => {
                 onChange(k);
-                setOpen(false);
+                close();
               }}
             >
               <Text style={[s.ddItemText, selected === k && s.ddItemActive]}>
@@ -659,41 +664,43 @@ function CompareMenu({
               </Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </>
       )}
-    </View>
+    </OverlayMenu>
   );
 }
 
 // ── Export Dropdown ────────────────────────────────────────────────────────────
 function ExportMenu({ onExport }: { onExport: (type: 'quotes' | 'sales' | 'lineItems') => void }) {
-  const [open, setOpen] = useState(false);
   const items: Array<{ key: 'quotes' | 'sales' | 'lineItems'; label: string }> = [
     { key: 'quotes', label: 'Sales Report' },
     { key: 'sales', label: 'Financial Summary' },
     { key: 'lineItems', label: 'Reconciliation Report' },
   ];
   return (
-    <View style={[s.ddWrap, s.ddWrapRight]}>
-      <TouchableOpacity style={[s.headerBtn, s.exportHeaderBtn]} onPress={() => setOpen((o) => !o)}>
-        <Download size={13} color="#fff" />
-        <Text style={[s.headerBtnText, { color: '#fff' }]}>Export</Text>
-        <ChevronDown size={13} color="#fff" />
-      </TouchableOpacity>
-      {open && (
-        <View style={[s.dropdown, s.dropdownRight]}>
+    <OverlayMenu menuWidth={200} align="right"
+      trigger={({ open: openMenu }) => (
+        <TouchableOpacity style={[s.headerBtn, s.exportHeaderBtn]} onPress={openMenu}>
+          <Download size={13} color="#fff" />
+          <Text style={[s.headerBtnText, { color: '#fff' }]}>Export</Text>
+          <ChevronDown size={13} color="#fff" />
+        </TouchableOpacity>
+      )}
+    >
+      {({ close }) => (
+        <>
           {items.map((item) => (
             <TouchableOpacity
               key={item.key}
               style={s.ddItem}
-              onPress={() => { onExport(item.key); setOpen(false); }}
+              onPress={() => { close(); onExport(item.key); }}
             >
               <Text style={s.ddItemText}>{item.label}</Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </>
       )}
-    </View>
+    </OverlayMenu>
   );
 }
 

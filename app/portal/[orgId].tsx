@@ -949,7 +949,6 @@ export default function ClientPortal() {
   const [mediaBinFilter, setMediaBinFilter] = useState<string>('All');
   const [mediaBinSort, setMediaBinSort] = useState<'Newest' | 'Oldest' | 'A-Z'>('Newest');
   const [mediaBinGridSize, setMediaBinGridSize] = useState<4 | 6 | 8>(6);
-  const [mediaBinSortOpen, setMediaBinSortOpen] = useState(false);
   const [catSearch, setCatSearch] = useState('');
   const [catFilter, setCatFilter] = useState('All');
 
@@ -2620,28 +2619,31 @@ export default function ClientPortal() {
             </View>
 
             {/* Sort dropdown */}
-            <View style={mbStyles.sortWrap}>
-              <TouchableOpacity style={mbStyles.sortDropBtn} onPress={() => setMediaBinSortOpen(v => !v)} activeOpacity={0.8}>
-                <ArrowUpDown size={13} color={TEXT_MED} />
-                <Text style={mbStyles.sortDropBtnText}>{mediaBinSort}</Text>
-                <ChevronDown size={12} color={TEXT_LIGHT} />
-              </TouchableOpacity>
-              {mediaBinSortOpen && (
-                <View style={mbStyles.sortDropMenu}>
+            <OverlayMenu menuWidth={130} align="right"
+              trigger={({ open: openMenu }) => (
+                <TouchableOpacity style={mbStyles.sortDropBtn} onPress={openMenu} activeOpacity={0.8}>
+                  <ArrowUpDown size={13} color={TEXT_MED} />
+                  <Text style={mbStyles.sortDropBtnText}>{mediaBinSort}</Text>
+                  <ChevronDown size={12} color={TEXT_LIGHT} />
+                </TouchableOpacity>
+              )}
+            >
+              {({ close }) => (
+                <>
                   {MB_SORT_OPTIONS.map(s => (
                     <TouchableOpacity
                       key={s}
                       style={[mbStyles.sortDropItem, mediaBinSort === s && mbStyles.sortDropItemActive]}
-                      onPress={() => { setMediaBinSort(s); setMediaBinSortOpen(false); }}
+                      onPress={() => { close(); setMediaBinSort(s); }}
                       activeOpacity={0.8}
                     >
                       <Text style={[mbStyles.sortDropItemText, mediaBinSort === s && mbStyles.sortDropItemTextActive]}>{s}</Text>
                       {mediaBinSort === s && <Check size={12} color={BRAND} />}
                     </TouchableOpacity>
                   ))}
-                </View>
+                </>
               )}
-            </View>
+            </OverlayMenu>
 
             {/* Grid size toggle */}
             <View style={mbStyles.viewToggle}>

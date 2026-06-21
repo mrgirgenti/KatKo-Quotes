@@ -11,6 +11,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import OverlayMenu from '@/components/OverlayMenu';
 import {
   Package,
   Plus,
@@ -411,11 +412,8 @@ export default function CatalogAdminScreen() {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
-  const [menuId, setMenuId] = useState<string | null>(null);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
-  const [catalogMenuOpen, setCatalogMenuOpen] = useState(false);
   const [assignModal, setAssignModal] = useState<'category' | 'subcategory' | 'productType' | null>(null);
 
   const [bulkResolving, setBulkResolving] = useState(false);
@@ -470,7 +468,6 @@ export default function CatalogAdminScreen() {
     }
   };
 
-  const closeAllMenus = () => { setMenuId(null); setBulkMenuOpen(false); setCatalogMenuOpen(false); };
 
   const handleSave = async (form: typeof EMPTY_FORM) => {
     if (editing) {
@@ -482,7 +479,6 @@ export default function CatalogAdminScreen() {
   };
 
   const handleToggleActive = async (product: Product) => {
-    setMenuId(null);
     try {
       await apiFetch(`/api/products/${product.id}`, {
         method: 'PATCH',
@@ -587,7 +583,7 @@ export default function CatalogAdminScreen() {
   };
 
   return (
-    <View style={s.screen} onStartShouldSetResponder={() => { closeAllMenus(); return false; }}>
+    <View style={s.screen}>
 
       {/* Page header */}
       <View style={s.pageHeader}>
@@ -602,51 +598,47 @@ export default function CatalogAdminScreen() {
         </View>
         <View style={s.headerActions}>
           {/* Catalog maintenance dropdown */}
-          <View style={{ position: 'relative' as any }}>
-            <TouchableOpacity
-              style={s.outlineBtn}
-              onPress={() => { setMenuId(null); setBulkMenuOpen(false); setCatalogMenuOpen(o => !o); }}
-            >
-              <Wrench size={14} color={TEXT_LIGHT} />
-              <Text style={s.outlineBtnText}>Catalog</Text>
-              <ChevronDown size={12} color={TEXT_LIGHT} />
-            </TouchableOpacity>
-            {catalogMenuOpen && (
-              <View style={[s.floatingMenu, { right: 0, top: 40, minWidth: 210 }]}>
-                <TouchableOpacity style={s.floatItem} onPress={() => { setCatalogMenuOpen(false); router.push('/catalog-audit' as any); }}>
+          <OverlayMenu menuWidth={210} align="right"
+            trigger={({ open }) => (
+              <TouchableOpacity style={s.outlineBtn} onPress={open}>
+                <Wrench size={14} color={TEXT_LIGHT} />
+                <Text style={s.outlineBtnText}>Catalog</Text>
+                <ChevronDown size={12} color={TEXT_LIGHT} />
+              </TouchableOpacity>
+            )}
+          >
+            {({ close }) => (
+              <>
+                <TouchableOpacity style={s.floatItem} onPress={() => { close(); router.push('/catalog-audit' as any); }}>
                   <ClipboardList size={15} color={TEXT_LIGHT} />
                   <Text style={s.floatItemText}>Product Audit</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.floatItem} onPress={() => { setCatalogMenuOpen(false); router.push('/catalog-costs' as any); }}>
+                <TouchableOpacity style={s.floatItem} onPress={() => { close(); router.push('/catalog-costs' as any); }}>
                   <DollarSign size={15} color={TEXT_LIGHT} />
                   <Text style={s.floatItemText}>Manage Costs</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.floatItem} onPress={() => { setCatalogMenuOpen(false); router.push('/catalog-sources' as any); }}>
+                <TouchableOpacity style={s.floatItem} onPress={() => { close(); router.push('/catalog-sources' as any); }}>
                   <Truck size={15} color={TEXT_LIGHT} />
                   <Text style={s.floatItemText}>Manage Sources</Text>
                 </TouchableOpacity>
                 <View style={s.floatDivider} />
-                <TouchableOpacity style={s.floatItem} onPress={() => { setCatalogMenuOpen(false); handleExportCSV(); }}>
+                <TouchableOpacity style={s.floatItem} onPress={() => { close(); handleExportCSV(); }}>
                   <FileDown size={15} color={TEXT_LIGHT} />
                   <Text style={s.floatItemText}>Export CSV</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.floatItem} onPress={() => { setCatalogMenuOpen(false); Alert.alert('Import CSV', 'CSV import coming soon.'); }}>
+                <TouchableOpacity style={s.floatItem} onPress={() => { close(); Alert.alert('Import CSV', 'CSV import coming soon.'); }}>
                   <FileUp size={15} color={TEXT_LIGHT} />
                   <Text style={s.floatItemText}>Import CSV</Text>
                 </TouchableOpacity>
                 <View style={s.floatDivider} />
-                <TouchableOpacity
-                  style={s.floatItem}
-                  onPress={() => { setCatalogMenuOpen(false); handleBulkResolve(); }}
-                  disabled={bulkResolving}
-                >
+                <TouchableOpacity style={s.floatItem} onPress={() => { close(); handleBulkResolve(); }} disabled={bulkResolving}>
                   <Text style={[s.floatItemText, { color: TEXT_LIGHT }]}>
                     {bulkResolving ? 'Resolving…' : 'Auto-resolve Templates'}
                   </Text>
                 </TouchableOpacity>
-              </View>
+              </>
             )}
-          </View>
+          </OverlayMenu>
 
           <TouchableOpacity
             style={s.addBtn}
@@ -741,29 +733,32 @@ export default function CatalogAdminScreen() {
           <TouchableOpacity style={s.selBtn} onPress={handleBulkDeactivate}>
             <Text style={s.selBtnText}>Deactivate</Text>
           </TouchableOpacity>
-          <View style={{ position: 'relative' as any }}>
-            <TouchableOpacity style={s.selBtn} onPress={() => { setCatalogMenuOpen(false); setBulkMenuOpen(o => !o); }}>
-              <Text style={s.selBtnText}>Assign</Text>
-              <ChevronDown size={12} color={BRAND} />
-            </TouchableOpacity>
-            {bulkMenuOpen && (
-              <View style={[s.floatingMenu, { top: 36, left: 0, zIndex: 300, minWidth: 190 }]}>
-                <TouchableOpacity style={s.floatItem} onPress={() => { setBulkMenuOpen(false); setAssignModal('category'); }}>
+          <OverlayMenu menuWidth={190} align="left"
+            trigger={({ open }) => (
+              <TouchableOpacity style={s.selBtn} onPress={open}>
+                <Text style={s.selBtnText}>Assign</Text>
+                <ChevronDown size={12} color={BRAND} />
+              </TouchableOpacity>
+            )}
+          >
+            {({ close }) => (
+              <>
+                <TouchableOpacity style={s.floatItem} onPress={() => { close(); setAssignModal('category'); }}>
                   <Text style={s.floatItemText}>Category</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.floatItem} onPress={() => { setBulkMenuOpen(false); setAssignModal('subcategory'); }}>
+                <TouchableOpacity style={s.floatItem} onPress={() => { close(); setAssignModal('subcategory'); }}>
                   <Text style={s.floatItemText}>Subcategory</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.floatItem} onPress={() => { setBulkMenuOpen(false); setAssignModal('productType'); }}>
+                <TouchableOpacity style={s.floatItem} onPress={() => { close(); setAssignModal('productType'); }}>
                   <Text style={s.floatItemText}>Product Type</Text>
                 </TouchableOpacity>
                 <View style={s.floatDivider} />
-                <TouchableOpacity style={s.floatItem} onPress={() => { setBulkMenuOpen(false); router.push('/catalog-sources' as any); }}>
+                <TouchableOpacity style={s.floatItem} onPress={() => { close(); router.push('/catalog-sources' as any); }}>
                   <Text style={s.floatItemText}>Assign Source →</Text>
                 </TouchableOpacity>
-              </View>
+              </>
             )}
-          </View>
+          </OverlayMenu>
           <TouchableOpacity style={[s.selBtn, { borderColor: '#FECACA' }]} onPress={handleBulkDelete}>
             <Text style={[s.selBtnText, { color: '#DC2626' }]}>Delete</Text>
           </TouchableOpacity>
@@ -813,7 +808,7 @@ export default function CatalogAdminScreen() {
             <TouchableOpacity
               key={product.id}
               style={[s.row, selectedIds.has(product.id) && s.rowSelected]}
-              onPress={() => { closeAllMenus(); router.push(`/product/${product.id}` as any); }}
+              onPress={() => router.push(`/product/${product.id}` as any)}
               activeOpacity={0.75}
             >
               <View style={s.cCheck}>
@@ -865,65 +860,40 @@ export default function CatalogAdminScreen() {
 
               {/* Row menu */}
               <View style={s.cActions}>
-                <TouchableOpacity
-                  style={s.menuBtn}
-                  onPress={e => {
-                    e.stopPropagation?.();
-                    setCatalogMenuOpen(false); setBulkMenuOpen(false);
-                    setMenuId(prev => prev === product.id ? null : product.id);
-                  }}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                <OverlayMenu menuWidth={160} align="right"
+                  trigger={({ open }) => (
+                    <TouchableOpacity
+                      style={s.menuBtn}
+                      onPress={e => { e.stopPropagation?.(); open(); }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <MoreVertical size={16} color={TEXT_LIGHT} />
+                    </TouchableOpacity>
+                  )}
                 >
-                  <MoreVertical size={16} color={TEXT_LIGHT} />
-                </TouchableOpacity>
-
-                {menuId === product.id && (
-                  <View style={s.menu}>
-                    <TouchableOpacity
-                      style={s.menuItem}
-                      onPress={() => {
-                        setMenuId(null);
-                        setEditing(product);
-                        setModalVisible(true);
-                      }}
-                    >
-                      <Pencil size={15} color={TEXT_LIGHT} />
-                      <Text style={s.menuItemText}>Edit</Text>
-                    </TouchableOpacity>
-                    <View style={s.menuDivider} />
-                    <TouchableOpacity
-                      style={s.menuItem}
-                      onPress={() => handleToggleActive(product)}
-                    >
-                      {product.isActive ? (
-                        <EyeOff size={15} color="#DC2626" />
-                      ) : (
-                        <Eye size={15} color="#059669" />
-                      )}
-                      <Text
-                        style={[
-                          s.menuItemText,
-                          { color: product.isActive ? '#DC2626' : '#059669' },
-                        ]}
-                      >
-                        {product.isActive ? 'Disable' : 'Enable'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
+                  {({ close }) => (
+                    <>
+                      <TouchableOpacity style={s.menuItem} onPress={() => { close(); setEditing(product); setModalVisible(true); }}>
+                        <Pencil size={15} color={TEXT_LIGHT} />
+                        <Text style={s.menuItemText}>Edit</Text>
+                      </TouchableOpacity>
+                      <View style={s.menuDivider} />
+                      <TouchableOpacity style={s.menuItem} onPress={() => { close(); handleToggleActive(product); }}>
+                        {product.isActive ? <EyeOff size={15} color="#DC2626" /> : <Eye size={15} color="#059669" />}
+                        <Text style={[s.menuItemText, { color: product.isActive ? '#DC2626' : '#059669' }]}>
+                          {product.isActive ? 'Disable' : 'Enable'}
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </OverlayMenu>
               </View>
             </TouchableOpacity>
           ))}
         </ScrollView>
       )}
 
-      {(menuId !== null || catalogMenuOpen || bulkMenuOpen) && (
-        <TouchableOpacity
-          style={StyleSheet.absoluteFillObject}
-          onPress={closeAllMenus}
-          activeOpacity={0}
-        />
-      )}
+
 
       <ProductFormModal
         visible={modalVisible}

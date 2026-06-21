@@ -17,9 +17,10 @@ import {
 import {
   BookOpen, Plus, Pencil, Trash2, X, Globe,
   ChevronDown, MoreVertical, Eye, EyeOff, Star,
-  Download, Upload, FileText, CheckSquare, ChevronUp,
+  Download, Upload, FileText, CheckSquare,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import OverlayMenu from '@/components/OverlayMenu';
 
 const BRAND = Colors.light.tint;
 const TEXT = Colors.light.text;
@@ -510,11 +511,10 @@ export default function CatalogsScreen() {
   const renderCard = (vendor: Vendor) => {
     const color = getLogoColor(vendor);
     const initials = getInitials(vendor);
-    const isMenuOpen = openMenuId === vendor.id;
     const isDeleting = deletingId === vendor.id;
 
     return (
-      <View key={vendor.id} style={[s.card, isMenuOpen && { zIndex: 10 }]}>
+      <View key={vendor.id} style={s.card}>
         {/* Header row */}
         <View style={s.cardTop}>
           <View style={[s.avatar, { backgroundColor: color }]}>
@@ -535,21 +535,24 @@ export default function CatalogsScreen() {
             </View>
           </View>
           {/* ⋮ menu */}
-          <View style={{ position: 'relative', zIndex: 1000 }}>
-            <TouchableOpacity
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              onPress={() => setOpenMenuId(isMenuOpen ? null : vendor.id)}
-              style={s.ellipsisBtn}
-            >
-              <MoreVertical size={17} color={TEXT_LIGHT} />
-            </TouchableOpacity>
-            {isMenuOpen && (
-              <View style={s.cardMenu}>
-                <TouchableOpacity style={s.menuItem} onPress={() => openEdit(vendor)}>
+          <OverlayMenu menuWidth={185} align="right"
+            trigger={({ open: openMenu }) => (
+              <TouchableOpacity
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                onPress={openMenu}
+                style={s.ellipsisBtn}
+              >
+                <MoreVertical size={17} color={TEXT_LIGHT} />
+              </TouchableOpacity>
+            )}
+          >
+            {({ close }) => (
+              <>
+                <TouchableOpacity style={s.menuItem} onPress={() => { close(); openEdit(vendor); }}>
                   <Pencil size={13} color={TEXT} />
                   <Text style={s.menuItemText}>Edit Vendor</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.menuItem} onPress={() => toggleField(vendor, 'showInClientHub')}>
+                <TouchableOpacity style={s.menuItem} onPress={() => { close(); toggleField(vendor, 'showInClientHub'); }}>
                   {vendor.showInClientHub
                     ? <EyeOff size={13} color={TEXT} />
                     : <Eye size={13} color={TEXT} />}
@@ -557,7 +560,7 @@ export default function CatalogsScreen() {
                     {vendor.showInClientHub ? 'Hide from Client Hub' : 'Show in Client Hub'}
                   </Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.menuItem} onPress={() => toggleField(vendor, 'isFeatured')}>
+                <TouchableOpacity style={s.menuItem} onPress={() => { close(); toggleField(vendor, 'isFeatured'); }}>
                   <Star size={13} color={vendor.isFeatured ? '#F59E0B' : TEXT} fill={vendor.isFeatured ? '#F59E0B' : 'none'} />
                   <Text style={[s.menuItemText, vendor.isFeatured && { color: '#F59E0B' }]}>
                     {vendor.isFeatured ? 'Remove Featured' : 'Mark as Featured'}
@@ -565,7 +568,7 @@ export default function CatalogsScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[s.menuItem, { borderBottomWidth: 0 }]}
-                  onPress={() => handleDelete(vendor)}
+                  onPress={() => { close(); handleDelete(vendor); }}
                   disabled={isDeleting}
                 >
                   {isDeleting
@@ -573,9 +576,9 @@ export default function CatalogsScreen() {
                     : <Trash2 size={13} color="#DC2626" />}
                   <Text style={[s.menuItemText, { color: '#DC2626' }]}>Delete Vendor</Text>
                 </TouchableOpacity>
-              </View>
+              </>
             )}
-          </View>
+          </OverlayMenu>
         </View>
 
         {/* Status badges */}
@@ -641,35 +644,33 @@ export default function CatalogsScreen() {
           </View>
           <View style={s.headerActions}>
             {/* Actions dropdown */}
-            <View style={{ position: 'relative' }}>
-              <TouchableOpacity
-                style={s.actionsBtn}
-                onPress={() => { setOpenMenuId(null); setActionsOpen(v => !v); }}
-              >
-                <Text style={s.actionsBtnText}>Actions</Text>
-                {actionsOpen
-                  ? <ChevronUp size={15} color={TEXT_LIGHT} />
-                  : <ChevronDown size={15} color={TEXT_LIGHT} />}
-              </TouchableOpacity>
-              {actionsOpen && (
-                <View style={s.actionsMenu}>
-                  <TouchableOpacity style={s.actionsMenuItem} onPress={handleImportClick} disabled={importing}>
+            <OverlayMenu menuWidth={185} align="right"
+              trigger={({ open: openMenu }) => (
+                <TouchableOpacity style={s.actionsBtn} onPress={openMenu}>
+                  <Text style={s.actionsBtnText}>Actions</Text>
+                  <ChevronDown size={15} color={TEXT_LIGHT} />
+                </TouchableOpacity>
+              )}
+            >
+              {({ close }) => (
+                <>
+                  <TouchableOpacity style={s.actionsMenuItem} onPress={() => { close(); handleImportClick(); }} disabled={importing}>
                     {importing
                       ? <ActivityIndicator size="small" color={BRAND} />
                       : <Upload size={14} color={TEXT} />}
                     <Text style={s.actionsMenuItemText}>Import from CSV</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={s.actionsMenuItem} onPress={handleExport}>
+                  <TouchableOpacity style={s.actionsMenuItem} onPress={() => { close(); handleExport(); }}>
                     <Download size={14} color={TEXT} />
                     <Text style={s.actionsMenuItemText}>Export to CSV</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[s.actionsMenuItem, { borderBottomWidth: 0 }]} onPress={handleDownloadTemplate}>
+                  <TouchableOpacity style={[s.actionsMenuItem, { borderBottomWidth: 0 }]} onPress={() => { close(); handleDownloadTemplate(); }}>
                     <FileText size={14} color={TEXT} />
                     <Text style={s.actionsMenuItemText}>Download Template</Text>
                   </TouchableOpacity>
-                </View>
+                </>
               )}
-            </View>
+            </OverlayMenu>
 
             {/* Add Vendor */}
             <TouchableOpacity
