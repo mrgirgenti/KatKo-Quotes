@@ -65,6 +65,49 @@ export async function POST(request: Request) {
         );
         return Response.json({ updated: ids.length });
 
+      case 'assign-template': {
+        if (!value?.trim()) return Response.json({ error: 'templateId is required' }, { status: 400 });
+        const tmpl = await client.query(`SELECT id FROM "PlacementTemplate" WHERE id = $1`, [value.trim()]);
+        if (tmpl.rows.length === 0) return Response.json({ error: 'Template not found' }, { status: 404 });
+        await client.query(
+          `UPDATE "Product" SET "templateId" = $1, "updatedAt" = NOW() WHERE id = ANY($2::text[])`,
+          [value.trim(), ids],
+        );
+        return Response.json({ updated: ids.length });
+      }
+
+      case 'set-cost': {
+        const num = parseFloat(String(value));
+        if (isNaN(num) || num < 0) return Response.json({ error: 'Invalid cost value' }, { status: 400 });
+        await client.query(
+          `UPDATE "Product" SET "defaultBlankCost" = $1, "lastCostUpdatedAt" = NOW(), "updatedAt" = NOW() WHERE id = ANY($2::text[])`,
+          [num, ids],
+        );
+        return Response.json({ updated: ids.length });
+      }
+
+      case 'adjust-cost-pct': {
+        const pct = parseFloat(String(value));
+        if (isNaN(pct)) return Response.json({ error: 'Invalid percentage' }, { status: 400 });
+        await client.query(
+          `UPDATE "Product" SET
+            "defaultBlankCost" = ROUND(CAST("defaultBlankCost" * $1 AS numeric), 4),
+            "lastCostUpdatedAt" = NOW(),
+            "updatedAt" = NOW()
+          WHERE id = ANY($2::text[]) AND "defaultBlankCost" IS NOT NULL`,
+          [1 + pct / 100, ids],
+        );
+        return Response.json({ updated: ids.length });
+      }
+
+      case 'clear-cost': {
+        await client.query(
+          `UPDATE "Product" SET "defaultBlankCost" = NULL, "lastCostUpdatedAt" = NULL, "updatedAt" = NOW() WHERE id = ANY($1::text[])`,
+          [ids],
+        );
+        return Response.json({ updated: ids.length });
+      }
+
       case 'assign-source': {
         if (!vendorId?.trim()) return Response.json({ error: 'vendorId is required' }, { status: 400 });
         const vendor = await client.query(`SELECT id FROM "Vendor" WHERE id = $1`, [vendorId]);

@@ -1,0 +1,313 @@
+Products UX Refactor — Workflow Alignment
+
+Context
+
+The underlying catalog architecture is becoming solid.
+
+The current issue is workflow and information architecture.
+
+The Products section should become the primary workspace for managing products.
+
+Avoid creating additional management pages unless they solve a truly separate workflow.
+
+The goal is to align the system with how a real apparel decorator, CSR, sales rep, production manager, or shop owner actually manages products.
+
+Core Principle
+
+Products should be managed from the Products table.
+
+Product Detail should only contain information unique to a specific product.
+
+Administrative utilities should live in a dropdown menu.
+
+Do not create additional standalone management pages unless absolutely necessary.
+
+──────────────────────────────────────
+
+1. Products Table Is The Primary Workspace
+
+The Products table should remain the primary management interface.
+
+Columns:
+
+☐
+Style #
+Brand
+Product
+Category
+Vendors
+Cost
+Status
+⋮
+
+This is the exact terminology we use.
+
+Do NOT rename:
+
+* Style #
+* Brand
+* Product
+* Vendors
+
+Brand examples:
+
+* Next Level
+* Gildan
+* Bella+Canvas
+* Port Authority
+* Sport-Tek
+* Shaka Wear
+
+Product examples:
+
+* CVC Crew Tee
+* Heavy Cotton Tee
+* Jersey Tee
+
+Vendor examples:
+
+* S&S Activewear
+* SanMar
+* AlphaBroder
+* McCreary's
+
+──────────────────────────────────────
+
+2. Rename "Catalog" Dropdown
+
+Current:
+
+Catalog ▼
+
+Change to:
+
+Actions ▼
+
+Reasoning:
+
+The dropdown contains actions and utilities.
+
+Examples:
+
+Actions ▼
+├─ Product Audit
+├─ Vendors (future)
+├─ Import CSV
+├─ Export CSV
+├─ Auto Resolve Templates
+
+"Catalog" is misleading.
+
+"Actions" more accurately reflects its purpose.
+
+──────────────────────────────────────
+
+3. Remove Dedicated Manage Costs Page
+
+The current Manage Costs page should be removed.
+
+Cost management belongs directly in the Products table.
+
+Implement:
+
+Inline cost editing.
+
+Behavior:
+
+* Click Cost cell
+* Cell becomes editable
+* Enter or blur saves
+* Multiple rows can be edited independently
+* Saving indicator
+* Saved confirmation
+* Missing costs remain visually obvious
+
+Products should not require navigation to a separate page to edit costs.
+
+CSV imports remain available through Actions.
+
+──────────────────────────────────────
+
+4. Bulk Cost Editing
+
+Add cost management to Bulk Actions.
+
+Examples:
+
+Select products
+
+Bulk Actions
+├─ Set Cost
+├─ Increase Cost %
+├─ Decrease Cost %
+├─ Clear Cost
+
+Use cases:
+
+Vendor price increases
+Seasonal adjustments
+Catalog cleanup
+
+This is significantly more valuable than a dedicated cost management page.
+
+──────────────────────────────────────
+
+5. Product Detail Simplification
+
+Product Detail should only contain product-specific information.
+
+Keep:
+
+* Colors
+* Assets
+* Placements
+* Sources
+
+Do not add:
+
+* Cost management
+* Audit tools
+* Catalog utilities
+
+Those belong elsewhere.
+
+The Sources tab remains because:
+
+Vendor SKU
+Vendor URL
+Preferred Vendor
+Vendor Notes
+
+are legitimately product-specific.
+
+──────────────────────────────────────
+
+6. Vendors Strategy
+
+Do not continue building "Manage Sources".
+
+The current page is effectively another Products page and creates confusion.
+
+Instead:
+
+Future phase:
+
+Vendors
+
+Separate area.
+
+Purpose:
+
+Manage:
+
+* S&S Activewear
+* SanMar
+* AlphaBroder
+* McCreary's
+* Starline
+* Hit Promotional
+
+Future responsibilities:
+
+* Catalog PDFs
+* Product imports
+* API integrations
+* Sync settings
+* Vendor configuration
+
+For this phase:
+
+Remove "Manage Sources" from the Actions menu.
+
+Keep source assignment functionality in:
+
+* Bulk Actions
+* Product Detail → Sources tab
+
+No standalone Manage Sources page.
+
+──────────────────────────────────────
+
+7. Bulk Actions Verification
+
+Verify Products supports:
+
+* Assign Category
+* Assign Subcategory
+* Assign Product Type
+* Assign Template
+* Assign Vendor
+* Set Preferred Vendor
+* Set Cost
+* Increase Cost %
+* Decrease Cost %
+* Activate
+* Deactivate
+* Delete
+
+Implement any missing items.
+
+──────────────────────────────────────
+
+8. Product Audit
+
+Keep Product Audit.
+
+Move all catalog health and readiness indicators there.
+
+Examples:
+
+* Missing Cost
+* Missing Colors
+* Missing Assets
+* Missing Placements
+* Missing Vendors
+
+The Products table should not be cluttered with readiness indicators.
+
+Audit is the correct place.
+
+──────────────────────────────────────
+
+9. New Product Form Review
+
+Review the New Product workflow.
+
+Verify terminology aligns with:
+
+Style #
+Brand
+Product
+Category
+Vendors
+
+Do not introduce unnecessary terminology that conflicts with the Products table.
+
+Provide recommendations if inconsistencies exist.
+
+──────────────────────────────────────
+
+Deliverables
+
+Return:
+
+* Files changed
+* UX changes
+* Removed pages
+* Bulk action updates
+* Inline cost editing implementation
+* Product Detail simplification results
+* New Product form recommendations
+* Testing checklist
+
+Focus on workflow alignment.
+
+Do not build:
+
+* Quote Integration
+* Mockup Designer
+* Artwork Instances
+* Proof Generation
+* Vendor APIs
+
+This phase is strictly about making Products the primary management workspace.

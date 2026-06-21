@@ -25,12 +25,10 @@ import {
   Check,
   Minus,
   SlidersHorizontal,
-  Wrench,
   FileDown,
   FileUp,
   ClipboardList,
   DollarSign,
-  Truck,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import Colors from '@/constants/colors';
@@ -193,6 +191,284 @@ function BulkAssignModal({ visible, field, onSave, onClose }: {
   );
 }
 
+// ── BulkCostModal ─────────────────────────────────────────────────────────────
+function BulkCostModal({ visible, mode, onSave, onClose }: {
+  visible: boolean;
+  mode: 'set' | 'increase' | 'decrease' | null;
+  onSave: (value: string) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (visible) { setValue(''); setError(''); setSaving(false); }
+  }, [visible, mode]);
+
+  const title = mode === 'set' ? 'Set Cost' : mode === 'increase' ? 'Increase Cost' : 'Decrease Cost';
+  const label = mode === 'set' ? 'Blank Cost ($)' : mode === 'increase' ? 'Increase By (%)' : 'Decrease By (%)';
+  const placeholder = mode === 'set' ? 'e.g. 3.50' : 'e.g. 10';
+
+  const handleSave = async () => {
+    const num = parseFloat(value.trim());
+    if (isNaN(num) || num < 0) { setError('Enter a valid positive number.'); return; }
+    if ((mode === 'increase' || mode === 'decrease') && num > 100) { setError('Percentage must be between 0 and 100.'); return; }
+    setError('');
+    setSaving(true);
+    try {
+      await onSave(value.trim());
+      onClose();
+    } catch (e: any) {
+      setError(e.message || 'Failed to update costs.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={fm.overlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} style={[fm.sheet, { width: 360 }]} onPress={() => {}}>
+          <View style={fm.header}>
+            <Text style={fm.title}>{title}</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={20} color={TEXT_LIGHT} />
+            </TouchableOpacity>
+          </View>
+          <View style={[fm.body, { paddingBottom: 20 }]}>
+            {!!error && <View style={fm.errorBox}><Text style={fm.errorText}>{error}</Text></View>}
+            <Text style={fm.label}>{label}</Text>
+            <TextInput
+              style={fm.input}
+              value={value}
+              onChangeText={setValue}
+              placeholder={placeholder}
+              placeholderTextColor="#9CA3AF"
+              keyboardType="decimal-pad"
+              autoFocus
+              onSubmitEditing={handleSave}
+            />
+            <View style={{ flexDirection: 'row' as const, justifyContent: 'flex-end' as const, gap: 10, marginTop: 16 }}>
+              <TouchableOpacity style={[fm.btnCancel, { flex: 0, paddingHorizontal: 16 }]} onPress={onClose}>
+                <Text style={fm.btnCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[fm.btnSave, { flex: 0, paddingHorizontal: 20 }, saving && { opacity: 0.6 }]}
+                onPress={handleSave}
+                disabled={saving}
+              >
+                {saving
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={fm.btnSaveText}>Apply to Selected</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+// ── BulkVendorModal ───────────────────────────────────────────────────────────
+function BulkVendorModal({ visible, mode, onSave, onClose }: {
+  visible: boolean;
+  mode: 'assign' | 'preferred' | null;
+  onSave: (vendorId: string) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [vendors, setVendors] = useState<{ id: string; name: string }[]>([]);
+  const [selectedId, setSelectedId] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (visible) {
+      setSelectedId('');
+      setError('');
+      setSaving(false);
+      setLoading(true);
+      apiFetch('/api/vendors')
+        .then((data: any) => setVendors((data.vendors || []).filter((v: any) => v.isActive !== false)))
+        .catch(() => setError('Failed to load vendors.'))
+        .finally(() => setLoading(false));
+    }
+  }, [visible]);
+
+  const title = mode === 'assign' ? 'Assign Vendor' : 'Set Preferred Vendor';
+
+  const handleSave = async () => {
+    if (!selectedId) { setError('Select a vendor.'); return; }
+    setError('');
+    setSaving(true);
+    try {
+      await onSave(selectedId);
+      onClose();
+    } catch (e: any) {
+      setError(e.message || 'Failed to update vendors.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={fm.overlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} style={[fm.sheet, { width: 400 }]} onPress={() => {}}>
+          <View style={fm.header}>
+            <Text style={fm.title}>{title}</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={20} color={TEXT_LIGHT} />
+            </TouchableOpacity>
+          </View>
+          <View style={[fm.body, { paddingBottom: 20 }]}>
+            {!!error && <View style={fm.errorBox}><Text style={fm.errorText}>{error}</Text></View>}
+            {loading ? (
+              <ActivityIndicator color={BRAND} size="small" style={{ marginVertical: 20 }} />
+            ) : (
+              <>
+                <Text style={fm.label}>Vendor</Text>
+                <View style={[fm.dropdown, { marginBottom: 0, maxHeight: 260 }]}>
+                  <ScrollView showsVerticalScrollIndicator={false}>
+                    {vendors.map(v => (
+                      <TouchableOpacity
+                        key={v.id}
+                        style={[fm.dropOption, selectedId === v.id && fm.dropOptionActive]}
+                        onPress={() => setSelectedId(v.id)}
+                      >
+                        <Text style={[fm.dropOptionText, selectedId === v.id && fm.dropOptionTextActive]}>{v.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                    {vendors.length === 0 && (
+                      <View style={{ padding: 14 }}>
+                        <Text style={{ fontSize: 14, color: TEXT_LIGHT }}>No vendors found. Add vendors first.</Text>
+                      </View>
+                    )}
+                  </ScrollView>
+                </View>
+              </>
+            )}
+            <View style={{ flexDirection: 'row' as const, justifyContent: 'flex-end' as const, gap: 10, marginTop: 16 }}>
+              <TouchableOpacity style={[fm.btnCancel, { flex: 0, paddingHorizontal: 16 }]} onPress={onClose}>
+                <Text style={fm.btnCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[fm.btnSave, { flex: 0, paddingHorizontal: 20 }, (saving || loading) && { opacity: 0.6 }]}
+                onPress={handleSave}
+                disabled={saving || loading}
+              >
+                {saving
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={fm.btnSaveText}>Apply to Selected</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+// ── BulkTemplateModal ─────────────────────────────────────────────────────────
+function BulkTemplateModal({ visible, onSave, onClose }: {
+  visible: boolean;
+  onSave: (templateId: string) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [templates, setTemplates] = useState<{ id: string; key: string; name: string }[]>([]);
+  const [selectedId, setSelectedId] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (visible) {
+      setSelectedId('');
+      setError('');
+      setSaving(false);
+      setLoading(true);
+      apiFetch('/api/products/placement-templates')
+        .then((data: any) => setTemplates(data.templates || []))
+        .catch(() => setError('Failed to load templates.'))
+        .finally(() => setLoading(false));
+    }
+  }, [visible]);
+
+  const handleSave = async () => {
+    if (!selectedId) { setError('Select a template.'); return; }
+    setError('');
+    setSaving(true);
+    try {
+      await onSave(selectedId);
+      onClose();
+    } catch (e: any) {
+      setError(e.message || 'Failed to assign template.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={fm.overlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} style={[fm.sheet, { width: 400 }]} onPress={() => {}}>
+          <View style={fm.header}>
+            <Text style={fm.title}>Assign Template</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={20} color={TEXT_LIGHT} />
+            </TouchableOpacity>
+          </View>
+          <View style={[fm.body, { paddingBottom: 20 }]}>
+            {!!error && <View style={fm.errorBox}><Text style={fm.errorText}>{error}</Text></View>}
+            {loading ? (
+              <ActivityIndicator color={BRAND} size="small" style={{ marginVertical: 20 }} />
+            ) : (
+              <>
+                <Text style={fm.label}>Placement Template</Text>
+                <View style={[fm.dropdown, { marginBottom: 0, maxHeight: 260 }]}>
+                  <ScrollView showsVerticalScrollIndicator={false}>
+                    {templates.map(t => (
+                      <TouchableOpacity
+                        key={t.id}
+                        style={[fm.dropOption, selectedId === t.id && fm.dropOptionActive]}
+                        onPress={() => setSelectedId(t.id)}
+                      >
+                        <Text style={[fm.dropOptionText, selectedId === t.id && fm.dropOptionTextActive]}>
+                          {t.name || t.key}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                    {templates.length === 0 && (
+                      <View style={{ padding: 14 }}>
+                        <Text style={{ fontSize: 14, color: TEXT_LIGHT }}>No templates available.</Text>
+                      </View>
+                    )}
+                  </ScrollView>
+                </View>
+              </>
+            )}
+            <View style={{ flexDirection: 'row' as const, justifyContent: 'flex-end' as const, gap: 10, marginTop: 16 }}>
+              <TouchableOpacity style={[fm.btnCancel, { flex: 0, paddingHorizontal: 16 }]} onPress={onClose}>
+                <Text style={fm.btnCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[fm.btnSave, { flex: 0, paddingHorizontal: 20 }, (saving || loading) && { opacity: 0.6 }]}
+                onPress={handleSave}
+                disabled={saving || loading}
+              >
+                {saving
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={fm.btnSaveText}>Apply to Selected</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
 // ── ProductFormModal ──────────────────────────────────────────────────────────
 function ProductFormModal({
   visible,
@@ -274,7 +550,7 @@ function ProductFormModal({
               <View style={fm.errorBox}><Text style={fm.errorText}>{error}</Text></View>
             )}
 
-            <Text style={fm.label}>Style Number <Text style={{ color: BRAND }}>*</Text></Text>
+            <Text style={fm.label}>Style # <Text style={{ color: BRAND }}>*</Text></Text>
             <TextInput style={fm.input} value={form.styleNumber} onChangeText={v => upd('styleNumber', v)}
               placeholder="e.g. NL6210" placeholderTextColor="#9CA3AF" autoCapitalize="characters" />
 
@@ -282,9 +558,12 @@ function ProductFormModal({
             <TextInput style={fm.input} value={form.brand} onChangeText={v => upd('brand', v)}
               placeholder="e.g. Next Level" placeholderTextColor="#9CA3AF" />
 
-            <Text style={fm.label}>Manufacturer <Text style={{ color: BRAND }}>*</Text></Text>
+            <Text style={fm.label}>
+              Manufacturer <Text style={{ color: BRAND }}>*</Text>
+              {'  '}<Text style={{ fontSize: 11, color: TEXT_LIGHT, fontWeight: '400' }}>apparel maker, not distributor</Text>
+            </Text>
             <TextInput style={fm.input} value={form.vendor} onChangeText={v => upd('vendor', v)}
-              placeholder="e.g. Next Level" placeholderTextColor="#9CA3AF" />
+              placeholder="e.g. Next Level Apparel" placeholderTextColor="#9CA3AF" />
 
             <Text style={fm.label}>Product Name <Text style={{ color: BRAND }}>*</Text></Text>
             <TextInput style={fm.input} value={form.name} onChangeText={v => upd('name', v)}
@@ -417,6 +696,14 @@ export default function CatalogAdminScreen() {
   const [assignModal, setAssignModal] = useState<'category' | 'subcategory' | 'productType' | null>(null);
 
   const [bulkResolving, setBulkResolving] = useState(false);
+
+  const [costEdits, setCostEdits] = useState<Map<string, string>>(new Map());
+  const [costSaving, setCostSaving] = useState<Set<string>>(new Set());
+  const [costSaved, setCostSaved] = useState<Set<string>>(new Set());
+
+  const [bulkCostModal, setBulkCostModal] = useState<'set' | 'increase' | 'decrease' | null>(null);
+  const [bulkVendorModal, setBulkVendorModal] = useState<'assign' | 'preferred' | null>(null);
+  const [bulkTemplateModal, setBulkTemplateModal] = useState(false);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -563,6 +850,109 @@ export default function CatalogAdminScreen() {
     }
   };
 
+  const enterCostEdit = (id: string, current: number | string | null) => {
+    const val = current != null ? parseFloat(String(current)).toFixed(2) : '';
+    setCostEdits(prev => new Map(prev).set(id, val));
+  };
+
+  const saveCostEdit = async (id: string) => {
+    const raw = costEdits.get(id);
+    if (raw === undefined) return;
+    setCostEdits(prev => { const next = new Map(prev); next.delete(id); return next; });
+    const trimmed = raw.trim();
+    const num = trimmed === '' ? null : parseFloat(trimmed);
+    if (num !== null && (isNaN(num) || num < 0)) return;
+    setCostSaving(prev => new Set(prev).add(id));
+    try {
+      await apiFetch(`/api/products/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ defaultBlankCost: num }),
+      });
+      setProducts(prev => prev.map(p => p.id === id ? { ...p, defaultBlankCost: num } : p));
+      setCostSaved(prev => new Set(prev).add(id));
+      setTimeout(() => setCostSaved(prev => { const s = new Set(prev); s.delete(id); return s; }), 2000);
+    } catch {
+      // silently discard — cost cell will revert to original value
+    } finally {
+      setCostSaving(prev => { const s = new Set(prev); s.delete(id); return s; });
+    }
+  };
+
+  const handleBulkCost = async (mode: 'set' | 'increase' | 'decrease', value: string) => {
+    const ids = [...selectedIds];
+    const action = mode === 'set' ? 'set-cost' : 'adjust-cost-pct';
+    const val = mode === 'decrease' ? String(-parseFloat(value)) : value;
+    try {
+      await apiFetch('/api/products/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ action, ids, value: val }),
+      });
+      await loadProducts();
+      setSelectedIds(new Set());
+    } catch (e: any) { Alert.alert('Error', e.message || 'Failed to update costs'); }
+  };
+
+  const handleBulkClearCost = () => {
+    const n = selectedIds.size;
+    Alert.alert(
+      'Clear Costs',
+      `Remove cost from ${n} product${n !== 1 ? 's' : ''}? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear', style: 'destructive',
+          onPress: async () => {
+            const ids = [...selectedIds];
+            try {
+              await apiFetch('/api/products/bulk', {
+                method: 'POST',
+                body: JSON.stringify({ action: 'clear-cost', ids }),
+              });
+              setProducts(prev => prev.map(p => ids.includes(p.id) ? { ...p, defaultBlankCost: null, lastCostUpdatedAt: null } : p));
+              setSelectedIds(new Set());
+            } catch (e: any) { Alert.alert('Error', e.message || 'Failed to clear costs'); }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleBulkAssignVendor = async (vendorId: string) => {
+    const ids = [...selectedIds];
+    try {
+      await apiFetch('/api/products/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'assign-source', ids, vendorId }),
+      });
+      await loadProducts();
+      setSelectedIds(new Set());
+    } catch (e: any) { Alert.alert('Error', e.message || 'Failed to assign vendor'); }
+  };
+
+  const handleBulkSetPreferredVendor = async (vendorId: string) => {
+    const ids = [...selectedIds];
+    try {
+      await apiFetch('/api/products/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'set-preferred-source', ids, vendorId }),
+      });
+      await loadProducts();
+      setSelectedIds(new Set());
+    } catch (e: any) { Alert.alert('Error', e.message || 'Failed to set preferred vendor'); }
+  };
+
+  const handleBulkAssignTemplate = async (templateId: string) => {
+    const ids = [...selectedIds];
+    try {
+      await apiFetch('/api/products/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'assign-template', ids, value: templateId }),
+      });
+      setProducts(prev => prev.map(p => ids.includes(p.id) ? { ...p, templateId } : p));
+      setSelectedIds(new Set());
+    } catch (e: any) { Alert.alert('Error', e.message || 'Failed to assign template'); }
+  };
+
   const handleExportCSV = () => {
     if (Platform.OS !== 'web') { Alert.alert('Export', 'CSV export is available on web.'); return; }
     const rows = [
@@ -597,12 +987,11 @@ export default function CatalogAdminScreen() {
           )}
         </View>
         <View style={s.headerActions}>
-          {/* Catalog maintenance dropdown */}
+          {/* Actions dropdown */}
           <OverlayMenu menuWidth={210} align="right"
             trigger={({ open }) => (
               <TouchableOpacity style={s.outlineBtn} onPress={open}>
-                <Wrench size={14} color={TEXT_LIGHT} />
-                <Text style={s.outlineBtnText}>Catalog</Text>
+                <Text style={s.outlineBtnText}>Actions</Text>
                 <ChevronDown size={12} color={TEXT_LIGHT} />
               </TouchableOpacity>
             )}
@@ -612,14 +1001,6 @@ export default function CatalogAdminScreen() {
                 <TouchableOpacity style={s.floatItem} onPress={() => { close(); router.push('/catalog-audit' as any); }}>
                   <ClipboardList size={15} color={TEXT_LIGHT} />
                   <Text style={s.floatItemText}>Product Audit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.floatItem} onPress={() => { close(); router.push('/catalog-costs' as any); }}>
-                  <DollarSign size={15} color={TEXT_LIGHT} />
-                  <Text style={s.floatItemText}>Manage Costs</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.floatItem} onPress={() => { close(); router.push('/catalog-sources' as any); }}>
-                  <Truck size={15} color={TEXT_LIGHT} />
-                  <Text style={s.floatItemText}>Manage Sources</Text>
                 </TouchableOpacity>
                 <View style={s.floatDivider} />
                 <TouchableOpacity style={s.floatItem} onPress={() => { close(); handleExportCSV(); }}>
@@ -733,7 +1114,7 @@ export default function CatalogAdminScreen() {
           <TouchableOpacity style={s.selBtn} onPress={handleBulkDeactivate}>
             <Text style={s.selBtnText}>Deactivate</Text>
           </TouchableOpacity>
-          <OverlayMenu menuWidth={190} align="left"
+          <OverlayMenu menuWidth={200} align="left"
             trigger={({ open }) => (
               <TouchableOpacity style={s.selBtn} onPress={open}>
                 <Text style={s.selBtnText}>Assign</Text>
@@ -752,9 +1133,42 @@ export default function CatalogAdminScreen() {
                 <TouchableOpacity style={s.floatItem} onPress={() => { close(); setAssignModal('productType'); }}>
                   <Text style={s.floatItemText}>Product Type</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={s.floatItem} onPress={() => { close(); setBulkTemplateModal(true); }}>
+                  <Text style={s.floatItemText}>Template</Text>
+                </TouchableOpacity>
                 <View style={s.floatDivider} />
-                <TouchableOpacity style={s.floatItem} onPress={() => { close(); router.push('/catalog-sources' as any); }}>
-                  <Text style={s.floatItemText}>Assign Source →</Text>
+                <TouchableOpacity style={s.floatItem} onPress={() => { close(); setBulkVendorModal('assign'); }}>
+                  <Text style={s.floatItemText}>Assign Vendor</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.floatItem} onPress={() => { close(); setBulkVendorModal('preferred'); }}>
+                  <Text style={s.floatItemText}>Set Preferred Vendor</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </OverlayMenu>
+          <OverlayMenu menuWidth={180} align="left"
+            trigger={({ open }) => (
+              <TouchableOpacity style={s.selBtn} onPress={open}>
+                <DollarSign size={12} color={BRAND} />
+                <Text style={s.selBtnText}>Cost</Text>
+                <ChevronDown size={12} color={BRAND} />
+              </TouchableOpacity>
+            )}
+          >
+            {({ close }) => (
+              <>
+                <TouchableOpacity style={s.floatItem} onPress={() => { close(); setBulkCostModal('set'); }}>
+                  <Text style={s.floatItemText}>Set Cost</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.floatItem} onPress={() => { close(); setBulkCostModal('increase'); }}>
+                  <Text style={s.floatItemText}>Increase %</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.floatItem} onPress={() => { close(); setBulkCostModal('decrease'); }}>
+                  <Text style={s.floatItemText}>Decrease %</Text>
+                </TouchableOpacity>
+                <View style={s.floatDivider} />
+                <TouchableOpacity style={s.floatItem} onPress={() => { close(); handleBulkClearCost(); }}>
+                  <Text style={[s.floatItemText, { color: '#DC2626' }]}>Clear Cost</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -781,7 +1195,7 @@ export default function CatalogAdminScreen() {
         <Text style={[s.th, s.cBrand]}>Brand</Text>
         <Text style={[s.th, s.cName]}>Product</Text>
         <Text style={[s.th, s.cCat]}>Category</Text>
-        <Text style={[s.th, s.cVendor]}>Sources</Text>
+        <Text style={[s.th, s.cVendor]}>Vendors</Text>
         <Text style={[s.th, s.cCost]}>Cost</Text>
         <Text style={[s.th, s.cStatus]}>Status</Text>
         <View style={s.cActions} />
@@ -837,17 +1251,46 @@ export default function CatalogAdminScreen() {
                 </Text>
                 {(product.vendorCount ?? 0) > 0 && (
                   <Text style={s.tdSub} numberOfLines={1}>
-                    {product.vendorCount} {product.vendorCount === 1 ? 'source' : 'sources'}
+                    {product.vendorCount} {product.vendorCount === 1 ? 'vendor' : 'vendors'}
                   </Text>
                 )}
               </View>
               <View style={s.cCost}>
-                {product.defaultBlankCost != null ? (
-                  <Text style={s.costCell} numberOfLines={1}>
-                    ${parseFloat(String(product.defaultBlankCost)).toFixed(2)}
-                  </Text>
+                {costEdits.has(product.id) ? (
+                  <TextInput
+                    style={s.costInput}
+                    value={costEdits.get(product.id) ?? ''}
+                    onChangeText={v => setCostEdits(prev => new Map(prev).set(product.id, v))}
+                    onBlur={() => saveCostEdit(product.id)}
+                    onSubmitEditing={() => saveCostEdit(product.id)}
+                    keyboardType="decimal-pad"
+                    autoFocus
+                    selectTextOnFocus
+                    placeholder="0.00"
+                    placeholderTextColor="#D1D5DB"
+                  />
+                ) : costSaving.has(product.id) ? (
+                  <ActivityIndicator size="small" color={BRAND} />
+                ) : costSaved.has(product.id) ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                    <Check size={11} color="#059669" />
+                    <Text style={[s.costCell, { color: '#059669' }]}>
+                      ${parseFloat(String(product.defaultBlankCost ?? 0)).toFixed(2)}
+                    </Text>
+                  </View>
                 ) : (
-                  <Text style={s.costCellMissing}>—</Text>
+                  <TouchableOpacity
+                    onPress={(e: any) => { e.stopPropagation?.(); enterCostEdit(product.id, product.defaultBlankCost); }}
+                    activeOpacity={0.7}
+                  >
+                    {product.defaultBlankCost != null ? (
+                      <Text style={s.costCell} numberOfLines={1}>
+                        ${parseFloat(String(product.defaultBlankCost)).toFixed(2)}
+                      </Text>
+                    ) : (
+                      <Text style={s.costCellMissing}>—</Text>
+                    )}
+                  </TouchableOpacity>
                 )}
               </View>
               <View style={s.cStatus}>
@@ -907,6 +1350,29 @@ export default function CatalogAdminScreen() {
         field={assignModal}
         onSave={handleBulkAssign}
         onClose={() => setAssignModal(null)}
+      />
+
+      <BulkCostModal
+        visible={!!bulkCostModal}
+        mode={bulkCostModal}
+        onSave={async (value) => { await handleBulkCost(bulkCostModal!, value); }}
+        onClose={() => setBulkCostModal(null)}
+      />
+
+      <BulkVendorModal
+        visible={!!bulkVendorModal}
+        mode={bulkVendorModal}
+        onSave={async (vendorId) => {
+          if (bulkVendorModal === 'assign') await handleBulkAssignVendor(vendorId);
+          else await handleBulkSetPreferredVendor(vendorId);
+        }}
+        onClose={() => setBulkVendorModal(null)}
+      />
+
+      <BulkTemplateModal
+        visible={bulkTemplateModal}
+        onSave={handleBulkAssignTemplate}
+        onClose={() => setBulkTemplateModal(false)}
       />
     </View>
   );
@@ -1082,7 +1548,13 @@ const s = StyleSheet.create({
   cActions: { width: 44, alignItems: 'center', position: 'relative' as any },
 
   costCell: { fontSize: 13, fontWeight: '600', color: TEXT },
-  costCellMissing: { fontSize: 13, color: '#D1D5DB' },
+  costCellMissing: { fontSize: 13, color: '#D1D5DB', borderBottomWidth: 1, borderBottomColor: '#D1D5DB', borderStyle: 'dashed' as any },
+  costInput: {
+    fontSize: 13, fontWeight: '600', color: TEXT,
+    borderWidth: 1, borderColor: BRAND, borderRadius: 4,
+    paddingHorizontal: 5, paddingVertical: 2,
+    outlineStyle: 'none' as any, width: 68,
+  },
 
   badge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start' },
   badgeActive:     { backgroundColor: '#D1FAE5' },
