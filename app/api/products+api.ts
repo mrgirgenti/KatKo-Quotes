@@ -106,7 +106,7 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { styleNumber, vendor, brand, name, category, sortOrder } = body as Record<string, string>;
+  const { styleNumber, vendor, brand, name, category, sortOrder, subcategory, productType, gender } = body as Record<string, string>;
 
   if (!styleNumber?.trim()) return Response.json({ error: 'styleNumber is required' }, { status: 400 });
   if (!vendor?.trim())      return Response.json({ error: 'vendor is required' }, { status: 400 });
@@ -117,10 +117,12 @@ export async function POST(request: Request) {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `INSERT INTO "Product" (id, "styleNumber", vendor, brand, name, category, "isActive", "sortOrder", "createdAt", "updatedAt")
-       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, true, $6, NOW(), NOW())
+      `INSERT INTO "Product" (id, "styleNumber", vendor, brand, name, category, subcategory, "productType", gender, "isActive", "sortOrder", "createdAt", "updatedAt")
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, true, $9, NOW(), NOW())
        RETURNING *`,
-      [styleNumber.trim(), vendor.trim(), brand.trim(), name.trim(), category.trim(), sortOrder ?? 0],
+      [styleNumber.trim(), vendor.trim(), brand.trim(), name.trim(), category.trim(),
+       subcategory?.trim() || null, productType?.trim() || null, gender?.trim() || null,
+       sortOrder ?? 0],
     );
     return Response.json({ product: result.rows[0] }, { status: 201 });
   } catch (err: unknown) {

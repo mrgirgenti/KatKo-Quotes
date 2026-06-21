@@ -537,11 +537,14 @@ model Product {
   brand       String
   name        String
   category    String
-  isActive    Boolean  @default(true)
-  sortOrder   Int      @default(0)
-  templateId  String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  templateId   String?
+  subcategory  String?
+  productType  String?
+  gender       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   colors     ProductColor[]
   placements ProductPlacement[]
@@ -553,6 +556,8 @@ model Product {
   @@index([category])
   @@index([isActive])
   @@index([templateId])
+  @@index([subcategory])
+  @@index([productType])
 }
 
 model ProductColor {

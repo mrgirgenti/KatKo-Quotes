@@ -18,6 +18,7 @@ import Colors from '@/constants/colors';
 import { apiFetch, getAuthHeaders } from '@/lib/apiFetch';
 import PageBackHeader from '@/components/PageBackHeader';
 import PlacementEditor, { ZoneData } from '@/components/catalog/PlacementEditor';
+import { CATEGORY_TREE, GENDER_OPTIONS } from '@/lib/templateMapping';
 
 const BRAND = Colors.light.tint;
 const TEXT = Colors.light.text;
@@ -25,8 +26,6 @@ const TEXT_LIGHT = Colors.light.textSecondary;
 const BORDER = Colors.light.border;
 const SURFACE = Colors.light.surface;
 const BG = Colors.light.background;
-
-const PRODUCT_CATEGORIES = ['Apparel', 'Headwear', 'Bags', 'Promotional', 'Accessories', 'Other'];
 
 const ASSET_TYPES: { key: string; label: string }[] = [
   { key: 'THUMBNAIL', label: 'Thumbnail' },
@@ -53,6 +52,9 @@ interface ProductData {
   category: string;
   isActive: boolean;
   templateId?: string | null;
+  subcategory?: string | null;
+  productType?: string | null;
+  gender?: string | null;
 }
 
 interface EffectivePlacement extends ZoneData {
@@ -102,28 +104,38 @@ function EditProductModal({
   onClose: () => void;
 }) {
   const [form, setForm] = useState({
-    styleNumber: '', brand: '', vendor: '', name: '', category: 'Apparel',
+    styleNumber: '', brand: '', vendor: '', name: '',
+    category: 'Apparel', subcategory: '', productType: '', gender: '',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [showCatDrop, setShowCatDrop] = useState(false);
+  const [openDrop, setOpenDrop] = useState<'cat' | 'sub' | 'type' | 'gen' | null>(null);
+
+  const subcategories = Object.keys(CATEGORY_TREE[form.category] ?? {});
+  const productTypes  = CATEGORY_TREE[form.category]?.[form.subcategory] ?? [];
+  const TOP_CATS      = Object.keys(CATEGORY_TREE);
 
   useEffect(() => {
     if (visible && product) {
       setForm({
         styleNumber: product.styleNumber,
-        brand: product.brand,
-        vendor: product.vendor,
-        name: product.name,
-        category: product.category || 'Apparel',
+        brand:       product.brand,
+        vendor:      product.vendor,
+        name:        product.name,
+        category:    product.category    || 'Apparel',
+        subcategory: product.subcategory || '',
+        productType: product.productType || '',
+        gender:      product.gender      || '',
       });
       setError('');
       setSaving(false);
-      setShowCatDrop(false);
+      setOpenDrop(null);
     }
   }, [visible, product]);
 
   const upd = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }));
+  const setCategory    = (v: string) => { setForm(f => ({ ...f, category: v, subcategory: '', productType: '' })); setOpenDrop(null); };
+  const setSubcategory = (v: string) => { setForm(f => ({ ...f, subcategory: v, productType: '' })); setOpenDrop(null); };
 
   const handleSave = async () => {
     if (!form.styleNumber.trim() || !form.brand.trim() || !form.vendor.trim() || !form.name.trim()) {
@@ -145,7 +157,7 @@ function EditProductModal({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={fm.overlay} activeOpacity={1} onPress={onClose}>
-        <TouchableOpacity activeOpacity={1} style={fm.sheet} onPress={() => setShowCatDrop(false)}>
+        <TouchableOpacity activeOpacity={1} style={fm.sheet} onPress={() => setOpenDrop(null)}>
           <View style={fm.header}>
             <Text style={fm.title}>Edit Product</Text>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -171,24 +183,97 @@ function EditProductModal({
             <TextInput style={fm.input} value={form.name} onChangeText={v => upd('name', v)}
               placeholder="e.g. CVC Crew Tee" placeholderTextColor="#9CA3AF" />
 
+            {/* Category */}
             <Text style={fm.label}>Category</Text>
-            <TouchableOpacity style={fm.select} onPress={() => setShowCatDrop(d => !d)}>
-              <Text style={fm.selectText}>{form.category}</Text>
+            <TouchableOpacity style={fm.select} onPress={() => setOpenDrop(d => d === 'cat' ? null : 'cat')}>
+              <Text style={fm.selectText}>{form.category || 'Select…'}</Text>
               <ChevronDown size={16} color={TEXT_LIGHT} />
             </TouchableOpacity>
-            {showCatDrop && (
+            {openDrop === 'cat' && (
               <View style={fm.dropdown}>
-                {PRODUCT_CATEGORIES.map(cat => (
-                  <TouchableOpacity
-                    key={cat}
-                    style={[fm.dropOption, form.category === cat && fm.dropOptionActive]}
-                    onPress={() => { upd('category', cat); setShowCatDrop(false); }}
-                  >
+                {TOP_CATS.map(cat => (
+                  <TouchableOpacity key={cat} style={[fm.dropOption, form.category === cat && fm.dropOptionActive]}
+                    onPress={() => setCategory(cat)}>
                     <Text style={[fm.dropOptionText, form.category === cat && fm.dropOptionTextActive]}>{cat}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             )}
+
+            {/* Subcategory */}
+            {subcategories.length > 0 && (
+              <>
+                <Text style={fm.label}>Subcategory</Text>
+                <TouchableOpacity style={fm.select} onPress={() => setOpenDrop(d => d === 'sub' ? null : 'sub')}>
+                  <Text style={[fm.selectText, !form.subcategory && { color: '#9CA3AF' }]}>
+                    {form.subcategory || 'Select…'}
+                  </Text>
+                  <ChevronDown size={16} color={TEXT_LIGHT} />
+                </TouchableOpacity>
+                {openDrop === 'sub' && (
+                  <View style={fm.dropdown}>
+                    <TouchableOpacity style={fm.dropOption} onPress={() => setSubcategory('')}>
+                      <Text style={[fm.dropOptionText, !form.subcategory && { color: BRAND, fontWeight: '600' }]}>— None —</Text>
+                    </TouchableOpacity>
+                    {subcategories.map(sub => (
+                      <TouchableOpacity key={sub} style={[fm.dropOption, form.subcategory === sub && fm.dropOptionActive]}
+                        onPress={() => setSubcategory(sub)}>
+                        <Text style={[fm.dropOptionText, form.subcategory === sub && fm.dropOptionTextActive]}>{sub}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* Product Type */}
+            {productTypes.length > 0 && (
+              <>
+                <Text style={fm.label}>Product Type</Text>
+                <TouchableOpacity style={fm.select} onPress={() => setOpenDrop(d => d === 'type' ? null : 'type')}>
+                  <Text style={[fm.selectText, !form.productType && { color: '#9CA3AF' }]}>
+                    {form.productType || 'Select…'}
+                  </Text>
+                  <ChevronDown size={16} color={TEXT_LIGHT} />
+                </TouchableOpacity>
+                {openDrop === 'type' && (
+                  <View style={fm.dropdown}>
+                    <TouchableOpacity style={fm.dropOption} onPress={() => { upd('productType', ''); setOpenDrop(null); }}>
+                      <Text style={[fm.dropOptionText, !form.productType && { color: BRAND, fontWeight: '600' }]}>— None —</Text>
+                    </TouchableOpacity>
+                    {productTypes.map(pt => (
+                      <TouchableOpacity key={pt} style={[fm.dropOption, form.productType === pt && fm.dropOptionActive]}
+                        onPress={() => { upd('productType', pt); setOpenDrop(null); }}>
+                        <Text style={[fm.dropOptionText, form.productType === pt && fm.dropOptionTextActive]}>{pt}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* Gender */}
+            <Text style={fm.label}>Gender</Text>
+            <TouchableOpacity style={fm.select} onPress={() => setOpenDrop(d => d === 'gen' ? null : 'gen')}>
+              <Text style={[fm.selectText, !form.gender && { color: '#9CA3AF' }]}>
+                {form.gender || 'Select…'}
+              </Text>
+              <ChevronDown size={16} color={TEXT_LIGHT} />
+            </TouchableOpacity>
+            {openDrop === 'gen' && (
+              <View style={fm.dropdown}>
+                <TouchableOpacity style={fm.dropOption} onPress={() => { upd('gender', ''); setOpenDrop(null); }}>
+                  <Text style={[fm.dropOptionText, !form.gender && { color: BRAND, fontWeight: '600' }]}>— None —</Text>
+                </TouchableOpacity>
+                {GENDER_OPTIONS.map(g => (
+                  <TouchableOpacity key={g} style={[fm.dropOption, form.gender === g && fm.dropOptionActive]}
+                    onPress={() => { upd('gender', g); setOpenDrop(null); }}>
+                    <Text style={[fm.dropOptionText, form.gender === g && fm.dropOptionTextActive]}>{g}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
             <View style={{ height: 24 }} />
           </ScrollView>
           <View style={fm.footer}>
@@ -536,6 +621,8 @@ export default function ProductDetailScreen() {
   const [templates, setTemplates] = useState<TemplateOption[]>([]);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [templateAssigning, setTemplateAssigning] = useState(false);
+  const [templateSource, setTemplateSource] = useState<string | null>(null);
+  const [resolvedTemplateKey, setResolvedTemplateKey] = useState<string | null>(null);
 
   const loadAll = useCallback(async () => {
     if (!productId) return;
@@ -566,6 +653,8 @@ export default function ProductDetailScreen() {
     try {
       const data = await apiFetch(`/api/products/${productId}/effective-placements`);
       setEffectivePlacements((data.placements || []) as EffectivePlacement[]);
+      setTemplateSource(data.templateSource ?? null);
+      setResolvedTemplateKey(data.templateKey ?? null);
     } catch { /* silent — fall back to product placements */ }
     finally { setEpLoading(false); }
   }, [productId]);
@@ -790,6 +879,26 @@ export default function ProductDetailScreen() {
               </View>
             </>
           )}
+          {!!product.subcategory && (
+            <>
+              <View style={s.infoSep} />
+              <View style={s.infoChip}>
+                <Text style={s.infoChipLabel}>Type</Text>
+                <Text style={s.infoChipValue}>
+                  {product.subcategory}{product.productType ? ` / ${product.productType}` : ''}
+                </Text>
+              </View>
+            </>
+          )}
+          {!!product.gender && (
+            <>
+              <View style={s.infoSep} />
+              <View style={s.infoChip}>
+                <Text style={s.infoChipLabel}>Gender</Text>
+                <Text style={s.infoChipValue}>{product.gender}</Text>
+              </View>
+            </>
+          )}
           <View style={s.infoSep} />
           <View
             style={[
@@ -860,10 +969,32 @@ export default function ProductDetailScreen() {
                 <Text style={s.tmplPickerText} numberOfLines={1}>
                   {product?.templateId
                     ? (templates.find(t => t.id === product.templateId)?.name ?? '…')
-                    : 'None'}
+                    : resolvedTemplateKey
+                      ? (templates.find(t => t.key === resolvedTemplateKey)?.name ?? resolvedTemplateKey)
+                      : 'None'}
                 </Text>
                 <ChevronDown size={13} color={TEXT_LIGHT} />
               </TouchableOpacity>
+              {templateSource === 'explicit' && (
+                <View style={s.tmplBadgeExplicit}>
+                  <Text style={s.tmplBadgeTextExplicit}>explicit</Text>
+                </View>
+              )}
+              {(templateSource === 'auto-subcategory-producttype' || templateSource === 'auto-subcategory') && (
+                <View style={s.tmplBadgeAuto}>
+                  <Text style={s.tmplBadgeTextAuto}>auto</Text>
+                </View>
+              )}
+              {templateSource === 'explicit' && (
+                <TouchableOpacity
+                  style={s.tmplRemoveBtn}
+                  onPress={() => handleAssignTemplate(null)}
+                  disabled={templateAssigning}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <X size={14} color="#DC2626" />
+                </TouchableOpacity>
+              )}
               {templatePickerOpen && (
                 <View style={s.tmplDropdown}>
                   <TouchableOpacity
@@ -871,7 +1002,7 @@ export default function ProductDetailScreen() {
                     onPress={() => handleAssignTemplate(null)}
                   >
                     <Text style={[s.tmplDropOptionText, !product?.templateId && { color: BRAND, fontWeight: '600' }]}>
-                      None
+                      None (use auto-resolve)
                     </Text>
                   </TouchableOpacity>
                   {templates.map(t => (
@@ -1022,6 +1153,11 @@ const s = StyleSheet.create({
   tmplDropKey: { fontSize: 10, color: TEXT_LIGHT, marginLeft: 8 },
   tmplManageBtn: { paddingHorizontal: 8, paddingVertical: 4 },
   tmplManageBtnText: { fontSize: 12, color: BRAND },
+  tmplBadgeExplicit: { backgroundColor: '#DBEAFE', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  tmplBadgeTextExplicit: { fontSize: 10, fontWeight: '600' as const, color: '#1D4ED8' },
+  tmplBadgeAuto: { backgroundColor: '#F0FDF4', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  tmplBadgeTextAuto: { fontSize: 10, fontWeight: '600' as const, color: '#15803D' },
+  tmplRemoveBtn: { padding: 2 },
   epLoadBox: { height: 80, alignItems: 'center', justifyContent: 'center' },
   tabActionRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   tabSubtitle: { fontSize: 13, color: TEXT_LIGHT },

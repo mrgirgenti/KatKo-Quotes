@@ -26,6 +26,7 @@ import {
 import { useRouter } from 'expo-router';
 import Colors from '@/constants/colors';
 import { apiFetch } from '@/lib/apiFetch';
+import { CATEGORY_TREE, GENDER_OPTIONS } from '@/lib/templateMapping';
 
 const BRAND = Colors.light.tint;
 const TEXT = Colors.light.text;
@@ -34,14 +35,15 @@ const BORDER = Colors.light.border;
 const SURFACE = Colors.light.surface;
 const BG = Colors.light.background;
 
-const PRODUCT_CATEGORIES = ['Apparel', 'Headwear', 'Bags', 'Promotional', 'Accessories', 'Other'];
-
 const EMPTY_FORM = {
   styleNumber: '',
-  brand: '',
-  vendor: '',
-  name: '',
-  category: 'Apparel',
+  brand:       '',
+  vendor:      '',
+  name:        '',
+  category:    'Apparel',
+  subcategory: '',
+  productType: '',
+  gender:      '',
 };
 
 interface Product {
@@ -54,6 +56,9 @@ interface Product {
   isActive: boolean;
   sortOrder: number;
   createdAt: string;
+  subcategory?: string | null;
+  productType?: string | null;
+  gender?: string | null;
 }
 
 function ProductFormModal({
@@ -70,7 +75,11 @@ function ProductFormModal({
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [showCatDrop, setShowCatDrop] = useState(false);
+  const [openDrop, setOpenDrop] = useState<'cat' | 'sub' | 'type' | 'gen' | null>(null);
+
+  const subcategories = Object.keys(CATEGORY_TREE[form.category] ?? {});
+  const productTypes  = CATEGORY_TREE[form.category]?.[form.subcategory] ?? [];
+  const TOP_CATS      = Object.keys(CATEGORY_TREE);
 
   useEffect(() => {
     if (visible) {
@@ -78,27 +87,32 @@ function ProductFormModal({
         initial
           ? {
               styleNumber: initial.styleNumber,
-              brand: initial.brand,
-              vendor: initial.vendor,
-              name: initial.name,
-              category: initial.category || 'Apparel',
+              brand:       initial.brand,
+              vendor:      initial.vendor,
+              name:        initial.name,
+              category:    initial.category    || 'Apparel',
+              subcategory: initial.subcategory || '',
+              productType: initial.productType || '',
+              gender:      initial.gender      || '',
             }
           : { ...EMPTY_FORM },
       );
       setError('');
       setSaving(false);
-      setShowCatDrop(false);
+      setOpenDrop(null);
     }
   }, [visible, initial]);
 
   const upd = <K extends keyof typeof EMPTY_FORM>(k: K, v: (typeof EMPTY_FORM)[K]) =>
     setForm(f => ({ ...f, [k]: v }));
+  const setCategory    = (v: string) => { setForm(f => ({ ...f, category: v, subcategory: '', productType: '' })); setOpenDrop(null); };
+  const setSubcategory = (v: string) => { setForm(f => ({ ...f, subcategory: v, productType: '' })); setOpenDrop(null); };
 
   const handleSave = async () => {
     if (!form.styleNumber.trim()) { setError('Style number is required.'); return; }
-    if (!form.brand.trim()) { setError('Brand is required.'); return; }
-    if (!form.vendor.trim()) { setError('Vendor is required.'); return; }
-    if (!form.name.trim()) { setError('Product name is required.'); return; }
+    if (!form.brand.trim())       { setError('Brand is required.'); return; }
+    if (!form.vendor.trim())      { setError('Vendor is required.'); return; }
+    if (!form.name.trim())        { setError('Product name is required.'); return; }
     setError('');
     setSaving(true);
     try {
@@ -114,7 +128,7 @@ function ProductFormModal({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={fm.overlay} activeOpacity={1} onPress={onClose}>
-        <TouchableOpacity activeOpacity={1} style={fm.sheet} onPress={() => setShowCatDrop(false)}>
+        <TouchableOpacity activeOpacity={1} style={fm.sheet} onPress={() => setOpenDrop(null)}>
           <View style={fm.header}>
             <Text style={fm.title}>{initial ? 'Edit Product' : 'New Product'}</Text>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -122,90 +136,118 @@ function ProductFormModal({
             </TouchableOpacity>
           </View>
 
-          <ScrollView
-            style={fm.body}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
+          <ScrollView style={fm.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             {!!error && (
-              <View style={fm.errorBox}>
-                <Text style={fm.errorText}>{error}</Text>
-              </View>
+              <View style={fm.errorBox}><Text style={fm.errorText}>{error}</Text></View>
             )}
 
-            <Text style={fm.label}>
-              Style Number <Text style={{ color: BRAND }}>*</Text>
-            </Text>
-            <TextInput
-              style={fm.input}
-              value={form.styleNumber}
-              onChangeText={v => upd('styleNumber', v)}
-              placeholder="e.g. NL6210"
-              placeholderTextColor="#9CA3AF"
-              autoCapitalize="characters"
-            />
+            <Text style={fm.label}>Style Number <Text style={{ color: BRAND }}>*</Text></Text>
+            <TextInput style={fm.input} value={form.styleNumber} onChangeText={v => upd('styleNumber', v)}
+              placeholder="e.g. NL6210" placeholderTextColor="#9CA3AF" autoCapitalize="characters" />
 
-            <Text style={fm.label}>
-              Brand <Text style={{ color: BRAND }}>*</Text>
-            </Text>
-            <TextInput
-              style={fm.input}
-              value={form.brand}
-              onChangeText={v => upd('brand', v)}
-              placeholder="e.g. Next Level"
-              placeholderTextColor="#9CA3AF"
-            />
+            <Text style={fm.label}>Brand <Text style={{ color: BRAND }}>*</Text></Text>
+            <TextInput style={fm.input} value={form.brand} onChangeText={v => upd('brand', v)}
+              placeholder="e.g. Next Level" placeholderTextColor="#9CA3AF" />
 
-            <Text style={fm.label}>
-              Vendor <Text style={{ color: BRAND }}>*</Text>
-            </Text>
-            <TextInput
-              style={fm.input}
-              value={form.vendor}
-              onChangeText={v => upd('vendor', v)}
-              placeholder="e.g. SanMar"
-              placeholderTextColor="#9CA3AF"
-            />
+            <Text style={fm.label}>Vendor <Text style={{ color: BRAND }}>*</Text></Text>
+            <TextInput style={fm.input} value={form.vendor} onChangeText={v => upd('vendor', v)}
+              placeholder="e.g. SanMar" placeholderTextColor="#9CA3AF" />
 
-            <Text style={fm.label}>
-              Product Name <Text style={{ color: BRAND }}>*</Text>
-            </Text>
-            <TextInput
-              style={fm.input}
-              value={form.name}
-              onChangeText={v => upd('name', v)}
-              placeholder="e.g. CVC Crew Tee"
-              placeholderTextColor="#9CA3AF"
-            />
+            <Text style={fm.label}>Product Name <Text style={{ color: BRAND }}>*</Text></Text>
+            <TextInput style={fm.input} value={form.name} onChangeText={v => upd('name', v)}
+              placeholder="e.g. CVC Crew Tee" placeholderTextColor="#9CA3AF" />
 
+            {/* Category */}
             <Text style={fm.label}>Category</Text>
-            <TouchableOpacity style={fm.select} onPress={() => setShowCatDrop(d => !d)}>
-              <Text style={fm.selectText}>{form.category}</Text>
+            <TouchableOpacity style={fm.select} onPress={() => setOpenDrop(d => d === 'cat' ? null : 'cat')}>
+              <Text style={fm.selectText}>{form.category || 'Select…'}</Text>
               <ChevronDown size={16} color={TEXT_LIGHT} />
             </TouchableOpacity>
-            {showCatDrop && (
+            {openDrop === 'cat' && (
               <View style={fm.dropdown}>
-                {PRODUCT_CATEGORIES.map(cat => (
-                  <TouchableOpacity
-                    key={cat}
-                    style={[fm.dropOption, form.category === cat && fm.dropOptionActive]}
-                    onPress={() => {
-                      upd('category', cat as any);
-                      setShowCatDrop(false);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        fm.dropOptionText,
-                        form.category === cat && fm.dropOptionTextActive,
-                      ]}
-                    >
-                      {cat}
-                    </Text>
+                {TOP_CATS.map(cat => (
+                  <TouchableOpacity key={cat} style={[fm.dropOption, form.category === cat && fm.dropOptionActive]}
+                    onPress={() => setCategory(cat)}>
+                    <Text style={[fm.dropOptionText, form.category === cat && fm.dropOptionTextActive]}>{cat}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             )}
+
+            {/* Subcategory */}
+            {subcategories.length > 0 && (
+              <>
+                <Text style={fm.label}>Subcategory</Text>
+                <TouchableOpacity style={fm.select} onPress={() => setOpenDrop(d => d === 'sub' ? null : 'sub')}>
+                  <Text style={[fm.selectText, !form.subcategory && { color: '#9CA3AF' }]}>
+                    {form.subcategory || 'Select…'}
+                  </Text>
+                  <ChevronDown size={16} color={TEXT_LIGHT} />
+                </TouchableOpacity>
+                {openDrop === 'sub' && (
+                  <View style={fm.dropdown}>
+                    <TouchableOpacity style={fm.dropOption} onPress={() => setSubcategory('')}>
+                      <Text style={[fm.dropOptionText, !form.subcategory && { color: BRAND, fontWeight: '600' }]}>— None —</Text>
+                    </TouchableOpacity>
+                    {subcategories.map(sub => (
+                      <TouchableOpacity key={sub} style={[fm.dropOption, form.subcategory === sub && fm.dropOptionActive]}
+                        onPress={() => setSubcategory(sub)}>
+                        <Text style={[fm.dropOptionText, form.subcategory === sub && fm.dropOptionTextActive]}>{sub}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* Product Type */}
+            {productTypes.length > 0 && (
+              <>
+                <Text style={fm.label}>Product Type</Text>
+                <TouchableOpacity style={fm.select} onPress={() => setOpenDrop(d => d === 'type' ? null : 'type')}>
+                  <Text style={[fm.selectText, !form.productType && { color: '#9CA3AF' }]}>
+                    {form.productType || 'Select…'}
+                  </Text>
+                  <ChevronDown size={16} color={TEXT_LIGHT} />
+                </TouchableOpacity>
+                {openDrop === 'type' && (
+                  <View style={fm.dropdown}>
+                    <TouchableOpacity style={fm.dropOption} onPress={() => { upd('productType', ''); setOpenDrop(null); }}>
+                      <Text style={[fm.dropOptionText, !form.productType && { color: BRAND, fontWeight: '600' }]}>— None —</Text>
+                    </TouchableOpacity>
+                    {productTypes.map(pt => (
+                      <TouchableOpacity key={pt} style={[fm.dropOption, form.productType === pt && fm.dropOptionActive]}
+                        onPress={() => { upd('productType', pt); setOpenDrop(null); }}>
+                        <Text style={[fm.dropOptionText, form.productType === pt && fm.dropOptionTextActive]}>{pt}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* Gender */}
+            <Text style={fm.label}>Gender</Text>
+            <TouchableOpacity style={fm.select} onPress={() => setOpenDrop(d => d === 'gen' ? null : 'gen')}>
+              <Text style={[fm.selectText, !form.gender && { color: '#9CA3AF' }]}>
+                {form.gender || 'Select…'}
+              </Text>
+              <ChevronDown size={16} color={TEXT_LIGHT} />
+            </TouchableOpacity>
+            {openDrop === 'gen' && (
+              <View style={fm.dropdown}>
+                <TouchableOpacity style={fm.dropOption} onPress={() => { upd('gender', ''); setOpenDrop(null); }}>
+                  <Text style={[fm.dropOptionText, !form.gender && { color: BRAND, fontWeight: '600' }]}>— None —</Text>
+                </TouchableOpacity>
+                {GENDER_OPTIONS.map(g => (
+                  <TouchableOpacity key={g} style={[fm.dropOption, form.gender === g && fm.dropOptionActive]}
+                    onPress={() => { upd('gender', g); setOpenDrop(null); }}>
+                    <Text style={[fm.dropOptionText, form.gender === g && fm.dropOptionTextActive]}>{g}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
             <View style={{ height: 24 }} />
           </ScrollView>
 
@@ -213,16 +255,10 @@ function ProductFormModal({
             <TouchableOpacity style={fm.btnCancel} onPress={onClose}>
               <Text style={fm.btnCancelText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[fm.btnSave, saving && { opacity: 0.6 }]}
-              onPress={handleSave}
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={fm.btnSaveText}>Save Product</Text>
-              )}
+            <TouchableOpacity style={[fm.btnSave, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
+              {saving
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={fm.btnSaveText}>Save Product</Text>}
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -239,6 +275,7 @@ export default function CatalogAdminScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
+  const [bulkResolving, setBulkResolving] = useState(false);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -282,6 +319,23 @@ export default function CatalogAdminScreen() {
     await loadProducts();
   };
 
+  const handleBulkResolve = async () => {
+    setBulkResolving(true);
+    try {
+      const data = await apiFetch('/api/products/bulk-resolve-templates', { method: 'POST' });
+      const { resolved, unresolved, skipped } = data as { resolved: number; unresolved: number; skipped: number };
+      Alert.alert(
+        'Auto-Resolve Complete',
+        `Templates assigned: ${resolved}\nNeeds manual assignment: ${unresolved}\nAlready had template: ${skipped}`,
+      );
+      if (resolved > 0) await loadProducts();
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to auto-resolve templates');
+    } finally {
+      setBulkResolving(false);
+    }
+  };
+
   const handleToggleActive = async (product: Product) => {
     setMenuId(null);
     try {
@@ -312,16 +366,23 @@ export default function CatalogAdminScreen() {
             </View>
           )}
         </View>
-        <TouchableOpacity
-          style={s.addBtn}
-          onPress={() => {
-            setEditing(null);
-            setModalVisible(true);
-          }}
-        >
-          <Plus size={15} color="#fff" />
-          <Text style={s.addBtnText}>New Product</Text>
-        </TouchableOpacity>
+        <View style={s.headerActions}>
+          <TouchableOpacity style={s.resolveBtn} onPress={handleBulkResolve} disabled={bulkResolving}>
+            {bulkResolving
+              ? <ActivityIndicator size="small" color={BRAND} />
+              : <Text style={s.resolveBtnText}>Auto-resolve</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={s.addBtn}
+            onPress={() => {
+              setEditing(null);
+              setModalVisible(true);
+            }}
+          >
+            <Plus size={15} color="#fff" />
+            <Text style={s.addBtnText}>New Product</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search */}
@@ -396,9 +457,14 @@ export default function CatalogAdminScreen() {
               <Text style={[s.td, s.cName]} numberOfLines={1}>
                 {product.name}
               </Text>
-              <Text style={[s.td, s.cCat]} numberOfLines={1}>
-                {product.category || '—'}
-              </Text>
+              <View style={s.cCat}>
+                <Text style={s.td} numberOfLines={1}>
+                  {product.subcategory || product.category || '—'}
+                </Text>
+                {!!product.productType && (
+                  <Text style={s.tdSub} numberOfLines={1}>{product.productType}</Text>
+                )}
+              </View>
               <View style={s.cStatus}>
                 <View
                   style={[
@@ -592,9 +658,17 @@ const s = StyleSheet.create({
   cBrand:   { width: 130, marginRight: 16 },
   cVendor:  { width: 120, marginRight: 16 },
   cName:    { flex: 1, minWidth: 140, marginRight: 16 },
-  cCat:     { width: 100, marginRight: 16 },
+  cCat:     { width: 130, marginRight: 16, justifyContent: 'center' as any },
   cStatus:  { width: 80, marginRight: 8 },
   cActions: { width: 44, alignItems: 'center', position: 'relative' as any },
+  tdSub:    { fontSize: 11, color: TEXT_LIGHT, marginTop: 1 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  resolveBtn: {
+    borderWidth: 1, borderColor: BRAND, borderRadius: 8,
+    paddingVertical: 7, paddingHorizontal: 12, minWidth: 36,
+    alignItems: 'center' as any, justifyContent: 'center' as any,
+  },
+  resolveBtnText: { color: BRAND, fontWeight: '600' as const, fontSize: 13 },
 
   badge: {
     borderRadius: 10,

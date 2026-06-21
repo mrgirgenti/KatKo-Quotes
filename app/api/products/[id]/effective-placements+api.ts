@@ -1,5 +1,6 @@
 import { pool } from '@/lib/pool';
 import { authenticateRequest, unauthorized } from '@/lib/auth';
+import { resolveTemplateKey } from '@/lib/templateMapping';
 
 export async function GET(request: Request, { id }: { id: string }) {
   const authedUser = await authenticateRequest(request);
@@ -9,11 +10,11 @@ export async function GET(request: Request, { id }: { id: string }) {
   const client = await pool.connect();
   try {
     const productRes = await client.query(
-      `SELECT id, "templateId" FROM "Product" WHERE id = $1`,
+      `SELECT id, "templateId", subcategory, "productType" FROM "Product" WHERE id = $1`,
       [id],
     );
     if (productRes.rows.length === 0) return Response.json({ error: 'Product not found' }, { status: 404 });
-    const { templateId } = productRes.rows[0];
+    const { templateId, subcategory, productType } = productRes.rows[0];
 
     const overrideRes = await client.query(
       `SELECT pp.*, 'override' AS source, NULL AS "templateKey"
@@ -22,25 +23,44 @@ export async function GET(request: Request, { id }: { id: string }) {
       [id],
     );
 
-    let templatePlacements: Array<Record<string, unknown>> = [];
+    // 4-tier resolution: explicit > auto(sub+type) > auto(sub) > unresolved
+    let resolvedTemplateId: string | null = null;
     let templateKey: string | null = null;
+    let templateSource: string = 'unresolved';
 
     if (templateId) {
+      resolvedTemplateId = templateId;
+      templateSource = 'explicit';
       const tkRes = await client.query(
         `SELECT key FROM "PlacementTemplate" WHERE id = $1`,
-        [templateId],
+        [resolvedTemplateId],
       );
-      if (tkRes.rows.length > 0) {
-        templateKey = tkRes.rows[0].key;
-        const tpRes = await client.query(
-          `SELECT tp.*, 'template' AS source, $2 AS "templateKey"
-           FROM "TemplatePlacement" tp
-           WHERE tp."templateId" = $1 AND tp."isActive" = true
-           ORDER BY tp."sortOrder" ASC`,
-          [templateId, templateKey],
+      if (tkRes.rows.length > 0) templateKey = tkRes.rows[0].key;
+    } else {
+      const { templateKey: autoKey, source } = resolveTemplateKey(subcategory, productType);
+      if (autoKey) {
+        const tmplRes = await client.query(
+          `SELECT id, key FROM "PlacementTemplate" WHERE key = $1 AND "isActive" = true`,
+          [autoKey],
         );
-        templatePlacements = tpRes.rows as Array<Record<string, unknown>>;
+        if (tmplRes.rows.length > 0) {
+          resolvedTemplateId = tmplRes.rows[0].id;
+          templateKey = tmplRes.rows[0].key;
+          templateSource = source;
+        }
       }
+    }
+
+    let templatePlacements: Array<Record<string, unknown>> = [];
+    if (resolvedTemplateId && templateKey) {
+      const tpRes = await client.query(
+        `SELECT tp.*, 'template' AS source, $2 AS "templateKey"
+         FROM "TemplatePlacement" tp
+         WHERE tp."templateId" = $1 AND tp."isActive" = true
+         ORDER BY tp."sortOrder" ASC`,
+        [resolvedTemplateId, templateKey],
+      );
+      templatePlacements = tpRes.rows as Array<Record<string, unknown>>;
     }
 
     const overrides = overrideRes.rows as Array<Record<string, unknown>>;
@@ -56,7 +76,7 @@ export async function GET(request: Request, { id }: { id: string }) {
       return ORDER.indexOf(a.placementType as string) - ORDER.indexOf(b.placementType as string);
     });
 
-    return Response.json({ placements: merged, templateKey });
+    return Response.json({ placements: merged, templateKey, templateSource });
   } catch (err) {
     console.error('[GET /api/products/:id/effective-placements]', err);
     return Response.json({ error: 'Failed to load effective placements' }, { status: 500 });

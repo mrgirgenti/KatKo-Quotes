@@ -1,0 +1,140 @@
+Product Classification + Template Auto-Resolution
+
+Implement Step A and Step B only.
+
+Current state:
+
+* Placement Templates exist.
+* Product.templateId exists.
+* Effective placements API exists.
+* Product admin/detail pages exist.
+
+Objective:
+
+Add sustainable product classification fields and automatic template assignment.
+
+Implement:
+
+1. Add nullable fields to Product:
+
+* subcategory
+* productType
+* gender
+
+2. Update Product create/edit UI:
+
+* Category
+* Subcategory
+* Product Type
+* Gender
+
+Use sensible dropdowns, not only free text.
+
+Category structure:
+
+Apparel
+
+* T-Shirt
+
+  * Short Sleeve
+  * Long Sleeve
+  * Baseball/Raglan
+  * Performance
+* Hoodie
+
+  * Pullover
+  * Zip-Up
+* Crewneck
+
+  * Pullover
+* Polo
+
+  * Short Sleeve
+* Tank
+
+  * Tank Top
+
+Headwear
+
+* Snapback
+* Flexfit
+* Trucker
+* Dad Hat
+* Beanie
+
+Bags
+
+* Tote
+* Backpack
+* Cinch / Drawstring
+
+Promotional
+Other
+
+3. Add template auto-resolution.
+
+Create lib/templateMapping.ts.
+
+Rules:
+
+* T-Shirt + Short Sleeve → STANDARD_TSHIRT
+* T-Shirt + Long Sleeve → LONG_SLEEVE
+* T-Shirt + Baseball/Raglan → STANDARD_TSHIRT
+* T-Shirt + Performance → STANDARD_TSHIRT
+* Hoodie → HOODIE
+* Crewneck → HOODIE
+* Polo → POLO
+* Tank → TANK
+
+4. Update effective placements API:
+
+Resolution order:
+
+1. Product.templateId explicit assignment wins.
+
+2. Otherwise auto-resolve template from subcategory + productType.
+
+3. Otherwise auto-resolve from subcategory only.
+
+4. Otherwise return no template and flag unresolved.
+
+5. Update Product Detail Placements tab:
+
+* Show whether template is explicit or auto-resolved.
+* Show an "(auto)" badge when the template comes from category mapping.
+* Allow manual override by assigning templateId.
+* Allow removing explicit override so auto-resolution applies again.
+
+6. Add bulk resolve templates action:
+
+On Catalog Admin page:
+
+* Find products with templateId = null.
+* Apply templateMapping based on subcategory/productType.
+* Set templateId where match exists.
+* Return summary:
+
+  * resolved
+  * unresolved
+  * skipped
+
+Do not build CSV import.
+Do not build mockup designer.
+Do not build quote integration.
+Do not modify ProductAsset uploads.
+
+Required verification:
+
+* NL6210 can be classified as Apparel / T-Shirt / Short Sleeve / Unisex.
+* NL6210 auto-resolves to STANDARD_TSHIRT when templateId is null.
+* Explicit template assignment overrides auto-resolution.
+* Removing explicit assignment falls back to auto-resolution.
+* Effective placements API returns placements from the correct template.
+* Existing product assets still upload, display, replace, and delete after this change.
+
+Output:
+
+* Files changed
+* Schema changes
+* Migration strategy
+* Verification results
