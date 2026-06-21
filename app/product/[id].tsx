@@ -394,6 +394,24 @@ function AssetsTab({
   onUpload: (colorId: string, assetType: string) => void;
   onDelete: (colorId: string, assetId: string) => void;
 }) {
+  const [confirmKey, setConfirmKey] = useState<string | null>(null);
+  const confirmTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const requestDelete = (colorId: string, assetId: string) => {
+    const key = `${colorId}:${assetId}`;
+    if (confirmKey === key) {
+      // Second tap — execute delete
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+      setConfirmKey(null);
+      onDelete(colorId, assetId);
+    } else {
+      // First tap — enter confirm state, auto-cancel after 3 s
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+      setConfirmKey(key);
+      confirmTimerRef.current = setTimeout(() => setConfirmKey(null), 3000);
+    }
+  };
+
   const activeColors = colors.filter(c => c.isActive);
 
   if (activeColors.length === 0) {
@@ -447,19 +465,17 @@ function AssetsTab({
                               resizeMode="contain"
                             />
                             <TouchableOpacity
-                              style={s.assetRemoveBtn}
-                              onPress={() =>
-                                Alert.alert(
-                                  'Remove Image',
-                                  `Remove the ${label} image for ${color.colorName}?`,
-                                  [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    { text: 'Remove', style: 'destructive', onPress: () => onDelete(color.id, existing.id) },
-                                  ],
-                                )
-                              }
+                              style={[
+                                s.assetRemoveBtn,
+                                confirmKey === `${color.id}:${existing.id}` && s.assetRemoveBtnConfirm,
+                              ]}
+                              onPress={() => requestDelete(color.id, existing.id)}
                             >
-                              <X size={11} color="#fff" />
+                              {confirmKey === `${color.id}:${existing.id}` ? (
+                                <Text style={s.assetRemoveBtnConfirmText}>?</Text>
+                              ) : (
+                                <X size={11} color="#fff" />
+                              )}
                             </TouchableOpacity>
                           </>
                         ) : (
@@ -991,6 +1007,18 @@ const s = StyleSheet.create({
     height: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 10,
+  },
+  assetRemoveBtnConfirm: {
+    backgroundColor: '#DC2626',
+    width: 28,
+    height: 20,
+    borderRadius: 6,
+  },
+  assetRemoveBtnConfirmText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
   },
   assetSlotLabel: { fontSize: 11, fontWeight: '600', color: TEXT_LIGHT, textAlign: 'center' },
   assetReplaceBtn: { alignItems: 'center' },
