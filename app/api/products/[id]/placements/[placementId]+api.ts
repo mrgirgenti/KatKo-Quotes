@@ -62,7 +62,7 @@ export async function PATCH(
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `UPDATE "ProductPlacement" SET ${updates.join(', ')} WHERE id = $${idx} AND "productId" = $${idx + 1} RETURNING *`,
+      `UPDATE "ProductPlacement" SET ${updates.join(', ')} WHERE id = $${idx}::uuid AND "productId" = $${idx + 1}::uuid RETURNING *`,
       values,
     );
     if (result.rows.length === 0) return Response.json({ error: 'Placement not found' }, { status: 404 });
@@ -90,7 +90,7 @@ export async function DELETE(
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `DELETE FROM "ProductPlacement" WHERE id = $1 AND "productId" = $2 RETURNING id`,
+      `DELETE FROM "ProductPlacement" WHERE id = $1::uuid AND "productId" = $2::uuid RETURNING id`,
       [placementId, id],
     );
     if (result.rows.length === 0) return Response.json({ error: 'Placement not found' }, { status: 404 });

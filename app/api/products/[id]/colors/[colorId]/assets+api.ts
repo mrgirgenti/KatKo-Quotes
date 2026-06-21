@@ -24,12 +24,12 @@ export async function GET(
   const client = await pool.connect();
   try {
     const colorCheck = await client.query(
-      `SELECT id FROM "ProductColor" WHERE id = $1 AND "productId" = $2`,
+      `SELECT id FROM "ProductColor" WHERE id = $1::uuid AND "productId" = $2::uuid`,
       [colorId, id],
     );
     if (colorCheck.rows.length === 0) return Response.json({ error: 'Color not found' }, { status: 404 });
 
-    const conditions = [`"productColorId" = $1`];
+    const conditions = [`"productColorId" = $1::uuid`];
     const values: unknown[] = [colorId];
 
     if (assetType && VALID_ASSET_TYPES.includes(assetType)) {
@@ -83,7 +83,7 @@ export async function POST(
   const client = await pool.connect();
   try {
     const colorCheck = await client.query(
-      `SELECT id FROM "ProductColor" WHERE id = $1 AND "productId" = $2`,
+      `SELECT id FROM "ProductColor" WHERE id = $1::uuid AND "productId" = $2::uuid`,
       [colorId, id],
     );
     if (colorCheck.rows.length === 0) return Response.json({ error: 'Color not found' }, { status: 404 });
@@ -93,7 +93,7 @@ export async function POST(
 
     const result = await client.query(
       `INSERT INTO "ProductAsset" (id, "productColorId", "assetType", "storageKey", "sortOrder", "createdAt")
-       VALUES (gen_random_uuid(), $1, $2::"ProductAssetType", $3, $4, NOW())
+       VALUES (gen_random_uuid(), $1::uuid, $2::"ProductAssetType", $3, $4, NOW())
        RETURNING *`,
       [colorId, assetType, storageKey, sortOrder],
     );

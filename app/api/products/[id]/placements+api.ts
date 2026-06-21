@@ -16,7 +16,7 @@ export async function GET(
   const side = url.searchParams.get('side')?.toUpperCase();
   const activeOnly = url.searchParams.get('active') !== 'false';
 
-  const conditions = [`"productId" = $1`];
+  const conditions = [`"productId" = $1::uuid`];
   const values: unknown[] = [id];
   let idx = 2;
 
@@ -78,12 +78,12 @@ export async function POST(
 
   const client = await pool.connect();
   try {
-    const productCheck = await client.query(`SELECT id FROM "Product" WHERE id = $1`, [id]);
+    const productCheck = await client.query(`SELECT id FROM "Product" WHERE id = $1::uuid`, [id]);
     if (productCheck.rows.length === 0) return Response.json({ error: 'Product not found' }, { status: 404 });
 
     const result = await client.query(
       `INSERT INTO "ProductPlacement" (id, "productId", "placementType", side, x, y, width, height, "isActive", "createdAt", "updatedAt")
-       VALUES (gen_random_uuid(), $1, $2::"PlacementType", $3::"GarmentSide", $4, $5, $6, $7, true, NOW(), NOW())
+       VALUES (gen_random_uuid(), $1::uuid, $2::"PlacementType", $3::"GarmentSide", $4, $5, $6, $7, true, NOW(), NOW())
        RETURNING *`,
       [id, placementType, side, Number(x), Number(y), Number(width), Number(height)],
     );

@@ -11,7 +11,9 @@ export async function GET(request: Request, { id }: { id: string }) {
 
   const client = await pool.connect();
   try {
-    const where = activeOnly ? `WHERE "productId" = $1 AND "isActive" = true` : `WHERE "productId" = $1`;
+    const where = activeOnly
+      ? `WHERE "productId" = $1::uuid AND "isActive" = true`
+      : `WHERE "productId" = $1::uuid`;
     const result = await client.query(
       `SELECT * FROM "ProductColor" ${where} ORDER BY "sortOrder" ASC, "colorName" ASC`,
       [id],
@@ -44,12 +46,12 @@ export async function POST(request: Request, { id }: { id: string }) {
 
   const client = await pool.connect();
   try {
-    const productCheck = await client.query(`SELECT id FROM "Product" WHERE id = $1`, [id]);
+    const productCheck = await client.query(`SELECT id FROM "Product" WHERE id = $1::uuid`, [id]);
     if (productCheck.rows.length === 0) return Response.json({ error: 'Product not found' }, { status: 404 });
 
     const result = await client.query(
       `INSERT INTO "ProductColor" (id, "productId", "colorCode", "colorName", hex, "isActive", "sortOrder", "createdAt", "updatedAt")
-       VALUES (gen_random_uuid(), $1, $2, $3, $4, true, $5, NOW(), NOW())
+       VALUES (gen_random_uuid(), $1::uuid, $2, $3, $4, true, $5, NOW(), NOW())
        RETURNING *`,
       [id, colorCode.trim(), colorName.trim(), hex?.trim() || null, sortOrder ?? 0],
     );

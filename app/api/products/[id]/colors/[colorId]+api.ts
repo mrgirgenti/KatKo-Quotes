@@ -32,13 +32,13 @@ export async function PATCH(
   if (updates.length === 0) return Response.json({ error: 'No fields to update' }, { status: 400 });
 
   updates.push(`"updatedAt" = NOW()`);
-  values.push(colorId);
+  values.push(colorId, id);
 
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `UPDATE "ProductColor" SET ${updates.join(', ')} WHERE id = $${idx} AND "productId" = $${idx + 1} RETURNING *`,
-      [...values, id],
+      `UPDATE "ProductColor" SET ${updates.join(', ')} WHERE id = $${idx}::uuid AND "productId" = $${idx + 1}::uuid RETURNING *`,
+      values,
     );
     if (result.rows.length === 0) return Response.json({ error: 'Color not found' }, { status: 404 });
     return Response.json({ color: result.rows[0] });
@@ -65,7 +65,7 @@ export async function DELETE(
   const client = await pool.connect();
   try {
     const assetRes = await client.query(
-      `SELECT "storageKey" FROM "ProductAsset" WHERE "productColorId" = $1`,
+      `SELECT "storageKey" FROM "ProductAsset" WHERE "productColorId" = $1::uuid`,
       [colorId],
     );
     for (const row of assetRes.rows) {
@@ -75,7 +75,7 @@ export async function DELETE(
     }
 
     const result = await client.query(
-      `DELETE FROM "ProductColor" WHERE id = $1 AND "productId" = $2 RETURNING id`,
+      `DELETE FROM "ProductColor" WHERE id = $1::uuid AND "productId" = $2::uuid RETURNING id`,
       [colorId, id],
     );
     if (result.rows.length === 0) return Response.json({ error: 'Color not found' }, { status: 404 });

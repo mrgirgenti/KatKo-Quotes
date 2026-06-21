@@ -14,7 +14,7 @@ export async function GET(_request: Request, { assetId }: { assetId: string }) {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `SELECT "storageKey" FROM "ProductAsset" WHERE id = $1`,
+      `SELECT "storageKey" FROM "ProductAsset" WHERE id = $1::uuid`,
       [assetId],
     );
     if (result.rows.length === 0) return new Response('Not found', { status: 404 });

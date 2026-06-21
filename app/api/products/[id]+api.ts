@@ -11,14 +11,14 @@ export async function GET(request: Request, { id }: { id: string }) {
 
   const client = await pool.connect();
   try {
-    const result = await client.query(`SELECT * FROM "Product" WHERE id = $1`, [id]);
+    const result = await client.query(`SELECT * FROM "Product" WHERE id = $1::uuid`, [id]);
     if (result.rows.length === 0) return Response.json({ error: 'Product not found' }, { status: 404 });
 
     const product = result.rows[0] as Record<string, unknown>;
 
     if (include.includes('colors')) {
       const colorRes = await client.query(
-        `SELECT * FROM "ProductColor" WHERE "productId" = $1 ORDER BY "sortOrder" ASC, "colorName" ASC`,
+        `SELECT * FROM "ProductColor" WHERE "productId" = $1::uuid ORDER BY "sortOrder" ASC, "colorName" ASC`,
         [id],
       );
       const colors = colorRes.rows as Array<Record<string, unknown>>;
@@ -44,7 +44,7 @@ export async function GET(request: Request, { id }: { id: string }) {
 
     if (include.includes('placements')) {
       const placRes = await client.query(
-        `SELECT * FROM "ProductPlacement" WHERE "productId" = $1 AND "isActive" = true ORDER BY side ASC, "placementType" ASC`,
+        `SELECT * FROM "ProductPlacement" WHERE "productId" = $1::uuid AND "isActive" = true ORDER BY side ASC, "placementType" ASC`,
         [id],
       );
       product.placements = placRes.rows;
@@ -93,7 +93,7 @@ export async function PATCH(request: Request, { id }: { id: string }) {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `UPDATE "Product" SET ${updates.join(', ')} WHERE id = $${idx} RETURNING *`,
+      `UPDATE "Product" SET ${updates.join(', ')} WHERE id = $${idx}::uuid RETURNING *`,
       values,
     );
     if (result.rows.length === 0) return Response.json({ error: 'Product not found' }, { status: 404 });
@@ -118,7 +118,7 @@ export async function DELETE(request: Request, { id }: { id: string }) {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `DELETE FROM "Product" WHERE id = $1 RETURNING id`,
+      `DELETE FROM "Product" WHERE id = $1::uuid RETURNING id`,
       [id],
     );
     if (result.rows.length === 0) return Response.json({ error: 'Product not found' }, { status: 404 });
