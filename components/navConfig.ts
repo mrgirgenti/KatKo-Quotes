@@ -66,7 +66,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Tasks', icon: ListTodo, href: '/tasks' },
       { label: 'Reports', icon: BarChart3, href: '/reports' },
-      { label: 'Catalogs', icon: BookOpen, href: '/catalogs' },
+      { label: 'Vendors', icon: BookOpen, href: '/catalogs' },
       { label: 'Products', icon: Package, href: '/catalog-admin' },
       { label: 'Settings', icon: Settings, href: '/settings' },
     ],
