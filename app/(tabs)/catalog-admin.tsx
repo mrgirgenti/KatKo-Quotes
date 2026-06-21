@@ -710,6 +710,7 @@ export default function CatalogAdminScreen() {
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   const costCellPressedId = useRef<string | null>(null);
+  const lastCostPress = useRef<{ id: string; time: number } | null>(null);
 
   const [bulkCostModal, setBulkCostModal] = useState<'set' | 'increase' | 'decrease' | null>(null);
   const [bulkVendorModal, setBulkVendorModal] = useState<'assign' | 'preferred' | null>(null);
@@ -876,6 +877,18 @@ export default function CatalogAdminScreen() {
   const enterCostEdit = (id: string, current: number | string | null) => {
     const val = current != null ? parseFloat(String(current)).toFixed(2) : '';
     setCostEdits(prev => new Map(prev).set(id, val));
+  };
+
+  const handleCostCellPress = (id: string, current: number | string | null) => {
+    if (costEdits.has(id) || costEditAll) return;
+    const now = Date.now();
+    const last = lastCostPress.current;
+    if (last?.id === id && now - last.time < 400) {
+      enterCostEdit(id, current);
+      lastCostPress.current = null;
+    } else {
+      lastCostPress.current = { id, time: now };
+    }
   };
 
   const handleEnterCostEditAll = () => setCostEditAll(true);
@@ -1323,12 +1336,7 @@ export default function CatalogAdminScreen() {
                 activeOpacity={1}
                 onPressIn={() => { costCellPressedId.current = product.id; }}
                 onPressOut={() => { setTimeout(() => { if (costCellPressedId.current === product.id) costCellPressedId.current = null; }, 200); }}
-                {...(!(costEdits.has(product.id) || costEditAll) ? {
-                  onDoubleClick: (e: any) => {
-                    e.stopPropagation?.();
-                    enterCostEdit(product.id, product.defaultBlankCost);
-                  },
-                } as any : {})}
+                onPress={() => handleCostCellPress(product.id, product.defaultBlankCost)}
               >
                 {(costEdits.has(product.id) || costEditAll) ? (
                   <TextInput
