@@ -14,7 +14,7 @@ const steps: Array<{ label: string; sql: string }> = [
   {
     label: 'enum ProductAssetType',
     sql: `DO $$ BEGIN
-      CREATE TYPE "ProductAssetType" AS ENUM ('FRONT_FLAT','BACK_FLAT','FRONT_REALISTIC','BACK_REALISTIC','THUMBNAIL');
+      CREATE TYPE "ProductAssetType" AS ENUM ('THUMBNAIL','FRONT','BACK','LEFT_SIDE','RIGHT_SIDE','DETAIL');
     EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
   },
   {
@@ -26,7 +26,7 @@ const steps: Array<{ label: string; sql: string }> = [
   {
     label: 'enum GarmentSide',
     sql: `DO $$ BEGIN
-      CREATE TYPE "GarmentSide" AS ENUM ('FRONT','BACK');
+      CREATE TYPE "GarmentSide" AS ENUM ('FRONT','BACK','LEFT','RIGHT');
     EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
   },
   {

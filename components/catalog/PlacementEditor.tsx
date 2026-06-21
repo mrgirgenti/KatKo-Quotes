@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 
 type PlacementType = 'LEFT_CHEST' | 'FULL_FRONT' | 'FULL_BACK' | 'YOKE' | 'SLEEVE_LEFT' | 'SLEEVE_RIGHT';
-type GarmentSide = 'FRONT' | 'BACK';
+type GarmentSide = 'FRONT' | 'BACK' | 'LEFT' | 'RIGHT';
 
 export interface ZoneData {
   id: string;
@@ -25,8 +25,10 @@ export interface ZoneData {
 
 interface PlacementEditorProps {
   placements: ZoneData[];
-  frontFlatAssetId: string | null;
-  backFlatAssetId: string | null;
+  frontAssetId: string | null;
+  backAssetId: string | null;
+  leftAssetId?: string | null;
+  rightAssetId?: string | null;
   onSavePlacement: (id: string, data: { x: number; y: number; width: number; height: number }) => Promise<void>;
 }
 
@@ -150,8 +152,10 @@ function DraggableZone({
 
 export default function PlacementEditor({
   placements,
-  frontFlatAssetId,
-  backFlatAssetId,
+  frontAssetId,
+  backAssetId,
+  leftAssetId = null,
+  rightAssetId = null,
   onSavePlacement,
 }: PlacementEditorProps) {
   const [side, setSide] = useState<GarmentSide>('FRONT');
@@ -167,7 +171,11 @@ export default function PlacementEditor({
   }, [placements]);
 
   const visibleZones = zones.filter(z => z.side === side && z.isActive);
-  const bgAssetId = side === 'FRONT' ? frontFlatAssetId : backFlatAssetId;
+  const bgAssetId =
+    side === 'FRONT' ? frontAssetId :
+    side === 'BACK'  ? backAssetId  :
+    side === 'LEFT'  ? leftAssetId  :
+    rightAssetId;
 
   const handleInteractionStart = useCallback(
     (type: 'drag' | 'resize', zone: ZoneData, pageX: number, pageY: number) => {
@@ -213,7 +221,7 @@ export default function PlacementEditor({
     <ScrollView contentContainerStyle={st.container}>
       <View style={st.toolbar}>
         <View style={st.toggle}>
-          {(['FRONT', 'BACK'] as GarmentSide[]).map(s => (
+          {(['FRONT', 'BACK', 'LEFT', 'RIGHT'] as GarmentSide[]).map(s => (
             <TouchableOpacity
               key={s}
               style={[st.toggleBtn, side === s && st.toggleBtnActive]}
@@ -244,7 +252,7 @@ export default function PlacementEditor({
         ) : (
           <View style={st.bgEmpty}>
             <Text style={st.bgEmptyText}>
-              {`No ${side === 'FRONT' ? 'Front Flat' : 'Back Flat'} image\nUpload one in the Assets tab`}
+              {`No ${side === 'FRONT' ? 'Front' : side === 'BACK' ? 'Back' : side === 'LEFT' ? 'Left Side' : 'Right Side'} image\nUpload one in the Assets tab`}
             </Text>
           </View>
         )}

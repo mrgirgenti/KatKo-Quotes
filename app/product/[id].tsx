@@ -30,10 +30,11 @@ const PRODUCT_CATEGORIES = ['Apparel', 'Headwear', 'Bags', 'Promotional', 'Acces
 
 const ASSET_TYPES: { key: string; label: string }[] = [
   { key: 'THUMBNAIL', label: 'Thumbnail' },
-  { key: 'FRONT_FLAT', label: 'Front Flat' },
-  { key: 'BACK_FLAT', label: 'Back Flat' },
-  { key: 'FRONT_REALISTIC', label: 'Front Photo' },
-  { key: 'BACK_REALISTIC', label: 'Back Photo' },
+  { key: 'FRONT', label: 'Front' },
+  { key: 'BACK', label: 'Back' },
+  { key: 'LEFT_SIDE', label: 'Left Side' },
+  { key: 'RIGHT_SIDE', label: 'Right Side' },
+  { key: 'DETAIL', label: 'Detail' },
 ];
 
 const TABS = [
@@ -526,17 +527,17 @@ export default function ProductDetailScreen() {
     loadAll();
   }, [loadAll]);
 
-  const frontFlatAssetId = useMemo(() => {
+  const frontAssetId = useMemo(() => {
     for (const c of colors) {
-      const a = (c.assets || []).find(a => a.assetType === 'FRONT_FLAT');
+      const a = (c.assets || []).find(a => a.assetType === 'FRONT');
       if (a) return a.id;
     }
     return null;
   }, [colors]);
 
-  const backFlatAssetId = useMemo(() => {
+  const backAssetId = useMemo(() => {
     for (const c of colors) {
-      const a = (c.assets || []).find(a => a.assetType === 'BACK_FLAT');
+      const a = (c.assets || []).find(a => a.assetType === 'BACK');
       if (a) return a.id;
     }
     return null;
@@ -771,8 +772,8 @@ export default function ProductDetailScreen() {
         <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
           <PlacementEditor
             placements={placements}
-            frontFlatAssetId={frontFlatAssetId}
-            backFlatAssetId={backFlatAssetId}
+            frontAssetId={frontAssetId}
+            backAssetId={backAssetId}
             onSavePlacement={handleSavePlacement}
           />
         </ScrollView>

@@ -2,7 +2,7 @@ import { pool } from '@/lib/pool';
 import { authenticateRequest, unauthorized } from '@/lib/auth';
 import { writeProductAsset } from '@/lib/files';
 
-const VALID_ASSET_TYPES = ['FRONT_FLAT', 'BACK_FLAT', 'FRONT_REALISTIC', 'BACK_REALISTIC', 'THUMBNAIL'];
+const VALID_ASSET_TYPES = ['THUMBNAIL', 'FRONT', 'BACK', 'LEFT_SIDE', 'RIGHT_SIDE', 'DETAIL'];
 
 const ALLOWED_MIME_TYPES: Record<string, boolean> = {
   'image/png': true,

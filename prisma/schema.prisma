@@ -506,11 +506,12 @@ model EmailNotification {
 // ─── Product Catalog ─────────────────────────────────────────────────────────
 
 enum ProductAssetType {
-  FRONT_FLAT
-  BACK_FLAT
-  FRONT_REALISTIC
-  BACK_REALISTIC
   THUMBNAIL
+  FRONT
+  BACK
+  LEFT_SIDE
+  RIGHT_SIDE
+  DETAIL
 }
 
 enum PlacementType {
@@ -525,6 +526,8 @@ enum PlacementType {
 enum GarmentSide {
   FRONT
   BACK
+  LEFT
+  RIGHT
 }
 
 model Product {
