@@ -21,6 +21,13 @@ export interface ZoneData {
   width: number;
   height: number;
   isActive: boolean;
+  label?: string | null;
+  defaultArtworkWidth?: number | null;
+  defaultArtworkHeight?: number | null;
+  maxArtworkWidth?: number | null;
+  maxArtworkHeight?: number | null;
+  source?: 'override' | 'template';
+  templateKey?: string | null;
 }
 
 interface PlacementEditorProps {

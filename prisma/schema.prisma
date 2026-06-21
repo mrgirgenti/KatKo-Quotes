@@ -539,17 +539,20 @@ model Product {
   category    String
   isActive    Boolean  @default(true)
   sortOrder   Int      @default(0)
+  templateId  String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   colors     ProductColor[]
   placements ProductPlacement[]
+  template   PlacementTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
 
   @@index([styleNumber])
   @@index([brand])
   @@index([vendor])
   @@index([category])
   @@index([isActive])
+  @@index([templateId])
 }
 
 model ProductColor {
@@ -586,17 +589,22 @@ model ProductAsset {
 }
 
 model ProductPlacement {
-  id            String        @id @default(uuid())
-  productId     String
-  placementType PlacementType
-  side          GarmentSide
-  x             Float
-  y             Float
-  width         Float
-  height        Float
-  isActive      Boolean       @default(true)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id                   String        @id @default(uuid())
+  productId            String
+  placementType        PlacementType
+  side                 GarmentSide
+  x                    Float
+  y                    Float
+  width                Float
+  height               Float
+  isActive             Boolean       @default(true)
+  label                String?
+  defaultArtworkWidth  Float?
+  defaultArtworkHeight Float?
+  maxArtworkWidth      Float?
+  maxArtworkHeight     Float?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
@@ -604,4 +612,43 @@ model ProductPlacement {
   @@index([productId])
   @@index([productId, side])
   @@index([productId, isActive])
+}
+
+model PlacementTemplate {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  placements TemplatePlacement[]
+  products   Product[]
+}
+
+model TemplatePlacement {
+  id                   String        @id @default(uuid())
+  templateId           String
+  placementType        PlacementType
+  side                 GarmentSide
+  label                String?
+  x                    Float
+  y                    Float
+  width                Float
+  height               Float
+  defaultArtworkWidth  Float?
+  defaultArtworkHeight Float?
+  maxArtworkWidth      Float?
+  maxArtworkHeight     Float?
+  isActive             Boolean       @default(true)
+  sortOrder            Int           @default(0)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  template PlacementTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, placementType, side])
+  @@index([templateId])
+  @@index([templateId, isActive])
 }

@@ -71,7 +71,7 @@ export async function PATCH(request: Request, { id }: { id: string }) {
     return Response.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { styleNumber, vendor, brand, name, category, isActive, sortOrder } = body;
+  const { styleNumber, vendor, brand, name, category, isActive, sortOrder, templateId } = body;
 
   const updates: string[] = [];
   const values: unknown[] = [];
@@ -84,6 +84,7 @@ export async function PATCH(request: Request, { id }: { id: string }) {
   if (category !== undefined)    { updates.push(`category = $${idx++}`);      values.push(category); }
   if (isActive !== undefined)    { updates.push(`"isActive" = $${idx++}`);    values.push(isActive); }
   if (sortOrder !== undefined)   { updates.push(`"sortOrder" = $${idx++}`);   values.push(sortOrder); }
+  if ('templateId' in body)      { updates.push(`"templateId" = $${idx++}`);  values.push(templateId ?? null); }
 
   if (updates.length === 0) return Response.json({ error: 'No fields to update' }, { status: 400 });
 

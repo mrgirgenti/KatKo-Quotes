@@ -12,7 +12,7 @@ import {
   Image,
   Platform,
 } from 'react-native';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Pencil, Plus, X, ChevronDown, Upload, Palette, Layers } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { apiFetch, getAuthHeaders } from '@/lib/apiFetch';
@@ -52,6 +52,18 @@ interface ProductData {
   name: string;
   category: string;
   isActive: boolean;
+  templateId?: string | null;
+}
+
+interface EffectivePlacement extends ZoneData {
+  source?: 'override' | 'template';
+  templateKey?: string | null;
+}
+
+interface TemplateOption {
+  id: string;
+  key: string;
+  name: string;
 }
 
 interface AssetData {
@@ -505,6 +517,7 @@ function AssetsTab({
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const productId = Array.isArray(id) ? id[0] : (id ?? '');
+  const router = useRouter();
 
   const [product, setProduct] = useState<ProductData | null>(null);
   const [colors, setColors] = useState<ColorData[]>([]);
@@ -517,6 +530,12 @@ export default function ProductDetailScreen() {
   const [colorModal, setColorModal] = useState(false);
   const [editingColor, setEditingColor] = useState<ColorData | null>(null);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+
+  const [effectivePlacements, setEffectivePlacements] = useState<EffectivePlacement[]>([]);
+  const [epLoading, setEpLoading] = useState(false);
+  const [templates, setTemplates] = useState<TemplateOption[]>([]);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const [templateAssigning, setTemplateAssigning] = useState(false);
 
   const loadAll = useCallback(async () => {
     if (!productId) return;
@@ -540,6 +559,51 @@ export default function ProductDetailScreen() {
   useEffect(() => {
     loadAll();
   }, [loadAll]);
+
+  const loadEffectivePlacements = useCallback(async () => {
+    if (!productId) return;
+    setEpLoading(true);
+    try {
+      const data = await apiFetch(`/api/products/${productId}/effective-placements`);
+      setEffectivePlacements((data.placements || []) as EffectivePlacement[]);
+    } catch { /* silent — fall back to product placements */ }
+    finally { setEpLoading(false); }
+  }, [productId]);
+
+  const loadTemplates = useCallback(async () => {
+    try {
+      const data = await apiFetch('/api/products/placement-templates');
+      setTemplates(
+        ((data.templates ?? []) as Array<Record<string, string>>).map(t => ({
+          id: t.id, key: t.key, name: t.name,
+        })),
+      );
+    } catch { /* silent */ }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'placements') {
+      loadEffectivePlacements();
+      loadTemplates();
+    }
+  }, [activeTab, loadEffectivePlacements, loadTemplates]);
+
+  const handleAssignTemplate = async (templateId: string | null) => {
+    setTemplateAssigning(true);
+    try {
+      await apiFetch(`/api/products/${productId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ templateId }),
+      });
+      setProduct(prev => prev ? { ...prev, templateId } : prev);
+      setTemplatePickerOpen(false);
+      await loadEffectivePlacements();
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to assign template');
+    } finally {
+      setTemplateAssigning(false);
+    }
+  };
 
   const frontAssetId = useMemo(() => {
     for (const c of colors) {
@@ -784,12 +848,64 @@ export default function ProductDetailScreen() {
 
       {activeTab === 'placements' && (
         <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
-          <PlacementEditor
-            placements={placements}
-            frontAssetId={frontAssetId}
-            backAssetId={backAssetId}
-            onSavePlacement={handleSavePlacement}
-          />
+          {/* ── Template Assignment Row ────────────────────────────── */}
+          <View style={s.tmplRow}>
+            <View style={s.tmplRowLeft}>
+              <Text style={s.tmplLabel}>Template</Text>
+              <TouchableOpacity
+                style={s.tmplPicker}
+                onPress={() => setTemplatePickerOpen(o => !o)}
+                activeOpacity={0.7}
+              >
+                <Text style={s.tmplPickerText} numberOfLines={1}>
+                  {product?.templateId
+                    ? (templates.find(t => t.id === product.templateId)?.name ?? '…')
+                    : 'None'}
+                </Text>
+                <ChevronDown size={13} color={TEXT_LIGHT} />
+              </TouchableOpacity>
+              {templatePickerOpen && (
+                <View style={s.tmplDropdown}>
+                  <TouchableOpacity
+                    style={s.tmplDropOption}
+                    onPress={() => handleAssignTemplate(null)}
+                  >
+                    <Text style={[s.tmplDropOptionText, !product?.templateId && { color: BRAND, fontWeight: '600' }]}>
+                      None
+                    </Text>
+                  </TouchableOpacity>
+                  {templates.map(t => (
+                    <TouchableOpacity
+                      key={t.id}
+                      style={s.tmplDropOption}
+                      onPress={() => handleAssignTemplate(t.id)}
+                    >
+                      <Text style={[s.tmplDropOptionText, product?.templateId === t.id && { color: BRAND, fontWeight: '600' }]}>
+                        {t.name}
+                      </Text>
+                      <Text style={s.tmplDropKey}>{t.key}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+            <TouchableOpacity style={s.tmplManageBtn} onPress={() => router.push('/product/templates')}>
+              <Text style={s.tmplManageBtnText}>Manage templates →</Text>
+            </TouchableOpacity>
+          </View>
+
+          {epLoading ? (
+            <View style={s.epLoadBox}>
+              <ActivityIndicator color={BRAND} size="small" />
+            </View>
+          ) : (
+            <PlacementEditor
+              placements={effectivePlacements.length > 0 ? effectivePlacements : placements}
+              frontAssetId={frontAssetId}
+              backAssetId={backAssetId}
+              onSavePlacement={handleSavePlacement}
+            />
+          )}
         </ScrollView>
       )}
 
@@ -872,6 +988,41 @@ const s = StyleSheet.create({
 
   tabContent: { flex: 1 },
   tabContentInner: { padding: 20, gap: 16 },
+
+  tmplRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: BORDER,
+    backgroundColor: SURFACE, gap: 12,
+  },
+  tmplRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, position: 'relative' as any },
+  tmplLabel: { fontSize: 12, fontWeight: '600', color: TEXT_LIGHT },
+  tmplPicker: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    borderWidth: 1, borderColor: BORDER, borderRadius: 6,
+    paddingHorizontal: 9, paddingVertical: 5,
+    backgroundColor: '#fff',
+  },
+  tmplPickerText: { fontSize: 13, color: TEXT, maxWidth: 160 },
+  tmplDropdown: {
+    position: 'absolute' as any,
+    top: 32, left: 56, zIndex: 100,
+    backgroundColor: '#fff', borderRadius: 8,
+    borderWidth: 1, borderColor: BORDER,
+    minWidth: 200,
+    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  tmplDropOption: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 12, paddingVertical: 9,
+    borderBottomWidth: 1, borderBottomColor: BORDER,
+  },
+  tmplDropOptionText: { fontSize: 13, color: TEXT },
+  tmplDropKey: { fontSize: 10, color: TEXT_LIGHT, marginLeft: 8 },
+  tmplManageBtn: { paddingHorizontal: 8, paddingVertical: 4 },
+  tmplManageBtnText: { fontSize: 12, color: BRAND },
+  epLoadBox: { height: 80, alignItems: 'center', justifyContent: 'center' },
   tabActionRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   tabSubtitle: { fontSize: 13, color: TEXT_LIGHT },
   tabEmpty: { alignItems: 'center', paddingVertical: 40 },
