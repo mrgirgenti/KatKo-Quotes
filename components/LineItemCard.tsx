@@ -34,6 +34,8 @@ import { SegmentedControl } from './SegmentedControl';
 import { ComboBox } from './ComboBox';
 import { getTotalQuantity, calculateLineItemSubtotal, formatCurrency } from '@/utils/quoteCalculations';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { useQuery, useQueries } from '@tanstack/react-query';
+import { apiFetch } from '@/lib/apiFetch';
 
 interface LineItemCardProps {
   item: LineItem;
@@ -136,6 +138,33 @@ function mergeVariantSizes(variants: GarmentVariant[]): SizeQuantities {
   return merged;
 }
 
+// ── Catalog (DB Products) integration types/helpers (Phase 1) ──
+interface CatalogProduct {
+  id: string;
+  styleNumber: string;
+  brand: string;
+  name: string;
+  defaultBlankCost?: string | number | null;
+}
+
+interface VendorSourceInfo {
+  name: string;
+  isPreferred: boolean;
+}
+
+// Luminance check so the swatch check-icon contrasts against the color.
+function isDarkHex(hex?: string | null): boolean {
+  if (!hex) return false;
+  const m = hex.replace('#', '');
+  if (m.length !== 6) return false;
+  const r = parseInt(m.slice(0, 2), 16);
+  const g = parseInt(m.slice(2, 4), 16);
+  const b = parseInt(m.slice(4, 6), 16);
+  if ([r, g, b].some((n) => Number.isNaN(n))) return false;
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum < 0.5;
+}
+
 export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardProps) {
   const [expanded, setExpanded] = useState(true);
   const [showDesigner, setShowDesigner] = useState(false);
@@ -195,6 +224,67 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   );
   const dropZoneRef = useRef<any>(null);
 
+  // ── Catalog (DB Products) data layer (Phase 1) ──
+  // Catalog search is driven by whichever variant style box is currently focused.
+  const focusedVariantIdx = variantStyleFocused.findIndex(Boolean);
+  const activeSearchTerm =
+    focusedVariantIdx >= 0 ? (variantSearchTerms[focusedVariantIdx] ?? '') : '';
+  const [debouncedCatalogTerm, setDebouncedCatalogTerm] = useState('');
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedCatalogTerm(activeSearchTerm.trim()), 250);
+    return () => clearTimeout(handle);
+  }, [activeSearchTerm]);
+
+  const catalogSearch = useQuery({
+    queryKey: ['line-item-product-search', debouncedCatalogTerm],
+    queryFn: () => apiFetch(`/api/products?q=${encodeURIComponent(debouncedCatalogTerm)}`),
+    enabled: focusedVariantIdx >= 0 && debouncedCatalogTerm.length >= 2,
+    staleTime: 30000,
+  });
+  const catalogResults: CatalogProduct[] = catalogSearch.data?.products ?? [];
+
+  // Colors / vendors / placements for every catalog-linked variant in this line item.
+  // useQueries keeps a stable single hook even as the selected-product set changes.
+  const selectedProductIds = Array.from(
+    new Set(variants.map((v) => v.productId).filter((pid): pid is string => !!pid)),
+  );
+  const colorQueries = useQueries({
+    queries: selectedProductIds.map((pid) => ({
+      queryKey: ['product-colors', pid],
+      queryFn: () => apiFetch(`/api/products/${pid}/colors`),
+      staleTime: 60000,
+    })),
+  });
+  const vendorQueries = useQueries({
+    queries: selectedProductIds.map((pid) => ({
+      queryKey: ['product-vendor-sources', pid],
+      queryFn: () => apiFetch(`/api/products/${pid}/vendor-sources`),
+      staleTime: 60000,
+    })),
+  });
+  // Effective placements are pre-fetched to warm the cache for future mockup work; no UI yet.
+  useQueries({
+    queries: selectedProductIds.map((pid) => ({
+      queryKey: ['product-effective-placements', pid],
+      queryFn: () => apiFetch(`/api/products/${pid}/effective-placements`),
+      staleTime: 60000,
+    })),
+  });
+  const dbColorsByProductId: Record<string, ProductColor[]> = {};
+  const dbVendorsByProductId: Record<string, VendorSourceInfo[]> = {};
+  selectedProductIds.forEach((pid, i) => {
+    const colorRows = (colorQueries[i]?.data as { colors?: any[] } | undefined)?.colors ?? [];
+    dbColorsByProductId[pid] = colorRows.map((c: any) => ({
+      name: c.colorName,
+      hex: c.hex || '#cccccc',
+      dark: isDarkHex(c.hex),
+    }));
+    const vendorRows = (vendorQueries[i]?.data as { sources?: any[] } | undefined)?.sources ?? [];
+    dbVendorsByProductId[pid] = vendorRows
+      .filter((s: any) => s.isActive !== false)
+      .map((s: any) => ({ name: s.vendorName as string, isPreferred: !!s.isPreferred }));
+  });
+
   const handleVariantsChange = (newVariants: GarmentVariant[]) => {
     setVariants(newVariants);
     if (isPromotional) return;
@@ -211,7 +301,15 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   const setVariantGarmentType = (vIdx: number, type: GarmentType) => {
     setVariantGarmentTypes((prev) => prev.map((t, i) => (i === vIdx ? type : t)));
     setVariantSearchTerms((prev) => prev.map((t, i) => (i === vIdx ? '' : t)));
-    updateVariant(vIdx, { product: '', color: '' });
+    updateVariant(vIdx, {
+      product: '',
+      color: '',
+      productId: undefined,
+      styleNumber: undefined,
+      brand: undefined,
+      productName: undefined,
+      productSource: undefined,
+    });
   };
 
   const addVariant = () => {
@@ -246,6 +344,57 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
       i === variantIdx ? { ...v, sizes: { ...v.sizes, [sizeKey]: num } } : v
     );
     handleVariantsChange(updated);
+  };
+
+  // Bind a curated catalog product to a variant: snapshot style/brand/name + auto-fill
+  // the default cost (quote stays the source of truth — user can override afterward).
+  const handleSelectCatalogProduct = (vIdx: number, product: CatalogProduct) => {
+    const label = `${product.styleNumber} — ${product.name}`;
+    const updated = variants.map((v, i) =>
+      i === vIdx
+        ? {
+            ...v,
+            product: label,
+            color: '',
+            productId: product.id,
+            styleNumber: product.styleNumber,
+            brand: product.brand,
+            productName: product.name,
+            productSource: 'catalog' as const,
+          }
+        : v,
+    );
+    setVariants(updated);
+    setVariantSearchTerms((prev) => prev.map((t, i) => (i === vIdx ? label : t)));
+    setVariantStyleFocused((prev) => prev.map((f, i) => (i === vIdx ? false : f)));
+    const rawCost = product.defaultBlankCost;
+    const parsedCost =
+      rawCost === null || rawCost === undefined || rawCost === ''
+        ? item.productCostEach
+        : Number(rawCost);
+    const nextCost = Number.isFinite(parsedCost) ? parsedCost : item.productCostEach;
+    const mergedSizes = mergeVariantSizes(updated);
+    onChange({
+      ...item,
+      garmentVariants: updated,
+      sizes: isPromotional ? item.sizes : mergedSizes,
+      product: updated[0]?.product || item.product,
+      productColor: updated.length === 1 ? (updated[0]?.color || item.productColor) : 'Multiple',
+      productCostEach: nextCost,
+    });
+  };
+
+  // Choosing a hardcoded quick-pick or a custom free-text style clears any catalog binding.
+  const markVariantManual = (vIdx: number, label: string) => {
+    updateVariant(vIdx, {
+      product: label,
+      color: '',
+      productId: undefined,
+      styleNumber: undefined,
+      brand: undefined,
+      productName: undefined,
+      productSource: 'manual',
+    });
   };
 
   // Promotional flat quantity state
@@ -655,7 +804,10 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                       const activeGarmentType = variantGarmentTypes[vIdx] ?? 'tshirt';
                       const availableTypes = getGarmentTypesForProvider(item.apparelProvider);
                       const stylesForType = getStylesForTypeAndProvider(item.apparelProvider, activeGarmentType);
-                      const colorObjects = getColorObjectsForStyle(item.apparelProvider, variant.product);
+                      const isCatalogVariant = !!variant.productId;
+                      const colorObjects = isCatalogVariant
+                        ? (dbColorsByProductId[variant.productId as string] ?? [])
+                        : getColorObjectsForStyle(item.apparelProvider, variant.product);
                       return (
                         <View key={vIdx} style={[styles.variantRow, vIdx % 2 === 1 && styles.variantRowAlt]}>
                           {/* Compact single-line 3-column picker */}
@@ -704,7 +856,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                                     placeholder="Search style..."
                                     placeholderTextColor={Colors.light.textSecondary}
                                     onFocus={() =>
-                                      setVariantStyleFocused((prev) => prev.map((f, i) => (i === vIdx ? true : f)))
+                                      setVariantStyleFocused((prev) => prev.map((_, i) => i === vIdx))
                                     }
                                     onBlur={() =>
                                       setTimeout(
@@ -758,7 +910,45 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                                 {/* Style dropdown (shows when focused) */}
                                 {variantStyleFocused[vIdx] && (
                                   <View style={styles.variantStyleDropdown}>
-                                    <ScrollView style={{ maxHeight: 180 }} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                                    <ScrollView style={{ maxHeight: 240 }} nestedScrollEnabled showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                                      {vIdx === focusedVariantIdx && catalogResults.length > 0 && (
+                                        <>
+                                          <Text style={styles.variantDropdownSectionLabel}>Product Catalog</Text>
+                                          {catalogResults.map((p) => {
+                                            const isCatSelected = variant.productId === p.id;
+                                            return (
+                                              <TouchableOpacity
+                                                key={p.id}
+                                                style={[
+                                                  styles.variantDropdownItem,
+                                                  styles.variantCatalogItem,
+                                                  isCatSelected && styles.variantDropdownItemActive,
+                                                  styles.variantDropdownItemBorder,
+                                                ]}
+                                                onPress={() => handleSelectCatalogProduct(vIdx, p)}
+                                              >
+                                                <Text style={[styles.variantDropdownNum, isCatSelected && styles.variantDropdownNumActive]}>
+                                                  {p.styleNumber}
+                                                </Text>
+                                                <View style={styles.variantCatalogTextWrap}>
+                                                  <Text style={[styles.variantDropdownName, isCatSelected && styles.variantDropdownNameActive]} numberOfLines={1}>
+                                                    {p.name}
+                                                  </Text>
+                                                  {!!p.brand && (
+                                                    <Text style={styles.variantDropdownBrand} numberOfLines={1}>{p.brand}</Text>
+                                                  )}
+                                                </View>
+                                                <View style={styles.variantCatalogBadge}>
+                                                  <Text style={styles.variantCatalogBadgeText}>Catalog</Text>
+                                                </View>
+                                              </TouchableOpacity>
+                                            );
+                                          })}
+                                          {filteredStyles.length > 0 && (
+                                            <Text style={styles.variantDropdownSectionLabel}>Quick Picks</Text>
+                                          )}
+                                        </>
+                                      )}
                                       {filteredStyles.map((style, sIdx) => {
                                         const styleValue = `${style.styleNumber} — ${style.name}`;
                                         const isSelected = variant.product === styleValue;
@@ -771,7 +961,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                                               sIdx < filteredStyles.length - 1 && styles.variantDropdownItemBorder,
                                             ]}
                                             onPress={() => {
-                                              updateVariant(vIdx, { product: styleValue, color: '' });
+                                              markVariantManual(vIdx, styleValue);
                                               setVariantSearchTerms((prev) => prev.map((t, i) => (i === vIdx ? styleValue : t)));
                                               setVariantStyleFocused((prev) => prev.map((f, i) => (i === vIdx ? false : f)));
                                             }}
@@ -790,7 +980,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                                           style={styles.variantDropdownCustom}
                                           onPress={() => {
                                             const customVal = rawSearch.trim();
-                                            updateVariant(vIdx, { product: customVal, color: '' });
+                                            markVariantManual(vIdx, customVal);
                                             setVariantSearchTerms((prev) => prev.map((t, i) => (i === vIdx ? customVal : t)));
                                             setVariantStyleFocused((prev) => prev.map((f, i) => (i === vIdx ? false : f)));
                                           }}
@@ -878,6 +1068,16 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                                     </View>
                                   </ScrollView>
                                 )}
+
+                                {isCatalogVariant &&
+                                  (dbVendorsByProductId[variant.productId as string]?.length ?? 0) > 0 && (
+                                    <Text style={styles.variantVendorInfo} numberOfLines={2}>
+                                      Available from:{' '}
+                                      {dbVendorsByProductId[variant.productId as string]
+                                        .map((v) => (v.isPreferred ? `${v.name} ★` : v.name))
+                                        .join(', ')}
+                                    </Text>
+                                  )}
                               </View>
                             );
                           })()}
@@ -1707,6 +1907,47 @@ const styles = StyleSheet.create({
   variantDropdownEmpty: {
     padding: 10,
     fontSize: 12,
+    color: Colors.light.textSecondary,
+  },
+  variantDropdownSectionLabel: {
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 4,
+    fontSize: 10,
+    fontWeight: '700' as const,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase' as const,
+    color: Colors.light.textSecondary,
+    backgroundColor: '#F7F7F7',
+  },
+  variantCatalogItem: {
+    alignItems: 'center',
+  },
+  variantCatalogTextWrap: {
+    flex: 1,
+    marginLeft: 6,
+  },
+  variantDropdownBrand: {
+    fontSize: 10,
+    color: Colors.light.textSecondary,
+  },
+  variantCatalogBadge: {
+    marginLeft: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    backgroundColor: Colors.light.tint,
+  },
+  variantCatalogBadgeText: {
+    fontSize: 9,
+    fontWeight: '700' as const,
+    color: '#fff',
+  },
+  variantVendorInfo: {
+    marginTop: 4,
+    paddingHorizontal: 2,
+    fontSize: 10,
+    fontStyle: 'italic' as const,
     color: Colors.light.textSecondary,
   },
   variantDropdownCustom: {

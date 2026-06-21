@@ -50,6 +50,14 @@ export interface GarmentVariant {
   product: string;
   color: string;
   sizes: SizeQuantities;
+  // ── Catalog awareness (Phase 1) — all optional, additive, backward-compatible ──
+  // Present ONLY when this variant is linked to a curated catalog Product.
+  // Absent = manual/free-text entry (the default, never gated on the catalog).
+  productId?: string;
+  styleNumber?: string;
+  brand?: string;
+  productName?: string;
+  productSource?: 'catalog' | 'manual' | 'vendor_api';
 }
 
 export interface LineItem {
