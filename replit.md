@@ -7,6 +7,14 @@ A React Native / Expo app for tracking sales quotes, built for Katalyst Ko custo
 ### AUTHENTICATION LOCK
 Clerk is complete and approved. The agent must not inspect, modify, validate, regenerate, or revisit any Clerk implementation unless specifically requested by the user. All future tasks must ignore authentication entirely.
 
+### PRODUCT MODEL LAW — NON-NEGOTIABLE
+The relationship between Products, Quotes, and Mockups is fixed and must be honored everywhere:
+- **Products = Curated Library** — the Products catalog is a deliberately curated library, NOT the universe of every product that can be sold.
+- **Quotes = Any Product** — quoting is never restricted to the curated library; any product can be quoted (free-text), with the catalog as an optional enhancement/link layer, never a gate.
+- **Mockups = Any Suitable Visual Representation** — mockups may use any suitable visual representation, not limited to the curated library.
+
+Never gate quoting or mockups on the Products catalog.
+
 ## Run & Operate
 
 To run the application, use the following command:
