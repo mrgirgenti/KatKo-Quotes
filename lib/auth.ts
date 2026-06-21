@@ -16,6 +16,9 @@ export interface AuthedUser {
   name: string;
   internalRole: string;
   role: FrontendRole;
+  phone: string;
+  avatarColor: string;
+  avatarUri: string | null;
 }
 
 function internalRoleToFrontend(internalRole: string | null | undefined): FrontendRole {
@@ -33,6 +36,9 @@ function rowToAuthedUser(row: any): AuthedUser {
     name: `${firstName} ${lastName}`.trim() || row.email || 'User',
     internalRole: row.internalRole || 'SALES',
     role: internalRoleToFrontend(row.internalRole),
+    phone: row.phone || '',
+    avatarColor: row.avatarColor || '#FF5A00',
+    avatarUri: row.avatarUri || null,
   };
 }
 

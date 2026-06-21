@@ -16,13 +16,15 @@ async function loadClerkDbUser(): Promise<UserProfile | null> {
     const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) return null;
     const u = await res.json();
+    const rawEmail: string = u.email || '';
     return {
       id: u.id,
-      name: u.name || u.email || 'User',
+      name: u.name || rawEmail || 'User',
       businessName: '',
-      email: u.email || '',
-      phone: '',
-      avatarColor: AVATAR_COLORS[0],
+      email: rawEmail.endsWith('@noemail.internal') ? '' : rawEmail,
+      phone: u.phone || '',
+      avatarColor: u.avatarColor || AVATAR_COLORS[0],
+      profilePicture: u.avatarUri || undefined,
       createdAt: new Date().toISOString(),
       role: u.role === 'org_admin' ? 'org_admin' : 'user',
     };
@@ -180,9 +182,13 @@ export const [UserProvider, useUser] = createContextHook(() => {
     }
   }, [isInitialized, usersQuery.data, isSignedIn]);
 
-  const localCurrentUser = usersQuery.data?.find((u) => u.id === currentUserId) || null;
-  // Clerk identity (when present) wins over the legacy local AsyncStorage user.
-  const currentUser = clerkUser ?? localCurrentUser;
+  const localCurrentUser = usersQuery.data?.find((u) => u.id === (clerkUser?.id ?? currentUserId)) || null;
+  // DB fields (name, email, role, phone, avatarColor, profilePicture) come from clerkUser.
+  // Local-only fields (businessName, companyLogo, adminPassword, googleSheetsUrl, etc.)
+  // that are not stored in the DB come from the matching AsyncStorage entry.
+  const currentUser: UserProfile | null = clerkUser
+    ? { ...(localCurrentUser ?? {}), ...clerkUser } as UserProfile
+    : localCurrentUser;
   const effectiveCurrentUserId = clerkUser?.id ?? currentUserId;
 
   const baseUsers = usersQuery.data || [];
@@ -210,12 +216,22 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const updateUserMutation = useMutation({
     mutationFn: async (updatedUser: UserProfile) => {
       const current = usersQuery.data || [];
-      const updated = current.map((u) => (u.id === updatedUser.id ? updatedUser : u));
+      const exists = current.some((u) => u.id === updatedUser.id);
+      // If the Clerk user isn't in the local list yet, add them so their
+      // local-only fields (businessName, companyLogo, etc.) persist across sessions.
+      const updated = exists
+        ? current.map((u) => (u.id === updatedUser.id ? updatedUser : u))
+        : [...current, updatedUser];
       syncUserToDB(updatedUser);
       return saveUsers(updated);
     },
-    onSuccess: (data) => {
+    onSuccess: (data, updatedUser) => {
       queryClient.setQueryData(['users'], data);
+      // Optimistically reflect the save in the Clerk-db-user cache so that
+      // currentUser updates immediately (without waiting for the 5-min stale timeout).
+      if (clerkUser?.id === updatedUser.id) {
+        queryClient.setQueryData(['clerk-db-user', true], updatedUser);
+      }
     },
   });
 
