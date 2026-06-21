@@ -1312,8 +1312,12 @@ export default function CatalogAdminScreen() {
               </View>
               <View
                 style={s.cCost}
-                {...(Platform.OS === 'web' && (costEdits.has(product.id) || costEditAll) ? {
+                {...(Platform.OS === 'web' ? {
                   onClick: (e: any) => e.stopPropagation(),
+                  onDoubleClick: !(costEdits.has(product.id) || costEditAll) ? (e: any) => {
+                    e.stopPropagation();
+                    enterCostEdit(product.id, product.defaultBlankCost);
+                  } : undefined,
                 } as any : {})}
               >
                 {(costEdits.has(product.id) || costEditAll) ? (
@@ -1341,14 +1345,7 @@ export default function CatalogAdminScreen() {
                     </Text>
                   </View>
                 ) : (
-                  <View
-                    {...(Platform.OS === 'web' ? {
-                      onDoubleClick: (e: any) => {
-                        e.stopPropagation();
-                        enterCostEdit(product.id, product.defaultBlankCost);
-                      },
-                    } as any : {})}
-                  >
+                  <View>
                     {product.defaultBlankCost != null ? (
                       <Text style={s.costCell} numberOfLines={1}>
                         ${parseFloat(String(product.defaultBlankCost)).toFixed(2)}
