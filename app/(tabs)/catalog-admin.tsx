@@ -1310,14 +1310,15 @@ export default function CatalogAdminScreen() {
                   </Text>
                 )}
               </View>
-              <View
+              <TouchableOpacity
                 style={s.cCost}
-                {...(Platform.OS === 'web' ? {
-                  onClick: (e: any) => e.stopPropagation(),
-                  onDoubleClick: !(costEdits.has(product.id) || costEditAll) ? (e: any) => {
-                    e.stopPropagation();
+                activeOpacity={1}
+                onPress={(e: any) => { e.stopPropagation?.(); }}
+                {...(!(costEdits.has(product.id) || costEditAll) ? {
+                  onDoubleClick: (e: any) => {
+                    e.stopPropagation?.();
                     enterCostEdit(product.id, product.defaultBlankCost);
-                  } : undefined,
+                  },
                 } as any : {})}
               >
                 {(costEdits.has(product.id) || costEditAll) ? (
@@ -1345,7 +1346,7 @@ export default function CatalogAdminScreen() {
                     </Text>
                   </View>
                 ) : (
-                  <View>
+                  <>
                     {product.defaultBlankCost != null ? (
                       <Text style={s.costCell} numberOfLines={1}>
                         ${parseFloat(String(product.defaultBlankCost)).toFixed(2)}
@@ -1353,9 +1354,9 @@ export default function CatalogAdminScreen() {
                     ) : (
                       <Text style={s.costCellMissing}>—</Text>
                     )}
-                  </View>
+                  </>
                 )}
-              </View>
+              </TouchableOpacity>
               <View style={s.cStatus}>
                 <View style={[s.badge, product.isActive ? s.badgeActive : s.badgeInactive]}>
                   <Text style={[s.badgeText, product.isActive ? s.badgeTextActive : s.badgeTextInactive]}>
