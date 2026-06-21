@@ -672,6 +672,7 @@ function VendorSourceModal({
   };
 
   const selectedVendor = vendors.find(v => v.id === form.vendorId);
+  const selectedVendorLabel = selectedVendor?.name ?? initial?.vendorName ?? null;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -693,8 +694,8 @@ function VendorSourceModal({
               onPress={() => !initial && setVendorDrop(d => !d)}
               disabled={!!initial}
             >
-              <Text style={[fm.selectText, !form.vendorId && { color: '#9CA3AF' }]}>
-                {selectedVendor?.name ?? 'Select vendor…'}
+              <Text style={[fm.selectText, !selectedVendorLabel && { color: '#9CA3AF' }]}>
+                {selectedVendorLabel ?? 'Select vendor…'}
               </Text>
               <ChevronDown size={16} color={TEXT_LIGHT} />
             </TouchableOpacity>
@@ -974,7 +975,7 @@ export default function ProductDetailScreen() {
   const loadVendors = useCallback(async () => {
     try {
       const data = await apiFetch('/api/vendors');
-      setVendors((data.vendors || []) as Vendor[]);
+      setVendors(((data.vendors || []) as Vendor[]).filter(v => v.isActive !== false));
     } catch { }
   }, []);
 

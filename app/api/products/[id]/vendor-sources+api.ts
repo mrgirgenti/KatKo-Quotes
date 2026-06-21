@@ -39,6 +39,19 @@ export async function POST(request: Request, { id }: { id: string }) {
 
   const client = await pool.connect();
   try {
+    const vendorCheck = await client.query(
+      `SELECT "isActive" FROM "Vendor" WHERE id = $1`,
+      [vendorId],
+    );
+    if (vendorCheck.rows.length === 0) {
+      return Response.json({ error: 'Vendor not found' }, { status: 404 });
+    }
+    if (vendorCheck.rows[0].isActive === false) {
+      return Response.json(
+        { error: 'This vendor is inactive and cannot be assigned as a source.' },
+        { status: 409 },
+      );
+    }
     if (isPreferred) {
       await client.query(
         `UPDATE "ProductVendor" SET "isPreferred" = false, "updatedAt" = NOW() WHERE "productId" = $1`,

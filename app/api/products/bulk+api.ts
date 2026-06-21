@@ -110,8 +110,11 @@ export async function POST(request: Request) {
 
       case 'assign-source': {
         if (!vendorId?.trim()) return Response.json({ error: 'vendorId is required' }, { status: 400 });
-        const vendor = await client.query(`SELECT id FROM "Vendor" WHERE id = $1`, [vendorId]);
+        const vendor = await client.query(`SELECT "isActive" FROM "Vendor" WHERE id = $1`, [vendorId]);
         if (vendor.rows.length === 0) return Response.json({ error: 'Vendor not found' }, { status: 404 });
+        if (vendor.rows[0].isActive === false) {
+          return Response.json({ error: 'This vendor is inactive and cannot be assigned as a source.' }, { status: 409 });
+        }
         let added = 0;
         for (const productId of ids) {
           const existing = await client.query(
@@ -141,6 +144,11 @@ export async function POST(request: Request) {
 
       case 'set-preferred-source': {
         if (!vendorId?.trim()) return Response.json({ error: 'vendorId is required' }, { status: 400 });
+        const prefVendor = await client.query(`SELECT "isActive" FROM "Vendor" WHERE id = $1`, [vendorId]);
+        if (prefVendor.rows.length === 0) return Response.json({ error: 'Vendor not found' }, { status: 404 });
+        if (prefVendor.rows[0].isActive === false) {
+          return Response.json({ error: 'This vendor is inactive and cannot be set as the preferred source.' }, { status: 409 });
+        }
         for (const productId of ids) {
           await client.query(
             `UPDATE "ProductVendor" SET "isPreferred" = false WHERE "productId" = $1`,

@@ -17,8 +17,9 @@ import {
 import {
   BookOpen, Plus, Pencil, Trash2, X, Globe,
   ChevronDown, MoreVertical, Eye, EyeOff, Star,
-  Download, Upload, FileText, CheckSquare,
+  Download, Upload, FileText, CheckSquare, Truck,
 } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import Colors from '@/constants/colors';
 import OverlayMenu from '@/components/OverlayMenu';
 
@@ -300,6 +301,7 @@ export default function CatalogsScreen() {
   const [actionsOpen, setActionsOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const router = useRouter();
 
   const { width: screenWidth } = useWindowDimensions();
   const isMobile = screenWidth < 768;
@@ -643,6 +645,12 @@ export default function CatalogsScreen() {
             <Text style={s.pageTitle}>Vendor Management</Text>
           </View>
           <View style={s.headerActions}>
+            {/* Sourcing vendors manager */}
+            <TouchableOpacity style={s.actionsBtn} onPress={() => router.push('/sourcing-vendors')}>
+              <Truck size={15} color={TEXT_LIGHT} />
+              <Text style={s.actionsBtnText}>{isMobile ? 'Sourcing' : 'Sourcing Vendors'}</Text>
+            </TouchableOpacity>
+
             {/* Actions dropdown */}
             <OverlayMenu menuWidth={185} align="right"
               trigger={({ open: openMenu }) => (
