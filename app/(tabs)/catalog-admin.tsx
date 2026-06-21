@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -29,6 +29,7 @@ import {
   FileUp,
   ClipboardList,
   DollarSign,
+  ArrowUpDown,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import Colors from '@/constants/colors';
@@ -41,6 +42,9 @@ const TEXT_LIGHT = Colors.light.textSecondary;
 const BORDER = Colors.light.border;
 const SURFACE = Colors.light.surface;
 const BG = Colors.light.background;
+
+type SortField = 'style' | 'brand' | 'name' | 'category' | 'vendors' | 'cost' | 'status';
+type SortDir = 'asc' | 'desc';
 
 const EMPTY_FORM = {
   styleNumber: '',
@@ -702,6 +706,9 @@ export default function CatalogAdminScreen() {
   const [costSaved, setCostSaved] = useState<Set<string>>(new Set());
   const [costEditAll, setCostEditAll] = useState(false);
 
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
   const [bulkCostModal, setBulkCostModal] = useState<'set' | 'increase' | 'decrease' | null>(null);
   const [bulkVendorModal, setBulkVendorModal] = useState<'assign' | 'preferred' | null>(null);
   const [bulkTemplateModal, setBulkTemplateModal] = useState(false);
@@ -720,19 +727,32 @@ export default function CatalogAdminScreen() {
 
   useEffect(() => { loadProducts(); }, [loadProducts]);
 
-  const filtered = products.filter(p => {
-    if (filterStatus === 'active' && !p.isActive) return false;
-    if (filterStatus === 'inactive' && p.isActive) return false;
-    if (filterCat && p.category !== filterCat) return false;
-    const q = search.toLowerCase();
-    if (!q) return true;
-    return (
-      p.styleNumber.toLowerCase().includes(q) ||
-      p.brand.toLowerCase().includes(q) ||
-      p.vendor.toLowerCase().includes(q) ||
-      p.name.toLowerCase().includes(q)
-    );
-  });
+  const filtered = useMemo(() => {
+    const base = products.filter(p => {
+      if (filterStatus === 'active' && !p.isActive) return false;
+      if (filterStatus === 'inactive' && p.isActive) return false;
+      if (filterCat && p.category !== filterCat) return false;
+      const q = search.toLowerCase();
+      if (!q) return true;
+      return (
+        p.styleNumber.toLowerCase().includes(q) ||
+        p.brand.toLowerCase().includes(q) ||
+        p.vendor.toLowerCase().includes(q) ||
+        p.name.toLowerCase().includes(q)
+      );
+    });
+    return [...base].sort((a, b) => {
+      let cmp = 0;
+      if (sortField === 'style')    cmp = (a.styleNumber || '').localeCompare(b.styleNumber || '');
+      else if (sortField === 'brand')    cmp = (a.brand || '').localeCompare(b.brand || '');
+      else if (sortField === 'name')     cmp = (a.name || '').localeCompare(b.name || '');
+      else if (sortField === 'category') cmp = (a.category || '').localeCompare(b.category || '');
+      else if (sortField === 'vendors')  cmp = (a.vendorCount ?? 0) - (b.vendorCount ?? 0);
+      else if (sortField === 'cost')     cmp = (a.defaultBlankCost ?? -Infinity) - (b.defaultBlankCost ?? -Infinity);
+      else if (sortField === 'status')   cmp = (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0);
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  }, [products, filterStatus, filterCat, search, sortField, sortDir]);
 
   const activeCount  = products.filter(p => p.isActive).length;
   const filterCount  = (filterStatus !== 'active' ? 1 : 0) + (filterCat ? 1 : 0);
@@ -862,6 +882,11 @@ export default function CatalogAdminScreen() {
     setCostEdits(new Map());
   };
 
+  const toggleSort = useCallback((field: SortField) => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('asc'); }
+  }, [sortField]);
+
   const saveCostEdit = async (id: string) => {
     const raw = costEdits.get(id);
     if (raw === undefined) return;
@@ -978,6 +1003,13 @@ export default function CatalogAdminScreen() {
     a.href = url; a.download = 'products.csv'; a.click();
     URL.revokeObjectURL(url);
   };
+
+  const SortBtn = ({ field, label }: { field: SortField; label: string }) => (
+    <TouchableOpacity style={s.sortBtn} onPress={() => toggleSort(field)}>
+      <Text style={[s.sortBtnText, sortField === field && s.sortBtnTextActive]}>{label}</Text>
+      <ArrowUpDown size={11} color={sortField === field ? BRAND : 'rgba(255,255,255,0.35)'} />
+    </TouchableOpacity>
+  );
 
   return (
     <View style={s.screen}>
@@ -1214,13 +1246,13 @@ export default function CatalogAdminScreen() {
             onToggle={handleTogglePageSelection}
           />
         </View>
-        <Text style={[s.th, s.cStyle]}>Style #</Text>
-        <Text style={[s.th, s.cBrand]}>Brand</Text>
-        <Text style={[s.th, s.cName]}>Product</Text>
-        <Text style={[s.th, s.cCat]}>Category</Text>
-        <Text style={[s.th, s.cVendor]}>Vendors</Text>
-        <Text style={[s.th, s.cCost]}>Cost</Text>
-        <Text style={[s.th, s.cStatus]}>Status</Text>
+        <View style={s.cStyle}><SortBtn field="style" label="Style #" /></View>
+        <View style={s.cBrand}><SortBtn field="brand" label="Brand" /></View>
+        <View style={s.cName}><SortBtn field="name" label="Product" /></View>
+        <View style={s.cCat}><SortBtn field="category" label="Category" /></View>
+        <View style={s.cVendor}><SortBtn field="vendors" label="Vendors" /></View>
+        <View style={s.cCost}><SortBtn field="cost" label="Cost" /></View>
+        <View style={s.cStatus}><SortBtn field="status" label="Status" /></View>
         <View style={s.cActions} />
       </View>
 
@@ -1541,14 +1573,11 @@ const s = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: '#F8FAFC',
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
+    backgroundColor: '#000000',
   },
-  th: {
-    fontSize: 11, fontWeight: '600', color: TEXT_LIGHT,
-    textTransform: 'uppercase', letterSpacing: 0.4,
-  },
+  sortBtn: { flexDirection: 'row' as any, alignItems: 'center' as any, gap: 4 },
+  sortBtnText: { fontSize: 11, fontWeight: '700' as any, color: '#ffffff', textTransform: 'uppercase' as any, letterSpacing: 0.5 },
+  sortBtnTextActive: { color: BRAND },
 
   list: { flex: 1 },
 
