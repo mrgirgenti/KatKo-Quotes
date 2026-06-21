@@ -11,14 +11,15 @@ export async function GET(request: Request, { id }: { id: string }) {
 
   const client = await pool.connect();
   try {
-    const result = await client.query(`SELECT * FROM "Product" WHERE id = $1::uuid`, [id]);
+    console.log('[GET /api/products/:id] id=', id, 'typeof=', typeof id);
+    const result = await client.query(`SELECT * FROM "Product" WHERE id::text = $1`, [id]);
     if (result.rows.length === 0) return Response.json({ error: 'Product not found' }, { status: 404 });
 
     const product = result.rows[0] as Record<string, unknown>;
 
     if (include.includes('colors')) {
       const colorRes = await client.query(
-        `SELECT * FROM "ProductColor" WHERE "productId" = $1::uuid ORDER BY "sortOrder" ASC, "colorName" ASC`,
+        `SELECT * FROM "ProductColor" WHERE "productId"::text = $1 ORDER BY "sortOrder" ASC, "colorName" ASC`,
         [id],
       );
       const colors = colorRes.rows as Array<Record<string, unknown>>;
@@ -26,7 +27,7 @@ export async function GET(request: Request, { id }: { id: string }) {
       if (include.includes('assets') && colors.length > 0) {
         const colorIds = colors.map(c => c.id);
         const assetRes = await client.query(
-          `SELECT * FROM "ProductAsset" WHERE "productColorId" = ANY($1::uuid[]) ORDER BY "sortOrder" ASC`,
+          `SELECT * FROM "ProductAsset" WHERE "productColorId"::text = ANY($1::text[]) ORDER BY "sortOrder" ASC`,
           [colorIds],
         );
         const assetsByColor: Record<string, unknown[]> = {};
@@ -44,7 +45,7 @@ export async function GET(request: Request, { id }: { id: string }) {
 
     if (include.includes('placements')) {
       const placRes = await client.query(
-        `SELECT * FROM "ProductPlacement" WHERE "productId" = $1::uuid AND "isActive" = true ORDER BY side ASC, "placementType" ASC`,
+        `SELECT * FROM "ProductPlacement" WHERE "productId"::text = $1 AND "isActive" = true ORDER BY side ASC, "placementType" ASC`,
         [id],
       );
       product.placements = placRes.rows;
