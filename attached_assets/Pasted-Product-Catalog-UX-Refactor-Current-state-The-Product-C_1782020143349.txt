@@ -1,0 +1,266 @@
+Product Catalog UX Refactor
+
+Current state:
+
+The Product Catalog architecture is now strong, but the user experience is becoming fragmented.
+
+The goal of this phase is NOT to add new catalog capabilities.
+
+The goal is to make the catalog manageable at scale by real users.
+
+Examples:
+
+* Sales reps
+* CSRs
+* Production managers
+* Future business owners using the platform
+
+This phase is a UX refactor.
+
+No quote integration yet.
+
+No mockup generation yet.
+
+Objective
+
+Transform Products into a true management table and move maintenance functions into more appropriate locations.
+
+Requirements
+
+1. Product Grid Refactor
+
+Current:
+
+The Products grid contains health dots and readiness indicators directly in the main table.
+
+Issue:
+
+This creates visual noise and provides little day-to-day value.
+
+Implement:
+
+Remove health dots from the Products table.
+
+Keep:
+
+* Style #
+* Brand
+* Product Name
+* Category
+* Sources
+* Default Cost
+* Status
+
+Keep the table focused on product management.
+
+2. Product Audit Page
+
+Create a dedicated Product Audit view/page.
+
+Move all readiness indicators there.
+
+Include:
+
+* Missing Cost
+* Missing Colors
+* Missing Assets
+* Missing Template
+* Missing Sources
+
+Provide summary counts.
+
+Purpose:
+
+Administrative maintenance should live separately from daily product management.
+
+3. Product Header Toolbar
+
+Refactor Products to use the same management pattern as Quotes and Projects.
+
+Add toolbar actions:
+
+* Search
+* Filters
+* Bulk Actions
+* Import CSV
+* Export CSV
+* New Product
+
+Move maintenance actions out of the primary workflow.
+
+4. Bulk Selection
+
+Add row checkboxes.
+
+Support:
+
+* Select Row
+* Select Page
+* Select All
+
+5. Bulk Actions
+
+Add:
+
+* Assign Category
+* Assign Subcategory
+* Assign Product Type
+* Assign Template
+* Assign Source
+* Activate
+* Deactivate
+* Delete
+
+Future-friendly architecture.
+
+6. Cost Management Refactor
+
+Current issue:
+
+Cost editing exists inside each Product Detail page.
+
+This does not scale.
+
+Implement:
+
+Product Cost Manager.
+
+Access from toolbar:
+
+Products → Manage Costs
+
+Display spreadsheet-style editor:
+
+Style #
+Product
+Current Cost
+
+Editable inline.
+
+Support:
+
+* Save All
+* Bulk Update
+* CSV Import compatibility
+
+Purpose:
+
+Allow management of hundreds of products without opening individual records.
+
+7. Source Management Refactor
+
+Current issue:
+
+Sources are primarily managed inside individual products.
+
+This does not scale.
+
+Implement:
+
+Products → Manage Sources
+
+Allow:
+
+* View products by source
+* Assign sources in bulk
+* Remove sources in bulk
+* Set preferred source in bulk
+
+Examples:
+
+Select 100 products
+→ Assign S&S Activewear
+
+Select 50 products
+→ Assign AlphaBroder
+
+Select 25 products
+→ Set SanMar Preferred
+
+Keep the existing Sources tab for product-level exceptions and inspection.
+
+Do not remove existing functionality.
+
+8. Product Detail Simplification
+
+Keep:
+
+* Colors
+* Assets
+* Placements
+
+These are product-specific and belong at the product level.
+
+Evaluate:
+
+Removing Cost and Source management from the product detail page.
+
+Option A:
+
+Remove entirely.
+
+Option B:
+
+Leave as read-only summaries with links to Manage Costs and Manage Sources.
+
+Recommend the better UX.
+
+9. Auto Resolve Relocation
+
+Current issue:
+
+Auto Resolve appears as a primary action beside New Product.
+
+Most users will not understand its purpose.
+
+Move Auto Resolve into:
+
+Catalog Maintenance
+
+or
+
+More Actions
+
+or
+
+Admin Utilities
+
+Keep functionality unchanged.
+
+Only relocate it.
+
+10. Preserve Existing Architecture
+
+Do not modify:
+
+* Product Assets
+* Product Colors
+* Placement Templates
+* Product Sources architecture
+* Cost architecture
+* Classification architecture
+
+Do not build:
+
+* Quote integration
+* Mockup generation
+* Artwork instances
+* Proof generation
+* Vendor APIs
+
+Verification
+
+Provide:
+
+* UX changes
+* Files changed
+* Bulk action architecture
+* Cost manager design
+* Source manager design
+* Product audit design
+* Recommendation for Product Detail simplification
+* Testing checklist
+
+Focus on usability, scalability, and daily operational efficiency.
+Do not introduce new catalog concepts.
+Refine the existing experience.

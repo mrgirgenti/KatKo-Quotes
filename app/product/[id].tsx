@@ -1275,19 +1275,27 @@ export default function ProductDetailScreen() {
             )}
           </View>
         </View>
-        <TouchableOpacity
-          style={s.costEditBtn}
-          onPress={() => {
-            setCostInput(product.defaultBlankCost != null ? String(product.defaultBlankCost) : '');
-            setCostModal(true);
-          }}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Pencil size={13} color={BRAND} />
-          <Text style={s.costEditBtnText}>
-            {product.defaultBlankCost != null ? 'Edit' : 'Add'}
-          </Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TouchableOpacity
+            style={s.costEditBtn}
+            onPress={() => {
+              setCostInput(product.defaultBlankCost != null ? String(product.defaultBlankCost) : '');
+              setCostModal(true);
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Pencil size={13} color={BRAND} />
+            <Text style={s.costEditBtnText}>
+              {product.defaultBlankCost != null ? 'Edit' : 'Add'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push('/catalog-costs' as any)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={s.manageAllLink}>Manage All →</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Tab bar */}
@@ -1415,7 +1423,12 @@ export default function ProductDetailScreen() {
       {activeTab === 'sources' && (
         <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
           <View style={s.srcHeader}>
-            <Text style={s.srcTitle}>Vendor Sources</Text>
+            <View>
+              <Text style={s.srcTitle}>Vendor Sources</Text>
+              <TouchableOpacity onPress={() => router.push('/catalog-sources' as any)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                <Text style={s.manageAllLink}>Bulk manage →</Text>
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity
               style={s.srcAddBtn}
               onPress={() => { setEditingSource(null); setSourceModal(true); }}
@@ -1590,6 +1603,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 6,
   },
   costEditBtnText: { fontSize: 13, color: BRAND, fontWeight: '600' },
+  manageAllLink: { fontSize: 12, color: BRAND, textDecorationLine: 'underline' },
   costInputRow: {
     flexDirection: 'row', alignItems: 'center',
     borderWidth: 1, borderColor: BORDER, borderRadius: 8,

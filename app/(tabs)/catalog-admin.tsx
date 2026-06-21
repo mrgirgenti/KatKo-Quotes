@@ -21,7 +21,15 @@ import {
   Search,
   EyeOff,
   Eye,
-  ChevronRight,
+  Check,
+  Minus,
+  SlidersHorizontal,
+  Wrench,
+  FileDown,
+  FileUp,
+  ClipboardList,
+  DollarSign,
+  Truck,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import Colors from '@/constants/colors';
@@ -69,6 +77,122 @@ interface Product {
   templateId?: string | null;
 }
 
+// ── Checkbox ──────────────────────────────────────────────────────────────────
+function Checkbox({ checked, indeterminate, onToggle }: {
+  checked: boolean; indeterminate?: boolean; onToggle: () => void;
+}) {
+  const filled = checked || !!indeterminate;
+  return (
+    <TouchableOpacity onPress={onToggle} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+      <View style={{
+        width: 17, height: 17, borderRadius: 4,
+        borderWidth: 1.5,
+        borderColor: filled ? BRAND : BORDER,
+        backgroundColor: filled ? BRAND : '#fff',
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
+      }}>
+        {checked && !indeterminate && <Check size={10} color="#fff" strokeWidth={3} />}
+        {!!indeterminate && <Minus size={10} color="#fff" strokeWidth={3} />}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// ── BulkAssignModal ───────────────────────────────────────────────────────────
+function BulkAssignModal({ visible, field, onSave, onClose }: {
+  visible: boolean;
+  field: 'category' | 'subcategory' | 'productType' | null;
+  onSave: (value: string) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const categories = Object.keys(CATEGORY_TREE);
+
+  useEffect(() => {
+    if (visible) { setValue(''); setError(''); setSaving(false); }
+  }, [visible, field]);
+
+  const label =
+    field === 'category' ? 'Category' :
+    field === 'subcategory' ? 'Subcategory' :
+    field === 'productType' ? 'Product Type' : '';
+
+  const handleSave = async () => {
+    if (!value.trim()) { setError(`${label} is required.`); return; }
+    setError('');
+    setSaving(true);
+    try {
+      await onSave(value.trim());
+      onClose();
+    } catch (e: any) {
+      setError(e.message || 'Failed to assign.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={fm.overlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} style={[fm.sheet, { width: 400 }]} onPress={() => {}}>
+          <View style={fm.header}>
+            <Text style={fm.title}>Assign {label}</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={20} color={TEXT_LIGHT} />
+            </TouchableOpacity>
+          </View>
+          <View style={[fm.body, { paddingBottom: 20 }]}>
+            {!!error && <View style={fm.errorBox}><Text style={fm.errorText}>{error}</Text></View>}
+            <Text style={fm.label}>{label}</Text>
+            {field === 'category' ? (
+              <View style={[fm.dropdown, { marginBottom: 0, maxHeight: 260 }]}>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {categories.map(cat => (
+                    <TouchableOpacity
+                      key={cat}
+                      style={[fm.dropOption, value === cat && fm.dropOptionActive]}
+                      onPress={() => setValue(cat)}
+                    >
+                      <Text style={[fm.dropOptionText, value === cat && fm.dropOptionTextActive]}>{cat}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            ) : (
+              <TextInput
+                style={fm.input}
+                value={value}
+                onChangeText={setValue}
+                placeholder={`Enter ${label.toLowerCase()}…`}
+                placeholderTextColor="#9CA3AF"
+                autoFocus
+              />
+            )}
+            <View style={{ flexDirection: 'row' as const, justifyContent: 'flex-end' as const, gap: 10, marginTop: 16 }}>
+              <TouchableOpacity style={[fm.btnCancel, { flex: 0, paddingHorizontal: 16 }]} onPress={onClose}>
+                <Text style={fm.btnCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[fm.btnSave, { flex: 0, paddingHorizontal: 20 }, saving && { opacity: 0.6 }]}
+                onPress={handleSave}
+                disabled={saving}
+              >
+                {saving
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={fm.btnSaveText}>Apply to Selected</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+// ── ProductFormModal ──────────────────────────────────────────────────────────
 function ProductFormModal({
   visible,
   initial,
@@ -275,14 +399,25 @@ function ProductFormModal({
   );
 }
 
+// ── Main Screen ───────────────────────────────────────────────────────────────
 export default function CatalogAdminScreen() {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('active');
+  const [filterCat, setFilterCat] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+
   const [modalVisible, setModalVisible] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
+  const [catalogMenuOpen, setCatalogMenuOpen] = useState(false);
+  const [assignModal, setAssignModal] = useState<'category' | 'subcategory' | 'productType' | null>(null);
+
   const [bulkResolving, setBulkResolving] = useState(false);
 
   const loadProducts = useCallback(async () => {
@@ -297,11 +432,12 @@ export default function CatalogAdminScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
+  useEffect(() => { loadProducts(); }, [loadProducts]);
 
   const filtered = products.filter(p => {
+    if (filterStatus === 'active' && !p.isActive) return false;
+    if (filterStatus === 'inactive' && p.isActive) return false;
+    if (filterCat && p.category !== filterCat) return false;
     const q = search.toLowerCase();
     if (!q) return true;
     return (
@@ -312,36 +448,37 @@ export default function CatalogAdminScreen() {
     );
   });
 
-  const handleSave = async (form: typeof EMPTY_FORM) => {
-    if (editing) {
-      await apiFetch(`/api/products/${editing.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(form),
-      });
-    } else {
-      await apiFetch('/api/products', {
-        method: 'POST',
-        body: JSON.stringify(form),
-      });
-    }
-    await loadProducts();
+  const activeCount  = products.filter(p => p.isActive).length;
+  const filterCount  = (filterStatus !== 'active' ? 1 : 0) + (filterCat ? 1 : 0);
+  const someSelected = filtered.some(p => selectedIds.has(p.id));
+  const pageAllSelected = filtered.length > 0 && filtered.every(p => selectedIds.has(p.id));
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   };
 
-  const handleBulkResolve = async () => {
-    setBulkResolving(true);
-    try {
-      const data = await apiFetch('/api/products/bulk-resolve-templates', { method: 'POST' });
-      const { resolved, unresolved, skipped } = data as { resolved: number; unresolved: number; skipped: number };
-      Alert.alert(
-        'Auto-Resolve Complete',
-        `Templates assigned: ${resolved}\nNeeds manual assignment: ${unresolved}\nAlready had template: ${skipped}`,
-      );
-      if (resolved > 0) await loadProducts();
-    } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to auto-resolve templates');
-    } finally {
-      setBulkResolving(false);
+  const handleTogglePageSelection = () => {
+    const pageIds = filtered.map(p => p.id);
+    if (pageAllSelected) {
+      setSelectedIds(prev => { const next = new Set(prev); pageIds.forEach(id => next.delete(id)); return next; });
+    } else {
+      setSelectedIds(prev => { const next = new Set(prev); pageIds.forEach(id => next.add(id)); return next; });
     }
+  };
+
+  const closeAllMenus = () => { setMenuId(null); setBulkMenuOpen(false); setCatalogMenuOpen(false); };
+
+  const handleSave = async (form: typeof EMPTY_FORM) => {
+    if (editing) {
+      await apiFetch(`/api/products/${editing.id}`, { method: 'PATCH', body: JSON.stringify(form) });
+    } else {
+      await apiFetch('/api/products', { method: 'POST', body: JSON.stringify(form) });
+    }
+    await loadProducts();
   };
 
   const handleToggleActive = async (product: Product) => {
@@ -351,18 +488,107 @@ export default function CatalogAdminScreen() {
         method: 'PATCH',
         body: JSON.stringify({ isActive: !product.isActive }),
       });
-      setProducts(prev =>
-        prev.map(p => (p.id === product.id ? { ...p, isActive: !p.isActive } : p)),
-      );
+      setProducts(prev => prev.map(p => p.id === product.id ? { ...p, isActive: !p.isActive } : p));
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to update product');
     }
   };
 
-  const activeCount = products.filter(p => p.isActive).length;
+  const handleBulkActivate = async () => {
+    const ids = [...selectedIds];
+    try {
+      await apiFetch('/api/products/bulk', { method: 'POST', body: JSON.stringify({ action: 'activate', ids }) });
+      setProducts(prev => prev.map(p => ids.includes(p.id) ? { ...p, isActive: true } : p));
+      setSelectedIds(new Set());
+    } catch (e: any) { Alert.alert('Error', e.message || 'Failed to activate'); }
+  };
+
+  const handleBulkDeactivate = async () => {
+    const ids = [...selectedIds];
+    try {
+      await apiFetch('/api/products/bulk', { method: 'POST', body: JSON.stringify({ action: 'deactivate', ids }) });
+      setProducts(prev => prev.map(p => ids.includes(p.id) ? { ...p, isActive: false } : p));
+      setSelectedIds(new Set());
+    } catch (e: any) { Alert.alert('Error', e.message || 'Failed to deactivate'); }
+  };
+
+  const handleBulkDelete = () => {
+    const n = selectedIds.size;
+    Alert.alert(
+      'Delete Products',
+      `Permanently delete ${n} product${n !== 1 ? 's' : ''}? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete', style: 'destructive',
+          onPress: async () => {
+            const ids = [...selectedIds];
+            try {
+              await apiFetch('/api/products/bulk', { method: 'POST', body: JSON.stringify({ action: 'delete', ids }) });
+              setProducts(prev => prev.filter(p => !ids.includes(p.id)));
+              setSelectedIds(new Set());
+            } catch (e: any) { Alert.alert('Error', e.message || 'Failed to delete'); }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleBulkAssign = async (value: string) => {
+    if (!assignModal) return;
+    const ids = [...selectedIds];
+    const actionMap: Record<string, string> = {
+      category: 'assign-category',
+      subcategory: 'assign-subcategory',
+      productType: 'assign-product-type',
+    };
+    await apiFetch('/api/products/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ action: actionMap[assignModal], ids, value }),
+    });
+    setProducts(prev => prev.map(p => ids.includes(p.id) ? { ...p, [assignModal]: value } : p));
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkResolve = async () => {
+    setBulkResolving(true);
+    try {
+      const data = await apiFetch('/api/products/bulk-resolve-templates', { method: 'POST' });
+      const { resolved, unresolved, skipped } = data as { resolved: number; unresolved: number; skipped: number };
+      Alert.alert(
+        'Auto-Resolve Complete',
+        `Templates assigned: ${resolved}\nNeeds manual: ${unresolved}\nAlready set: ${skipped}`,
+      );
+      if (resolved > 0) await loadProducts();
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to auto-resolve templates');
+    } finally {
+      setBulkResolving(false);
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (Platform.OS !== 'web') { Alert.alert('Export', 'CSV export is available on web.'); return; }
+    const rows = [
+      ['Style #', 'Brand', 'Manufacturer', 'Product Name', 'Category', 'Subcategory', 'Product Type', 'Gender', 'Default Cost', 'Status'],
+      ...filtered.map(p => [
+        p.styleNumber, p.brand, p.vendor, p.name, p.category,
+        p.subcategory ?? '', p.productType ?? '', p.gender ?? '',
+        p.defaultBlankCost != null ? String(p.defaultBlankCost) : '',
+        p.isActive ? 'Active' : 'Inactive',
+      ]),
+    ];
+    const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = (document as any).createElement('a');
+    a.href = url; a.download = 'products.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <View style={s.screen} onStartShouldSetResponder={() => { setMenuId(null); return false; }}>
+    <View style={s.screen} onStartShouldSetResponder={() => { closeAllMenus(); return false; }}>
+
       {/* Page header */}
       <View style={s.pageHeader}>
         <View style={s.pageHeaderLeft}>
@@ -375,17 +601,56 @@ export default function CatalogAdminScreen() {
           )}
         </View>
         <View style={s.headerActions}>
-          <TouchableOpacity style={s.resolveBtn} onPress={handleBulkResolve} disabled={bulkResolving}>
-            {bulkResolving
-              ? <ActivityIndicator size="small" color={BRAND} />
-              : <Text style={s.resolveBtnText}>Auto-resolve</Text>}
-          </TouchableOpacity>
+          {/* Catalog maintenance dropdown */}
+          <View style={{ position: 'relative' as any }}>
+            <TouchableOpacity
+              style={s.outlineBtn}
+              onPress={() => { setMenuId(null); setBulkMenuOpen(false); setCatalogMenuOpen(o => !o); }}
+            >
+              <Wrench size={14} color={TEXT_LIGHT} />
+              <Text style={s.outlineBtnText}>Catalog</Text>
+              <ChevronDown size={12} color={TEXT_LIGHT} />
+            </TouchableOpacity>
+            {catalogMenuOpen && (
+              <View style={[s.floatingMenu, { right: 0, top: 40, minWidth: 210 }]}>
+                <TouchableOpacity style={s.floatItem} onPress={() => { setCatalogMenuOpen(false); router.push('/catalog-audit' as any); }}>
+                  <ClipboardList size={15} color={TEXT_LIGHT} />
+                  <Text style={s.floatItemText}>Product Audit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.floatItem} onPress={() => { setCatalogMenuOpen(false); router.push('/catalog-costs' as any); }}>
+                  <DollarSign size={15} color={TEXT_LIGHT} />
+                  <Text style={s.floatItemText}>Manage Costs</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.floatItem} onPress={() => { setCatalogMenuOpen(false); router.push('/catalog-sources' as any); }}>
+                  <Truck size={15} color={TEXT_LIGHT} />
+                  <Text style={s.floatItemText}>Manage Sources</Text>
+                </TouchableOpacity>
+                <View style={s.floatDivider} />
+                <TouchableOpacity style={s.floatItem} onPress={() => { setCatalogMenuOpen(false); handleExportCSV(); }}>
+                  <FileDown size={15} color={TEXT_LIGHT} />
+                  <Text style={s.floatItemText}>Export CSV</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.floatItem} onPress={() => { setCatalogMenuOpen(false); Alert.alert('Import CSV', 'CSV import coming soon.'); }}>
+                  <FileUp size={15} color={TEXT_LIGHT} />
+                  <Text style={s.floatItemText}>Import CSV</Text>
+                </TouchableOpacity>
+                <View style={s.floatDivider} />
+                <TouchableOpacity
+                  style={s.floatItem}
+                  onPress={() => { setCatalogMenuOpen(false); handleBulkResolve(); }}
+                  disabled={bulkResolving}
+                >
+                  <Text style={[s.floatItemText, { color: TEXT_LIGHT }]}>
+                    {bulkResolving ? 'Resolving…' : 'Auto-resolve Templates'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+
           <TouchableOpacity
             style={s.addBtn}
-            onPress={() => {
-              setEditing(null);
-              setModalVisible(true);
-            }}
+            onPress={() => { setEditing(null); setModalVisible(true); }}
           >
             <Plus size={15} color="#fff" />
             <Text style={s.addBtnText}>New Product</Text>
@@ -393,35 +658,135 @@ export default function CatalogAdminScreen() {
         </View>
       </View>
 
-      {/* Search */}
-      <View style={s.searchRow}>
+      {/* Toolbar row: search + filters */}
+      <View style={s.toolbarRow}>
         <View style={s.searchBox}>
           <Search size={15} color={TEXT_LIGHT} />
           <TextInput
             style={s.searchInput}
             value={search}
             onChangeText={setSearch}
-            placeholder="Search style #, brand, vendor, name…"
+            placeholder="Search style #, brand, or name…"
             placeholderTextColor="#9CA3AF"
           />
           {search.length > 0 && (
-            <TouchableOpacity
-              onPress={() => setSearch('')}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
+            <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <X size={14} color={TEXT_LIGHT} />
             </TouchableOpacity>
           )}
         </View>
+        <TouchableOpacity
+          style={[s.filterBtn, filterCount > 0 && s.filterBtnActive]}
+          onPress={() => setShowFilters(f => !f)}
+        >
+          <SlidersHorizontal size={15} color={filterCount > 0 ? BRAND : TEXT_LIGHT} />
+          <Text style={[s.filterBtnText, filterCount > 0 && { color: BRAND }]}>
+            Filters{filterCount > 0 ? ` (${filterCount})` : ''}
+          </Text>
+        </TouchableOpacity>
       </View>
+
+      {/* Filter panel */}
+      {showFilters && (
+        <View style={s.filterPanel}>
+          <View style={s.filterGroup}>
+            <Text style={s.filterGroupLabel}>Status</Text>
+            <View style={s.pillRow}>
+              {(['active', 'inactive', 'all'] as const).map(st => (
+                <TouchableOpacity
+                  key={st}
+                  style={[s.pill, filterStatus === st && s.pillActive]}
+                  onPress={() => setFilterStatus(st)}
+                >
+                  <Text style={[s.pillText, filterStatus === st && s.pillTextActive]}>
+                    {st === 'all' ? 'All' : st === 'active' ? 'Active' : 'Inactive'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          <View style={s.filterGroup}>
+            <Text style={s.filterGroupLabel}>Category</Text>
+            <View style={s.pillRow}>
+              <TouchableOpacity style={[s.pill, !filterCat && s.pillActive]} onPress={() => setFilterCat('')}>
+                <Text style={[s.pillText, !filterCat && s.pillTextActive]}>All</Text>
+              </TouchableOpacity>
+              {Object.keys(CATEGORY_TREE).map(cat => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[s.pill, filterCat === cat && s.pillActive]}
+                  onPress={() => setFilterCat(c => c === cat ? '' : cat)}
+                >
+                  <Text style={[s.pillText, filterCat === cat && s.pillTextActive]}>{cat}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Bulk selection bar */}
+      {selectedIds.size > 0 && (
+        <View style={s.selectionBar}>
+          <Text style={s.selectionText}>{selectedIds.size} selected</Text>
+          {selectedIds.size < filtered.length && (
+            <TouchableOpacity onPress={() => setSelectedIds(new Set(filtered.map(p => p.id)))}>
+              <Text style={s.selectionLink}>Select all {filtered.length}</Text>
+            </TouchableOpacity>
+          )}
+          <View style={s.selDivider} />
+          <TouchableOpacity style={s.selBtn} onPress={handleBulkActivate}>
+            <Text style={s.selBtnText}>Activate</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.selBtn} onPress={handleBulkDeactivate}>
+            <Text style={s.selBtnText}>Deactivate</Text>
+          </TouchableOpacity>
+          <View style={{ position: 'relative' as any }}>
+            <TouchableOpacity style={s.selBtn} onPress={() => { setCatalogMenuOpen(false); setBulkMenuOpen(o => !o); }}>
+              <Text style={s.selBtnText}>Assign</Text>
+              <ChevronDown size={12} color={BRAND} />
+            </TouchableOpacity>
+            {bulkMenuOpen && (
+              <View style={[s.floatingMenu, { top: 36, left: 0, zIndex: 300, minWidth: 190 }]}>
+                <TouchableOpacity style={s.floatItem} onPress={() => { setBulkMenuOpen(false); setAssignModal('category'); }}>
+                  <Text style={s.floatItemText}>Category</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.floatItem} onPress={() => { setBulkMenuOpen(false); setAssignModal('subcategory'); }}>
+                  <Text style={s.floatItemText}>Subcategory</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.floatItem} onPress={() => { setBulkMenuOpen(false); setAssignModal('productType'); }}>
+                  <Text style={s.floatItemText}>Product Type</Text>
+                </TouchableOpacity>
+                <View style={s.floatDivider} />
+                <TouchableOpacity style={s.floatItem} onPress={() => { setBulkMenuOpen(false); router.push('/catalog-sources' as any); }}>
+                  <Text style={s.floatItemText}>Assign Source →</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+          <TouchableOpacity style={[s.selBtn, { borderColor: '#FECACA' }]} onPress={handleBulkDelete}>
+            <Text style={[s.selBtnText, { color: '#DC2626' }]}>Delete</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setSelectedIds(new Set())} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <X size={16} color={TEXT_LIGHT} />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Table header */}
       <View style={s.tableHeader}>
+        <View style={s.cCheck}>
+          <Checkbox
+            checked={pageAllSelected}
+            indeterminate={someSelected && !pageAllSelected}
+            onToggle={handleTogglePageSelection}
+          />
+        </View>
         <Text style={[s.th, s.cStyle]}>Style #</Text>
         <Text style={[s.th, s.cBrand]}>Brand</Text>
-        <Text style={[s.th, s.cVendor]}>Sources</Text>
-        <Text style={[s.th, s.cName]}>Product Name</Text>
+        <Text style={[s.th, s.cName]}>Product</Text>
         <Text style={[s.th, s.cCat]}>Category</Text>
+        <Text style={[s.th, s.cVendor]}>Sources</Text>
         <Text style={[s.th, s.cCost]}>Cost</Text>
         <Text style={[s.th, s.cStatus]}>Status</Text>
         <View style={s.cActions} />
@@ -436,9 +801,9 @@ export default function CatalogAdminScreen() {
         <View style={s.emptyBox}>
           <Package size={36} color={BORDER} />
           <Text style={s.emptyTitle}>
-            {search ? 'No products match your search.' : 'No products yet.'}
+            {search || filterCount > 0 ? 'No products match your filters.' : 'No products yet.'}
           </Text>
-          {!search && (
+          {!search && filterCount === 0 && (
             <Text style={s.emptySubtitle}>Add your first product to get started.</Text>
           )}
         </View>
@@ -447,29 +812,19 @@ export default function CatalogAdminScreen() {
           {filtered.map(product => (
             <TouchableOpacity
               key={product.id}
-              style={s.row}
-              onPress={() => {
-                setMenuId(null);
-                router.push(`/product/${product.id}` as any);
-              }}
+              style={[s.row, selectedIds.has(product.id) && s.rowSelected]}
+              onPress={() => { closeAllMenus(); router.push(`/product/${product.id}` as any); }}
               activeOpacity={0.75}
             >
+              <View style={s.cCheck}>
+                <Checkbox checked={selectedIds.has(product.id)} onToggle={() => toggleSelect(product.id)} />
+              </View>
               <Text style={[s.td, s.cStyle, s.tdBold]} numberOfLines={1}>
                 {product.styleNumber}
               </Text>
               <Text style={[s.td, s.cBrand]} numberOfLines={1}>
                 {product.brand}
               </Text>
-              <View style={s.cVendor}>
-                <Text style={s.td} numberOfLines={1}>
-                  {product.preferredVendorName ?? '—'}
-                </Text>
-                {(product.vendorCount ?? 0) > 0 && (
-                  <Text style={s.tdSub} numberOfLines={1}>
-                    {product.vendorCount} {product.vendorCount === 1 ? 'source' : 'sources'}
-                  </Text>
-                )}
-              </View>
               <Text style={[s.td, s.cName]} numberOfLines={1}>
                 {product.name}
               </Text>
@@ -481,40 +836,28 @@ export default function CatalogAdminScreen() {
                   <Text style={s.tdSub} numberOfLines={1}>{product.productType}</Text>
                 )}
               </View>
-              {/* Cost + health dots */}
+              <View style={s.cVendor}>
+                <Text style={s.td} numberOfLines={1}>
+                  {product.preferredVendorName ?? '—'}
+                </Text>
+                {(product.vendorCount ?? 0) > 0 && (
+                  <Text style={s.tdSub} numberOfLines={1}>
+                    {product.vendorCount} {product.vendorCount === 1 ? 'source' : 'sources'}
+                  </Text>
+                )}
+              </View>
               <View style={s.cCost}>
                 {product.defaultBlankCost != null ? (
                   <Text style={s.costCell} numberOfLines={1}>
                     ${parseFloat(String(product.defaultBlankCost)).toFixed(2)}
                   </Text>
                 ) : (
-                  <Text style={s.costCellMissing} numberOfLines={1}>No cost</Text>
+                  <Text style={s.costCellMissing}>—</Text>
                 )}
-                <View style={s.healthDots}>
-                  {/* $ cost */}
-                  <View style={[s.dot, product.defaultBlankCost != null ? s.dotOk : s.dotWarn]} />
-                  {/* colors */}
-                  <View style={[s.dot, (product.colorCount ?? 0) > 0 ? s.dotOk : s.dotWarn]} />
-                  {/* assets */}
-                  <View style={[s.dot, (product.assetCount ?? 0) > 0 ? s.dotOk : s.dotMute]} />
-                  {/* template/placements */}
-                  <View style={[s.dot, (product.templateId || (product.placementCount ?? 0) > 0) ? s.dotOk : s.dotMute]} />
-                </View>
               </View>
-
               <View style={s.cStatus}>
-                <View
-                  style={[
-                    s.badge,
-                    product.isActive ? s.badgeActive : s.badgeInactive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      s.badgeText,
-                      product.isActive ? s.badgeTextActive : s.badgeTextInactive,
-                    ]}
-                  >
+                <View style={[s.badge, product.isActive ? s.badgeActive : s.badgeInactive]}>
+                  <Text style={[s.badgeText, product.isActive ? s.badgeTextActive : s.badgeTextInactive]}>
                     {product.isActive ? 'Active' : 'Inactive'}
                   </Text>
                 </View>
@@ -526,7 +869,8 @@ export default function CatalogAdminScreen() {
                   style={s.menuBtn}
                   onPress={e => {
                     e.stopPropagation?.();
-                    setMenuId(prev => (prev === product.id ? null : product.id));
+                    setCatalogMenuOpen(false); setBulkMenuOpen(false);
+                    setMenuId(prev => prev === product.id ? null : product.id);
                   }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
@@ -539,21 +883,11 @@ export default function CatalogAdminScreen() {
                       style={s.menuItem}
                       onPress={() => {
                         setMenuId(null);
-                        router.push(`/product/${product.id}` as any);
-                      }}
-                    >
-                      <ChevronRight size={15} color={TEXT} />
-                      <Text style={s.menuItemText}>View Details</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={s.menuItem}
-                      onPress={() => {
-                        setMenuId(null);
                         setEditing(product);
                         setModalVisible(true);
                       }}
                     >
-                      <Pencil size={15} color={TEXT} />
+                      <Pencil size={15} color={TEXT_LIGHT} />
                       <Text style={s.menuItemText}>Edit</Text>
                     </TouchableOpacity>
                     <View style={s.menuDivider} />
@@ -583,10 +917,10 @@ export default function CatalogAdminScreen() {
         </ScrollView>
       )}
 
-      {menuId && (
+      {(menuId !== null || catalogMenuOpen || bulkMenuOpen) && (
         <TouchableOpacity
           style={StyleSheet.absoluteFillObject}
-          onPress={() => setMenuId(null)}
+          onPress={closeAllMenus}
           activeOpacity={0}
         />
       )}
@@ -597,10 +931,18 @@ export default function CatalogAdminScreen() {
         onSave={handleSave}
         onClose={() => setModalVisible(false)}
       />
+
+      <BulkAssignModal
+        visible={!!assignModal}
+        field={assignModal}
+        onSave={handleBulkAssign}
+        onClose={() => setAssignModal(null)}
+      />
     </View>
   );
 }
 
+// ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: BG },
 
@@ -609,39 +951,62 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
     backgroundColor: SURFACE,
   },
   pageHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   pageTitle: { fontSize: 20, fontWeight: '700', color: TEXT },
-  countBadge: {
-    backgroundColor: '#EFF6FF',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
+  countBadge: { backgroundColor: '#EFF6FF', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
   countText: { fontSize: 12, fontWeight: '600', color: BRAND },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+
+  outlineBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    borderWidth: 1, borderColor: BORDER, borderRadius: 8,
+    paddingVertical: 7, paddingHorizontal: 11,
+    backgroundColor: SURFACE,
+  },
+  outlineBtnText: { fontSize: 13, color: TEXT_LIGHT, fontWeight: '500' },
+
   addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: BRAND,
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: BRAND, borderRadius: 8,
+    paddingVertical: 8, paddingHorizontal: 14,
   },
   addBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
 
-  searchRow: {
+  floatingMenu: {
+    position: 'absolute' as any,
+    backgroundColor: SURFACE,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: BORDER,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    zIndex: 200,
+    overflow: 'hidden' as any,
+  },
+  floatItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10 },
+  floatItemText: { fontSize: 14, color: TEXT },
+  floatDivider: { height: 1, backgroundColor: BORDER, marginHorizontal: 14 },
+
+  toolbarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 10,
     backgroundColor: SURFACE,
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
+    gap: 10,
   },
   searchBox: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: BG,
@@ -653,12 +1018,58 @@ const s = StyleSheet.create({
     gap: 8,
     maxWidth: 480,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: TEXT,
-    outlineStyle: 'none' as any,
+  searchInput: { flex: 1, fontSize: 14, color: TEXT, outlineStyle: 'none' as any },
+  filterBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    borderWidth: 1, borderColor: BORDER, borderRadius: 8,
+    paddingVertical: 7, paddingHorizontal: 11,
+    backgroundColor: SURFACE,
   },
+  filterBtnActive: { borderColor: BRAND, backgroundColor: '#EFF6FF' },
+  filterBtnText: { fontSize: 13, color: TEXT_LIGHT, fontWeight: '500' },
+
+  filterPanel: {
+    backgroundColor: SURFACE,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 14,
+    gap: 10,
+  },
+  filterGroup: { gap: 6 },
+  filterGroupLabel: { fontSize: 11, fontWeight: '600', color: TEXT_LIGHT, textTransform: 'uppercase', letterSpacing: 0.4 },
+  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  pill: {
+    paddingVertical: 4, paddingHorizontal: 12,
+    borderRadius: 20, borderWidth: 1, borderColor: BORDER,
+    backgroundColor: BG,
+  },
+  pillActive: { borderColor: BRAND, backgroundColor: '#EFF6FF' },
+  pillText: { fontSize: 13, color: TEXT_LIGHT },
+  pillTextActive: { color: BRAND, fontWeight: '600' },
+
+  selectionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#EFF6FF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#BFDBFE',
+  },
+  selectionText: { fontSize: 13, fontWeight: '600', color: BRAND },
+  selectionLink: { fontSize: 13, color: BRAND, textDecorationLine: 'underline' },
+  selDivider: { width: 1, height: 18, backgroundColor: '#BFDBFE' },
+  selBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    borderWidth: 1, borderColor: BRAND, borderRadius: 6,
+    paddingVertical: 5, paddingHorizontal: 10,
+    backgroundColor: SURFACE,
+  },
+  selBtnText: { fontSize: 13, color: BRAND, fontWeight: '500' },
 
   tableHeader: {
     flexDirection: 'row',
@@ -670,11 +1081,8 @@ const s = StyleSheet.create({
     borderBottomColor: BORDER,
   },
   th: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: TEXT_LIGHT,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    fontSize: 11, fontWeight: '600', color: TEXT_LIGHT,
+    textTransform: 'uppercase', letterSpacing: 0.4,
   },
 
   list: { flex: 1 },
@@ -688,51 +1096,35 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
   },
+  rowSelected: { backgroundColor: '#F0F9FF' },
   td: { fontSize: 14, color: TEXT },
   tdBold: { fontWeight: '600' },
+  tdSub: { fontSize: 11, color: TEXT_LIGHT, marginTop: 1 },
 
-  cStyle:   { width: 100, marginRight: 16 },
-  cBrand:   { width: 130, marginRight: 16 },
-  cVendor:  { width: 150, marginRight: 16, justifyContent: 'center' as any },
-  cName:    { flex: 1, minWidth: 140, marginRight: 16 },
-  cCat:     { width: 130, marginRight: 16, justifyContent: 'center' as any },
-  cStatus:  { width: 80, marginRight: 8 },
-  cCost: { width: 88, justifyContent: 'center' as any },
-  costCell: { fontSize: 13, fontWeight: '600', color: TEXT },
-  costCellMissing: { fontSize: 12, color: '#D97706', fontWeight: '500' },
-  healthDots: { flexDirection: 'row', gap: 4, marginTop: 5 },
-  dot: { width: 7, height: 7, borderRadius: 4 },
-  dotOk:   { backgroundColor: '#10B981' },
-  dotWarn: { backgroundColor: '#F59E0B' },
-  dotMute: { backgroundColor: '#D1D5DB' },
-
+  cCheck:  { width: 30, marginRight: 8 },
+  cStyle:  { width: 96, marginRight: 16 },
+  cBrand:  { width: 120, marginRight: 16 },
+  cName:   { flex: 1, minWidth: 140, marginRight: 16 },
+  cCat:    { width: 120, marginRight: 16, justifyContent: 'center' as any },
+  cVendor: { width: 140, marginRight: 16, justifyContent: 'center' as any },
+  cCost:   { width: 80, marginRight: 12, justifyContent: 'center' as any },
+  cStatus: { width: 80, marginRight: 8 },
   cActions: { width: 44, alignItems: 'center', position: 'relative' as any },
-  tdSub:    { fontSize: 11, color: TEXT_LIGHT, marginTop: 1 },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  resolveBtn: {
-    borderWidth: 1, borderColor: BRAND, borderRadius: 8,
-    paddingVertical: 7, paddingHorizontal: 12, minWidth: 36,
-    alignItems: 'center' as any, justifyContent: 'center' as any,
-  },
-  resolveBtnText: { color: BRAND, fontWeight: '600' as const, fontSize: 13 },
 
-  badge: {
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    alignSelf: 'flex-start',
-  },
-  badgeActive: { backgroundColor: '#D1FAE5' },
-  badgeInactive: { backgroundColor: '#F3F4F6' },
-  badgeText: { fontSize: 11, fontWeight: '600' },
+  costCell: { fontSize: 13, fontWeight: '600', color: TEXT },
+  costCellMissing: { fontSize: 13, color: '#D1D5DB' },
+
+  badge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start' },
+  badgeActive:     { backgroundColor: '#D1FAE5' },
+  badgeInactive:   { backgroundColor: '#F3F4F6' },
+  badgeText:       { fontSize: 11, fontWeight: '600' },
   badgeTextActive: { color: '#059669' },
   badgeTextInactive: { color: '#6B7280' },
 
   menuBtn: { padding: 4 },
   menu: {
     position: 'absolute' as any,
-    top: 28,
-    right: 0,
+    top: 28, right: 0,
     backgroundColor: SURFACE,
     borderRadius: 8,
     borderWidth: 1,
@@ -746,18 +1138,12 @@ const s = StyleSheet.create({
     minWidth: 160,
     overflow: 'hidden' as any,
   },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
+  menuItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10 },
   menuItemText: { fontSize: 14, color: TEXT },
   menuDivider: { height: 1, backgroundColor: BORDER, marginHorizontal: 14 },
 
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, paddingTop: 60 },
+  emptyBox:   { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, paddingTop: 60 },
   emptyTitle: { fontSize: 15, fontWeight: '600', color: TEXT_LIGHT },
   emptySubtitle: { fontSize: 13, color: TEXT_LIGHT },
 });
@@ -806,6 +1192,7 @@ const fm = StyleSheet.create({
     color: TEXT,
     backgroundColor: BG,
     outlineStyle: 'none' as any,
+    marginBottom: 0,
   },
   select: {
     flexDirection: 'row',
