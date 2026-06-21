@@ -400,12 +400,10 @@ function AssetsTab({
   const requestDelete = (colorId: string, assetId: string) => {
     const key = `${colorId}:${assetId}`;
     if (confirmKey === key) {
-      // Second tap — execute delete
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
       setConfirmKey(null);
       onDelete(colorId, assetId);
     } else {
-      // First tap — enter confirm state, auto-cancel after 3 s
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
       setConfirmKey(key);
       confirmTimerRef.current = setTimeout(() => setConfirmKey(null), 3000);
