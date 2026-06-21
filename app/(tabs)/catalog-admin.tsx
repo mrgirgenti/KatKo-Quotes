@@ -1277,7 +1277,7 @@ export default function CatalogAdminScreen() {
             <TouchableOpacity
               key={product.id}
               style={[s.row, selectedIds.has(product.id) && s.rowSelected]}
-              onPress={() => router.push(`/product/${product.id}` as any)}
+              onPress={costEditAll ? undefined : () => router.push(`/product/${product.id}` as any)}
               activeOpacity={0.75}
             >
               <View style={s.cCheck}>
@@ -1310,7 +1310,12 @@ export default function CatalogAdminScreen() {
                   </Text>
                 )}
               </View>
-              <View style={s.cCost}>
+              <View
+                style={s.cCost}
+                {...(Platform.OS === 'web' && (costEdits.has(product.id) || costEditAll) ? {
+                  onClick: (e: any) => e.stopPropagation(),
+                } as any : {})}
+              >
                 {(costEdits.has(product.id) || costEditAll) ? (
                   <TextInput
                     style={s.costInput}
