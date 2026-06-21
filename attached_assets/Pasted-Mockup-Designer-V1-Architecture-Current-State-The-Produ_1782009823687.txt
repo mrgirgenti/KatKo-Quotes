@@ -1,0 +1,328 @@
+Mockup Designer V1 Architecture
+
+Current State
+
+The Product Catalog foundation is complete:
+
+* Products
+* Colors
+* Assets
+* Placements
+* Asset Uploads
+* Asset Replacement
+* Asset Deletion
+
+Next objective:
+
+Build a true Mockup Designer that functions similarly to RushOrderTees and Custom Ink.
+
+This is NOT an AI mockup generator.
+
+This is a production-aware artwork placement system.
+
+---
+
+Goals
+
+Allow users to:
+
+* Select a product
+* Select a color
+* Upload artwork
+* Place artwork on garment
+* Resize artwork
+* Move artwork
+* Rotate artwork
+* View realistic digital proof
+* Save proof to quote/project
+
+Artwork placement must use real-world print dimensions.
+
+---
+
+Phase 1 — Print Area Architecture
+
+Create a new concept:
+
+Print Area
+
+Examples:
+
+LEFT_CHEST
+FULL_FRONT
+FULL_BACK
+YOKE
+SLEEVE_LEFT
+SLEEVE_RIGHT
+
+Each print area should contain:
+
+* Name
+* Side (Front/Back)
+* X Position
+* Y Position
+* Width
+* Height
+* Default Artwork Width
+* Default Artwork Height
+* Maximum Artwork Width
+* Maximum Artwork Height
+* Is Active
+
+Example:
+
+LEFT_CHEST
+
+Default Width: 3.5"
+Default Height: 3.5"
+
+Max Width: 4.5"
+Max Height: 4.5"
+
+FULL_FRONT
+
+Default Width: 10"
+Default Height: 12"
+
+Max Width: 14"
+Max Height: 18"
+
+Store dimensions in inches.
+
+---
+
+Phase 2 — Placement Templates
+
+Current concern:
+
+Many products share identical placement geometry.
+
+Examples:
+
+T-Shirts
+Long Sleeves
+Hoodies
+Polos
+Tank Tops
+
+Introduce:
+
+PlacementTemplate
+
+Examples:
+
+STANDARD_TSHIRT
+LONG_SLEEVE
+HOODIE
+POLO
+TANK
+
+Products should inherit placement definitions from templates.
+
+Example:
+
+NL6210
+→ STANDARD_TSHIRT
+
+Bella 3001
+→ STANDARD_TSHIRT
+
+Gildan 5000
+→ STANDARD_TSHIRT
+
+Products may optionally override individual placements.
+
+Do NOT require manual placement setup on every product.
+
+---
+
+Phase 3 — Printable Area Overlay
+
+Inside Mockup Designer:
+
+Display actual product image.
+
+Overlay:
+
+* Printable Area
+* Placement Zones
+* Safety Area
+* Center Guides
+
+Examples:
+
+Front View:
+
+* Vertical Center Line
+* Horizontal Center Line
+* Left Chest Zone
+* Full Front Zone
+
+Back View:
+
+* Full Back Zone
+* Yoke Zone
+
+Visual behavior should resemble:
+
+* Custom Ink
+* RushOrderTees
+
+---
+
+Phase 4 — Artwork Layer
+
+Create ArtworkInstance model.
+
+ArtworkInstance stores:
+
+* Artwork File
+* Placement Type
+* Width (inches)
+* Height (inches)
+* X Position
+* Y Position
+* Rotation
+* Locked Aspect Ratio
+
+Artwork should render on top of the product image.
+
+---
+
+Phase 5 — Dimension Controls
+
+User must be able to:
+
+* Type exact width
+* Type exact height
+* Lock aspect ratio
+* Rotate artwork
+* Reset size
+
+Example:
+
+Width:
+4.50"
+
+Height:
+Auto
+
+When width changes:
+
+* Artwork scales proportionally
+* Visual proof updates immediately
+
+---
+
+Phase 6 — Alignment Guides
+
+Add:
+
+* Vertical Center Guide
+* Horizontal Center Guide
+* Placement Center Guides
+
+When artwork approaches alignment positions:
+
+* Display guide line
+* Show alignment indicator
+
+---
+
+Phase 7 — Snapping
+
+Artwork should snap to:
+
+* Horizontal Center
+* Vertical Center
+* Placement Centers
+* Common production alignments
+
+Behavior should mimic Canva/Figma/Custom Ink.
+
+---
+
+Phase 8 — Proof Generation
+
+Generate:
+
+* Front Proof PNG
+* Back Proof PNG
+
+Using:
+
+Product Asset
++
+Artwork
++
+Placement Data
+
+Store output as:
+
+FileType = MOCKUP
+
+Associate mockups with:
+
+* Quote
+* Project
+* Line Item
+
+---
+
+Phase 9 — Quote Integration
+
+Current quote system uses:
+
+* Free text product
+* Free text color
+
+Create migration plan so quote line items become catalog-aware.
+
+Quote Line Item should store:
+
+* Product ID
+* Product Color ID
+* Placement IDs
+* Artwork Instances
+* Generated Mockups
+
+Goal:
+
+Quote line items should drive proof generation directly from Product Catalog records.
+
+---
+
+Important Constraints
+
+Do NOT build AI generation.
+
+Do NOT build fabric warping.
+
+Do NOT build advanced photorealistic rendering.
+
+Focus on:
+
+Reliable
+Accurate
+Production-aware proofs
+
+similar to Custom Ink and RushOrderTees.
+
+---
+
+Deliverables Requested
+
+Before implementation:
+
+1. Recommended schema changes
+2. Recommended API routes
+3. PlacementTemplate architecture
+4. ArtworkInstance architecture
+5. Mockup rendering architecture
+6. Quote integration plan
+7. Migration strategy
+8. UI wireframe recommendations
+
+Provide architecture review first.
+
+Do NOT implement yet.
