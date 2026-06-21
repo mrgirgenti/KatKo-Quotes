@@ -13,6 +13,7 @@ import {
   BarChart3,
   BookOpen,
   Settings,
+  Package,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
@@ -66,12 +67,13 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Tasks', icon: ListTodo, href: '/tasks' },
       { label: 'Reports', icon: BarChart3, href: '/reports' },
       { label: 'Catalogs', icon: BookOpen, href: '/catalogs' },
+      { label: 'Products', icon: Package, href: '/catalog-admin' },
       { label: 'Settings', icon: Settings, href: '/settings' },
     ],
   },
 ];
 
-export const SYSTEM_HREFS = ['/tasks', '/reports', '/catalogs', '/settings'];
+export const SYSTEM_HREFS = ['/tasks', '/reports', '/catalogs', '/catalog-admin', '/settings'];
 
 export function baseHref(href: string): string {
   return href.split('?')[0];
