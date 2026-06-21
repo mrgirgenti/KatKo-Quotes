@@ -1,0 +1,163 @@
+Individual Product Header Refactor
+
+Current issue:
+
+The individual Product Detail page header is cramped and hard to scan.
+
+Current layout puts too much product metadata into a single thin horizontal strip:
+
+* Style #
+* Brand
+* Manufacturer
+* Category
+* Type
+* Gender
+* Status
+
+This makes the page feel cluttered and less useful.
+
+Objective:
+
+Refactor the Product Detail header into a clean summary card similar to the attached mockup.
+
+Design Direction:
+
+Use a large product summary card at the top of the page.
+
+Header should include:
+
+1. Back link
+
+Change:
+
+"Back"
+
+to:
+
+"Back to Products"
+
+or:
+
+"Back to styles"
+
+Recommendation: "Back to Products"
+
+2. Product Title
+
+Large bold title:
+
+Product Name
+
+Example:
+
+"Unisex Jersey Tee"
+
+3. Status Badge
+
+Display Active / Inactive beside the product title.
+
+4. Edit Button
+
+Move Edit button into the top-right of the summary card.
+
+5. Product Metadata Grid
+
+Display product metadata in a clean 2-row grid.
+
+Fields:
+
+* Style #
+* Brand
+* Category
+* Type
+* Gender
+* Blank Cost
+
+Remove "Manufacturer" from the visible header.
+
+Do not show both Brand and Manufacturer in the header.
+
+If the DB still contains Manufacturer/vendor internally, leave data structure alone for now.
+
+The UI should show Brand only.
+
+6. Blank Cost
+
+Display clearly:
+
+If set:
+
+Blank Cost
+$6.25
+
+If missing:
+
+Blank Cost
+Not set
+
+Use warning/amber styling only on the value, not as a full-width warning row.
+
+Remove the current full-width "Default Blank Cost — Not set — needed for quoting" strip.
+
+7. Tabs
+
+Keep current tabs directly below the summary card:
+
+* Colors
+* Assets
+* Placements
+* Sources
+
+Tabs should feel visually connected to the card.
+
+8. Remove Header Clutter
+
+Remove:
+
+* cramped inline metadata strip
+* duplicate product name line
+* full-width cost warning bar
+
+9. Preserve Existing Functionality
+
+Do not modify:
+
+* Colors tab functionality
+* Assets tab functionality
+* Placements tab functionality
+* Sources tab functionality
+* Cost editing functionality
+* Product edit modal functionality
+
+This is a UI layout refactor only.
+
+10. Responsive Behavior
+
+Desktop:
+
+Use grid layout similar to mockup.
+
+Mobile/tablet:
+
+Stack metadata fields cleanly.
+
+Do not allow metadata to overflow horizontally.
+
+Required Verification:
+
+* Product page loads correctly.
+* Product title displays correctly.
+* Status badge displays correctly.
+* Edit button works.
+* Cost still displays and edits correctly.
+* Colors tab still works.
+* Assets tab still works.
+* Placements tab still works.
+* Sources tab still works.
+* No regression to product data loading.
+
+Output:
+
+* Files changed
+* UI changes
+* Testing checklist

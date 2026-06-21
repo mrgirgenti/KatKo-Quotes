@@ -13,7 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Pencil, Plus, X, ChevronDown, Upload, Palette, Layers, Building2, Star, DollarSign } from 'lucide-react-native';
+import { Pencil, Plus, X, ChevronDown, Upload, Palette } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { apiFetch, getAuthHeaders } from '@/lib/apiFetch';
 import PageBackHeader from '@/components/PageBackHeader';
@@ -39,10 +39,8 @@ const ASSET_TYPES: { key: string; label: string }[] = [
 const TABS = [
   { key: 'colors' as const, label: 'Colors', Icon: Palette },
   { key: 'assets' as const, label: 'Assets', Icon: Upload },
-  { key: 'placements' as const, label: 'Placements', Icon: Layers },
-  { key: 'sources' as const, label: 'Sources', Icon: Building2 },
 ];
-type TabKey = 'colors' | 'assets' | 'placements' | 'sources';
+type TabKey = 'colors' | 'assets';
 
 interface ProductData {
   id: string;
@@ -941,11 +939,10 @@ export default function ProductDetailScreen() {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'placements') {
-      loadEffectivePlacements();
-      loadTemplates();
-    }
-  }, [activeTab, loadEffectivePlacements, loadTemplates]);
+    loadTemplates();
+    loadSources();
+    loadVendors();
+  }, [loadTemplates, loadSources, loadVendors]);
 
   const handleAssignTemplate = async (templateId: string | null) => {
     setTemplateAssigning(true);
@@ -981,12 +978,6 @@ export default function ProductDetailScreen() {
     } catch { }
   }, []);
 
-  useEffect(() => {
-    if (activeTab === 'sources') {
-      loadSources();
-      if (vendors.length === 0) loadVendors();
-    }
-  }, [activeTab, loadSources, loadVendors, vendors.length]);
 
   const frontAssetId = useMemo(() => {
     for (const c of colors) {
@@ -1187,114 +1178,73 @@ export default function ProductDetailScreen() {
         }
       />
 
-      {/* Product info bar */}
-      <View style={s.infoBar}>
-        <View style={s.infoChips}>
-          <View style={s.infoChip}>
-            <Text style={s.infoChipLabel}>Style #</Text>
-            <Text style={s.infoChipValue}>{product.styleNumber}</Text>
-          </View>
-          <View style={s.infoSep} />
-          <View style={s.infoChip}>
-            <Text style={s.infoChipLabel}>Brand</Text>
-            <Text style={s.infoChipValue}>{product.brand}</Text>
-          </View>
-          <View style={s.infoSep} />
-          <View style={s.infoChip}>
-            <Text style={s.infoChipLabel}>Manufacturer</Text>
-            <Text style={s.infoChipValue}>{product.vendor}</Text>
-          </View>
-          {!!product.category && (
-            <>
-              <View style={s.infoSep} />
-              <View style={s.infoChip}>
-                <Text style={s.infoChipLabel}>Category</Text>
-                <Text style={s.infoChipValue}>{product.category}</Text>
-              </View>
-            </>
-          )}
-          {!!product.subcategory && (
-            <>
-              <View style={s.infoSep} />
-              <View style={s.infoChip}>
-                <Text style={s.infoChipLabel}>Type</Text>
-                <Text style={s.infoChipValue}>
-                  {product.subcategory}{product.productType ? ` / ${product.productType}` : ''}
-                </Text>
-              </View>
-            </>
-          )}
-          {!!product.gender && (
-            <>
-              <View style={s.infoSep} />
-              <View style={s.infoChip}>
-                <Text style={s.infoChipLabel}>Gender</Text>
-                <Text style={s.infoChipValue}>{product.gender}</Text>
-              </View>
-            </>
-          )}
-          <View style={s.infoSep} />
-          <View
-            style={[
-              s.statusBadge,
-              product.isActive ? s.statusActive : s.statusInactive,
-            ]}
-          >
-            <Text
-              style={[
-                s.statusText,
-                product.isActive ? s.statusTextActive : s.statusTextInactive,
-              ]}
-            >
+      {/* ── Compact operational header ──────────────────────────── */}
+      <View style={s.hdrBlock}>
+        {/* Name + status */}
+        <View style={s.hdrNameRow}>
+          <Text style={s.hdrName} numberOfLines={1}>{product.name}</Text>
+          <View style={[s.statusBadge, product.isActive ? s.statusActive : s.statusInactive]}>
+            <Text style={[s.statusText, product.isActive ? s.statusTextActive : s.statusTextInactive]}>
               {product.isActive ? 'Active' : 'Inactive'}
             </Text>
           </View>
         </View>
-        <Text style={s.productName}>{product.name}</Text>
-      </View>
 
-      {/* Cost row */}
-      <View style={s.costRow}>
-        <View style={s.costInfo}>
-          <DollarSign size={14} color={product.defaultBlankCost != null ? BRAND : '#D97706'} style={{ marginTop: 1 }} />
-          <View style={s.costTextBlock}>
-            <Text style={s.costLabel}>Default Blank Cost</Text>
-            {product.defaultBlankCost != null ? (
-              <View style={s.costValueRow}>
-                <Text style={s.costValue}>
-                  ${parseFloat(String(product.defaultBlankCost)).toFixed(2)}
-                </Text>
-                {!!product.lastCostUpdatedAt && (
-                  <Text style={s.costUpdatedText}>
-                    · Updated {formatCostDate(product.lastCostUpdatedAt)}
-                  </Text>
-                )}
-              </View>
-            ) : (
-              <Text style={s.costMissingText}>Not set — needed for quoting</Text>
-            )}
+        {/* Row 1: Style # | Brand | Category | Type */}
+        <View style={s.hdrGrid}>
+          <View style={s.hdrCell}>
+            <Text style={s.hdrLabel}>Style #</Text>
+            <Text style={s.hdrValue}>{product.styleNumber}</Text>
+          </View>
+          <View style={s.hdrSep} />
+          <View style={s.hdrCell}>
+            <Text style={s.hdrLabel}>Brand</Text>
+            <Text style={s.hdrValue}>{product.brand}</Text>
+          </View>
+          <View style={s.hdrSep} />
+          <View style={s.hdrCell}>
+            <Text style={s.hdrLabel}>Category</Text>
+            <Text style={s.hdrValue}>{product.category || '—'}</Text>
+          </View>
+          <View style={s.hdrSep} />
+          <View style={s.hdrCell}>
+            <Text style={s.hdrLabel}>Type</Text>
+            <Text style={s.hdrValue} numberOfLines={1}>
+              {[product.subcategory, product.productType].filter(Boolean).join(' / ') || '—'}
+            </Text>
           </View>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+
+        {/* Row 2: Cost | Vendors | Placement Template */}
+        <View style={s.hdrGrid}>
           <TouchableOpacity
-            style={s.costEditBtn}
-            onPress={() => {
-              setCostInput(product.defaultBlankCost != null ? String(product.defaultBlankCost) : '');
-              setCostModal(true);
-            }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={s.hdrCell}
+            onPress={() => { setCostInput(product.defaultBlankCost != null ? String(product.defaultBlankCost) : ''); setCostModal(true); }}
+            activeOpacity={0.7}
           >
-            <Pencil size={13} color={BRAND} />
-            <Text style={s.costEditBtnText}>
-              {product.defaultBlankCost != null ? 'Edit' : 'Add'}
+            <Text style={s.hdrLabel}>Cost</Text>
+            <Text style={[s.hdrValue, product.defaultBlankCost == null && s.hdrValueMissing]}>
+              {product.defaultBlankCost != null
+                ? `$${parseFloat(String(product.defaultBlankCost)).toFixed(2)}`
+                : 'Not set'}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => router.push('/catalog-costs' as any)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Text style={s.manageAllLink}>Manage All →</Text>
-          </TouchableOpacity>
+          <View style={s.hdrSep} />
+          <View style={[s.hdrCell, { flex: 2 }]}>
+            <Text style={s.hdrLabel}>Vendors</Text>
+            <Text style={s.hdrValue} numberOfLines={1}>
+              {sources.filter(src => src.isActive).map(src => src.vendorName).join(' • ') || '—'}
+            </Text>
+          </View>
+          <View style={s.hdrSep} />
+          <View style={[s.hdrCell, { flex: 1.5 }]}>
+            <Text style={s.hdrLabel}>Placement Template</Text>
+            <Text style={s.hdrValue} numberOfLines={1}>
+              {product.templateId
+                ? (templates.find(t => t.id === product.templateId)?.name ?? '…')
+                : '—'}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -1334,180 +1284,6 @@ export default function ProductDetailScreen() {
         />
       )}
 
-      {activeTab === 'placements' && (
-        <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
-          {/* ── Template Assignment Row ────────────────────────────── */}
-          <View style={s.tmplRow}>
-            <View style={s.tmplRowLeft}>
-              <Text style={s.tmplLabel}>Template</Text>
-              <TouchableOpacity
-                style={s.tmplPicker}
-                onPress={() => setTemplatePickerOpen(o => !o)}
-                activeOpacity={0.7}
-              >
-                <Text style={s.tmplPickerText} numberOfLines={1}>
-                  {product?.templateId
-                    ? (templates.find(t => t.id === product.templateId)?.name ?? '…')
-                    : resolvedTemplateKey
-                      ? (templates.find(t => t.key === resolvedTemplateKey)?.name ?? resolvedTemplateKey)
-                      : 'None'}
-                </Text>
-                <ChevronDown size={13} color={TEXT_LIGHT} />
-              </TouchableOpacity>
-              {templateSource === 'explicit' && (
-                <View style={s.tmplBadgeExplicit}>
-                  <Text style={s.tmplBadgeTextExplicit}>explicit</Text>
-                </View>
-              )}
-              {(templateSource === 'auto-subcategory-producttype' || templateSource === 'auto-subcategory') && (
-                <View style={s.tmplBadgeAuto}>
-                  <Text style={s.tmplBadgeTextAuto}>auto</Text>
-                </View>
-              )}
-              {templateSource === 'explicit' && (
-                <TouchableOpacity
-                  style={s.tmplRemoveBtn}
-                  onPress={() => handleAssignTemplate(null)}
-                  disabled={templateAssigning}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <X size={14} color="#DC2626" />
-                </TouchableOpacity>
-              )}
-              {templatePickerOpen && (
-                <View style={s.tmplDropdown}>
-                  <TouchableOpacity
-                    style={s.tmplDropOption}
-                    onPress={() => handleAssignTemplate(null)}
-                  >
-                    <Text style={[s.tmplDropOptionText, !product?.templateId && { color: BRAND, fontWeight: '600' }]}>
-                      None (use auto-resolve)
-                    </Text>
-                  </TouchableOpacity>
-                  {templates.map(t => (
-                    <TouchableOpacity
-                      key={t.id}
-                      style={s.tmplDropOption}
-                      onPress={() => handleAssignTemplate(t.id)}
-                    >
-                      <Text style={[s.tmplDropOptionText, product?.templateId === t.id && { color: BRAND, fontWeight: '600' }]}>
-                        {t.name}
-                      </Text>
-                      <Text style={s.tmplDropKey}>{t.key}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-            </View>
-            <TouchableOpacity style={s.tmplManageBtn} onPress={() => router.push('/product/templates')}>
-              <Text style={s.tmplManageBtnText}>Manage templates →</Text>
-            </TouchableOpacity>
-          </View>
-
-          {epLoading ? (
-            <View style={s.epLoadBox}>
-              <ActivityIndicator color={BRAND} size="small" />
-            </View>
-          ) : (
-            <PlacementEditor
-              placements={effectivePlacements.length > 0 ? effectivePlacements : placements}
-              frontAssetId={frontAssetId}
-              backAssetId={backAssetId}
-              onSavePlacement={handleSavePlacement}
-            />
-          )}
-        </ScrollView>
-      )}
-
-      {/* ── Sources tab ─────────────────────────────────── */}
-      {activeTab === 'sources' && (
-        <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
-          <View style={s.srcHeader}>
-            <View>
-              <Text style={s.srcTitle}>Vendor Sources</Text>
-              <TouchableOpacity onPress={() => router.push('/catalog-sources' as any)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-                <Text style={s.manageAllLink}>Bulk manage →</Text>
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity
-              style={s.srcAddBtn}
-              onPress={() => { setEditingSource(null); setSourceModal(true); }}
-            >
-              <Plus size={14} color="#fff" />
-              <Text style={s.srcAddBtnText}>Add Source</Text>
-            </TouchableOpacity>
-          </View>
-
-          {sourcesLoading ? (
-            <View style={s.epLoadBox}><ActivityIndicator color={BRAND} /></View>
-          ) : sources.length === 0 ? (
-            <View style={s.srcEmpty}>
-              <Building2 size={36} color={BORDER} />
-              <Text style={s.srcEmptyTitle}>No vendor sources yet</Text>
-              <Text style={s.srcEmptySubtitle}>Add where this product can be purchased.</Text>
-            </View>
-          ) : (
-            sources.map(src => (
-              <View key={src.id} style={[s.srcRow, !src.isActive && s.srcRowInactive]}>
-                <View style={s.srcLeft}>
-                  <View style={s.srcNameRow}>
-                    {src.isPreferred && <Star size={13} color="#F59E0B" fill="#F59E0B" />}
-                    <Text style={[s.srcName, src.isPreferred && s.srcNamePreferred]} numberOfLines={1}>
-                      {src.vendorName}
-                    </Text>
-                    {src.isPreferred && (
-                      <View style={s.srcPrefBadge}><Text style={s.srcPrefBadgeText}>preferred</Text></View>
-                    )}
-                    {!src.isActive && (
-                      <View style={s.srcOffBadge}><Text style={s.srcOffBadgeText}>inactive</Text></View>
-                    )}
-                  </View>
-                  {!!src.vendorSku && <Text style={s.srcMeta}>SKU: {src.vendorSku}</Text>}
-                  {!!src.vendorProductUrl && (
-                    <Text style={s.srcLink} numberOfLines={1}>{src.vendorProductUrl}</Text>
-                  )}
-                  {!!src.notes && <Text style={s.srcNotes} numberOfLines={2}>{src.notes}</Text>}
-                </View>
-
-                <View style={s.srcActions}>
-                  {!src.isPreferred && src.isActive && (
-                    <TouchableOpacity
-                      style={s.srcActionBtn}
-                      onPress={() => handleSetPreferred(src.id)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Text style={s.srcPreferText}>★ Prefer</Text>
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    style={s.srcActionBtn}
-                    onPress={() => { setEditingSource(src); setSourceModal(true); }}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Pencil size={14} color={TEXT_LIGHT} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={s.srcActionBtn}
-                    onPress={() =>
-                      Alert.alert(
-                        'Remove Source',
-                        `Remove ${src.vendorName} as a source for this product?`,
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Remove', style: 'destructive', onPress: () => handleDeleteSource(src.id) },
-                        ],
-                      )
-                    }
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <X size={14} color="#DC2626" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))
-          )}
-        </ScrollView>
-      )}
 
       <EditProductModal
         visible={editProductModal}
@@ -1563,40 +1339,23 @@ const s = StyleSheet.create({
   },
   editHeaderBtnText: { fontSize: 13, color: '#fff', fontWeight: '500' },
 
-  infoBar: {
+  hdrBlock: {
     backgroundColor: SURFACE,
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
     paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 10,
-    gap: 4,
+    paddingTop: 10,
+    paddingBottom: 8,
+    gap: 6,
   },
-  infoChips: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
-  infoChip: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  infoChipLabel: { fontSize: 11, color: TEXT_LIGHT, fontWeight: '500' },
-  infoChipValue: { fontSize: 13, color: TEXT, fontWeight: '600' },
-  infoSep: { width: 1, height: 14, backgroundColor: BORDER },
-  productName: { fontSize: 15, fontWeight: '700', color: TEXT, marginTop: 2 },
-
-  costRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: SURFACE,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
-    gap: 12,
-  },
-  costInfo: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, flex: 1 },
-  costTextBlock: { flex: 1 },
-  costLabel: { fontSize: 11, fontWeight: '600', color: TEXT_LIGHT, textTransform: 'uppercase', letterSpacing: 0.3 },
-  costValueRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
-  costValue: { fontSize: 18, fontWeight: '700', color: TEXT },
-  costUpdatedText: { fontSize: 12, color: TEXT_LIGHT },
-  costMissingText: { fontSize: 13, color: '#D97706', fontWeight: '500', marginTop: 2 },
+  hdrNameRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  hdrName: { fontSize: 17, fontWeight: '700', color: TEXT, flex: 1 },
+  hdrGrid: { flexDirection: 'row', alignItems: 'flex-start' },
+  hdrSep: { width: 1, backgroundColor: BORDER, marginHorizontal: 12, alignSelf: 'stretch', marginVertical: 1 },
+  hdrCell: { flex: 1, gap: 2 },
+  hdrLabel: { fontSize: 10, fontWeight: '600', color: TEXT_LIGHT, textTransform: 'uppercase', letterSpacing: 0.3 },
+  hdrValue: { fontSize: 13, fontWeight: '600', color: TEXT },
+  hdrValueMissing: { color: '#D97706', fontWeight: '500' },
   costEditBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     borderWidth: 1, borderColor: BRAND, borderRadius: 6,
