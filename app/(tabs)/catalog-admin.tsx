@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -709,6 +709,8 @@ export default function CatalogAdminScreen() {
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
+  const costCellPressedId = useRef<string | null>(null);
+
   const [bulkCostModal, setBulkCostModal] = useState<'set' | 'increase' | 'decrease' | null>(null);
   const [bulkVendorModal, setBulkVendorModal] = useState<'assign' | 'preferred' | null>(null);
   const [bulkTemplateModal, setBulkTemplateModal] = useState(false);
@@ -1277,7 +1279,13 @@ export default function CatalogAdminScreen() {
             <TouchableOpacity
               key={product.id}
               style={[s.row, selectedIds.has(product.id) && s.rowSelected]}
-              onPress={costEditAll ? undefined : () => router.push(`/product/${product.id}` as any)}
+              onPress={() => {
+                if (costEditAll || costCellPressedId.current === product.id) {
+                  costCellPressedId.current = null;
+                  return;
+                }
+                router.push(`/product/${product.id}` as any);
+              }}
               activeOpacity={0.75}
             >
               <View style={s.cCheck}>
@@ -1313,7 +1321,8 @@ export default function CatalogAdminScreen() {
               <TouchableOpacity
                 style={s.cCost}
                 activeOpacity={1}
-                onPress={(e: any) => { e.stopPropagation?.(); }}
+                onPressIn={() => { costCellPressedId.current = product.id; }}
+                onPressOut={() => { setTimeout(() => { if (costCellPressedId.current === product.id) costCellPressedId.current = null; }, 200); }}
                 {...(!(costEdits.has(product.id) || costEditAll) ? {
                   onDoubleClick: (e: any) => {
                     e.stopPropagation?.();
