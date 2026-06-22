@@ -1,0 +1,297 @@
+Client Hub Phase 2 — Project Data Integrity Audit
+
+STOP.
+
+Do not work on:
+
+* Placement Templates
+* Vendor APIs
+* Product Imports
+* Color Imports
+* Mockup Intelligence
+* Customer Detail Page Redesign
+* Quote Detail Redesign
+* Invoice Detail Redesign
+
+This phase is DATA INTEGRITY ONLY.
+
+The objective is to verify that Client Hub project, quote, and invoice data is accurate before redesigning customer-facing experiences.
+
+---
+
+## BACKGROUND
+
+Hub Activation and Contact Synchronization work has already been completed.
+
+The CRM remains the source of truth.
+
+Organizations and Contacts are authoritative.
+
+Now we must verify that Project, Quote, and Invoice data is flowing correctly into Client Hubs.
+
+---
+
+## PHASE 1 — AUDIT ALL CLIENT HUB DATA SOURCES
+
+Trace:
+
+Database
+↓
+API
+↓
+DTO
+↓
+Client Hub
+↓
+Rendering
+
+Audit:
+
+Dashboard
+
+My Projects
+
+Submitted Projects
+
+Active Projects
+
+Completed Projects
+
+Quote History
+
+Invoice History
+
+Project Detail
+
+Quote Detail
+
+Invoice Detail
+
+---
+
+## PHASE 2 — IDENTIFY MISSING DATA
+
+Specifically verify:
+
+Project Name
+
+Status
+
+Service Style
+
+Products
+
+Colors
+
+Print Locations
+
+Quantities
+
+Pieces
+
+Per Piece
+
+Totals
+
+Due Dates
+
+Created Dates
+
+Quote Status
+
+Invoice Status
+
+Mockups
+
+Files
+
+Identify:
+
+* Missing fields
+* Incorrect fields
+* Null values
+* Mapping errors
+* DTO omissions
+* Rendering issues
+
+---
+
+## PHASE 3 — MY PROJECTS AUDIT
+
+Current suspicion:
+
+My Projects is not displaying all information available in the quote/project records.
+
+Verify:
+
+Pieces
+
+Per Piece
+
+Totals
+
+Statuses
+
+Dates
+
+Display correctly.
+
+Do not hardcode values.
+
+Fix root causes.
+
+---
+
+## PHASE 4 — DASHBOARD ALIGNMENT
+
+Audit:
+
+Dashboard Active Projects
+
+vs
+
+My Projects Active Projects
+
+Determine:
+
+* Are they using different APIs?
+* Are they using different DTOs?
+* Are they using different components?
+* Are they rendering different data?
+
+Goal:
+
+One source of truth.
+
+Shared project architecture.
+
+Avoid duplicate implementations.
+
+---
+
+## PHASE 5 — QUOTE DATA AUDIT
+
+Verify that Client Hub Quote records contain:
+
+Products
+
+Colors
+
+Sizes
+
+Print Locations
+
+Service Styles
+
+Mockups
+
+Totals
+
+Statuses
+
+Files
+
+Identify any fields that exist in the backend but are not reaching the Client Hub.
+
+---
+
+## PHASE 6 — INVOICE DATA AUDIT
+
+Verify that Client Hub Invoice records contain:
+
+Invoice Number
+
+Invoice Date
+
+Products
+
+Quantities
+
+Totals
+
+Payment Status
+
+Balance Due
+
+Files
+
+Downloads
+
+Identify any missing mappings.
+
+---
+
+## PHASE 7 — PROJECT DETAIL AUDIT
+
+Do NOT redesign.
+
+Audit only.
+
+Identify:
+
+* Missing project information
+* Incorrect information
+* Duplicate information
+* Internal-only information
+* Customer-facing information
+
+Provide recommendations.
+
+No redesign work yet.
+
+---
+
+## PHASE 8 — MOCKUP DATA AUDIT
+
+Verify:
+
+* Mockups attached to quotes
+* Mockups attached to projects
+* Mockups attached to invoices
+* Mockup URLs
+* Mockup rendering
+
+Determine whether mockups are flowing through the system correctly.
+
+Document findings.
+
+Do not redesign.
+
+Do not rebuild.
+
+Audit only.
+
+---
+
+## PHASE 9 — REQUIRED OUTPUT
+
+Return:
+
+1. Files audited
+2. APIs audited
+3. DTOs audited
+4. Data sources identified
+5. Missing project fields
+6. Missing quote fields
+7. Missing invoice fields
+8. Dashboard/My Projects inconsistencies
+9. Mockup flow findings
+10. Root causes discovered
+11. Files requiring modification
+12. Recommended fixes
+13. Risks
+14. Suggested implementation order
+
+IMPORTANT
+
+Do not redesign Client Hub screens during this phase.
+
+Do not implement customer-facing UI changes.
+
+Do not implement visibility rules.
+
+Do not implement mockup redesigns.
+
+First establish complete confidence that the data underneath Client Hubs is accurate.
+
+This is a data integrity and architecture audit only.

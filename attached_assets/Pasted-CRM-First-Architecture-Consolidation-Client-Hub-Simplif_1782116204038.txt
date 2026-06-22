@@ -1,0 +1,324 @@
+CRM-First Architecture Consolidation — Client Hub Simplification
+
+STOP.
+
+This is an architecture consolidation phase.
+
+Do not add tables.
+
+Do not add user systems.
+
+Do not add member systems.
+
+Do not add admin systems.
+
+Do not add synchronization layers.
+
+The objective is simplification.
+
+---
+
+## ARCHITECTURE PRINCIPLE
+
+The CRM is the source of truth.
+
+Always.
+
+The authoritative records are:
+
+Organization
+↓
+Contacts
+
+Nothing else.
+
+Client Hubs are a feature of an Organization.
+
+Client Hubs are not their own management system.
+
+People should not exist in multiple places.
+
+---
+
+## CURRENT PROBLEM
+
+The system is drifting toward:
+
+Contacts
+
+Members
+
+Hub Users
+
+Org Admins
+
+Team Members
+
+Portal Users
+
+These are all representations of the same people.
+
+This creates:
+
+* duplicate UI
+* synchronization issues
+* confusing workflows
+* extra clicks
+* conflicting data
+
+Example:
+
+Contacts = 2
+
+Hub Members = 0
+
+This should never be possible.
+
+---
+
+## TARGET ARCHITECTURE
+
+Organization
+├── Contacts
+└── Client Hub
+
+Contacts remain the single source of truth.
+
+Every person associated with an Organization should exist as a Contact.
+
+A Contact may have:
+
+* Name
+* Email
+* Phone
+* Role
+* Primary Contact
+* Hub Access
+* Org Admin
+
+No additional people-management systems.
+
+---
+
+## CONTACTS SECTION
+
+Evaluate expanding the Contacts table to include:
+
+Role
+
+Primary Contact
+
+Hub Access
+
+Org Admin
+
+This should become the primary place where people are managed.
+
+Actions should include:
+
+Edit Contact
+
+Grant Hub Access
+
+Revoke Hub Access
+
+Promote Org Admin
+
+Remove Org Admin
+
+All changes should update the Contact record directly.
+
+---
+
+## CLIENT HUB SECTION
+
+Move toward making Client Hub a feature section within the Organization.
+
+The Client Hub area should focus on:
+
+Hub Status
+
+Hub URL
+
+Share Hub
+
+Branding
+
+Recent Activity
+
+Readiness
+
+Not people management.
+
+---
+
+## REMOVE DUPLICATE MANAGEMENT
+
+Evaluate whether the standalone:
+
+Hub Members
+
+Team Members
+
+Org Admin
+
+sections should exist at all.
+
+If the Contacts section already displays:
+
+Role
+
+Primary Contact
+
+Hub Access
+
+Org Admin
+
+then separate management screens may be unnecessary.
+
+Do not remove anything yet.
+
+First evaluate.
+
+Provide recommendations.
+
+---
+
+## HUB MEMBERS RECOMMENDATION
+
+Consider replacing Hub Members with simple metrics.
+
+Examples:
+
+Hub Users: 4
+
+Org Admins: 1
+
+These values should derive directly from Contacts.
+
+Hub Users =
+Contacts where Hub Access = true
+
+Org Admins =
+Contacts where Org Admin = true
+
+No separate member dataset.
+
+No separate user dataset.
+
+---
+
+## CLIENT HUB PAGE RESPONSIBILITY
+
+The Client Hub section should answer:
+
+Is the Hub enabled?
+
+Can I access it?
+
+Can I share it?
+
+Is branding configured?
+
+Is it ready?
+
+How many users have access?
+
+It should NOT become another place to manage contacts.
+
+---
+
+## READINESS LOGIC
+
+Readiness should derive from CRM data.
+
+Examples:
+
+✓ Hub Enabled
+
+✓ At least one Contact with Hub Access
+
+✓ At least one Org Admin
+
+✓ Branding Configured
+
+✓ Share URL Generated
+
+Use CRM records as the source.
+
+No duplicated readiness records.
+
+---
+
+## AUDIT REQUIRED
+
+Before making structural changes:
+
+Audit:
+
+1. Contacts table
+2. Contact edit modal
+3. Hub Management
+4. Client Hub section
+5. Org Admin logic
+6. Hub Access logic
+7. Readiness logic
+
+Identify:
+
+* duplicate concepts
+* duplicate datasets
+* duplicate UI
+* unnecessary clicks
+* synchronization risks
+
+---
+
+## DO NOT BUILD YET
+
+Do not perform large UI removals.
+
+Do not delete Hub Management.
+
+Do not delete Team Members.
+
+Do not delete Org Admin.
+
+Do not create replacement systems.
+
+First:
+
+Map the current architecture.
+
+Compare it against the CRM-first architecture described above.
+
+Then provide recommendations.
+
+---
+
+## REQUIRED OUTPUT
+
+Return:
+
+1. Current architecture map
+2. CRM source-of-truth audit
+3. Duplicate datasets found
+4. Duplicate UI found
+5. Synchronization risks
+6. Recommended simplifications
+7. Recommended screen consolidations
+8. Contacts table enhancements
+9. Client Hub section enhancements
+10. Whether Hub Members should remain or become metrics
+11. Whether Hub Management should remain or move into Organization Details
+12. Implementation recommendation
+13. Risks
+14. Suggested execution order
+
+This is a planning and architecture phase.
+
+Do not build replacement systems.
+
+Do not create additional tables.
+
+Optimize for simplicity, CRM-first management, and fewer clicks.
