@@ -2121,7 +2121,7 @@ export default function ClientPortal() {
 
   function getMimeLabel(mime: string | null, name: string): string {
     const ext = name.split('.').pop()?.toUpperCase();
-    if (ext && ['AI', 'SVG', 'PS', 'PNG', 'JPG', 'JPEG', 'PDF', 'EMB', 'DST', 'PES'].includes(ext)) return ext === 'JPEG' ? 'JPG' : ext;
+    if (ext && ['AI', 'EPS', 'SVG', 'PS', 'PNG', 'JPG', 'JPEG', 'PDF', 'EMB', 'DST', 'PES'].includes(ext)) return ext === 'JPEG' ? 'JPG' : ext;
     if (!mime) return 'FILE';
     const map: Record<string, string> = {
       'image/png': 'PNG', 'image/jpeg': 'JPG', 'image/svg+xml': 'SVG',
@@ -2855,17 +2855,50 @@ export default function ClientPortal() {
     }
 
     // ── Project Assets ────────────────────────────────────────────────────
-    // Everything tied to this project, categorized by fileType. Mockups are NOT
-    // aggregated here — each line item owns and displays its own mockup below.
+    // Everything tied to this project, categorized by fileType. The Mockups
+    // category aggregates the customer's approved (on-quote) mockups plus any
+    // historical mockup files stored on the project.
     const artworkFiles = projFiles.filter((f: any) => f.fileType === 'ARTWORK');
     const proofFiles = projFiles.filter((f: any) => f.fileType === 'PROOF');
     const invoiceFiles = projFiles.filter((f: any) => f.fileType === 'INVOICE_PDF');
     const downloadFiles = projFiles.filter((f: any) => f.fileType === 'REFERENCE' || f.fileType === 'OTHER');
+    const mockupFiles = projFiles.filter((f: any) => f.fileType === 'MOCKUP');
     const invoices = proj?.invoices ?? [];
+
+    // Approved mockups = the mockups carried on the active quote's line items.
+    // Each is resolved to the public portal file route; we also capture the
+    // underlying File id (when present) for a clean download URL and to dedupe
+    // against the historical MOCKUP files below.
+    const approvedMockups: Array<{ key: string; url: string; fileId: string | null; name: string }> = [];
+    const seenMockupFileIds = new Set<string>();
+    const seenMockupUrls = new Set<string>();
+    lineItems.forEach((li: any, idx: number) => {
+      const raw: string[] = Array.isArray(li.mockups) && li.mockups.length
+        ? li.mockups
+        : (li.mockupUri ? [li.mockupUri] : []);
+      raw.forEach((u: string, mi: number) => {
+        const url = resolveMockupUrl(u, orgIdForFiles);
+        if (!url || seenMockupUrls.has(url)) return;
+        seenMockupUrls.add(url);
+        const idMatch = String(u).match(/\/files\/([^?/]+)/);
+        const fileId = idMatch ? idMatch[1] : null;
+        if (fileId) seenMockupFileIds.add(fileId);
+        approvedMockups.push({
+          key: `am-${idx}-${mi}`,
+          url,
+          fileId,
+          name: li.designName || `Design ${idx + 1}`,
+        });
+      });
+    });
+    // Historical mockups = stored MOCKUP files not already shown as an approved
+    // (on-quote) mockup, so the same image never appears twice.
+    const historicalMockupFiles = mockupFiles.filter((f: any) => !seenMockupFileIds.has(f.id));
+    const mockupTotal = approvedMockups.length + historicalMockupFiles.length;
 
     const invoiceTotal = invoices.length + invoiceFiles.length;
     const uploadedAssetTotal =
-      artworkFiles.length + proofFiles.length + invoiceTotal;
+      mockupTotal + artworkFiles.length + proofFiles.length + invoiceTotal;
 
     const fileInlineUrl = (id: string) => `/api/portal/${orgIdForFiles}/files/${id}?inline=true`;
     const fileDownloadUrl = (id: string) => `/api/portal/${orgIdForFiles}/files/${id}`;
@@ -3065,7 +3098,38 @@ export default function ClientPortal() {
               {/* Project Assets — single download center for the whole project */}
               <View style={pvStyles.card}>
                 <Text style={pvStyles.sectionTitle}>Project Assets</Text>
-                <Text style={pvStyles.sectionSub}>Everything tied to this project — artwork, invoices, proofs and downloads. Mockups live on each line item above.</Text>
+                <Text style={pvStyles.sectionSub}>Everything tied to this project — mockups, artwork, invoices, proofs and downloads.</Text>
+
+                {/* Mockups — approved (on-quote) + historical versions */}
+                {mockupTotal > 0 && (
+                  <View style={pvStyles.assetCat}>
+                    {assetCatHeader('Mockups', mockupTotal)}
+                    {approvedMockups.length > 0 && (
+                      <>
+                        <Text style={[pvStyles.metaLabel, { marginTop: 4, marginBottom: 8 }]}>APPROVED</Text>
+                        <View style={pvStyles.assetGrid}>
+                          {approvedMockups.map((m) => renderAssetTile({
+                            tileKey: m.key,
+                            imageUri: m.url,
+                            typeLabel: 'MOCKUP',
+                            name: m.name,
+                            meta: 'Approved mockup',
+                            onPreview: () => openInTab(m.url),
+                            onDownload: () => triggerDownload(m.fileId ? fileDownloadUrl(m.fileId) : m.url, m.name),
+                          }))}
+                        </View>
+                      </>
+                    )}
+                    {historicalMockupFiles.length > 0 && (
+                      <>
+                        <Text style={[pvStyles.metaLabel, { marginTop: approvedMockups.length > 0 ? 14 : 4, marginBottom: 8 }]}>HISTORICAL</Text>
+                        <View style={pvStyles.assetGrid}>
+                          {historicalMockupFiles.map((f: any) => renderFileTile(f, 'Previous version'))}
+                        </View>
+                      </>
+                    )}
+                  </View>
+                )}
 
                 {/* Artwork */}
                 {artworkFiles.length > 0 && (
@@ -3129,7 +3193,7 @@ export default function ClientPortal() {
                 {/* Empty state — no uploaded assets yet */}
                 {uploadedAssetTotal === 0 && (
                   <Text style={{ fontSize: 12, color: TEXT_LIGHT, marginTop: 12, lineHeight: 18 }}>
-                    No artwork, proofs, or invoices have been added to this project yet. Your project summary is always available to download above.
+                    No mockups, artwork, proofs, or invoices have been added to this project yet. Your project summary is always available to download above.
                   </Text>
                 )}
               </View>

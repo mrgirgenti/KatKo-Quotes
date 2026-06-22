@@ -64,14 +64,25 @@ export async function GET(_req: Request, { orgId }: { orgId: string }) {
         ) AS "primaryImageUri",
         -- ── Asset counts (drive the project-card asset summary) ──────────────
         -- Customer-safe: only counts of CLIENT_VISIBLE files / non-draft
-        -- invoices. Mockups are owned by line items (li.mockupUri); standalone
-        -- MOCKUP files are NOT counted since each line item displays its own
-        -- mockup and there is no project-level mockup gallery.
+        -- invoices. Mockups = approved (on-quote) mockups carried on line items
+        -- (li.mockupUri) PLUS historical CLIENT_VISIBLE MOCKUP files not already
+        -- referenced by a line item, matching the Project Assets mockup gallery.
         (
-          SELECT COUNT(*) FROM jsonb_array_elements(
-            CASE WHEN jsonb_typeof(p."lineItemsData") = 'array'
-                 THEN p."lineItemsData" ELSE '[]'::jsonb END
-          ) li WHERE COALESCE(li->>'mockupUri', '') <> ''
+          (SELECT COALESCE(SUM(
+             CASE
+               WHEN jsonb_typeof(li->'mockups') = 'array' AND jsonb_array_length(li->'mockups') > 0
+                 THEN jsonb_array_length(li->'mockups')
+               WHEN COALESCE(li->>'mockupUri', '') <> '' THEN 1
+               ELSE 0
+             END), 0)
+           FROM jsonb_array_elements(
+             CASE WHEN jsonb_typeof(p."lineItemsData") = 'array'
+                  THEN p."lineItemsData" ELSE '[]'::jsonb END
+           ) li)
+          + (SELECT COUNT(*) FROM "File" f
+               WHERE f."projectId" = p.id AND f.visibility = 'CLIENT_VISIBLE'
+                 AND f."fileType" = 'MOCKUP'
+                 AND COALESCE(p."lineItemsData"::text, '') NOT LIKE '%' || f.id || '%')
         )::int AS "mockupCount",
         (SELECT COUNT(*) FROM "File" f
            WHERE f."projectId" = p.id AND f.visibility = 'CLIENT_VISIBLE' AND f."fileType" = 'ARTWORK')::int AS "artworkCount",
