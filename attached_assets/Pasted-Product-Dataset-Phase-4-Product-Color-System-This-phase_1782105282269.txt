@@ -1,0 +1,248 @@
+Product Dataset — Phase 4 Product Color System
+
+This phase follows:
+
+* Product Dataset Foundation
+* Catalog Assignment Foundation
+* Default Cost Foundation
+
+Execute ONLY the work defined below.
+
+Do not modify:
+
+* Quote calculations
+* Mockup Designer rendering
+* garmentData.ts
+* Client Hub product selection
+* Placement templates
+* Catalog APIs
+
+This phase establishes Product Color management.
+
+Architecture Reminder
+
+Catalogs
+↓
+Products
+↓
+Quotes
+↓
+Projects
+↓
+Mockups
+↓
+Production
+
+Products remain the source of truth for approved color options.
+
+Colors belong to Products.
+
+Colors do not belong to Quotes.
+
+Quotes consume Product Colors.
+
+Products own Product Colors.
+
+Step 1 — Audit Existing Color Data
+
+Audit:
+
+* ProductColor table
+* vendorCatalog.ts
+* Existing Product color records
+
+Return:
+
+* Products with colors
+* Products without colors
+* Available vendorCatalog palettes
+* Missing palettes
+
+Do not import colors yet.
+
+Analysis first.
+
+Step 2 — Color Migration Plan
+
+Compare:
+
+Approved Product Dataset
+
+against
+
+vendorCatalog.ts
+
+Identify:
+
+Products with existing palettes available.
+
+Products requiring manual color creation.
+
+Return:
+
+Migration report.
+
+No imports yet.
+
+Step 3 — Product Color Architecture
+
+Each Product should support:
+
+Color Name
+
+Example:
+
+Black
+White
+Navy
+Heather Grey
+
+Hex Value
+
+Example:
+
+#000000
+#FFFFFF
+#1F2D5A
+
+Display Order
+
+Active / Inactive
+
+Optional Catalog Color Code
+
+Future compatible only.
+
+Step 4 — Product Detail Page
+
+Colors tab becomes the primary color management location.
+
+Requirements:
+
+Add Color
+
+Edit Color
+
+Deactivate Color
+
+Reorder Colors
+
+Color Swatch Preview
+
+Hex Preview
+
+Active Color Count
+
+Inactive Color Count
+
+Step 5 — Products Table
+
+Add color completeness support.
+
+Display:
+
+Color Count
+
+or
+
+Color Status
+
+Products with no colors should be identifiable.
+
+Keep table compact.
+
+Do not create oversized rows.
+
+Step 6 — Product Audit
+
+Add:
+
+Missing Colors
+
+Products With Colors
+
+Color Coverage %
+
+Products With Inactive Colors Only
+
+Category Color Coverage
+
+Step 7 — Quote Integration
+
+Catalog Product selected
+
+↓
+
+Use Product Colors
+
+Manual Product selected
+
+↓
+
+Continue using free-text/manual color behavior
+
+Do not remove manual products.
+
+Do not gate quoting.
+
+Maintain Product Model Law.
+
+Step 8 — Client Hub Readiness
+
+Prepare Product Colors for future Client Hub selection.
+
+Do not build Client Hub UI yet.
+
+Prepare only.
+
+Step 9 — Mockup Readiness
+
+Prepare Product Colors for future Mockup integration.
+
+Do not modify garmentData.ts.
+
+Do not modify rendering logic.
+
+Prepare only.
+
+Step 10 — Future API Readiness
+
+Prepare color architecture for:
+
+Catalog Colors
+
+Vendor Colors
+
+API Colors
+
+without replacing Product Colors.
+
+Products remain the curated source of truth.
+
+Required Output
+
+Return:
+
+1. Existing color architecture
+2. Products with colors
+3. Products without colors
+4. Migration opportunities
+5. Files changed
+6. Schema changes
+7. Audit changes
+8. Quote integration impact
+9. Client Hub readiness
+10. Mockup readiness
+11. Risks
+12. Testing checklist
+
+Execute only this phase.
+
+Do not begin:
+
+* Placement Templates
+* Client Hub Product Selection
+* Mockup Integration
+* Catalog APIs
+
+until this phase is complete and reviewed.
