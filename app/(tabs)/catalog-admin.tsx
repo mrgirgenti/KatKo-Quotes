@@ -48,14 +48,24 @@ type SortField = 'style' | 'brand' | 'name' | 'category' | 'vendors' | 'cost' | 
 type SortDir = 'asc' | 'desc';
 
 const EMPTY_FORM = {
-  styleNumber: '',
-  brand:       '',
-  vendor:      '',
-  name:        '',
-  category:    'Apparel',
-  subcategory: '',
-  productType: '',
-  gender:      '',
+  styleNumber:         '',
+  brand:               '',
+  vendor:              '',
+  name:                '',
+  category:            'Apparel',
+  subcategory:         '',
+  productType:         '',
+  gender:              '',
+  recommendationLevel: '',
+};
+
+const REC_LEVELS = ['Core', 'Secondary', 'Specialized'] as const;
+type RecLevel = typeof REC_LEVELS[number];
+
+const REC_BADGE: Record<RecLevel, { bg: string; color: string }> = {
+  Core:        { bg: '#D1FAE5', color: '#065F46' },
+  Secondary:   { bg: '#DBEAFE', color: '#1D4ED8' },
+  Specialized: { bg: '#EDE9FE', color: '#6D28D9' },
 };
 
 interface Product {
@@ -79,6 +89,8 @@ interface Product {
   assetCount?: number;
   placementCount?: number;
   templateId?: string | null;
+  recommendationLevel?: string | null;
+  isLegacy?: boolean;
 }
 
 // ── Checkbox ──────────────────────────────────────────────────────────────────
@@ -489,7 +501,7 @@ function ProductFormModal({
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [openDrop, setOpenDrop] = useState<'cat' | 'sub' | 'type' | 'gen' | null>(null);
+  const [openDrop, setOpenDrop] = useState<'cat' | 'sub' | 'type' | 'gen' | 'rec' | null>(null);
 
   const subcategories = Object.keys(CATEGORY_TREE[form.category] ?? {});
   const productTypes  = CATEGORY_TREE[form.category]?.[form.subcategory] ?? [];
@@ -500,14 +512,15 @@ function ProductFormModal({
       setForm(
         initial
           ? {
-              styleNumber: initial.styleNumber,
-              brand:       initial.brand,
-              vendor:      initial.vendor,
-              name:        initial.name,
-              category:    initial.category    || 'Apparel',
-              subcategory: initial.subcategory || '',
-              productType: initial.productType || '',
-              gender:      initial.gender      || '',
+              styleNumber:         initial.styleNumber,
+              brand:               initial.brand,
+              vendor:              initial.vendor,
+              name:                initial.name,
+              category:            initial.category            || 'Apparel',
+              subcategory:         initial.subcategory         || '',
+              productType:         initial.productType         || '',
+              gender:              initial.gender              || '',
+              recommendationLevel: initial.recommendationLevel || '',
             }
           : { ...EMPTY_FORM },
       );
@@ -665,6 +678,28 @@ function ProductFormModal({
               </View>
             )}
 
+            {/* Recommendation Level */}
+            <Text style={fm.label}>Recommendation Level</Text>
+            <TouchableOpacity style={fm.select} onPress={() => setOpenDrop(d => d === 'rec' ? null : 'rec')}>
+              <Text style={[fm.selectText, !form.recommendationLevel && { color: '#9CA3AF' }]}>
+                {form.recommendationLevel || 'Select…'}
+              </Text>
+              <ChevronDown size={16} color={TEXT_LIGHT} />
+            </TouchableOpacity>
+            {openDrop === 'rec' && (
+              <View style={fm.dropdown}>
+                <TouchableOpacity style={fm.dropOption} onPress={() => { upd('recommendationLevel', ''); setOpenDrop(null); }}>
+                  <Text style={[fm.dropOptionText, !form.recommendationLevel && { color: BRAND, fontWeight: '600' }]}>— None —</Text>
+                </TouchableOpacity>
+                {REC_LEVELS.map(lvl => (
+                  <TouchableOpacity key={lvl} style={[fm.dropOption, form.recommendationLevel === lvl && fm.dropOptionActive]}
+                    onPress={() => { upd('recommendationLevel', lvl); setOpenDrop(null); }}>
+                    <Text style={[fm.dropOptionText, form.recommendationLevel === lvl && fm.dropOptionTextActive]}>{lvl}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
             <View style={{ height: 24 }} />
           </ScrollView>
 
@@ -685,7 +720,7 @@ function ProductFormModal({
 }
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
-const TABLE_MIN_WIDTH = 1000;
+const TABLE_MIN_WIDTH = 1090;
 
 export default function CatalogAdminScreen() {
   const router = useRouter();
@@ -698,6 +733,7 @@ export default function CatalogAdminScreen() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('active');
   const [filterCat, setFilterCat] = useState('');
+  const [filterRec, setFilterRec] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -742,6 +778,7 @@ export default function CatalogAdminScreen() {
       if (filterStatus === 'active' && !p.isActive) return false;
       if (filterStatus === 'inactive' && p.isActive) return false;
       if (filterCat && p.category !== filterCat) return false;
+      if (filterRec && p.recommendationLevel !== filterRec) return false;
       const q = search.toLowerCase();
       if (!q) return true;
       return (
@@ -762,10 +799,10 @@ export default function CatalogAdminScreen() {
       else if (sortField === 'status')   cmp = (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0);
       return sortDir === 'asc' ? cmp : -cmp;
     });
-  }, [products, filterStatus, filterCat, search, sortField, sortDir]);
+  }, [products, filterStatus, filterCat, filterRec, search, sortField, sortDir]);
 
   const activeCount  = products.filter(p => p.isActive).length;
-  const filterCount  = (filterStatus !== 'active' ? 1 : 0) + (filterCat ? 1 : 0);
+  const filterCount  = (filterStatus !== 'active' ? 1 : 0) + (filterCat ? 1 : 0) + (filterRec ? 1 : 0);
   const someSelected = filtered.some(p => selectedIds.has(p.id));
   const pageAllSelected = filtered.length > 0 && filtered.every(p => selectedIds.has(p.id));
 
@@ -1161,6 +1198,23 @@ export default function CatalogAdminScreen() {
               ))}
             </View>
           </View>
+          <View style={s.filterGroup}>
+            <Text style={s.filterGroupLabel}>Rec Level</Text>
+            <View style={s.pillRow}>
+              <TouchableOpacity style={[s.pill, !filterRec && s.pillActive]} onPress={() => setFilterRec('')}>
+                <Text style={[s.pillText, !filterRec && s.pillTextActive]}>All</Text>
+              </TouchableOpacity>
+              {REC_LEVELS.map(lvl => (
+                <TouchableOpacity
+                  key={lvl}
+                  style={[s.pill, filterRec === lvl && s.pillActive]}
+                  onPress={() => setFilterRec(r => r === lvl ? '' : lvl)}
+                >
+                  <Text style={[s.pillText, filterRec === lvl && s.pillTextActive]}>{lvl}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
         </View>
       )}
 
@@ -1282,6 +1336,7 @@ export default function CatalogAdminScreen() {
               <View style={s.cBrand}><SortBtn field="brand" label="Brand" /></View>
               <View style={s.cName}><SortBtn field="name" label="Product" /></View>
               <View style={s.cCat}><SortBtn field="category" label="Category" /></View>
+              <View style={s.cRec}><SortBtn field="status" label="Rec" /></View>
               <View style={s.cVendor}><SortBtn field="vendors" label="Vendors" /></View>
               <View style={s.cCost}><SortBtn field="cost" label="Cost" /></View>
               <View style={s.cStatus}><SortBtn field="status" label="Status" /></View>
@@ -1337,6 +1392,15 @@ export default function CatalogAdminScreen() {
                 {!!product.productType && (
                   <Text style={s.tdSub} numberOfLines={1}>{product.productType}</Text>
                 )}
+              </View>
+              <View style={s.cRec}>
+                {product.recommendationLevel && REC_BADGE[product.recommendationLevel as RecLevel] ? (
+                  <View style={[s.recBadge, { backgroundColor: REC_BADGE[product.recommendationLevel as RecLevel].bg }]}>
+                    <Text style={[s.recBadgeText, { color: REC_BADGE[product.recommendationLevel as RecLevel].color }]} numberOfLines={1}>
+                      {product.recommendationLevel}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
               <View style={s.cVendor}>
                 <Text style={s.td} numberOfLines={1}>
@@ -1397,6 +1461,11 @@ export default function CatalogAdminScreen() {
                     {product.isActive ? 'Active' : 'Inactive'}
                   </Text>
                 </View>
+                {product.isLegacy && (
+                  <View style={s.legacyBadge}>
+                    <Text style={s.legacyBadgeText}>Legacy</Text>
+                  </View>
+                )}
               </View>
 
               {/* Row menu */}
@@ -1640,6 +1709,7 @@ const s = StyleSheet.create({
   cBrand:  { width: 120, marginRight: 16 },
   cName:   { flex: 1, minWidth: 140, marginRight: 16 },
   cCat:    { width: 120, marginRight: 16, justifyContent: 'center' as any },
+  cRec:    { width: 86, marginRight: 12, justifyContent: 'center' as any },
   cVendor: { width: 140, marginRight: 16, justifyContent: 'center' as any },
   cCost:   { width: 80, marginRight: 12, justifyContent: 'center' as any },
   cStatus: { width: 80, marginRight: 8 },
@@ -1673,6 +1743,12 @@ const s = StyleSheet.create({
   badgeText:       { fontSize: 11, fontWeight: '600' },
   badgeTextActive: { color: '#059669' },
   badgeTextInactive: { color: '#6B7280' },
+
+  recBadge: { borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, alignSelf: 'flex-start' },
+  recBadgeText: { fontSize: 10, fontWeight: '700' },
+
+  legacyBadge: { borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, alignSelf: 'flex-start', backgroundColor: '#FEF3C7', marginTop: 3 },
+  legacyBadgeText: { fontSize: 10, fontWeight: '700', color: '#92400E' },
 
   menuBtn: { padding: 4 },
   menu: {

@@ -14,14 +14,18 @@ export async function GET(request: Request) {
         p.brand,
         p.name,
         p.category,
+        p.subcategory,
         p."isActive",
+        p."isLegacy",
+        p."recommendationLevel",
         p."defaultBlankCost",
         p."lastCostUpdatedAt",
         p."templateId",
         p."updatedAt",
-        COALESCE(color_ct.cnt, 0)::int    AS "colorCount",
-        COALESCE(asset_ct.cnt, 0)::int    AS "assetCount",
-        COALESCE(placement_ct.cnt, 0)::int AS "placementCount"
+        COALESCE(color_ct.cnt, 0)::int     AS "colorCount",
+        COALESCE(asset_ct.cnt, 0)::int     AS "assetCount",
+        COALESCE(placement_ct.cnt, 0)::int AS "placementCount",
+        COALESCE(vendor_ct.cnt, 0)::int    AS "vendorCount"
       FROM "Product" p
       LEFT JOIN (
         SELECT "productId", COUNT(*)::int AS cnt
@@ -37,6 +41,10 @@ export async function GET(request: Request) {
         SELECT "productId", COUNT(*)::int AS cnt
         FROM "ProductPlacement" WHERE "isActive" = true GROUP BY "productId"
       ) placement_ct ON placement_ct."productId" = p.id
+      LEFT JOIN (
+        SELECT "productId", COUNT(*)::int AS cnt
+        FROM "ProductVendor" WHERE "isActive" = true GROUP BY "productId"
+      ) vendor_ct ON vendor_ct."productId" = p.id
       WHERE p."isActive" = true
       ORDER BY p."sortOrder" ASC, p.brand ASC, p.name ASC
     `);
@@ -49,6 +57,8 @@ export async function GET(request: Request) {
     const missingColors:   typeof products = [];
     const missingAssets:   typeof products = [];
     const missingTemplate: typeof products = [];
+    const missingVendors:  typeof products = [];
+    const missingRec:      typeof products = [];
     const staleCost:       typeof products = [];
     const neverUpdated:    typeof products = [];
 
@@ -63,13 +73,15 @@ export async function GET(request: Request) {
       if (p.colorCount === 0) missingColors.push(p);
       if (p.assetCount === 0) missingAssets.push(p);
       if (!p.templateId && p.placementCount === 0) missingTemplate.push(p);
+      if (p.vendorCount === 0) missingVendors.push(p);
+      if (!p.recommendationLevel) missingRec.push(p);
 
       const daysSinceUpdate = (now.getTime() - new Date(p.updatedAt).getTime()) / (1000 * 60 * 60 * 24);
       if (daysSinceUpdate > 180) neverUpdated.push(p);
     }
 
     const summary = {
-      totalActive: products.length,
+      totalActive:    products.length,
       quoteReady: products.filter(p =>
         p.defaultBlankCost !== null &&
         p.colorCount > 0
@@ -79,6 +91,8 @@ export async function GET(request: Request) {
         p.assetCount > 0 &&
         (p.templateId || p.placementCount > 0)
       ).length,
+      withVendors:    products.filter(p => p.vendorCount > 0).length,
+      withRecLevel:   products.filter(p => !!p.recommendationLevel).length,
     };
 
     const slim = (rows: typeof products) =>
@@ -87,11 +101,13 @@ export async function GET(request: Request) {
         styleNumber: p.styleNumber,
         brand: p.brand,
         name: p.name,
+        recommendationLevel: p.recommendationLevel,
         defaultBlankCost: p.defaultBlankCost,
         lastCostUpdatedAt: p.lastCostUpdatedAt,
         colorCount: p.colorCount,
         assetCount: p.assetCount,
         placementCount: p.placementCount,
+        vendorCount: p.vendorCount,
         templateId: p.templateId,
         updatedAt: p.updatedAt,
       }));
@@ -102,6 +118,8 @@ export async function GET(request: Request) {
       missingColors:   slim(missingColors),
       missingAssets:   slim(missingAssets),
       missingTemplate: slim(missingTemplate),
+      missingVendors:  slim(missingVendors),
+      missingRec:      slim(missingRec),
       staleCost:       slim(staleCost),
       neverUpdated:    slim(neverUpdated),
     });

@@ -1,0 +1,289 @@
+Product Dataset Migration — Step 0 Resolutions + Step 1 Foundation Build
+
+This prompt follows the approved Product Dataset architecture and the completed validation report.
+
+Execute ONLY the work defined below.
+
+Do not perform Quote integration.
+
+Do not perform Client Hub integration.
+
+Do not perform Mockup integration.
+
+Do not perform API integration.
+
+Do not modify garmentData.ts.
+
+Do not modify LineItemCard.
+
+Do not modify Start A Project.
+
+Do not modify existing quote workflows.
+
+This phase is focused ONLY on establishing the Product Dataset foundation.
+
+Approved Decisions
+
+Recommendation Levels
+
+Recommendation levels are informational only.
+
+Core, Secondary, and Specialized products are ALL approved products.
+
+All products in the spreadsheet should exist in the Product Dataset.
+
+Do not exclude products based on recommendation level.
+
+Do not defer products based on recommendation level.
+
+Do not create separate migrations by recommendation level.
+
+Recommendation levels exist for:
+
+* Filtering
+* Sorting
+* Reporting
+* Product prioritization
+* Future recommendation logic
+
+31-069 Resolution
+
+Use:
+
+Style Number:
+31-069
+
+Brand:
+Otto Caps
+
+Product Name:
+5-Panel Mid Profile Hat
+
+No additional review needed.
+
+Archive Review Products
+
+The following products should NOT be deleted:
+
+* NL3601
+* PC61LS
+* PC90H
+
+Do not archive.
+
+Do not delete.
+
+Do not remove.
+
+Create a status or flag if needed:
+
+Legacy Product
+
+These products should remain available until future quote-reference audits are completed.
+
+Placement Template Strategy
+
+Do NOT create placement templates per product.
+
+Do NOT create 47 placement templates.
+
+Instead, create reusable placement templates by garment category.
+
+Target structure:
+
+* Standard T-Shirt
+* Standard Hoodie
+* Standard Crewneck
+* Standard Polo
+* Standard Long Sleeve
+* Standard Hat
+
+Products will eventually reference one of these templates.
+
+Do not build template assignments yet.
+
+Do not build placement zones yet.
+
+This phase only establishes the Product Dataset.
+
+Step 1 — Schema Updates
+
+Add:
+
+recommendationLevel
+
+to the Product schema.
+
+Allowed values:
+
+* Core
+* Secondary
+* Specialized
+
+This should be additive only.
+
+No destructive changes.
+
+No data loss.
+
+Step 2 — Product Dataset Foundation Build
+
+Create all approved spreadsheet products.
+
+Create ONLY identity-level information:
+
+* Style Number
+* Brand
+* Product Name
+* Category
+* Product Type (if available)
+* Recommendation Level
+
+Do NOT create:
+
+* Colors
+* Costs
+* Placements
+* Assets
+* Catalog assignments
+
+yet.
+
+Those will be handled in later phases.
+
+Existing Products
+
+For existing approved products already in the Product Dataset:
+
+Update recommendationLevel if needed.
+
+Preserve:
+
+* Existing costs
+* Existing colors
+* Existing placements
+* Existing assets
+
+Do not overwrite existing data.
+
+Step 3 — Product Dataset Health Verification
+
+After creation:
+
+Return:
+
+Total Products
+
+By Category:
+
+* T-Shirts
+* Hoodies
+* Crewnecks
+* Polos
+* Long Sleeves
+* Hats
+
+By Recommendation Level:
+
+* Core
+* Secondary
+* Specialized
+
+Existing Products Preserved
+
+New Products Created
+
+Legacy Products Retained
+
+Step 4 — Product Completeness Reporting
+
+Add or update health reporting so the Product Dataset can identify:
+
+Missing Cost
+
+Missing Colors
+
+Missing Assets
+
+Missing Catalog Assignments
+
+Missing Placement Template Assignment
+
+Important:
+
+A product may exist and still be incomplete.
+
+Product existence and product completeness are separate concepts.
+
+Do not block product creation because a product is incomplete.
+
+Step 5 — Catalog Relationship Preparation
+
+Prepare the Product Dataset to support Catalog assignments later.
+
+Do not create assignments yet.
+
+Do not auto-assign catalogs yet.
+
+Do not create vendor relationships yet.
+
+This phase should only ensure the Product Dataset can support future Catalog relationships.
+
+Approved Architecture Reminder
+
+Catalogs
+↓
+Products
+↓
+Quotes
+↓
+Projects
+↓
+Mockups
+↓
+Production
+
+Catalogs remain supplier relationships.
+
+Products remain curated recommendations.
+
+Future APIs remain searchable catalog sources.
+
+Catalog APIs must never automatically create Product records.
+
+Products remain curated.
+
+Recommended Products vs Catalog Products vs Manual Products
+
+The system must continue supporting:
+
+1. Recommended Products
+2. Catalog Products
+3. Manual Products
+
+Recommended Products are curated.
+
+Catalog Products are searchable.
+
+Manual Products are always allowed.
+
+Do not remove support for any of these workflows.
+
+Required Output
+
+Return:
+
+1. Files changed
+2. Schema changes
+3. Products created
+4. Existing products updated
+5. Legacy products retained
+6. Category totals
+7. Recommendation level totals
+8. Product Dataset totals
+9. Health reporting changes
+10. Any blockers encountered
+
+Execute only this foundation phase.
+
+Do not begin subsequent phases until this phase is complete and reviewed.
