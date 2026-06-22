@@ -272,6 +272,10 @@ model Project {
   paymentReceived  Boolean       @default(false)
   artworkReceived  Boolean       @default(false)
   proofApproved    Boolean       @default(false)
+  reorderedFromId   String?
+  originalOrderDate String?
+  timesReordered    Int          @default(0)
+  lastReorderedAt   DateTime?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -727,4 +731,16 @@ model TemplatePlacement {
   @@unique([templateId, placementType, side])
   @@index([templateId])
   @@index([templateId, isActive])
+}
+
+model ProjectFavorite {
+  id             String   @id @default(uuid())
+  userId         String
+  projectId      String
+  organizationId String
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, projectId])
+  @@index([organizationId, userId])
+  @@index([projectId])
 }

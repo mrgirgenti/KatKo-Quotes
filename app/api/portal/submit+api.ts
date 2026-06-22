@@ -20,6 +20,7 @@ export async function POST(request: Request) {
       inHandsDate,
       notes,
       lineItems,
+      reorderedFromProjectId,
     } = body;
 
     if (!orgId || !userId || !title?.trim()) {
@@ -105,6 +106,31 @@ export async function POST(request: Request) {
 
     const submittedOrderDate = new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
 
+    // Reorder linkage: when this request was created by reordering an existing
+    // project, validate the source belongs to the same org and is not cancelled,
+    // then carry the "originally ordered" date forward down the reorder chain.
+    let validReorderSourceId: string | null = null;
+    let reorderOriginalOrderDate: string | null = null;
+    if (reorderedFromProjectId) {
+      const sourceRes = await pool.query(
+        `SELECT id, "orderDate", "originalOrderDate", "createdAt"
+         FROM "Project"
+         WHERE id = $1 AND "organizationId" = $2
+           AND status <> 'CANCELLED'::"ProjectStatus"`,
+        [reorderedFromProjectId, orgId]
+      );
+      const source = sourceRes.rows[0];
+      if (source) {
+        validReorderSourceId = source.id;
+        reorderOriginalOrderDate =
+          source.originalOrderDate ||
+          source.orderDate ||
+          (source.createdAt
+            ? new Date(source.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+            : null);
+      }
+    }
+
     const projectResult = await pool.query(
       `INSERT INTO "Project" (
         id, title, "clientName", "organizationId",
@@ -113,6 +139,7 @@ export async function POST(request: Request) {
         calculations, "salesData", "lineItemsData",
         "frontendStatus", status, "intakeSource",
         "createdByUserId", "notesClient",
+        "reorderedFromId", "originalOrderDate",
         "isLocked", "exportedToSheets", "createdAt", "updatedAt"
       ) VALUES (
         gen_random_uuid(), $1, $2, $3,
@@ -121,6 +148,7 @@ export async function POST(request: Request) {
         NULL::jsonb, NULL::jsonb, $7::jsonb,
         'needs_review', 'NEEDS_REVIEW'::"ProjectStatus", 'CLIENT_HUB'::"IntakeSource",
         $8, $9,
+        $10, $11,
         false, false, NOW(), NOW()
       ) RETURNING *`,
       [
@@ -133,10 +161,24 @@ export async function POST(request: Request) {
         JSON.stringify(lineItemsData),
         userId,
         notes || null,
+        validReorderSourceId,
+        reorderOriginalOrderDate,
       ]
     );
 
     const project = projectResult.rows[0];
+
+    // Bump the source project's reorder history counters.
+    if (validReorderSourceId) {
+      await pool.query(
+        `UPDATE "Project"
+         SET "timesReordered" = COALESCE("timesReordered", 0) + 1,
+             "lastReorderedAt" = NOW(),
+             "updatedAt" = NOW()
+         WHERE id = $1`,
+        [validReorderSourceId]
+      );
+    }
 
     // Create ProjectItem records for structured querying
     for (const item of lineItemsData) {

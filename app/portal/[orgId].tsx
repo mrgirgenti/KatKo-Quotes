@@ -130,6 +130,10 @@ interface PortalProject {
   totalCost: string | null;
   pieces: number | null;
   perPiece: string | null;
+  reorderedFromId: string | null;
+  originalOrderDate: string | null;
+  timesReordered: number | null;
+  lastReorderedAt: string | null;
 }
 
 interface FullPortalProject {
@@ -146,6 +150,10 @@ interface FullPortalProject {
   hasSalesTax: boolean;
   hasCardFee: boolean;
   createdAt: string;
+  reorderedFromId: string | null;
+  originalOrderDate: string | null;
+  timesReordered: number | null;
+  lastReorderedAt: string | null;
   files?: Array<{
     id: string;
     originalName: string;
@@ -594,6 +602,72 @@ function sizesToPayload(rows: SizeRow[]) {
     for (const k of SIZE_KEYS) sizes[k] += r[k] || 0;
   }
   return sizes;
+}
+
+function numSize(obj: any, key: string): number {
+  if (!obj) return 0;
+  const v = obj[key];
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string') { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+  return 0;
+}
+
+// Parse a stored File id out of a mockup URI like `/api/files/<id>?inline=true`
+// (also tolerates the portal-scoped form). Returns null for data: URIs or
+// anything that isn't a server file reference, so reorders never carry an
+// un-resolvable inline blob forward.
+function fileIdFromMockupUri(uri: any): string | null {
+  if (!uri || typeof uri !== 'string' || uri.startsWith('data:')) return null;
+  const m = uri.match(/\/api\/(?:portal\/[^/]+\/)?files\/([^/?#]+)/);
+  return m ? m[1] : null;
+}
+
+// Build editable line-item rows from a source project's sanitized line items
+// for the Reorder flow. Copies products / colors / sizes / locations / notes /
+// mockup file refs only — never pricing, status, or internal data (the customer
+// detail API already strips those before this runs).
+function reorderLineItemsFromSource(items: any[]): PortalLineItem[] {
+  const mapped = (Array.isArray(items) ? items : []).map((li: any): PortalLineItem => {
+    const variants = Array.isArray(li?.garmentVariants) ? li.garmentVariants.filter(Boolean) : [];
+    let sizeRows: SizeRow[];
+    if (variants.length > 0) {
+      sizeRows = variants.map((v: any) => ({
+        id: uid(),
+        product: v?.product || '',
+        color: v?.color || '',
+        xs: numSize(v?.sizes, 'xs'), s: numSize(v?.sizes, 's'), m: numSize(v?.sizes, 'm'), l: numSize(v?.sizes, 'l'),
+        xl: numSize(v?.sizes, 'xl'), xxl: numSize(v?.sizes, 'xxl'), xxxl: numSize(v?.sizes, 'xxxl'), xxxxl: numSize(v?.sizes, 'xxxxl'),
+      }));
+    } else {
+      sizeRows = [{
+        id: uid(),
+        product: li?.product || '',
+        color: li?.productColor || '',
+        xs: numSize(li?.sizes, 'xs'), s: numSize(li?.sizes, 's'), m: numSize(li?.sizes, 'm'), l: numSize(li?.sizes, 'l'),
+        xl: numSize(li?.sizes, 'xl'), xxl: numSize(li?.sizes, 'xxl'), xxxl: numSize(li?.sizes, 'xxxl'), xxxxl: numSize(li?.sizes, 'xxxxl'),
+      }];
+    }
+    if (sizeRows.length === 0) sizeRows = [emptyRow()];
+    const fileId = fileIdFromMockupUri(li?.mockupUri);
+    return {
+      id: uid(),
+      designName: li?.designName || '',
+      serviceStyle: li?.serviceStyle || 'Screen Printing',
+      location1: li?.location1 || '',
+      location2: li?.location2 || '',
+      location3: li?.location3 || '',
+      location4: li?.location4 || '',
+      showLoc3: !!li?.location3,
+      showLoc4: !!li?.location4,
+      notes: li?.locationDetails || '',
+      sizeRows,
+      mockupFile: null,
+      mockupBinFile: fileId ? { id: fileId, name: li?.designName ? `${li.designName} Mockup` : 'Mockup' } : null,
+      artworkFiles: [],
+      collapsed: false,
+    };
+  });
+  return mapped.length > 0 ? mapped : [emptyLineItem()];
 }
 
 // ────────────────────────────────────────────────────────────
@@ -1219,6 +1293,9 @@ export default function ClientPortal() {
   const [inHandsDate, setInHandsDate] = useState('');
   const [requestNotes, setRequestNotes] = useState('');
   const [lineItems, setLineItems] = useState<PortalLineItem[]>([emptyLineItem()]);
+  // Non-null while the submit form is in "Review Your Reorder" mode; holds the
+  // source project id so the new request links back to it on submit.
+  const [reorderSourceId, setReorderSourceId] = useState<string | null>(null);
 
   const [formErrors, setFormErrors] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -1296,30 +1373,81 @@ export default function ClientPortal() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<FullPortalProject | null>(null);
   const [favoriteProjectIds, setFavoriteProjectIds] = useState<string[]>([]);
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
+
+  // Favorites are DB-backed (per customer + org), so they survive device,
+  // browser, and re-login changes. Loaded on login; toggled optimistically.
+  const fetchFavorites = useCallback(async (oid: string, uid: string) => {
     try {
-      const raw = window.localStorage.getItem('ko_portal_favorites');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) setFavoriteProjectIds(parsed);
+      const res = await fetch(`/api/portal/${oid}/favorites?userId=${encodeURIComponent(uid)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.projectIds)) setFavoriteProjectIds(data.projectIds);
       }
     } catch {}
   }, []);
+
   const toggleFavorite = useCallback((projectId: string) => {
-    setFavoriteProjectIds(prev => {
-      const next = prev.includes(projectId)
-        ? prev.filter(id => id !== projectId)
-        : [...prev, projectId];
-      try { window.localStorage.setItem('ko_portal_favorites', JSON.stringify(next)); } catch {}
-      return next;
-    });
-  }, []);
-  const handleReorderProject = useCallback((title: string) => {
+    if (!session) return;
+    const wasFavorite = favoriteProjectIds.includes(projectId);
+    // Optimistic flip, reconciled with the server's authoritative result below.
+    setFavoriteProjectIds(prev =>
+      prev.includes(projectId) ? prev.filter(id => id !== projectId) : [...prev, projectId]
+    );
+    fetch(`/api/portal/${session.orgId}/favorites`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: session.userId, projectId }),
+    })
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('toggle failed'))))
+      .then((data: { favorited?: boolean }) => {
+        if (typeof data.favorited === 'boolean') {
+          setFavoriteProjectIds(prev => {
+            const has = prev.includes(projectId);
+            if (data.favorited && !has) return [...prev, projectId];
+            if (!data.favorited && has) return prev.filter(id => id !== projectId);
+            return prev;
+          });
+        }
+      })
+      .catch(() => {
+        // Revert to the pre-click state on failure.
+        setFavoriteProjectIds(prev => {
+          const has = prev.includes(projectId);
+          if (wasFavorite && !has) return [...prev, projectId];
+          if (!wasFavorite && has) return prev.filter(id => id !== projectId);
+          return prev;
+        });
+      });
+  }, [session, favoriteProjectIds]);
+
+  const handleReorderProject = useCallback(async (projectId: string, title: string) => {
+    if (!session) return;
+    // Reset any prior submission state, prefill from the source project, and
+    // enter "Review Your Reorder" mode. reorderSourceId drives the heading and
+    // links the new request back to its source on submit.
+    setSubmittedId('');
+    setSubmittedAt(null);
+    setSubmissionEmailSent(false);
+    setSubmitError('');
+    setFormErrors({});
+    setPendingFiles([]);
+    setArtworkFromBin([]);
     setProjectName(title || '');
     setOrderType('Reorder');
+    setInHandsDate('');
+    setRequestNotes('');
+    setLineItems([emptyLineItem()]);
+    setReorderSourceId(projectId);
     setActiveView('submit');
-  }, []);
+    try {
+      const res = await fetch(`/api/portal/${session.orgId}/projects/${projectId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setLineItems(reorderLineItemsFromSource(data.lineItemsData || []));
+        if (data.notesClient) setRequestNotes(data.notesClient);
+      }
+    } catch {}
+  }, [session]);
   const [projectViewLoading, setProjectViewLoading] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const sidebarWidthAnim = useRef(new Animated.Value(210)).current;
@@ -1706,12 +1834,13 @@ export default function ClientPortal() {
       setStep('dashboard');
       setActiveView('home');
       fetchOrgProjects(data.orgId);
+      if (data.userId) fetchFavorites(data.orgId, data.userId);
     } catch {
       setEmailError('Connection error. Please try again.');
     } finally {
       setEmailLoading(false);
     }
-  }, [email, orgId, fetchOrgProjects]);
+  }, [email, orgId, fetchOrgProjects, fetchFavorites]);
 
   const handleSubmit = useCallback(async () => {
     if (!session) return;
@@ -1764,6 +1893,7 @@ export default function ClientPortal() {
         orderType,
         inHandsDate,
         notes: requestNotes.trim() || null,
+        reorderedFromProjectId: reorderSourceId || null,
         lineItems: lineItems.map(item => ({
           id: item.id,
           designName: item.designName.trim(),
@@ -1827,13 +1957,16 @@ export default function ClientPortal() {
       setSubmittedId(projectId);
       setSubmittedAt(data.createdAt ? new Date(data.createdAt) : new Date());
       setSubmissionEmailSent(!!data.emailSent);
+      // Consume the reorder linkage so a later unrelated submit can't be
+      // mis-attributed to this source project.
+      setReorderSourceId(null);
       setStep('success');
     } catch {
       setSubmitError('Connection error. Please try again.');
     } finally {
       setSubmitting(false);
     }
-  }, [session, projectName, orderType, inHandsDate, requestNotes, lineItems, pendingFiles, artworkFromBin]);
+  }, [session, projectName, orderType, inHandsDate, requestNotes, lineItems, pendingFiles, artworkFromBin, reorderSourceId]);
 
   const handleNewRequest = useCallback(() => {
     setProjectName('');
@@ -1841,6 +1974,7 @@ export default function ClientPortal() {
     setInHandsDate('');
     setRequestNotes('');
     setLineItems([emptyLineItem()]);
+    setReorderSourceId(null);
     setPendingFiles([]);
     setArtworkFromBin([]);
     setSubmitError('');
@@ -1978,6 +2112,17 @@ export default function ClientPortal() {
         <View style={dash.projectCardTop}>
           <Text style={dash.projectCardTitle} numberOfLines={1}>{project.title}</Text>
           <StatusPill status={project.status} />
+          <TouchableOpacity
+            onPress={(e: any) => { e?.stopPropagation?.(); toggleFavorite(project.id); }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            activeOpacity={0.7}
+          >
+            <Star
+              size={16}
+              color={favoriteProjectIds.includes(project.id) ? BRAND : '#C9CDD3'}
+              fill={favoriteProjectIds.includes(project.id) ? BRAND : 'transparent'}
+            />
+          </TouchableOpacity>
         </View>
         <ProjectPipeline status={project.status} />
         <View style={dash.projectCardMeta}>
@@ -2240,6 +2385,7 @@ export default function ClientPortal() {
       { key: 'QUOTED', label: 'Quote Ready' },
       { key: 'IN_PRODUCTION', label: 'In Production' },
       { key: 'COMPLETED', label: 'Completed' },
+      { key: 'FAVORITES', label: 'Favorites' },
     ];
 
     const statusCounts: Record<string, number> = {};
@@ -2344,6 +2490,18 @@ export default function ClientPortal() {
             <Text style={mpStyles.tNum}>{perPcs ? `$${perPcs.toFixed(2)}` : '\u2014'}</Text>
           </View>
           <View style={[mpStyles.colActions, mpStyles.tdCellActions]}>
+            <TouchableOpacity
+              onPress={(e: any) => { e?.stopPropagation?.(); toggleFavorite(p.id); }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.7}
+              style={{ padding: 4 }}
+            >
+              <Star
+                size={16}
+                color={favoriteProjectIds.includes(p.id) ? BRAND : '#C9CDD3'}
+                fill={favoriteProjectIds.includes(p.id) ? BRAND : 'transparent'}
+              />
+            </TouchableOpacity>
             <TouchableOpacity style={mpStyles.viewBtn} onPress={() => handleViewProject(p.id)} activeOpacity={0.85}>
               <Text style={mpStyles.viewBtnText}>View Project</Text>
             </TouchableOpacity>
@@ -2435,7 +2593,11 @@ export default function ClientPortal() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1, flexShrink: 1 }}>
               <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
                 {STATUS_PILLS_CFG.map(pill => {
-                  const count = pill.key === null ? orgProjects.length : (statusCounts[pill.key] ?? 0);
+                  const count = pill.key === null
+                    ? orgProjects.length
+                    : pill.key === 'FAVORITES'
+                      ? orgProjects.filter(p => favoriteProjectIds.includes(p.id)).length
+                      : (statusCounts[pill.key] ?? 0);
                   const active = mpStatusFilter === pill.key;
                   const cfg = pill.key ? PORTAL_STATUS_CONFIG[pill.key] : null;
                   return (
@@ -2949,7 +3111,7 @@ export default function ClientPortal() {
                     <Text style={pvStyles.actionSecondaryText}>Contact Katalyst Ko</Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity style={pvStyles.actionSecondary} activeOpacity={0.85} onPress={() => handleReorderProject(proj.title || '')}>
+                  <TouchableOpacity style={pvStyles.actionSecondary} activeOpacity={0.85} onPress={() => handleReorderProject(proj.id, proj.title || '')}>
                     <RefreshCw size={16} color={TEXT_MED} />
                     <Text style={pvStyles.actionSecondaryText}>Reorder Project</Text>
                   </TouchableOpacity>
@@ -2958,6 +3120,28 @@ export default function ClientPortal() {
                     <Star size={16} color={isFavorite ? BRAND : TEXT_MED} fill={isFavorite ? BRAND : 'transparent'} />
                     <Text style={[pvStyles.actionSecondaryText, isFavorite && { color: BRAND }]}>{isFavorite ? 'Favorited' : 'Favorite Project'}</Text>
                   </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Project History */}
+              <View style={pvStyles.card}>
+                <Text style={pvStyles.sectionTitle}>Project History</Text>
+                <View style={{ marginTop: 12 }}>
+                  <View style={pvStyles.priceRow}>
+                    <Text style={pvStyles.priceRowLabel}>Originally Ordered</Text>
+                    <Text style={pvStyles.priceRowVal}>
+                      {proj.originalOrderDate
+                        || (proj.orderDate ? formatDate(proj.orderDate) : (proj.createdAt ? formatDate(proj.createdAt) : '\u2014'))}
+                    </Text>
+                  </View>
+                  <View style={pvStyles.priceRow}>
+                    <Text style={pvStyles.priceRowLabel}>Last Reordered</Text>
+                    <Text style={pvStyles.priceRowVal}>{proj.lastReorderedAt ? formatDate(proj.lastReorderedAt) : 'Never'}</Text>
+                  </View>
+                  <View style={pvStyles.priceRow}>
+                    <Text style={pvStyles.priceRowLabel}>Times Reordered</Text>
+                    <Text style={pvStyles.priceRowVal}>{proj.timesReordered ?? 0}</Text>
+                  </View>
                 </View>
               </View>
             </View>
@@ -3332,8 +3516,10 @@ export default function ClientPortal() {
         ) : (
           <View style={[svStyles.formRow, isMobile && { flexDirection: 'column' as any }]}>
             <View style={[styles.card, { flex: 1, maxWidth: 680 }]}>
-            <Text style={styles.formTitle}>Submit a Project Request</Text>
-            <Text style={styles.formSub}>Fill in the details below — your submission will come straight into Ko OS ready for pricing.</Text>
+            <Text style={styles.formTitle}>{reorderSourceId ? 'Review Your Reorder' : 'Submit a Project Request'}</Text>
+            <Text style={styles.formSub}>{reorderSourceId
+              ? "We've pre-filled your previous order below. Adjust quantities, add notes, or upload new artwork, then submit."
+              : 'Fill in the details below — your submission will come straight into Ko OS ready for pricing.'}</Text>
 
             <View style={styles.sectionCard}>
               <Text style={styles.sectionLabel}>Request Details</Text>

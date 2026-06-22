@@ -31,6 +31,10 @@ export async function GET(
           WHEN 'DRAFT'      THEN 'NEEDS_REVIEW'
           ELSE p.status::text
         END AS status,
+        p."reorderedFromId",
+        p."originalOrderDate",
+        p."timesReordered",
+        p."lastReorderedAt",
         p."createdAt"
       FROM "Project" p
       WHERE p."organizationId" = $1
