@@ -27,13 +27,11 @@ export async function GET(_req: Request, { orgId }: { orgId: string }) {
           FROM "ProjectItem" pi
           WHERE pi."projectId" = p.id
         ) AS "lineItemCount",
-        (
-          SELECT q.total
-          FROM "Quote" q
-          WHERE q."projectId" = p.id
-          ORDER BY q."versionNumber" DESC
-          LIMIT 1
-        ) AS "totalCost"
+        -- Customer-facing totals come from the canonical Project JSON
+        -- (Project.calculations), NOT the mostly-empty relational Quote table.
+        NULLIF(p.calculations->>'total', '')::numeric          AS "totalCost",
+        NULLIF(p.calculations->>'totalQuantity', '')::int      AS "pieces",
+        NULLIF(p.calculations->>'totalPerPiece', '')::numeric  AS "perPiece"
       FROM "Project" p
       WHERE p."organizationId" = $1
         AND p.status != 'CANCELLED'::"ProjectStatus"

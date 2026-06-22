@@ -117,6 +117,8 @@ interface PortalProject {
   createdAt: string;
   lineItemCount: number;
   totalCost: string | null;
+  pieces: number | null;
+  perPiece: string | null;
 }
 
 interface FullPortalProject {
@@ -1883,7 +1885,7 @@ export default function ClientPortal() {
         case 'inHands':
           valA = a.inHandsDate ? new Date(a.inHandsDate).getTime() : 0;
           valB = b.inHandsDate ? new Date(b.inHandsDate).getTime() : 0; break;
-        case 'items': valA = a.lineItemCount || 0; valB = b.lineItemCount || 0; break;
+        case 'items': valA = a.pieces || 0; valB = b.pieces || 0; break;
         case 'total': valA = parseFloat(a.totalCost || '0'); valB = parseFloat(b.totalCost || '0'); break;
         default: valA = 0; valB = 0;
       }
@@ -1974,8 +1976,8 @@ export default function ClientPortal() {
 
     const renderRow = (p: PortalProject, idx: number) => {
       const cost = p.totalCost && parseFloat(p.totalCost) > 0 ? parseFloat(p.totalCost) : null;
-      const pcs = p.lineItemCount > 0 ? p.lineItemCount : null;
-      const perPcs = cost && pcs ? cost / pcs : null;
+      const pcs = p.pieces && p.pieces > 0 ? p.pieces : null;
+      const perPcs = p.perPiece && parseFloat(p.perPiece) > 0 ? parseFloat(p.perPiece) : null;
       const thumbColor = THUMB_COLORS[(p.title.charCodeAt(0) || 0) % THUMB_COLORS.length];
       const initial = (p.title.trim()[0] || '?').toUpperCase();
       return (

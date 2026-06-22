@@ -1,0 +1,111 @@
+Client Hub Data Integrity Fixes — IMPLEMENT NOW
+
+STOP AUDITING.
+
+Do not return another audit.
+Do not return another roadmap.
+Do not ask for more planning.
+Implement the fixes.
+
+Objective:
+Fix Client Hub project data so Dashboard, My Projects, Project Detail, Quote Detail, and Invoice/Quote views all show correct customer-facing values from the same source of truth.
+
+Source of Truth:
+Use Project JSON as the canonical read model:
+
+Project.calculations
+Project.lineItemsData
+
+Do not use the mostly-empty Quote table for Client Hub list totals.
+
+Fix 1 — Blank Totals
+
+Current issue:
+Client Hub project lists are reading totals from the Quote table, which is mostly empty.
+
+Required fix:
+Read total from Project.calculations.total.
+
+Acceptance:
+If Project.calculations.total exists, the client sees the total everywhere.
+No blank totals.
+No false $0 values.
+
+Fix 2 — Wrong PCS
+
+Current issue:
+PCS is showing line item count instead of garment quantity.
+
+Required fix:
+Read pieces from Project.calculations.totalQuantity.
+
+Acceptance:
+36 garments shows 36 PCS.
+422 garments shows 422 PCS.
+1 line item must NOT show as 1 PCS unless totalQuantity is truly 1.
+
+Fix 3 — Per Piece
+
+Current issue:
+Per-piece is calculated client-side from absent/wrong data.
+
+Required fix:
+Send perPiece from the server using Project.calculations.totalPerPiece.
+Remove client-side per-piece division from portal UI.
+
+Acceptance:
+Per-piece matches quote/project calculations.
+List and detail views match.
+
+Fix 4 — List / Detail Consistency
+
+Current issue:
+List screens and detail screens use different data sources.
+
+Required fix:
+Dashboard, My Projects, Active Projects, Completed Projects, Submitted Projects, Project Detail, Quote Detail should all read customer-facing project values from the same Project JSON source.
+
+Acceptance:
+The same project shows identical:
+- Total
+- Pieces
+- Per Piece
+- Status
+- Dates
+- Products
+- Colors
+- Service Style
+- Print Locations
+
+Fix 5 — Dashboard Active Projects Alignment
+
+Current issue:
+Dashboard Active Projects and My Projects Active Projects feel disconnected.
+
+Required fix:
+Use the same normalized project DTO/data mapping for both.
+Do not maintain separate calculations or alternate field names.
+
+Acceptance:
+Dashboard Active Projects and My Projects display matching project data.
+
+Do NOT:
+- Redesign the Client Hub
+- Change auth
+- Touch Clerk
+- Build invoice history
+- Build mockup architecture
+- Build placement templates
+- Build vendor APIs
+- Create new tables
+- Add another audit phase
+
+Required output:
+1. Files changed
+2. Exact fixes made
+3. Data source changed from/to
+4. Validation against at least 3 existing projects
+5. Screenshots or console evidence if available
+6. Remaining issues, if any
+
+Implement all fixes in this sprint.
