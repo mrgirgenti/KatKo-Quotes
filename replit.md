@@ -114,7 +114,7 @@ import OverlayMenu from '@/components/OverlayMenu';
 
 This rule applies to every file, every screen, every new feature going forward.
 
-- **MediaCard `showTypeBadge`**: Always pass `showTypeBadge={false}` when rendering `<MediaCard>` inside any media bin grid (Org Details left panel, org media tab, project media bins). The file type is already shown in the `typeLabel` metadata line — the pill above the name is redundant and clutters the card. The default is `true` (safe for one-off usages), so the prop must be explicit on every grid rendering site.
+- **MediaCard file type**: `<MediaCard>` shows the file type only in the `typeLabel` metadata line below the image (e.g. "Jun 20, 2026 · PNG · 1.2 MB"). There is no separate file-type badge/pill — it was removed as redundant clutter. Always pass `typeLabel` on every usage so the metadata line is complete.
 - **Table column widths**: Primary identifier columns (`textPrimary` token) use per-table overrides of `flexBasis/minWidth/maxWidth` rather than the global default (320/260/420). Current overrides: Organizations `org` col −25% (240/195/315), Contacts `name` col −25% (240/195/315), Quotes/Projects `colProject` col −45% (176/143/231), Client Hubs `colOrg` col −60% (`flex: 0.8, minWidth: 88`).
 
 ## Gotchas

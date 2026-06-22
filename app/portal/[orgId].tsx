@@ -2146,7 +2146,6 @@ export default function ClientPortal() {
     <MediaCard
       key={file.id}
       file={file}
-      showTypeBadge={false}
       style={cardStyle}
       thumbnail={isImageMime(file.mimeType)
         ? <Image source={{ uri: `/api/portal/${session?.orgId}/files/${file.id}?inline=true` }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />

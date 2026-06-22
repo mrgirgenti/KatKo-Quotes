@@ -477,7 +477,6 @@ export default function OrgProfileScreen() {
       <View key={f.id} style={{ width: `${100 / cols}%`, paddingHorizontal: 5, marginBottom: 10 }}>
         <MediaCard
           file={f}
-          showTypeBadge={false}
           thumbnail={isImage
             ? <AuthedImage fileId={f.id} style={{ width: '100%', height: '100%' }} />
             : <Text style={styles.orgMediaCardExt}>{ext}</Text>}

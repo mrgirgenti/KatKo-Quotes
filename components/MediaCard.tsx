@@ -15,14 +15,12 @@ export interface MediaCardProps {
   file: MediaCardFile;
   /** Endpoint-agnostic thumbnail node (e.g. <Image .../>, <AuthedImage .../>, or a type label). */
   thumbnail: React.ReactNode;
-  /** Orange file-type badge text (e.g. "PNG"). */
+  /** File-type label shown in the metadata line (e.g. "PNG"). */
   typeLabel: string;
   /** Formatted upload date (e.g. "Jun 20, 2026"). */
   dateLabel?: string;
   /** Formatted file size (e.g. "1.2 MB"). */
   sizeLabel?: string;
-  /** Show the orange file-type badge above the name. Defaults to true. */
-  showTypeBadge?: boolean;
   /** Width / margin overrides for grid layout. */
   style?: any;
 
@@ -49,7 +47,6 @@ export default function MediaCard({
   typeLabel,
   dateLabel,
   sizeLabel,
-  showTypeBadge = true,
   style,
   onDownload,
   onDelete,
@@ -93,12 +90,6 @@ export default function MediaCard({
       </View>
 
       <View style={styles.meta}>
-        {showTypeBadge && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{typeLabel}</Text>
-          </View>
-        )}
-
         {isRenaming ? (
           <View style={styles.renameRow}>
             <TextInput
@@ -189,20 +180,6 @@ const styles = StyleSheet.create({
   meta: {
     padding: 8,
     gap: 3,
-  },
-  badge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#FFF1E8',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginBottom: 1,
-  },
-  badgeText: {
-    fontSize: 8,
-    fontWeight: '800',
-    color: BRAND,
-    letterSpacing: 0.5,
   },
   nameRow: {
     flexDirection: 'row',
