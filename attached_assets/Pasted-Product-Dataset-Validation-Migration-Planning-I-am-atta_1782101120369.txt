@@ -1,0 +1,233 @@
+Product Dataset Validation + Migration Planning
+
+I am attaching the approved curated product spreadsheet.
+
+STOP.
+
+Do not perform migration.
+
+Do not create products.
+
+Do not update products.
+
+Do not delete products.
+
+Do not archive products.
+
+Do not modify quotes.
+
+Do not modify projects.
+
+Do not modify client hubs.
+
+Do not modify mockups.
+
+Do not modify catalogs.
+
+This is a validation and migration planning phase only.
+
+Source of Truth
+
+The attached spreadsheet is now the authoritative source for the Product Dataset.
+
+The spreadsheet overrides:
+
+* vendorCatalog.ts
+* types/quote.ts
+* PRODUCTS arrays
+* PRODUCT_COLORS arrays
+* Legacy mockup product lists
+* Previous migration recommendations
+* Previous import recommendations
+
+The spreadsheet is the only approved product list.
+
+Architecture Reminder
+
+Catalogs
+↓
+Products
+↓
+Quotes
+↓
+Projects
+↓
+Mockups
+↓
+Production
+
+Products remain:
+
+Katalyst Ko Recommended Products
+
+Catalogs remain:
+
+Supplier relationships
+
+Future APIs remain:
+
+Searchable product sources
+
+Products are curated recommendations.
+
+Products are not intended to contain every product available through vendor APIs.
+
+Validation Requirements
+
+Using ONLY:
+
+1. Attached spreadsheet
+2. Current Product database
+
+Produce the following:
+
+KEEP
+
+Products that already exist in the Product Dataset and match the spreadsheet.
+
+CREATE
+
+Products found in the spreadsheet that do not currently exist in the Product Dataset.
+
+UPDATE
+
+Products that exist in both places but require updates.
+
+Identify specifically:
+
+* Brand differences
+* Product name differences
+* Category differences
+* Product type differences
+* Cost differences
+* Catalog assignment differences
+
+ARCHIVE REVIEW
+
+Products currently in the Product Dataset that do NOT appear in the spreadsheet.
+
+Important:
+
+ARCHIVE REVIEW does NOT mean delete.
+
+ARCHIVE REVIEW does NOT mean remove.
+
+ARCHIVE REVIEW means identify for review only.
+
+No actions should be taken.
+
+Spreadsheet Analysis
+
+Provide:
+
+* Total spreadsheet products
+* Products by category
+* Products by recommendation level
+* Core count
+* Secondary count
+* Specialized count
+
+Catalog Analysis
+
+For every approved product identify:
+
+Available Through:
+
+* S&S Activewear
+* SanMar
+* McCreary's
+* Shaka Wear
+* Independent Trading
+* LA Apparel
+* Momentec
+
+Use existing Catalog relationships where possible.
+
+Identify missing catalog assignments.
+
+Color Migration Analysis
+
+After validation:
+
+Compare approved spreadsheet products against:
+
+vendorCatalog.ts
+
+Identify:
+
+* Products with existing color palettes available
+* Products with existing hex values available
+* Products requiring manufacturer color data
+* Products requiring manual color creation
+
+Do not import colors.
+
+Analysis only.
+
+Placement Template Analysis
+
+For every approved product identify:
+
+* Existing placement template
+* Missing placement template
+
+Return:
+
+Products ready for mockups
+
+Products missing placement templates
+
+Quote Integration Readiness
+
+For every approved product identify:
+
+* Has default cost
+* Missing default cost
+
+Return:
+
+Quote Ready Products
+
+Products needing additional setup
+
+Migration Safety Check
+
+Before recommending any migration:
+
+Confirm:
+
+* No spreadsheet products will be skipped
+* No non-spreadsheet products will be imported
+* No automatic deletions will occur
+* No automatic archival actions will occur
+
+Required Output
+
+Return:
+
+1. Spreadsheet Product Count
+2. Current Product Count
+3. KEEP list
+4. CREATE list
+5. UPDATE list
+6. ARCHIVE REVIEW list
+7. Category breakdown
+8. Recommendation-level breakdown
+9. Catalog assignment gaps
+10. Color migration opportunities
+11. Placement template gaps
+12. Default cost gaps
+13. Quote readiness summary
+14. Mockup readiness summary
+15. Risks
+16. Recommended implementation order
+
+Do not perform migration.
+
+Do not perform deletion.
+
+Do not perform archival actions.
+
+Do not perform imports.
+
+Validation and migration planning only.
