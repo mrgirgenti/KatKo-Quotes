@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'rea
 import { Plus, Edit3, Trash2, MoreHorizontal, Users } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import OverlayMenu from '@/components/OverlayMenu';
+import { formatPhone } from '@/utils/phone';
 import type { Contact, HubAccessState } from '@/types/crm';
 
 /**
@@ -117,7 +118,7 @@ export default function ContactsPeopleTable({ contacts, onAdd, onEdit, onDelete,
                     {c.email ? <Text style={styles.subText} numberOfLines={1}>{c.email}</Text> : null}
                   </View>
                   <View style={[styles.td, COL.phone]}>
-                    <Text style={styles.cellText} numberOfLines={1}>{c.phone || '—'}</Text>
+                    <Text style={styles.cellText} numberOfLines={1}>{c.phone ? formatPhone(c.phone) : '—'}</Text>
                   </View>
                   <View style={[styles.td, COL.role]}>
                     <Text style={styles.cellText} numberOfLines={1}>{c.role || '—'}</Text>

@@ -3,6 +3,7 @@ import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 import { Quote, LineItem, SIZE_LABELS } from '@/types/quote';
 import { formatCurrency } from '@/utils/quoteCalculations';
+import { formatPhone } from '@/utils/phone';
 import { UserProfile } from '@/types/user';
 
 function getTotalSizeQuantities(item: LineItem): string {
@@ -131,7 +132,7 @@ function generateQuoteHTML(quote: Quote, user?: UserProfile | null): string {
         <div class="header-top">
           <div>
             <div class="company-name">${user?.businessName || 'Katalyst Ko Printshop'}</div>
-            ${user?.email || user?.phone ? `<div class="company-details">${[user.email, user.phone].filter(Boolean).join(' · ')}</div>` : ''}
+            ${user?.email || user?.phone ? `<div class="company-details">${[user.email, formatPhone(user.phone)].filter(Boolean).join(' · ')}</div>` : ''}
           </div>
           <div class="quote-badge ${statusClass}">${statusLabel}</div>
         </div>
@@ -341,7 +342,7 @@ function generateWorkOrderHTML(
   }).join('');
 
   const companyName = user?.businessName || 'Katalyst Ko Printshop';
-  const companyDetails = [user?.email, user?.phone].filter(Boolean).join(' · ');
+  const companyDetails = [user?.email, formatPhone(user?.phone)].filter(Boolean).join(' · ');
 
   return `
     <!DOCTYPE html>

@@ -16,6 +16,7 @@ import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
 import { CrmStatus, ContactRole } from '@/types/crm';
 import { generateId } from '@/utils/quoteCalculations';
+import { formatPhone } from '@/utils/phone';
 
 type ImportField = 'firstName' | 'lastName' | 'fullName' | 'email' | 'phone' | 'organization' | 'role' | 'city' | 'state' | 'notes' | 'skip';
 
@@ -428,7 +429,7 @@ export function ContactImportModal({ visible, onClose }: Props) {
                     <View style={styles.previewInfo}>
                       <Text style={styles.previewName}>{[c.firstName, c.lastName].filter(Boolean).join(' ') || '(no name)'}</Text>
                       <Text style={styles.previewDetails} numberOfLines={1}>
-                        {[c.organization, c.email, c.phone].filter(Boolean).join(' · ')}
+                        {[c.organization, c.email, formatPhone(c.phone)].filter(Boolean).join(' · ')}
                       </Text>
                       {c.warning && (
                         <View style={styles.warnRow}>

@@ -2,6 +2,7 @@ import { pool } from '@/lib/pool';
 import { authenticateRequest, unauthorized } from '@/lib/auth';
 import { sendEmail, buildClientInviteEmail, buildPasswordResetEmail } from '@/lib/email';
 import { fetchEnrichedContacts } from '@/lib/contacts';
+import { formatPhoneOrNull } from '@/utils/phone';
 import crypto from 'crypto';
 
 /**
@@ -240,7 +241,7 @@ export async function PUT(request: Request, params?: { id: string; contactId: st
         body.firstName,
         body.lastName,
         body.email ?? null,
-        body.phone ?? null,
+        formatPhoneOrNull(body.phone),
         body.role ?? null,
         body.notes ?? null,
         body.isPrimary ?? false,

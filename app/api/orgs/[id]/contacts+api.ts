@@ -1,5 +1,6 @@
 import { pool } from '@/lib/pool';
 import { authenticateRequest, unauthorized } from '@/lib/auth';
+import { formatPhoneOrNull } from '@/utils/phone';
 
 function toContact(c: any) {
   return {
@@ -53,7 +54,7 @@ export async function POST(request: Request, { id }: { id: string }) {
         body.firstName || '',
         body.lastName || '',
         body.email ?? null,
-        body.phone ?? null,
+        formatPhoneOrNull(body.phone),
         body.role ?? null,
         body.notes ?? null,
         body.isPrimary ?? false,

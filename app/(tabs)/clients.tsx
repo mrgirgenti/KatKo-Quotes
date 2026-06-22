@@ -22,7 +22,7 @@ import { useCrm } from '@/contexts/CrmContext';
 import { Organization, CrmStatus, CRM_STATUS_CONFIG, ORG_TYPES } from '@/types/crm';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { ContactImportModal } from '@/components/ContactImportModal';
-import { formatPhone, formatPhoneInput } from '@/utils/phone';
+import { formatPhone, formatPhoneInput, normalizePhone } from '@/utils/phone';
 
 // ── Column system ──────────────────────────────────────────────────────────────
 type ColId = 'org' | 'bizType' | 'contact' | 'phone' | 'email' | 'status' | 'hub' | 'campaign' | 'actions';
@@ -229,9 +229,10 @@ function OrganizationsScreen() {
     const list = orgs.filter((o) => {
       if (filter !== 'All' && o.status !== filter) return false;
       const q = search.toLowerCase();
+      const qDigits = normalizePhone(search);
       if (q) {
         const hit = o.name.toLowerCase().includes(q) || (o.type || '').toLowerCase().includes(q) ||
-          o.contacts.some((c) => `${c.firstName} ${c.lastName}`.toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q) || (c.phone || '').toLowerCase().includes(q));
+          o.contacts.some((c) => `${c.firstName} ${c.lastName}`.toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q) || (c.phone || '').toLowerCase().includes(q) || (qDigits.length > 0 && normalizePhone(c.phone).includes(qDigits)));
         if (!hit) return false;
       }
       const pc = o.contacts.find((c) => c.isPrimary) || o.contacts[0];
@@ -241,7 +242,7 @@ function OrganizationsScreen() {
         if (!pc) return false;
         if (!`${pc.firstName} ${pc.lastName}`.toLowerCase().includes(colFilters.contact.toLowerCase())) return false;
       }
-      if (colFilters.phone && !(pc?.phone || '').includes(colFilters.phone)) return false;
+      if (colFilters.phone && !normalizePhone(pc?.phone).includes(normalizePhone(colFilters.phone))) return false;
       if (colFilters.email && !(pc?.email || '').toLowerCase().includes(colFilters.email.toLowerCase())) return false;
       if (colFilters.status.length && !colFilters.status.includes(o.status)) return false;
       if (colFilters.hub.length) {

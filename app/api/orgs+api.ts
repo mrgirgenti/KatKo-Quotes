@@ -1,6 +1,7 @@
 import { pool } from '@/lib/pool';
 import { authenticateRequest, unauthorized, forbidden } from '@/lib/auth';
 import { toEnrichedContact } from '@/lib/contacts';
+import { formatPhoneOrNull } from '@/utils/phone';
 import type { Organization, Contact, ActivityEntry, CampaignAssignment, Department } from '@/types/crm';
 
 /**
@@ -149,7 +150,7 @@ export async function POST(request: Request) {
         `INSERT INTO "Contact" (
           id, "organizationId", "firstName", "lastName", email, phone, role, notes, "isPrimary", "createdAt", "updatedAt"
         ) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()) RETURNING *`,
-        [org.id, c.firstName || '', c.lastName || '', c.email ?? null, c.phone ?? null, c.role ?? null, c.notes ?? null, c.isPrimary ?? false],
+        [org.id, c.firstName || '', c.lastName || '', c.email ?? null, formatPhoneOrNull(c.phone), c.role ?? null, c.notes ?? null, c.isPrimary ?? false],
       );
       // A freshly-created contact has no linked user yet -> enriches to "No Access".
       contacts = cResult.rows.map((row) => enrichListContact(row, new Map(), new Map()));

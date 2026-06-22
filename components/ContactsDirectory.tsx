@@ -19,7 +19,7 @@ import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
 import { useCrm } from '@/contexts/CrmContext';
 import { Contact, CrmStatus, CRM_STATUS_CONFIG, ORG_TYPES } from '@/types/crm';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
-import { formatPhone, formatPhoneInput } from '@/utils/phone';
+import { formatPhone, formatPhoneInput, normalizePhone } from '@/utils/phone';
 
 type Person = Contact & { orgId: string; orgName: string; orgLogo?: string };
 type HubStatus = NonNullable<Contact['hubStatus']>;
@@ -275,6 +275,7 @@ export default function ContactsDirectory() {
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
+    const qDigits = normalizePhone(search);
     const list = people.filter((p) => {
       if (tab === 'Portal Users' && !isPortal(p)) return false;
       if (tab === 'Non-Portal' && isPortal(p)) return false;
@@ -286,12 +287,13 @@ export default function ContactsDirectory() {
           p.orgName.toLowerCase().includes(q) ||
           (p.email || '').toLowerCase().includes(q) ||
           (p.phone || '').toLowerCase().includes(q) ||
+          (qDigits.length > 0 && normalizePhone(p.phone).includes(qDigits)) ||
           (p.role || '').toLowerCase().includes(q);
         if (!hit) return false;
       }
       const fullName = `${p.firstName} ${p.lastName}`.toLowerCase();
       if (colFilters.name && !fullName.includes(colFilters.name.toLowerCase())) return false;
-      if (colFilters.phone && !(p.phone || '').includes(colFilters.phone)) return false;
+      if (colFilters.phone && !normalizePhone(p.phone).includes(normalizePhone(colFilters.phone))) return false;
       if (colFilters.email && !(p.email || '').toLowerCase().includes(colFilters.email.toLowerCase())) return false;
       if (colFilters.status.length) {
         const s = p.status === 'inactive' ? 'inactive' : 'active';

@@ -1,5 +1,6 @@
 import { pool } from '@/lib/pool';
 import { authenticateRequest, unauthorized, forbidden } from '@/lib/auth';
+import { formatPhoneOrNull } from '@/utils/phone';
 
 function parseNameParts(name: string): { firstName: string; lastName: string } {
   const parts = (name || 'User').trim().split(/\s+/);
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
           "avatarColor" = EXCLUDED."avatarColor",
           "updatedAt"  = NOW()
         RETURNING *`,
-        [body.id, firstName, lastName, body.email.trim(), body.phone || null, body.avatarColor || '#6366F1'],
+        [body.id, firstName, lastName, body.email.trim(), formatPhoneOrNull(body.phone), body.avatarColor || '#6366F1'],
       );
       return Response.json(toFrontendUser(result.rows[0]), { status: 201 });
     }
@@ -123,7 +124,7 @@ export async function POST(request: Request) {
         firstName,
         lastName,
         email,
-        body.phone || null,
+        formatPhoneOrNull(body.phone),
         internalRole,
         body.avatarColor || '#FF5A00',
         body.profilePicture || null,

@@ -41,6 +41,7 @@ import {
 } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { GOOGLE_SCRIPT_TEMPLATE } from '@/utils/googleSheetsExport';
+import { formatPhoneInput } from '@/utils/phone';
 import * as ImagePicker from 'expo-image-picker';
 import Colors from '@/constants/colors';
 import { useUser } from '@/contexts/UserContext';
@@ -62,7 +63,7 @@ export default function ProfileScreen() {
   const [name, setName] = useState(currentUser?.name || '');
   const [businessName, setBusinessName] = useState(currentUser?.businessName || '');
   const [email, setEmail] = useState(currentUser?.email || '');
-  const [phone, setPhone] = useState(currentUser?.phone || '');
+  const [phone, setPhone] = useState(formatPhoneInput(currentUser?.phone || ''));
   const [selectedColor, setSelectedColor] = useState(currentUser?.avatarColor || AVATAR_COLORS[0]);
   const [profilePicture, setProfilePicture] = useState(currentUser?.profilePicture || '');
 
@@ -101,7 +102,7 @@ export default function ProfileScreen() {
       setName(currentUser.name);
       setBusinessName(currentUser.businessName);
       setEmail(currentUser.email);
-      setPhone(currentUser.phone);
+      setPhone(formatPhoneInput(currentUser.phone));
       setSelectedColor(currentUser.avatarColor);
       setProfilePicture(currentUser.profilePicture || '');
       setCompanyLogo(currentUser.companyLogo || '');
@@ -450,7 +451,7 @@ export default function ProfileScreen() {
                 placeholder="(555) 123-4567"
                 placeholderTextColor={Colors.light.textSecondary}
                 value={phone}
-                onChangeText={setPhone}
+                onChangeText={(v) => setPhone(formatPhoneInput(v))}
                 keyboardType="phone-pad"
               />
             </View>

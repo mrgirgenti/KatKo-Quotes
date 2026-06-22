@@ -114,6 +114,16 @@ import OverlayMenu from '@/components/OverlayMenu';
 
 This rule applies to every file, every screen, every new feature going forward.
 
+### PHONE FORMAT LAW — NON-NEGOTIABLE
+Every phone number, ANYWHERE it appears (tables, forms, invoices/PDFs, templates, portal, and the database), MUST be `(###) ###-####`. It auto-adjusts from any input (`##########`, `###-###-####`, `1##########`, etc.). The single source of truth is `@/utils/phone`:
+- **Display** any stored phone with `formatPhone(raw)` (idempotent).
+- **Inputs** (`<TextInput>`) format live with `formatPhoneInput(raw)` via `onChangeText`, and pre-fill values through it too.
+- **API write paths** normalize before storing with `formatPhoneOrNull(raw)` so the DB itself holds the formatted value.
+- **Search/filter** compares `normalizePhone(value)` on both sides so digit-only queries still match formatted storage.
+- For **display/storage** (`formatPhone`/`formatPhoneOrNull`), non-US / non-10-digit values pass through untouched (graceful degradation), never blocked. Live `<TextInput>` formatting is US-oriented (caps at 10 digits).
+
+Never render a raw `.phone` field directly — always pipe it through a `utils/phone` helper.
+
 - **MediaCard file type**: `<MediaCard>` shows the file type only in the `typeLabel` metadata line below the image (e.g. "Jun 20, 2026 · PNG · 1.2 MB"). There is no separate file-type badge/pill — it was removed as redundant clutter. Always pass `typeLabel` on every usage so the metadata line is complete.
 - **Table column widths**: Primary identifier columns (`textPrimary` token) use per-table overrides of `flexBasis/minWidth/maxWidth` rather than the global default (320/260/420). Current overrides: Organizations `org` col −25% (240/195/315), Contacts `name` col −25% (240/195/315), Quotes/Projects `colProject` col −45% (176/143/231), Client Hubs `colOrg` col −60% (`flex: 0.8, minWidth: 88`).
 

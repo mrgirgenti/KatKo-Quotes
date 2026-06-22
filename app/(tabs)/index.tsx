@@ -18,6 +18,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import Colors from '@/constants/colors';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { useCrm } from '@/contexts/CrmContext';
+import { formatPhoneInput } from '@/utils/phone';
 import { FormInput } from '@/components/FormInput';
 import { DateInput } from '@/components/DateInput';
 import { SegmentedControl } from '@/components/SegmentedControl';
@@ -252,7 +253,7 @@ export default function NewQuoteScreen() {
               lastName: primaryContact.lastName,
               role: primaryContact.role || 'Primary Contact',
               email: primaryContact.email || '',
-              phone: primaryContact.phone || '',
+              phone: formatPhoneInput(primaryContact.phone || ''),
             }
           : EMPTY_CRM_CONTACT
       );
@@ -776,7 +777,7 @@ export default function NewQuoteScreen() {
               <TextInput
                 style={crmStyles.input}
                 value={crmContactForm.phone}
-                onChangeText={(v) => setCrmContactForm((f) => ({ ...f, phone: v }))}
+                onChangeText={(v) => setCrmContactForm((f) => ({ ...f, phone: formatPhoneInput(v) }))}
                 placeholder="(555) 000-0000"
                 placeholderTextColor={Colors.light.textSecondary}
                 keyboardType="phone-pad"

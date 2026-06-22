@@ -19,6 +19,7 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import PageBackHeader from '@/components/PageBackHeader';
 import OverlayMenu from '@/components/OverlayMenu';
 import ContactsPeopleTable from '@/components/ContactsPeopleTable';
+import { formatPhoneInput } from '@/utils/phone';
 import {
   Edit3,
   Mail,
@@ -606,7 +607,7 @@ export default function OrgProfileScreen() {
   const openEditContact = useCallback((c: Contact) => {
     setEditingContact(c);
     const alreadyHasHub = contactHasHubAccess(c);
-    setContactForm({ firstName: c.firstName, lastName: c.lastName, role: c.role || 'Primary Contact', email: c.email || '', phone: c.phone || '', notes: c.notes || '', isPrimary: !!c.isPrimary, department: c.department || '', hubAccess: alreadyHasHub });
+    setContactForm({ firstName: c.firstName, lastName: c.lastName, role: c.role || 'Primary Contact', email: c.email || '', phone: formatPhoneInput(c.phone || ''), notes: c.notes || '', isPrimary: !!c.isPrimary, department: c.department || '', hubAccess: alreadyHasHub });
     setContactModal(true);
   }, [contactHasHubAccess]);
 
@@ -2421,7 +2422,7 @@ export default function OrgProfileScreen() {
                   <Text style={styles.fieldLabel}>Email</Text>
                   <TextInput style={styles.textInput} value={contactForm.email} onChangeText={(v) => setContactForm((f) => ({ ...f, email: v }))} placeholder="email@example.com" placeholderTextColor={Colors.light.textSecondary} keyboardType="email-address" autoCapitalize="none" />
                   <Text style={styles.fieldLabel}>Phone</Text>
-                  <TextInput style={styles.textInput} value={contactForm.phone} onChangeText={(v) => setContactForm((f) => ({ ...f, phone: v }))} placeholder="(555) 000-0000" placeholderTextColor={Colors.light.textSecondary} keyboardType="phone-pad" />
+                  <TextInput style={styles.textInput} value={contactForm.phone} onChangeText={(v) => setContactForm((f) => ({ ...f, phone: formatPhoneInput(v) }))} placeholder="(555) 000-0000" placeholderTextColor={Colors.light.textSecondary} keyboardType="phone-pad" />
                   <Text style={styles.fieldLabel}>Department</Text>
                   <TextInput style={styles.textInput} value={contactForm.department} onChangeText={(v) => setContactForm((f) => ({ ...f, department: v }))} placeholder="e.g., Athletics, Marketing, Admin…" placeholderTextColor={Colors.light.textSecondary} />
                   <Text style={styles.fieldLabel}>Notes</Text>

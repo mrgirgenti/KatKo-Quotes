@@ -80,6 +80,7 @@ import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
 import MediaPickerModal from '@/components/MediaPickerModal';
 import MediaCard from '@/components/MediaCard';
 import OverlayMenu from '@/components/OverlayMenu';
+import { formatPhone } from '@/utils/phone';
 
 const BRAND = '#FF5A00';
 const BRAND_DARK = '#CC4700';
@@ -4216,7 +4217,7 @@ export default function ClientPortal() {
                     <Phone size={14} color={TEXT_PLACEHOLDER} />
                     <View style={{ flex: 1 }}>
                       <Text style={profStyles.infoLabel}>Phone</Text>
-                      <Text style={profStyles.infoValue}>{orgPhone || '—'}</Text>
+                      <Text style={profStyles.infoValue}>{orgPhone ? formatPhone(orgPhone) : '—'}</Text>
                     </View>
                   </View>
                   <View style={profStyles.orgInfoRow}>

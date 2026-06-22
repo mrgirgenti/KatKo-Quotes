@@ -1,4 +1,5 @@
 import { pool } from '@/lib/pool';
+import { formatPhoneOrNull } from '@/utils/phone';
 import type { Organization } from '@/types/crm';
 import type { Quote } from '@/types/quote';
 
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
                 c.firstName || '',
                 c.lastName || '',
                 c.email ?? null,
-                c.phone ?? null,
+                formatPhoneOrNull(c.phone),
                 c.role ?? null,
                 c.notes ?? null,
                 c.isPrimary ?? false,

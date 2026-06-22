@@ -57,6 +57,7 @@ import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { formatCurrency, calculateLineItemSubtotal, getTotalQuantity } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
+import { formatPhone } from '@/utils/phone';
 import { LineItem, SIZE_LABELS, GarmentVariant, STATUS_CONFIG, QuoteStatus, OperationalProjectStatus, DeliveryMethod, OPERATIONAL_STATUSES, OPERATIONAL_STATUS_CONFIG, OPERATIONAL_NEXT, HOLD_REASONS, DELIVERY_METHODS } from '@/types/quote';
 import { useUser } from '@/contexts/UserContext';
 import { useCrm } from '@/contexts/CrmContext';
@@ -802,7 +803,7 @@ export default function QuoteDetailScreen() {
             {linkedContact?.phone ? (
               <View style={styles.contactCardRow}>
                 <Phone size={14} color={Colors.light.textSecondary} />
-                <Text style={styles.contactCardInfo}>{linkedContact.phone}</Text>
+                <Text style={styles.contactCardInfo}>{formatPhone(linkedContact.phone)}</Text>
               </View>
             ) : null}
             {linkedContact?.email ? (
