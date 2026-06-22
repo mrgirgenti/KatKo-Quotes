@@ -122,6 +122,10 @@ interface PortalProject {
   lineItemCount: number;
   designCount: number;
   thumbUri: string | null;
+  mockupCount: number;
+  artworkCount: number;
+  proofCount: number;
+  invoiceCount: number;
   totalCost: string | null;
   pieces: number | null;
   perPiece: string | null;
@@ -149,6 +153,25 @@ interface FullPortalProject {
     fileType: string;
     createdAt: string;
   }>;
+  invoices?: Array<{
+    id: string;
+    invoiceNumber: string | null;
+    status: string;
+    total: string | null;
+    amountPaid: string | null;
+    dueDate: string | null;
+    sentAt: string | null;
+    paymentUrl: string | null;
+  }>;
+}
+
+function assetCountSummary(p: PortalProject): string[] {
+  const out: string[] = [];
+  if (p.mockupCount > 0) out.push(`${p.mockupCount} Mockup${p.mockupCount !== 1 ? 's' : ''}`);
+  if (p.artworkCount > 0) out.push(`${p.artworkCount} Artwork ${p.artworkCount !== 1 ? 'Files' : 'File'}`);
+  if (p.invoiceCount > 0) out.push(`${p.invoiceCount} Invoice${p.invoiceCount !== 1 ? 's' : ''}`);
+  if (p.proofCount > 0) out.push(`${p.proofCount} Proof${p.proofCount !== 1 ? 's' : ''}`);
+  return out;
 }
 
 const STATUS_PIPELINE = ['NEEDS_REVIEW', 'QUOTING', 'QUOTED', 'INVOICE_SENT', 'PAID', 'IN_PRODUCTION', 'COMPLETED'] as const;
@@ -2121,6 +2144,19 @@ export default function ClientPortal() {
           </View>
           <View style={[mpStyles.colProject, mpStyles.tdCell, { paddingRight: 10 }]}>
             <Text style={mpStyles.tRowName} numberOfLines={2}>{p.title}</Text>
+            {(() => {
+              const chips = assetCountSummary(p);
+              if (chips.length === 0) return null;
+              return (
+                <View style={mpStyles.assetChipsRow}>
+                  {chips.map(c => (
+                    <View key={c} style={mpStyles.assetChip}>
+                      <Text style={mpStyles.assetChipText}>{c}</Text>
+                    </View>
+                  ))}
+                </View>
+              );
+            })()}
           </View>
           <View style={[mpStyles.colStatus, mpStyles.tdCell]}>
             <StatusPill status={p.status} />
@@ -2416,6 +2452,127 @@ export default function ClientPortal() {
       { key: 'xxxl', label: '3XL' }, { key: 'xxxxl', label: '4XL' },
     ];
 
+    // ── Project Assets ────────────────────────────────────────────────────
+    // Single record of everything tied to this project. Mockups come from
+    // line-item mockupUri + MOCKUP files; the rest are categorized by fileType.
+    const artworkFiles = projFiles.filter((f: any) => f.fileType === 'ARTWORK');
+    const proofFiles = projFiles.filter((f: any) => f.fileType === 'PROOF');
+    const mockupFiles = projFiles.filter((f: any) => f.fileType === 'MOCKUP');
+    const invoiceFiles = projFiles.filter((f: any) => f.fileType === 'INVOICE_PDF');
+    const downloadFiles = projFiles.filter((f: any) => f.fileType === 'REFERENCE' || f.fileType === 'OTHER');
+    const invoices = proj?.invoices ?? [];
+
+    const mockupTotal = mockups.length + mockupFiles.length;
+    const invoiceTotal = invoices.length + invoiceFiles.length;
+    const uploadedAssetTotal =
+      mockupTotal + artworkFiles.length + proofFiles.length + invoiceTotal;
+
+    const fileInlineUrl = (id: string) => `/api/portal/${orgIdForFiles}/files/${id}?inline=true`;
+    const fileDownloadUrl = (id: string) => `/api/portal/${orgIdForFiles}/files/${id}`;
+    const openInTab = (url: string | null) => {
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && url) window.open(url, '_blank');
+    };
+    const triggerDownload = (url: string, name: string) => {
+      if (Platform.OS === 'web' && typeof document !== 'undefined') {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name || '';
+        a.click();
+      }
+    };
+    const extOf = (name: string) => (name?.split('.').pop() || '').toUpperCase();
+    const IMG_EXTS = ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'SVG'];
+    const isImgFile = (f: any) => isImageMime(f.mimeType) || IMG_EXTS.includes(extOf(f.originalName));
+    const isPdfFile = (f: any) => f.mimeType === 'application/pdf' || extOf(f.originalName) === 'PDF';
+    const canPreviewFile = (f: any) => isImgFile(f) || isPdfFile(f);
+
+    const downloadSummaryPdf = () => {
+      if (!proj) return;
+      downloadCustomerProjectPdf({
+        title: proj.title || 'Project',
+        status: PORTAL_STATUS_CONFIG[proj.status.toUpperCase().replace('QUOTE_SENT', 'QUOTED')]?.label || proj.status,
+        orderType: proj.orderType,
+        inHandsDate: proj.inHandsDate ? formatDate(proj.inHandsDate) : null,
+        orgName: orgDisplayName || undefined,
+        notes: proj.notesClient,
+        lineItems,
+        pricing: pricingRows,
+        total: grandTotal,
+      });
+    };
+
+    const assetCatHeader = (title: string, count: number) => (
+      <View style={pvStyles.assetCatHead}>
+        <Text style={pvStyles.assetCatTitle}>{title}</Text>
+        <View style={pvStyles.assetCatCount}><Text style={pvStyles.assetCatCountText}>{count}</Text></View>
+      </View>
+    );
+
+    const renderAssetTile = (opts: {
+      tileKey: string; imageUri?: string; typeLabel: string; name: string; meta?: string;
+      onPreview?: () => void; onDownload?: () => void;
+    }) => (
+      <View key={opts.tileKey} style={pvStyles.assetTile}>
+        <View style={pvStyles.assetThumb}>
+          {opts.imageUri ? (
+            <Image source={{ uri: opts.imageUri }} style={pvStyles.assetThumbImg} resizeMode="cover" />
+          ) : (
+            <View style={pvStyles.assetTypeBox}>
+              <FileText size={22} color={BRAND} />
+              <Text style={pvStyles.assetTypeLabel}>{opts.typeLabel}</Text>
+            </View>
+          )}
+          <View style={pvStyles.assetActions}>
+            {opts.onPreview && (
+              <TouchableOpacity style={pvStyles.assetBtn} onPress={opts.onPreview} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                <Maximize2 size={13} color="#fff" />
+              </TouchableOpacity>
+            )}
+            {opts.onDownload && (
+              <TouchableOpacity style={pvStyles.assetBtn} onPress={opts.onDownload} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                <Download size={13} color="#fff" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+        <View style={pvStyles.assetTileMeta}>
+          <Text style={pvStyles.assetTileName} numberOfLines={2}>{opts.name}</Text>
+          {opts.meta ? <Text style={pvStyles.assetTileMetaLine} numberOfLines={1}>{opts.meta}</Text> : null}
+        </View>
+      </View>
+    );
+
+    const renderFileTile = (f: any, label: string) =>
+      renderAssetTile({
+        tileKey: f.id,
+        imageUri: isImgFile(f) ? fileInlineUrl(f.id) : undefined,
+        typeLabel: getMimeLabel(f.mimeType, f.originalName),
+        name: f.originalName,
+        meta: [formatDate(f.createdAt), label, formatBytes(f.fileSize)].filter(Boolean).join(' · '),
+        onPreview: canPreviewFile(f) ? () => openInTab(fileInlineUrl(f.id)) : undefined,
+        onDownload: () => triggerDownload(fileDownloadUrl(f.id), f.originalName),
+      });
+
+    const renderInvoiceRow = (inv: any) => {
+      const amt = inv.total != null && inv.total !== '' ? `$${Number(inv.total).toFixed(2)}` : '';
+      const statusLabel = (inv.status || '')
+        .replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase());
+      return (
+        <View key={inv.id} style={pvStyles.fileRow}>
+          <View style={pvStyles.fileIcon}><FileText size={16} color={BRAND} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={pvStyles.fileName} numberOfLines={1}>{inv.invoiceNumber ? `Invoice ${inv.invoiceNumber}` : 'Invoice'}</Text>
+            <Text style={pvStyles.fileMeta}>{[amt, statusLabel].filter(Boolean).join(' · ')}</Text>
+          </View>
+          {inv.paymentUrl ? (
+            <TouchableOpacity style={pvStyles.fileDownloadBtn} activeOpacity={0.7} onPress={() => openInTab(inv.paymentUrl)}>
+              <ExternalLink size={15} color={TEXT_MED} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      );
+    };
+
     return (
       <ScrollView contentContainerStyle={[dash.viewContent, { paddingBottom: 40 }]} showsVerticalScrollIndicator={false}>
         {/* Back header */}
@@ -2479,24 +2636,106 @@ export default function ClientPortal() {
                 ) : null}
               </View>
 
-              {/* Mockups — prominent, above details */}
-              {mockups.length > 0 && (
-                <View style={pvStyles.card}>
-                  <Text style={pvStyles.sectionTitle}>Mockups</Text>
-                  <Text style={pvStyles.sectionSub}>Tap any mockup to view it full size.</Text>
-                  <View style={pvStyles.mockupGrid}>
-                    {mockups.map(mk => (
-                      <TouchableOpacity key={mk.key} style={pvStyles.mockupCard} activeOpacity={0.85} onPress={() => openMockup(mk.uri)}>
-                        <Image source={{ uri: mk.uri }} style={pvStyles.mockupImg} resizeMode="contain" />
-                        <View style={pvStyles.mockupExpand}>
-                          <Maximize2 size={13} color="#fff" />
+              {/* Project Assets — single download center for the whole project */}
+              <View style={pvStyles.card}>
+                <Text style={pvStyles.sectionTitle}>Project Assets</Text>
+                <Text style={pvStyles.sectionSub}>Everything tied to this project — mockups, artwork, invoices, proofs and downloads.</Text>
+
+                {/* Mockups */}
+                {mockupTotal > 0 && (
+                  <View style={pvStyles.assetCat}>
+                    {assetCatHeader('Mockups', mockupTotal)}
+                    <View style={pvStyles.assetGrid}>
+                      {mockups.map((mk, i) => (
+                        <View key={mk.key} style={pvStyles.assetTile}>
+                          <View style={pvStyles.assetThumb}>
+                            <Image source={{ uri: mk.uri }} style={pvStyles.assetThumbImg} resizeMode="cover" />
+                            <View style={pvStyles.assetActions}>
+                              <TouchableOpacity style={pvStyles.assetBtn} onPress={() => openMockup(mk.uri)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                                <Maximize2 size={13} color="#fff" />
+                              </TouchableOpacity>
+                              <TouchableOpacity style={pvStyles.assetBtn} onPress={() => triggerDownload(mk.uri, (mk.designName || `mockup-${i + 1}`))} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                                <Download size={13} color="#fff" />
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                          <View style={pvStyles.assetTileMeta}>
+                            <Text style={pvStyles.assetTileName} numberOfLines={2}>{mk.designName || `Mockup ${i + 1}`}</Text>
+                            <Text style={pvStyles.assetTileMetaLine} numberOfLines={1}>Mockup</Text>
+                          </View>
                         </View>
-                        {mk.designName ? <Text style={pvStyles.mockupCaption} numberOfLines={1}>{mk.designName}</Text> : null}
-                      </TouchableOpacity>
-                    ))}
+                      ))}
+                      {mockupFiles.map((f: any) => renderFileTile(f, 'Mockup'))}
+                    </View>
                   </View>
+                )}
+
+                {/* Artwork */}
+                {artworkFiles.length > 0 && (
+                  <View style={pvStyles.assetCat}>
+                    {assetCatHeader('Artwork', artworkFiles.length)}
+                    <View style={pvStyles.assetGrid}>
+                      {artworkFiles.map((f: any) => renderFileTile(f, 'Artwork'))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Invoices */}
+                {invoiceTotal > 0 && (
+                  <View style={pvStyles.assetCat}>
+                    {assetCatHeader('Invoices', invoiceTotal)}
+                    {invoices.length > 0 && (
+                      <View style={{ gap: 8, marginTop: 4 }}>
+                        {invoices.map((inv: any) => renderInvoiceRow(inv))}
+                      </View>
+                    )}
+                    {invoiceFiles.length > 0 && (
+                      <View style={[pvStyles.assetGrid, invoices.length > 0 && { marginTop: 10 }]}>
+                        {invoiceFiles.map((f: any) => renderFileTile(f, 'Invoice'))}
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {/* Proofs */}
+                {proofFiles.length > 0 && (
+                  <View style={pvStyles.assetCat}>
+                    {assetCatHeader('Proofs', proofFiles.length)}
+                    <View style={pvStyles.assetGrid}>
+                      {proofFiles.map((f: any) => renderFileTile(f, 'Proof'))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Downloads — generated project summary is always available */}
+                <View style={pvStyles.assetCat}>
+                  {assetCatHeader('Downloads', 1 + downloadFiles.length)}
+                  <View style={{ gap: 8, marginTop: 4 }}>
+                    <View style={pvStyles.fileRow}>
+                      <View style={pvStyles.fileIcon}><FileText size={16} color={BRAND} /></View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={pvStyles.fileName} numberOfLines={1}>Project Summary (PDF)</Text>
+                        <Text style={pvStyles.fileMeta}>Generated on demand</Text>
+                      </View>
+                      <TouchableOpacity style={pvStyles.fileDownloadBtn} activeOpacity={0.7} onPress={downloadSummaryPdf}>
+                        <Download size={15} color={TEXT_MED} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  {downloadFiles.length > 0 && (
+                    <View style={[pvStyles.assetGrid, { marginTop: 10 }]}>
+                      {downloadFiles.map((f: any) => renderFileTile(f, 'Download'))}
+                    </View>
+                  )}
                 </View>
-              )}
+
+                {/* Empty state — no uploaded assets yet */}
+                {uploadedAssetTotal === 0 && (
+                  <Text style={{ fontSize: 12, color: TEXT_LIGHT, marginTop: 12, lineHeight: 18 }}>
+                    No mockups, artwork, proofs, or invoices have been added to this project yet. Your project summary is always available to download above.
+                  </Text>
+                )}
+              </View>
 
               {/* Order Summary */}
               <View style={pvStyles.card}>
@@ -2592,37 +2831,6 @@ export default function ClientPortal() {
                 )}
               </View>
 
-              {/* Files */}
-              {projFiles.length > 0 && (
-                <View style={pvStyles.card}>
-                  <Text style={pvStyles.sectionTitle}>Files</Text>
-                  <View style={{ marginTop: 10, gap: 8 }}>
-                    {projFiles.map((f: any) => (
-                      <View key={f.id} style={pvStyles.fileRow}>
-                        <View style={pvStyles.fileIcon}><FileText size={16} color={BRAND} /></View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={pvStyles.fileName} numberOfLines={1}>{f.originalName}</Text>
-                          <Text style={pvStyles.fileMeta}>{formatBytes(f.fileSize)}</Text>
-                        </View>
-                        <TouchableOpacity
-                          style={pvStyles.fileDownloadBtn}
-                          activeOpacity={0.7}
-                          onPress={() => {
-                            if (Platform.OS === 'web' && typeof document !== 'undefined') {
-                              const a = document.createElement('a');
-                              a.href = `/api/portal/${orgIdForFiles}/files/${f.id}`;
-                              a.download = f.originalName;
-                              a.click();
-                            }
-                          }}
-                        >
-                          <Download size={15} color={TEXT_MED} />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )}
             </View>
 
             {/* Right column: Pricing + Actions */}
@@ -5484,6 +5692,24 @@ const mpStyles = StyleSheet.create({
     fontWeight: '800',
     color: '#111827',
   },
+  assetChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 5,
+    marginTop: 6,
+  },
+  assetChip: {
+    backgroundColor: '#FFF4EE',
+    borderRadius: 5,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  assetChipText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: BRAND,
+    letterSpacing: 0.2,
+  },
   viewBtn: {
     paddingHorizontal: 12,
     paddingVertical: 7,
@@ -5998,6 +6224,37 @@ const pvStyles = StyleSheet.create({
     fontSize: 12, fontWeight: '600', color: TEXT,
     paddingHorizontal: 10, paddingVertical: 8,
   },
+
+  assetCat: { marginTop: 14 },
+  assetCatHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  assetCatTitle: { fontSize: 13, fontWeight: '800', color: TEXT, letterSpacing: 0.2 },
+  assetCatCount: {
+    minWidth: 20, paddingHorizontal: 6, height: 18, borderRadius: 9,
+    backgroundColor: '#FFF4EE', alignItems: 'center', justifyContent: 'center',
+  },
+  assetCatCountText: { fontSize: 11, fontWeight: '800', color: BRAND },
+  assetGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  assetTile: {
+    width: 140, borderRadius: 10, borderWidth: 1, borderColor: BORDER,
+    backgroundColor: '#fff', overflow: 'hidden',
+  },
+  assetThumb: {
+    width: '100%', aspectRatio: 1, backgroundColor: '#F3F4F6',
+    position: 'relative', alignItems: 'center', justifyContent: 'center',
+  },
+  assetThumbImg: { width: '100%', height: '100%' },
+  assetTypeBox: { alignItems: 'center', justifyContent: 'center', gap: 6 },
+  assetTypeLabel: { fontSize: 11, fontWeight: '800', color: BRAND, letterSpacing: 0.5 },
+  assetActions: {
+    position: 'absolute', bottom: 6, right: 6, flexDirection: 'row', gap: 4,
+  },
+  assetBtn: {
+    width: 28, height: 28, borderRadius: 6,
+    backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center',
+  },
+  assetTileMeta: { padding: 8, gap: 2 },
+  assetTileName: { fontSize: 11, fontWeight: '600', color: TEXT, lineHeight: 15 },
+  assetTileMetaLine: { fontSize: 10, color: TEXT_LIGHT },
 
   fileRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,

@@ -18,13 +18,18 @@ export async function GET(_request: Request, { orgId, fileId }: { orgId: string;
     if (!buffer) return Response.json({ error: 'File not found on disk' }, { status: 404 });
 
     const contentType = mimeType || 'application/octet-stream';
-    return new Response(buffer, {
-      headers: {
-        'Content-Type': contentType,
-        'Content-Disposition': `inline; filename="${originalName}"`,
-        'Cache-Control': 'private, max-age=3600',
-      },
-    });
+    const headers: Record<string, string> = {
+      'Content-Type': contentType,
+      'Content-Disposition': `inline; filename="${originalName}"`,
+      'Cache-Control': 'private, max-age=3600',
+      'X-Content-Type-Options': 'nosniff',
+    };
+    // SVGs can embed scripts; when opened top-level they would execute on the
+    // app origin. Sandbox the document so previews render but cannot run scripts.
+    if (contentType.includes('svg')) {
+      headers['Content-Security-Policy'] = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
+    }
+    return new Response(buffer, { headers });
   } finally {
     client.release();
   }

@@ -54,6 +54,18 @@ export async function GET(
       [projectId, orgId]
     );
 
+    // Customer-visible invoices for this project (never DRAFT). The project row
+    // above already confirmed org ownership, so scoping by projectId is safe.
+    const invoicesResult = await pool.query(
+      `SELECT id, "invoiceNumber", status::text AS status, total, "amountPaid",
+              "dueDate", "sentAt", "paymentUrl"
+       FROM "Invoice"
+       WHERE "projectId" = $1
+         AND status::text <> 'DRAFT'
+       ORDER BY "createdAt" DESC`,
+      [projectId]
+    );
+
     // ── Customer-safe sanitization ──────────────────────────────────────────
     // This is an UNAUTHENTICATED customer-facing endpoint. The raw Project JSON
     // (lineItemsData / calculations) carries internal financials — product /
@@ -104,6 +116,7 @@ export async function GET(
       lineItemsData: safeLineItems,
       calculations: safeCalc,
       files: filesResult.rows,
+      invoices: invoicesResult.rows,
     });
   } catch (err) {
     console.error('[GET /api/portal/[orgId]/projects/[projectId]]', err);

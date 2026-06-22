@@ -42,6 +42,28 @@ export async function GET(_req: Request, { orgId }: { orgId: string }) {
           WHERE COALESCE(li->>'mockupUri', '') <> ''
           LIMIT 1
         ) AS "thumbUri",
+        -- ── Asset counts (drive the project-card asset summary) ──────────────
+        -- Customer-safe: only counts of CLIENT_VISIBLE files / non-draft
+        -- invoices. Mockups = line-item mockups + MOCKUP files.
+        (
+          (
+            SELECT COUNT(*) FROM jsonb_array_elements(
+              CASE WHEN jsonb_typeof(p."lineItemsData") = 'array'
+                   THEN p."lineItemsData" ELSE '[]'::jsonb END
+            ) li WHERE COALESCE(li->>'mockupUri', '') <> ''
+          )
+          + (SELECT COUNT(*) FROM "File" f
+               WHERE f."projectId" = p.id AND f.visibility = 'CLIENT_VISIBLE' AND f."fileType" = 'MOCKUP')
+        )::int AS "mockupCount",
+        (SELECT COUNT(*) FROM "File" f
+           WHERE f."projectId" = p.id AND f.visibility = 'CLIENT_VISIBLE' AND f."fileType" = 'ARTWORK')::int AS "artworkCount",
+        (SELECT COUNT(*) FROM "File" f
+           WHERE f."projectId" = p.id AND f.visibility = 'CLIENT_VISIBLE' AND f."fileType" = 'PROOF')::int AS "proofCount",
+        (
+          (SELECT COUNT(*) FROM "Invoice" i WHERE i."projectId" = p.id AND i.status::text <> 'DRAFT')
+          + (SELECT COUNT(*) FROM "File" f
+               WHERE f."projectId" = p.id AND f.visibility = 'CLIENT_VISIBLE' AND f."fileType" = 'INVOICE_PDF')
+        )::int AS "invoiceCount",
         -- Customer-facing totals come from the canonical Project JSON
         -- (Project.calculations), NOT the mostly-empty relational Quote table.
         NULLIF(p.calculations->>'total', '')::numeric          AS "totalCost",
