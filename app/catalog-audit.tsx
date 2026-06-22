@@ -38,15 +38,26 @@ interface AuditProduct {
   recommendationLevel?: string | null;
 }
 
+interface CategoryCostSummary {
+  category: string;
+  total: number;
+  withCost: number;
+  pct: number;
+}
+
 interface AuditData {
   summary: {
     totalActive: number;
+    withCost?: number;
+    costCoverage?: number;
     quoteReady: number;
     mockupReady: number;
     withVendors?: number;
     withRecLevel?: number;
   };
+  categoryBreakdown?: CategoryCostSummary[];
   missingCost:     AuditProduct[];
+  zeroCost?:       AuditProduct[];
   missingColors:   AuditProduct[];
   missingAssets:   AuditProduct[];
   missingTemplate: AuditProduct[];
@@ -206,6 +217,22 @@ export default function CatalogAuditScreen() {
             <SummaryCard label="Catalog Assigned" value={data.summary.withVendors ?? 0} total={data.summary.totalActive} color="#0EA5E9" />
             <SummaryCard label="Rec Level Set" value={data.summary.withRecLevel ?? 0} total={data.summary.totalActive} color="#F59E0B" />
           </View>
+          <View style={s.summaryRow}>
+            <SummaryCard label="With Cost" value={data.summary.withCost ?? 0} total={data.summary.totalActive} color="#10B981" />
+            <View style={s.summaryCard}>
+              <Text style={[s.summaryValue, { color: (data.summary.costCoverage ?? 0) >= 80 ? '#10B981' : (data.summary.costCoverage ?? 0) >= 50 ? '#F59E0B' : '#EF4444' }]}>
+                {data.summary.costCoverage ?? 0}%
+              </Text>
+              <Text style={s.summaryLabel}>Cost Coverage</Text>
+              <View style={s.summaryBar}>
+                <View style={[s.summaryBarFill, {
+                  width: `${data.summary.costCoverage ?? 0}%` as any,
+                  backgroundColor: (data.summary.costCoverage ?? 0) >= 80 ? '#10B981' : (data.summary.costCoverage ?? 0) >= 50 ? '#F59E0B' : '#EF4444',
+                }]} />
+              </View>
+              <Text style={s.summaryPct}>of active products priced</Text>
+            </View>
+          </View>
 
           {/* Issue sections */}
           <View style={s.sectionHeader}>
@@ -219,6 +246,14 @@ export default function CatalogAuditScreen() {
             products={data.missingCost}
             color="#D97706"
             icon={<XCircle size={18} color="#D97706" />}
+            onPress={goToProduct}
+          />
+          <IssueSection
+            title="Zero Cost ($0.00)"
+            description="Cost is set to $0.00 — likely a data entry error"
+            products={data.zeroCost ?? []}
+            color="#EF4444"
+            icon={<AlertTriangle size={18} color="#EF4444" />}
             onPress={goToProduct}
           />
           <IssueSection
@@ -277,6 +312,42 @@ export default function CatalogAuditScreen() {
             icon={<AlertTriangle size={18} color="#F59E0B" />}
             onPress={goToProduct}
           />
+
+          {(data.categoryBreakdown?.length ?? 0) > 0 && (
+            <>
+              <View style={s.sectionHeader}>
+                <ClipboardList size={17} color="#6366F1" />
+                <Text style={s.sectionTitle}>Cost Coverage by Category</Text>
+              </View>
+              <View style={[s.issueSection, { padding: 0 }]}>
+                {data.categoryBreakdown!.map((row, idx) => (
+                  <View
+                    key={row.category}
+                    style={[
+                      s.catRow,
+                      idx < data.categoryBreakdown!.length - 1 && s.catRowBorder,
+                    ]}
+                  >
+                    <View style={s.catRowLeft}>
+                      <Text style={s.catRowName}>{row.category}</Text>
+                      <View style={s.catBarWrap}>
+                        <View style={[s.catBarFill, {
+                          width: `${row.pct}%` as any,
+                          backgroundColor: row.pct >= 80 ? '#10B981' : row.pct >= 50 ? '#F59E0B' : '#EF4444',
+                        }]} />
+                      </View>
+                    </View>
+                    <View style={s.catRowRight}>
+                      <Text style={[s.catPct, {
+                        color: row.pct >= 80 ? '#10B981' : row.pct >= 50 ? '#D97706' : '#EF4444',
+                      }]}>{row.pct}%</Text>
+                      <Text style={s.catCount}>{row.withCost}/{row.total}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
 
           <View style={{ height: 40 }} />
         </ScrollView>
@@ -363,4 +434,17 @@ const s = StyleSheet.create({
   issueRowName: { fontSize: 13, color: TEXT, marginTop: 1 },
   showMoreBtn: { paddingHorizontal: 14, paddingVertical: 10 },
   showMoreText: { fontSize: 13, color: BRAND },
+
+  catRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 14, paddingVertical: 12,
+  },
+  catRowBorder: { borderBottomWidth: 1, borderBottomColor: BORDER },
+  catRowLeft: { flex: 1, gap: 6 },
+  catRowName: { fontSize: 13, fontWeight: '600', color: TEXT },
+  catBarWrap: { height: 4, backgroundColor: BORDER, borderRadius: 2, overflow: 'hidden' as any },
+  catBarFill: { height: 4, borderRadius: 2 },
+  catRowRight: { alignItems: 'flex-end', gap: 2, minWidth: 52 },
+  catPct: { fontSize: 15, fontWeight: '700' },
+  catCount: { fontSize: 11, color: TEXT_LIGHT },
 });

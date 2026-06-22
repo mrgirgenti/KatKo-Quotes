@@ -50,27 +50,56 @@ export async function POST(request: Request) {
 
     const lineItemsArr = Array.isArray(lineItems) && lineItems.length > 0 ? lineItems : [];
 
-    const lineItemsData = lineItemsArr.map((item: any, i: number) => ({
-      id: item.id || `intake_${Date.now()}_${i}`,
-      designName: item.designName || `Item ${i + 1}`,
-      serviceStyle: item.serviceStyle || 'Screen Printing',
-      applicator: item.applicator || 'Katalyst Ko Printshop',
-      product: item.product || '',
-      productColor: item.productColor || '',
-      apparelProvider: item.apparelProvider || '',
-      location1: item.location1 || '',
-      location2: item.location2 || '',
-      location3: item.location3 || '',
-      location4: item.location4 || '',
-      locationDetails: item.locationDetails || '',
-      sizes: item.sizes || { xs: 0, s: 0, m: 0, l: 0, xl: 0, xxl: 0, xxxl: 0, xxxxl: 0, flat: 0 },
-      garmentVariants: item.garmentVariants || [],
-      mockupUri: item.mockupUri || null,
-      productCostEach: 0,
-      serviceCostEach: 0,
-      serviceFeeEach: 0,
-      markupEach: 0,
-    }));
+    // Step 6 — Project Conversion: look up defaultBlankCost by productId for any
+    // garmentVariants that carry a catalog product reference. This future-proofs
+    // the portal submit for when the Client Hub starts sending productId. Historical
+    // quotes are never touched — only new submissions receive this cost.
+    // Pricing hierarchy: Manual Override > Quote Snapshot > Product Default Cost > No Cost
+    const productIdSet = new Set<string>();
+    for (const item of lineItemsArr) {
+      for (const v of (item.garmentVariants || [])) {
+        if (v?.productId) productIdSet.add(v.productId);
+      }
+    }
+    const productCostMap: Record<string, number> = {};
+    if (productIdSet.size > 0) {
+      const costRows = await pool.query(
+        `SELECT id, "defaultBlankCost" FROM "Product" WHERE id = ANY($1::text[]) AND "defaultBlankCost" IS NOT NULL`,
+        [Array.from(productIdSet)],
+      );
+      for (const row of costRows.rows) {
+        const c = parseFloat(row.defaultBlankCost);
+        if (!isNaN(c) && c > 0) productCostMap[row.id] = c;
+      }
+    }
+
+    const lineItemsData = lineItemsArr.map((item: any, i: number) => {
+      const firstProductId = (item.garmentVariants || []).find((v: any) => v?.productId)?.productId;
+      const resolvedCost = firstProductId != null && productCostMap[firstProductId] != null
+        ? productCostMap[firstProductId]
+        : 0;
+      return {
+        id: item.id || `intake_${Date.now()}_${i}`,
+        designName: item.designName || `Item ${i + 1}`,
+        serviceStyle: item.serviceStyle || 'Screen Printing',
+        applicator: item.applicator || 'Katalyst Ko Printshop',
+        product: item.product || '',
+        productColor: item.productColor || '',
+        apparelProvider: item.apparelProvider || '',
+        location1: item.location1 || '',
+        location2: item.location2 || '',
+        location3: item.location3 || '',
+        location4: item.location4 || '',
+        locationDetails: item.locationDetails || '',
+        sizes: item.sizes || { xs: 0, s: 0, m: 0, l: 0, xl: 0, xxl: 0, xxxl: 0, xxxxl: 0, flat: 0 },
+        garmentVariants: item.garmentVariants || [],
+        mockupUri: item.mockupUri || null,
+        productCostEach: resolvedCost,
+        serviceCostEach: 0,
+        serviceFeeEach: 0,
+        markupEach: 0,
+      };
+    });
 
     const mappedOrderType = mapOrderType(orderType || 'New Order');
 

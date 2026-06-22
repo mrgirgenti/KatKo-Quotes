@@ -61,10 +61,17 @@ export async function GET(request: Request) {
     const missingRec:      typeof products = [];
     const staleCost:       typeof products = [];
     const neverUpdated:    typeof products = [];
+    const zeroCost:        typeof products = [];
+
+    const categoryMap: Record<string, { total: number; withCost: number }> = {};
 
     for (const p of products) {
-      if (p.defaultBlankCost === null || p.defaultBlankCost === undefined) {
+      const costNum = p.defaultBlankCost != null ? parseFloat(String(p.defaultBlankCost)) : null;
+
+      if (costNum === null || isNaN(costNum as number)) {
         missingCost.push(p);
+      } else if (costNum === 0) {
+        zeroCost.push(p);
       } else if (p.lastCostUpdatedAt) {
         const daysSince = (now.getTime() - new Date(p.lastCostUpdatedAt).getTime()) / (1000 * 60 * 60 * 24);
         if (daysSince > staleThresholdDays) staleCost.push(p);
@@ -78,10 +85,32 @@ export async function GET(request: Request) {
 
       const daysSinceUpdate = (now.getTime() - new Date(p.updatedAt).getTime()) / (1000 * 60 * 60 * 24);
       if (daysSinceUpdate > 180) neverUpdated.push(p);
+
+      const cat = (p.category || 'Uncategorized') as string;
+      if (!categoryMap[cat]) categoryMap[cat] = { total: 0, withCost: 0 };
+      categoryMap[cat].total++;
+      if (costNum !== null && !isNaN(costNum as number) && costNum > 0) categoryMap[cat].withCost++;
     }
+
+    const withCost = products.filter(p => {
+      const c = p.defaultBlankCost != null ? parseFloat(String(p.defaultBlankCost)) : null;
+      return c !== null && !isNaN(c) && c > 0;
+    }).length;
+    const costCoverage = products.length > 0 ? Math.round((withCost / products.length) * 100) : 0;
+
+    const categoryBreakdown = Object.entries(categoryMap)
+      .map(([category, d]) => ({
+        category,
+        total: d.total,
+        withCost: d.withCost,
+        pct: d.total > 0 ? Math.round((d.withCost / d.total) * 100) : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
 
     const summary = {
       totalActive:    products.length,
+      withCost,
+      costCoverage,
       quoteReady: products.filter(p =>
         p.defaultBlankCost !== null &&
         p.colorCount > 0
@@ -114,7 +143,9 @@ export async function GET(request: Request) {
 
     return Response.json({
       summary,
+      categoryBreakdown,
       missingCost:     slim(missingCost),
+      zeroCost:        slim(zeroCost),
       missingColors:   slim(missingColors),
       missingAssets:   slim(missingAssets),
       missingTemplate: slim(missingTemplate),
