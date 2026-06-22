@@ -35,6 +35,12 @@ export async function GET(
         p."originalOrderDate",
         p."timesReordered",
         p."lastReorderedAt",
+        p."quoteSentAt",
+        p."quoteViewedAt",
+        p."quoteResponse",
+        p."quoteRespondedAt",
+        p."quoteResponseBy",
+        p."quoteResponseNote",
         p."createdAt"
       FROM "Project" p
       WHERE p."organizationId" = $1

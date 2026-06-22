@@ -134,6 +134,7 @@ interface PortalProject {
   originalOrderDate: string | null;
   timesReordered: number | null;
   lastReorderedAt: string | null;
+  quoteResponse: string | null;
 }
 
 interface FullPortalProject {
@@ -154,6 +155,12 @@ interface FullPortalProject {
   originalOrderDate: string | null;
   timesReordered: number | null;
   lastReorderedAt: string | null;
+  quoteSentAt: string | null;
+  quoteViewedAt: string | null;
+  quoteResponse: string | null;
+  quoteRespondedAt: string | null;
+  quoteResponseBy: string | null;
+  quoteResponseNote: string | null;
   files?: Array<{
     id: string;
     originalName: string;
@@ -196,7 +203,21 @@ const PORTAL_STATUS_CONFIG: Record<string, { label: string; color: string; bg: s
   CANCELLED:     { label: 'Cancelled',       color: '#6B7280', bg: '#F3F4F6' },
 };
 
-function StatusPill({ status }: { status: string }) {
+const QUOTE_RESPONSE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  approved:          { label: 'Approved',          color: '#059669', bg: '#ECFDF5' },
+  changes_requested: { label: 'Changes Requested', color: '#D97706', bg: '#FEF3C7' },
+  declined:          { label: 'Declined',          color: '#6B7280', bg: '#F3F4F6' },
+};
+
+function StatusPill({ status, quoteResponse }: { status: string; quoteResponse?: string | null }) {
+  const rc = quoteResponse ? QUOTE_RESPONSE_CONFIG[quoteResponse] : null;
+  if (rc) {
+    return (
+      <View style={{ backgroundColor: rc.bg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
+        <Text style={{ fontSize: 11, fontWeight: '700', color: rc.color }}>{rc.label}</Text>
+      </View>
+    );
+  }
   const normalized = status.toUpperCase().replace('QUOTE_SENT', 'QUOTED');
   const cfg = PORTAL_STATUS_CONFIG[normalized] || { label: status, color: '#6B7280', bg: '#F3F4F6' };
   return (
@@ -1373,6 +1394,10 @@ export default function ClientPortal() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<FullPortalProject | null>(null);
   const [favoriteProjectIds, setFavoriteProjectIds] = useState<string[]>([]);
+  const [quoteActionModal, setQuoteActionModal] = useState<null | { action: 'approve' | 'request_changes' | 'decline' }>(null);
+  const [quoteActionNote, setQuoteActionNote] = useState('');
+  const [quoteActionSubmitting, setQuoteActionSubmitting] = useState(false);
+  const [quoteActionError, setQuoteActionError] = useState<string | null>(null);
 
   // Favorites are DB-backed (per customer + org), so they survive device,
   // browser, and re-login changes. Loaded on login; toggled optimistically.
@@ -1575,10 +1600,45 @@ export default function ClientPortal() {
       if (res.ok) {
         const data = await res.json();
         setSelectedProject(data);
+        // Fire-and-forget: record that the customer viewed this quote. The API
+        // only records a view for an unviewed QUOTE_SENT quote (idempotent).
+        fetch(`/api/portal/${session.orgId}/projects/${projectId}/quote-response`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: session.userId, action: 'view' }),
+        }).catch(() => {});
       }
     } catch {}
     setProjectViewLoading(false);
   }, [session]);
+
+  const submitQuoteResponse = useCallback(async (action: 'approve' | 'request_changes' | 'decline', note: string) => {
+    if (!session || !selectedProjectId) return;
+    setQuoteActionSubmitting(true);
+    setQuoteActionError(null);
+    try {
+      const res = await fetch(`/api/portal/${session.orgId}/projects/${selectedProjectId}/quote-response`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: session.userId, action, note }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setQuoteActionModal(null);
+        setQuoteActionNote('');
+        // Refetch the detail so the banner + timeline reflect the new state,
+        // and refresh the list so the card badge updates.
+        const ref = await fetch(`/api/portal/${session.orgId}/projects/${selectedProjectId}`);
+        if (ref.ok) setSelectedProject(await ref.json());
+        fetchOrgProjects(session.orgId);
+      } else {
+        setQuoteActionError(data.error || 'Something went wrong. Please try again.');
+      }
+    } catch {
+      setQuoteActionError('Network error. Please try again.');
+    }
+    setQuoteActionSubmitting(false);
+  }, [session, selectedProjectId, fetchOrgProjects]);
 
   const fetchMediaBin = useCallback(async (oid: string) => {
     setMediaBinLoading(true);
@@ -2111,7 +2171,7 @@ export default function ClientPortal() {
       <View style={dash.projectCard}>
         <View style={dash.projectCardTop}>
           <Text style={dash.projectCardTitle} numberOfLines={1}>{project.title}</Text>
-          <StatusPill status={project.status} />
+          <StatusPill status={project.status} quoteResponse={project.quoteResponse} />
           <TouchableOpacity
             onPress={(e: any) => { e?.stopPropagation?.(); toggleFavorite(project.id); }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -2212,7 +2272,7 @@ export default function ClientPortal() {
                         <Text style={dash.quoteTitle} numberOfLines={1}>{p.title}</Text>
                         <Text style={dash.quoteMeta}>{formatDate(p.createdAt)}</Text>
                       </View>
-                      <StatusPill status={p.status} />
+                      <StatusPill status={p.status} quoteResponse={p.quoteResponse} />
                     </View>
                   ))
             }
@@ -2470,7 +2530,7 @@ export default function ClientPortal() {
             })()}
           </View>
           <View style={[mpStyles.colStatus, mpStyles.tdCell]}>
-            <StatusPill status={p.status} />
+            <StatusPill status={p.status} quoteResponse={p.quoteResponse} />
           </View>
           <View style={[mpStyles.colOrderDate, mpStyles.tdCell]}>
             <Text style={mpStyles.tDue}>{p.orderDate ? formatDate(p.orderDate) : '\u2014'}</Text>
@@ -2768,6 +2828,32 @@ export default function ClientPortal() {
     if (rushFee > 0) pricingRows.push({ label: 'Rush Fee', value: rushFee });
     const isFavorite = proj ? favoriteProjectIds.includes(proj.id) : false;
 
+    // ── Quote response (Phase 7) ────────────────────────────────────────────
+    const mappedStatusPV = (proj?.status || '').toUpperCase().replace('QUOTE_SENT', 'QUOTED');
+    const quoteResp = proj?.quoteResponse || null;
+    const canRespondToQuote = mappedStatusPV === 'QUOTED' && !quoteResp;
+    const respCfg = quoteResp ? QUOTE_RESPONSE_CONFIG[quoteResp] : null;
+    const fmtDateTime = (d: string | null | undefined): string | null => {
+      if (!d) return null;
+      try {
+        const dt = new Date(d);
+        if (isNaN(dt.getTime())) return formatDate(d as string);
+        return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          + ' · ' + dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      } catch { return formatDate(d as string); }
+    };
+    const quoteReachedSent =
+      ['QUOTED', 'INVOICE_SENT', 'PAID', 'IN_PRODUCTION', 'COMPLETED'].includes(mappedStatusPV)
+      || !!quoteResp || !!proj?.quoteSentAt;
+    const quoteTimeline: Array<{ key: string; label: string; date: string | null; done: boolean; color?: string }> = [];
+    if (quoteReachedSent || proj?.quoteViewedAt) {
+      quoteTimeline.push({ key: 'sent', label: 'Quote Sent', date: proj?.quoteSentAt || null, done: quoteReachedSent });
+      quoteTimeline.push({ key: 'viewed', label: 'Viewed', date: proj?.quoteViewedAt || null, done: !!proj?.quoteViewedAt });
+      if (quoteResp && respCfg) {
+        quoteTimeline.push({ key: 'resp', label: respCfg.label, date: proj?.quoteRespondedAt || null, done: true, color: respCfg.color });
+      }
+    }
+
     // ── Project Assets ────────────────────────────────────────────────────
     // Everything tied to this project, categorized by fileType. Mockups are NOT
     // aggregated here — each line item owns and displays its own mockup below.
@@ -2921,7 +3007,7 @@ export default function ClientPortal() {
               {/* Header card */}
               <View style={pvStyles.card}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                  <StatusPill status={proj.status} />
+                  <StatusPill status={proj.status} quoteResponse={proj.quoteResponse} />
                   {proj.orderType ? (
                     <View style={{ backgroundColor: '#F3F4F6', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
                       <Text style={{ fontSize: 11, fontWeight: '600', color: TEXT_LIGHT }}>{proj.orderType}</Text>
@@ -3050,8 +3136,63 @@ export default function ClientPortal() {
 
             </View>
 
-            {/* Right column: Pricing + Actions */}
+            {/* Right column: Quote response + Pricing + Actions */}
             <View style={{ width: 280, gap: 16 }}>
+              {/* Quote response (Approve / Request Changes / Decline) */}
+              {(canRespondToQuote || quoteResp) && (
+                <View style={pvStyles.card}>
+                  <Text style={pvStyles.sectionTitle}>Your Quote</Text>
+                  {canRespondToQuote ? (
+                    <View style={{ marginTop: 12, gap: 10 }}>
+                      <Text style={{ fontSize: 12, color: TEXT_LIGHT, lineHeight: 18 }}>
+                        Review your quote and let us know how you’d like to proceed.
+                      </Text>
+                      <TouchableOpacity
+                        style={pvStyles.qrApprove}
+                        activeOpacity={0.85}
+                        onPress={() => { setQuoteActionError(null); setQuoteActionNote(''); setQuoteActionModal({ action: 'approve' }); }}
+                      >
+                        <Check size={16} color="#fff" />
+                        <Text style={pvStyles.qrApproveText}>Approve Quote</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={pvStyles.actionSecondary}
+                        activeOpacity={0.85}
+                        onPress={() => { setQuoteActionError(null); setQuoteActionNote(''); setQuoteActionModal({ action: 'request_changes' }); }}
+                      >
+                        <MessageCircle size={16} color={TEXT_MED} />
+                        <Text style={pvStyles.actionSecondaryText}>Request Changes</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={pvStyles.qrDecline}
+                        activeOpacity={0.85}
+                        onPress={() => { setQuoteActionError(null); setQuoteActionNote(''); setQuoteActionModal({ action: 'decline' }); }}
+                      >
+                        <X size={16} color="#DC2626" />
+                        <Text style={pvStyles.qrDeclineText}>Decline</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : respCfg ? (
+                    <View style={{ marginTop: 12 }}>
+                      <View style={[pvStyles.qrBanner, { backgroundColor: respCfg.bg }]}>
+                        <Text style={[pvStyles.qrBannerLabel, { color: respCfg.color }]}>{respCfg.label}</Text>
+                        {proj?.quoteRespondedAt ? (
+                          <Text style={pvStyles.qrBannerMeta}>
+                            {proj.quoteResponseBy ? `${proj.quoteResponseBy} · ` : ''}{fmtDateTime(proj.quoteRespondedAt)}
+                          </Text>
+                        ) : null}
+                      </View>
+                      {proj?.quoteResponseNote ? (
+                        <View style={{ marginTop: 10 }}>
+                          <Text style={pvStyles.metaLabel}>{quoteResp === 'declined' ? 'REASON' : quoteResp === 'changes_requested' ? 'REQUESTED CHANGES' : 'YOUR NOTE'}</Text>
+                          <Text style={{ fontSize: 13, color: TEXT_MED, lineHeight: 19, marginTop: 2 }}>{proj.quoteResponseNote}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  ) : null}
+                </View>
+              )}
+
               <View style={pvStyles.card}>
                 <Text style={pvStyles.sectionTitle}>Pricing</Text>
                 {grandTotal == null ? (
@@ -3122,6 +3263,27 @@ export default function ClientPortal() {
                   </TouchableOpacity>
                 </View>
               </View>
+
+              {/* Quote Timeline */}
+              {quoteTimeline.length > 0 && (
+                <View style={pvStyles.card}>
+                  <Text style={pvStyles.sectionTitle}>Quote Timeline</Text>
+                  <View style={{ marginTop: 14 }}>
+                    {quoteTimeline.map((ev, i) => (
+                      <View key={ev.key} style={pvStyles.tlRow}>
+                        <View style={pvStyles.tlMarkerCol}>
+                          <View style={[pvStyles.tlDot, ev.done ? { backgroundColor: ev.color || BRAND, borderColor: ev.color || BRAND } : null]} />
+                          {i < quoteTimeline.length - 1 ? <View style={pvStyles.tlLine} /> : null}
+                        </View>
+                        <View style={{ flex: 1, paddingBottom: i < quoteTimeline.length - 1 ? 16 : 0 }}>
+                          <Text style={[pvStyles.tlLabel, !ev.done && { color: TEXT_LIGHT }]}>{ev.label}</Text>
+                          <Text style={pvStyles.tlDate}>{ev.date ? fmtDateTime(ev.date) : (ev.done ? 'Completed' : 'Pending')}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
 
               {/* Project History */}
               <View style={pvStyles.card}>
@@ -4672,6 +4834,58 @@ export default function ClientPortal() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ── QUOTE RESPONSE MODAL ── */}
+      <Modal
+        visible={!!quoteActionModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { if (!quoteActionSubmitting) setQuoteActionModal(null); }}
+      >
+        <Pressable style={qmStyles.overlay} onPress={() => { if (!quoteActionSubmitting) setQuoteActionModal(null); }}>
+          <Pressable style={qmStyles.sheet} onPress={() => {}}>
+            {(() => {
+              const action = quoteActionModal?.action;
+              const cfg = action === 'approve'
+                ? { title: 'Approve Quote', body: 'Approving lets Katalyst Ko know you’re ready to move forward with this quote. Add an optional note below.', confirm: 'Approve Quote', confirmStyle: qmStyles.confirmApprove, placeholder: 'Optional note (e.g. delivery preferences)…', required: false }
+                : action === 'request_changes'
+                ? { title: 'Request Changes', body: 'Tell us what you’d like changed and our team will revise your quote.', confirm: 'Send Request', confirmStyle: qmStyles.confirmPrimary, placeholder: 'Describe the changes you’d like…', required: true }
+                : { title: 'Decline Quote', body: 'Let us know this quote isn’t the right fit. A reason is optional but helps us improve.', confirm: 'Decline Quote', confirmStyle: qmStyles.confirmDecline, placeholder: 'Optional reason…', required: false };
+              const noteEmpty = quoteActionNote.trim().length === 0;
+              const disableConfirm = quoteActionSubmitting || (cfg.required && noteEmpty);
+              return (
+                <>
+                  <Text style={qmStyles.title}>{cfg.title}</Text>
+                  <Text style={qmStyles.body}>{cfg.body}</Text>
+                  <TextInput
+                    style={qmStyles.input}
+                    placeholder={cfg.placeholder}
+                    placeholderTextColor={TEXT_PLACEHOLDER}
+                    value={quoteActionNote}
+                    onChangeText={setQuoteActionNote}
+                    multiline
+                    editable={!quoteActionSubmitting}
+                  />
+                  {quoteActionError ? <Text style={qmStyles.err}>{quoteActionError}</Text> : null}
+                  <View style={qmStyles.actions}>
+                    <TouchableOpacity style={qmStyles.cancel} activeOpacity={0.85} disabled={quoteActionSubmitting} onPress={() => setQuoteActionModal(null)}>
+                      <Text style={qmStyles.cancelText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[qmStyles.confirm, cfg.confirmStyle, disableConfirm && { opacity: 0.5 }]}
+                      activeOpacity={0.85}
+                      disabled={disableConfirm}
+                      onPress={() => action && submitQuoteResponse(action, quoteActionNote.trim())}
+                    >
+                      {quoteActionSubmitting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={qmStyles.confirmText}>{cfg.confirm}</Text>}
+                    </TouchableOpacity>
+                  </View>
+                </>
+              );
+            })()}
           </Pressable>
         </Pressable>
       </Modal>
@@ -6544,6 +6758,47 @@ const pvStyles = StyleSheet.create({
   },
   actionSecondaryText: { fontSize: 14, fontWeight: '600', color: TEXT_MED },
   actionFavActive: { borderColor: BRAND, backgroundColor: '#FFF4EE' },
+  qrApprove: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#059669', borderRadius: 10, paddingVertical: 12,
+  },
+  qrApproveText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  qrDecline: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#fff', borderWidth: 1, borderColor: '#FCA5A5',
+    borderRadius: 10, paddingVertical: 12,
+  },
+  qrDeclineText: { fontSize: 14, fontWeight: '600', color: '#DC2626' },
+  qrBanner: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  qrBannerLabel: { fontSize: 14, fontWeight: '700' },
+  qrBannerMeta: { fontSize: 11, color: TEXT_LIGHT, marginTop: 2 },
+  tlRow: { flexDirection: 'row', gap: 12 },
+  tlMarkerCol: { alignItems: 'center', width: 14 },
+  tlDot: { width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: BORDER, backgroundColor: '#fff' },
+  tlLine: { flex: 1, width: 2, backgroundColor: BORDER, marginVertical: 2 },
+  tlLabel: { fontSize: 13, fontWeight: '600', color: TEXT, lineHeight: 16 },
+  tlDate: { fontSize: 11, color: TEXT_LIGHT, marginTop: 2 },
+});
+
+const qmStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  sheet: { backgroundColor: '#fff', borderRadius: 16, width: '100%', maxWidth: 440, padding: 22 },
+  title: { fontSize: 18, fontWeight: '700', color: TEXT },
+  body: { fontSize: 13, color: TEXT_MED, lineHeight: 19, marginTop: 8 },
+  input: {
+    marginTop: 14, minHeight: 90, borderWidth: 1, borderColor: BORDER, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: TEXT,
+    textAlignVertical: 'top', outlineStyle: 'none',
+  } as any,
+  err: { fontSize: 12, color: '#DC2626', marginTop: 10 },
+  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 18 },
+  cancel: { paddingVertical: 11, paddingHorizontal: 18, borderRadius: 10, borderWidth: 1, borderColor: BORDER, backgroundColor: '#fff' },
+  cancelText: { fontSize: 14, fontWeight: '600', color: TEXT_MED },
+  confirm: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minWidth: 130, paddingVertical: 11, paddingHorizontal: 18, borderRadius: 10 },
+  confirmText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  confirmApprove: { backgroundColor: '#059669' },
+  confirmPrimary: { backgroundColor: BRAND },
+  confirmDecline: { backgroundColor: '#DC2626' },
 });
 
 const binPickStyles = StyleSheet.create({

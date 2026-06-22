@@ -214,6 +214,17 @@ export async function PUT(request: Request, { id }: { id: string }) {
       if (!chk.rows[0]) assignedToUserId = null;
     }
 
+    // Re-quote reset: when the team (re)sends a quote — i.e. transitions INTO
+    // 'quoted' (QUOTE_SENT) from any other status — clear the customer's prior
+    // Client Hub response so the revised quote re-opens Approve/Decline. Folded
+    // into the main UPDATE below so it is atomic with the status change (no race,
+    // no stale return). Re-saving an already-quoted project (quoted→quoted) does
+    // NOT reset, preserving an existing approval. ActivityLog history is retained.
+    const isReQuote = body.status === 'quoted' && prev?.frontendStatus !== 'quoted';
+    const requoteReset = isReQuote
+      ? `, "quoteResponse" = NULL, "quoteRespondedAt" = NULL, "quoteResponseBy" = NULL, "quoteResponseByUserId" = NULL, "quoteResponseIp" = NULL, "quoteResponseNote" = NULL, "quoteViewedAt" = NULL`
+      : '';
+
     const result = await pool.query(
       `UPDATE "Project" SET
         title = $1, "clientName" = $2, "organizationId" = $3, "orderType" = $4,
@@ -227,7 +238,7 @@ export async function PUT(request: Request, { id }: { id: string }) {
         "operationalStatus" = $24, "holdReason" = $25, "holdNotes" = $26,
         "holdPlacedAt" = $27, "holdPlacedBy" = $28, "deliveryMethod" = $29,
         "paymentReceived" = $30, "artworkReceived" = $31, "proofApproved" = $32,
-        priority = $33::"PriorityLevel", "assignedToUserId" = $34,
+        priority = $33::"PriorityLevel", "assignedToUserId" = $34${requoteReset},
         "updatedAt" = NOW()
       WHERE id = $23 RETURNING *`,
       [

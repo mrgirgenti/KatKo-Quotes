@@ -4,6 +4,17 @@ const FROM = 'Katalyst Ko Printshop <jobs@katalystko.com>';
 const REPLY_TO = 'jobs@katalystko.com';
 const KO_JOBS_EMAIL = 'jobs@katalystko.com';
 
+// Escape user/DB-supplied values before interpolating them into email HTML so a
+// project name, client name, or free-text note can never inject markup.
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 async function getResendClient(): Promise<Resend> {
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY
@@ -547,15 +558,15 @@ export function buildQuoteApprovedNotificationEmail(opts: {
       <table cellpadding="0" cellspacing="0" width="100%" style="background:#F9FAFB;border-radius:10px;margin-bottom:24px;border:1px solid #E5E7EB;">
         <tr><td style="padding:16px 20px;border-bottom:1px solid #E5E7EB;">
           <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.5px;">Project</p>
-          <p style="margin:0;font-size:16px;font-weight:700;color:#111;">${projectName}</p>
+          <p style="margin:0;font-size:16px;font-weight:700;color:#111;">${escapeHtml(projectName)}</p>
         </td></tr>
         <tr><td style="padding:16px 20px;border-bottom:1px solid #E5E7EB;">
           <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.5px;">Organization</p>
-          <p style="margin:0;font-size:14px;color:#374151;">${orgName}</p>
+          <p style="margin:0;font-size:14px;color:#374151;">${escapeHtml(orgName)}</p>
         </td></tr>
         <tr><td style="padding:16px 20px;border-bottom:1px solid #E5E7EB;">
           <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.5px;">Approved By</p>
-          <p style="margin:0;font-size:14px;color:#374151;">${submittedBy}</p>
+          <p style="margin:0;font-size:14px;color:#374151;">${escapeHtml(submittedBy)}</p>
         </td></tr>
         <tr><td style="padding:16px 20px;">
           <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.5px;">Quote Total</p>
@@ -572,4 +583,221 @@ export function buildQuoteApprovedNotificationEmail(opts: {
     </td></tr>`);
 
   return { subject, html, text };
+}
+
+// Internal notification: a client requested changes to their quote.
+export function buildQuoteChangesRequestedAdminEmail(opts: {
+  projectName: string;
+  orgName: string;
+  requestedBy: string;
+  comments: string;
+  adminUrl: string;
+}): { subject: string; html: string; text: string } {
+  const { projectName, orgName, requestedBy, comments, adminUrl } = opts;
+  const subject = `Changes Requested – ${projectName}`;
+
+  const text = [
+    `A client requested changes to their quote in Ko OS.`,
+    '',
+    `PROJECT: ${projectName}`,
+    `ORGANIZATION: ${orgName}`,
+    `REQUESTED BY: ${requestedBy}`,
+    '',
+    `REQUESTED CHANGES:`,
+    `  ${comments}`,
+    '',
+    `Revise the quote and resend it from Ko OS:`,
+    `  ${adminUrl}`,
+    '',
+    `— Ko OS Notification`,
+  ].join('\n');
+
+  const html = emailWrapper(`
+    <tr><td style="padding:32px;">
+      <div style="display:inline-block;background:#FEF3C7;border-radius:6px;padding:4px 12px;margin-bottom:16px;">
+        <span style="font-size:12px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:0.5px;">Changes Requested</span>
+      </div>
+      <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111;">A client requested changes</h1>
+      <p style="margin:0 0 24px;font-size:15px;color:#555;line-height:1.6;">
+        Action required — review the requested changes below, revise the quote, and resend it.
+      </p>
+      <table cellpadding="0" cellspacing="0" width="100%" style="background:#F9FAFB;border-radius:10px;margin-bottom:20px;border:1px solid #E5E7EB;">
+        <tr><td style="padding:16px 20px;border-bottom:1px solid #E5E7EB;">
+          <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.5px;">Project</p>
+          <p style="margin:0;font-size:16px;font-weight:700;color:#111;">${escapeHtml(projectName)}</p>
+        </td></tr>
+        <tr><td style="padding:16px 20px;border-bottom:1px solid #E5E7EB;">
+          <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.5px;">Organization</p>
+          <p style="margin:0;font-size:14px;color:#374151;">${escapeHtml(orgName)}</p>
+        </td></tr>
+        <tr><td style="padding:16px 20px;">
+          <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.5px;">Requested By</p>
+          <p style="margin:0;font-size:14px;color:#374151;">${escapeHtml(requestedBy)}</p>
+        </td></tr>
+      </table>
+      <table cellpadding="0" cellspacing="0" width="100%" style="background:#FFF7ED;border-radius:8px;margin-bottom:20px;border:1px solid #FED7AA;">
+        <tr><td style="padding:14px 16px;">
+          <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:0.5px;">Requested Changes</p>
+          <p style="margin:0;font-size:13px;color:#78350F;line-height:1.5;">${escapeHtml(comments)}</p>
+        </td></tr>
+      </table>
+      <table cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+        <tr><td style="background:#FF5A00;border-radius:8px;">
+          <a href="${adminUrl}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#fff;text-decoration:none;">
+            Open in Ko OS →
+          </a>
+        </td></tr>
+      </table>
+    </td></tr>`);
+
+  return { subject, html, text };
+}
+
+// Internal notification: a client declined their quote.
+export function buildQuoteDeclinedAdminEmail(opts: {
+  projectName: string;
+  orgName: string;
+  declinedBy: string;
+  reason: string;
+  adminUrl: string;
+}): { subject: string; html: string; text: string } {
+  const { projectName, orgName, declinedBy, reason, adminUrl } = opts;
+  const subject = `Quote Declined – ${projectName}`;
+
+  const text = [
+    `A client declined their quote in Ko OS.`,
+    '',
+    `PROJECT: ${projectName}`,
+    `ORGANIZATION: ${orgName}`,
+    `DECLINED BY: ${declinedBy}`,
+    ...(reason ? ['', `REASON:`, `  ${reason}`] : []),
+    '',
+    `View the project in Ko OS:`,
+    `  ${adminUrl}`,
+    '',
+    `— Ko OS Notification`,
+  ].join('\n');
+
+  const html = emailWrapper(`
+    <tr><td style="padding:32px;">
+      <div style="display:inline-block;background:#FEE2E2;border-radius:6px;padding:4px 12px;margin-bottom:16px;">
+        <span style="font-size:12px;font-weight:700;color:#991B1B;text-transform:uppercase;letter-spacing:0.5px;">Quote Declined</span>
+      </div>
+      <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111;">A client declined their quote</h1>
+      <p style="margin:0 0 24px;font-size:15px;color:#555;line-height:1.6;">
+        The client chose not to move forward. Reach out if you'd like to follow up.
+      </p>
+      <table cellpadding="0" cellspacing="0" width="100%" style="background:#F9FAFB;border-radius:10px;margin-bottom:20px;border:1px solid #E5E7EB;">
+        <tr><td style="padding:16px 20px;border-bottom:1px solid #E5E7EB;">
+          <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.5px;">Project</p>
+          <p style="margin:0;font-size:16px;font-weight:700;color:#111;">${escapeHtml(projectName)}</p>
+        </td></tr>
+        <tr><td style="padding:16px 20px;border-bottom:1px solid #E5E7EB;">
+          <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.5px;">Organization</p>
+          <p style="margin:0;font-size:14px;color:#374151;">${escapeHtml(orgName)}</p>
+        </td></tr>
+        <tr><td style="padding:16px 20px;">
+          <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.5px;">Declined By</p>
+          <p style="margin:0;font-size:14px;color:#374151;">${escapeHtml(declinedBy)}</p>
+        </td></tr>
+      </table>
+      ${reason ? `
+      <table cellpadding="0" cellspacing="0" width="100%" style="background:#FEF2F2;border-radius:8px;margin-bottom:20px;border:1px solid #FECACA;">
+        <tr><td style="padding:14px 16px;">
+          <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#991B1B;text-transform:uppercase;letter-spacing:0.5px;">Reason</p>
+          <p style="margin:0;font-size:13px;color:#7F1D1D;line-height:1.5;">${escapeHtml(reason)}</p>
+        </td></tr>
+      </table>` : ''}
+      <table cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+        <tr><td style="background:#FF5A00;border-radius:8px;">
+          <a href="${adminUrl}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#fff;text-decoration:none;">
+            Open in Ko OS →
+          </a>
+        </td></tr>
+      </table>
+    </td></tr>`);
+
+  return { subject, html, text };
+}
+
+// Customer confirmation after they respond to a quote (approve / changes / decline).
+export function buildQuoteResponseCustomerEmail(opts: {
+  clientName: string;
+  projectName: string;
+  orgName: string;
+  action: 'approved' | 'changes_requested' | 'declined';
+  note?: string;
+  portalUrl: string;
+}): { subject: string; html: string; text: string } {
+  const { clientName, projectName, orgName, action, note, portalUrl } = opts;
+  const eProject = escapeHtml(projectName);
+  const eClient = escapeHtml(clientName);
+  const eNote = note ? escapeHtml(note) : '';
+
+  const variants = {
+    approved: {
+      badgeBg: '#D1FAE5', badgeColor: '#065F46', badge: 'Quote Approved',
+      heading: 'Thanks for approving your quote!',
+      bodyHtml: `We've received your approval for <strong>${eProject}</strong>. Our team will prepare your invoice and next steps shortly.`,
+      bodyText: `We've received your approval for ${projectName}. Our team will prepare your invoice and next steps shortly.`,
+      subject: `Quote approved – ${projectName}`,
+      noteLabel: '',
+    },
+    changes_requested: {
+      badgeBg: '#FEF3C7', badgeColor: '#92400E', badge: 'Changes Requested',
+      heading: 'We got your change request',
+      bodyHtml: `Thanks — we've received your requested changes for <strong>${eProject}</strong>. Our team will revise the quote and send you an updated version.`,
+      bodyText: `Thanks — we've received your requested changes for ${projectName}. Our team will revise the quote and send you an updated version.`,
+      subject: `Change request received – ${projectName}`,
+      noteLabel: 'Your Requested Changes',
+    },
+    declined: {
+      badgeBg: '#F3F4F6', badgeColor: '#374151', badge: 'Quote Declined',
+      heading: 'Your quote has been declined',
+      bodyHtml: `We've recorded that you declined the quote for <strong>${eProject}</strong>. If anything changes or you have questions, just reply to this email — we're happy to help.`,
+      bodyText: `We've recorded that you declined the quote for ${projectName}. If anything changes or you have questions, just reply to this email — we're happy to help.`,
+      subject: `Quote declined – ${projectName}`,
+      noteLabel: 'Reason',
+    },
+  } as const;
+
+  const v = variants[action];
+  const showNote = !!(note && v.noteLabel);
+
+  const text = [
+    `Hi ${clientName},`,
+    '',
+    v.bodyText,
+    ...(showNote ? ['', `${v.noteLabel.toUpperCase()}:`, `  ${note}`] : []),
+    '',
+    `View your project:`,
+    `  ${portalUrl}`,
+    '',
+    `— ${orgName} via Katalyst Ko`,
+  ].join('\n');
+
+  const html = emailWrapper(`
+    <tr><td style="padding:32px;">
+      <div style="display:inline-block;background:${v.badgeBg};border-radius:6px;padding:4px 12px;margin-bottom:16px;">
+        <span style="font-size:12px;font-weight:700;color:${v.badgeColor};text-transform:uppercase;letter-spacing:0.5px;">${v.badge}</span>
+      </div>
+      <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111;">${v.heading}</h1>
+      <p style="margin:0 0 24px;font-size:15px;color:#555;line-height:1.6;">Hi ${eClient}, ${v.bodyHtml}</p>
+      ${showNote ? `
+      <table cellpadding="0" cellspacing="0" width="100%" style="background:#F9FAFB;border-radius:8px;margin-bottom:20px;border:1px solid #E5E7EB;">
+        <tr><td style="padding:14px 16px;">
+          <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.5px;">${v.noteLabel}</p>
+          <p style="margin:0;font-size:13px;color:#374151;line-height:1.5;">${eNote}</p>
+        </td></tr>
+      </table>` : ''}
+      <table cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+        <tr><td style="background:#FF5A00;border-radius:8px;">
+          <a href="${portalUrl}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#fff;text-decoration:none;">
+            View Your Project →
+          </a>
+        </td></tr>
+      </table>
+    </td></tr>`);
+
+  return { subject: v.subject, html, text };
 }

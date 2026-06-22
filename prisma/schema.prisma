@@ -276,6 +276,13 @@ model Project {
   originalOrderDate String?
   timesReordered    Int          @default(0)
   lastReorderedAt   DateTime?
+  quoteViewedAt        DateTime?
+  quoteResponse        String?
+  quoteRespondedAt     DateTime?
+  quoteResponseBy      String?
+  quoteResponseByUserId String?
+  quoteResponseIp      String?
+  quoteResponseNote    String?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
