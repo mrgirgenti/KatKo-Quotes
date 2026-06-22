@@ -7,6 +7,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   Platform,
+  Image,
+  Linking,
 } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import {
@@ -21,6 +23,9 @@ import {
   MessageSquare,
   ExternalLink,
   CreditCard,
+  Download,
+  Maximize2,
+  MessageCircle,
 } from 'lucide-react-native';
 
 const BRAND = '#FF5A00';
@@ -73,9 +78,90 @@ interface ClientQuoteData {
       sizes: Record<string, number>;
     }>;
   }>;
+  mockups: Array<{ id: string; designName: string; uri: string }>;
+  files: Array<{ id: string; originalName: string; mimeType: string | null; fileSize: number | null; url: string; inlineUrl: string }>;
+  subtotal: number | null;
+  salesTax: number | null;
+  processingFee: number | null;
+  shipping: number | null;
   total: number | null;
   totalPerPiece: number | null;
   hasCalculations: boolean;
+}
+
+function formatBytes(bytes: number | null | undefined): string {
+  if (!bytes || bytes <= 0) return '—';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let v = bytes; let i = 0;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function escapeHtml(s: any): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Customer-safe quote PDF via browser print. Never exposes cost / markup / margin /
+// COGS / vendor / applicator / fee-percentage details.
+function downloadCustomerQuotePdf(opts: {
+  title: string; status: string; orderType?: string | null;
+  inHandsDate?: string | null; orgName?: string; notes?: string | null;
+  lineItems: ClientQuoteData['lineItems']; pricing: Array<{ label: string; value: number }>; total: number | null;
+}): void {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+  const win = window.open('', '_blank', 'width=820,height=900');
+  if (!win) return;
+  const liHtml = opts.lineItems.map((li, idx) => {
+    const variants = li.garmentVariants?.length > 0 ? li.garmentVariants : [{ product: '', color: '', sizes: li.sizes }];
+    const products = variants.map(v => [v.product, v.color].filter(Boolean).join(' — ')).filter(Boolean);
+    const qty = variants.reduce((s, v) => s + rowTotal(v.sizes), 0);
+    const sizeAgg: Record<string, number> = {};
+    variants.forEach(v => SIZE_KEYS.forEach(k => { sizeAgg[k] = (sizeAgg[k] || 0) + (Number(v.sizes?.[k]) || 0); }));
+    const sizeStr = SIZE_KEYS.filter(k => sizeAgg[k] > 0).map(k => `${SIZE_LABELS[k]}: ${sizeAgg[k]}`).join(', ');
+    const locations = [li.location1, li.location2, li.location3, li.location4].filter(Boolean).join(', ');
+    return `
+      <div class="item">
+        <div class="item-h"><strong>#${idx + 1} ${escapeHtml(li.designName || `Item ${idx + 1}`)}</strong><span>${qty} pcs</span></div>
+        ${products.length ? `<div class="row"><span class="k">Product</span><span>${escapeHtml(products.join(' • '))}</span></div>` : ''}
+        ${li.serviceStyle ? `<div class="row"><span class="k">Service</span><span>${escapeHtml(li.serviceStyle)}</span></div>` : ''}
+        ${locations ? `<div class="row"><span class="k">Locations</span><span>${escapeHtml(locations)}</span></div>` : ''}
+        ${sizeStr ? `<div class="row"><span class="k">Sizes</span><span>${escapeHtml(sizeStr)}</span></div>` : ''}
+      </div>`;
+  }).join('');
+  const priceHtml = opts.pricing.map(p =>
+    `<div class="prow"><span>${escapeHtml(p.label)}</span><span>$${p.value.toFixed(2)}</span></div>`).join('');
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(opts.title)}</title>
+    <style>
+      *{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111827;margin:0;padding:32px}
+      h1{font-size:22px;margin:0 0 4px}.sub{color:#6B7280;font-size:13px;margin-bottom:14px}
+      .badge{display:inline-block;background:#FFF4EE;color:#FF5A00;border-radius:14px;padding:3px 10px;font-size:12px;font-weight:700;margin-right:8px}
+      .sec{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6B7280;margin:22px 0 8px}
+      .item{border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;margin-bottom:10px}
+      .item-h{display:flex;justify-content:space-between;font-size:15px;margin-bottom:6px}
+      .row{display:flex;font-size:13px;padding:2px 0}.k{width:90px;color:#6B7280}
+      .prow{display:flex;justify-content:space-between;font-size:14px;padding:5px 0;border-bottom:1px solid #F3F4F6}
+      .total{display:flex;justify-content:space-between;font-size:18px;font-weight:800;background:#FF5A00;color:#fff;border-radius:10px;padding:12px 16px;margin-top:10px}
+      .meta{color:#6B7280;font-size:13px;margin-bottom:4px}
+    </style></head><body>
+      <h1>${escapeHtml(opts.title)}</h1>
+      <div class="sub">${escapeHtml(opts.orgName || 'Katalyst Ko')}</div>
+      <div><span class="badge">${escapeHtml(opts.status)}</span>${opts.orderType ? `<span class="badge">${escapeHtml(opts.orderType)}</span>` : ''}</div>
+      ${opts.inHandsDate ? `<div class="meta" style="margin-top:10px">In-Hands Date: ${escapeHtml(opts.inHandsDate)}</div>` : ''}
+      <div class="sec">Items</div>
+      ${liHtml || '<div class="meta">No items.</div>'}
+      <div class="sec">Pricing</div>
+      ${priceHtml}
+      ${opts.total != null ? `<div class="total"><span>Total</span><span>$${opts.total.toFixed(2)}</span></div>` : ''}
+      ${opts.notes ? `<div class="sec">Notes</div><div class="meta">${escapeHtml(opts.notes)}</div>` : ''}
+      <div class="meta" style="margin-top:28px">Questions? Contact Katalyst Ko at jobs@katalystko.com</div>
+    </body></html>`;
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { try { win.print(); } catch {} }, 500);
 }
 
 function LineItemCard({ item, index }: { item: ClientQuoteData['lineItems'][0]; index: number }) {
@@ -301,6 +387,30 @@ export default function ClientQuoteView() {
                   ) : null}
                 </View>
 
+                {/* Mockups — prominent visual */}
+                {quote.mockups.length > 0 && (
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Mockups</Text>
+                    <Text style={styles.sectionSub}>Visual previews of your order</Text>
+                    <View style={styles.mockupGrid}>
+                      {quote.mockups.map((m) => (
+                        <TouchableOpacity
+                          key={m.id}
+                          style={styles.mockupCard}
+                          activeOpacity={0.85}
+                          onPress={() => {
+                            if (Platform.OS === 'web') window.open(m.uri, '_blank', 'noopener,noreferrer');
+                          }}
+                        >
+                          <Image source={{ uri: m.uri }} style={styles.mockupImg} resizeMode="cover" />
+                          <View style={styles.mockupExpand}><Maximize2 size={13} color="#fff" /></View>
+                          {m.designName ? <Text style={styles.mockupCaption} numberOfLines={1}>{m.designName}</Text> : null}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
                 {/* Line Items */}
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>
@@ -311,6 +421,28 @@ export default function ClientQuoteView() {
                   ))}
                 </View>
 
+                {/* Customer Files */}
+                {quote.files.length > 0 && (
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Files</Text>
+                    {quote.files.map((f) => (
+                      <View key={f.id} style={styles.fileRow}>
+                        <View style={styles.fileIcon}><FileText size={16} color={BRAND} /></View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.fileName} numberOfLines={1}>{f.originalName}</Text>
+                          <Text style={styles.fileMeta}>{formatBytes(f.fileSize)}</Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.fileDownloadBtn}
+                          onPress={() => { if (Platform.OS === 'web') window.open(f.url, '_blank', 'noopener,noreferrer'); }}
+                        >
+                          <Download size={15} color={TEXT_MED} />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
                 {/* Pricing Summary */}
                 <View style={styles.pricingCard}>
                   <View style={styles.pricingRow}>
@@ -319,6 +451,30 @@ export default function ClientQuoteView() {
                   </View>
                   {quote.hasCalculations && quote.total != null ? (
                     <>
+                      {quote.subtotal != null && (
+                        <View style={styles.pricingRow}>
+                          <Text style={styles.pricingLabel}>Subtotal</Text>
+                          <Text style={styles.pricingValue}>{formatCurrency(quote.subtotal)}</Text>
+                        </View>
+                      )}
+                      {quote.salesTax != null && quote.salesTax > 0 && (
+                        <View style={styles.pricingRow}>
+                          <Text style={styles.pricingLabel}>Tax</Text>
+                          <Text style={styles.pricingValue}>{formatCurrency(quote.salesTax)}</Text>
+                        </View>
+                      )}
+                      {quote.shipping != null && quote.shipping > 0 && (
+                        <View style={styles.pricingRow}>
+                          <Text style={styles.pricingLabel}>Shipping</Text>
+                          <Text style={styles.pricingValue}>{formatCurrency(quote.shipping)}</Text>
+                        </View>
+                      )}
+                      {quote.processingFee != null && quote.processingFee > 0 && (
+                        <View style={styles.pricingRow}>
+                          <Text style={styles.pricingLabel}>Processing &amp; Handling</Text>
+                          <Text style={styles.pricingValue}>{formatCurrency(quote.processingFee)}</Text>
+                        </View>
+                      )}
                       {quote.totalPerPiece != null && (
                         <View style={styles.pricingRow}>
                           <Text style={styles.pricingLabel}>Per Piece</Text>
@@ -337,6 +493,39 @@ export default function ClientQuoteView() {
                       </Text>
                     </View>
                   )}
+                </View>
+
+                {/* Secondary actions — always available */}
+                <View style={styles.secondaryActions}>
+                  <TouchableOpacity
+                    style={styles.actionSecondary}
+                    onPress={() => downloadCustomerQuotePdf({
+                      title: quote.projectName || 'Quote',
+                      status: 'Quote',
+                      orderType: quote.orderType ? `${quote.orderType} Order` : null,
+                      inHandsDate: quote.inHandsDate,
+                      orgName: quote.orgName || quote.clientName,
+                      notes: quote.notesClient,
+                      lineItems: quote.lineItems,
+                      pricing: [
+                        ...(quote.subtotal != null ? [{ label: 'Subtotal', value: quote.subtotal }] : []),
+                        ...(quote.salesTax != null && quote.salesTax > 0 ? [{ label: 'Tax', value: quote.salesTax }] : []),
+                        ...(quote.shipping != null && quote.shipping > 0 ? [{ label: 'Shipping', value: quote.shipping }] : []),
+                        ...(quote.processingFee != null && quote.processingFee > 0 ? [{ label: 'Processing & Handling', value: quote.processingFee }] : []),
+                      ],
+                      total: quote.total,
+                    })}
+                  >
+                    <Download size={16} color={TEXT_MED} />
+                    <Text style={styles.actionSecondaryText}>Download PDF</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.actionSecondary}
+                    onPress={() => Linking.openURL(`mailto:jobs@katalystko.com?subject=${encodeURIComponent(`Question about ${quote.projectName || 'my quote'}`)}`)}
+                  >
+                    <MessageCircle size={16} color={TEXT_MED} />
+                    <Text style={styles.actionSecondaryText}>Contact</Text>
+                  </TouchableOpacity>
                 </View>
 
                 {/* Actions */}
@@ -543,4 +732,45 @@ const styles = StyleSheet.create({
   footerNote: { fontSize: 12, color: TEXT_PLACEHOLDER, textAlign: 'center', marginBottom: 12, maxWidth: 560, width: '100%' },
   footer: { backgroundColor: '#F3F4F6', borderTopWidth: 1, borderTopColor: BORDER, paddingVertical: 12, alignItems: 'center' },
   footerText: { fontSize: 12, color: TEXT_PLACEHOLDER },
+
+  sectionSub: { fontSize: 12, color: TEXT_LIGHT, marginTop: -8, marginBottom: 12 },
+
+  mockupGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  mockupCard: {
+    width: 150, borderRadius: 12, borderWidth: 1, borderColor: BORDER,
+    backgroundColor: '#F9FAFB', overflow: 'hidden',
+  },
+  mockupImg: { width: '100%', height: 150, backgroundColor: '#F3F4F6' },
+  mockupExpand: {
+    position: 'absolute', top: 8, right: 8,
+    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 14,
+    width: 26, height: 26, alignItems: 'center', justifyContent: 'center',
+  },
+  mockupCaption: { fontSize: 12, fontWeight: '600', color: TEXT, paddingHorizontal: 10, paddingVertical: 8 },
+
+  fileRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1, borderColor: BORDER, borderRadius: 10, padding: 12, marginBottom: 10,
+    backgroundColor: '#fff',
+  },
+  fileIcon: {
+    width: 34, height: 34, borderRadius: 8, backgroundColor: '#FFF4EE',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  fileName: { fontSize: 13, fontWeight: '600', color: TEXT },
+  fileMeta: { fontSize: 11, color: TEXT_LIGHT, marginTop: 2 },
+  fileDownloadBtn: {
+    width: 34, height: 34, borderRadius: 8, borderWidth: 1, borderColor: BORDER,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FAFB',
+  },
+
+  secondaryActions: {
+    flexDirection: 'row', gap: 12, width: '100%', maxWidth: 560, marginBottom: 24,
+  },
+  actionSecondary: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#fff', borderWidth: 1, borderColor: BORDER,
+    borderRadius: 10, paddingVertical: 12,
+  },
+  actionSecondaryText: { fontSize: 14, fontWeight: '600', color: TEXT_MED },
 });

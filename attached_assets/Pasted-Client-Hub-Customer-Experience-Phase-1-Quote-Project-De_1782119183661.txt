@@ -1,0 +1,272 @@
+Client Hub Customer Experience Phase 1 — Quote & Project Detail Transformation
+
+STOP.
+
+Do not audit.
+
+Do not roadmap.
+
+Do not investigate.
+
+Implement.
+
+The data layer has already been corrected.
+
+The CRM architecture has already been corrected.
+
+The Client Hub now needs to become customer-facing.
+
+---
+
+## OBJECTIVE
+
+Transform Project Detail and Quote Detail from backend-style operational screens into customer-facing experiences.
+
+Do not create entirely new systems.
+
+Reuse existing project and quote data.
+
+Reuse existing components where possible.
+
+Maintain consistency with Katalyst OS.
+
+Customers should feel like they are viewing:
+
+Their Project
+
+Their Quote
+
+Their Invoice
+
+Not internal business software.
+
+---
+
+## DO NOT SHOW
+
+Never expose:
+
+Product Cost
+
+Service Cost
+
+Markup
+
+Margin
+
+COGS
+
+Vendor
+
+Preferred Vendor
+
+Applicator
+
+Internal Notes
+
+Internal Files
+
+Internal Artwork
+
+Production Notes
+
+Internal Statuses
+
+Operational Calculations
+
+---
+
+## PROJECT DETAIL
+
+Rebuild Project Detail around:
+
+Header
+
+Project Name
+
+Status
+
+Due Date
+
+Progress
+
+---
+
+Project Summary
+
+Products
+
+Colors
+
+Sizes
+
+Service Style
+
+Print Locations
+
+Pieces
+
+Files
+
+---
+
+Mockups
+
+If mockups exist:
+
+Display prominently.
+
+Do not bury them.
+
+Support:
+
+Preview
+
+Expand
+
+Download
+
+---
+
+Pricing Summary
+
+Subtotal
+
+Tax
+
+Shipping
+
+Total
+
+---
+
+Actions
+
+Download PDF
+
+Contact Katalyst Ko
+
+Reorder Project
+
+Favorite Project
+
+---
+
+## QUOTE DETAIL
+
+Quote Detail should no longer mirror backend quote architecture.
+
+Use customer-facing language.
+
+Display:
+
+Products
+
+Colors
+
+Sizes
+
+Locations
+
+Mockups
+
+Pricing
+
+Status
+
+Approval Actions
+
+Customer Files
+
+Customer Notes
+
+---
+
+Prominently surface:
+
+Approve Quote
+
+Download PDF
+
+Contact Katalyst Ko
+
+---
+
+## LAYOUT
+
+Reference:
+
+Modern Shopify Order View
+
+Modern Customer Portal
+
+Modern Project Dashboard
+
+Maintain Katalyst branding.
+
+Use:
+
+Black section headers
+
+White text
+
+Existing metric styling
+
+Existing card styling
+
+Existing button system
+
+Do not invent a new design language.
+
+---
+
+## MOCKUPS
+
+If mockups exist:
+
+Display above operational details.
+
+Mockups are one of the most important customer-facing assets.
+
+Treat them accordingly.
+
+---
+
+## VALIDATION
+
+Test against:
+
+5 Projects
+
+5 Quotes
+
+Verify:
+
+No internal fields visible
+
+Project data displays correctly
+
+Quote data displays correctly
+
+Mockups display correctly
+
+Totals display correctly
+
+Actions function
+
+---
+
+## OUTPUT
+
+1. Files changed
+2. Components changed
+3. New customer-facing sections
+4. Internal fields removed
+5. Mockup presentation changes
+6. Actions added
+7. Validation results
+8. Screenshots
+
+Implement.
+
+Do not return another audit.

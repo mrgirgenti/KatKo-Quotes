@@ -1,0 +1,274 @@
+Client Hub Customer Experience Phase 2 — My Projects Card Grid
+
+STOP.
+
+Do not audit.
+
+Do not roadmap.
+
+Do not create additional plans.
+
+Implement.
+
+The current My Projects experience is still table-based and feels like an internal business system.
+
+Replace it with a customer-facing visual project gallery.
+
+---
+
+## OBJECTIVE
+
+Transform My Projects into a visual project browser.
+
+The experience should feel closer to:
+
+* Shopify customer orders
+* Printful order gallery
+* Modern e-commerce account dashboards
+
+It should NOT feel like:
+
+* CRM software
+* Project management software
+* Administrative tables
+
+Mockups should become the primary visual identity of projects.
+
+---
+
+## REMOVE
+
+Remove the current table layout.
+
+Remove:
+
+* Project column
+* Status column
+* PCS column
+* Total column
+* Per Piece column
+* Action column
+
+Do not recreate the table in card form.
+
+Build a true project gallery.
+
+---
+
+## RESPONSIVE GRID
+
+Desktop:
+4 columns
+
+Tablet:
+3 columns
+
+Mobile:
+2 columns
+
+This is intentional.
+
+Do not collapse to a single-column mobile layout.
+
+Design cards specifically for a two-column mobile experience.
+
+---
+
+## PROJECT CARD CONTENT
+
+Priority order:
+
+1. Mockup Image
+2. Project Name
+3. Status
+4. Total Pieces
+5. Project Total
+
+Hide secondary information until Project Detail.
+
+---
+
+## PROJECT THUMBNAIL HIERARCHY
+
+If project has approved mockups:
+
+Use approved mockup.
+
+Else if project has mockups:
+
+Use newest mockup.
+
+Else if project has product image:
+
+Use product image.
+
+Else:
+
+Use project initial fallback.
+
+---
+
+## MULTI-LINE-ITEM PROJECTS
+
+Projects may contain multiple products.
+
+Example:
+
+* Shirt
+* Hat
+* Polo
+
+Do NOT attempt to display every mockup on the project card.
+
+Instead:
+
+Display primary mockup.
+
+Overlay a badge indicating additional designs.
+
+Examples:
+
++1 Design
++2 Designs
++5 Designs
+
+Badge should appear directly on the image.
+
+Mobile should NOT display thumbnail strips beneath cards.
+
+Reserve full line-item mockup galleries for the Project Detail page.
+
+---
+
+## CARD INTERACTIONS
+
+Entire card should be clickable.
+
+Do not require clicking a small button.
+
+Clicking anywhere on the card opens Project Detail.
+
+Add:
+
+Hover elevation
+
+Pointer cursor
+
+Subtle transition
+
+Remove "View Project" buttons once the card is fully clickable.
+
+---
+
+## FAVORITES
+
+Add favorite support.
+
+Top-right corner of every card:
+
+☆ = not favorited
+
+★ = favorited
+
+Use Katalyst orange when active.
+
+Clicking the star should NOT open the project.
+
+It should toggle favorite state.
+
+Add a Favorites filter alongside:
+
+All
+Needs Review
+Being Quoted
+Quote Ready
+In Production
+Completed
+Favorites
+
+Favorites should persist.
+
+---
+
+## ACTIVE / COMPLETED
+
+Keep separate sections:
+
+Active Projects
+
+Completed Projects
+
+Both sections use the same card system.
+
+Completed projects should support favoriting and reordering just like active projects.
+
+---
+
+## PROJECT DATA
+
+Ensure card data comes from actual quote/project data.
+
+Verify:
+
+* Pieces
+* Totals
+* Status
+* Due Dates
+
+No placeholder values.
+
+No empty values.
+
+---
+
+## VALIDATION
+
+Test:
+
+Single-line-item project
+
+Multi-line-item project
+
+Project with approved mockup
+
+Project with no mockup
+
+Favorited project
+
+Desktop
+
+Tablet
+
+Mobile
+
+Verify:
+
+4-column desktop
+
+3-column tablet
+
+2-column mobile
+
+Entire card clickable
+
+Favorites work
+
+Additional-design badge works
+
+No table remnants remain
+
+---
+
+## OUTPUT
+
+1. Files changed
+2. Components removed
+3. Components created
+4. Favorite implementation
+5. Mockup hierarchy implementation
+6. Responsive behavior
+7. Validation results
+8. Screenshots
+
+Implement.
+Do not return another audit.

@@ -25,6 +25,16 @@ export async function GET(_req: Request, { id }: { id: string }) {
     const lineItems: any[] = (p.lineItemsData as any[]) || [];
     const calculations: any = p.calculations || null;
 
+    // Rewrite Clerk-gated /api/files/{id} mockup URLs to the public portal route so
+    // they render on this unauthenticated quote page. data: URIs pass through unchanged.
+    const resolveMockup = (uri: string): string => {
+      if (!uri) return '';
+      if (uri.startsWith('data:')) return uri;
+      const m = uri.match(/\/api\/files\/([^?]+)/);
+      if (m && p.organizationId) return `/api/portal/${p.organizationId}/files/${m[1]}?inline=true`;
+      return uri;
+    };
+
     const clientLineItems = lineItems.map((item: any) => ({
       id: item.id,
       designName: item.designName || '',
@@ -42,9 +52,34 @@ export async function GET(_req: Request, { id }: { id: string }) {
       })),
     }));
 
+    const mockups = lineItems
+      .filter((item: any) => item.mockupUri)
+      .map((item: any) => ({
+        id: item.id,
+        designName: item.designName || '',
+        uri: resolveMockup(item.mockupUri),
+      }));
+
     const orgResult = p.organizationId
       ? await pool.query(`SELECT name FROM "Organization" WHERE id = $1`, [p.organizationId])
       : { rows: [] };
+
+    // Customer-visible files only (never internal artwork/proofs)
+    let files: any[] = [];
+    if (p.organizationId) {
+      const filesResult = await pool.query(
+        `SELECT id, "originalName", "mimeType", "fileSize", "fileType"
+         FROM "File"
+         WHERE "projectId" = $1 AND "organizationId" = $2 AND "visibility" = 'CLIENT_VISIBLE'
+         ORDER BY "createdAt" DESC`,
+        [p.id, p.organizationId]
+      );
+      files = filesResult.rows.map((f: any) => ({
+        ...f,
+        url: `/api/portal/${p.organizationId}/files/${f.id}`,
+        inlineUrl: `/api/portal/${p.organizationId}/files/${f.id}?inline=true`,
+      }));
+    }
 
     return Response.json({
       id: p.id,
@@ -58,6 +93,15 @@ export async function GET(_req: Request, { id }: { id: string }) {
       waveInvoiceLink: p.waveInvoiceLink || null,
       status: p.frontendStatus || 'quoted',
       lineItems: clientLineItems,
+      mockups,
+      files,
+      subtotal: calculations?.subtotal ?? null,
+      salesTax: calculations?.salesTax ?? null,
+      processingFee:
+        calculations != null
+          ? (Number(calculations.onlineFee) || 0) + (Number(calculations.cardFee) || 0)
+          : null,
+      shipping: calculations?.shipping ?? null,
       total: calculations?.total ?? null,
       totalPerPiece: calculations?.totalPerPiece ?? null,
       hasCalculations: !!calculations,

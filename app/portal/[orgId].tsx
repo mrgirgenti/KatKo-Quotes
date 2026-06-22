@@ -71,6 +71,10 @@ import {
   Phone,
   Copy,
   Users,
+  Star,
+  RefreshCw,
+  Maximize2,
+  MessageCircle,
 } from 'lucide-react-native';
 import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
 import MediaPickerModal from '@/components/MediaPickerModal';
@@ -135,6 +139,14 @@ interface FullPortalProject {
   hasSalesTax: boolean;
   hasCardFee: boolean;
   createdAt: string;
+  files?: Array<{
+    id: string;
+    originalName: string;
+    mimeType: string | null;
+    fileSize: number | null;
+    fileType: string;
+    createdAt: string;
+  }>;
 }
 
 const STATUS_PIPELINE = ['NEEDS_REVIEW', 'QUOTING', 'QUOTED', 'INVOICE_SENT', 'PAID', 'IN_PRODUCTION', 'COMPLETED'] as const;
@@ -192,6 +204,95 @@ function ProjectPipeline({ status }: { status: string }) {
       })}
     </View>
   );
+}
+
+// Rewrite Clerk-gated /api/files/{id} mockup URLs to the public portal route.
+// data: URIs pass through unchanged (they render directly).
+function resolveMockupUrl(uri: string, orgId: string): string {
+  if (!uri) return '';
+  if (uri.startsWith('data:')) return uri;
+  const m = uri.match(/\/api\/files\/([^?]+)/);
+  if (m && orgId) return `/api/portal/${orgId}/files/${m[1]}?inline=true`;
+  return uri;
+}
+
+const CUSTOMER_SIZE_LABELS: Array<{ key: string; label: string }> = [
+  { key: 'xs', label: 'XS' }, { key: 's', label: 'SM' }, { key: 'm', label: 'MD' },
+  { key: 'l', label: 'LG' }, { key: 'xl', label: 'XL' }, { key: 'xxl', label: '2XL' },
+  { key: 'xxxl', label: '3XL' }, { key: 'xxxxl', label: '4XL' },
+];
+
+function escapeHtml(s: any): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Customer-safe project PDF via browser print. Deliberately omits every internal
+// field (cost, markup, margin, COGS, vendor, applicator, fee breakdowns).
+function downloadCustomerProjectPdf(opts: {
+  title: string; status: string; orderType?: string | null;
+  inHandsDate?: string | null; orgName?: string; notes?: string | null;
+  lineItems: any[]; pricing: Array<{ label: string; value: number }>; total: number | null;
+}): void {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+  const win = window.open('', '_blank', 'width=820,height=900');
+  if (!win) return;
+  const liHtml = opts.lineItems.map((li, idx) => {
+    const variants = Array.isArray(li.garmentVariants) && li.garmentVariants.length > 0 ? li.garmentVariants : null;
+    const products = variants
+      ? variants.map((v: any) => [v.product, v.color].filter(Boolean).join(' — ')).filter(Boolean)
+      : [[li.product, li.productColor].filter(Boolean).join(' — ')].filter(Boolean);
+    const sizeSets = variants ? variants.map((v: any) => v.sizes ?? {}) : [li.sizes ?? {}];
+    const qty = sizeSets.reduce((s: number, sz: any) =>
+      s + Object.values(sz).reduce((a: number, n: any) => a + (Number(n) || 0), 0), 0);
+    const sizeAgg: Record<string, number> = {};
+    sizeSets.forEach((sz: any) => CUSTOMER_SIZE_LABELS.forEach(s => {
+      sizeAgg[s.key] = (sizeAgg[s.key] || 0) + (Number(sz[s.key]) || 0);
+    }));
+    const sizeStr = CUSTOMER_SIZE_LABELS.filter(s => sizeAgg[s.key] > 0).map(s => `${s.label}: ${sizeAgg[s.key]}`).join(', ');
+    const locations = [li.location1, li.location2, li.location3, li.location4].filter(Boolean).join(', ');
+    return `
+      <div class="item">
+        <div class="item-h"><strong>#${idx + 1} ${escapeHtml(li.designName || `Item ${idx + 1}`)}</strong><span>${qty} pcs</span></div>
+        ${products.length ? `<div class="row"><span class="k">Product</span><span>${escapeHtml(products.join(' • '))}</span></div>` : ''}
+        ${li.serviceStyle ? `<div class="row"><span class="k">Service</span><span>${escapeHtml(li.serviceStyle)}</span></div>` : ''}
+        ${locations ? `<div class="row"><span class="k">Locations</span><span>${escapeHtml(locations)}</span></div>` : ''}
+        ${sizeStr ? `<div class="row"><span class="k">Sizes</span><span>${escapeHtml(sizeStr)}</span></div>` : ''}
+      </div>`;
+  }).join('');
+  const priceHtml = opts.pricing.map(p =>
+    `<div class="prow"><span>${escapeHtml(p.label)}</span><span>$${p.value.toFixed(2)}</span></div>`).join('');
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(opts.title)}</title>
+    <style>
+      *{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111827;margin:0;padding:32px}
+      h1{font-size:22px;margin:0 0 4px}.sub{color:#6B7280;font-size:13px;margin-bottom:14px}
+      .badge{display:inline-block;background:#FFF4EE;color:#FF5A00;border-radius:14px;padding:3px 10px;font-size:12px;font-weight:700;margin-right:8px}
+      .sec{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6B7280;margin:22px 0 8px}
+      .item{border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;margin-bottom:10px}
+      .item-h{display:flex;justify-content:space-between;font-size:15px;margin-bottom:6px}
+      .row{display:flex;font-size:13px;padding:2px 0}.k{width:90px;color:#6B7280}
+      .prow{display:flex;justify-content:space-between;font-size:14px;padding:5px 0;border-bottom:1px solid #F3F4F6}
+      .total{display:flex;justify-content:space-between;font-size:18px;font-weight:800;background:#FF5A00;color:#fff;border-radius:10px;padding:12px 16px;margin-top:10px}
+      .meta{color:#6B7280;font-size:13px;margin-bottom:4px}
+    </style></head><body>
+      <h1>${escapeHtml(opts.title)}</h1>
+      <div class="sub">${escapeHtml(opts.orgName || 'Katalyst Ko')}</div>
+      <div><span class="badge">${escapeHtml(opts.status)}</span>${opts.orderType ? `<span class="badge">${escapeHtml(opts.orderType)}</span>` : ''}</div>
+      ${opts.inHandsDate ? `<div class="meta" style="margin-top:10px">In-Hands Date: ${escapeHtml(opts.inHandsDate)}</div>` : ''}
+      <div class="sec">Items</div>
+      ${liHtml || '<div class="meta">No items.</div>'}
+      <div class="sec">Pricing</div>
+      ${priceHtml}
+      ${opts.total != null ? `<div class="total"><span>Total</span><span>$${opts.total.toFixed(2)}</span></div>` : ''}
+      ${opts.notes ? `<div class="sec">Notes</div><div class="meta">${escapeHtml(opts.notes)}</div>` : ''}
+      <div class="meta" style="margin-top:28px">Questions? Contact Katalyst Ko at jobs@katalystko.com</div>
+    </body></html>`;
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { try { win.print(); } catch {} }, 500);
 }
 
 const NAV_ITEMS: { id: ActiveView; label: string; Icon: React.ComponentType<any> }[] = [
@@ -1004,6 +1105,31 @@ export default function ClientPortal() {
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<FullPortalProject | null>(null);
+  const [favoriteProjectIds, setFavoriteProjectIds] = useState<string[]>([]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem('ko_portal_favorites');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setFavoriteProjectIds(parsed);
+      }
+    } catch {}
+  }, []);
+  const toggleFavorite = useCallback((projectId: string) => {
+    setFavoriteProjectIds(prev => {
+      const next = prev.includes(projectId)
+        ? prev.filter(id => id !== projectId)
+        : [...prev, projectId];
+      try { window.localStorage.setItem('ko_portal_favorites', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+  const handleReorderProject = useCallback((title: string) => {
+    setProjectName(title || '');
+    setOrderType('Reorder');
+    setActiveView('submit');
+  }, []);
   const [projectViewLoading, setProjectViewLoading] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const sidebarWidthAnim = useRef(new Animated.Value(210)).current;
@@ -2250,6 +2376,33 @@ export default function ClientPortal() {
     const fmt = (n: number | null | undefined) =>
       n != null && n > 0 ? `$${n.toFixed(2)}` : '—';
 
+    const orgIdForFiles = session?.orgId || '';
+    const projFiles = proj?.files ?? [];
+    const mockups = lineItems
+      .filter((li: any) => li.mockupUri)
+      .map((li: any, i: number) => ({
+        key: li.id || `mk-${i}`,
+        designName: li.designName || '',
+        uri: resolveMockupUrl(li.mockupUri, orgIdForFiles),
+      }));
+
+    // Customer-safe pricing only — never expose cost / markup / margin / COGS / fee %.
+    const subtotal = Number(calc?.subtotal) || 0;
+    const tax = Number(calc?.salesTax) || 0;
+    const shipping = Number(calc?.shipping) || 0;
+    const processing = Number(calc?.processingFee) || 0;
+    const grandTotal = calc?.total != null ? Number(calc.total) : null;
+    const perPiece = calc?.totalPerPiece != null && Number(calc.totalPerPiece) > 0 ? Number(calc.totalPerPiece) : null;
+    const pricingRows: Array<{ label: string; value: number }> = [];
+    if (subtotal > 0) pricingRows.push({ label: 'Subtotal', value: subtotal });
+    if (tax > 0) pricingRows.push({ label: 'Tax', value: tax });
+    if (shipping > 0) pricingRows.push({ label: 'Shipping', value: shipping });
+    if (processing > 0) pricingRows.push({ label: 'Processing & Handling', value: processing });
+    const isFavorite = proj ? favoriteProjectIds.includes(proj.id) : false;
+    const openMockup = (uri: string) => {
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && uri) window.open(uri, '_blank');
+    };
+
     const SIZE_LABELS = [
       { key: 'xs', label: 'XS' }, { key: 's', label: 'SM' },
       { key: 'm', label: 'MD' }, { key: 'l', label: 'LG' },
@@ -2269,7 +2422,7 @@ export default function ClientPortal() {
             <ChevronLeft size={18} color={BRAND} />
             <Text style={{ fontSize: 13, color: BRAND, fontWeight: '600' }}>My Projects</Text>
           </TouchableOpacity>
-          <Text style={{ fontSize: 13, color: TEXT_LIGHT }}>/ Quote Details</Text>
+          <Text style={{ fontSize: 13, color: TEXT_LIGHT }}>/ Order Details</Text>
         </View>
 
         {projectViewLoading ? (
@@ -2286,7 +2439,7 @@ export default function ClientPortal() {
             {/* Left / Main column */}
             <View style={{ flex: 1, gap: 16 }}>
 
-              {/* Status + title card */}
+              {/* Header card */}
               <View style={pvStyles.card}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                   <StatusPill status={proj.status} />
@@ -2297,25 +2450,21 @@ export default function ClientPortal() {
                   ) : null}
                 </View>
                 <Text style={pvStyles.projectTitle}>{proj.title || 'Untitled Project'}</Text>
-                <ProjectPipeline status={proj.status} />
-              </View>
-
-              {/* Order info card */}
-              <View style={pvStyles.card}>
-                <View style={{ flexDirection: 'row', gap: 24 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={pvStyles.metaLabel}>ORDER DATE</Text>
-                    <Text style={pvStyles.metaValue}>{proj.orderDate ? proj.orderDate : '—'}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', gap: 28, marginTop: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+                  <View>
                     <Text style={pvStyles.metaLabel}>IN-HANDS DATE</Text>
                     <Text style={pvStyles.metaValue}>{proj.inHandsDate ? formatDate(proj.inHandsDate) : '—'}</Text>
                   </View>
-                  <View style={{ flex: 1 }}>
+                  <View>
                     <Text style={pvStyles.metaLabel}>SUBMITTED</Text>
                     <Text style={pvStyles.metaValue}>{formatDate(proj.createdAt)}</Text>
                   </View>
+                  <View>
+                    <Text style={pvStyles.metaLabel}>TOTAL PIECES</Text>
+                    <Text style={pvStyles.metaValue}>{totalQty} pcs</Text>
+                  </View>
                 </View>
+                <ProjectPipeline status={proj.status} />
                 {proj.notesClient ? (
                   <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: BORDER }}>
                     <Text style={pvStyles.metaLabel}>NOTES</Text>
@@ -2324,116 +2473,104 @@ export default function ClientPortal() {
                 ) : null}
               </View>
 
-              {/* Line Items */}
+              {/* Mockups — prominent, above details */}
+              {mockups.length > 0 && (
+                <View style={pvStyles.card}>
+                  <Text style={pvStyles.sectionTitle}>Mockups</Text>
+                  <Text style={pvStyles.sectionSub}>Tap any mockup to view it full size.</Text>
+                  <View style={pvStyles.mockupGrid}>
+                    {mockups.map(mk => (
+                      <TouchableOpacity key={mk.key} style={pvStyles.mockupCard} activeOpacity={0.85} onPress={() => openMockup(mk.uri)}>
+                        <Image source={{ uri: mk.uri }} style={pvStyles.mockupImg} resizeMode="contain" />
+                        <View style={pvStyles.mockupExpand}>
+                          <Maximize2 size={13} color="#fff" />
+                        </View>
+                        {mk.designName ? <Text style={pvStyles.mockupCaption} numberOfLines={1}>{mk.designName}</Text> : null}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* Order Summary */}
               <View style={pvStyles.card}>
-                <Text style={pvStyles.sectionTitle}>Line Items ({lineItems.length})</Text>
+                <Text style={pvStyles.sectionTitle}>Order Summary</Text>
 
                 {lineItems.length === 0 ? (
-                  <Text style={{ color: TEXT_LIGHT, fontSize: 13, marginTop: 8 }}>No line items yet.</Text>
+                  <Text style={{ color: TEXT_LIGHT, fontSize: 13, marginTop: 8 }}>No items yet.</Text>
                 ) : (
                   lineItems.map((li: any, idx: number) => {
-                    const sizes = li.sizes ?? {};
-                    const qty = Object.values(sizes).reduce((a: number, v: any) => a + (Number(v) || 0), 0);
-                    const activeSizes = SIZE_LABELS.filter(s => (sizes[s.key] || 0) > 0);
+                    const variants = Array.isArray(li.garmentVariants) && li.garmentVariants.length > 0 ? li.garmentVariants : null;
+                    const sizeSets = variants ? variants.map((v: any) => v.sizes ?? {}) : [li.sizes ?? {}];
+                    const qty = sizeSets.reduce((s: number, sz: any) => s + Object.values(sz).reduce((a: number, v: any) => a + (Number(v) || 0), 0), 0);
+                    const sizeAgg: Record<string, number> = {};
+                    sizeSets.forEach((sz: any) => SIZE_LABELS.forEach(s => { sizeAgg[s.key] = (sizeAgg[s.key] || 0) + (Number(sz[s.key]) || 0); }));
+                    const activeSizes = SIZE_LABELS.filter(s => (sizeAgg[s.key] || 0) > 0);
+                    const products = variants
+                      ? variants.map((v: any) => [v.product, v.color].filter(Boolean).join(' — ')).filter(Boolean)
+                      : [[li.product, li.productColor].filter(Boolean).join(' — ')].filter(Boolean);
+                    const locations = [li.location1, li.location2, li.location3, li.location4].filter(Boolean).join(', ');
                     return (
                       <View key={li.id || idx} style={[pvStyles.lineItemBlock, idx > 0 && { marginTop: 20, paddingTop: 20, borderTopWidth: 1, borderTopColor: BORDER }]}>
                         {/* Item header */}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                             <View style={{ backgroundColor: BRAND, width: 22, height: 22, borderRadius: 4, alignItems: 'center', justifyContent: 'center' }}>
                               <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>#{idx + 1}</Text>
                             </View>
-                            <Text style={pvStyles.lineItemName}>{li.designName || `Item ${idx + 1}`}</Text>
+                            <Text style={pvStyles.lineItemName} numberOfLines={1}>{li.designName || `Item ${idx + 1}`}</Text>
                           </View>
                           <View style={{ backgroundColor: '#FFF4EE', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4 }}>
                             <Text style={{ fontSize: 12, fontWeight: '700', color: BRAND }}>{qty} pcs</Text>
                           </View>
                         </View>
 
-                        {/* Item details grid */}
-                        <View style={{ flexDirection: 'row', gap: 16, marginBottom: 14 }}>
-                          <View style={{ flex: 1, gap: 8 }}>
-                            {li.serviceStyle ? (
-                              <View style={pvStyles.detailRow}>
-                                <Layers size={13} color={TEXT_LIGHT} />
-                                <Text style={pvStyles.detailLabel}>Service</Text>
-                                <Text style={pvStyles.detailValue}>{li.serviceStyle}</Text>
-                              </View>
-                            ) : null}
-                            {li.applicator ? (
-                              <View style={pvStyles.detailRow}>
-                                <User size={13} color={TEXT_LIGHT} />
-                                <Text style={pvStyles.detailLabel}>Applicator</Text>
-                                <Text style={[pvStyles.detailValue, { color: BRAND }]}>{li.applicator}</Text>
-                              </View>
-                            ) : null}
-                            {li.apparelProvider ? (
-                              <View style={pvStyles.detailRow}>
-                                <Package size={13} color={TEXT_LIGHT} />
-                                <Text style={pvStyles.detailLabel}>Source</Text>
-                                <Text style={pvStyles.detailValue}>{li.apparelProvider}</Text>
-                              </View>
-                            ) : null}
-                          </View>
-                          <View style={{ flex: 1, gap: 8 }}>
-                            {(li.product || li.productColor) ? (
-                              <View style={pvStyles.detailRow}>
-                                <Tag size={13} color={TEXT_LIGHT} />
-                                <Text style={pvStyles.detailLabel}>Product</Text>
-                                <Text style={pvStyles.detailValue} numberOfLines={1}>
-                                  {[li.product, li.productColor].filter(Boolean).join(' — ')}
-                                </Text>
-                              </View>
-                            ) : null}
-                            {(li.location1 || li.location2) ? (
-                              <View style={pvStyles.detailRow}>
-                                <MapPin size={13} color={TEXT_LIGHT} />
-                                <Text style={pvStyles.detailLabel}>Locations</Text>
-                                <Text style={pvStyles.detailValue} numberOfLines={1}>
-                                  {[li.location1, li.location2, li.location3, li.location4].filter(Boolean).join(', ')}
-                                </Text>
-                              </View>
-                            ) : null}
-                          </View>
+                        {/* Customer-facing details (no cost / vendor / applicator) */}
+                        <View style={{ gap: 8, marginBottom: activeSizes.length > 0 ? 14 : 0 }}>
+                          {products.length > 0 ? (
+                            <View style={pvStyles.detailRow}>
+                              <Tag size={13} color={TEXT_LIGHT} />
+                              <Text style={pvStyles.detailLabel}>Product</Text>
+                              <Text style={pvStyles.detailValue}>{products.join('   •   ')}</Text>
+                            </View>
+                          ) : null}
+                          {li.serviceStyle ? (
+                            <View style={pvStyles.detailRow}>
+                              <Layers size={13} color={TEXT_LIGHT} />
+                              <Text style={pvStyles.detailLabel}>Service</Text>
+                              <Text style={pvStyles.detailValue}>{li.serviceStyle}</Text>
+                            </View>
+                          ) : null}
+                          {locations ? (
+                            <View style={pvStyles.detailRow}>
+                              <MapPin size={13} color={TEXT_LIGHT} />
+                              <Text style={pvStyles.detailLabel}>Locations</Text>
+                              <Text style={pvStyles.detailValue}>{locations}</Text>
+                            </View>
+                          ) : null}
+                          {li.locationDetails ? (
+                            <View style={pvStyles.detailRow}>
+                              <FileText size={13} color={TEXT_LIGHT} />
+                              <Text style={pvStyles.detailLabel}>Details</Text>
+                              <Text style={pvStyles.detailValue}>{li.locationDetails}</Text>
+                            </View>
+                          ) : null}
                         </View>
 
                         {/* Sizes + quantities */}
                         {activeSizes.length > 0 ? (
-                          <View style={{ marginBottom: 14 }}>
+                          <View>
                             <Text style={[pvStyles.metaLabel, { marginBottom: 8 }]}>SIZES + QUANTITIES</Text>
                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                               {activeSizes.map(s => (
                                 <View key={s.key} style={pvStyles.sizeBox}>
                                   <Text style={pvStyles.sizeLabel}>{s.label}</Text>
-                                  <Text style={pvStyles.sizeQty}>{sizes[s.key]}</Text>
+                                  <Text style={pvStyles.sizeQty}>{sizeAgg[s.key]}</Text>
                                 </View>
                               ))}
                             </View>
-                            <Text style={{ fontSize: 12, color: TEXT_LIGHT, textAlign: 'right', marginTop: 6 }}>
-                              Total: {qty} pcs
-                            </Text>
                           </View>
                         ) : null}
-
-                        {/* Per-piece costs */}
-                        <View style={pvStyles.costRow}>
-                          <View style={pvStyles.costCell}>
-                            <Text style={pvStyles.costLabel}>Product</Text>
-                            <Text style={pvStyles.costAmt}>{li.productCostEach > 0 ? `$${Number(li.productCostEach).toFixed(2)}/ea` : '—'}</Text>
-                          </View>
-                          <View style={pvStyles.costCell}>
-                            <Text style={pvStyles.costLabel}>Service</Text>
-                            <Text style={pvStyles.costAmt}>{li.serviceCostEach > 0 ? `$${Number(li.serviceCostEach).toFixed(2)}/ea` : '—'}</Text>
-                          </View>
-                          <View style={pvStyles.costCell}>
-                            <Text style={pvStyles.costLabel}>Fees</Text>
-                            <Text style={pvStyles.costAmt}>{li.serviceFeeEach > 0 ? `$${Number(li.serviceFeeEach).toFixed(2)}/ea` : '—'}</Text>
-                          </View>
-                          <View style={pvStyles.costCell}>
-                            <Text style={pvStyles.costLabel}>Markup</Text>
-                            <Text style={pvStyles.costAmt}>{li.markupEach > 0 ? `$${Number(li.markupEach).toFixed(2)}/ea` : '—'}</Text>
-                          </View>
-                        </View>
                       </View>
                     );
                   })
@@ -2443,92 +2580,113 @@ export default function ClientPortal() {
                 {lineItems.length > 0 && (
                   <View style={pvStyles.lineItemFooter}>
                     <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>
-                      {lineItems.length} Line Item{lineItems.length !== 1 ? 's' : ''} • {totalQty} Total Items
+                      {lineItems.length} Design{lineItems.length !== 1 ? 's' : ''} • {totalQty} Total Pieces
                     </Text>
                   </View>
                 )}
               </View>
+
+              {/* Files */}
+              {projFiles.length > 0 && (
+                <View style={pvStyles.card}>
+                  <Text style={pvStyles.sectionTitle}>Files</Text>
+                  <View style={{ marginTop: 10, gap: 8 }}>
+                    {projFiles.map((f: any) => (
+                      <View key={f.id} style={pvStyles.fileRow}>
+                        <View style={pvStyles.fileIcon}><FileText size={16} color={BRAND} /></View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={pvStyles.fileName} numberOfLines={1}>{f.originalName}</Text>
+                          <Text style={pvStyles.fileMeta}>{formatBytes(f.fileSize)}</Text>
+                        </View>
+                        <TouchableOpacity
+                          style={pvStyles.fileDownloadBtn}
+                          activeOpacity={0.7}
+                          onPress={() => {
+                            if (Platform.OS === 'web' && typeof document !== 'undefined') {
+                              const a = document.createElement('a');
+                              a.href = `/api/portal/${orgIdForFiles}/files/${f.id}`;
+                              a.download = f.originalName;
+                              a.click();
+                            }
+                          }}
+                        >
+                          <Download size={15} color={TEXT_MED} />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
             </View>
 
-            {/* Right / Pricing column */}
-            <View style={{ width: 260, gap: 16 }}>
+            {/* Right column: Pricing + Actions */}
+            <View style={{ width: 280, gap: 16 }}>
               <View style={pvStyles.card}>
-                <Text style={pvStyles.sectionTitle}>Pricing Summary</Text>
-
-                <View style={{ marginTop: 14 }}>
-                  {/* Column headers */}
-                  <View style={pvStyles.priceHeaderRow}>
-                    <Text style={{ flex: 1 }} />
-                    <Text style={pvStyles.priceColHeader}>EACH</Text>
-                    <Text style={pvStyles.priceColHeader}>TOTAL</Text>
-                  </View>
-
-                  <View style={pvStyles.priceDivider} />
-
-                  <View style={pvStyles.priceRow}>
-                    <Text style={pvStyles.priceRowLabel}>Product Cost</Text>
-                    <Text style={pvStyles.priceRowVal}>{fmt(calc?.productCostEach)}</Text>
-                    <Text style={pvStyles.priceRowVal}>{fmt(calc?.productCostTotal)}</Text>
-                  </View>
-                  <View style={pvStyles.priceRow}>
-                    <Text style={pvStyles.priceRowLabel}>Service Cost</Text>
-                    <Text style={pvStyles.priceRowVal}>{fmt(calc?.serviceCostEach)}</Text>
-                    <Text style={pvStyles.priceRowVal}>{fmt(calc?.serviceCostTotal)}</Text>
-                  </View>
-                  <View style={pvStyles.priceRow}>
-                    <Text style={pvStyles.priceRowLabel}>Service Fees</Text>
-                    <Text style={pvStyles.priceRowVal}>{fmt(calc?.serviceFeeEach)}</Text>
-                    <Text style={pvStyles.priceRowVal}>{fmt(calc?.serviceFeeTotal)}</Text>
-                  </View>
-
-                  <View style={pvStyles.priceDivider} />
-
-                  <View style={pvStyles.priceRow}>
-                    <Text style={[pvStyles.priceRowLabel, { fontWeight: '700', color: TEXT }]}>Cost of Goods</Text>
-                    <Text style={[pvStyles.priceRowVal, { fontWeight: '700' }]}>{fmt(calc?.cogEach)}</Text>
-                    <Text style={[pvStyles.priceRowVal, { fontWeight: '700' }]}>{fmt(calc?.cogTotal)}</Text>
-                  </View>
-                  {calc?.markupAmount > 0 ? (
-                    <View style={pvStyles.priceRow}>
-                      <Text style={[pvStyles.priceRowLabel, { color: BRAND, fontWeight: '600' }]}>
-                        Markup {calc?.markupPercentage > 0 ? `(${calc.markupPercentage.toFixed(1)}%)` : ''}
+                <Text style={pvStyles.sectionTitle}>Pricing</Text>
+                {grandTotal == null ? (
+                  <Text style={{ color: TEXT_LIGHT, fontSize: 13, marginTop: 10 }}>Pricing is pending review.</Text>
+                ) : (
+                  <View style={{ marginTop: 12 }}>
+                    {pricingRows.map(r => (
+                      <View key={r.label} style={pvStyles.priceRow}>
+                        <Text style={pvStyles.priceRowLabel}>{r.label}</Text>
+                        <Text style={pvStyles.priceRowVal}>{fmt(r.value)}</Text>
+                      </View>
+                    ))}
+                    <View style={pvStyles.totalBlock}>
+                      <Text style={pvStyles.totalLabel}>TOTAL</Text>
+                      <Text style={pvStyles.totalAmt}>${grandTotal.toFixed(2)}</Text>
+                    </View>
+                    {perPiece ? (
+                      <Text style={{ fontSize: 12, color: TEXT_LIGHT, textAlign: 'center', marginTop: 8 }}>
+                        ${perPiece.toFixed(2)} per piece
                       </Text>
-                      <Text style={[pvStyles.priceRowVal, { color: BRAND, fontWeight: '600' }]}>—</Text>
-                      <Text style={[pvStyles.priceRowVal, { color: BRAND, fontWeight: '600' }]}>{fmt(calc?.markupAmount)}</Text>
-                    </View>
-                  ) : null}
-
-                  <View style={pvStyles.priceDivider} />
-
-                  <View style={pvStyles.priceRow}>
-                    <Text style={[pvStyles.priceRowLabel, { fontWeight: '700', color: TEXT }]}>Subtotal</Text>
-                    <Text style={[pvStyles.priceRowVal, { fontWeight: '700' }]}>{fmt(calc?.totalPerPiece)}</Text>
-                    <Text style={[pvStyles.priceRowVal, { fontWeight: '700' }]}>{fmt(calc?.subtotal)}</Text>
+                    ) : null}
                   </View>
-                  {proj.hasOnlineFee && (
-                    <View style={pvStyles.priceRow}>
-                      <Text style={pvStyles.priceRowLabel}>Online Fee</Text>
-                      <Text style={pvStyles.priceRowVal}>{fmt(calc?.onlineFee && calc.totalQuantity > 0 ? calc.onlineFee / calc.totalQuantity : null)}</Text>
-                      <Text style={pvStyles.priceRowVal}>{fmt(calc?.onlineFee)}</Text>
-                    </View>
-                  )}
-                  {proj.hasCardFee && (
-                    <View style={pvStyles.priceRow}>
-                      <Text style={pvStyles.priceRowLabel}>Card Fee (3.75%)</Text>
-                      <Text style={pvStyles.priceRowVal}>{fmt(calc?.cardFee && calc.totalQuantity > 0 ? calc.cardFee / calc.totalQuantity : null)}</Text>
-                      <Text style={pvStyles.priceRowVal}>{fmt(calc?.cardFee)}</Text>
-                    </View>
-                  )}
-                </View>
+                )}
+              </View>
 
-                {/* Total block */}
-                <View style={pvStyles.totalBlock}>
-                  <Text style={pvStyles.totalLabel}>TOTAL</Text>
-                  <Text style={pvStyles.totalAmt}>
-                    {calc?.total > 0
-                      ? `$${Number(calc.total).toFixed(2)}`
-                      : 'Pending Review'}
-                  </Text>
+              {/* Actions */}
+              <View style={pvStyles.card}>
+                <Text style={pvStyles.sectionTitle}>Actions</Text>
+                <View style={{ marginTop: 12, gap: 10 }}>
+                  <TouchableOpacity
+                    style={pvStyles.actionPrimary}
+                    activeOpacity={0.85}
+                    onPress={() => downloadCustomerProjectPdf({
+                      title: proj.title || 'Project',
+                      status: PORTAL_STATUS_CONFIG[proj.status.toUpperCase().replace('QUOTE_SENT', 'QUOTED')]?.label || proj.status,
+                      orderType: proj.orderType,
+                      inHandsDate: proj.inHandsDate ? formatDate(proj.inHandsDate) : null,
+                      orgName: orgDisplayName || undefined,
+                      notes: proj.notesClient,
+                      lineItems,
+                      pricing: pricingRows,
+                      total: grandTotal,
+                    })}
+                  >
+                    <Download size={16} color="#fff" />
+                    <Text style={pvStyles.actionPrimaryText}>Download PDF</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={pvStyles.actionSecondary}
+                    activeOpacity={0.85}
+                    onPress={() => Linking.openURL(`mailto:jobs@katalystko.com?subject=${encodeURIComponent('Question about ' + (proj.title || 'my project'))}`)}
+                  >
+                    <MessageCircle size={16} color={TEXT_MED} />
+                    <Text style={pvStyles.actionSecondaryText}>Contact Katalyst Ko</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={pvStyles.actionSecondary} activeOpacity={0.85} onPress={() => handleReorderProject(proj.title || '')}>
+                    <RefreshCw size={16} color={TEXT_MED} />
+                    <Text style={pvStyles.actionSecondaryText}>Reorder Project</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={[pvStyles.actionSecondary, isFavorite && pvStyles.actionFavActive]} activeOpacity={0.85} onPress={() => toggleFavorite(proj.id)}>
+                    <Star size={16} color={isFavorite ? BRAND : TEXT_MED} fill={isFavorite ? BRAND : 'transparent'} />
+                    <Text style={[pvStyles.actionSecondaryText, isFavorite && { color: BRAND }]}>{isFavorite ? 'Favorited' : 'Favorite Project'}</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             </View>
@@ -5816,6 +5974,52 @@ const pvStyles = StyleSheet.create({
   },
   totalLabel: { fontSize: 14, fontWeight: '800', color: '#fff' },
   totalAmt: { fontSize: 22, fontWeight: '900', color: '#fff' },
+
+  sectionSub: { fontSize: 12, color: TEXT_LIGHT, marginTop: 4, marginBottom: 12 },
+
+  mockupGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  mockupCard: {
+    width: 150, borderRadius: 12, borderWidth: 1, borderColor: BORDER,
+    backgroundColor: '#F9FAFB', overflow: 'hidden',
+  },
+  mockupImg: { width: '100%', height: 150, backgroundColor: '#F3F4F6' },
+  mockupExpand: {
+    position: 'absolute', top: 8, right: 8,
+    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 14,
+    width: 26, height: 26, alignItems: 'center', justifyContent: 'center',
+  },
+  mockupCaption: {
+    fontSize: 12, fontWeight: '600', color: TEXT,
+    paddingHorizontal: 10, paddingVertical: 8,
+  },
+
+  fileRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1, borderColor: BORDER, borderRadius: 10, padding: 12,
+  },
+  fileIcon: {
+    width: 34, height: 34, borderRadius: 8, backgroundColor: '#FFF4EE',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  fileName: { fontSize: 13, fontWeight: '600', color: TEXT },
+  fileMeta: { fontSize: 11, color: TEXT_LIGHT, marginTop: 2 },
+  fileDownloadBtn: {
+    width: 34, height: 34, borderRadius: 8, borderWidth: 1, borderColor: BORDER,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FAFB',
+  },
+
+  actionPrimary: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: BRAND, borderRadius: 10, paddingVertical: 12,
+  },
+  actionPrimaryText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  actionSecondary: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#fff', borderWidth: 1, borderColor: BORDER,
+    borderRadius: 10, paddingVertical: 12,
+  },
+  actionSecondaryText: { fontSize: 14, fontWeight: '600', color: TEXT_MED },
+  actionFavActive: { borderColor: BRAND, backgroundColor: '#FFF4EE' },
 });
 
 const binPickStyles = StyleSheet.create({

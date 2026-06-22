@@ -16,7 +16,7 @@ description: How Contact↔User↔Membership is keyed (linkedUserId) vs how port
   Contact.linkedUserId. These are deliberately separate layers.
 
 **Why it matters:** the same email can appear on multiple Contacts across orgs (e.g.
-josh@katalystko.com is on two different contacts). Email matching for *relationship*
+one user's email is on two different contacts). Email matching for *relationship*
 resolution is ambiguous; linkedUserId disambiguates. Login can still be email-based
 because it's per-org auth input, not a relationship link.
 
