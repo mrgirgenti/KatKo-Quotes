@@ -75,7 +75,6 @@ import { useBreakpoint } from '@/hooks/useBreakpoint';
 import {
   Organization,
   Contact,
-  Department,
   ActivityEntry,
   ActivityType,
   CrmStatus,
@@ -210,7 +209,6 @@ export default function OrgProfileScreen() {
     addActivity, deleteActivity,
     assignCampaign, updateCampaignStep, deleteCampaign,
     updateOrgStatus,
-    addDepartment, updateDepartment, deleteDepartment,
     updateOrgHubEnabled,
   } = useCrm();
   const { quotes } = useQuotes();
@@ -259,7 +257,7 @@ export default function OrgProfileScreen() {
 
   const [contactModal, setContactModal] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
-  const [contactForm, setContactForm] = useState({ firstName: '', lastName: '', role: 'Primary Contact' as ContactRole, email: '', phone: '', notes: '', isPrimary: false, departmentId: '', hubAccess: false });
+  const [contactForm, setContactForm] = useState({ firstName: '', lastName: '', role: 'Primary Contact' as ContactRole, email: '', phone: '', notes: '', isPrimary: false, department: '', hubAccess: false });
 
   const [activityModal, setActivityModal] = useState(false);
   const [activityForm, setActivityForm] = useState({ type: 'call' as ActivityType, date: new Date().toISOString().slice(0, 10), subject: '', body: '', contactId: '' });
@@ -268,10 +266,6 @@ export default function OrgProfileScreen() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>(undefined);
 
   const [statusDropdown, setStatusDropdown] = useState(false);
-
-  const [deptModal, setDeptModal] = useState(false);
-  const [editingDept, setEditingDept] = useState<Department | null>(null);
-  const [deptForm, setDeptForm] = useState({ name: '', description: '' });
 
   const [activeSearch, setActiveSearch] = useState('');
   const [activeServiceFilter, setActiveServiceFilter] = useState('');
@@ -605,14 +599,14 @@ export default function OrgProfileScreen() {
 
   const openAddContact = useCallback(() => {
     setEditingContact(null);
-    setContactForm({ firstName: '', lastName: '', role: 'Primary Contact', email: '', phone: '', notes: '', isPrimary: org?.contacts.length === 0, departmentId: '', hubAccess: false });
+    setContactForm({ firstName: '', lastName: '', role: 'Primary Contact', email: '', phone: '', notes: '', isPrimary: org?.contacts.length === 0, department: '', hubAccess: false });
     setContactModal(true);
   }, [org]);
 
   const openEditContact = useCallback((c: Contact) => {
     setEditingContact(c);
     const alreadyHasHub = contactHasHubAccess(c);
-    setContactForm({ firstName: c.firstName, lastName: c.lastName, role: c.role || 'Primary Contact', email: c.email || '', phone: c.phone || '', notes: c.notes || '', isPrimary: !!c.isPrimary, departmentId: c.departmentId || '', hubAccess: alreadyHasHub });
+    setContactForm({ firstName: c.firstName, lastName: c.lastName, role: c.role || 'Primary Contact', email: c.email || '', phone: c.phone || '', notes: c.notes || '', isPrimary: !!c.isPrimary, department: c.department || '', hubAccess: alreadyHasHub });
     setContactModal(true);
   }, [contactHasHubAccess]);
 
@@ -629,7 +623,7 @@ export default function OrgProfileScreen() {
       firstName: contactForm.firstName.trim(),
       lastName: contactForm.lastName.trim(),
       email: contactForm.email.trim() || undefined,
-      departmentId: contactForm.departmentId || undefined,
+      department: contactForm.department.trim() || undefined,
       isPrimary: derivedIsPrimary,
       linkedUserId: editingContact?.linkedUserId ?? undefined,
     };
@@ -667,28 +661,6 @@ export default function OrgProfileScreen() {
     (c: Contact) => { if (c.email) runContactAction(c, 'enableHubAccess'); },
     [runContactAction],
   );
-
-  const openAddDept = useCallback(() => {
-    setEditingDept(null);
-    setDeptForm({ name: '', description: '' });
-    setDeptModal(true);
-  }, []);
-
-  const openEditDept = useCallback((dept: Department) => {
-    setEditingDept(dept);
-    setDeptForm({ name: dept.name, description: dept.description || '' });
-    setDeptModal(true);
-  }, []);
-
-  const handleSaveDept = useCallback(() => {
-    if (!org || !deptForm.name.trim()) return;
-    if (editingDept) {
-      updateDepartment({ orgId: org.id, dept: { ...editingDept, name: deptForm.name.trim(), description: deptForm.description || undefined } });
-    } else {
-      addDepartment({ orgId: org.id, name: deptForm.name.trim(), description: deptForm.description || undefined });
-    }
-    setDeptModal(false);
-  }, [org, deptForm, editingDept, addDepartment, updateDepartment]);
 
   const handleSaveActivity = useCallback(() => {
     if (!org || !activityForm.body.trim()) return;
@@ -1473,7 +1445,6 @@ export default function OrgProfileScreen() {
                 <ContactsPeopleTable
                   contacts={org.contacts}
                   onAdd={openAddContact}
-                  onAddDept={openAddDept}
                   onEdit={openEditContact}
                   onDelete={handleDeleteContact}
                   onAction={runContactAction}
@@ -2224,7 +2195,6 @@ export default function OrgProfileScreen() {
                 <ContactsPeopleTable
                   contacts={org.contacts}
                   onAdd={openAddContact}
-                  onAddDept={openAddDept}
                   onEdit={openEditContact}
                   onDelete={handleDeleteContact}
                   onAction={runContactAction}
@@ -2452,23 +2422,10 @@ export default function OrgProfileScreen() {
                   <TextInput style={styles.textInput} value={contactForm.email} onChangeText={(v) => setContactForm((f) => ({ ...f, email: v }))} placeholder="email@example.com" placeholderTextColor={Colors.light.textSecondary} keyboardType="email-address" autoCapitalize="none" />
                   <Text style={styles.fieldLabel}>Phone</Text>
                   <TextInput style={styles.textInput} value={contactForm.phone} onChangeText={(v) => setContactForm((f) => ({ ...f, phone: v }))} placeholder="(555) 000-0000" placeholderTextColor={Colors.light.textSecondary} keyboardType="phone-pad" />
+                  <Text style={styles.fieldLabel}>Department</Text>
+                  <TextInput style={styles.textInput} value={contactForm.department} onChangeText={(v) => setContactForm((f) => ({ ...f, department: v }))} placeholder="e.g., Athletics, Marketing, Admin…" placeholderTextColor={Colors.light.textSecondary} />
                   <Text style={styles.fieldLabel}>Notes</Text>
                   <TextInput style={[styles.textInput, styles.notesInput]} value={contactForm.notes} onChangeText={(v) => setContactForm((f) => ({ ...f, notes: v }))} placeholder="Notes about this contact…" placeholderTextColor={Colors.light.textSecondary} multiline numberOfLines={3} />
-                  {(org.departments || []).length > 0 && (
-                    <>
-                      <Text style={styles.fieldLabel}>Department</Text>
-                      <View style={styles.statusRow}>
-                        <TouchableOpacity style={[styles.statusChip, !contactForm.departmentId && styles.statusChipActive]} onPress={() => setContactForm((f) => ({ ...f, departmentId: '' }))}>
-                          <Text style={[styles.statusChipText, !contactForm.departmentId && styles.statusChipTextActive]}>None</Text>
-                        </TouchableOpacity>
-                        {(org.departments || []).map((d) => (
-                          <TouchableOpacity key={d.id} style={[styles.statusChip, contactForm.departmentId === d.id && styles.statusChipActive]} onPress={() => setContactForm((f) => ({ ...f, departmentId: d.id }))}>
-                            <Text style={[styles.statusChipText, contactForm.departmentId === d.id && styles.statusChipTextActive]}>{d.name}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </>
-                  )}
                 </ScrollView>
                 <View style={styles.modalActions}>
                   <TouchableOpacity style={styles.cancelBtn} onPress={() => setContactModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
@@ -2528,29 +2485,6 @@ export default function OrgProfileScreen() {
                   <TouchableOpacity style={styles.cancelBtn} onPress={() => setActivityModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
                   <TouchableOpacity style={[styles.saveBtn, !activityForm.body.trim() && styles.saveBtnDisabled]} onPress={handleSaveActivity} disabled={!activityForm.body.trim()}>
                     <Text style={styles.saveBtnText}>Log Activity</Text>
-                  </TouchableOpacity>
-                </View>
-              </Pressable>
-            </KeyboardAvoidingView>
-          </Pressable>
-        </Modal>
-
-        <Modal visible={deptModal} transparent animationType="fade" onRequestClose={() => setDeptModal(false)}>
-          <Pressable style={styles.modalOverlay} onPress={() => setDeptModal(false)}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
-              <Pressable style={styles.modalCard} onPress={() => {}}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>{editingDept ? 'Edit Department' : 'Add Department'}</Text>
-                  <TouchableOpacity onPress={() => setDeptModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
-                </View>
-                <Text style={styles.fieldLabel}>Department Name *</Text>
-                <TextInput style={styles.textInput} value={deptForm.name} onChangeText={(v) => setDeptForm((f) => ({ ...f, name: v }))} placeholder="e.g., Youth, Communications, Admin…" placeholderTextColor={Colors.light.textSecondary} autoFocus />
-                <Text style={styles.fieldLabel}>Description (optional)</Text>
-                <TextInput style={[styles.textInput, styles.notesInput]} value={deptForm.description} onChangeText={(v) => setDeptForm((f) => ({ ...f, description: v }))} placeholder="Brief description of this department…" placeholderTextColor={Colors.light.textSecondary} multiline numberOfLines={2} />
-                <View style={styles.modalActions}>
-                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setDeptModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
-                  <TouchableOpacity style={[styles.saveBtn, !deptForm.name.trim() && styles.saveBtnDisabled]} onPress={handleSaveDept} disabled={!deptForm.name.trim()}>
-                    <Text style={styles.saveBtnText}>{editingDept ? 'Save' : 'Add Department'}</Text>
                   </TouchableOpacity>
                 </View>
               </Pressable>

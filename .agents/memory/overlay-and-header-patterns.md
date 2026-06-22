@@ -12,6 +12,16 @@ RN/RN-web. The only reliable escape is rendering the menu inside a `Modal` (a po
 via `measureInWindow`, viewport-clamped) for action menus/popovers. `components/Dropdown.tsx`
 is the original proven Modal-based reference. Do not reintroduce absolute-positioned menus.
 
+## In-row actions column must sit OUTSIDE the flexible data block
+In a no-horizontal-scroll flex table, a row's ⋯/actions cell must be a FIXED-width sibling
+rendered AFTER (outside) a `flex:1, overflow:'hidden'` wrapper that holds the data columns —
+not just the last flex column. The data columns then shrink/truncate to fit any width while
+the actions column always keeps its space.
+**Why:** if the actions cell is the last flex child and the summed `minWidth`s of the data
+columns exceed a narrow card, the row overflows right and the (overflow:hidden) card clips the
+actions off-screen — re-creating the "can't reach the menu" bug. Putting actions outside the
+shrinkable block guarantees it is always visible. (See `ContactsPeopleTable.tsx`.)
+
 ## Detail-page back header — shared component, must match native header exactly
 `components/PageBackHeader.tsx` is the single back-nav header for all detail pages. Visual
 source of truth = the global native Stack header in `app/_layout.tsx` (black #000 bar, white

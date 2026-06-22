@@ -58,6 +58,7 @@ export function toEnrichedContact(row: any): Contact {
     role: row.role ?? undefined,
     email: row.email ?? undefined,
     phone: row.phone ?? undefined,
+    department: row.department ?? undefined,
     notes: row.notes ?? undefined,
     isPrimary: row.isPrimary ?? false,
     status: row.status === 'inactive' ? 'inactive' : 'active',

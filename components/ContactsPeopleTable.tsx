@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Plus, Edit3, Trash2, MoreHorizontal, Users } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import OverlayMenu from '@/components/OverlayMenu';
@@ -10,9 +10,15 @@ import type { Contact, HubAccessState } from '@/types/crm';
  *
  * Renders the org's Contacts as a flat operational table. Every per-row hub /
  * admin action is dispatched through `onAction(contact, action)` which routes to
- * the consolidated contacts API (the only people write path). Hub Access, Org
- * Admin, and Status columns are all derived from the enriched Contact row, so
- * the counts here always match the Client Hub card exactly.
+ * the consolidated contacts API (the only people write path). Hub Access and Org
+ * Admin are derived from the enriched Contact row, so the counts here always
+ * match the Client Hub card exactly.
+ *
+ * Layout law: the per-row actions menu lives in a FIXED-width column rendered as
+ * a sibling OUTSIDE the flexible data block (`rowData`, which is flex:1 +
+ * overflow:hidden). The data columns shrink/truncate to fit any card width while
+ * the actions column always keeps its space — so the ⋯ menu can never be clipped
+ * off the right edge, even on narrow cards. (No horizontal scroll.)
  */
 
 function fmtDate(iso?: string | null): string {
@@ -35,27 +41,25 @@ function hubPill(state: HubAccessState | undefined): { label: string; bg: string
   }
 }
 
-const COLS = {
-  name: 220,
-  role: 150,
-  hub: 120,
-  admin: 110,
-  activity: 130,
-  actions: 64,
-};
-const TABLE_WIDTH = COLS.name + COLS.role + COLS.hub + COLS.admin + COLS.activity + COLS.actions;
+const COL = {
+  name: { flex: 2.4, minWidth: 140 },
+  phone: { flex: 1.3, minWidth: 92 },
+  role: { flex: 1.2, minWidth: 80 },
+  dept: { flex: 1.2, minWidth: 84 },
+  hub: { flex: 1.1, minWidth: 84 },
+  activity: { flex: 1.1, minWidth: 80 },
+} as const;
 
 type Props = {
   contacts: Contact[];
   onAdd: () => void;
-  onAddDept?: () => void;
   onEdit: (c: Contact) => void;
   onDelete: (c: Contact) => void;
   onAction: (c: Contact, action: string) => void;
   busyKey?: string | null;
 };
 
-export default function ContactsPeopleTable({ contacts, onAdd, onAddDept, onEdit, onDelete, onAction, busyKey }: Props) {
+export default function ContactsPeopleTable({ contacts, onAdd, onEdit, onDelete, onAction, busyKey }: Props) {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
@@ -66,18 +70,10 @@ export default function ContactsPeopleTable({ contacts, onAdd, onAddDept, onEdit
             <View style={styles.headerBadge}><Text style={styles.headerBadgeText}>{contacts.length}</Text></View>
           )}
         </View>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {onAddDept && (
-            <TouchableOpacity style={styles.deptBtn} onPress={onAddDept}>
-              <Plus size={12} color="#fff" />
-              <Text style={styles.deptBtnText}>Dept</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity style={styles.addBtn} onPress={onAdd}>
-            <Plus size={13} color="#fff" />
-            <Text style={styles.addBtnText}>Add Contact</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.addBtn} onPress={onAdd}>
+          <Plus size={13} color="#fff" />
+          <Text style={styles.addBtnText}>Add Contact</Text>
+        </TouchableOpacity>
       </View>
 
       {contacts.length === 0 ? (
@@ -87,122 +83,125 @@ export default function ContactsPeopleTable({ contacts, onAdd, onAddDept, onEdit
           <Text style={styles.emptySub}>Add a contact to manage people and hub access from one place.</Text>
         </View>
       ) : (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ minWidth: TABLE_WIDTH }}>
-          <View style={{ minWidth: TABLE_WIDTH }}>
-            {/* Header row */}
-            <View style={styles.theadRow}>
-              <Text style={[styles.th, { width: COLS.name }]}>Name</Text>
-              <Text style={[styles.th, { width: COLS.role }]}>Role</Text>
-              <Text style={[styles.th, { width: COLS.hub }]}>Hub Access</Text>
-              <Text style={[styles.th, { width: COLS.admin }]}>Org Admin</Text>
-              <Text style={[styles.th, { width: COLS.activity }]}>Last Activity</Text>
-              <Text style={[styles.th, { width: COLS.actions, textAlign: 'center' }]}>·</Text>
+        <View>
+          {/* Header row */}
+          <View style={styles.theadRow}>
+            <View style={styles.rowData}>
+              <Text style={[styles.th, COL.name]}>Name</Text>
+              <Text style={[styles.th, COL.phone]}>Phone</Text>
+              <Text style={[styles.th, COL.role]}>Role</Text>
+              <Text style={[styles.th, COL.dept]}>Department</Text>
+              <Text style={[styles.th, COL.hub]}>Hub Access</Text>
+              <Text style={[styles.th, COL.activity]}>Last Activity</Text>
             </View>
+            <View style={styles.actionsCol} />
+          </View>
 
-            {contacts.map((c) => {
-              const pill = hubPill(c.hubAccess);
-              const hasMembership = !!c.membershipId;
-              const busy = !!busyKey && busyKey.startsWith(`${c.id}:`);
-              return (
-                <View key={c.id} style={styles.row}>
-                  <View style={[styles.td, { width: COLS.name }]}>
-                    <Text style={styles.nameText} numberOfLines={1}>
-                      {c.firstName} {c.lastName}{c.isPrimary ? ' ★' : ''}
-                    </Text>
+          {contacts.map((c) => {
+            const pill = hubPill(c.hubAccess);
+            const hasMembership = !!c.membershipId;
+            const busy = !!busyKey && busyKey.startsWith(`${c.id}:`);
+            return (
+              <View key={c.id} style={styles.row}>
+                <View style={styles.rowData}>
+                  <View style={[styles.td, COL.name]}>
+                    <View style={styles.nameLine}>
+                      <Text style={styles.nameText} numberOfLines={1}>
+                        {c.firstName} {c.lastName}
+                      </Text>
+                      {c.isPrimary ? <Text style={styles.starBadge}>★</Text> : null}
+                      {c.isOrgAdmin ? (
+                        <View style={styles.adminBadge}><Text style={styles.adminBadgeText}>Admin</Text></View>
+                      ) : null}
+                    </View>
                     {c.email ? <Text style={styles.subText} numberOfLines={1}>{c.email}</Text> : null}
                   </View>
-                  <View style={[styles.td, { width: COLS.role }]}>
+                  <View style={[styles.td, COL.phone]}>
+                    <Text style={styles.cellText} numberOfLines={1}>{c.phone || '—'}</Text>
+                  </View>
+                  <View style={[styles.td, COL.role]}>
                     <Text style={styles.cellText} numberOfLines={1}>{c.role || '—'}</Text>
                   </View>
-                  <View style={[styles.td, { width: COLS.hub }]}>
+                  <View style={[styles.td, COL.dept]}>
+                    <Text style={styles.cellText} numberOfLines={1}>{c.department || '—'}</Text>
+                  </View>
+                  <View style={[styles.td, COL.hub]}>
                     <View style={[styles.pill, { backgroundColor: pill.bg }]}>
-                      <Text style={[styles.pillText, { color: pill.fg }]}>{pill.label}</Text>
+                      <Text style={[styles.pillText, { color: pill.fg }]} numberOfLines={1}>{pill.label}</Text>
                     </View>
                   </View>
-                  <View style={[styles.td, { width: COLS.admin }]}>
-                    {c.isOrgAdmin ? (
-                      <View style={[styles.pill, { backgroundColor: '#FFE4D3' }]}>
-                        <Text style={[styles.pillText, { color: '#C2410C' }]}>Admin</Text>
-                      </View>
-                    ) : hasMembership ? (
-                      <View style={[styles.pill, { backgroundColor: '#F1F5F9' }]}>
-                        <Text style={[styles.pillText, { color: '#64748B' }]}>Member</Text>
-                      </View>
-                    ) : (
-                      <Text style={styles.cellText}>—</Text>
-                    )}
-                  </View>
-                  <View style={[styles.td, { width: COLS.activity }]}>
+                  <View style={[styles.td, COL.activity]}>
                     <Text style={styles.cellText} numberOfLines={1}>{fmtDate(c.lastActivityAt)}</Text>
                   </View>
-                  <View style={[styles.td, { width: COLS.actions, alignItems: 'center' }]}>
-                    {busy ? (
-                      <ActivityIndicator size="small" color={Colors.light.tint} />
-                    ) : (
-                      <OverlayMenu
-                        menuWidth={210}
-                        align="right"
-                        trigger={({ open }) => (
-                          <TouchableOpacity style={styles.actionBtn} onPress={open}>
-                            <MoreHorizontal size={15} color={Colors.light.textSecondary} />
-                          </TouchableOpacity>
-                        )}
-                      >
-                        {({ close }) => (
-                          <>
-                            <TouchableOpacity style={styles.menuItem} onPress={() => { close(); onEdit(c); }}>
-                              <Edit3 size={14} color={Colors.light.text} />
-                              <Text style={styles.menuItemText}>Edit Contact</Text>
-                            </TouchableOpacity>
-
-                            {(c.hubAccess === 'none' || c.hubAccess === 'disabled') && !!c.email && (
-                              <TouchableOpacity style={styles.menuItem} onPress={() => { close(); onAction(c, 'enableHubAccess'); }}>
-                                <Text style={styles.menuItemText}>
-                                  {c.hubAccess === 'disabled' ? 'Re-enable Hub Access' : 'Enable Hub Access'}
-                                </Text>
-                              </TouchableOpacity>
-                            )}
-                            {c.hubAccess === 'invited' && (
-                              <TouchableOpacity style={styles.menuItem} onPress={() => { close(); onAction(c, 'resendInvite'); }}>
-                                <Text style={styles.menuItemText}>Resend Invite</Text>
-                              </TouchableOpacity>
-                            )}
-                            {c.hubAccess === 'enabled' && (
-                              <TouchableOpacity style={styles.menuItem} onPress={() => { close(); onAction(c, 'resetPassword'); }}>
-                                <Text style={styles.menuItemText}>Reset Password</Text>
-                              </TouchableOpacity>
-                            )}
-                            {(c.hubAccess === 'enabled' || c.hubAccess === 'invited') && (
-                              <TouchableOpacity style={styles.menuItem} onPress={() => { close(); onAction(c, 'disableHubAccess'); }}>
-                                <Text style={styles.menuItemText}>Disable Hub Access</Text>
-                              </TouchableOpacity>
-                            )}
-
-                            {hasMembership && !c.isOrgAdmin && (
-                              <TouchableOpacity style={styles.menuItem} onPress={() => { close(); onAction(c, 'promoteAdmin'); }}>
-                                <Text style={styles.menuItemText}>Promote to Org Admin</Text>
-                              </TouchableOpacity>
-                            )}
-                            {hasMembership && c.isOrgAdmin && (
-                              <TouchableOpacity style={styles.menuItem} onPress={() => { close(); onAction(c, 'removeAdmin'); }}>
-                                <Text style={styles.menuItemText}>Remove Org Admin</Text>
-                              </TouchableOpacity>
-                            )}
-
-                            <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]} onPress={() => { close(); onDelete(c); }}>
-                              <Trash2 size={14} color={Colors.light.error} />
-                              <Text style={[styles.menuItemText, { color: Colors.light.error }]}>Delete Contact</Text>
-                            </TouchableOpacity>
-                          </>
-                        )}
-                      </OverlayMenu>
-                    )}
-                  </View>
                 </View>
-              );
-            })}
-          </View>
-        </ScrollView>
+
+                <View style={styles.actionsCol}>
+                  {busy ? (
+                    <ActivityIndicator size="small" color={Colors.light.tint} />
+                  ) : (
+                    <OverlayMenu
+                      menuWidth={210}
+                      align="right"
+                      trigger={({ open }) => (
+                        <TouchableOpacity style={styles.actionBtn} onPress={open}>
+                          <MoreHorizontal size={15} color={Colors.light.textSecondary} />
+                        </TouchableOpacity>
+                      )}
+                    >
+                      {({ close }) => (
+                        <>
+                          <TouchableOpacity style={styles.menuItem} onPress={() => { close(); onEdit(c); }}>
+                            <Edit3 size={14} color={Colors.light.text} />
+                            <Text style={styles.menuItemText}>Edit Contact</Text>
+                          </TouchableOpacity>
+
+                          {(c.hubAccess === 'none' || c.hubAccess === 'disabled') && !!c.email && (
+                            <TouchableOpacity style={styles.menuItem} onPress={() => { close(); onAction(c, 'enableHubAccess'); }}>
+                              <Text style={styles.menuItemText}>
+                                {c.hubAccess === 'disabled' ? 'Re-enable Hub Access' : 'Enable Hub Access'}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                          {c.hubAccess === 'invited' && (
+                            <TouchableOpacity style={styles.menuItem} onPress={() => { close(); onAction(c, 'resendInvite'); }}>
+                              <Text style={styles.menuItemText}>Resend Invite</Text>
+                            </TouchableOpacity>
+                          )}
+                          {c.hubAccess === 'enabled' && (
+                            <TouchableOpacity style={styles.menuItem} onPress={() => { close(); onAction(c, 'resetPassword'); }}>
+                              <Text style={styles.menuItemText}>Reset Password</Text>
+                            </TouchableOpacity>
+                          )}
+                          {(c.hubAccess === 'enabled' || c.hubAccess === 'invited') && (
+                            <TouchableOpacity style={styles.menuItem} onPress={() => { close(); onAction(c, 'disableHubAccess'); }}>
+                              <Text style={styles.menuItemText}>Disable Hub Access</Text>
+                            </TouchableOpacity>
+                          )}
+
+                          {hasMembership && !c.isOrgAdmin && (
+                            <TouchableOpacity style={styles.menuItem} onPress={() => { close(); onAction(c, 'promoteAdmin'); }}>
+                              <Text style={styles.menuItemText}>Promote to Org Admin</Text>
+                            </TouchableOpacity>
+                          )}
+                          {hasMembership && c.isOrgAdmin && (
+                            <TouchableOpacity style={styles.menuItem} onPress={() => { close(); onAction(c, 'removeAdmin'); }}>
+                              <Text style={styles.menuItemText}>Remove Org Admin</Text>
+                            </TouchableOpacity>
+                          )}
+
+                          <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]} onPress={() => { close(); onDelete(c); }}>
+                            <Trash2 size={14} color={Colors.light.error} />
+                            <Text style={[styles.menuItemText, { color: Colors.light.error }]}>Delete Contact</Text>
+                          </TouchableOpacity>
+                        </>
+                      )}
+                    </OverlayMenu>
+                  )}
+                </View>
+              </View>
+            );
+          })}
+        </View>
       )}
     </View>
   );
@@ -228,8 +227,6 @@ const styles = StyleSheet.create({
   headerTitle: { color: '#fff', fontSize: 14, fontWeight: '700' },
   headerBadge: { backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 9, paddingHorizontal: 7, paddingVertical: 1 },
   headerBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-  deptBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 7, paddingHorizontal: 8, paddingVertical: 5 },
-  deptBtnText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   addBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.light.tint, borderRadius: 7, paddingHorizontal: 10, paddingVertical: 5 },
   addBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 
@@ -239,13 +236,14 @@ const styles = StyleSheet.create({
 
   theadRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: Colors.light.highlightBg,
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.border,
     paddingVertical: 8,
     paddingHorizontal: 12,
   },
-  th: { fontSize: 11, fontWeight: '700', color: Colors.light.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3 },
+  th: { fontSize: 11, fontWeight: '700', color: Colors.light.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3, paddingRight: 10 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -254,8 +252,16 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
   },
+  // Flexible data block: shrinks/truncates so the fixed actions column never clips.
+  rowData: { flex: 1, flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
+  // Fixed actions column rendered OUTSIDE rowData — always keeps its width.
+  actionsCol: { width: 44, alignItems: 'center', justifyContent: 'center' },
   td: { justifyContent: 'center', paddingRight: 10 },
-  nameText: { fontSize: 13, fontWeight: '600', color: Colors.light.text },
+  nameLine: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  nameText: { fontSize: 13, fontWeight: '600', color: Colors.light.text, flexShrink: 1 },
+  starBadge: { fontSize: 12, color: '#F59E0B' },
+  adminBadge: { backgroundColor: '#FFE4D3', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1 },
+  adminBadgeText: { fontSize: 10, fontWeight: '700', color: '#C2410C' },
   subText: { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
   cellText: { fontSize: 12, color: Colors.light.text },
   pill: { alignSelf: 'flex-start', borderRadius: 10, paddingHorizontal: 9, paddingVertical: 3 },

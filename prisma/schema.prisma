@@ -211,6 +211,7 @@ model Contact {
   email          String?
   phone          String?
   title          String?
+  department     String?
   role           String?
   notes          String?
   isPrimary      Boolean   @default(false)

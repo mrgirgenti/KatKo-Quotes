@@ -44,3 +44,19 @@ login is per-org auth input, not a relationship link.
 
 **Data artifacts to watch:** orphan CLIENT memberships with no Contact, and contacts linked
 (linkedUserId set) but with no membership ("linked, no access").
+
+## Contact mutations must be org-scoped (broken-access-control class)
+The contact write endpoints (`PUT`/`PATCH`/`DELETE /api/orgs/[id]/contacts/[contactId]`) are
+keyed by `contactId`. They MUST also constrain by the route `organizationId` (`WHERE id = $x
+AND "organizationId" = $y`) and return 404 when no row is affected — otherwise any valid
+contactId edits/deletes/links a contact in a different org.
+**Why:** a contactId-only WHERE is a cross-tenant access hole; the PATCH `{action}` path was
+already safe (its `loadContact` joins on org), but the direct PUT/DELETE/linkedUserId queries
+were not. **How to apply:** any new people query that filters by contactId must add the org
+constraint in the same WHERE.
+
+## Contact.department is FREE-TEXT, not an entity FK
+There is NO `departmentId` column on `Contact`; the real table has a plain `department text`
+column (added late — classic schema drift, the old Department-entity picker silently dropped
+its value). Org-level `Department` entities still exist as legacy metadata in
+schema/CrmContext but are NOT wired to contacts. Quote/edit a contact's department as free text.

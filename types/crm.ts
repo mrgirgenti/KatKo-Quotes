@@ -74,6 +74,7 @@ export interface Contact {
   role?: ContactRole;
   email?: string;
   phone?: string;
+  department?: string;
   notes?: string;
   isPrimary?: boolean;
   status?: 'active' | 'inactive';

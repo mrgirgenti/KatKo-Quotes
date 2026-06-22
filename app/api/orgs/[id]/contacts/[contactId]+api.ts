@@ -209,11 +209,11 @@ export async function PATCH(request: Request, params?: { id: string; contactId: 
     // Fallback: direct linkedUserId set (kept for back-compat with link repair).
     if (body.linkedUserId !== undefined) {
       await pool.query(
-        `UPDATE "Contact" SET "linkedUserId" = $1, "updatedAt" = NOW() WHERE id = $2`,
-        [body.linkedUserId || null, contactId],
+        `UPDATE "Contact" SET "linkedUserId" = $1, "updatedAt" = NOW() WHERE id = $2 AND "organizationId" = $3`,
+        [body.linkedUserId || null, contactId, id],
       );
     }
-    const result = await pool.query(`SELECT * FROM "Contact" WHERE id = $1`, [contactId]);
+    const result = await pool.query(`SELECT * FROM "Contact" WHERE id = $1 AND "organizationId" = $2`, [contactId, id]);
     const c = result.rows[0];
     if (!c) return Response.json({ error: 'Not found' }, { status: 404 });
     return Response.json({ id: c.id, linkedUserId: c.linkedUserId ?? null });
@@ -234,8 +234,8 @@ export async function PUT(request: Request, params?: { id: string; contactId: st
     const result = await pool.query(
       `UPDATE "Contact" SET
         "firstName" = $1, "lastName" = $2, email = $3, phone = $4, role = $5,
-        notes = $6, "isPrimary" = $7, "updatedAt" = NOW()
-      WHERE id = $8 RETURNING *`,
+        notes = $6, "isPrimary" = $7, department = $8, "updatedAt" = NOW()
+      WHERE id = $9 AND "organizationId" = $10 RETURNING *`,
       [
         body.firstName,
         body.lastName,
@@ -244,17 +244,20 @@ export async function PUT(request: Request, params?: { id: string; contactId: st
         body.role ?? null,
         body.notes ?? null,
         body.isPrimary ?? false,
+        body.department ?? null,
         contactId,
+        id,
       ],
     );
+    if (!result.rows[0]) return Response.json({ error: 'Not found' }, { status: 404 });
     // linkedUserId is the authoritative Contact ↔ User key; update it only when
     // explicitly provided so normal edits never clobber an existing link.
     let linkedUserId = result.rows[0]?.linkedUserId ?? null;
     if (body.linkedUserId !== undefined) {
       linkedUserId = body.linkedUserId || null;
       await pool.query(
-        `UPDATE "Contact" SET "linkedUserId" = $1, "updatedAt" = NOW() WHERE id = $2`,
-        [linkedUserId, contactId],
+        `UPDATE "Contact" SET "linkedUserId" = $1, "updatedAt" = NOW() WHERE id = $2 AND "organizationId" = $3`,
+        [linkedUserId, contactId, id],
       );
     }
     const c = result.rows[0];
@@ -266,6 +269,7 @@ export async function PUT(request: Request, params?: { id: string; contactId: st
       role: c.role ?? undefined,
       email: c.email ?? undefined,
       phone: c.phone ?? undefined,
+      department: c.department ?? undefined,
       notes: c.notes ?? undefined,
       isPrimary: c.isPrimary ?? false,
       linkedUserId: linkedUserId ?? undefined,
@@ -280,11 +284,12 @@ export async function PUT(request: Request, params?: { id: string; contactId: st
 export async function DELETE(request: Request, params?: { id: string; contactId: string }) {
   const authedUser = await authenticateRequest(request);
   if (!authedUser) return unauthorized();
-  const { contactId } = params ?? ({} as { id: string; contactId: string });
-  if (!contactId) return Response.json({ error: 'Not found' }, { status: 404 });
+  const { id, contactId } = params ?? ({} as { id: string; contactId: string });
+  if (!id || !contactId) return Response.json({ error: 'Not found' }, { status: 404 });
 
   try {
-    await pool.query(`DELETE FROM "Contact" WHERE id = $1`, [contactId]);
+    const res = await pool.query(`DELETE FROM "Contact" WHERE id = $1 AND "organizationId" = $2`, [contactId, id]);
+    if (res.rowCount === 0) return Response.json({ error: 'Not found' }, { status: 404 });
     return Response.json({ ok: true });
   } catch (err) {
     return Response.json({ error: 'Failed to delete contact' }, { status: 500 });

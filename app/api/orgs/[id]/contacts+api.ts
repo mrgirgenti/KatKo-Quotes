@@ -10,6 +10,7 @@ function toContact(c: any) {
     role: c.role ?? undefined,
     email: c.email ?? undefined,
     phone: c.phone ?? undefined,
+    department: c.department ?? undefined,
     notes: c.notes ?? undefined,
     isPrimary: c.isPrimary ?? false,
     linkedUserId: c.linkedUserId ?? undefined,
@@ -45,8 +46,8 @@ export async function POST(request: Request, { id }: { id: string }) {
     const result = await pool.query(
       `INSERT INTO "Contact" (
         id, "organizationId", "firstName", "lastName", email, phone, role,
-        notes, "isPrimary", "linkedUserId", "createdAt", "updatedAt"
-      ) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()) RETURNING *`,
+        notes, "isPrimary", "linkedUserId", department, "createdAt", "updatedAt"
+      ) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW()) RETURNING *`,
       [
         id,
         body.firstName || '',
@@ -57,6 +58,7 @@ export async function POST(request: Request, { id }: { id: string }) {
         body.notes ?? null,
         body.isPrimary ?? false,
         body.linkedUserId ?? null,
+        body.department ?? null,
       ],
     );
     return Response.json(toContact(result.rows[0]), { status: 201 });
