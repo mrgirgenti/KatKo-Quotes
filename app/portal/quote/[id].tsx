@@ -65,6 +65,8 @@ interface ClientQuoteData {
   lineItems: Array<{
     id: string;
     designName: string;
+    product: string;
+    productColor: string;
     serviceStyle: string;
     location1: string;
     location2: string;
@@ -77,16 +79,42 @@ interface ClientQuoteData {
       color: string;
       sizes: Record<string, number>;
     }>;
+    mockups: string[];
   }>;
-  mockups: Array<{ id: string; designName: string; uri: string }>;
   files: Array<{ id: string; originalName: string; mimeType: string | null; fileSize: number | null; url: string; inlineUrl: string }>;
   subtotal: number | null;
+  onlineFee: number | null;
+  cardFee: number | null;
   salesTax: number | null;
-  processingFee: number | null;
   shipping: number | null;
+  rushFee: number | null;
   total: number | null;
   totalPerPiece: number | null;
   hasCalculations: boolean;
+}
+
+// Customer-safe pricing rows in Katalyst terminology. Only fee rows with a
+// positive value are surfaced — empty rows are never shown.
+function buildPricingRows(q: {
+  subtotal: number | null; onlineFee: number | null; cardFee: number | null;
+  salesTax: number | null; shipping: number | null; rushFee: number | null;
+}): Array<{ label: string; value: number }> {
+  const rows: Array<{ label: string; value: number }> = [];
+  if (q.subtotal != null && q.subtotal > 0) rows.push({ label: 'Subtotal', value: q.subtotal });
+  if (q.onlineFee != null && q.onlineFee > 0) rows.push({ label: 'Online Fee', value: q.onlineFee });
+  if (q.cardFee != null && q.cardFee > 0) rows.push({ label: 'Card Fee', value: q.cardFee });
+  if (q.salesTax != null && q.salesTax > 0) rows.push({ label: 'Sales Tax', value: q.salesTax });
+  if (q.shipping != null && q.shipping > 0) rows.push({ label: 'Shipping', value: q.shipping });
+  if (q.rushFee != null && q.rushFee > 0) rows.push({ label: 'Rush Fee', value: q.rushFee });
+  return rows;
+}
+
+function triggerMockupDownload(url: string, name: string): void {
+  if (Platform.OS !== 'web' || typeof document === 'undefined' || !url) return;
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name || 'mockup';
+  a.click();
 }
 
 function formatBytes(bytes: number | null | undefined): string {
@@ -166,11 +194,14 @@ function downloadCustomerQuotePdf(opts: {
 
 function LineItemCard({ item, index }: { item: ClientQuoteData['lineItems'][0]; index: number }) {
   const [expanded, setExpanded] = useState(true);
+  const [activeMockup, setActiveMockup] = useState(0);
   const locations = [item.location1, item.location2, item.location3, item.location4].filter(Boolean);
   const variants = item.garmentVariants?.length > 0
     ? item.garmentVariants
-    : [{ product: '', color: '', sizes: item.sizes }];
+    : [{ product: item.product || '', color: item.productColor || '', sizes: item.sizes }];
   const totalQty = variants.reduce((sum, v) => sum + rowTotal(v.sizes), 0);
+  const mockups = item.mockups || [];
+  const heroUri = mockups[activeMockup] || mockups[0] || '';
 
   return (
     <View style={liStyles.card}>
@@ -191,6 +222,45 @@ function LineItemCard({ item, index }: { item: ClientQuoteData['lineItems'][0]; 
 
       {expanded && (
         <View style={liStyles.body}>
+          {/* Mockup hero — owned by this line item */}
+          {heroUri ? (
+            <View style={liStyles.mockupSection}>
+              <View style={liStyles.heroWrap}>
+                <Image source={{ uri: heroUri }} style={liStyles.heroImg} resizeMode="contain" />
+                <View style={liStyles.heroActions}>
+                  <TouchableOpacity
+                    style={liStyles.heroBtn}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    onPress={() => { if (Platform.OS === 'web') window.open(heroUri, '_blank', 'noopener,noreferrer'); }}
+                  >
+                    <Maximize2 size={14} color="#fff" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={liStyles.heroBtn}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    onPress={() => triggerMockupDownload(heroUri, item.designName || `mockup-${index + 1}`)}
+                  >
+                    <Download size={14} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              {mockups.length > 1 && (
+                <View style={liStyles.thumbStrip}>
+                  {mockups.map((m, mi) => (
+                    <TouchableOpacity
+                      key={mi}
+                      style={[liStyles.thumb, mi === activeMockup && liStyles.thumbActive]}
+                      activeOpacity={0.8}
+                      onPress={() => setActiveMockup(mi)}
+                    >
+                      <Image source={{ uri: m }} style={liStyles.thumbImg} resizeMode="cover" />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+          ) : null}
+
           {/* Service & Locations */}
           <View style={liStyles.detailSection}>
             <View style={liStyles.detailRow}>
@@ -387,31 +457,7 @@ export default function ClientQuoteView() {
                   ) : null}
                 </View>
 
-                {/* Mockups — prominent visual */}
-                {quote.mockups.length > 0 && (
-                  <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Mockups</Text>
-                    <Text style={styles.sectionSub}>Visual previews of your order</Text>
-                    <View style={styles.mockupGrid}>
-                      {quote.mockups.map((m) => (
-                        <TouchableOpacity
-                          key={m.id}
-                          style={styles.mockupCard}
-                          activeOpacity={0.85}
-                          onPress={() => {
-                            if (Platform.OS === 'web') window.open(m.uri, '_blank', 'noopener,noreferrer');
-                          }}
-                        >
-                          <Image source={{ uri: m.uri }} style={styles.mockupImg} resizeMode="cover" />
-                          <View style={styles.mockupExpand}><Maximize2 size={13} color="#fff" /></View>
-                          {m.designName ? <Text style={styles.mockupCaption} numberOfLines={1}>{m.designName}</Text> : null}
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                )}
-
-                {/* Line Items */}
+                {/* Line Items — each owns its mockup (no project-level gallery) */}
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>
                     Line Items ({quote.lineItems.length})
@@ -451,31 +497,13 @@ export default function ClientQuoteView() {
                   </View>
                   {quote.hasCalculations && quote.total != null ? (
                     <>
-                      {quote.subtotal != null && (
-                        <View style={styles.pricingRow}>
-                          <Text style={styles.pricingLabel}>Subtotal</Text>
-                          <Text style={styles.pricingValue}>{formatCurrency(quote.subtotal)}</Text>
+                      {buildPricingRows(quote).map((row) => (
+                        <View key={row.label} style={styles.pricingRow}>
+                          <Text style={styles.pricingLabel}>{row.label}</Text>
+                          <Text style={styles.pricingValue}>{formatCurrency(row.value)}</Text>
                         </View>
-                      )}
-                      {quote.salesTax != null && quote.salesTax > 0 && (
-                        <View style={styles.pricingRow}>
-                          <Text style={styles.pricingLabel}>Tax</Text>
-                          <Text style={styles.pricingValue}>{formatCurrency(quote.salesTax)}</Text>
-                        </View>
-                      )}
-                      {quote.shipping != null && quote.shipping > 0 && (
-                        <View style={styles.pricingRow}>
-                          <Text style={styles.pricingLabel}>Shipping</Text>
-                          <Text style={styles.pricingValue}>{formatCurrency(quote.shipping)}</Text>
-                        </View>
-                      )}
-                      {quote.processingFee != null && quote.processingFee > 0 && (
-                        <View style={styles.pricingRow}>
-                          <Text style={styles.pricingLabel}>Processing &amp; Handling</Text>
-                          <Text style={styles.pricingValue}>{formatCurrency(quote.processingFee)}</Text>
-                        </View>
-                      )}
-                      {quote.totalPerPiece != null && (
+                      ))}
+                      {quote.totalPerPiece != null && quote.totalPerPiece > 0 && (
                         <View style={styles.pricingRow}>
                           <Text style={styles.pricingLabel}>Per Piece</Text>
                           <Text style={styles.pricingValue}>{formatCurrency(quote.totalPerPiece)}</Text>
@@ -507,12 +535,7 @@ export default function ClientQuoteView() {
                       orgName: quote.orgName || quote.clientName,
                       notes: quote.notesClient,
                       lineItems: quote.lineItems,
-                      pricing: [
-                        ...(quote.subtotal != null ? [{ label: 'Subtotal', value: quote.subtotal }] : []),
-                        ...(quote.salesTax != null && quote.salesTax > 0 ? [{ label: 'Tax', value: quote.salesTax }] : []),
-                        ...(quote.shipping != null && quote.shipping > 0 ? [{ label: 'Shipping', value: quote.shipping }] : []),
-                        ...(quote.processingFee != null && quote.processingFee > 0 ? [{ label: 'Processing & Handling', value: quote.processingFee }] : []),
-                      ],
+                      pricing: buildPricingRows(quote),
                       total: quote.total,
                     })}
                   >
@@ -615,6 +638,24 @@ const liStyles = StyleSheet.create({
   name: { fontSize: 14, fontWeight: '700', color: '#fff' },
   sub: { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 1 },
   body: { padding: 16 },
+  mockupSection: { marginBottom: 16 },
+  heroWrap: {
+    position: 'relative', width: '100%', borderRadius: 10, borderWidth: 1,
+    borderColor: BORDER, backgroundColor: '#F9FAFB', overflow: 'hidden',
+  },
+  heroImg: { width: '100%', aspectRatio: 4 / 3, backgroundColor: '#F3F4F6' },
+  heroActions: { position: 'absolute', bottom: 8, right: 8, flexDirection: 'row', gap: 6 },
+  heroBtn: {
+    width: 30, height: 30, borderRadius: 6, backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  thumbStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
+  thumb: {
+    width: 52, height: 52, borderRadius: 8, borderWidth: 1, borderColor: BORDER,
+    overflow: 'hidden', backgroundColor: '#F9FAFB',
+  },
+  thumbActive: { borderColor: BRAND, borderWidth: 2 },
+  thumbImg: { width: '100%', height: '100%' },
   detailSection: { marginBottom: 14 },
   detailRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 7 },
   detailLabel: { fontSize: 12, fontWeight: '600', color: TEXT_LIGHT, width: 64 },
@@ -734,19 +775,6 @@ const styles = StyleSheet.create({
   footerText: { fontSize: 12, color: TEXT_PLACEHOLDER },
 
   sectionSub: { fontSize: 12, color: TEXT_LIGHT, marginTop: -8, marginBottom: 12 },
-
-  mockupGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  mockupCard: {
-    width: 150, borderRadius: 12, borderWidth: 1, borderColor: BORDER,
-    backgroundColor: '#F9FAFB', overflow: 'hidden',
-  },
-  mockupImg: { width: '100%', height: 150, backgroundColor: '#F3F4F6' },
-  mockupExpand: {
-    position: 'absolute', top: 8, right: 8,
-    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 14,
-    width: 26, height: 26, alignItems: 'center', justifyContent: 'center',
-  },
-  mockupCaption: { fontSize: 12, fontWeight: '600', color: TEXT, paddingHorizontal: 10, paddingVertical: 8 },
 
   fileRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,

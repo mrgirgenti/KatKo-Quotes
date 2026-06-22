@@ -42,6 +42,21 @@ export async function GET(_req: Request, { orgId }: { orgId: string }) {
           WHERE COALESCE(li->>'mockupUri', '') <> ''
           LIMIT 1
         ) AS "thumbUri",
+        -- Primary card image for the My Projects grid. Intended priority:
+        --   1) Approved mockup  2) Latest mockup  3) Product image  4) Fallback (initials)
+        -- Only the mockup tier is backed by data today (line items carry a single
+        -- mockupUri with no approval flag or product-image link), so this resolves
+        -- to the first line-item mockup and falls through to NULL (grid renders its
+        -- own initials fallback). Customer-safe: only the mockup URI is exposed.
+        (
+          SELECT li->>'mockupUri'
+          FROM jsonb_array_elements(
+            CASE WHEN jsonb_typeof(p."lineItemsData") = 'array'
+                 THEN p."lineItemsData" ELSE '[]'::jsonb END
+          ) li
+          WHERE COALESCE(li->>'mockupUri', '') <> ''
+          LIMIT 1
+        ) AS "primaryImageUri",
         -- ── Asset counts (drive the project-card asset summary) ──────────────
         -- Customer-safe: only counts of CLIENT_VISIBLE files / non-draft
         -- invoices. Mockups are owned by line items (li.mockupUri); standalone

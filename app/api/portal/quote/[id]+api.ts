@@ -35,9 +35,15 @@ export async function GET(_req: Request, { id }: { id: string }) {
       return uri;
     };
 
+    // Each line item OWNS its mockup(s). The customer never sees a project-level
+    // gallery — mockups are surfaced alongside the product they represent.
+    // `mockups` is an array to support future multi-mockup line items; today a
+    // line item carries a single `mockupUri`.
     const clientLineItems = lineItems.map((item: any) => ({
       id: item.id,
       designName: item.designName || '',
+      product: item.product || '',
+      productColor: item.productColor || '',
       serviceStyle: item.serviceStyle || '',
       location1: item.location1 || '',
       location2: item.location2 || '',
@@ -50,15 +56,8 @@ export async function GET(_req: Request, { id }: { id: string }) {
         color: v.color || '',
         sizes: v.sizes || {},
       })),
+      mockups: item.mockupUri ? [resolveMockup(item.mockupUri)] : [],
     }));
-
-    const mockups = lineItems
-      .filter((item: any) => item.mockupUri)
-      .map((item: any) => ({
-        id: item.id,
-        designName: item.designName || '',
-        uri: resolveMockup(item.mockupUri),
-      }));
 
     const orgResult = p.organizationId
       ? await pool.query(`SELECT name FROM "Organization" WHERE id = $1`, [p.organizationId])
@@ -93,15 +92,16 @@ export async function GET(_req: Request, { id }: { id: string }) {
       waveInvoiceLink: p.waveInvoiceLink || null,
       status: p.frontendStatus || 'quoted',
       lineItems: clientLineItems,
-      mockups,
       files,
+      // Katalyst pricing terminology — customer-safe fee rows only. Never expose
+      // cost / markup / margin / COGS / vendor pricing. `rushFee` is reserved for
+      // a future rush charge and is null until calculations write it.
       subtotal: calculations?.subtotal ?? null,
+      onlineFee: calculations?.onlineFee ?? null,
+      cardFee: calculations?.cardFee ?? null,
       salesTax: calculations?.salesTax ?? null,
-      processingFee:
-        calculations != null
-          ? (Number(calculations.onlineFee) || 0) + (Number(calculations.cardFee) || 0)
-          : null,
       shipping: calculations?.shipping ?? null,
+      rushFee: calculations?.rushFee ?? null,
       total: calculations?.total ?? null,
       totalPerPiece: calculations?.totalPerPiece ?? null,
       hasCalculations: !!calculations,

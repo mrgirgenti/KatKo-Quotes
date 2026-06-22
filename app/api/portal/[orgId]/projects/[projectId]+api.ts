@@ -99,12 +99,14 @@ export async function GET(
     const safeCalc = calculations
       ? {
           subtotal: calculations.subtotal ?? null,
+          // Katalyst customer-facing fee terminology: separate Online Fee and
+          // Card Fee rows (never a combined "Processing & Handling"). Rush Fee is
+          // surfaced when present (future field). Only rows with values render.
+          onlineFee: calculations.onlineFee ?? null,
+          cardFee: calculations.cardFee ?? null,
+          rushFee: calculations.rushFee ?? null,
           salesTax: calculations.salesTax ?? null,
           shipping: calculations.shipping ?? null,
-          // Customer-paid card/online fees are surfaced as a single combined
-          // "Processing & Handling" amount — never as a fee-rate breakdown.
-          processingFee:
-            (Number(calculations.onlineFee) || 0) + (Number(calculations.cardFee) || 0) || null,
           total: calculations.total ?? null,
           totalPerPiece: calculations.totalPerPiece ?? null,
           totalQuantity: calculations.totalQuantity ?? null,

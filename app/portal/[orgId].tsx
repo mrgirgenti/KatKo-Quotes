@@ -122,6 +122,7 @@ interface PortalProject {
   lineItemCount: number;
   designCount: number;
   thumbUri: string | null;
+  primaryImageUri: string | null;
   mockupCount: number;
   artworkCount: number;
   proofCount: number;
@@ -246,6 +247,133 @@ const CUSTOMER_SIZE_LABELS: Array<{ key: string; label: string }> = [
   { key: 'l', label: 'LG' }, { key: 'xl', label: 'XL' }, { key: 'xxl', label: '2XL' },
   { key: 'xxxl', label: '3XL' }, { key: 'xxxxl', label: '4XL' },
 ];
+
+// Customer-facing line-item product card. Each line item OWNS its mockup(s):
+// a hero image plus an optional thumbnail strip (selectable when a line item
+// carries more than one mockup). A line item carries a single `mockupUri` today;
+// it is modeled as an array so this UI is ready for future multi-mockup items.
+// Never renders cost / vendor / applicator / internal data.
+function PortalCustomerLineItemCard({ li, index, orgIdForFiles }: { li: any; index: number; orgIdForFiles: string }) {
+  const [activeMockup, setActiveMockup] = useState(0);
+
+  const variants = Array.isArray(li.garmentVariants) && li.garmentVariants.length > 0 ? li.garmentVariants : null;
+  const sizeSets = variants ? variants.map((v: any) => v.sizes ?? {}) : [li.sizes ?? {}];
+  const qty = sizeSets.reduce((s: number, sz: any) => s + Object.values(sz).reduce((a: number, v: any) => a + (Number(v) || 0), 0), 0);
+  const sizeAgg: Record<string, number> = {};
+  sizeSets.forEach((sz: any) => CUSTOMER_SIZE_LABELS.forEach(s => { sizeAgg[s.key] = (sizeAgg[s.key] || 0) + (Number(sz[s.key]) || 0); }));
+  const activeSizes = CUSTOMER_SIZE_LABELS.filter(s => (sizeAgg[s.key] || 0) > 0);
+  const products = variants
+    ? variants.map((v: any) => [v.product, v.color].filter(Boolean).join(' — ')).filter(Boolean)
+    : [[li.product, li.productColor].filter(Boolean).join(' — ')].filter(Boolean);
+  const locations = [li.location1, li.location2, li.location3, li.location4].filter(Boolean).join(', ');
+
+  const mockups: string[] = (li.mockupUri ? [li.mockupUri] : [])
+    .map((u: string) => resolveMockupUrl(u, orgIdForFiles))
+    .filter(Boolean);
+  const heroUri = mockups[activeMockup] || mockups[0] || '';
+
+  const openMockup = (uri: string) => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && uri) window.open(uri, '_blank');
+  };
+  const triggerDownload = (url: string, name: string) => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined' && url) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name || '';
+      a.click();
+    }
+  };
+
+  return (
+    <View style={[pvStyles.liCard, index > 0 && { marginTop: 16 }]}>
+      {/* Item header */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+          <View style={{ backgroundColor: BRAND, width: 22, height: 22, borderRadius: 4, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>#{index + 1}</Text>
+          </View>
+          <Text style={pvStyles.lineItemName} numberOfLines={1}>{li.designName || `Item ${index + 1}`}</Text>
+        </View>
+        <View style={{ backgroundColor: '#FFF4EE', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4 }}>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: BRAND }}>{qty} pcs</Text>
+        </View>
+      </View>
+
+      {/* Mockup hero — owned and displayed by this line item */}
+      {heroUri ? (
+        <View style={pvStyles.liMockupSection}>
+          <View style={pvStyles.liHeroWrap}>
+            <Image source={{ uri: heroUri }} style={pvStyles.liHeroImg} resizeMode="contain" />
+            <View style={pvStyles.assetActions}>
+              <TouchableOpacity style={pvStyles.assetBtn} onPress={() => openMockup(heroUri)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                <Maximize2 size={13} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity style={pvStyles.assetBtn} onPress={() => triggerDownload(heroUri, li.designName || `mockup-${index + 1}`)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                <Download size={13} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </View>
+          {mockups.length > 1 ? (
+            <View style={pvStyles.liThumbStrip}>
+              {mockups.map((m, mi) => (
+                <TouchableOpacity key={mi} style={[pvStyles.liThumb, mi === activeMockup && pvStyles.liThumbActive]} activeOpacity={0.8} onPress={() => setActiveMockup(mi)}>
+                  <Image source={{ uri: m }} style={pvStyles.liThumbImg} resizeMode="cover" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
+      {/* Customer-facing details (no cost / vendor / applicator) */}
+      <View style={{ gap: 8, marginBottom: activeSizes.length > 0 ? 14 : 0 }}>
+        {products.length > 0 ? (
+          <View style={pvStyles.detailRow}>
+            <Tag size={13} color={TEXT_LIGHT} />
+            <Text style={pvStyles.detailLabel}>Product</Text>
+            <Text style={pvStyles.detailValue}>{products.join('   •   ')}</Text>
+          </View>
+        ) : null}
+        {li.serviceStyle ? (
+          <View style={pvStyles.detailRow}>
+            <Layers size={13} color={TEXT_LIGHT} />
+            <Text style={pvStyles.detailLabel}>Service</Text>
+            <Text style={pvStyles.detailValue}>{li.serviceStyle}</Text>
+          </View>
+        ) : null}
+        {locations ? (
+          <View style={pvStyles.detailRow}>
+            <MapPin size={13} color={TEXT_LIGHT} />
+            <Text style={pvStyles.detailLabel}>Locations</Text>
+            <Text style={pvStyles.detailValue}>{locations}</Text>
+          </View>
+        ) : null}
+        {li.locationDetails ? (
+          <View style={pvStyles.detailRow}>
+            <FileText size={13} color={TEXT_LIGHT} />
+            <Text style={pvStyles.detailLabel}>Details</Text>
+            <Text style={pvStyles.detailValue}>{li.locationDetails}</Text>
+          </View>
+        ) : null}
+      </View>
+
+      {/* Sizes + quantities */}
+      {activeSizes.length > 0 ? (
+        <View>
+          <Text style={[pvStyles.metaLabel, { marginBottom: 8 }]}>SIZES + QUANTITIES</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {activeSizes.map(s => (
+              <View key={s.key} style={pvStyles.sizeBox}>
+                <Text style={pvStyles.sizeLabel}>{s.label}</Text>
+                <Text style={pvStyles.sizeQty}>{sizeAgg[s.key]}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 function escapeHtml(s: any): string {
   return String(s ?? '')
@@ -2421,29 +2549,25 @@ export default function ClientPortal() {
     const orgIdForFiles = session?.orgId || '';
     const projFiles = proj?.files ?? [];
 
-    // Customer-safe pricing only — never expose cost / markup / margin / COGS / fee %.
+    // Customer-safe pricing only — Katalyst terminology, fee rows with a value
+    // only. Never expose cost / markup / margin / COGS / fee %. `rushFee` is
+    // reserved for a future rush charge and stays hidden until calc writes it.
     const subtotal = Number(calc?.subtotal) || 0;
-    const tax = Number(calc?.salesTax) || 0;
+    const onlineFee = Number(calc?.onlineFee) || 0;
+    const cardFee = Number(calc?.cardFee) || 0;
+    const salesTax = Number(calc?.salesTax) || 0;
     const shipping = Number(calc?.shipping) || 0;
-    const processing = Number(calc?.processingFee) || 0;
+    const rushFee = Number(calc?.rushFee) || 0;
     const grandTotal = calc?.total != null ? Number(calc.total) : null;
     const perPiece = calc?.totalPerPiece != null && Number(calc.totalPerPiece) > 0 ? Number(calc.totalPerPiece) : null;
     const pricingRows: Array<{ label: string; value: number }> = [];
     if (subtotal > 0) pricingRows.push({ label: 'Subtotal', value: subtotal });
-    if (tax > 0) pricingRows.push({ label: 'Tax', value: tax });
+    if (onlineFee > 0) pricingRows.push({ label: 'Online Fee', value: onlineFee });
+    if (cardFee > 0) pricingRows.push({ label: 'Card Fee', value: cardFee });
+    if (salesTax > 0) pricingRows.push({ label: 'Sales Tax', value: salesTax });
     if (shipping > 0) pricingRows.push({ label: 'Shipping', value: shipping });
-    if (processing > 0) pricingRows.push({ label: 'Processing & Handling', value: processing });
+    if (rushFee > 0) pricingRows.push({ label: 'Rush Fee', value: rushFee });
     const isFavorite = proj ? favoriteProjectIds.includes(proj.id) : false;
-    const openMockup = (uri: string) => {
-      if (Platform.OS === 'web' && typeof window !== 'undefined' && uri) window.open(uri, '_blank');
-    };
-
-    const SIZE_LABELS = [
-      { key: 'xs', label: 'XS' }, { key: 's', label: 'SM' },
-      { key: 'm', label: 'MD' }, { key: 'l', label: 'LG' },
-      { key: 'xl', label: 'XL' }, { key: 'xxl', label: '2XL' },
-      { key: 'xxxl', label: '3XL' }, { key: 'xxxxl', label: '4XL' },
-    ];
 
     // ── Project Assets ────────────────────────────────────────────────────
     // Everything tied to this project, categorized by fileType. Mockups are NOT
@@ -2627,10 +2751,34 @@ export default function ClientPortal() {
                 ) : null}
               </View>
 
+              {/* Order Summary — line-item product cards lead the page */}
+              <View style={pvStyles.card}>
+                <Text style={pvStyles.sectionTitle}>Order Summary</Text>
+
+                {lineItems.length === 0 ? (
+                  <Text style={{ color: TEXT_LIGHT, fontSize: 13, marginTop: 8 }}>No items yet.</Text>
+                ) : (
+                  <View style={{ marginTop: 4 }}>
+                    {lineItems.map((li: any, idx: number) => (
+                      <PortalCustomerLineItemCard key={li.id || idx} li={li} index={idx} orgIdForFiles={orgIdForFiles} />
+                    ))}
+                  </View>
+                )}
+
+                {/* Footer summary bar */}
+                {lineItems.length > 0 && (
+                  <View style={pvStyles.lineItemFooter}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>
+                      {lineItems.length} Design{lineItems.length !== 1 ? 's' : ''} • {totalQty} Total Pieces
+                    </Text>
+                  </View>
+                )}
+              </View>
+
               {/* Project Assets — single download center for the whole project */}
               <View style={pvStyles.card}>
                 <Text style={pvStyles.sectionTitle}>Project Assets</Text>
-                <Text style={pvStyles.sectionSub}>Everything tied to this project — artwork, invoices, proofs and downloads. Mockups live on each line item below.</Text>
+                <Text style={pvStyles.sectionSub}>Everything tied to this project — artwork, invoices, proofs and downloads. Mockups live on each line item above.</Text>
 
                 {/* Artwork */}
                 {artworkFiles.length > 0 && (
@@ -2696,116 +2844,6 @@ export default function ClientPortal() {
                   <Text style={{ fontSize: 12, color: TEXT_LIGHT, marginTop: 12, lineHeight: 18 }}>
                     No artwork, proofs, or invoices have been added to this project yet. Your project summary is always available to download above.
                   </Text>
-                )}
-              </View>
-
-              {/* Order Summary */}
-              <View style={pvStyles.card}>
-                <Text style={pvStyles.sectionTitle}>Order Summary</Text>
-
-                {lineItems.length === 0 ? (
-                  <Text style={{ color: TEXT_LIGHT, fontSize: 13, marginTop: 8 }}>No items yet.</Text>
-                ) : (
-                  lineItems.map((li: any, idx: number) => {
-                    const variants = Array.isArray(li.garmentVariants) && li.garmentVariants.length > 0 ? li.garmentVariants : null;
-                    const sizeSets = variants ? variants.map((v: any) => v.sizes ?? {}) : [li.sizes ?? {}];
-                    const qty = sizeSets.reduce((s: number, sz: any) => s + Object.values(sz).reduce((a: number, v: any) => a + (Number(v) || 0), 0), 0);
-                    const sizeAgg: Record<string, number> = {};
-                    sizeSets.forEach((sz: any) => SIZE_LABELS.forEach(s => { sizeAgg[s.key] = (sizeAgg[s.key] || 0) + (Number(sz[s.key]) || 0); }));
-                    const activeSizes = SIZE_LABELS.filter(s => (sizeAgg[s.key] || 0) > 0);
-                    const products = variants
-                      ? variants.map((v: any) => [v.product, v.color].filter(Boolean).join(' — ')).filter(Boolean)
-                      : [[li.product, li.productColor].filter(Boolean).join(' — ')].filter(Boolean);
-                    const locations = [li.location1, li.location2, li.location3, li.location4].filter(Boolean).join(', ');
-                    const mockupUrl = li.mockupUri ? resolveMockupUrl(li.mockupUri, orgIdForFiles) : null;
-                    return (
-                      <View key={li.id || idx} style={[pvStyles.lineItemBlock, idx > 0 && { marginTop: 20, paddingTop: 20, borderTopWidth: 1, borderTopColor: BORDER }]}>
-                        {/* Item header */}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                            <View style={{ backgroundColor: BRAND, width: 22, height: 22, borderRadius: 4, alignItems: 'center', justifyContent: 'center' }}>
-                              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>#{idx + 1}</Text>
-                            </View>
-                            <Text style={pvStyles.lineItemName} numberOfLines={1}>{li.designName || `Item ${idx + 1}`}</Text>
-                          </View>
-                          <View style={{ backgroundColor: '#FFF4EE', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4 }}>
-                            <Text style={{ fontSize: 12, fontWeight: '700', color: BRAND }}>{qty} pcs</Text>
-                          </View>
-                        </View>
-
-                        {/* Mockup — owned and displayed by this line item */}
-                        {mockupUrl ? (
-                          <View style={pvStyles.liMockupWrap}>
-                            <Image source={{ uri: mockupUrl }} style={pvStyles.liMockupImg} resizeMode="contain" />
-                            <View style={pvStyles.assetActions}>
-                              <TouchableOpacity style={pvStyles.assetBtn} onPress={() => openMockup(mockupUrl)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-                                <Maximize2 size={13} color="#fff" />
-                              </TouchableOpacity>
-                              <TouchableOpacity style={pvStyles.assetBtn} onPress={() => triggerDownload(mockupUrl, li.designName || `mockup-${idx + 1}`)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-                                <Download size={13} color="#fff" />
-                              </TouchableOpacity>
-                            </View>
-                          </View>
-                        ) : null}
-
-                        {/* Customer-facing details (no cost / vendor / applicator) */}
-                        <View style={{ gap: 8, marginBottom: activeSizes.length > 0 ? 14 : 0 }}>
-                          {products.length > 0 ? (
-                            <View style={pvStyles.detailRow}>
-                              <Tag size={13} color={TEXT_LIGHT} />
-                              <Text style={pvStyles.detailLabel}>Product</Text>
-                              <Text style={pvStyles.detailValue}>{products.join('   •   ')}</Text>
-                            </View>
-                          ) : null}
-                          {li.serviceStyle ? (
-                            <View style={pvStyles.detailRow}>
-                              <Layers size={13} color={TEXT_LIGHT} />
-                              <Text style={pvStyles.detailLabel}>Service</Text>
-                              <Text style={pvStyles.detailValue}>{li.serviceStyle}</Text>
-                            </View>
-                          ) : null}
-                          {locations ? (
-                            <View style={pvStyles.detailRow}>
-                              <MapPin size={13} color={TEXT_LIGHT} />
-                              <Text style={pvStyles.detailLabel}>Locations</Text>
-                              <Text style={pvStyles.detailValue}>{locations}</Text>
-                            </View>
-                          ) : null}
-                          {li.locationDetails ? (
-                            <View style={pvStyles.detailRow}>
-                              <FileText size={13} color={TEXT_LIGHT} />
-                              <Text style={pvStyles.detailLabel}>Details</Text>
-                              <Text style={pvStyles.detailValue}>{li.locationDetails}</Text>
-                            </View>
-                          ) : null}
-                        </View>
-
-                        {/* Sizes + quantities */}
-                        {activeSizes.length > 0 ? (
-                          <View>
-                            <Text style={[pvStyles.metaLabel, { marginBottom: 8 }]}>SIZES + QUANTITIES</Text>
-                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                              {activeSizes.map(s => (
-                                <View key={s.key} style={pvStyles.sizeBox}>
-                                  <Text style={pvStyles.sizeLabel}>{s.label}</Text>
-                                  <Text style={pvStyles.sizeQty}>{sizeAgg[s.key]}</Text>
-                                </View>
-                              ))}
-                            </View>
-                          </View>
-                        ) : null}
-                      </View>
-                    );
-                  })
-                )}
-
-                {/* Footer summary bar */}
-                {lineItems.length > 0 && (
-                  <View style={pvStyles.lineItemFooter}>
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>
-                      {lineItems.length} Design{lineItems.length !== 1 ? 's' : ''} • {totalQty} Total Pieces
-                    </Text>
-                  </View>
                 )}
               </View>
 
@@ -6234,23 +6272,23 @@ const pvStyles = StyleSheet.create({
   assetTileName: { fontSize: 11, fontWeight: '600', color: TEXT, lineHeight: 15 },
   assetTileMetaLine: { fontSize: 10, color: TEXT_LIGHT },
 
-  liMockupWrap: {
-    position: 'relative',
-    alignSelf: 'flex-start',
-    width: '100%',
-    maxWidth: 260,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: BORDER,
-    backgroundColor: '#F9FAFB',
-    overflow: 'hidden',
-    marginBottom: 14,
+  liCard: {
+    borderWidth: 1, borderColor: BORDER, borderRadius: 12, padding: 14,
+    backgroundColor: '#fff',
   },
-  liMockupImg: {
-    width: '100%',
-    aspectRatio: 1,
-    backgroundColor: '#F3F4F6',
+  liMockupSection: { marginBottom: 14 },
+  liHeroWrap: {
+    position: 'relative', width: '100%', borderRadius: 10, borderWidth: 1,
+    borderColor: BORDER, backgroundColor: '#F9FAFB', overflow: 'hidden',
   },
+  liHeroImg: { width: '100%', aspectRatio: 4 / 3, backgroundColor: '#F3F4F6' },
+  liThumbStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
+  liThumb: {
+    width: 52, height: 52, borderRadius: 8, borderWidth: 1, borderColor: BORDER,
+    overflow: 'hidden', backgroundColor: '#F9FAFB',
+  },
+  liThumbActive: { borderColor: BRAND, borderWidth: 2 },
+  liThumbImg: { width: '100%', height: '100%' },
 
   fileRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,

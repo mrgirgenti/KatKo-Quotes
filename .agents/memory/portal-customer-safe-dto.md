@@ -20,11 +20,14 @@ unauthenticated client without realizing it. A regression here exposes margins.
 - Rebuild `lineItemsData` by mapping only customer-safe keys (designName,
   serviceStyle, locations, product, productColor, mockupUri, sizes, and a
   recursively-whitelisted `garmentVariants`).
-- Rebuild `calculations` to only: subtotal, salesTax, shipping, total,
-  totalPerPiece, totalQuantity, and a single combined `processingFee`.
-- **Fee presentation rule:** combine `onlineFee` + `cardFee` into ONE
-  `processingFee` ("Processing & Handling"). Never expose the separate fee
-  fields or any fee *rate/percentage* — only the combined customer-paid dollar
-  amount.
+- Rebuild `calculations` to only: subtotal, onlineFee, cardFee, rushFee,
+  salesTax, shipping, total, totalPerPiece, totalQuantity.
+- **Fee presentation rule (Katalyst terminology):** surface `onlineFee` and
+  `cardFee` as SEPARATE rows — "Online Fee" and "Card Fee" — plus a future
+  "Rush Fee" (`rushFee`). NEVER combine them into a single "Processing &
+  Handling" amount (that was the old behavior and is now wrong). Render a fee
+  row only when its value > 0. Never expose any fee *rate/percentage*, only the
+  customer-paid dollar amounts. Both customer surfaces (quote detail API and
+  project detail API) must emit the same fee shape.
 - When leak-checking with regex, base64 mockup `data:` URIs produce false-positive
   substring hits for `cost`/`cog`; verify against actual JSON keys, not substrings.
