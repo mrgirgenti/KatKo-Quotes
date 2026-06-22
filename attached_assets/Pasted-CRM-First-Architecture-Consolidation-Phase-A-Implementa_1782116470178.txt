@@ -1,0 +1,170 @@
+CRM-First Architecture Consolidation — Phase A Implementation
+
+Execute Phase A only.
+
+Do not begin Phase B, C, D, or E.
+
+Do not redesign UI.
+
+Do not remove screens.
+
+Do not move management interfaces.
+
+Do not implement Contacts table enhancements yet.
+
+Focus exclusively on data integrity and relationship consolidation.
+
+---
+
+## OBJECTIVE
+
+Establish a single authoritative relationship between:
+
+Contact
+User
+OrganizationMembership
+
+using linkedUserId.
+
+This phase exists to eliminate synchronization issues before UI changes.
+
+---
+
+## PHASE A
+
+Audit all locations where Contacts are matched to Users or Memberships.
+
+Identify:
+
+* email matching
+* string matching
+* duplicate matching logic
+* mixed matching strategies
+
+Current finding:
+
+crm/[id].tsx uses email matching
+
+hub/[id].tsx uses linkedUserId matching
+
+This inconsistency is creating synchronization issues.
+
+---
+
+## TASK 1
+
+Standardize all Contact → User → Membership relationships on:
+
+linkedUserId
+
+linkedUserId becomes the authoritative key.
+
+Stop using email matching for relationship resolution.
+
+---
+
+## TASK 2
+
+Backfill linkedUserId relationships for existing records.
+
+Safely identify:
+
+Contact
+↔ User
+↔ Membership
+
+pairs that are currently connected only by email.
+
+Generate report:
+
+Contacts updated
+
+Users linked
+
+Memberships linked
+
+Potential conflicts
+
+Do not blindly overwrite.
+
+Flag uncertain matches.
+
+---
+
+## TASK 3
+
+Audit all Team Member calculations.
+
+Audit all Hub User calculations.
+
+Audit all Org Admin calculations.
+
+Convert them to use linkedUserId relationships.
+
+---
+
+## TASK 4
+
+Audit readiness calculations.
+
+Audit Hub metrics.
+
+Audit Hub counts.
+
+Identify all places still using:
+
+email matching
+
+membership-only counts
+
+duplicate logic
+
+---
+
+## TASK 5
+
+Verify portal login still functions.
+
+Verify:
+
+Contact
+↓
+User
+↓
+Membership
+↓
+Portal Access
+
+remains intact.
+
+Do not alter authentication.
+
+Do not alter Clerk.
+
+Do not alter passwords.
+
+---
+
+## OUTPUT
+
+Return:
+
+1. Files changed
+2. linkedUserId audit findings
+3. Records backfilled
+4. Email-matching locations removed
+5. Remaining synchronization risks
+6. Readiness calculation findings
+7. Hub metric findings
+8. Portal access verification
+9. Recommended Phase B scope
+
+Phase A only.
+
+No UI changes.
+
+No Contacts table redesign.
+
+No Hub Management redesign.
+
+No Client Hub redesign.
