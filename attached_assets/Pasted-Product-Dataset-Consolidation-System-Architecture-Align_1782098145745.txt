@@ -1,0 +1,256 @@
+Product Dataset Consolidation + System Architecture Alignment
+
+STOP.
+
+Before performing any product migration, deletion, reset, import, quote integration, mockup integration, or catalog consolidation, align the architecture around the following requirements.
+
+This is the approved system direction.
+
+Source of Truth
+
+The curated catalog spreadsheet is the source of truth.
+
+Products represents Katalyst Ko's recommended products.
+
+Products does NOT represent every product we can sell.
+
+Products does NOT represent every product available from vendor catalogs.
+
+Products is a curated library.
+
+The user has finalized the product list.
+
+Do not add products.
+
+Do not remove products.
+
+Do not replace products.
+
+Do not optimize products.
+
+Do not recommend alternative products.
+
+Do not import products that are not included in the approved catalog spreadsheet.
+
+Architecture Goal
+
+The Products database is not just a page.
+
+The Products database is a shared Product Dataset.
+
+The following systems must all consume the same Product Dataset:
+
+* Products Page
+* New Quote → Products + Sizes
+* Start A Project → Products + Sizes
+* Mockup Designer
+* Client Hubs
+
+Do not maintain separate product lists.
+
+Do not maintain separate color lists.
+
+Do not maintain separate vendor lists.
+
+Do not maintain separate garment style lists.
+
+All product information should originate from the Product Dataset.
+
+Product Dataset Responsibilities
+
+The Product Dataset becomes the source of truth for:
+
+* Style Number
+* Brand
+* Product Name
+* Category
+* Product Type
+* Colors
+* Vendors
+* Placement Template
+* Default Cost
+* Assets
+
+Products Page
+
+The Products page is only an interface for managing the Product Dataset.
+
+It is not the source of truth.
+
+The Product Dataset is the source of truth.
+
+Catalog Strategy
+
+Products are curated recommendations.
+
+Future vendor catalogs remain separate.
+
+Examples:
+
+* S&S Activewear
+* SanMar
+* McCreary's
+* Shaka Wear
+* Independent Trading
+* LA Apparel
+* Momentec
+
+Future vendor APIs should NOT import thousands of products into Products.
+
+Future workflow:
+
+Priority 1:
+Curated Products
+
+Priority 2:
+Vendor Catalog Search
+
+Priority 3:
+Manual Product Entry
+
+Products should remain a curated recommendation library.
+
+Quotes must never be restricted by Products.
+
+Quotes
+
+Quotes must support:
+
+1. Curated Products
+2. Manual Products
+3. Future API Products
+
+Products enhance quoting.
+
+Products never restrict quoting.
+
+If a Product is selected:
+
+Store an optional productId reference.
+
+Do not require productId.
+
+Manual products must remain valid.
+
+API products must remain valid.
+
+Snapshot Rule
+
+The Product record contains a Default Cost.
+
+When a Product is selected from:
+
+* Client Hub
+* Start A Project
+* New Quote
+
+the Default Cost may be used to pre-populate the Quote line item Product Cost field.
+
+After the Quote line item is created:
+
+The Quote line item owns its own Product Cost value.
+
+Changes made to the Quote line item cost do not update the Product record.
+
+Future changes to the Product record do not update existing Quotes.
+
+Product Cost provides the default value.
+
+Quote Cost becomes the source of truth.
+
+Track:
+
+* default_product_cost
+* manual_override
+
+as the cost source.
+
+Client Hub Workflow
+
+Clients never see pricing.
+
+Clients may select:
+
+* Product
+* Color
+* Sizes
+
+from the Product Dataset.
+
+Submitted projects should preserve the selected Product reference.
+
+When a team member converts a submitted project into a quote:
+
+Auto-populate:
+
+* Product
+* Color
+* Vendor options
+* Default Cost
+
+from the Product Dataset.
+
+The default cost becomes the initial quote value.
+
+The quote may then be edited independently.
+
+Mockup Designer
+
+The Mockup Designer should consume the same Product Dataset.
+
+Do not maintain a separate mockup product catalog.
+
+Product selection should come from the Product Dataset.
+
+Colors should come from the Product Dataset.
+
+Placement templates should come from the Product Dataset.
+
+Mockups must still support:
+
+* Curated Products
+* Manual Products
+* Generic Mockup Products
+
+because not every quoted product will exist in the Product Dataset.
+
+Migration Safety Rules
+
+Before any migration:
+
+1. Compare spreadsheet against current Product Dataset.
+
+2. Produce:
+
+* Products to Create
+* Products to Update
+* Products to Ignore
+
+3. Do not delete anything automatically.
+
+4. Do not migrate products not found in the approved spreadsheet.
+
+5. Present migration results for approval before executing.
+
+Required Output
+
+Return:
+
+* Current architecture conflicts
+* Systems using legacy product data
+* Systems using hardcoded product lists
+* Migration plan
+* Quote integration impact
+* Client Hub impact
+* Mockup Designer impact
+* Catalog impact
+* Risks
+* Recommended implementation order
+
+Do not perform migration.
+
+Do not perform deletion.
+
+Do not perform reset.
+
+Analysis and implementation plan only.
