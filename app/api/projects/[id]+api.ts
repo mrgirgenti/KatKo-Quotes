@@ -72,7 +72,6 @@ function toFrontendQuote(p: any): Quote {
     proofApproved: p.proofApproved ?? false,
     priority: dbPriorityToFrontend(p.priority),
     assignedToUserId: p.assignedToUserId ?? null,
-    rush: p.rush ?? false,
   } as Quote;
 }
 
@@ -166,7 +165,7 @@ export async function PUT(request: Request, { id }: { id: string }) {
       `SELECT "frontendStatus", "organizationId", title,
               "operationalStatus", "holdReason", "holdNotes", "holdPlacedAt", "holdPlacedBy",
               "deliveryMethod", "paymentReceived", "artworkReceived", "proofApproved",
-              priority, "assignedToUserId", rush
+              priority, "assignedToUserId"
        FROM "Project" WHERE id = $1`,
       [id],
     );
@@ -207,8 +206,6 @@ export async function PUT(request: Request, { id }: { id: string }) {
       ? (prev?.priority ?? 'NORMAL')
       : frontendPriorityToDb(b.priority);
 
-    const rush = keep(b.rush, prev?.rush ?? false);
-
     // Assignee FK must reference an existing User (or be null). Validate to avoid
     // FK-violation 500s when a stale id is sent.
     let assignedToUserId: string | null = keep(b.assignedToUserId, prev?.assignedToUserId ?? null);
@@ -230,7 +227,7 @@ export async function PUT(request: Request, { id }: { id: string }) {
         "operationalStatus" = $24, "holdReason" = $25, "holdNotes" = $26,
         "holdPlacedAt" = $27, "holdPlacedBy" = $28, "deliveryMethod" = $29,
         "paymentReceived" = $30, "artworkReceived" = $31, "proofApproved" = $32,
-        priority = $33::"PriorityLevel", "assignedToUserId" = $34, rush = $35,
+        priority = $33::"PriorityLevel", "assignedToUserId" = $34,
         "updatedAt" = NOW()
       WHERE id = $23 RETURNING *`,
       [
@@ -268,7 +265,6 @@ export async function PUT(request: Request, { id }: { id: string }) {
         proofApproved,
         priority,
         assignedToUserId,
-        rush,
       ],
     );
     if (!result.rows[0]) return Response.json({ error: 'Not found' }, { status: 404 });

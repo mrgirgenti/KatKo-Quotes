@@ -73,7 +73,6 @@ function toFrontendQuote(p: any): Quote {
     proofApproved: p.proofApproved ?? false,
     priority: dbPriorityToFrontend(p.priority),
     assignedToUserId: p.assignedToUserId ?? null,
-    rush: p.rush ?? false,
   } as Quote;
 }
 
@@ -179,12 +178,12 @@ export async function POST(request: Request) {
         "invoiceNumber", "projectNumber", "hasOnlineFee", "hasSalesTax", "hasCardFee",
         calculations, "salesData", "lineItemsData", "frontendStatus", status,
         "createdByUserId", "activeDate", "isLocked", "lockedDate",
-        "exportedToSheets", "exportedToSheetsDate", priority, "assignedToUserId", rush,
+        "exportedToSheets", "exportedToSheetsDate", priority, "assignedToUserId",
         "createdAt", "updatedAt"
       ) VALUES (
         gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
         $12::jsonb, $13::jsonb, $14::jsonb, $15, $16::"ProjectStatus",
-        $17, $18, $19, $20, $21, $22, $23::"PriorityLevel", $24, $25, NOW(), NOW()
+        $17, $18, $19, $20, $21, $22, $23::"PriorityLevel", $24, NOW(), NOW()
       ) RETURNING *`,
       [
         body.projectName || 'Untitled',
@@ -215,7 +214,6 @@ export async function POST(request: Request) {
         (body as any).exportedToSheetsDate ?? null,
         frontendPriorityToDb((body as any).priority),
         (body as any).assignedToUserId ?? null,
-        (body as any).rush ?? false,
       ],
     );
     const created = result.rows[0];

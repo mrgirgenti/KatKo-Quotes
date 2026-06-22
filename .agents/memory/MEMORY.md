@@ -10,6 +10,7 @@
 - [Overlay & header patterns](overlay-and-header-patterns.md) — floating menus must use `OverlayMenu`/Modal portal, never absolute siblings (they get clipped); detail pages use shared `PageBackHeader`.
 - [Production module + dual-status](production-and-status-model.md) — Production tab is a LENS over operational projects (no own table); Priority is a real field (RUSH→High); UI runs on `frontendStatus` string + `lineItemsData` JSON, NOT Prisma enums.
 - [Prisma db push drift](prisma-push-drift.md) — db push wants to DROP unrelated drifted columns (e.g. Quote.projectNumber); for additive changes use a targeted ALTER, never --accept-data-loss.
+- [Schema-DB column drift](schema-db-drift.md) — schema.prisma can have fields (e.g. `rush`, `address`) that were never migrated to the real DB; any raw SQL referencing them 500s. Always verify actual columns via information_schema before trusting the schema file.
 - [Safari WebKit scrollbar](safari-scrollbar-fix.md) — scrollbar-width:none is Firefox/Chrome only; add *::-webkit-scrollbar{display:none} in both SSR head (+html.tsx) and runtime CSS injection (_layout.tsx) to kill the blue track in Safari.
 - [Expo SSR deployment](expo-ssr-deployment.md) — autoscale prod run MUST be `expo serve` (not `expo start`) or health check fails; never use `static` target (kills API routes).
 - [Clerk auth FROZEN](clerk-frozen.md) — Auth is complete & frozen. Never plan, touch, validate, or mention Clerk/auth unless user explicitly requests it.

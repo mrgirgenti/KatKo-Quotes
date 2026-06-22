@@ -1,0 +1,171 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Joshy G — Team Shirts</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 36px; color: #1a1a1a; font-size: 12px; }
+        .header { border-bottom: 3px solid #FF5A00; padding-bottom: 18px; margin-bottom: 20px; }
+        .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+        .company-name { font-size: 22px; font-weight: 700; color: #FF5A00; }
+        .company-details { font-size: 11px; color: #666; margin-top: 3px; }
+        .quote-badge { background: #FF5A00; color: white; padding: 6px 14px; border-radius: 4px; font-weight: 700; font-size: 12px; letter-spacing: 1px; }
+        .sale-badge { background: #059669; }
+        .client-info { margin-top: 14px; }
+        .client-name { font-size: 20px; font-weight: 700; }
+        .project-name { font-size: 14px; color: #444; margin-top: 3px; }
+        .invoice-number { font-size: 12px; color: #FF5A00; font-weight: 600; margin-top: 6px; }
+        .section { margin-bottom: 20px; }
+        .section-title { font-size: 11px; font-weight: 700; margin-bottom: 10px; color: #fff; background: #111; padding: 6px 10px; border-radius: 4px; text-transform: uppercase; letter-spacing: 1px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .info-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+        .info-value { font-size: 13px; font-weight: 600; margin-top: 2px; }
+        .line-item { border: 1px solid #e5e5e5; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+        .line-item-header { display: flex; align-items: center; gap: 10px; background: #111; padding: 10px 14px; }
+        .line-number { background: #FF5A00; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+        .line-header-info { flex: 1; }
+        .design-name { font-weight: 600; font-size: 13px; color: #fff; display: block; }
+        .line-service { font-size: 11px; color: rgba(255,255,255,0.6); display: block; margin-top: 1px; }
+        .line-qty { font-size: 12px; font-weight: 700; color: #FF5A00; flex-shrink: 0; }
+        .details-table { width: 100%; font-size: 11px; padding: 10px 14px; }
+        .details-table td { padding: 3px 0; }
+        .details-table .label { color: #888; width: 70px; font-weight: 600; }
+        .costs-row { display: flex; gap: 8px; padding: 10px 14px; background: #f9f9f9; border-top: 1px solid #eee; }
+        .cost-item { flex: 1; text-align: center; }
+        .cost-label { display: block; font-size: 10px; color: #888; text-transform: uppercase; }
+        .cost-value { display: block; font-size: 12px; font-weight: 600; margin-top: 2px; }
+        .summary-table { width: 100%; border-collapse: collapse; }
+        .summary-table td { padding: 5px 0; font-size: 12px; }
+        .summary-table .label-col { color: #555; }
+        .summary-table .val-col { text-align: right; font-weight: 500; }
+        .summary-table .bold td { font-weight: 700; color: #111; }
+        .summary-table .divider td { border-top: 1px solid #e5e5e5; padding-top: 8px; margin-top: 4px; }
+        .total-box { background: #FF5A00; color: white; border-radius: 8px; padding: 14px 16px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .total-label { font-size: 14px; font-weight: 700; letter-spacing: 1px; }
+        .total-values { text-align: right; }
+        .total-main { font-size: 24px; font-weight: 800; }
+        .total-per-piece { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+        .markup-highlight { color: #16A34A; font-weight: 700; }
+        .sales-section { margin-top: 20px; }
+        .profit-box { color: white; border-radius: 8px; padding: 14px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .profit-positive { background: #059669; }
+        .profit-negative { background: #dc2626; }
+        .profit-label { font-size: 12px; font-weight: 700; letter-spacing: 0.5px; }
+        .profit-values { text-align: right; }
+        .profit-amount { font-size: 22px; font-weight: 800; }
+        .profit-margin { font-size: 11px; opacity: 0.8; }
+        .footer { margin-top: 28px; text-align: center; font-size: 10px; color: #aaa; border-top: 1px solid #eee; padding-top: 14px; }
+        @media print { body { padding: 20px; } }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="header-top">
+          <div>
+            <div class="company-name">Katalyst Ko Printshop</div>
+            
+          </div>
+          <div class="quote-badge ">QUOTE</div>
+        </div>
+        <div class="client-info">
+          <div class="client-name">Joshy G</div>
+          <div class="project-name">Team Shirts</div>
+          
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Order Information</div>
+        <div class="info-grid">
+          <div>
+            <div class="info-label">Order Date</div>
+            <div class="info-value">Apr 21, 2026</div>
+          </div>
+          <div>
+            <div class="info-label">In-Hands Date</div>
+            <div class="info-value">Apr 30, 2026</div>
+          </div>
+          <div>
+            <div class="info-label">Order Type</div>
+            <div class="info-value">New</div>
+          </div>
+          <div>
+            <div class="info-label">Total Quantity</div>
+            <div class="info-value">37 pcs</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Line Items (1)</div>
+        
+    <div class="line-item">
+      <div class="line-item-header">
+        <span class="line-number">#1</span>
+        <div class="line-header-info">
+          <span class="design-name">Super Fun Tees</span>
+          <span class="line-service">Direct to Film · Katalyst Ko Printshop</span>
+        </div>
+        <span class="line-qty">37 pcs</span>
+      </div>
+      <table class="details-table">
+        <tr><td class="label">Product:</td><td>NL 6210 — Black</td></tr>
+        <tr><td class="label">Source:</td><td></td></tr>
+        <tr><td class="label">Location:</td><td>Left Chest, Full Back</td></tr>
+        <tr><td class="label">Sizes:</td><td>SM: 12, MD: 12, LG: 12, XL: 1</td></tr>
+      </table>
+      <div class="costs-row">
+        <div class="cost-item">
+          <span class="cost-label">Product Cost</span>
+          <span class="cost-value">$5.00/ea</span>
+        </div>
+        <div class="cost-item">
+          <span class="cost-label">Service Cost</span>
+          <span class="cost-value">$5.00/ea</span>
+        </div>
+        <div class="cost-item">
+          <span class="cost-label">Service Fees</span>
+          <span class="cost-value">$35.00/ea</span>
+        </div>
+        <div class="cost-item">
+          <span class="cost-label">Markup</span>
+          <span class="cost-value">$2.00/ea</span>
+        </div>
+      </div>
+    </div>
+  
+      </div>
+
+      <div class="section">
+        <div class="section-title">Pricing Summary</div>
+        <table class="summary-table">
+          <tr><td class="label-col">Product Cost</td><td class="val-col">$5.00/ea</td><td class="val-col">$185.00</td></tr>
+          <tr><td class="label-col">Service Cost</td><td class="val-col">$5.00/ea</td><td class="val-col">$185.00</td></tr>
+          <tr><td class="label-col">Service Fees</td><td class="val-col">$0.95/ea</td><td class="val-col">$35.00</td></tr>
+          <tr class="divider bold"><td class="label-col">Cost of Goods</td><td class="val-col">$10.95/ea</td><td class="val-col">$405.00</td></tr>
+          <tr><td class="label-col markup-highlight">Markup (18.3%)</td><td class="val-col markup-highlight">$2.00/ea</td><td class="val-col markup-highlight">$74.00</td></tr>
+          <tr class="divider bold"><td class="label-col">Subtotal</td><td class="val-col">$12.95/ea</td><td class="val-col">$479.00</td></tr>
+          <tr><td class="label-col">Online Fee (2.9% + $0.60)</td><td></td><td class="val-col">$14.49</td></tr>
+          
+          <tr><td class="label-col">Card Fee (3.75%)</td><td></td><td class="val-col">$17.96</td></tr>
+        </table>
+        <div class="total-box">
+          <span class="total-label">TOTAL</span>
+          <div class="total-values">
+            <div class="total-main">$511.45</div>
+            <div class="total-per-piece">$13.82/ea · 37 pcs</div>
+          </div>
+        </div>
+      </div>
+
+      
+
+      <div class="footer">
+        Generated 6/22/2026 · Katalyst Ko Printshop
+      </div>
+    </body>
+    </html>
+  
