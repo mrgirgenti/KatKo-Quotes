@@ -1,0 +1,357 @@
+Vendor & Product Architecture Enhancement Phase
+
+This phase combines Vendor improvements, Product Detail improvements, and future API readiness into a single implementation cycle.
+
+Execute all items below.
+
+Architecture Reminder
+
+Vendor
+↓
+Product
+↓
+Quote
+↓
+Project
+↓
+Mockup
+↓
+Production
+
+Clients browse Vendor Catalogs.
+
+Team members source from Vendors.
+
+Products remain curated recommendations.
+
+Quotes must continue supporting:
+
+* Recommended Products
+* Manual Products
+
+Do not break Product Model Law.
+
+Recommended products remain optional.
+
+Manual products remain valid.
+
+---
+
+## PART 1 — Vendor Architecture Expansion
+
+Business Definition
+
+A Vendor represents a sourcing partner.
+
+Examples:
+
+* S&S Activewear
+* SanMar
+* McCreary's
+* Shaka Wear
+* Independent Trading
+* LA Apparel
+* Momentec
+* Otto Caps
+
+A Vendor may provide:
+
+* Website
+* Catalog
+* Product Data
+* Colors
+* Pricing
+* Inventory
+* API Access
+
+Vendor records become the foundation for future:
+
+* Product Imports
+* Color Imports
+* Pricing Imports
+* Inventory Imports
+* API Integrations
+
+Step 1
+
+Audit Vendor schema and UI.
+
+Return:
+
+* Current fields
+* Missing fields
+* Future limitations
+
+Step 2
+
+Expand Vendor records to support:
+
+General
+
+* Name
+* Active
+* Notes
+
+Links
+
+* Website URL
+* Catalog URL
+
+Future Integration
+
+* API Enabled
+* API Provider
+* API Status
+* Import Enabled
+* Product Import Enabled
+* Color Import Enabled
+* Pricing Sync Enabled
+* Inventory Sync Enabled
+* Last Sync Date
+
+Do not build integrations.
+
+Only prepare the architecture.
+
+Step 3
+
+Vendor Cards
+
+Redesign Vendor cards.
+
+Display:
+
+Vendor Name
+
+Website
+Catalog
+
+Capabilities
+
+Examples:
+
+✓ Catalog
+✓ Website
+✓ Product Import
+✗ API Connected
+✗ Inventory Sync
+
+Hide capability sections if not applicable.
+
+Keep cards compact.
+
+---
+
+## PART 2 — Product Detail Header Redesign
+
+Implement the approved Product Detail header.
+
+Remove the old stacked layout.
+
+Do not restore Sources or Placements tabs.
+
+Approved Layout
+
+← Back to Products                                   [Edit]
+
+Unisex Jersey Tee                             [Active]
+
+Style #          Brand              Category          Type
+
+BC3001           Bella+Canvas       T-Shirt           Short Sleeve
+
+Cost             Vendors                                    Placement Template
+
+$5.95            S&S • SanMar                             Standard T-Shirt
+
+---
+
+Colors | Assets
+
+Requirements
+
+Maintain compact height.
+
+Maximum header growth:
+
+~5% taller than current header.
+
+Avoid large cards.
+
+Avoid stacked KPI blocks.
+
+Avoid excess whitespace.
+
+Avoid vertical expansion.
+
+Everything should remain dense and operational.
+
+Vendor names should display fully.
+
+Placement Template should remain visible.
+
+Cost should remain visible.
+
+---
+
+## PART 3 — Product Detail Cleanup
+
+Remove ambiguity between:
+
+Sources
+Catalogs
+Vendors
+
+Use Vendor terminology.
+
+Do not rename Vendor to Source.
+
+Do not rename Vendor to Catalog.
+
+Maintain operational language used by Katalyst Ko.
+
+Product Detail should show:
+
+Vendor relationships
+
+not Client Catalog assignments.
+
+---
+
+## PART 4 — Product Readiness Indicators
+
+Add readiness indicators to Product Detail.
+
+Display:
+
+Cost
+
+Colors
+
+Vendor Assignments
+
+Placement Template
+
+Examples:
+
+✓ Cost Set
+✓ Colors Added
+✓ Vendors Assigned
+✗ Placement Template Missing
+
+Compact display only.
+
+No giant cards.
+
+No dashboard-style widgets.
+
+---
+
+## PART 5 — Vendor Assignment Visibility
+
+Products Page
+
+Improve Vendor visibility.
+
+Display:
+
+Vendor Count
+
+or
+
+Vendor Names
+
+Examples:
+
+S&S • SanMar
+
+Independent Trading
+
+Shaka Wear
+
+Do not truncate excessively.
+
+Provide hover/tooltips if necessary.
+
+---
+
+## PART 6 — Future Product Import Readiness
+
+Prepare architecture only.
+
+Do not build imports.
+
+Document how Vendor records will eventually support:
+
+Product Import
+
+Color Import
+
+Pricing Import
+
+Inventory Import
+
+Future flow:
+
+Vendor
+↓
+Import Product
+↓
+Import Colors
+↓
+Create Recommended Product
+
+Products should never be automatically created.
+
+Imports should always be intentional.
+
+---
+
+## PART 7 — Product Model Law Validation
+
+Verify:
+
+Recommended Product
+OR
+Manual Product
+
+continues functioning throughout:
+
+* Quotes
+* Projects
+* Client Hubs
+
+No workflow should require a Product Dataset match.
+
+No workflow should require a Vendor assignment.
+
+Manual entry must remain available.
+
+---
+
+## Required Output
+
+Return:
+
+1. Files changed
+2. Schema changes
+3. Vendor architecture updates
+4. Product Detail header updates
+5. Product readiness updates
+6. Vendor card updates
+7. Future import readiness notes
+8. Product Model Law verification
+9. Risks
+10. Testing checklist
+
+Execute all work above in a single phase.
+
+Do not begin:
+
+* Placement Templates
+* API Integrations
+* Product Imports
+* Inventory Sync
+* Pricing Sync
+
+until this phase is complete and reviewed.
