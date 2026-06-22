@@ -2420,13 +2420,6 @@ export default function ClientPortal() {
 
     const orgIdForFiles = session?.orgId || '';
     const projFiles = proj?.files ?? [];
-    const mockups = lineItems
-      .filter((li: any) => li.mockupUri)
-      .map((li: any, i: number) => ({
-        key: li.id || `mk-${i}`,
-        designName: li.designName || '',
-        uri: resolveMockupUrl(li.mockupUri, orgIdForFiles),
-      }));
 
     // Customer-safe pricing only — never expose cost / markup / margin / COGS / fee %.
     const subtotal = Number(calc?.subtotal) || 0;
@@ -2453,19 +2446,17 @@ export default function ClientPortal() {
     ];
 
     // ── Project Assets ────────────────────────────────────────────────────
-    // Single record of everything tied to this project. Mockups come from
-    // line-item mockupUri + MOCKUP files; the rest are categorized by fileType.
+    // Everything tied to this project, categorized by fileType. Mockups are NOT
+    // aggregated here — each line item owns and displays its own mockup below.
     const artworkFiles = projFiles.filter((f: any) => f.fileType === 'ARTWORK');
     const proofFiles = projFiles.filter((f: any) => f.fileType === 'PROOF');
-    const mockupFiles = projFiles.filter((f: any) => f.fileType === 'MOCKUP');
     const invoiceFiles = projFiles.filter((f: any) => f.fileType === 'INVOICE_PDF');
     const downloadFiles = projFiles.filter((f: any) => f.fileType === 'REFERENCE' || f.fileType === 'OTHER');
     const invoices = proj?.invoices ?? [];
 
-    const mockupTotal = mockups.length + mockupFiles.length;
     const invoiceTotal = invoices.length + invoiceFiles.length;
     const uploadedAssetTotal =
-      mockupTotal + artworkFiles.length + proofFiles.length + invoiceTotal;
+      artworkFiles.length + proofFiles.length + invoiceTotal;
 
     const fileInlineUrl = (id: string) => `/api/portal/${orgIdForFiles}/files/${id}?inline=true`;
     const fileDownloadUrl = (id: string) => `/api/portal/${orgIdForFiles}/files/${id}`;
@@ -2639,36 +2630,7 @@ export default function ClientPortal() {
               {/* Project Assets — single download center for the whole project */}
               <View style={pvStyles.card}>
                 <Text style={pvStyles.sectionTitle}>Project Assets</Text>
-                <Text style={pvStyles.sectionSub}>Everything tied to this project — mockups, artwork, invoices, proofs and downloads.</Text>
-
-                {/* Mockups */}
-                {mockupTotal > 0 && (
-                  <View style={pvStyles.assetCat}>
-                    {assetCatHeader('Mockups', mockupTotal)}
-                    <View style={pvStyles.assetGrid}>
-                      {mockups.map((mk, i) => (
-                        <View key={mk.key} style={pvStyles.assetTile}>
-                          <View style={pvStyles.assetThumb}>
-                            <Image source={{ uri: mk.uri }} style={pvStyles.assetThumbImg} resizeMode="cover" />
-                            <View style={pvStyles.assetActions}>
-                              <TouchableOpacity style={pvStyles.assetBtn} onPress={() => openMockup(mk.uri)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-                                <Maximize2 size={13} color="#fff" />
-                              </TouchableOpacity>
-                              <TouchableOpacity style={pvStyles.assetBtn} onPress={() => triggerDownload(mk.uri, (mk.designName || `mockup-${i + 1}`))} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-                                <Download size={13} color="#fff" />
-                              </TouchableOpacity>
-                            </View>
-                          </View>
-                          <View style={pvStyles.assetTileMeta}>
-                            <Text style={pvStyles.assetTileName} numberOfLines={2}>{mk.designName || `Mockup ${i + 1}`}</Text>
-                            <Text style={pvStyles.assetTileMetaLine} numberOfLines={1}>Mockup</Text>
-                          </View>
-                        </View>
-                      ))}
-                      {mockupFiles.map((f: any) => renderFileTile(f, 'Mockup'))}
-                    </View>
-                  </View>
-                )}
+                <Text style={pvStyles.sectionSub}>Everything tied to this project — artwork, invoices, proofs and downloads. Mockups live on each line item below.</Text>
 
                 {/* Artwork */}
                 {artworkFiles.length > 0 && (
@@ -2732,7 +2694,7 @@ export default function ClientPortal() {
                 {/* Empty state — no uploaded assets yet */}
                 {uploadedAssetTotal === 0 && (
                   <Text style={{ fontSize: 12, color: TEXT_LIGHT, marginTop: 12, lineHeight: 18 }}>
-                    No mockups, artwork, proofs, or invoices have been added to this project yet. Your project summary is always available to download above.
+                    No artwork, proofs, or invoices have been added to this project yet. Your project summary is always available to download above.
                   </Text>
                 )}
               </View>
@@ -2755,6 +2717,7 @@ export default function ClientPortal() {
                       ? variants.map((v: any) => [v.product, v.color].filter(Boolean).join(' — ')).filter(Boolean)
                       : [[li.product, li.productColor].filter(Boolean).join(' — ')].filter(Boolean);
                     const locations = [li.location1, li.location2, li.location3, li.location4].filter(Boolean).join(', ');
+                    const mockupUrl = li.mockupUri ? resolveMockupUrl(li.mockupUri, orgIdForFiles) : null;
                     return (
                       <View key={li.id || idx} style={[pvStyles.lineItemBlock, idx > 0 && { marginTop: 20, paddingTop: 20, borderTopWidth: 1, borderTopColor: BORDER }]}>
                         {/* Item header */}
@@ -2769,6 +2732,21 @@ export default function ClientPortal() {
                             <Text style={{ fontSize: 12, fontWeight: '700', color: BRAND }}>{qty} pcs</Text>
                           </View>
                         </View>
+
+                        {/* Mockup — owned and displayed by this line item */}
+                        {mockupUrl ? (
+                          <View style={pvStyles.liMockupWrap}>
+                            <Image source={{ uri: mockupUrl }} style={pvStyles.liMockupImg} resizeMode="contain" />
+                            <View style={pvStyles.assetActions}>
+                              <TouchableOpacity style={pvStyles.assetBtn} onPress={() => openMockup(mockupUrl)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                                <Maximize2 size={13} color="#fff" />
+                              </TouchableOpacity>
+                              <TouchableOpacity style={pvStyles.assetBtn} onPress={() => triggerDownload(mockupUrl, li.designName || `mockup-${idx + 1}`)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                                <Download size={13} color="#fff" />
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        ) : null}
 
                         {/* Customer-facing details (no cost / vendor / applicator) */}
                         <View style={{ gap: 8, marginBottom: activeSizes.length > 0 ? 14 : 0 }}>
@@ -6255,6 +6233,24 @@ const pvStyles = StyleSheet.create({
   assetTileMeta: { padding: 8, gap: 2 },
   assetTileName: { fontSize: 11, fontWeight: '600', color: TEXT, lineHeight: 15 },
   assetTileMetaLine: { fontSize: 10, color: TEXT_LIGHT },
+
+  liMockupWrap: {
+    position: 'relative',
+    alignSelf: 'flex-start',
+    width: '100%',
+    maxWidth: 260,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: BORDER,
+    backgroundColor: '#F9FAFB',
+    overflow: 'hidden',
+    marginBottom: 14,
+  },
+  liMockupImg: {
+    width: '100%',
+    aspectRatio: 1,
+    backgroundColor: '#F3F4F6',
+  },
 
   fileRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
