@@ -261,11 +261,11 @@ export default function HubManagementScreen() {
 
   const hubReadiness = useMemo(() => [
     { label: 'Hub Enabled', done: !!org?.hubEnabled },
-    { label: 'Team Member Added', done: allClientMembers.length > 0 || contactsWithHub.some((c) => !!c.membership) },
+    { label: 'Team Member Added', done: contactsWithHub.some((c) => !!c.membership) },
     { label: 'Hub Link Generated', done: !!org?.hubEnabled },
-    { label: 'Organization Admin Assigned', done: clientOrgAdmins.length > 0 },
+    { label: 'Organization Admin Assigned', done: contactsWithHub.some((c) => c.membership?.role === 'ORG_ADMIN') },
     { label: 'Organization Logo Added', done: !!(org?.logoUrl) },
-  ], [org?.hubEnabled, allClientMembers, contactsWithHub, clientOrgAdmins, org?.logoUrl]);
+  ], [org?.hubEnabled, contactsWithHub, org?.logoUrl]);
 
   const readinessPct = Math.round((hubReadiness.filter((r) => r.done).length / hubReadiness.length) * 100);
 

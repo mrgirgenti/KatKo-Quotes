@@ -867,6 +867,23 @@ export default function OrgProfileScreen() {
     );
   }, [org, deleteOrg, router]);
 
+  // linkedUserId is the authoritative Contact ↔ User ↔ Membership key (replaces
+  // legacy email matching). A contact has hub access when its linkedUserId resolves
+  // to a CLIENT membership in this org. Declared before the contact handlers below
+  // so their dependency arrays can reference it without a TDZ error.
+  const clientMembershipByUserId = useMemo(() => {
+    const map = new Map<string, OrgMembership>();
+    memberships.forEach((m) => {
+      if (m.userType === 'CLIENT' && m.userId) map.set(m.userId, m);
+    });
+    return map;
+  }, [memberships]);
+
+  const contactHasHubAccess = useCallback(
+    (c: Contact) => !!(c.linkedUserId && clientMembershipByUserId.has(c.linkedUserId)),
+    [clientMembershipByUserId],
+  );
+
   const openAddContact = useCallback(() => {
     setEditingContact(null);
     setContactForm({ firstName: '', lastName: '', role: 'Primary Contact', email: '', phone: '', notes: '', isPrimary: org?.contacts.length === 0, departmentId: '', hubAccess: false });
@@ -875,25 +892,27 @@ export default function OrgProfileScreen() {
 
   const openEditContact = useCallback((c: Contact) => {
     setEditingContact(c);
-    const alreadyHasHub = !!(c.email && memberships.some((m) => (m as any).userType === 'CLIENT' && m.userEmail === c.email));
+    const alreadyHasHub = contactHasHubAccess(c);
     setContactForm({ firstName: c.firstName, lastName: c.lastName, role: c.role || 'Primary Contact', email: c.email || '', phone: c.phone || '', notes: c.notes || '', isPrimary: !!c.isPrimary, departmentId: c.departmentId || '', hubAccess: alreadyHasHub });
     setContactModal(true);
-  }, [memberships]);
+  }, [contactHasHubAccess]);
 
   const handleSaveContact = useCallback(async () => {
     if (!org || !contactForm.firstName.trim()) return;
     const { hubAccess, isPrimary: _ip, ...rest } = contactForm;
     const derivedIsPrimary = contactForm.role === 'Primary Contact';
-    const payload = { ...rest, firstName: contactForm.firstName.trim(), lastName: contactForm.lastName.trim(), departmentId: contactForm.departmentId || undefined, isPrimary: derivedIsPrimary };
-    if (editingContact) {
-      updateContact({ orgId: org.id, contact: { ...editingContact, ...payload } });
-    } else {
-      addContact({ orgId: org.id, contact: payload });
-    }
     const email = contactForm.email.trim();
+
+    // Resolve current hub access via linkedUserId (authoritative), not email.
+    const existingMembership = editingContact?.linkedUserId
+      ? clientMembershipByUserId.get(editingContact.linkedUserId)
+      : undefined;
+    let linkedUserId: string | null = editingContact?.linkedUserId ?? null;
+
     if (email) {
-      const existingClientMembership = memberships.find((m) => (m as any).userType === 'CLIENT' && m.userEmail === email);
-      if (hubAccess && !existingClientMembership) {
+      if (hubAccess && !existingMembership) {
+        // Grant: create the client user + membership, then capture linkedUserId
+        // so the Contact record stays in sync (root cause of prior desync).
         try {
           const fullName = `${contactForm.firstName.trim()} ${contactForm.lastName.trim()}`.trim();
           const userId = `client_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -904,17 +923,27 @@ export default function OrgProfileScreen() {
           });
           const newUser = userRes.ok ? await userRes.json() : { id: userId };
           await createMembershipAsync({ organizationId: org.id, userId: newUser.id, role: 'MEMBER' });
+          linkedUserId = newUser.id;
           refetchMemberships();
         } catch {}
-      } else if (!hubAccess && existingClientMembership) {
+      } else if (!hubAccess && existingMembership) {
+        // Revoke: remove the membership and clear the link.
         try {
-          await fetch(`/api/memberships/${existingClientMembership.id}`, { method: 'DELETE' });
+          await fetch(`/api/memberships/${existingMembership.id}`, { method: 'DELETE' });
+          linkedUserId = null;
           refetchMemberships();
         } catch {}
       }
     }
+
+    const payload = { ...rest, firstName: contactForm.firstName.trim(), lastName: contactForm.lastName.trim(), departmentId: contactForm.departmentId || undefined, isPrimary: derivedIsPrimary, linkedUserId };
+    if (editingContact) {
+      updateContact({ orgId: org.id, contact: { ...editingContact, ...payload } });
+    } else {
+      addContact({ orgId: org.id, contact: payload });
+    }
     setContactModal(false);
-  }, [org, contactForm, editingContact, addContact, updateContact, memberships, createMembershipAsync, refetchMemberships]);
+  }, [org, contactForm, editingContact, addContact, updateContact, clientMembershipByUserId, createMembershipAsync, refetchMemberships]);
 
   const handleDeleteContact = useCallback((c: Contact) => {
     if (!org) return;
@@ -926,8 +955,7 @@ export default function OrgProfileScreen() {
 
   const handleEnableHubFromCard = useCallback(async (c: Contact) => {
     if (!org || !c.email) return;
-    const already = memberships.some((m) => (m as any).userType === 'CLIENT' && m.userEmail === c.email);
-    if (already) return;
+    if (contactHasHubAccess(c)) return;
     try {
       const fullName = `${c.firstName} ${c.lastName}`.trim();
       const userId = `client_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -938,11 +966,13 @@ export default function OrgProfileScreen() {
       });
       const newUser = userRes.ok ? await userRes.json() : { id: userId };
       await createMembershipAsync({ organizationId: org.id, userId: newUser.id, role: 'MEMBER' });
+      // Persist the authoritative Contact ↔ User link.
+      updateContact({ orgId: org.id, contact: { ...c, linkedUserId: newUser.id } });
       refetchMemberships();
     } catch {
       Alert.alert('Error', 'Could not enable Client Hub access.');
     }
-  }, [org, memberships, createMembershipAsync, refetchMemberships]);
+  }, [org, contactHasHubAccess, updateContact, createMembershipAsync, refetchMemberships]);
 
   const openAddDept = useCallback(() => {
     setEditingDept(null);
@@ -1426,7 +1456,7 @@ export default function OrgProfileScreen() {
                   {deptContacts.length === 0 ? (
                     <Text style={styles.deptEmpty}>No contacts in this department yet.</Text>
                   ) : (
-                    deptContacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={!!(c.email && memberships.some((m) => (m as any).userType === 'CLIENT' && m.userEmail === c.email))} onEnableHub={() => handleEnableHubFromCard(c)} />)
+                    deptContacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={contactHasHubAccess(c)} onEnableHub={() => handleEnableHubFromCard(c)} />)
                   )}
                 </View>
               );
@@ -1434,7 +1464,7 @@ export default function OrgProfileScreen() {
             {(() => {
               const unassigned = org.contacts.filter((c) => !c.departmentId || !(org.departments || []).find((d) => d.id === c.departmentId));
               if ((org.departments || []).length === 0) {
-                return org.contacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={!!(c.email && memberships.some((m) => (m as any).userType === 'CLIENT' && m.userEmail === c.email))} onEnableHub={() => handleEnableHubFromCard(c)} />);
+                return org.contacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={contactHasHubAccess(c)} onEnableHub={() => handleEnableHubFromCard(c)} />);
               }
               if (unassigned.length === 0) return null;
               return (
@@ -1446,7 +1476,7 @@ export default function OrgProfileScreen() {
                       <Text style={styles.deptCount}>{unassigned.length}</Text>
                     </View>
                   </View>
-                  {unassigned.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={!!(c.email && memberships.some((m) => (m as any).userType === 'CLIENT' && m.userEmail === c.email))} onEnableHub={() => handleEnableHubFromCard(c)} />)}
+                  {unassigned.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={contactHasHubAccess(c)} onEnableHub={() => handleEnableHubFromCard(c)} />)}
                 </View>
               );
             })()}
@@ -3555,7 +3585,7 @@ export default function OrgProfileScreen() {
                             {deptContacts.length === 0 ? (
                               <Text style={styles.deptEmpty}>No contacts in this department yet.</Text>
                             ) : (
-                              deptContacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={!!(c.email && memberships.some((m) => (m as any).userType === 'CLIENT' && m.userEmail === c.email))} onEnableHub={() => handleEnableHubFromCard(c)} />)
+                              deptContacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={contactHasHubAccess(c)} onEnableHub={() => handleEnableHubFromCard(c)} />)
                             )}
                           </View>
                         );
@@ -3563,7 +3593,7 @@ export default function OrgProfileScreen() {
                       {(() => {
                         const unassigned = org.contacts.filter((c) => !c.departmentId || !(org.departments || []).find((d) => d.id === c.departmentId));
                         if ((org.departments || []).length === 0) {
-                          return org.contacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={!!(c.email && memberships.some((m) => (m as any).userType === 'CLIENT' && m.userEmail === c.email))} onEnableHub={() => handleEnableHubFromCard(c)} />);
+                          return org.contacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={contactHasHubAccess(c)} onEnableHub={() => handleEnableHubFromCard(c)} />);
                         }
                         if (unassigned.length === 0) return null;
                         return (
@@ -3575,7 +3605,7 @@ export default function OrgProfileScreen() {
                                 <Text style={styles.deptCount}>{unassigned.length}</Text>
                               </View>
                             </View>
-                            {unassigned.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={!!(c.email && memberships.some((m) => (m as any).userType === 'CLIENT' && m.userEmail === c.email))} onEnableHub={() => handleEnableHubFromCard(c)} />)}
+                            {unassigned.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={contactHasHubAccess(c)} onEnableHub={() => handleEnableHubFromCard(c)} />)}
                           </View>
                         );
                       })()}

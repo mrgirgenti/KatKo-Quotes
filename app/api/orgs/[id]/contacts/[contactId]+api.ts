@@ -44,6 +44,16 @@ export async function PUT(request: Request, { id, contactId }: { id: string; con
         contactId,
       ],
     );
+    // linkedUserId is the authoritative Contact ↔ User key; update it only when
+    // explicitly provided so normal edits never clobber an existing link.
+    let linkedUserId = result.rows[0]?.linkedUserId ?? null;
+    if (body.linkedUserId !== undefined) {
+      linkedUserId = body.linkedUserId || null;
+      await pool.query(
+        `UPDATE "Contact" SET "linkedUserId" = $1, "updatedAt" = NOW() WHERE id = $2`,
+        [linkedUserId, contactId],
+      );
+    }
     const c = result.rows[0];
     return Response.json({
       id: c.id,
@@ -55,6 +65,7 @@ export async function PUT(request: Request, { id, contactId }: { id: string; con
       phone: c.phone ?? undefined,
       notes: c.notes ?? undefined,
       isPrimary: c.isPrimary ?? false,
+      linkedUserId: linkedUserId ?? undefined,
       createdAt: new Date(c.createdAt).toISOString(),
     });
   } catch (err) {

@@ -6,3 +6,9 @@ id = "R91ACvL1TDgqpf05x4nCF"
 uri = "file://docs/production-module-architecture.md"
 type = "text"
 title = "Katalyst Production — Module Architecture Plan"
+
+[[outputs]]
+id = "6kl56SVxgIj2HsAaLwBX_"
+uri = "file://CLIENT_HUB_AUDIT_ROADMAP.md"
+type = "text"
+title = "Client Hub Data Integrity Audit — Sequenced Roadmap"
