@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import OverlayMenu from '@/components/OverlayMenu';
 import {
@@ -684,8 +685,14 @@ function ProductFormModal({
 }
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
+const TABLE_MIN_WIDTH = 1000;
+
 export default function CatalogAdminScreen() {
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  const isMobile = mounted && screenWidth < 768;
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -1085,7 +1092,7 @@ export default function CatalogAdminScreen() {
             onPress={() => { setEditing(null); setModalVisible(true); }}
           >
             <Plus size={15} color="#fff" />
-            <Text style={s.addBtnText}>New Product</Text>
+            <Text style={s.addBtnText}>{isMobile ? 'Add' : 'New Product'}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1252,43 +1259,53 @@ export default function CatalogAdminScreen() {
         </View>
       )}
 
-      {/* Table header */}
-      <View style={s.tableHeader}>
-        <View style={s.cCheck}>
-          <Checkbox
-            checked={pageAllSelected}
-            indeterminate={someSelected && !pageAllSelected}
-            onToggle={handleTogglePageSelection}
-          />
-        </View>
-        <View style={s.cStyle}><SortBtn field="style" label="Style #" /></View>
-        <View style={s.cBrand}><SortBtn field="brand" label="Brand" /></View>
-        <View style={s.cName}><SortBtn field="name" label="Product" /></View>
-        <View style={s.cCat}><SortBtn field="category" label="Category" /></View>
-        <View style={s.cVendor}><SortBtn field="vendors" label="Vendors" /></View>
-        <View style={s.cCost}><SortBtn field="cost" label="Cost" /></View>
-        <View style={s.cStatus}><SortBtn field="status" label="Status" /></View>
-        <View style={s.cActions} />
-      </View>
+      {/* Table: outer vertical scroll → inner horizontal scroll keeps header+rows in sync */}
+      <ScrollView style={s.list} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ flexGrow: 1 }}
+          style={{ outlineStyle: 'none' } as any}
+        >
+          <View style={{ minWidth: TABLE_MIN_WIDTH, flexGrow: 1 }}>
 
-      {/* Body */}
-      {loading ? (
-        <View style={s.loadingBox}>
-          <ActivityIndicator color={BRAND} size="large" />
-        </View>
-      ) : filtered.length === 0 ? (
-        <View style={s.emptyBox}>
-          <Package size={36} color={BORDER} />
-          <Text style={s.emptyTitle}>
-            {search || filterCount > 0 ? 'No products match your filters.' : 'No products yet.'}
-          </Text>
-          {!search && filterCount === 0 && (
-            <Text style={s.emptySubtitle}>Add your first product to get started.</Text>
-          )}
-        </View>
-      ) : (
-        <ScrollView style={s.list} showsVerticalScrollIndicator={false}>
-          {filtered.map(product => (
+            {/* Table header */}
+            <View style={s.tableHeader}>
+              <View style={s.cCheck}>
+                <Checkbox
+                  checked={pageAllSelected}
+                  indeterminate={someSelected && !pageAllSelected}
+                  onToggle={handleTogglePageSelection}
+                />
+              </View>
+              <View style={s.cStyle}><SortBtn field="style" label="Style #" /></View>
+              <View style={s.cBrand}><SortBtn field="brand" label="Brand" /></View>
+              <View style={s.cName}><SortBtn field="name" label="Product" /></View>
+              <View style={s.cCat}><SortBtn field="category" label="Category" /></View>
+              <View style={s.cVendor}><SortBtn field="vendors" label="Vendors" /></View>
+              <View style={s.cCost}><SortBtn field="cost" label="Cost" /></View>
+              <View style={s.cStatus}><SortBtn field="status" label="Status" /></View>
+              <View style={s.cActions} />
+            </View>
+
+            {/* Body */}
+            {loading ? (
+              <View style={s.loadingBox}>
+                <ActivityIndicator color={BRAND} size="large" />
+              </View>
+            ) : filtered.length === 0 ? (
+              <View style={s.emptyBox}>
+                <Package size={36} color={BORDER} />
+                <Text style={s.emptyTitle}>
+                  {search || filterCount > 0 ? 'No products match your filters.' : 'No products yet.'}
+                </Text>
+                {!search && filterCount === 0 && (
+                  <Text style={s.emptySubtitle}>Add your first product to get started.</Text>
+                )}
+              </View>
+            ) : (
+              <>
+                {filtered.map(product => (
             <TouchableOpacity
               key={product.id}
               style={[s.row, selectedIds.has(product.id) && s.rowSelected]}
@@ -1413,9 +1430,12 @@ export default function CatalogAdminScreen() {
                 </OverlayMenu>
               </View>
             </TouchableOpacity>
-          ))}
+                ))}
+              </>
+            )}
+          </View>
         </ScrollView>
-      )}
+      </ScrollView>
 
 
 
