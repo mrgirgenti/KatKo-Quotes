@@ -18,6 +18,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import PageBackHeader from '@/components/PageBackHeader';
 import OverlayMenu from '@/components/OverlayMenu';
+import ContactsPeopleTable from '@/components/ContactsPeopleTable';
 import {
   Edit3,
   Mail,
@@ -197,65 +198,6 @@ const STEP_STATUS_CONFIG: Record<CampaignStepStatus, { label: string; color: str
 
 const STEP_STATUSES: CampaignStepStatus[] = ['pending', 'sent', 'received', 'responded', 'skipped'];
 
-function ContactCard({ contact: c, onEdit, onDelete, hubAccessEnabled, onEnableHub }: {
-  contact: Contact;
-  onEdit: () => void;
-  onDelete: () => void;
-  hubAccessEnabled: boolean;
-  onEnableHub?: () => void;
-}) {
-  return (
-    <View style={styles.contactCard}>
-      <View style={[styles.contactAvatar, c.isPrimary && styles.contactAvatarPrimary]}>
-        <Text style={[styles.contactAvatarText, c.isPrimary && styles.contactAvatarTextPrimary]}>{c.firstName.charAt(0).toUpperCase()}</Text>
-      </View>
-      <View style={styles.contactInfo}>
-        <View style={styles.contactNameRow}>
-          <Text style={styles.contactName}>{c.firstName} {c.lastName}</Text>
-          {c.isPrimary && (
-            <View style={styles.primaryBadge}>
-              <Text style={styles.primaryBadgeText}>Primary</Text>
-            </View>
-          )}
-        </View>
-        {c.role ? <Text style={styles.contactRole}>{c.role}</Text> : null}
-        <View style={styles.contactDetails}>
-          {c.phone && (
-            <View style={styles.contactDetailRow}>
-              <Phone size={11} color={Colors.light.textSecondary} />
-              <Text style={styles.contactDetailText}>{c.phone}</Text>
-            </View>
-          )}
-          {c.email && (
-            <View style={styles.contactDetailRow}>
-              <Mail size={11} color={Colors.light.textSecondary} />
-              <Text style={styles.contactDetailText}>{c.email}</Text>
-            </View>
-          )}
-        </View>
-        {c.notes && <Text style={styles.contactNotes}>{c.notes}</Text>}
-      </View>
-      <View style={styles.contactActions}>
-        <TouchableOpacity
-          style={[styles.contactActionBtn, styles.contactHubBtn, hubAccessEnabled && styles.contactHubBtnActive]}
-          onPress={hubAccessEnabled ? undefined : (c.email ? onEnableHub : undefined)}
-          activeOpacity={hubAccessEnabled ? 1 : 0.6}
-        >
-          {hubAccessEnabled
-            ? <Wifi size={13} color={Colors.light.tint} />
-            : <WifiOff size={13} color={Colors.light.placeholder} />
-          }
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.contactActionBtn} onPress={onEdit}>
-          <Edit3 size={14} color={Colors.light.textSecondary} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.contactActionBtn} onPress={onDelete}>
-          <Trash2 size={14} color={Colors.light.error} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
 
 export default function OrgProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -264,14 +206,12 @@ export default function OrgProfileScreen() {
     orgs, templates,
     isLoading: orgsLoading,
     updateOrg, deleteOrg,
-    addContact, updateContact, deleteContact,
+    addContact, updateContact, deleteContact, contactActionAsync,
     addActivity, deleteActivity,
     assignCampaign, updateCampaignStep, deleteCampaign,
     updateOrgStatus,
     addDepartment, updateDepartment, deleteDepartment,
     updateOrgHubEnabled,
-    createMembershipAsync,
-    deleteMembership,
   } = useCrm();
   const { quotes } = useQuotes();
   const { isDesktop, isTablet } = useBreakpoint();
@@ -333,25 +273,6 @@ export default function OrgProfileScreen() {
   const [editingDept, setEditingDept] = useState<Department | null>(null);
   const [deptForm, setDeptForm] = useState({ name: '', description: '' });
 
-  const [addMemberModal, setAddMemberModal] = useState(false);
-  const [memberForm, setMemberForm] = useState<{ userId: string; role: MembershipRole }>({ userId: '', role: 'MEMBER' });
-  const [memberRoleDropdown, setMemberRoleDropdown] = useState(false);
-
-  const [addClientUserModal, setAddClientUserModal] = useState(false);
-  const [clientUserForm, setClientUserForm] = useState({ name: '', email: '' });
-  const [clientUserSaving, setClientUserSaving] = useState(false);
-
-  const [inviteModal, setInviteModal] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ name: '', email: '' });
-  const [inviteSending, setInviteSending] = useState(false);
-  const [resendingId, setResendingId] = useState<string | null>(null);
-  const [disablingId, setDisablingId] = useState<string | null>(null);
-  const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
-  const [hubUsersOpen, setHubUsersOpen] = useState(true);
-  const [hubInvitesOpen, setHubInvitesOpen] = useState(true);
-  const [inviteTab, setInviteTab] = useState<'email' | 'link' | 'message'>('email');
-  const [resetPasswordSending, setResetPasswordSending] = useState<string | null>(null);
-  const [promotingId, setPromotingId] = useState<string | null>(null);
   const [activeSearch, setActiveSearch] = useState('');
   const [activeServiceFilter, setActiveServiceFilter] = useState('');
   const [activeStatusFilter, setActiveStatusFilter] = useState('');
@@ -364,25 +285,6 @@ export default function OrgProfileScreen() {
   const [editingOrgNotes, setEditingOrgNotes] = useState(false);
 
 
-  const { data: memberships = [], isLoading: membershipsLoading, refetch: refetchMemberships } = useQuery<OrgMembership[]>({
-    queryKey: ['memberships', org?.id],
-    queryFn: async () => {
-      if (!org?.id) return [];
-      const res = await fetch(`/api/memberships?orgId=${org.id}`);
-      if (!res.ok) return [];
-      return res.json();
-    },
-    enabled: !!org?.id,
-  });
-
-  const { data: availableUsers = [] } = useQuery<{ id: string; name: string; avatarColor: string }[]>({
-    queryKey: ['db_users'],
-    queryFn: async () => {
-      const res = await fetch('/api/users');
-      if (!res.ok) return [];
-      return res.json();
-    },
-  });
 
   const { data: orgFiles = [], refetch: refetchOrgFiles } = useQuery<any[]>({
     queryKey: ['org_files', org?.id],
@@ -497,182 +399,6 @@ export default function OrgProfileScreen() {
     );
   };
 
-  const handleAddMember = useCallback(async () => {
-    if (!org || !memberForm.userId) return;
-    try {
-      await createMembershipAsync({
-        organizationId: org.id,
-        userId: memberForm.userId,
-        role: memberForm.role,
-      });
-      setAddMemberModal(false);
-      setMemberForm({ userId: '', role: 'MEMBER' });
-      refetchMemberships();
-    } catch (err) {
-      Alert.alert('Error', 'Failed to add member. Make sure the user has been synced.');
-    }
-  }, [org, memberForm, createMembershipAsync, refetchMemberships]);
-
-  const handleAddClientUser = useCallback(async () => {
-    if (!org || !clientUserForm.name.trim() || !clientUserForm.email.trim()) return;
-    setClientUserSaving(true);
-    try {
-      const userId = `client_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      const userRes = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: userId,
-          name: clientUserForm.name.trim(),
-          email: clientUserForm.email.trim(),
-          userType: 'CLIENT',
-        }),
-      });
-      if (!userRes.ok && userRes.status !== 204) {
-        const err = await userRes.json().catch(() => ({}));
-        throw new Error(err?.error || 'Failed to create user');
-      }
-      const newUser = userRes.status === 204 ? { id: userId } : await userRes.json();
-      await createMembershipAsync({
-        organizationId: org.id,
-        userId: newUser.id,
-        role: 'MEMBER',
-      });
-      setAddClientUserModal(false);
-      setClientUserForm({ name: '', email: '' });
-      refetchMemberships();
-    } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to add client user.');
-    } finally {
-      setClientUserSaving(false);
-    }
-  }, [org, clientUserForm, createMembershipAsync, refetchMemberships]);
-
-  const handleSendHubInvite = useCallback(async () => {
-    if (!org || !inviteForm.name.trim() || !inviteForm.email.trim()) return;
-    setInviteSending(true);
-    try {
-      const portalUrl = Platform.OS === 'web' && typeof window !== 'undefined'
-        ? `${window.location.origin}/portal/${org.id}`
-        : `/portal/${org.id}`;
-      const res = await fetch('/api/hub-invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orgId: org.id,
-          name: inviteForm.name.trim(),
-          email: inviteForm.email.trim(),
-          orgName: org.name,
-          portalUrl,
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error || 'Failed to send invite');
-      }
-      setInviteModal(false);
-      setInviteForm({ name: '', email: '' });
-      refetchMemberships();
-    } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to send invite.');
-    } finally {
-      setInviteSending(false);
-    }
-  }, [org, inviteForm, refetchMemberships]);
-
-  const handleResendInvite = useCallback(async (m: OrgMembership) => {
-    if (!org || !m.userEmail || !m.userName) return;
-    setResendingId(m.id);
-    try {
-      const portalUrl = Platform.OS === 'web' && typeof window !== 'undefined'
-        ? `${window.location.origin}/portal/${org.id}`
-        : `/portal/${org.id}`;
-      const res = await fetch('/api/hub-invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orgId: org.id, name: m.userName, email: m.userEmail, orgName: org.name, portalUrl }),
-      });
-      if (!res.ok) throw new Error('Failed to resend invite');
-      refetchMemberships();
-    } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to resend invite.');
-    } finally {
-      setResendingId(null);
-    }
-  }, [org, refetchMemberships]);
-
-  const handleCopyInviteText = useCallback(() => {
-    if (!org || Platform.OS !== 'web' || typeof window === 'undefined') return;
-    const portalUrl = `${window.location.origin}/portal/${org.id}`;
-    const text = `Hi! You've been invited to the ${org.name} client hub by Katalyst Ko Printshop.\n\nAccess your portal here: ${portalUrl}\n\nThrough your portal you can submit print requests, review quotes, and track project status.\n\nQuestions? Email us at jobs@katalystko.com`;
-    navigator.clipboard.writeText(text);
-    setInviteLinkCopied(true);
-    setTimeout(() => setInviteLinkCopied(false), 2000);
-  }, [org]);
-
-  const handleToggleClientUserStatus = useCallback(async (m: OrgMembership) => {
-    if (!m.userId) return;
-    const newStatus = m.userStatus === 'DISABLED' ? 'ACTIVE' : 'DISABLED';
-    setDisablingId(m.id);
-    try {
-      await fetch(`/api/users/${m.userId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      if (org) {
-        const actType = newStatus === 'DISABLED' ? 'hub_user_disabled' : 'hub_user_enabled';
-        const actSummary = newStatus === 'DISABLED'
-          ? `Hub access disabled for ${m.userName || m.userEmail}`
-          : `Hub access re-enabled for ${m.userName || m.userEmail}`;
-        await fetch('/api/activity', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orgId: org.id, type: actType, date: new Date().toISOString().slice(0, 10), body: actSummary }),
-        }).catch(() => {});
-      }
-      refetchMemberships();
-    } catch {
-      Alert.alert('Error', 'Could not update user status.');
-    } finally {
-      setDisablingId(null);
-    }
-  }, [org, refetchMemberships]);
-
-  const handleResetPassword = useCallback(async (m: OrgMembership) => {
-    if (!org) return;
-    setResetPasswordSending(m.id);
-    try {
-      await fetch('/api/hub-reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: m.userId, orgId: org.id, email: m.userEmail, name: m.userName }),
-      });
-      Alert.alert('Reset Sent', `Password reset email sent to ${m.userEmail || 'the user'}.`);
-    } catch {
-      Alert.alert('Error', 'Could not send password reset email.');
-    } finally {
-      setResetPasswordSending(null);
-    }
-  }, [org]);
-
-  const handlePromoteMember = useCallback(async (m: OrgMembership) => {
-    if (!org) return;
-    setPromotingId(m.id);
-    try {
-      const newRole = m.role === 'ORG_ADMIN' ? 'MEMBER' : 'ORG_ADMIN';
-      await fetch(`/api/memberships/${m.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: newRole }),
-      });
-      refetchMemberships();
-    } catch {
-      Alert.alert('Error', 'Could not update member role.');
-    } finally {
-      setPromotingId(null);
-    }
-  }, [org, refetchMemberships]);
 
   const relatedQuotes = useMemo(() => {
     if (!org) return [];
@@ -866,22 +592,16 @@ export default function OrgProfileScreen() {
     );
   }, [org, deleteOrg, router]);
 
-  // linkedUserId is the authoritative Contact ↔ User ↔ Membership key (replaces
-  // legacy email matching). A contact has hub access when its linkedUserId resolves
-  // to a CLIENT membership in this org. Declared before the contact handlers below
-  // so their dependency arrays can reference it without a TDZ error.
-  const clientMembershipByUserId = useMemo(() => {
-    const map = new Map<string, OrgMembership>();
-    memberships.forEach((m) => {
-      if (m.userType === 'CLIENT' && m.userId) map.set(m.userId, m);
-    });
-    return map;
-  }, [memberships]);
-
+  // CRM CONSOLIDATION — hub access is a derived field on the enriched Contact
+  // (Contact → linkedUserId → User → OrganizationMembership), computed server-side
+  // in lib/contacts.ts. The UI never reads the memberships list directly.
   const contactHasHubAccess = useCallback(
-    (c: Contact) => !!(c.linkedUserId && clientMembershipByUserId.has(c.linkedUserId)),
-    [clientMembershipByUserId],
+    (c: Contact) => !!c.hubAccess && c.hubAccess !== 'none',
+    [],
   );
+
+  // Tracks the in-flight per-row contact action as `${contactId}:${action}`.
+  const [contactActionBusy, setContactActionBusy] = useState<string | null>(null);
 
   const openAddContact = useCallback(() => {
     setEditingContact(null);
@@ -898,51 +618,28 @@ export default function OrgProfileScreen() {
 
   const handleSaveContact = useCallback(async () => {
     if (!org || !contactForm.firstName.trim()) return;
-    const { hubAccess, isPrimary: _ip, ...rest } = contactForm;
+    const { hubAccess: _hubAccess, isPrimary: _ip, ...rest } = contactForm;
     const derivedIsPrimary = contactForm.role === 'Primary Contact';
-    const email = contactForm.email.trim();
-
-    // Resolve current hub access via linkedUserId (authoritative), not email.
-    const existingMembership = editingContact?.linkedUserId
-      ? clientMembershipByUserId.get(editingContact.linkedUserId)
-      : undefined;
-    let linkedUserId: string | null = editingContact?.linkedUserId ?? null;
-
-    if (email) {
-      if (hubAccess && !existingMembership) {
-        // Grant: create the client user + membership, then capture linkedUserId
-        // so the Contact record stays in sync (root cause of prior desync).
-        try {
-          const fullName = `${contactForm.firstName.trim()} ${contactForm.lastName.trim()}`.trim();
-          const userId = `client_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-          const userRes = await fetch('/api/users', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: userId, name: fullName, email, userType: 'CLIENT' }),
-          });
-          const newUser = userRes.ok ? await userRes.json() : { id: userId };
-          await createMembershipAsync({ organizationId: org.id, userId: newUser.id, role: 'MEMBER' });
-          linkedUserId = newUser.id;
-          refetchMemberships();
-        } catch {}
-      } else if (!hubAccess && existingMembership) {
-        // Revoke: remove the membership and clear the link.
-        try {
-          await fetch(`/api/memberships/${existingMembership.id}`, { method: 'DELETE' });
-          linkedUserId = null;
-          refetchMemberships();
-        } catch {}
-      }
-    }
-
-    const payload = { ...rest, firstName: contactForm.firstName.trim(), lastName: contactForm.lastName.trim(), departmentId: contactForm.departmentId || undefined, isPrimary: derivedIsPrimary, linkedUserId };
+    // CRM CONSOLIDATION — saving a contact only persists CRM fields. Hub access is
+    // never provisioned inline here; it is granted explicitly via the per-row
+    // "Enable Hub Access" action (the single people write path). Any existing
+    // linkedUserId is preserved so the auth substrate stays linked.
+    const payload = {
+      ...rest,
+      firstName: contactForm.firstName.trim(),
+      lastName: contactForm.lastName.trim(),
+      email: contactForm.email.trim() || undefined,
+      departmentId: contactForm.departmentId || undefined,
+      isPrimary: derivedIsPrimary,
+      linkedUserId: editingContact?.linkedUserId ?? undefined,
+    };
     if (editingContact) {
       updateContact({ orgId: org.id, contact: { ...editingContact, ...payload } });
     } else {
       addContact({ orgId: org.id, contact: payload });
     }
     setContactModal(false);
-  }, [org, contactForm, editingContact, addContact, updateContact, clientMembershipByUserId, createMembershipAsync, refetchMemberships]);
+  }, [org, contactForm, editingContact, addContact, updateContact]);
 
   const handleDeleteContact = useCallback((c: Contact) => {
     if (!org) return;
@@ -952,26 +649,24 @@ export default function OrgProfileScreen() {
     ]);
   }, [org, deleteContact]);
 
-  const handleEnableHubFromCard = useCallback(async (c: Contact) => {
-    if (!org || !c.email) return;
-    if (contactHasHubAccess(c)) return;
+  // Single people write path: every per-row hub / admin action routes through the
+  // consolidated contacts API, which manages the invisible auth substrate.
+  const runContactAction = useCallback(async (c: Contact, action: string) => {
+    if (!org) return;
+    setContactActionBusy(`${c.id}:${action}`);
     try {
-      const fullName = `${c.firstName} ${c.lastName}`.trim();
-      const userId = `client_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      const userRes = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: userId, name: fullName, email: c.email, userType: 'CLIENT' }),
-      });
-      const newUser = userRes.ok ? await userRes.json() : { id: userId };
-      await createMembershipAsync({ organizationId: org.id, userId: newUser.id, role: 'MEMBER' });
-      // Persist the authoritative Contact ↔ User link.
-      updateContact({ orgId: org.id, contact: { ...c, linkedUserId: newUser.id } });
-      refetchMemberships();
-    } catch {
-      Alert.alert('Error', 'Could not enable Client Hub access.');
+      await contactActionAsync({ orgId: org.id, contactId: c.id, action });
+    } catch (e: any) {
+      Alert.alert('Action failed', e?.message || 'Could not complete that action. Please try again.');
+    } finally {
+      setContactActionBusy(null);
     }
-  }, [org, contactHasHubAccess, updateContact, createMembershipAsync, refetchMemberships]);
+  }, [org, contactActionAsync]);
+
+  const handleEnableHubFromCard = useCallback(
+    (c: Contact) => { if (c.email) runContactAction(c, 'enableHubAccess'); },
+    [runContactAction],
+  );
 
   const openAddDept = useCallback(() => {
     setEditingDept(null);
@@ -1056,16 +751,21 @@ export default function OrgProfileScreen() {
   const activeCampaigns = org.campaigns.filter((c) => c.steps.some((s) => s.status === 'pending'));
 
   const primaryContact = org.contacts.find((c) => c.isPrimary) || org.contacts[0] || null;
-  const accountRep = memberships.find((m) => m.userType !== 'CLIENT' && m.role === 'ORG_ADMIN') || memberships.find((m) => m.userType !== 'CLIENT') || null;
 
-  // ── Shared Client Hub content (used in V2 left panel + mobile Hub tab) ──
-  const hubClientMembers = memberships.filter((m) => m.userType === 'CLIENT');
-  const hubActiveUsers = hubClientMembers.filter((m) => m.userStatus !== 'INVITED');
-  const hubPendingUsers = hubClientMembers.filter((m) => m.userStatus === 'INVITED');
+  // ── CRM CONSOLIDATION — Client Hub people counts derived from the single
+  // Contacts source of truth (never from a separate memberships list). These
+  // numbers always match the Contacts table because they read the same rows. ──
+  const contactsList = org.contacts ?? [];
+  const hubUserCount = contactsList.filter((c) => c.hubAccess && c.hubAccess !== 'none').length;
+  const hubActiveCount = contactsList.filter((c) => c.hubAccess === 'enabled').length;
+  const hubPendingCount = contactsList.filter((c) => c.hubAccess === 'invited').length;
+  const hubAdminCount = contactsList.filter((c) => c.isOrgAdmin).length;
+  const hubHasLogo = !!org.logoUrl;
+  const hubReady = localHubEnabled && hubHasLogo && hubActiveCount > 0 && hubAdminCount > 0;
 
   const clientHubInner = (
     <>
-      {/* Header: Client Hub + status badge + toggle */}
+      {/* Header: Client Hub + status badge + on/off toggle */}
       <View style={styles.infoCardHeader}>
         <View style={styles.infoCardHeaderLeft}>
           <Shield size={15} color="#fff" />
@@ -1074,8 +774,8 @@ export default function OrgProfileScreen() {
             ? <View style={styles.hubStatusBadge}><Text style={styles.hubStatusBadgeText}>Active</Text></View>
             : <View style={[styles.hubStatusBadge, styles.hubStatusBadgeOff]}><Text style={[styles.hubStatusBadgeText, styles.hubStatusBadgeTextOff]}>Inactive</Text></View>}
         </View>
-        <TouchableOpacity style={styles.hubSettingsBtn} onPress={() => router.push(`/hub/${org.id}` as any)} activeOpacity={0.8}>
-          <Text style={styles.hubSettingsBtnText}>Hub Settings</Text>
+        <TouchableOpacity style={styles.hubSettingsBtn} onPress={handleHubToggle} activeOpacity={0.8}>
+          <Text style={styles.hubSettingsBtnText}>{localHubEnabled ? 'Turn Off' : 'Turn On'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -1101,391 +801,66 @@ export default function OrgProfileScreen() {
             </View>
           </View>
 
-          {/* Metrics strip */}
+          {/* Metrics strip — derived from the single Contacts source of truth */}
           <View style={styles.hubMetricsRow}>
             <View style={styles.hubMetricItem}>
-              <Text style={styles.hubMetricVal}>{hubClientMembers.length}</Text>
+              <Text style={styles.hubMetricVal}>{hubUserCount}</Text>
               <Text style={styles.hubMetricLbl}>Users</Text>
             </View>
             <View style={styles.hubMetricDiv} />
             <View style={styles.hubMetricItem}>
-              <Text style={styles.hubMetricVal}>{hubActiveUsers.length}</Text>
+              <Text style={styles.hubMetricVal}>{hubActiveCount}</Text>
               <Text style={styles.hubMetricLbl}>Active</Text>
             </View>
             <View style={styles.hubMetricDiv} />
             <View style={styles.hubMetricItem}>
-              <Text style={[styles.hubMetricVal, hubPendingUsers.length > 0 && { color: '#F59E0B' }]}>{hubPendingUsers.length}</Text>
+              <Text style={[styles.hubMetricVal, hubPendingCount > 0 && { color: '#F59E0B' }]}>{hubPendingCount}</Text>
               <Text style={styles.hubMetricLbl}>Pending</Text>
             </View>
+            <View style={styles.hubMetricDiv} />
+            <View style={styles.hubMetricItem}>
+              <Text style={styles.hubMetricVal}>{hubAdminCount}</Text>
+              <Text style={styles.hubMetricLbl}>Admins</Text>
+            </View>
           </View>
+
+          {/* Readiness checklist — all derived from Contacts + org branding */}
+          <View style={styles.hubReadyBox}>
+            <View style={styles.hubReadyHeader}>
+              <Text style={styles.hubReadyTitle}>Hub Readiness</Text>
+              <View style={[styles.hubReadyPill, hubReady ? styles.hubReadyPillOk : styles.hubReadyPillWarn]}>
+                <Text style={[styles.hubReadyPillText, { color: hubReady ? '#166534' : '#92400E' }]}>{hubReady ? 'Ready' : 'Needs setup'}</Text>
+              </View>
+            </View>
+            {[
+              { ok: localHubEnabled, label: 'Hub enabled' },
+              { ok: hubHasLogo, label: 'Branding / logo set' },
+              { ok: hubActiveCount > 0, label: 'At least one active user' },
+              { ok: hubAdminCount > 0, label: 'At least one org admin' },
+            ].map((item) => (
+              <View key={item.label} style={styles.hubReadyRow}>
+                {item.ok
+                  ? <CheckCircle2 size={13} color="#16A34A" />
+                  : <Circle size={13} color={Colors.light.textSecondary} />}
+                <Text style={[styles.hubReadyRowText, item.ok && { color: Colors.light.text }]}>{item.label}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Manage people → Contacts (the single people-management surface) */}
+          <TouchableOpacity style={styles.hubManageBtn} onPress={() => setActiveTab('contacts')} activeOpacity={0.85}>
+            <Users size={13} color="#FF5A00" />
+            <Text style={styles.hubManageBtnText}>Manage People in Contacts</Text>
+          </TouchableOpacity>
         </>
       ) : (
         <View style={styles.hubDisabledBanner}>
           <Text style={styles.hubDisabledText}>Hub is off — toggle on to give this client a branded portal.</Text>
         </View>
       )}
-
-      {/* Hub Users collapsible section */}
-      <TouchableOpacity style={styles.hubCollapseHeader} onPress={() => setHubUsersOpen((v) => !v)} activeOpacity={0.7}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-          <Text style={styles.hubCollapseTitle}>Hub Users</Text>
-          {hubActiveUsers.length > 0 && (
-            <View style={styles.hubCollapseBadge}><Text style={styles.hubCollapseBadgeText}>{hubActiveUsers.length}</Text></View>
-          )}
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <TouchableOpacity
-            style={styles.hubInviteCompactBtn}
-            onPress={() => { setInviteForm({ name: '', email: '' }); setInviteTab('email'); setInviteModal(true); }}
-          >
-            <Plus size={10} color="#FF5A00" />
-            <Text style={styles.hubInviteCompactBtnText}>Invite</Text>
-          </TouchableOpacity>
-          {hubUsersOpen
-            ? <ChevronUp size={12} color={Colors.light.textSecondary} />
-            : <ChevronDown size={12} color={Colors.light.textSecondary} />}
-        </View>
-      </TouchableOpacity>
-
-      {hubUsersOpen && (
-        membershipsLoading ? (
-          <Text style={[styles.emptyCardSub, { paddingHorizontal: 10 }]}>Loading...</Text>
-        ) : hubActiveUsers.length === 0 ? (
-          <Text style={[styles.emptyCardSub, { paddingHorizontal: 10, paddingBottom: 8 }]}>
-            {localHubEnabled ? 'No active hub users yet. Use Invite to get started.' : 'Enable hub to invite clients.'}
-          </Text>
-        ) : (
-          hubActiveUsers.map((m) => (
-            <View key={m.id} style={styles.hubUserCard}>
-              <View style={[styles.memberAvatar, { backgroundColor: m.userStatus === 'DISABLED' ? '#9CA3AF' : '#6366F1', width: 28, height: 28, borderRadius: 14 }]}>
-                <Text style={[styles.memberAvatarText, { fontSize: 11 }]}>{(m.userName || '?')[0].toUpperCase()}</Text>
-              </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' as const }}>
-                  <Text style={styles.memberName} numberOfLines={1}>{m.userName || 'Unknown'}</Text>
-                  {m.role === 'ORG_ADMIN' && <View style={styles.adminBadge}><Text style={styles.adminBadgeText}>Admin</Text></View>}
-                  {m.userStatus === 'ACTIVE' && <View style={styles.statusBadgeActive}><Text style={styles.statusBadgeText}>Active</Text></View>}
-                  {m.userStatus === 'DISABLED' && <View style={styles.statusBadgeDisabled}><Text style={styles.statusBadgeText}>Disabled</Text></View>}
-                </View>
-                <View style={{ flexDirection: 'row', gap: 8, marginTop: 1, flexWrap: 'wrap' as const }}>
-                  <Text style={styles.hubUserMeta}>PW: {m.hasPassword ? 'Set' : 'Not set'}</Text>
-                  <Text style={styles.hubUserMeta}>
-                    {(m as any).lastLoginAt ? `Login: ${formatDate((m as any).lastLoginAt)}` : 'Never logged in'}
-                  </Text>
-                </View>
-              </View>
-              <OverlayMenu
-                align="right"
-                menuWidth={200}
-                trigger={({ open }) => (
-                  <TouchableOpacity style={styles.hubActionMenuBtn} onPress={open}>
-                    <MoreHorizontal size={13} color={Colors.light.textSecondary} />
-                  </TouchableOpacity>
-                )}
-              >
-                {({ close }) => (
-                  <>
-                    <TouchableOpacity style={styles.hubActionMenuItem} onPress={() => { close(); handleResetPassword(m); }}>
-                      <Text style={styles.hubActionMenuItemText}>{resetPasswordSending === m.id ? 'Sending…' : 'Reset Password'}</Text>
-                    </TouchableOpacity>
-                    {m.userStatus !== 'DISABLED' && (
-                      <TouchableOpacity style={styles.hubActionMenuItem} onPress={() => { close(); handleResendInvite(m); }}>
-                        <Text style={styles.hubActionMenuItemText}>Resend Invite</Text>
-                      </TouchableOpacity>
-                    )}
-                    <TouchableOpacity style={styles.hubActionMenuItem} onPress={() => { close(); handleToggleClientUserStatus(m); }}>
-                      <Text style={styles.hubActionMenuItemText}>{m.userStatus === 'DISABLED' ? 'Enable Access' : 'Disable Access'}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.hubActionMenuItem} onPress={() => { close(); handlePromoteMember(m); }}>
-                      <Text style={styles.hubActionMenuItemText}>{promotingId === m.id ? 'Updating…' : m.role === 'ORG_ADMIN' ? 'Demote to Member' : 'Promote to Admin'}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.hubActionMenuItem, { borderBottomWidth: 0 }]}
-                      onPress={() => {
-                        close();
-                        Alert.alert('Remove Client', `Remove ${m.userName || 'this client'} from the hub?`, [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Remove', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
-                        ]);
-                      }}
-                    >
-                      <Text style={[styles.hubActionMenuItemText, { color: Colors.light.error }]}>Remove User</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </OverlayMenu>
-            </View>
-          ))
-        )
-      )}
-
-      {/* Pending Invitations collapsible section */}
-      {hubPendingUsers.length > 0 && (
-        <>
-          <TouchableOpacity style={[styles.hubCollapseHeader, { marginTop: 4 }]} onPress={() => setHubInvitesOpen((v) => !v)} activeOpacity={0.7}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <Text style={styles.hubCollapseTitle}>Pending Invitations</Text>
-              <View style={[styles.hubCollapseBadge, { backgroundColor: '#FEF3C7' }]}>
-                <Text style={[styles.hubCollapseBadgeText, { color: '#92400E' }]}>{hubPendingUsers.length}</Text>
-              </View>
-            </View>
-            {hubInvitesOpen
-              ? <ChevronUp size={12} color={Colors.light.textSecondary} />
-              : <ChevronDown size={12} color={Colors.light.textSecondary} />}
-          </TouchableOpacity>
-          {hubInvitesOpen && hubPendingUsers.map((m) => (
-            <View key={m.id} style={styles.hubPendingCard}>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={styles.memberName} numberOfLines={1}>{m.userName || m.userEmail || 'Unknown'}</Text>
-                {m.userEmail ? <Text style={styles.hubUserMeta}>{m.userEmail}</Text> : null}
-                {m.inviteSentAt ? <Text style={styles.hubUserMeta}>Invited {formatDate(m.inviteSentAt)}</Text> : null}
-              </View>
-              <View style={{ flexDirection: 'row', gap: 4 }}>
-                <TouchableOpacity style={styles.hubPendingAction} onPress={() => handleResendInvite(m)} disabled={resendingId === m.id}>
-                  {resendingId === m.id
-                    ? <ActivityIndicator size={10} color="#FF5A00" />
-                    : <Text style={styles.hubPendingActionText}>Resend</Text>}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.hubPendingAction, styles.hubPendingActionDanger]}
-                  onPress={() => Alert.alert('Cancel Invite', `Cancel invite for ${m.userEmail || m.userName}?`, [
-                    { text: 'Keep', style: 'cancel' },
-                    { text: 'Cancel Invite', style: 'destructive', onPress: () => { deleteMembership({ membershipId: m.id, orgId: org.id }); refetchMemberships(); } },
-                  ])}
-                >
-                  <Text style={[styles.hubPendingActionText, { color: '#DC2626' }]}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
-        </>
-      )}
     </>
   );
 
-  const leftPanel = (
-    <View style={styles.leftPanel}>
-      {/* Identity card */}
-      <View style={styles.orgIdentityCard}>
-        {/* Actions menu */}
-        <View style={styles.orgMenuBtn}>
-          <OverlayMenu
-            align="right"
-            menuWidth={170}
-            trigger={({ open }) => (
-              <TouchableOpacity
-                style={{ width: 30, height: 30, justifyContent: 'center', alignItems: 'center' }}
-                onPress={open}
-              >
-                <MoreHorizontal size={18} color={Colors.light.textSecondary} />
-              </TouchableOpacity>
-            )}
-          >
-            {({ close }) => (
-              <>
-                <TouchableOpacity
-                  style={styles.orgMenuItem}
-                  onPress={() => {
-                    close();
-                    router.push({ pathname: '/(tabs)' as any, params: { orgName: org.name, orgId: org.id } });
-                  }}
-                >
-                  <Plus size={14} color={Colors.light.tint} />
-                  <Text style={styles.orgMenuItemText}>New Quote</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.orgMenuItem}
-                  onPress={() => { close(); openEditOrg(); }}
-                >
-                  <Edit3 size={14} color={Colors.light.text} />
-                  <Text style={styles.orgMenuItemText}>Edit Profile</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.orgMenuItem, styles.orgMenuItemDanger]}
-                  onPress={() => { close(); handleDeleteOrg(); }}
-                >
-                  <Trash2 size={14} color={Colors.light.error} />
-                  <Text style={[styles.orgMenuItemText, { color: Colors.light.error }]}>Delete</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </OverlayMenu>
-        </View>
-        {/* Status badge — top-left */}
-        <View style={styles.orgStatusBadge}>
-          <StatusBadge status={org.status} />
-        </View>
-
-        {/* Logo — larger */}
-        <View style={styles.orgLogoWrap}>
-          <OrgLogoUploader
-            orgId={org.id}
-            orgName={org.name}
-            currentLogoUrl={org.logoUrl}
-            onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })}
-            size={120}
-          />
-        </View>
-
-        <Text style={styles.orgNameLarge}>{org.name}</Text>
-
-        {/* Business info rows — always shown */}
-        <View style={styles.orgInfoBlock}>
-          {org.type ? (
-            <View style={styles.orgInfoRow}>
-              <Building2 size={12} color={Colors.light.textSecondary} />
-              <Text style={styles.orgInfoKey}>Business Type</Text>
-              <Text style={styles.orgInfoVal} numberOfLines={1}>{org.type}</Text>
-            </View>
-          ) : null}
-          <View style={styles.orgInfoRow}>
-            <MapPin size={12} color={Colors.light.textSecondary} />
-            <Text style={styles.orgInfoKey}>Address</Text>
-            <Text style={styles.orgInfoVal} numberOfLines={2}>
-              {[org.address, [org.city, org.state].filter(Boolean).join(', ')].filter(Boolean).join(', ') || '—'}
-            </Text>
-          </View>
-          <View style={[styles.orgInfoRow, { borderBottomWidth: 0 }]}>
-            <Globe size={12} color={Colors.light.textSecondary} />
-            <Text style={styles.orgInfoKey}>Website</Text>
-            <Text style={styles.orgInfoVal} numberOfLines={1}>{org.website || '—'}</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Lead tracking */}
-      {isLead && (
-        <View style={styles.leadBanner}>
-          <View style={styles.leadBannerHeader}>
-            <TrendingUp size={15} color={CRM_STATUS_CONFIG['Working'].color} />
-            <Text style={styles.leadBannerTitle}>Lead Tracking</Text>
-          </View>
-          <Text style={styles.leadBannerSub}>
-            Update their status as you progress through outreach.
-          </Text>
-          <View style={styles.statusChangeRow}>
-            {(['Cold', 'Working', 'Active Client', 'Past Client'] as CrmStatus[]).map((s) => {
-              const cfg = CRM_STATUS_CONFIG[s];
-              const selected = org.status === s;
-              return (
-                <TouchableOpacity
-                  key={s}
-                  style={[styles.statusChip, selected && { backgroundColor: cfg.bg, borderColor: cfg.border }]}
-                  onPress={() => updateOrgStatus({ orgId: org.id, status: s })}
-                >
-                  <Text style={[styles.statusChipText, selected && { color: cfg.color, fontWeight: '700' as const }]}>{s}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          {activeCampaigns.length > 0 && (
-            <View style={styles.leadCampaignRow}>
-              <TrendingUp size={12} color={Colors.light.tint} />
-              <Text style={styles.leadCampaignText}>
-                {activeCampaigns.length} active campaign{activeCampaigns.length !== 1 ? 's' : ''}
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* Contacts card */}
-      <View style={styles.infoCard}>
-        <View style={styles.infoCardHeader}>
-          <View style={styles.infoCardHeaderLeft}>
-            <Users size={15} color="#fff" />
-            <Text style={styles.infoCardTitle}>Contacts</Text>
-            {org.contacts.length > 0 && (
-              <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{org.contacts.length}</Text></View>
-            )}
-          </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity style={styles.infoCardActionSecondary} onPress={openAddDept}>
-              <Plus size={12} color="#fff" />
-              <Text style={styles.infoCardActionSecondaryText}>Dept</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.infoCardAction} onPress={openAddContact}>
-              <Plus size={13} color="#fff" />
-              <Text style={styles.infoCardActionText}>Add Contact</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        {org.contacts.length === 0 && (org.departments || []).length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyCardText}>No contacts yet.</Text>
-            <Text style={styles.emptyCardSub}>Add departments to organize people by team, then add contacts.</Text>
-          </View>
-        ) : (
-          <>
-            {(org.departments || []).map((dept) => {
-              const deptContacts = org.contacts.filter((c) => c.departmentId === dept.id);
-              return (
-                <View key={dept.id} style={styles.deptSection}>
-                  <View style={styles.deptHeader}>
-                    <View style={styles.deptHeaderLeft}>
-                      <Users size={13} color={Colors.light.tint} />
-                      <Text style={styles.deptName}>{dept.name}</Text>
-                      <Text style={styles.deptCount}>{deptContacts.length} contact{deptContacts.length !== 1 ? 's' : ''}</Text>
-                    </View>
-                    <View style={styles.deptHeaderActions}>
-                      <TouchableOpacity
-                        style={styles.deptAddBtn}
-                        onPress={() => {
-                          setEditingContact(null);
-                          setContactForm({ firstName: '', lastName: '', role: 'Primary Contact', email: '', phone: '', notes: '', isPrimary: false, departmentId: dept.id, hubAccess: false });
-                          setContactModal(true);
-                        }}
-                      >
-                        <Plus size={12} color={Colors.light.tint} />
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.deptActionBtn} onPress={() => openEditDept(dept)}>
-                        <Edit3 size={12} color={Colors.light.textSecondary} />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.deptActionBtn}
-                        onPress={() => Alert.alert('Delete Department', `Remove "${dept.name}"? Contacts in this department will become unassigned.`, [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Delete', style: 'destructive', onPress: () => deleteDepartment({ orgId: org.id, deptId: dept.id }) },
-                        ])}
-                      >
-                        <Trash2 size={12} color={Colors.light.error} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                  {deptContacts.length === 0 ? (
-                    <Text style={styles.deptEmpty}>No contacts in this department yet.</Text>
-                  ) : (
-                    deptContacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={contactHasHubAccess(c)} onEnableHub={() => handleEnableHubFromCard(c)} />)
-                  )}
-                </View>
-              );
-            })}
-            {(() => {
-              const unassigned = org.contacts.filter((c) => !c.departmentId || !(org.departments || []).find((d) => d.id === c.departmentId));
-              if ((org.departments || []).length === 0) {
-                return org.contacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={contactHasHubAccess(c)} onEnableHub={() => handleEnableHubFromCard(c)} />);
-              }
-              if (unassigned.length === 0) return null;
-              return (
-                <View style={styles.deptSection}>
-                  <View style={styles.deptHeader}>
-                    <View style={styles.deptHeaderLeft}>
-                      <User size={13} color={Colors.light.textSecondary} />
-                      <Text style={[styles.deptName, { color: Colors.light.textSecondary }]}>Unassigned</Text>
-                      <Text style={styles.deptCount}>{unassigned.length}</Text>
-                    </View>
-                  </View>
-                  {unassigned.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={contactHasHubAccess(c)} onEnableHub={() => handleEnableHubFromCard(c)} />)}
-                </View>
-              );
-            })()}
-          </>
-        )}
-      </View>
-
-      <Text style={styles.memberSince}>Added {formatDate(org.createdAt)}</Text>
-    </View>
-  );
 
   const renderActivityEntry = (entry: ActivityEntry) => {
     const typeCfg = ACTIVITY_TYPE_CONFIG[entry.type] ?? ACTIVITY_TYPE_CONFIG['note'];
@@ -1989,641 +1364,6 @@ export default function OrgProfileScreen() {
     </>
   );
 
-  const rightPanel = (
-    <View style={styles.rightPanel}>
-      {/* Tab bar */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar} contentContainerStyle={{ flexDirection: 'row' }}>
-        {TAB_CONFIG.map(({ id, label, count }) => (
-          <TouchableOpacity key={id} style={[styles.tab, activeTab === id && styles.tabActive]} onPress={() => setActiveTab(id)}>
-            <Text style={[styles.tabText, activeTab === id && styles.tabTextActive]}>{label}</Text>
-            {count !== undefined && (
-              <View style={[styles.tabBadge, activeTab === id && styles.tabBadgeActive]}>
-                <Text style={[styles.tabBadgeText, activeTab === id && styles.tabBadgeTextActive]}>{count}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* ── OVERVIEW TAB ── */}
-      {activeTab === 'overview' && (
-        <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
-
-      {/* Client Legacy card */}
-      <View style={styles.infoCard}>
-        <View style={styles.infoCardHeader}>
-          <View style={styles.infoCardHeaderLeft}>
-            <Award size={15} color="#fff" />
-            <Text style={styles.infoCardTitle}>Client Legacy</Text>
-            {legacyMetrics.totalProjects > 0 && (
-              <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{legacyMetrics.totalProjects}</Text></View>
-            )}
-          </View>
-        </View>
-        <View style={styles.revenueStatsRow}>
-          <View style={styles.revenueStatBox}>
-            <Text style={styles.revenueStatValue}>{legacyMetrics.totalProjects}</Text>
-            <Text style={styles.revenueStatLabel}>Completed</Text>
-          </View>
-          <View style={styles.revenueStatDivider} />
-          <View style={styles.revenueStatBox}>
-            <Text style={[styles.revenueStatValue, { color: Colors.light.success }]}>{formatCurrency(legacyMetrics.revenue)}</Text>
-            <Text style={styles.revenueStatLabel}>Revenue</Text>
-          </View>
-          <View style={styles.revenueStatDivider} />
-          <View style={styles.revenueStatBox}>
-            <Text style={[styles.revenueStatValue, { color: '#FF5A00' }]}>{formatCurrency(legacyMetrics.markup)}</Text>
-            <Text style={styles.revenueStatLabel}>Profit</Text>
-          </View>
-        </View>
-        {/* Donut circle grid — always render all 4 services */}
-        <View style={styles.legacyDonutRow}>
-          {legacyMetrics.services.map((svc) => {
-            const deg = svc.pct * 3.6;
-            const gradient = svc.pct > 0
-              ? `conic-gradient(${svc.color} 0deg ${deg}deg, #E2E8F0 ${deg}deg 360deg)`
-              : 'conic-gradient(#E2E8F0 0deg 360deg)';
-            return (
-              <Pressable
-                key={svc.name}
-                style={styles.legacyDonutItem}
-                onHoverIn={() => setHoveredLegacyKey(svc.name)}
-                onHoverOut={() => setHoveredLegacyKey(null)}
-              >
-                <View style={[styles.legacyDonutOuter, { background: gradient } as any]}>
-                  <View style={styles.legacyDonutInner}>
-                    <Text style={styles.legacyDonutPct}>{svc.pct}%</Text>
-                    <Text style={styles.legacyDonutPcs}>{svc.pcs.toLocaleString()} pcs</Text>
-                  </View>
-                </View>
-                <Text style={[styles.legacyDonutLabel, { color: hoveredLegacyKey === svc.name ? svc.color : Colors.light.textSecondary }]}>
-                  {svc.name}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {/* Inline hover tooltip — renders below donuts, no z-index issues */}
-        {(() => {
-          const hov = legacyMetrics.services.find((s) => s.name === hoveredLegacyKey);
-          if (!hov) return null;
-          const avg = hov.projectCount > 0 ? hov.revenue / hov.projectCount : 0;
-          return (
-            <View style={[styles.legacyTooltip, { borderLeftColor: hov.color }]}>
-              <Text style={[styles.legacyTooltipTitle, { color: hov.color }]}>{hov.name}</Text>
-              <View style={styles.legacyTooltipRow}>
-                <Text style={styles.legacyTooltipItem}>Revenue: <Text style={styles.legacyTooltipBold}>{formatCurrency(hov.revenue)}</Text></Text>
-                <Text style={styles.legacyTooltipItem}>Pieces: <Text style={styles.legacyTooltipBold}>{hov.pcs.toLocaleString()} pcs</Text></Text>
-                <Text style={styles.legacyTooltipItem}>Projects: <Text style={styles.legacyTooltipBold}>{hov.projectCount}</Text></Text>
-                {hov.projectCount > 0 && (
-                  <Text style={styles.legacyTooltipItem}>Avg Order: <Text style={styles.legacyTooltipBold}>{formatCurrency(avg)}</Text></Text>
-                )}
-              </View>
-            </View>
-          );
-        })()}
-      </View>
-
-      {/* Active Projects card */}
-      <View style={styles.infoCard}>
-        <View style={styles.infoCardHeader}>
-          <View style={styles.infoCardHeaderLeft}>
-            <ShoppingBag size={15} color="#fff" />
-            <Text style={styles.infoCardTitle}>Active Projects</Text>
-            {activeQuotes.length > 0 && (
-              <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{activeQuotes.length}</Text></View>
-            )}
-          </View>
-          <TouchableOpacity onPress={() => { setActiveTab('projects'); setProjectsSubTab('active'); }}>
-            <Text style={styles.infoCardViewAll}>View All Active Projects →</Text>
-          </TouchableOpacity>
-        </View>
-        {activeQuotes.length > 0 && (
-          <View style={styles.revenueStatsRow}>
-            <View style={styles.revenueStatBox}>
-              <Text style={styles.revenueStatValue}>{activeQuotes.length}</Text>
-              <Text style={styles.revenueStatLabel}>Active</Text>
-            </View>
-            <View style={styles.revenueStatDivider} />
-            <View style={styles.revenueStatBox}>
-              <Text style={[styles.revenueStatValue, { color: Colors.light.success }]}>{formatCurrency(activeMetrics.revenue)}</Text>
-              <Text style={styles.revenueStatLabel}>Revenue</Text>
-            </View>
-            <View style={styles.revenueStatDivider} />
-            <View style={styles.revenueStatBox}>
-              <Text style={[styles.revenueStatValue, { color: '#FF5A00' }]}>{formatCurrency(activeMetrics.markup)}</Text>
-              <Text style={styles.revenueStatLabel}>Profit</Text>
-            </View>
-            <View style={styles.revenueStatDivider} />
-            <View style={styles.revenueStatBox}>
-              <Text style={styles.revenueStatValue}>{activeMetrics.pcs.toLocaleString()}</Text>
-              <Text style={styles.revenueStatLabel}>PCS</Text>
-            </View>
-          </View>
-        )}
-        {/* Search row */}
-        {activeQuotes.length > 0 && (
-          <View style={styles.p16SearchRow}>
-            <View style={styles.p16SearchBox}>
-              <Search size={13} color={Colors.light.textSecondary} />
-              <TextInput
-                style={styles.p16SearchInput}
-                placeholder="Search by name, number, service…"
-                placeholderTextColor={Colors.light.textSecondary}
-                value={activeSearch}
-                onChangeText={setActiveSearch}
-              />
-            </View>
-          </View>
-        )}
-        {activeQuotes.length > 0 && (
-          <View style={styles.p16FilterRow}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.p16FilterScroll}>
-              <TouchableOpacity style={[styles.p16Pill, !activeStatusFilter && styles.p16PillActive]} onPress={() => setActiveStatusFilter('')}>
-                <Text style={[styles.p16PillText, !activeStatusFilter && styles.p16PillTextActive]}>All</Text>
-              </TouchableOpacity>
-              {[...new Set(activeQuotes.map(q => q.status))].map(s => (
-                <TouchableOpacity key={s} style={[styles.p16Pill, activeStatusFilter === s && styles.p16PillActive]} onPress={() => setActiveStatusFilter(activeStatusFilter === s ? '' : s)}>
-                  <Text style={[styles.p16PillText, activeStatusFilter === s && styles.p16PillTextActive]}>{STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? s}</Text>
-                </TouchableOpacity>
-              ))}
-              {[...new Set(activeQuotes.flatMap(q => (q.lineItems || []).map((li: any) => li.serviceStyle)).filter(Boolean))].map(s => (
-                <TouchableOpacity key={s} style={[styles.p16Pill, activeServiceFilter === s && styles.p16PillActive]} onPress={() => setActiveServiceFilter(activeServiceFilter === s ? '' : s)}>
-                  <Text style={[styles.p16PillText, activeServiceFilter === s && styles.p16PillTextActive]}>{s}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-        {activeQuotes.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <ShoppingBag size={26} color={Colors.light.border} />
-            <Text style={styles.emptyCardText}>No active projects yet</Text>
-            <Text style={styles.emptyCardSub}>Tap New Quote to start a project for this client.</Text>
-          </View>
-        ) : filteredActiveQuotes.length === 0 ? (
-          <View style={styles.emptyCard}><Text style={styles.emptyCardText}>No matches</Text></View>
-        ) : (
-          filteredActiveQuotes.map((q, _idx) => (
-            <ProjectCard
-              key={q.id}
-              queue={_idx + 1}
-              quote={q}
-              onPress={() => router.push(`/quote/${q.id}` as any)}
-            />
-          ))
-        )}
-      </View>
-
-      {/* Submitted Quotes card */}
-      <View style={styles.infoCard}>
-        <View style={styles.infoCardHeader}>
-          <View style={styles.infoCardHeaderLeft}>
-            <FileText size={15} color="#fff" />
-            <Text style={styles.infoCardTitle}>Submitted Quotes</Text>
-            {relatedQuotes.length > 0 && (
-              <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{relatedQuotes.length}</Text></View>
-            )}
-          </View>
-          <TouchableOpacity onPress={() => { setActiveTab('projects'); setProjectsSubTab('quotes'); }}>
-            <Text style={styles.infoCardViewAll}>View All Quotes →</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.revenueStatsRow}>
-          <View style={styles.revenueStatBox}>
-            <Text style={styles.revenueStatValue}>{relatedQuotes.length}</Text>
-            <Text style={styles.revenueStatLabel}>Total Quotes</Text>
-          </View>
-          <View style={styles.revenueStatDivider} />
-          <View style={styles.revenueStatBox}>
-            <Text style={[styles.revenueStatValue, { color: Colors.light.success }]}>{formatCurrency(quoteMetrics.revenue)}</Text>
-            <Text style={styles.revenueStatLabel}>Revenue</Text>
-          </View>
-          <View style={styles.revenueStatDivider} />
-          <View style={styles.revenueStatBox}>
-            <Text style={[styles.revenueStatValue, { color: '#FF5A00' }]}>{formatCurrency(quoteMetrics.markup)}</Text>
-            <Text style={styles.revenueStatLabel}>Profit</Text>
-          </View>
-          <View style={styles.revenueStatDivider} />
-          <View style={styles.revenueStatBox}>
-            <Text style={styles.revenueStatValue}>{quoteMetrics.pcs.toLocaleString()}</Text>
-            <Text style={styles.revenueStatLabel}>PCS</Text>
-          </View>
-        </View>
-        {relatedQuotes.length > 0 && (
-          <View style={styles.embSFRow}>
-            <View style={styles.embSearchBox}>
-              <Search size={13} color={Colors.light.textSecondary} />
-              <TextInput
-                style={styles.embSearchInput}
-                placeholder="Search project #, name, service…"
-                placeholderTextColor={Colors.light.textSecondary}
-                value={quotesSearch}
-                onChangeText={setQuotesSearch}
-              />
-              {quotesSearch ? (
-                <TouchableOpacity onPress={() => setQuotesSearch('')}>
-                  <X size={12} color={Colors.light.textSecondary} />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-            <OverlayMenu
-              align="right"
-              menuWidth={200}
-              trigger={({ open }) => {
-                const fc = (quotesStatusFilter !== 'all' ? 1 : 0) + (quotesServiceFilter !== 'all' ? 1 : 0);
-                return (
-                  <TouchableOpacity style={[styles.embFilterBtn, fc > 0 && styles.embFilterBtnActive]} onPress={open}>
-                    <SlidersHorizontal size={12} color={fc > 0 ? '#fff' : Colors.light.textSecondary} />
-                    <Text style={[styles.embFilterBtnText, fc > 0 && styles.embFilterBtnTextActive]}>
-                      Filters{fc > 0 ? ` (${fc})` : ''}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }}
-            >
-              {({ close }) => {
-                const statuses = [...new Set(relatedQuotes.map(q => getEffectiveStatus(q)))];
-                return (
-                  <>
-                    <Text style={styles.embFilterSectionLabel}>Status</Text>
-                    {(['all', ...statuses] as Array<'all' | typeof statuses[number]>).map((s) => (
-                      <TouchableOpacity
-                        key={String(s)}
-                        style={[styles.embFilterOption, quotesStatusFilter === s && styles.embFilterOptionSelected]}
-                        onPress={() => { setQuotesStatusFilter(s as any); close(); }}
-                      >
-                        <Text style={[styles.embFilterOptionText, quotesStatusFilter === s && styles.embFilterOptionTextSelected]}>
-                          {s === 'all' ? 'All Statuses' : STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? String(s)}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                    {relatedQuoteServices.length > 0 && (
-                      <>
-                        <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 4 }} />
-                        <Text style={styles.embFilterSectionLabel}>Service</Text>
-                        {(['all', ...relatedQuoteServices]).map((s) => (
-                          <TouchableOpacity
-                            key={s}
-                            style={[styles.embFilterOption, quotesServiceFilter === s && styles.embFilterOptionSelected]}
-                            onPress={() => { setQuotesServiceFilter(s); close(); }}
-                          >
-                            <Text style={[styles.embFilterOptionText, quotesServiceFilter === s && styles.embFilterOptionTextSelected]}>
-                              {s === 'all' ? 'All Services' : s}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </>
-                    )}
-                    {(quotesStatusFilter !== 'all' || quotesServiceFilter !== 'all') && (
-                      <>
-                        <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 4 }} />
-                        <TouchableOpacity
-                          style={styles.embFilterOption}
-                          onPress={() => { setQuotesStatusFilter('all'); setQuotesServiceFilter('all'); close(); }}
-                        >
-                          <Text style={[styles.embFilterOptionText, { color: Colors.light.error }]}>Clear Filters</Text>
-                        </TouchableOpacity>
-                      </>
-                    )}
-                  </>
-                );
-              }}
-            </OverlayMenu>
-          </View>
-        )}
-        {relatedQuotes.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyCardText}>No quotes yet.</Text>
-            <Text style={styles.emptyCardSub}>Create a quote to link it to this organization.</Text>
-          </View>
-        ) : filteredRelatedQuotes.length === 0 ? (
-          <View style={styles.emptyCard}><Text style={styles.emptyCardText}>No matches</Text></View>
-        ) : (
-          filteredRelatedQuotes.map((q, _idx) => (
-            <ProjectCard
-              key={q.id}
-              queue={_idx + 1}
-              quote={q}
-              onPress={() => router.push(`/quote/${q.id}` as any)}
-            />
-          ))
-        )}
-        {relatedQuotes.length > 0 && (
-          <TouchableOpacity style={styles.p16ViewAll} onPress={() => setActiveTab('projects')}>
-            <Text style={styles.p16ViewAllText}>View All Quotes →</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-
-
-      {/* Media Bin card */}
-      <View style={styles.infoCard}>
-        <View style={styles.infoCardHeader}>
-          <View style={styles.infoCardHeaderLeft}>
-            <Film size={15} color="#fff" />
-            <Text style={styles.infoCardTitle}>Media Bin</Text>
-            {orgFiles.length > 0 && (
-              <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{orgFiles.length}</Text></View>
-            )}
-          </View>
-          {Platform.OS === 'web' && (
-            <TouchableOpacity
-              style={[styles.infoCardAction, orgFilesUploading && { opacity: 0.6 }]}
-              disabled={orgFilesUploading}
-              onPress={() => {
-                if (typeof document === 'undefined') return;
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = '.ai,.svg,.ps,.png,.jpg,.jpeg,.pdf,.emb,.dst,.pes';
-                input.multiple = true;
-                input.onchange = (e: any) => {
-                  const files = Array.from(e.target?.files || []) as File[];
-                  if (files.length > 0) handleOrgFileUpload(files);
-                };
-                input.click();
-              }}
-            >
-              <Upload size={13} color="#fff" />
-              <Text style={styles.infoCardActionText}>{orgFilesUploading ? 'Uploading…' : 'Upload'}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-        {orgFiles.length === 0 ? (
-          <View
-            style={[styles.orgMediaEmptyBin, orgFilesDragOver && styles.orgMediaDropZoneActive]}
-            onDragOver={(e: any) => { e.preventDefault(); setOrgFilesDragOver(true); }}
-            onDragLeave={() => setOrgFilesDragOver(false)}
-            onDrop={(e: any) => {
-              e.preventDefault();
-              setOrgFilesDragOver(false);
-              const files = Array.from(e.dataTransfer?.files || []) as File[];
-              if (files.length > 0) handleOrgFileUpload(files);
-            }}
-          >
-            {/* Floating accent dots */}
-            <View style={[styles.mediaDot, { top: 18, left: 28, width: 5, height: 5 }]} />
-            <View style={[styles.mediaDot, { top: 12, right: 60, width: 4, height: 4 }]} />
-            <View style={[styles.mediaDot, { top: 30, right: 32, width: 6, height: 6, opacity: 0.4 }]} />
-            <View style={[styles.mediaDot, { bottom: 44, left: 18, width: 4, height: 4, opacity: 0.35 }]} />
-            <View style={[styles.mediaDot, { bottom: 30, right: 20, width: 5, height: 5, opacity: 0.5 }]} />
-            {/* Three tilted icon cards */}
-            <View style={styles.mediaBinIconRow}>
-              <View style={[styles.mediaBinCard, { transform: [{ rotate: '-10deg' }], marginRight: -12, zIndex: 1 }]}>
-                <LucideImage size={26} color="#888888" />
-              </View>
-              <View style={[styles.mediaBinCard, styles.mediaBinCardCenter, { zIndex: 3 }]}>
-                <Film size={26} color="#AAAAAA" />
-              </View>
-              <View style={[styles.mediaBinCard, { transform: [{ rotate: '10deg' }], marginLeft: -12, zIndex: 1 }]}>
-                <Music size={26} color="#888888" />
-              </View>
-            </View>
-            <Text style={styles.mediaBinEmptyText}>Drag and drop your media here</Text>
-            <Text style={styles.mediaBinEmptySub}>AI · SVG · PS · PNG · JPG · PDF · EMB · DST · PES</Text>
-          </View>
-        ) : (
-          <View
-            style={[styles.orgMediaGrid, orgFilesDragOver && { opacity: 0.7 }]}
-            onDragOver={(e: any) => { e.preventDefault(); setOrgFilesDragOver(true); }}
-            onDragLeave={() => setOrgFilesDragOver(false)}
-            onDrop={(e: any) => {
-              e.preventDefault();
-              setOrgFilesDragOver(false);
-              const files = Array.from(e.dataTransfer?.files || []) as File[];
-              if (files.length > 0) handleOrgFileUpload(files);
-            }}
-          >
-            {orgFiles.map((f: any) => {
-              const isImage = f.mimeType?.startsWith('image/');
-              const ext = (f.originalName || '').split('.').pop()?.toUpperCase() || 'FILE';
-              return (
-                <View key={f.id} style={styles.orgMediaItem}>
-                  {isImage ? (
-                    <AuthedImage fileId={f.id} style={styles.orgMediaThumb} />
-                  ) : (
-                    <View style={styles.orgMediaIcon}>
-                      <FileText size={18} color={Colors.light.tint} />
-                      <Text style={styles.orgMediaExt}>{ext}</Text>
-                    </View>
-                  )}
-                  {renamingFileId === f.id ? (
-                    <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
-                      <TextInput
-                        value={renameText}
-                        onChangeText={setRenameText}
-                        style={[styles.orgMediaName, { flex: 1, borderBottomWidth: 1, borderBottomColor: Colors.light.tint, paddingVertical: 0 }]}
-                        autoFocus
-                        selectTextOnFocus
-                        onSubmitEditing={() => handleRenameFile(f.id, renameText)}
-                        onBlur={() => handleRenameFile(f.id, renameText)}
-                      />
-                      <TouchableOpacity onPress={() => handleRenameFile(f.id, renameText)} style={styles.orgMediaActionBtn}>
-                        <CheckCircle2 size={12} color={Colors.light.success} />
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => setRenamingFileId(null)} style={styles.orgMediaActionBtn}>
-                        <X size={12} color={Colors.light.error} />
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                      <Text style={[styles.orgMediaName, { flex: 1 }]} numberOfLines={1}>{f.originalName}</Text>
-                      <TouchableOpacity onPress={() => { setRenamingFileId(f.id); setRenameText(f.originalName); }} style={styles.orgMediaActionBtn}>
-                        <Edit3 size={10} color={Colors.light.textSecondary} />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                  <Text style={styles.orgMediaMeta}>{formatDate(f.createdAt)} · {ext}</Text>
-                  <View style={styles.orgMediaActions}>
-                    {Platform.OS === 'web' && (
-                      <TouchableOpacity
-                        onPress={() => (typeof window !== 'undefined') && window.open(`/api/files/${f.id}?inline=true`, '_blank')}
-                        style={styles.orgMediaActionBtn}
-                      >
-                        <ExternalLink size={12} color={Colors.light.textSecondary} />
-                      </TouchableOpacity>
-                    )}
-                    <TouchableOpacity onPress={() => handleOrgFileDelete(f.id)} style={styles.orgMediaActionBtn}>
-                      <Trash2 size={12} color={Colors.light.error} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        )}
-      </View>
-
-          <View style={{ height: 24 }} />
-        </ScrollView>
-      )}
-
-      {/* ── ACTIVITY TAB ── */}
-      {activeTab === 'activity' && (
-        <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
-          <View style={styles.tabContentHeader}>
-            <Text style={styles.tabContentTitle}>Activity Log</Text>
-            <TouchableOpacity style={styles.addItemBtn} onPress={() => setActivityModal(true)}>
-              <Plus size={13} color="#fff" /><Text style={styles.addItemBtnText}>Log Activity</Text>
-            </TouchableOpacity>
-          </View>
-          {org.activityLog.length === 0 ? (
-            <View style={styles.emptyTab}>
-              <Clock size={36} color={Colors.light.border} />
-              <Text style={styles.emptyTabText}>No activity logged yet</Text>
-              <Text style={styles.emptyTabSub}>Log a call, email, or note to start tracking interactions.</Text>
-            </View>
-          ) : (
-            org.activityLog.map((entry) => renderActivityEntry(entry))
-          )}
-
-          {/* Campaigns section (for leads) */}
-          {(isLead || org.campaigns.length > 0) && (
-            <View style={[styles.infoCard, { marginTop: 16 }]}>
-              <View style={styles.infoCardHeader}>
-                <View style={styles.infoCardHeaderLeft}>
-                  <TrendingUp size={15} color="#fff" />
-                  <Text style={styles.infoCardTitle}>Campaigns</Text>
-                  {org.campaigns.length > 0 && (
-                    <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{org.campaigns.length}</Text></View>
-                  )}
-                </View>
-                <TouchableOpacity style={styles.infoCardAction} onPress={() => setCampaignModal(true)}>
-                  <Plus size={13} color="#fff" /><Text style={styles.infoCardActionText}>Start Campaign</Text>
-                </TouchableOpacity>
-              </View>
-              {org.campaigns.length === 0 ? (
-                <View style={styles.emptyCard}>
-                  <Text style={styles.emptyCardText}>No campaigns yet.</Text>
-                  <Text style={styles.emptyCardSub}>Start a campaign to track your outreach steps.</Text>
-                </View>
-              ) : (
-                org.campaigns.map((campaign) => {
-                  const completedCount = campaign.steps.filter((s) => s.status !== 'pending').length;
-                  const totalCount = campaign.steps.length;
-                  const progress = totalCount > 0 ? completedCount / totalCount : 0;
-                  return (
-                    <View key={campaign.id} style={styles.campaignCard}>
-                      <View style={styles.campaignHeader}>
-                        <View style={styles.campaignHeaderLeft}>
-                          <Text style={styles.campaignName}>{campaign.templateName}</Text>
-                          <Text style={styles.campaignDate}>Started {formatDate(campaign.startedDate)}</Text>
-                        </View>
-                        <View style={styles.campaignProgress}>
-                          <Text style={styles.campaignProgressText}>{completedCount}/{totalCount}</Text>
-                          <View style={styles.campaignProgressBar}>
-                            <View style={[styles.campaignProgressFill, { width: `${progress * 100}%` as any }]} />
-                          </View>
-                        </View>
-                        <TouchableOpacity style={styles.campaignDelete} onPress={() => Alert.alert('Remove Campaign', 'Remove this campaign?', [{ text: 'Cancel', style: 'cancel' }, { text: 'Remove', style: 'destructive', onPress: () => deleteCampaign({ orgId: org.id, campaignId: campaign.id }) }])}>
-                          <Trash2 size={13} color={Colors.light.textSecondary} />
-                        </TouchableOpacity>
-                      </View>
-                      {campaign.steps.map((step) => (
-                        <View key={step.id} style={styles.campaignStep}>
-                          <View style={styles.campaignStepNum}><Text style={styles.campaignStepNumText}>{step.stepNumber}</Text></View>
-                          <View style={styles.campaignStepInfo}>
-                            <Text style={styles.campaignStepLabel}>{step.label}</Text>
-                            <View style={styles.campaignStepMeta}>
-                              <View style={[styles.campaignStepTypeBadge, { backgroundColor: (ACTIVITY_TYPE_CONFIG[step.type as ActivityType]?.color || '#6B7280') + '20' }]}>
-                                <Text style={[styles.campaignStepTypeText, { color: ACTIVITY_TYPE_CONFIG[step.type as ActivityType]?.color || '#6B7280' }]}>{step.type.charAt(0).toUpperCase() + step.type.slice(1)}</Text>
-                              </View>
-                              {step.scheduledDate && <Text style={styles.campaignStepDate}>Due {formatDate(step.scheduledDate)}</Text>}
-                            </View>
-                          </View>
-                          <View style={styles.campaignStepStatus}>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                              <View style={styles.stepStatusRow}>
-                                {STEP_STATUSES.map((ss) => (
-                                  <TouchableOpacity key={ss} style={[styles.stepStatusBtn, step.status === ss && { backgroundColor: STEP_STATUS_CONFIG[ss].bg, borderColor: STEP_STATUS_CONFIG[ss].color }]} onPress={() => handleUpdateStepStatus(campaign, step, ss)}>
-                                    <Text style={[styles.stepStatusBtnText, step.status === ss && { color: STEP_STATUS_CONFIG[ss].color, fontWeight: '700' as const }]}>{STEP_STATUS_CONFIG[ss].label}</Text>
-                                  </TouchableOpacity>
-                                ))}
-                              </View>
-                            </ScrollView>
-                          </View>
-                        </View>
-                      ))}
-                    </View>
-                  );
-                })
-              )}
-            </View>
-          )}
-          <View style={{ height: 24 }} />
-        </ScrollView>
-      )}
-
-      {/* ── NOTES TAB ── */}
-      {activeTab === 'notes' && (
-        <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
-          <View style={styles.tabContentHeader}>
-            <Text style={styles.tabContentTitle}>Notes</Text>
-            <TouchableOpacity style={styles.addItemBtn} onPress={() => { setActivityForm((f) => ({ ...f, type: 'note' })); setActivityModal(true); }}>
-              <Plus size={13} color="#fff" /><Text style={styles.addItemBtnText}>Add Note</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Org-level notes */}
-          {(org as any).notes ? (
-            <View style={styles.orgNotesCard}>
-              <Text style={styles.orgNotesLabel}>Organization Notes</Text>
-              <Text style={styles.orgNotesText}>{(org as any).notes}</Text>
-            </View>
-          ) : null}
-
-          {noteEntries.length === 0 ? (
-            <View style={styles.emptyTab}>
-              <FileText size={36} color={Colors.light.border} />
-              <Text style={styles.emptyTabText}>No notes yet</Text>
-              <Text style={styles.emptyTabSub}>Add a note to capture important information about this client.</Text>
-            </View>
-          ) : (
-            noteEntries.map((entry) => renderActivityEntry(entry))
-          )}
-          <View style={{ height: 24 }} />
-        </ScrollView>
-      )}
-
-      {/* ── COMMUNICATIONS TAB (V1 dead-code path) ── */}
-      {activeTab === 'comms' && (
-        <ScrollView style={styles.tabContentScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContentPad}>
-          <View style={styles.tabContentHeader}>
-            <Text style={styles.tabContentTitle}>Emails</Text>
-            <TouchableOpacity style={styles.addItemBtn} onPress={() => { setActivityForm((f) => ({ ...f, type: 'email' })); setActivityModal(true); }}>
-              <Plus size={13} color="#fff" /><Text style={styles.addItemBtnText}>Log Email</Text>
-            </TouchableOpacity>
-          </View>
-          {emailEntries.length === 0 ? (
-            <View style={[styles.emptyTab, { paddingVertical: 32 }]}>
-              <Text style={styles.emptyTabText}>No emails logged yet</Text>
-            </View>
-          ) : (
-            emailEntries.map((entry) => renderActivityEntry(entry))
-          )}
-          <View style={{ height: 1, backgroundColor: Colors.light.border, marginVertical: 14 }} />
-          <View style={styles.tabContentHeader}>
-            <Text style={styles.tabContentTitle}>Calls & Texts</Text>
-            <TouchableOpacity style={styles.addItemBtn} onPress={() => { setActivityForm((f) => ({ ...f, type: 'call' })); setActivityModal(true); }}>
-              <Phone size={13} color="#fff" /><Text style={styles.addItemBtnText}>Log Call</Text>
-            </TouchableOpacity>
-          </View>
-          {callEntries.length === 0 ? (
-            <View style={styles.emptyTab}>
-              <PhoneCall size={36} color={Colors.light.border} />
-              <Text style={styles.emptyTabText}>No calls logged yet</Text>
-            </View>
-          ) : (
-            callEntries.map((entry) => renderActivityEntry(entry))
-          )}
-          <View style={{ height: 24 }} />
-        </ScrollView>
-      )}
-    </View>
-  );
-
   // ─── V2 LAYOUT ───────────────────────────────────────────────────────────────
   if (FLAG_ORG_LAYOUT_V2) {
     return (
@@ -2670,10 +1410,6 @@ export default function OrgProfileScreen() {
                             <TouchableOpacity style={styles.orgMenuItem} onPress={() => { close(); openEditOrg(); }}>
                               <Edit3 size={14} color={Colors.light.text} />
                               <Text style={styles.orgMenuItemText}>Edit Profile</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.orgMenuItem} onPress={() => { close(); setAddMemberModal(true); }}>
-                              <Users size={14} color={Colors.light.text} />
-                              <Text style={styles.orgMenuItemText}>Assign Rep</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.orgMenuItem} onPress={() => { close(); setActivityModal(true); }}>
                               <Plus size={14} color={Colors.light.text} />
@@ -2732,64 +1468,17 @@ export default function OrgProfileScreen() {
               </View>
 
 
-              {/* Contacts section */}
+              {/* Contacts — single people-management surface (CRM consolidation) */}
               <View style={styles.v2LPSection}>
-                <View style={styles.infoCardHeader}>
-                  <View style={styles.infoCardHeaderLeft}>
-                    <Users size={13} color="#fff" />
-                    <Text style={styles.infoCardTitle}>Contacts</Text>
-                    {org.contacts.length > 0 && (
-                      <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{org.contacts.length}</Text></View>
-                    )}
-                  </View>
-                  <TouchableOpacity style={styles.infoCardAction} onPress={openAddContact}>
-                    <Plus size={13} color="#fff" />
-                    <Text style={styles.infoCardActionText}>Add</Text>
-                  </TouchableOpacity>
-                </View>
-                {org.contacts.length === 0 ? (
-                  <TouchableOpacity style={styles.v2LPEmptyContacts} onPress={openAddContact}>
-                    <Users size={20} color={Colors.light.border} />
-                    <Text style={styles.v2LPEmptyText}>No contacts yet</Text>
-                    <Text style={styles.v2LPEmptySub}>Tap Add to add your first contact</Text>
-                  </TouchableOpacity>
-                ) : (
-                  org.contacts.slice(0, 4).map((c) => {
-                    const initials = ((c.firstName?.[0] ?? '') + (c.lastName?.[0] ?? '')).toUpperCase();
-                    return (
-                      <View key={c.id} style={styles.v2LPContactCard}>
-                        <View style={styles.v2LPContactAvatar}>
-                          <Text style={styles.v2LPContactAvatarText}>{initials || '?'}</Text>
-                        </View>
-                        <View style={styles.v2LPContactInfo}>
-                          <Text style={styles.v2LPContactName} numberOfLines={1}>{c.firstName} {c.lastName}</Text>
-                          {c.role ? <Text style={styles.v2LPContactRole} numberOfLines={1}>{c.role}</Text> : null}
-                          {c.phone ? (
-                            <TouchableOpacity onPress={() => typeof window !== 'undefined' && (window.location.href = `tel:${c.phone}`)}>
-                              <Text style={styles.v2LPContactDetail} numberOfLines={1}>{c.phone}</Text>
-                            </TouchableOpacity>
-                          ) : null}
-                          {c.email ? (
-                            <TouchableOpacity onPress={() => typeof window !== 'undefined' && (window.location.href = `mailto:${c.email}`)}>
-                              <Text style={[styles.v2LPContactDetail, { color: Colors.light.tint }]} numberOfLines={1}>{c.email}</Text>
-                            </TouchableOpacity>
-                          ) : null}
-                        </View>
-                        <View style={styles.v2LPContactActions}>
-                          <TouchableOpacity style={styles.v2LPContactActionBtn} onPress={() => openEditContact(c)}>
-                            <Edit3 size={11} color={Colors.light.textSecondary} />
-                          </TouchableOpacity>
-                          <TouchableOpacity style={styles.v2LPContactActionBtn} onPress={() => handleDeleteContact(c)}>
-                            <Trash2 size={11} color={Colors.light.error} />
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    );
-                  })
-                )}
-                {org.contacts.length > 4 && (
-                  <Text style={styles.v2ViewAll}>View all {org.contacts.length} contacts</Text>
-                )}
+                <ContactsPeopleTable
+                  contacts={org.contacts}
+                  onAdd={openAddContact}
+                  onAddDept={openAddDept}
+                  onEdit={openEditContact}
+                  onDelete={handleDeleteContact}
+                  onAction={runContactAction}
+                  busyKey={contactActionBusy}
+                />
               </View>
 
               {/* Client Hub section — lives here in left panel */}
@@ -3532,85 +2221,15 @@ export default function OrgProfileScreen() {
             )}
             {activeTab === 'contacts' && (
               <View style={styles.tabContentPad}>
-                <View style={styles.infoCard}>
-                  <View style={styles.infoCardHeader}>
-                    <View style={styles.infoCardHeaderLeft}>
-                      <Users size={15} color="#fff" />
-                      <Text style={styles.infoCardTitle}>Contacts</Text>
-                      {org.contacts.length > 0 && (
-                        <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{org.contacts.length}</Text></View>
-                      )}
-                    </View>
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                      <TouchableOpacity style={styles.infoCardActionSecondary} onPress={openAddDept}>
-                        <Plus size={12} color="#fff" />
-                        <Text style={styles.infoCardActionSecondaryText}>Dept</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.infoCardAction} onPress={openAddContact}>
-                        <Plus size={13} color="#fff" />
-                        <Text style={styles.infoCardActionText}>Add Contact</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                  {org.contacts.length === 0 && (org.departments || []).length === 0 ? (
-                    <View style={styles.emptyCard}>
-                      <Text style={styles.emptyCardText}>No contacts yet.</Text>
-                      <Text style={styles.emptyCardSub}>Add departments to organize people by team, then add contacts.</Text>
-                    </View>
-                  ) : (
-                    <>
-                      {(org.departments || []).map((dept) => {
-                        const deptContacts = org.contacts.filter((c) => c.departmentId === dept.id);
-                        return (
-                          <View key={dept.id} style={styles.deptSection}>
-                            <View style={styles.deptHeader}>
-                              <View style={styles.deptHeaderLeft}>
-                                <Users size={13} color={Colors.light.tint} />
-                                <Text style={styles.deptName}>{dept.name}</Text>
-                                <Text style={styles.deptCount}>{deptContacts.length} contact{deptContacts.length !== 1 ? 's' : ''}</Text>
-                              </View>
-                              <View style={styles.deptHeaderActions}>
-                                <TouchableOpacity style={styles.deptAddBtn} onPress={() => { setEditingContact(null); setContactForm({ firstName: '', lastName: '', role: 'Primary Contact', email: '', phone: '', notes: '', isPrimary: false, departmentId: dept.id, hubAccess: false }); setContactModal(true); }}>
-                                  <Plus size={12} color={Colors.light.tint} />
-                                </TouchableOpacity>
-                                <TouchableOpacity style={styles.deptActionBtn} onPress={() => openEditDept(dept)}>
-                                  <Edit3 size={12} color={Colors.light.textSecondary} />
-                                </TouchableOpacity>
-                                <TouchableOpacity style={styles.deptActionBtn} onPress={() => Alert.alert('Delete Department', `Remove "${dept.name}"? Contacts in this department will become unassigned.`, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => deleteDepartment({ orgId: org.id, deptId: dept.id }) }])}>
-                                  <Trash2 size={12} color={Colors.light.error} />
-                                </TouchableOpacity>
-                              </View>
-                            </View>
-                            {deptContacts.length === 0 ? (
-                              <Text style={styles.deptEmpty}>No contacts in this department yet.</Text>
-                            ) : (
-                              deptContacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={contactHasHubAccess(c)} onEnableHub={() => handleEnableHubFromCard(c)} />)
-                            )}
-                          </View>
-                        );
-                      })}
-                      {(() => {
-                        const unassigned = org.contacts.filter((c) => !c.departmentId || !(org.departments || []).find((d) => d.id === c.departmentId));
-                        if ((org.departments || []).length === 0) {
-                          return org.contacts.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={contactHasHubAccess(c)} onEnableHub={() => handleEnableHubFromCard(c)} />);
-                        }
-                        if (unassigned.length === 0) return null;
-                        return (
-                          <View style={styles.deptSection}>
-                            <View style={styles.deptHeader}>
-                              <View style={styles.deptHeaderLeft}>
-                                <User size={13} color={Colors.light.textSecondary} />
-                                <Text style={[styles.deptName, { color: Colors.light.textSecondary }]}>Unassigned</Text>
-                                <Text style={styles.deptCount}>{unassigned.length}</Text>
-                              </View>
-                            </View>
-                            {unassigned.map((c) => <ContactCard key={c.id} contact={c} onEdit={() => openEditContact(c)} onDelete={() => handleDeleteContact(c)} hubAccessEnabled={contactHasHubAccess(c)} onEnableHub={() => handleEnableHubFromCard(c)} />)}
-                          </View>
-                        );
-                      })()}
-                    </>
-                  )}
-                </View>
+                <ContactsPeopleTable
+                  contacts={org.contacts}
+                  onAdd={openAddContact}
+                  onAddDept={openAddDept}
+                  onEdit={openEditContact}
+                  onDelete={handleDeleteContact}
+                  onAction={runContactAction}
+                  busyKey={contactActionBusy}
+                />
               </View>
             )}
             {activeTab === 'hub' && (
@@ -3850,12 +2469,6 @@ export default function OrgProfileScreen() {
                       </View>
                     </>
                   )}
-                  {!!contactForm.email.trim() && (
-                    <TouchableOpacity style={styles.primaryToggle} onPress={() => setContactForm((f) => ({ ...f, hubAccess: !f.hubAccess }))}>
-                      {contactForm.hubAccess ? <CheckCircle size={18} color={Colors.light.tint} /> : <Circle size={18} color={Colors.light.textSecondary} />}
-                      <Text style={styles.primaryToggleText}>Enable Client Hub Access</Text>
-                    </TouchableOpacity>
-                  )}
                 </ScrollView>
                 <View style={styles.modalActions}>
                   <TouchableOpacity style={styles.cancelBtn} onPress={() => setContactModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
@@ -3981,585 +2594,12 @@ export default function OrgProfileScreen() {
           </Pressable>
         </Modal>
 
-        <Modal visible={inviteModal} transparent animationType="fade" onRequestClose={() => setInviteModal(false)}>
-          <Pressable style={styles.modalOverlay} onPress={() => setInviteModal(false)}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
-              <Pressable style={styles.modalCard} onPress={() => {}}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Invite User</Text>
-                  <TouchableOpacity onPress={() => setInviteModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
-                </View>
-                <View style={styles.hubModalTabs}>
-                  {(['email', 'link', 'message'] as const).map((tab) => (
-                    <TouchableOpacity key={tab} style={[styles.hubModalTab, inviteTab === tab && styles.hubModalTabActive]} onPress={() => setInviteTab(tab)}>
-                      <Text style={[styles.hubModalTabText, inviteTab === tab && styles.hubModalTabTextActive]}>
-                        {tab === 'email' ? 'Email Invite' : tab === 'link' ? 'Copy Link' : 'Copy Message'}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                {inviteTab === 'email' && (
-                  <>
-                    {org.contacts.filter((c) => c.email).length > 0 && (
-                      <>
-                        <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Quick fill from contact</Text>
-                        <ScrollView style={{ maxHeight: 100 }} showsVerticalScrollIndicator={false}>
-                          {org.contacts.filter((c) => c.email).map((c) => (
-                            <TouchableOpacity key={c.id} style={[styles.userPickerRow, inviteForm.email === c.email && styles.userPickerRowSelected]} onPress={() => setInviteForm({ name: `${c.firstName} ${c.lastName}`.trim(), email: c.email! })}>
-                              <Text style={[styles.userPickerName, inviteForm.email === c.email && { color: '#FF5A00', fontWeight: '600' as const }]}>{c.firstName} {c.lastName}</Text>
-                              <Text style={[styles.memberRole, { flex: 1, textAlign: 'right' as const }]}>{c.email}</Text>
-                              {inviteForm.email === c.email && <CheckCircle size={14} color="#FF5A00" />}
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      </>
-                    )}
-                    <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Full Name</Text>
-                    <TextInput style={styles.fieldInput} value={inviteForm.name} onChangeText={(v) => setInviteForm((f) => ({ ...f, name: v }))} placeholder="e.g. Jane Smith" placeholderTextColor={Colors.light.placeholder} />
-                    <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Email Address</Text>
-                    <TextInput style={styles.fieldInput} value={inviteForm.email} onChangeText={(v) => setInviteForm((f) => ({ ...f, email: v }))} placeholder="e.g. jane@client.com" placeholderTextColor={Colors.light.placeholder} keyboardType="email-address" autoCapitalize="none" />
-                    <View style={styles.inviteEmailNote}>
-                      <Mail size={12} color="#6366F1" />
-                      <Text style={styles.inviteEmailNoteText}>An invite email will be sent to this address.</Text>
-                    </View>
-                    <View style={styles.modalActions}>
-                      <TouchableOpacity style={styles.cancelBtn} onPress={() => setInviteModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
-                      <TouchableOpacity style={[styles.saveBtn, (!inviteForm.name.trim() || !inviteForm.email.trim() || inviteSending) && { opacity: 0.4 }]} onPress={handleSendHubInvite} disabled={!inviteForm.name.trim() || !inviteForm.email.trim() || inviteSending}>
-                        <Text style={styles.saveBtnText}>{inviteSending ? 'Sending...' : 'Send Invite'}</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </>
-                )}
-                {inviteTab === 'link' && (
-                  <>
-                    <Text style={[styles.fieldLabel, { marginTop: 12, marginBottom: 6 }]}>Hub URL</Text>
-                    <View style={styles.hubModalCopyRow}>
-                      <Text style={styles.hubModalCopyUrl} numberOfLines={1} selectable>
-                        {Platform.OS === 'web' && typeof window !== 'undefined' ? `${window.location.origin}/portal/${org.id}` : `/portal/${org.id}`}
-                      </Text>
-                      <TouchableOpacity style={styles.hubModalCopyBtn} onPress={handleCopyHubLink}>
-                        {hubLinkCopied ? <><CheckCircle2 size={14} color="#fff" /><Text style={styles.hubModalCopyBtnText}>Copied!</Text></> : <><Copy size={14} color="#fff" /><Text style={styles.hubModalCopyBtnText}>Copy</Text></>}
-                      </TouchableOpacity>
-                    </View>
-                    <Text style={styles.hubModalHint}>Share this link with your client so they can access the hub.</Text>
-                  </>
-                )}
-                {inviteTab === 'message' && (() => {
-                  const portalUrl = Platform.OS === 'web' && typeof window !== 'undefined' ? `${window.location.origin}/portal/${org.id}` : `/portal/${org.id}`;
-                  const msg = `You're invited to join the ${org.name} Client Hub.\n\nAccess your portal here:\n${portalUrl}`;
-                  return (
-                    <>
-                      <Text style={[styles.fieldLabel, { marginTop: 12, marginBottom: 6 }]}>Invitation Message</Text>
-                      <View style={styles.hubModalMsgBox}><Text style={styles.hubModalMsgText} selectable>{msg}</Text></View>
-                      <TouchableOpacity style={styles.saveBtn} onPress={() => { if (Platform.OS === 'web' && typeof navigator !== 'undefined') { navigator.clipboard.writeText(msg); setInviteLinkCopied(true); setTimeout(() => setInviteLinkCopied(false), 2000); } }}>
-                        <Text style={styles.saveBtnText}>{inviteLinkCopied ? 'Copied!' : 'Copy Message'}</Text>
-                      </TouchableOpacity>
-                    </>
-                  );
-                })()}
-              </Pressable>
-            </KeyboardAvoidingView>
-          </Pressable>
-        </Modal>
-
-        <Modal visible={addMemberModal} transparent animationType="fade" onRequestClose={() => setAddMemberModal(false)}>
-          <Pressable style={styles.modalOverlay} onPress={() => setAddMemberModal(false)}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
-              <Pressable style={styles.modalCard} onPress={() => {}}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Add Member</Text>
-                  <TouchableOpacity onPress={() => setAddMemberModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
-                </View>
-                <Text style={styles.fieldLabel}>Select User</Text>
-                {availableUsers.length === 0 ? (
-                  <Text style={[styles.emptyTabSub, { marginBottom: 12 }]}>No users synced yet. Create a user in the app first.</Text>
-                ) : (
-                  <ScrollView style={{ maxHeight: 180 }} showsVerticalScrollIndicator={false}>
-                    {availableUsers.map((u) => {
-                      const selected = memberForm.userId === u.id;
-                      return (
-                        <TouchableOpacity key={u.id} style={[styles.userPickerRow, selected && styles.userPickerRowSelected]} onPress={() => setMemberForm((f) => ({ ...f, userId: u.id }))}>
-                          <View style={[styles.memberAvatar, { backgroundColor: u.avatarColor || '#FF5A00', width: 30, height: 30, borderRadius: 15 }]}>
-                            <Text style={[styles.memberAvatarText, { fontSize: 12 }]}>{(u.name || '?')[0].toUpperCase()}</Text>
-                          </View>
-                          <Text style={[styles.userPickerName, selected && { color: '#FF5A00', fontWeight: '600' as const }]}>{u.name}</Text>
-                          {selected && <CheckCircle size={16} color="#FF5A00" />}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                )}
-                <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Role</Text>
-                <TouchableOpacity style={[styles.typePickerBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]} onPress={() => setMemberRoleDropdown((v) => !v)}>
-                  <Text style={styles.typePickerBtnText}>{MEMBERSHIP_ROLE_LABELS[memberForm.role] || memberForm.role}</Text>
-                  <ChevronDown size={16} color={Colors.light.textSecondary} />
-                </TouchableOpacity>
-                {memberRoleDropdown && (
-                  <View style={styles.typeDropdown}>
-                    {MEMBERSHIP_ROLES.map((r) => (
-                      <TouchableOpacity key={r} style={styles.typeDropdownItem} onPress={() => { setMemberForm((f) => ({ ...f, role: r })); setMemberRoleDropdown(false); }}>
-                        <Text style={[styles.typeDropdownText, memberForm.role === r && styles.typeDropdownTextActive]}>{MEMBERSHIP_ROLE_LABELS[r]}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-                <View style={styles.modalActions}>
-                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setAddMemberModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
-                  <TouchableOpacity style={[styles.saveBtn, !memberForm.userId && { opacity: 0.4 }]} onPress={handleAddMember} disabled={!memberForm.userId}>
-                    <Text style={styles.saveBtnText}>Add Member</Text>
-                  </TouchableOpacity>
-                </View>
-              </Pressable>
-            </KeyboardAvoidingView>
-          </Pressable>
-        </Modal>
       </View>
     );
   }
   // ─── END V2 ──────────────────────────────────────────────────────────────────
 
-  return (
-    <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          title: org.name,
-          headerStyle: { backgroundColor: Colors.light.headerBg },
-          headerTintColor: '#fff',
-        }}
-      />
-
-      {isDesktop ? (
-        <View style={styles.desktopLayout}>
-          <ScrollView style={styles.desktopLeft} contentContainerStyle={styles.desktopLeftContent} showsVerticalScrollIndicator={false}>
-            {leftPanel}
-          </ScrollView>
-          <View style={styles.desktopRight}>
-            {rightPanel}
-          </View>
-        </View>
-      ) : (
-        <ScrollView style={styles.mobileScroll} showsVerticalScrollIndicator={false}>
-          {leftPanel}
-          {rightPanel}
-          <View style={{ height: 40 }} />
-        </ScrollView>
-      )}
-
-      {/* Edit Org Modal */}
-      <Modal visible={editOrgModal} transparent animationType="fade" onRequestClose={() => setEditOrgModal(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setEditOrgModal(false)}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
-            <Pressable style={styles.modalCard} onPress={() => {}}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Edit Profile</Text>
-                <TouchableOpacity onPress={() => setEditOrgModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
-              </View>
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <Text style={styles.fieldLabel}>Status</Text>
-                <View style={styles.statusRow}>
-                  {(['Cold', 'Working', 'Active Client', 'Past Client'] as CrmStatus[]).map((s) => {
-                    const cfg = CRM_STATUS_CONFIG[s];
-                    const sel = orgForm.status === s;
-                    return (
-                      <TouchableOpacity key={s} style={[styles.statusChip, sel && { backgroundColor: cfg.bg, borderColor: cfg.border }]} onPress={() => setOrgForm((f) => ({ ...f, status: s }))}>
-                        <Text style={[styles.statusChipText, sel && { color: cfg.color, fontWeight: '700' as const }]}>{s}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-                <Text style={styles.fieldLabel}>Name *</Text>
-                <TextInput style={styles.textInput} value={orgForm.name} onChangeText={(v) => setOrgForm((f) => ({ ...f, name: v }))} placeholder="Organization name" placeholderTextColor={Colors.light.textSecondary} />
-                <Text style={styles.fieldLabel}>Type</Text>
-                <TouchableOpacity style={styles.typePickerBtn} onPress={() => setShowOrgTypeDropdown((v) => !v)}>
-                  <Text style={orgForm.type ? styles.typePickerBtnText : styles.typePickerBtnPlaceholder}>{orgForm.type || 'Select type…'}</Text>
-                </TouchableOpacity>
-                {showOrgTypeDropdown && (
-                  <View style={styles.typeDropdown}>
-                    {ORG_TYPES.map((t) => (
-                      <TouchableOpacity key={t} style={styles.typeDropdownItem} onPress={() => { setOrgForm((f) => ({ ...f, type: t })); setShowOrgTypeDropdown(false); }}>
-                        <Text style={[styles.typeDropdownText, orgForm.type === t && styles.typeDropdownTextActive]}>{t}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-                <Text style={styles.fieldLabel}>City / State</Text>
-                <View style={styles.rowInputs}>
-                  <TextInput style={[styles.textInput, { flex: 2 }]} value={orgForm.city} onChangeText={(v) => setOrgForm((f) => ({ ...f, city: v }))} placeholder="City" placeholderTextColor={Colors.light.textSecondary} />
-                  <TextInput style={[styles.textInput, { flex: 1 }]} value={orgForm.state} onChangeText={(v) => setOrgForm((f) => ({ ...f, state: v }))} placeholder="State" placeholderTextColor={Colors.light.textSecondary} />
-                </View>
-                <Text style={styles.fieldLabel}>Website</Text>
-                <TextInput style={styles.textInput} value={orgForm.website} onChangeText={(v) => setOrgForm((f) => ({ ...f, website: v }))} placeholder="https://..." placeholderTextColor={Colors.light.textSecondary} autoCapitalize="none" />
-                <Text style={styles.fieldLabel}>Notes</Text>
-                <TextInput style={[styles.textInput, styles.notesInput]} value={orgForm.notes} onChangeText={(v) => setOrgForm((f) => ({ ...f, notes: v }))} placeholder="Notes…" placeholderTextColor={Colors.light.textSecondary} multiline numberOfLines={3} />
-              </ScrollView>
-              <View style={styles.modalActions}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditOrgModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.saveBtn} onPress={handleSaveOrg}><Text style={styles.saveBtnText}>Save Changes</Text></TouchableOpacity>
-              </View>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
-
-      {/* Contact Modal */}
-      <Modal visible={contactModal} transparent animationType="fade" onRequestClose={() => setContactModal(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setContactModal(false)}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
-            <Pressable style={styles.modalCard} onPress={() => {}}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{editingContact ? 'Edit Contact' : 'Add Contact'}</Text>
-                <TouchableOpacity onPress={() => setContactModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
-              </View>
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <View style={styles.rowInputs}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.fieldLabel}>First Name *</Text>
-                    <TextInput style={styles.textInput} value={contactForm.firstName} onChangeText={(v) => setContactForm((f) => ({ ...f, firstName: v }))} placeholder="First" placeholderTextColor={Colors.light.textSecondary} autoFocus />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.fieldLabel}>Last Name</Text>
-                    <TextInput style={styles.textInput} value={contactForm.lastName} onChangeText={(v) => setContactForm((f) => ({ ...f, lastName: v }))} placeholder="Last" placeholderTextColor={Colors.light.textSecondary} />
-                  </View>
-                </View>
-                <Text style={styles.fieldLabel}>Role</Text>
-                <View style={styles.statusRow}>
-                  {CONTACT_ROLES.map((r) => (
-                    <TouchableOpacity key={r} style={[styles.statusChip, contactForm.role === r && styles.statusChipActive]} onPress={() => setContactForm((f) => ({ ...f, role: r }))}>
-                      <Text style={[styles.statusChipText, contactForm.role === r && styles.statusChipTextActive]}>{r}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <Text style={styles.fieldLabel}>Email</Text>
-                <TextInput style={styles.textInput} value={contactForm.email} onChangeText={(v) => setContactForm((f) => ({ ...f, email: v }))} placeholder="email@example.com" placeholderTextColor={Colors.light.textSecondary} keyboardType="email-address" autoCapitalize="none" />
-                <Text style={styles.fieldLabel}>Phone</Text>
-                <TextInput style={styles.textInput} value={contactForm.phone} onChangeText={(v) => setContactForm((f) => ({ ...f, phone: v }))} placeholder="(555) 000-0000" placeholderTextColor={Colors.light.textSecondary} keyboardType="phone-pad" />
-                <Text style={styles.fieldLabel}>Notes</Text>
-                <TextInput style={[styles.textInput, styles.notesInput]} value={contactForm.notes} onChangeText={(v) => setContactForm((f) => ({ ...f, notes: v }))} placeholder="Notes about this contact…" placeholderTextColor={Colors.light.textSecondary} multiline numberOfLines={3} />
-                {(org.departments || []).length > 0 && (
-                  <>
-                    <Text style={styles.fieldLabel}>Department</Text>
-                    <View style={styles.statusRow}>
-                      <TouchableOpacity
-                        style={[styles.statusChip, !contactForm.departmentId && styles.statusChipActive]}
-                        onPress={() => setContactForm((f) => ({ ...f, departmentId: '' }))}
-                      >
-                        <Text style={[styles.statusChipText, !contactForm.departmentId && styles.statusChipTextActive]}>None</Text>
-                      </TouchableOpacity>
-                      {(org.departments || []).map((d) => (
-                        <TouchableOpacity
-                          key={d.id}
-                          style={[styles.statusChip, contactForm.departmentId === d.id && styles.statusChipActive]}
-                          onPress={() => setContactForm((f) => ({ ...f, departmentId: d.id }))}
-                        >
-                          <Text style={[styles.statusChipText, contactForm.departmentId === d.id && styles.statusChipTextActive]}>{d.name}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </>
-                )}
-                {!!contactForm.email.trim() && (
-                  <TouchableOpacity style={styles.primaryToggle} onPress={() => setContactForm((f) => ({ ...f, hubAccess: !f.hubAccess }))}>
-                    {contactForm.hubAccess ? <CheckCircle size={18} color={Colors.light.tint} /> : <Circle size={18} color={Colors.light.textSecondary} />}
-                    <Text style={styles.primaryToggleText}>Enable Client Hub Access</Text>
-                  </TouchableOpacity>
-                )}
-              </ScrollView>
-              <View style={styles.modalActions}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => setContactModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.saveBtn, !contactForm.firstName.trim() && styles.saveBtnDisabled]} onPress={handleSaveContact} disabled={!contactForm.firstName.trim()}>
-                  <Text style={styles.saveBtnText}>{editingContact ? 'Save Changes' : 'Add Contact'}</Text>
-                </TouchableOpacity>
-              </View>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
-
-      {/* Activity Modal */}
-      <Modal visible={activityModal} transparent animationType="fade" onRequestClose={() => setActivityModal(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setActivityModal(false)}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
-            <Pressable style={styles.modalCard} onPress={() => {}}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Log Activity</Text>
-                <TouchableOpacity onPress={() => setActivityModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
-              </View>
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <Text style={styles.fieldLabel}>Type</Text>
-                <View style={styles.statusRow}>
-                  {(['call', 'email', 'note', 'meeting', 'text'] as ActivityType[]).map((t) => {
-                    const cfg = ACTIVITY_TYPE_CONFIG[t];
-                    const sel = activityForm.type === t;
-                    return (
-                      <TouchableOpacity key={t} style={[styles.statusChip, sel && { backgroundColor: cfg.color + '20', borderColor: cfg.color }]} onPress={() => setActivityForm((f) => ({ ...f, type: t }))}>
-                        <Text style={[styles.statusChipText, sel && { color: cfg.color, fontWeight: '700' as const }]}>{cfg.label}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-                <Text style={styles.fieldLabel}>Date</Text>
-                <TextInput style={styles.textInput} value={activityForm.date} onChangeText={(v) => setActivityForm((f) => ({ ...f, date: v }))} placeholder="YYYY-MM-DD" placeholderTextColor={Colors.light.textSecondary} />
-                {org.contacts.length > 0 && (
-                  <>
-                    <Text style={styles.fieldLabel}>Contact (optional)</Text>
-                    <View style={styles.statusRow}>
-                      <TouchableOpacity style={[styles.statusChip, !activityForm.contactId && styles.statusChipActive]} onPress={() => setActivityForm((f) => ({ ...f, contactId: '' }))}>
-                        <Text style={[styles.statusChipText, !activityForm.contactId && styles.statusChipTextActive]}>Any</Text>
-                      </TouchableOpacity>
-                      {org.contacts.map((c) => (
-                        <TouchableOpacity key={c.id} style={[styles.statusChip, activityForm.contactId === c.id && styles.statusChipActive]} onPress={() => setActivityForm((f) => ({ ...f, contactId: c.id }))}>
-                          <Text style={[styles.statusChipText, activityForm.contactId === c.id && styles.statusChipTextActive]}>{c.firstName} {c.lastName}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </>
-                )}
-                <Text style={styles.fieldLabel}>Subject (optional)</Text>
-                <TextInput style={styles.textInput} value={activityForm.subject} onChangeText={(v) => setActivityForm((f) => ({ ...f, subject: v }))} placeholder="Brief subject…" placeholderTextColor={Colors.light.textSecondary} />
-                <Text style={styles.fieldLabel}>Notes *</Text>
-                <TextInput style={[styles.textInput, styles.notesInput]} value={activityForm.body} onChangeText={(v) => setActivityForm((f) => ({ ...f, body: v }))} placeholder="What happened? What was discussed?" placeholderTextColor={Colors.light.textSecondary} multiline numberOfLines={4} autoFocus />
-              </ScrollView>
-              <View style={styles.modalActions}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => setActivityModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.saveBtn, !activityForm.body.trim() && styles.saveBtnDisabled]} onPress={handleSaveActivity} disabled={!activityForm.body.trim()}>
-                  <Text style={styles.saveBtnText}>Log Activity</Text>
-                </TouchableOpacity>
-              </View>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
-
-      {/* Department Modal */}
-      <Modal visible={deptModal} transparent animationType="fade" onRequestClose={() => setDeptModal(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setDeptModal(false)}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
-            <Pressable style={styles.modalCard} onPress={() => {}}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{editingDept ? 'Edit Department' : 'Add Department'}</Text>
-                <TouchableOpacity onPress={() => setDeptModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
-              </View>
-              <Text style={styles.fieldLabel}>Department Name *</Text>
-              <TextInput
-                style={styles.textInput}
-                value={deptForm.name}
-                onChangeText={(v) => setDeptForm((f) => ({ ...f, name: v }))}
-                placeholder="e.g., Youth, Communications, Admin…"
-                placeholderTextColor={Colors.light.textSecondary}
-                autoFocus
-              />
-              <Text style={styles.fieldLabel}>Description (optional)</Text>
-              <TextInput
-                style={[styles.textInput, styles.notesInput]}
-                value={deptForm.description}
-                onChangeText={(v) => setDeptForm((f) => ({ ...f, description: v }))}
-                placeholder="Brief description of this department…"
-                placeholderTextColor={Colors.light.textSecondary}
-                multiline
-                numberOfLines={2}
-              />
-              <View style={styles.modalActions}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => setDeptModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.saveBtn, !deptForm.name.trim() && styles.saveBtnDisabled]} onPress={handleSaveDept} disabled={!deptForm.name.trim()}>
-                  <Text style={styles.saveBtnText}>{editingDept ? 'Save' : 'Add Department'}</Text>
-                </TouchableOpacity>
-              </View>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
-
-      {/* Campaign Modal */}
-      <Modal visible={campaignModal} transparent animationType="fade" onRequestClose={() => setCampaignModal(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setCampaignModal(false)}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
-            <Pressable style={styles.modalCard} onPress={() => {}}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Start Campaign</Text>
-                <TouchableOpacity onPress={() => setCampaignModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
-              </View>
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <Text style={styles.fieldLabel}>Select a Campaign Template</Text>
-                {templates.map((tpl) => (
-                  <TouchableOpacity
-                    key={tpl.id}
-                    style={[styles.templateOption, selectedTemplateId === tpl.id && styles.templateOptionActive]}
-                    onPress={() => setSelectedTemplateId(tpl.id)}
-                  >
-                    <View style={styles.templateOptionHeader}>
-                      <Text style={styles.templateOptionName}>{tpl.name}</Text>
-                      <View style={[styles.templateRadio, selectedTemplateId === tpl.id && styles.templateRadioActive]} />
-                    </View>
-                    {tpl.description && <Text style={styles.templateOptionDesc}>{tpl.description}</Text>}
-                    <Text style={styles.templateOptionSteps}>{tpl.steps.length} steps</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-              <View style={styles.modalActions}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => setCampaignModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.saveBtn, !selectedTemplateId && styles.saveBtnDisabled]}
-                  disabled={!selectedTemplateId}
-                  onPress={() => {
-                    assignCampaign({ orgId: org.id, templateId: selectedTemplateId });
-                    setCampaignModal(false);
-                    setSelectedTemplateId(undefined);
-                  }}
-                >
-                  <Text style={styles.saveBtnText}>Start Campaign</Text>
-                </TouchableOpacity>
-              </View>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
-
-      {/* Invite User Modal */}
-      <Modal visible={inviteModal} transparent animationType="fade" onRequestClose={() => setInviteModal(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setInviteModal(false)}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
-            <Pressable style={styles.modalCard} onPress={() => {}}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Invite User</Text>
-                <TouchableOpacity onPress={() => setInviteModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
-              </View>
-              <View style={styles.hubModalTabs}>
-                {(['email', 'link', 'message'] as const).map((tab) => (
-                  <TouchableOpacity key={tab} style={[styles.hubModalTab, inviteTab === tab && styles.hubModalTabActive]} onPress={() => setInviteTab(tab)}>
-                    <Text style={[styles.hubModalTabText, inviteTab === tab && styles.hubModalTabTextActive]}>
-                      {tab === 'email' ? 'Email Invite' : tab === 'link' ? 'Copy Link' : 'Copy Message'}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              {inviteTab === 'email' && (
-                <>
-                  {org.contacts.filter((c) => c.email).length > 0 && (
-                    <>
-                      <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Quick fill from contact</Text>
-                      <ScrollView style={{ maxHeight: 100 }} showsVerticalScrollIndicator={false}>
-                        {org.contacts.filter((c) => c.email).map((c) => (
-                          <TouchableOpacity key={c.id} style={[styles.userPickerRow, inviteForm.email === c.email && styles.userPickerRowSelected]} onPress={() => setInviteForm({ name: `${c.firstName} ${c.lastName}`.trim(), email: c.email! })}>
-                            <Text style={[styles.userPickerName, inviteForm.email === c.email && { color: '#FF5A00', fontWeight: '600' as const }]}>{c.firstName} {c.lastName}</Text>
-                            <Text style={[styles.memberRole, { flex: 1, textAlign: 'right' as const }]}>{c.email}</Text>
-                            {inviteForm.email === c.email && <CheckCircle size={14} color="#FF5A00" />}
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </>
-                  )}
-                  <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Full Name</Text>
-                  <TextInput style={styles.fieldInput} value={inviteForm.name} onChangeText={(v) => setInviteForm((f) => ({ ...f, name: v }))} placeholder="e.g. Jane Smith" placeholderTextColor={Colors.light.placeholder} />
-                  <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Email Address</Text>
-                  <TextInput style={styles.fieldInput} value={inviteForm.email} onChangeText={(v) => setInviteForm((f) => ({ ...f, email: v }))} placeholder="e.g. jane@client.com" placeholderTextColor={Colors.light.placeholder} keyboardType="email-address" autoCapitalize="none" />
-                  <View style={styles.inviteEmailNote}>
-                    <Mail size={12} color="#6366F1" />
-                    <Text style={styles.inviteEmailNoteText}>An invite email will be sent to this address.</Text>
-                  </View>
-                  <View style={styles.modalActions}>
-                    <TouchableOpacity style={styles.cancelBtn} onPress={() => setInviteModal(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
-                    <TouchableOpacity style={[styles.saveBtn, (!inviteForm.name.trim() || !inviteForm.email.trim() || inviteSending) && { opacity: 0.4 }]} onPress={handleSendHubInvite} disabled={!inviteForm.name.trim() || !inviteForm.email.trim() || inviteSending}>
-                      <Text style={styles.saveBtnText}>{inviteSending ? 'Sending...' : 'Send Invite'}</Text>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              )}
-              {inviteTab === 'link' && (
-                <>
-                  <Text style={[styles.fieldLabel, { marginTop: 12, marginBottom: 6 }]}>Hub URL</Text>
-                  <View style={styles.hubModalCopyRow}>
-                    <Text style={styles.hubModalCopyUrl} numberOfLines={1} selectable>
-                      {Platform.OS === 'web' && typeof window !== 'undefined' ? `${window.location.origin}/portal/${org.id}` : `/portal/${org.id}`}
-                    </Text>
-                    <TouchableOpacity style={styles.hubModalCopyBtn} onPress={handleCopyHubLink}>
-                      {hubLinkCopied ? <><CheckCircle2 size={14} color="#fff" /><Text style={styles.hubModalCopyBtnText}>Copied!</Text></> : <><Copy size={14} color="#fff" /><Text style={styles.hubModalCopyBtnText}>Copy</Text></>}
-                    </TouchableOpacity>
-                  </View>
-                  <Text style={styles.hubModalHint}>Share this link with your client so they can access the hub.</Text>
-                </>
-              )}
-              {inviteTab === 'message' && (() => {
-                const portalUrl = Platform.OS === 'web' && typeof window !== 'undefined' ? `${window.location.origin}/portal/${org.id}` : `/portal/${org.id}`;
-                const msg = `You're invited to join the ${org.name} Client Hub.\n\nAccess your portal here:\n${portalUrl}`;
-                return (
-                  <>
-                    <Text style={[styles.fieldLabel, { marginTop: 12, marginBottom: 6 }]}>Invitation Message</Text>
-                    <View style={styles.hubModalMsgBox}><Text style={styles.hubModalMsgText} selectable>{msg}</Text></View>
-                    <TouchableOpacity style={styles.saveBtn} onPress={() => { if (Platform.OS === 'web' && typeof navigator !== 'undefined') { navigator.clipboard.writeText(msg); setInviteLinkCopied(true); setTimeout(() => setInviteLinkCopied(false), 2000); } }}>
-                      <Text style={styles.saveBtnText}>{inviteLinkCopied ? 'Copied!' : 'Copy Message'}</Text>
-                    </TouchableOpacity>
-                  </>
-                );
-              })()}
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
-
-      {/* Add Member Modal */}
-      <Modal visible={addMemberModal} transparent animationType="fade" onRequestClose={() => setAddMemberModal(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setAddMemberModal(false)}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
-            <Pressable style={styles.modalCard} onPress={() => {}}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Add Member</Text>
-                <TouchableOpacity onPress={() => setAddMemberModal(false)}><X size={22} color={Colors.light.textSecondary} /></TouchableOpacity>
-              </View>
-              <Text style={styles.fieldLabel}>Select User</Text>
-              {availableUsers.length === 0 ? (
-                <Text style={[styles.emptyTabSub, { marginBottom: 12 }]}>No users synced yet. Create a user in the app first.</Text>
-              ) : (
-                <ScrollView style={{ maxHeight: 180 }} showsVerticalScrollIndicator={false}>
-                  {availableUsers.map((u) => {
-                    const selected = memberForm.userId === u.id;
-                    return (
-                      <TouchableOpacity
-                        key={u.id}
-                        style={[styles.userPickerRow, selected && styles.userPickerRowSelected]}
-                        onPress={() => setMemberForm((f) => ({ ...f, userId: u.id }))}
-                      >
-                        <View style={[styles.memberAvatar, { backgroundColor: u.avatarColor || '#FF5A00', width: 30, height: 30, borderRadius: 15 }]}>
-                          <Text style={[styles.memberAvatarText, { fontSize: 12 }]}>{(u.name || '?')[0].toUpperCase()}</Text>
-                        </View>
-                        <Text style={[styles.userPickerName, selected && { color: '#FF5A00', fontWeight: '600' as const }]}>{u.name}</Text>
-                        {selected && <CheckCircle size={16} color="#FF5A00" />}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              )}
-              <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Role</Text>
-              <TouchableOpacity style={[styles.typePickerBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]} onPress={() => setMemberRoleDropdown((v) => !v)}>
-                <Text style={styles.typePickerBtnText}>{MEMBERSHIP_ROLE_LABELS[memberForm.role] || memberForm.role}</Text>
-                <ChevronDown size={16} color={Colors.light.textSecondary} />
-              </TouchableOpacity>
-              {memberRoleDropdown && (
-                <View style={styles.typeDropdown}>
-                  {MEMBERSHIP_ROLES.map((r) => (
-                    <TouchableOpacity key={r} style={styles.typeDropdownItem} onPress={() => { setMemberForm((f) => ({ ...f, role: r })); setMemberRoleDropdown(false); }}>
-                      <Text style={[styles.typeDropdownText, memberForm.role === r && styles.typeDropdownTextActive]}>{MEMBERSHIP_ROLE_LABELS[r]}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-              <View style={styles.modalActions}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => setAddMemberModal(false)}>
-                  <Text style={styles.cancelBtnText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.saveBtn, !memberForm.userId && { opacity: 0.4 }]}
-                  onPress={handleAddMember}
-                  disabled={!memberForm.userId}
-                >
-                  <Text style={styles.saveBtnText}>Add Member</Text>
-                </TouchableOpacity>
-              </View>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
-    </View>
-  );
+  return null;
 }
 
 const styles = StyleSheet.create({
@@ -6262,6 +4302,63 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
+  hubReadyBox: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+  },
+  hubReadyHeader: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    marginBottom: 6,
+  },
+  hubReadyTitle: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: Colors.light.text,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.4,
+  },
+  hubReadyPill: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  hubReadyPillOk: {
+    backgroundColor: '#DCFCE7',
+  },
+  hubReadyPillWarn: {
+    backgroundColor: '#FEF3C7',
+  },
+  hubReadyPillText: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+  },
+  hubReadyRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    paddingVertical: 2,
+  },
+  hubReadyRowText: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+  },
+  hubManageBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 6,
+    paddingVertical: 9,
+    backgroundColor: '#FFF1E8',
+  },
+  hubManageBtnText: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: '#FF5A00',
+  },
   hubDisabledBanner: {
     backgroundColor: '#F9FAFB',
     borderRadius: 0,

@@ -1,23 +1,7 @@
 import { pool } from '@/lib/pool';
 import { authenticateRequest, unauthorized, forbidden } from '@/lib/auth';
+import { fetchEnrichedContacts } from '@/lib/contacts';
 import type { Organization, Contact, ActivityEntry, CampaignAssignment, Department } from '@/types/crm';
-
-function toFrontendContact(c: any): Contact {
-  return {
-    id: c.id,
-    organizationId: c.organizationId ?? undefined,
-    departmentId: undefined,
-    firstName: c.firstName,
-    lastName: c.lastName,
-    role: c.role ?? undefined,
-    email: c.email ?? undefined,
-    phone: c.phone ?? undefined,
-    notes: c.notes ?? undefined,
-    isPrimary: c.isPrimary ?? false,
-    linkedUserId: c.linkedUserId ?? undefined,
-    createdAt: new Date(c.createdAt).toISOString(),
-  };
-}
 
 function toFrontendActivity(a: any): ActivityEntry {
   const meta = a.metadata || {};
@@ -33,7 +17,7 @@ function toFrontendActivity(a: any): ActivityEntry {
   };
 }
 
-function toFrontendOrg(org: any, contacts: any[], activityLogs: any[]): Organization {
+function toFrontendOrg(org: any, contacts: Contact[], activityLogs: any[]): Organization {
   return {
     id: org.id,
     name: org.name,
@@ -47,7 +31,7 @@ function toFrontendOrg(org: any, contacts: any[], activityLogs: any[]): Organiza
     convertedToActiveDate: org.convertedToActiveDate
       ? new Date(org.convertedToActiveDate).toISOString()
       : undefined,
-    contacts: contacts.map(toFrontendContact),
+    contacts,
     activityLog: activityLogs.map(toFrontendActivity),
     campaigns: (org.campaignsData as CampaignAssignment[] | null) || [],
     departments: (org.departmentsData as Department[] | null) || [],
@@ -64,13 +48,13 @@ export async function GET(request: Request, { id }: { id: string }) {
   if (!authedUser) return unauthorized();
 
   try {
-    const [orgResult, contactsResult, logsResult] = await Promise.all([
+    const [orgResult, contacts, logsResult] = await Promise.all([
       pool.query(`SELECT * FROM "Organization" WHERE id = $1`, [id]),
-      pool.query(`SELECT * FROM "Contact" WHERE "organizationId" = $1 ORDER BY "isPrimary" DESC`, [id]),
+      fetchEnrichedContacts(id),
       pool.query(`SELECT * FROM "ActivityLog" WHERE "organizationId" = $1 ORDER BY "createdAt" DESC`, [id]),
     ]);
     if (!orgResult.rows[0]) return Response.json({ error: 'Not found' }, { status: 404 });
-    return Response.json(toFrontendOrg(orgResult.rows[0], contactsResult.rows, logsResult.rows));
+    return Response.json(toFrontendOrg(orgResult.rows[0], contacts, logsResult.rows));
   } catch (err) {
     return Response.json({ error: 'Failed to load org' }, { status: 500 });
   }
@@ -126,12 +110,12 @@ export async function PUT(request: Request, { id }: { id: string }) {
       ],
     );
 
-    const [contactsResult, logsResult] = await Promise.all([
-      pool.query(`SELECT * FROM "Contact" WHERE "organizationId" = $1 ORDER BY "isPrimary" DESC`, [id]),
+    const [contacts, logsResult] = await Promise.all([
+      fetchEnrichedContacts(id),
       pool.query(`SELECT * FROM "ActivityLog" WHERE "organizationId" = $1 ORDER BY "createdAt" DESC`, [id]),
     ]);
 
-    return Response.json(toFrontendOrg(orgResult.rows[0], contactsResult.rows, logsResult.rows));
+    return Response.json(toFrontendOrg(orgResult.rows[0], contacts, logsResult.rows));
   } catch (err) {
     console.error('[PUT /api/orgs/:id]', err);
     return Response.json({ error: 'Failed to update org' }, { status: 500 });

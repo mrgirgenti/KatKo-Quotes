@@ -1,0 +1,352 @@
+Use this. This is not a feature prompt. This is a course-correction prompt.
+
+CRM Consolidation Enforcement — Stop Patching, Implement the Approved Architecture
+
+STOP.
+
+Read this entire prompt before making a single code change.
+
+This is NOT a new feature request.
+
+This is NOT a redesign request.
+
+This is NOT an audit request.
+
+This is a correction of implementation drift.
+
+---
+
+## BACKGROUND
+
+Over multiple implementation phases, the intended architecture was established:
+
+Organization
+↓
+Contacts
+↓
+Client Hub
+
+Contacts are the source of truth.
+
+However, implementation has continued to preserve legacy member-management concepts alongside Contacts.
+
+This has resulted in:
+
+* Contacts showing one thing
+* Hub Management showing another
+* Duplicate counts
+* Duplicate management interfaces
+* Synchronization bugs
+* Repeated fixes that do not solve the underlying issue
+
+Example:
+
+Organization Details:
+Contacts = 2
+
+Hub Management:
+Members = 0
+"No contacts yet"
+
+This is a failure of architecture, not a UI bug.
+
+---
+
+## THIS IS THE APPROVED ARCHITECTURE
+
+Organization
+│
+├── Contacts
+│     ├── Role
+│     ├── Primary Contact
+│     ├── Hub Access
+│     ├── Org Admin
+│     ├── Status
+│     └── Activity
+│
+├── Client Hub
+│     ├── Hub Status
+│     ├── URL
+│     ├── Branding
+│     ├── Readiness
+│     └── Metrics
+│
+└── Projects
+
+Everything derives from Contacts.
+
+There are no competing people-management systems.
+
+---
+
+## CRITICAL INSTRUCTION
+
+STOP implementing new layers.
+
+STOP creating derived management interfaces.
+
+STOP preserving old member-management workflows.
+
+The goal is consolidation.
+
+The goal is subtraction.
+
+The goal is one source of truth.
+
+---
+
+## CONTACTS IS THE PEOPLE MANAGEMENT SYSTEM
+
+The Contacts section inside Organization Details becomes the only place where people are managed.
+
+Contacts must become a true CRM table.
+
+Replace the current simplistic implementation.
+
+---
+
+## CONTACTS TABLE
+
+Columns:
+
+* Name
+* Role
+* Hub Access
+* Org Admin
+* Status
+* Last Activity
+* Actions
+
+Use status pills throughout.
+
+---
+
+## HUB ACCESS
+
+Status pill examples:
+
+Hub Access
+
+* Enabled
+* Invited
+* Disabled
+
+---
+
+## ORG ADMIN
+
+Status pill examples:
+
+* Admin
+* Member
+
+---
+
+## STATUS
+
+Examples:
+
+* Active
+* Invited
+* Contact Only
+* Disabled
+
+---
+
+## LAST ACTIVITY
+
+Examples:
+
+* Never Logged In
+* 2 Hours Ago
+* Yesterday
+* Last Week
+
+---
+
+## ACTIONS
+
+Actions per row:
+
+* Edit Contact
+* Enable Hub Access
+* Disable Hub Access
+* Promote to Org Admin
+* Remove Org Admin
+* Delete Contact
+
+---
+
+## CLIENT HUB SECTION
+
+The Client Hub card inside Organization Details remains.
+
+However, it becomes informational and operational.
+
+NOT people management.
+
+Display:
+
+* Hub Status
+* Hub URL
+* Copy Link
+* Open Hub
+* QR Code
+* Branding Status
+* Readiness
+* User Count
+* Admin Count
+
+All metrics derive from Contacts.
+
+---
+
+## REMOVE DUPLICATE MANAGEMENT SYSTEMS
+
+Remove:
+
+* Hub Members management
+* Team Members management
+* Org Admin management
+* Invite Contact management
+* Separate member lists
+* Separate admin lists
+
+If a user can manage people anywhere outside Contacts, implementation is incomplete.
+
+---
+
+## HUB MANAGEMENT PAGE
+
+Preferred:
+
+Remove Hub Management entirely.
+
+Organization Details becomes the management surface.
+
+If full removal is too disruptive:
+
+Convert Hub Management into a read-only operational dashboard.
+
+No people management.
+
+No member management.
+
+No admin management.
+
+No invitations.
+
+No role assignment.
+
+---
+
+## NO PARALLEL DATASETS
+
+After implementation there must be exactly one source of truth for:
+
+* Contacts
+* Hub Access
+* Org Admin
+* User Counts
+* Admin Counts
+* Readiness
+
+That source is:
+
+Organization → Contacts
+
+---
+
+## PROVE THE DATA FLOW
+
+Output:
+
+Organization
+↓
+Contacts
+↓
+Hub Access
+↓
+Org Admin
+↓
+Readiness
+↓
+Metrics
+
+Show the actual implementation path.
+
+Show the actual queries.
+
+Show the actual APIs.
+
+Show the actual components.
+
+---
+
+## SUCCESS TEST
+
+Using the organization currently showing:
+
+Contacts:
+
+* Shilo Josh
+* Steph Schief
+
+The following must be true:
+
+Contacts Table:
+2 Contacts
+
+Client Hub Metrics:
+Derived from those same 2 contacts
+
+No conflicting counts.
+
+No separate member list.
+
+No separate admin list.
+
+No contradictory UI.
+
+---
+
+## IMPLEMENTATION REQUIREMENT
+
+Do not stop after making a screen appear correct.
+
+Trace every source.
+
+Trace every query.
+
+Trace every metric.
+
+Trace every count.
+
+Trace every permission.
+
+Trace every readiness calculation.
+
+If any area still references a legacy member-management workflow, continue implementation until it is removed.
+
+---
+
+## OUTPUT
+
+1. Root cause(s) found
+2. Components removed
+3. Components consolidated
+4. APIs changed
+5. Queries changed
+6. Final source-of-truth flow
+7. Validation results
+8. Screenshots
+
+This is a consolidation project.
+
+Not a redesign project.
+
+Not a patch.
+
+Not an audit.
+
+Implement the architecture that has already been approved.

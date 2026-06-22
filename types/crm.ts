@@ -63,6 +63,8 @@ export interface Department {
   description?: string;
 }
 
+export type HubAccessState = 'none' | 'invited' | 'enabled' | 'disabled';
+
 export interface Contact {
   id: string;
   organizationId?: string;
@@ -76,8 +78,15 @@ export interface Contact {
   isPrimary?: boolean;
   status?: 'active' | 'inactive';
   linkedUserId?: string;
+  // ── Derived hub fields (single source of truth, see lib/contacts.ts) ──
+  hubAccess?: HubAccessState;
   hubStatus?: 'No Access' | 'Invited' | 'Active' | 'Disabled';
+  isOrgAdmin?: boolean;
+  userStatus?: 'INVITED' | 'ACTIVE' | 'DISABLED';
+  membershipId?: string;
   lastLoginAt?: string | null;
+  inviteSentAt?: string | null;
+  lastActivityAt?: string | null;
   createdAt: string;
 }
 

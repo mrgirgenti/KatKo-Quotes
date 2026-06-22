@@ -1,43 +1,46 @@
 ---
-name: CRM/Hub user provisioning & linkedUserId model
-description: How Contact↔User↔Membership is keyed (linkedUserId) vs how portal login works (email), and the grant-flow FK race.
+name: CRM/Hub people provisioning & linkedUserId model
+description: Contacts are the single people source of truth; how hub access is derived (linkedUserId) and provisioned (one contact-keyed server path) vs how portal login works (email).
 ---
 
 # Client Hub provisioning & the linkedUserId model
 
-## Two-layer identity model (don't conflate)
-- **CRM/Hub admin side** resolves a contact's hub access via **`Contact.linkedUserId`**
-  (authoritative), NOT by email matching. `contactHasHubAccess(c) = !!(c.linkedUserId
-  && clientMembershipByUserId.has(c.linkedUserId))`. Hub readiness ("Team Member
-  Added", "Org Admin Assigned") derives from contacts whose linkedUserId resolves to a
-  membership, not from raw membership counts.
-- **Portal login** (`app/api/portal/[orgId]+api.ts`) is **email-based auth**: it matches
-  `LOWER(u.email)` joined to an OrganizationMembership for that org. It does NOT use
-  Contact.linkedUserId. These are deliberately separate layers.
+## Single source of truth: Contacts
+People management has ONE read model and ONE write path. Never reintroduce a parallel
+people surface (the old standalone Hub Management page + Hub Members/Invite/Add-Member
+cards were deleted for exactly this reason — they drifted from Contacts).
 
-**Why it matters:** the same email can appear on multiple Contacts across orgs (e.g.
-one user's email is on two different contacts). Email matching for *relationship*
-resolution is ambiguous; linkedUserId disambiguates. Login can still be email-based
-because it's per-org auth input, not a relationship link.
+- **Read (derivation):** `lib/contacts.ts` is authoritative. `fetchEnrichedContacts` /
+  `toEnrichedContact` LEFT JOIN `Contact.linkedUserId -> User(userType='CLIENT') ->
+  OrganizationMembership` and derive per-row `hubAccess`, `hubStatus`, `isOrgAdmin`,
+  `membershipId`, `inviteSentAt`, `lastActivityAt`. **Every** endpoint that returns org
+  contacts must use this — both `/api/orgs/[id]` (detail) AND `/api/orgs` (list). If only
+  one is enriched, surfaces that read the other (Client Hub card counts, ContactsDirectory,
+  client-hubs page) silently drift.
+- **Write (provisioning):** all people/auth mutations go through ONE endpoint keyed by
+  contactId: `PATCH /api/orgs/[id]/contacts/[contactId]` with `{action}` (enableHubAccess,
+  disableHubAccess, resendInvite, resetPassword, promoteAdmin, removeAdmin). It provisions
+  the invisible `User`+`OrganizationMembership` substrate server-side and sends invite/reset
+  emails via `lib/email`. The UI never creates/manages memberships directly.
 
-## Grant-flow FK race (known bug class)
-The grant handlers (crm `handleSaveContact` / `handleEnableHubFromCard` /
-`handleAddClientUser`, and hub `handleGrantHubFromContact`) generate a client-side
-`client_<ts>_<rand>` id, POST it to `/api/users`, then create a membership with the
-returned user id.
+**Why:** the same email can appear on multiple Contacts across orgs, so **email matching for
+relationship resolution is ambiguous** — `linkedUserId` disambiguates. Do NOT add an email
+fallback to contact→user resolution (a removed `/api/orgs` email-match path caused exactly
+this drift).
 
-`POST /api/users` (client branch) returns the **existing** user (200) if the email is
-already taken — good. But on an email-unique race it returns **204 (empty body)**, and
-the handlers fall back to `{ id: userId }` (the freshly generated `client_<ts>` id that
-was **never inserted**). The subsequent membership insert then violates
-`OrganizationMembership_userId_fkey` → `Key (userId)=(client_...) is not present in
-table "User"`.
+## Portal login is a separate layer
+`app/api/portal/[orgId]+api.ts` login is **email-based auth** (matches `LOWER(u.email)` +
+membership for that org). It does NOT use `Contact.linkedUserId`. Deliberately separate:
+login is per-org auth input, not a relationship link.
 
-**Root cause is the provisioning fallback, NOT the linkedUserId model** — it would exist
-regardless of Phase A. Fix direction (when in scope): never reuse the optimistic
-client id; only create the membership with an id actually confirmed present in User
-(handle 204/non-2xx by re-fetching the user by email or aborting with a clear error).
+## Provisioning guards (learned)
+- `User.email` is globally `@unique`. When enabling hub access, look up the existing user by
+  email **including userType**: reuse only if `CLIENT` (reactivate if DISABLED); if the email
+  belongs to a non-CLIENT (internal) user, **reject with a clear 409** — never turn an
+  internal account into a client login (it also collides with the unique constraint).
+- The old client-generated `client_<ts>` id → 204 race FK bug is GONE: the server now creates
+  the User/membership itself and links the real DB id, so never reintroduce optimistic
+  client-side user ids for provisioning.
 
-**Related data artifacts to watch:** orphan CLIENT memberships with no Contact
-(`has_contact=f`), and contacts that are linked (linkedUserId set, user exists) but have
-no membership ("linked, no access").
+**Data artifacts to watch:** orphan CLIENT memberships with no Contact, and contacts linked
+(linkedUserId set) but with no membership ("linked, no access").

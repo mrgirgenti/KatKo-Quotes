@@ -1,0 +1,284 @@
+CRM Consolidation Phase — Remove Hub Management and Merge Into Organization Details
+
+STOP.
+
+Do not audit.
+
+Do not roadmap.
+
+Implement.
+
+The current Hub Management page has become a duplicate management surface that competes with Organization Details.
+
+This has repeatedly caused synchronization issues between:
+
+* Contacts
+* Hub Members
+* Org Admins
+* Hub Access
+* Readiness
+
+The architecture must be simplified.
+
+Organization Details is now the single source of truth.
+
+---
+
+## PRIMARY OBJECTIVE
+
+Retire Hub Management as a management interface.
+
+Organization Details becomes the only place where Client Hub configuration is managed.
+
+CRM is the source of truth.
+
+Organization
+→ Contacts
+→ Client Hub
+
+Everything derives from that.
+
+---
+
+## SOURCE OF TRUTH
+
+The following data must originate from Organization Details:
+
+* Contacts
+* Roles
+* Primary Contact
+* Org Admin
+* Hub Access
+* Client Hub Status
+* Branding
+* Hub URL
+* Hub Readiness
+
+No secondary datasets.
+
+No duplicate member lists.
+
+No duplicate admin lists.
+
+---
+
+## CONTACTS SECTION
+
+Enhance the existing Contacts section.
+
+Every contact row should display:
+
+* Name
+* Role
+* Primary Contact badge
+* Hub Access status
+* Org Admin status
+
+Allow:
+
+* Edit Contact
+* Toggle Hub Access
+* Toggle Org Admin
+
+A contact may be:
+
+Primary Contact
+
+and
+
+Org Admin
+
+simultaneously.
+
+---
+
+## CLIENT HUB SECTION
+
+Expand the existing Client Hub card.
+
+Remove duplicate management concepts.
+
+Display:
+
+Hub Status
+
+Hub URL
+
+Copy Link
+
+Open Hub
+
+QR Code
+
+Hub Readiness
+
+Branding Status
+
+Users Enabled
+
+Org Admin Count
+
+All values must derive from Contacts.
+
+---
+
+## REMOVE DUPLICATE PEOPLE MANAGEMENT
+
+Remove:
+
+Hub Members list
+
+Team Members card
+
+Org Admin card
+
+Invite Contact card
+
+Separate member management screens
+
+These concepts already belong to Contacts.
+
+---
+
+## READINESS
+
+Readiness derives directly from CRM.
+
+Example:
+
+Hub Enabled
+
+At least one Contact exists
+
+At least one Contact has Hub Access
+
+At least one Contact is Org Admin
+
+Logo Uploaded
+
+Hub Link Generated
+
+No duplicate calculations.
+
+---
+
+## BRANDING
+
+Move Branding into Organization Details.
+
+Display:
+
+Logo status
+
+Edit Logo
+
+Brand readiness
+
+Do not require a second page.
+
+---
+
+## ACTIVITY
+
+Move Recent Activity into Organization Details.
+
+Show:
+
+Hub invitations
+
+Quote approvals
+
+Project submissions
+
+File uploads
+
+Status changes
+
+Use existing activity system.
+
+---
+
+## HUB MANAGEMENT PAGE
+
+After migration:
+
+Option A (Preferred)
+
+Remove Hub Management entirely.
+
+Hub Settings button no longer exists.
+
+Everything managed in Organization Details.
+
+Option B (Fallback)
+
+Hub Management becomes read-only.
+
+No editing.
+
+No contact management.
+
+No role management.
+
+No invites.
+
+No admin assignment.
+
+All editing happens in Organization Details.
+
+---
+
+## VALIDATION
+
+Using the attached organization:
+
+Contacts:
+
+Shilo Josh
+
+Steph Schief
+
+Verify:
+
+Organization Details shows both contacts.
+
+Client Hub metrics derive from those contacts.
+
+Org Admin derives from contacts.
+
+Hub Access derives from contacts.
+
+Readiness derives from contacts.
+
+No duplicate member system remains.
+
+No conflicting counts remain.
+
+No separate management workflow remains.
+
+---
+
+## SUCCESS CRITERIA
+
+A user should be able to fully manage Client Hub functionality without ever leaving Organization Details.
+
+Hub Management should no longer be required for normal operation.
+
+---
+
+## OUTPUT
+
+1. Files changed
+2. Components removed
+3. Components consolidated
+4. Data sources consolidated
+5. Validation results
+6. Screenshots
+
+Implement.
+
+Do not audit.
+
+Do not create another management surface.
+
+Organization Details is now the single source of truth.

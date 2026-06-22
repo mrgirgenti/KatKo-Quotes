@@ -228,7 +228,6 @@ function RootLayoutNav() {
       <Stack.Screen name="profile" options={{ title: 'Profile', presentation: 'modal' }} />
       <Stack.Screen name="clients/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="crm/[id]" options={{ headerShown: false }} />
-      <Stack.Screen name="hub/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="portal/[orgId]" options={{ headerShown: false }} />
     </Stack>
   );

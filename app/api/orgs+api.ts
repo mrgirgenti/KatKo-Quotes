@@ -1,34 +1,31 @@
 import { pool } from '@/lib/pool';
 import { authenticateRequest, unauthorized, forbidden } from '@/lib/auth';
+import { toEnrichedContact } from '@/lib/contacts';
 import type { Organization, Contact, ActivityEntry, CampaignAssignment, Department } from '@/types/crm';
 
-function hubStatusFromUser(u: any): Contact['hubStatus'] {
-  if (!u) return 'No Access';
-  if (u.status === 'ACTIVE') return 'Active';
-  if (u.status === 'INVITED') return 'Invited';
-  if (u.status === 'DISABLED') return 'Disabled';
-  return 'No Access';
-}
-
-function toFrontendContact(c: any): Contact {
-  const lu = c.__linkedUser;
-  return {
-    id: c.id,
-    organizationId: c.organizationId ?? undefined,
-    departmentId: undefined,
-    firstName: c.firstName,
-    lastName: c.lastName,
-    role: c.role ?? undefined,
-    email: c.email ?? undefined,
-    phone: c.phone ?? undefined,
-    notes: c.notes ?? undefined,
-    isPrimary: c.isPrimary ?? false,
-    status: (c.status === 'inactive' ? 'inactive' : 'active'),
-    linkedUserId: c.linkedUserId ?? lu?.id ?? undefined,
-    hubStatus: hubStatusFromUser(lu),
-    lastLoginAt: lu?.lastLoginAt ? new Date(lu.lastLoginAt).toISOString() : null,
-    createdAt: new Date(c.createdAt).toISOString(),
-  };
+/**
+ * CRM CONSOLIDATION — the org list uses the SAME enriched contact derivation as
+ * the org detail endpoint (lib/contacts.toEnrichedContact), keyed strictly on
+ * Contact.linkedUserId -> User(CLIENT) -> OrganizationMembership. No email
+ * matching (it drifts because email is non-unique across orgs). This guarantees
+ * Hub Access / Org Admin / counts are identical everywhere people are shown.
+ */
+function enrichListContact(
+  c: any,
+  userById: Map<string, any>,
+  membershipByKey: Map<string, any>,
+): Contact {
+  const u = c.linkedUserId ? userById.get(c.linkedUserId) : null;
+  const m = u ? membershipByKey.get(`${u.id}:${c.organizationId}`) : null;
+  return toEnrichedContact({
+    ...c,
+    userStatus: u?.status ?? null,
+    passwordHash: u?.passwordHash ?? null,
+    lastLoginAt: u?.lastLoginAt ?? null,
+    membershipId: m?.id ?? null,
+    membershipRole: m?.role ?? null,
+    inviteSentAt: m?.inviteSentAt ?? null,
+  });
 }
 
 function toFrontendActivity(a: any): ActivityEntry {
@@ -45,7 +42,7 @@ function toFrontendActivity(a: any): ActivityEntry {
   };
 }
 
-function toFrontendOrg(org: any, contacts: any[], activityLogs: any[]): Organization {
+function toFrontendOrg(org: any, contacts: Contact[], activityLogs: any[]): Organization {
   return {
     id: org.id,
     name: org.name,
@@ -59,7 +56,7 @@ function toFrontendOrg(org: any, contacts: any[], activityLogs: any[]): Organiza
     convertedToActiveDate: org.convertedToActiveDate
       ? new Date(org.convertedToActiveDate).toISOString()
       : undefined,
-    contacts: contacts.map(toFrontendContact),
+    contacts,
     activityLog: activityLogs.map(toFrontendActivity),
     campaigns: (org.campaignsData as CampaignAssignment[] | null) || [],
     departments: (org.departmentsData as Department[] | null) || [],
@@ -80,38 +77,20 @@ export async function GET(request: Request) {
       pool.query(`SELECT * FROM "Organization" ORDER BY "createdAt" DESC`),
       pool.query(`SELECT * FROM "Contact" ORDER BY "isPrimary" DESC`),
       pool.query(`SELECT * FROM "ActivityLog" WHERE "organizationId" IS NOT NULL ORDER BY "createdAt" DESC`),
-      pool.query(`SELECT id, email, status, "lastLoginAt" FROM "User" WHERE "userType" = 'CLIENT'`),
-      pool.query(`SELECT "userId", "organizationId" FROM "OrganizationMembership"`),
+      pool.query(`SELECT id, status, "passwordHash", "lastLoginAt" FROM "User" WHERE "userType" = 'CLIENT'`),
+      pool.query(`SELECT id, "userId", "organizationId", role, "inviteSentAt" FROM "OrganizationMembership"`),
     ]);
 
     const userById = new Map<string, any>();
-    const userByEmail = new Map<string, any>();
-    for (const u of usersResult.rows) {
-      userById.set(u.id, u);
-      if (u.email) userByEmail.set(String(u.email).toLowerCase(), u);
-    }
-    const membershipSet = new Set<string>();
-    for (const m of membershipsResult.rows) {
-      membershipSet.add(`${m.userId}:${m.organizationId}`);
-    }
-    const matchUser = (c: any) => {
-      if (c.linkedUserId) {
-        const u = userById.get(c.linkedUserId);
-        if (u) return u;
-      }
-      if (c.email && c.organizationId) {
-        const u = userByEmail.get(String(c.email).toLowerCase());
-        if (u && membershipSet.has(`${u.id}:${c.organizationId}`)) return u;
-      }
-      return null;
-    };
+    for (const u of usersResult.rows) userById.set(u.id, u);
+    const membershipByKey = new Map<string, any>();
+    for (const m of membershipsResult.rows) membershipByKey.set(`${m.userId}:${m.organizationId}`, m);
 
-    const contactsByOrg: Record<string, any[]> = {};
+    const contactsByOrg: Record<string, Contact[]> = {};
     for (const c of contactsResult.rows) {
       if (c.organizationId) {
-        c.__linkedUser = matchUser(c);
         contactsByOrg[c.organizationId] = contactsByOrg[c.organizationId] || [];
-        contactsByOrg[c.organizationId].push(c);
+        contactsByOrg[c.organizationId].push(enrichListContact(c, userById, membershipByKey));
       }
     }
 
@@ -163,7 +142,7 @@ export async function POST(request: Request) {
     );
     const org = orgResult.rows[0];
 
-    let contacts: any[] = [];
+    let contacts: Contact[] = [];
     if (body.contact) {
       const c = body.contact;
       const cResult = await pool.query(
@@ -172,7 +151,8 @@ export async function POST(request: Request) {
         ) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()) RETURNING *`,
         [org.id, c.firstName || '', c.lastName || '', c.email ?? null, c.phone ?? null, c.role ?? null, c.notes ?? null, c.isPrimary ?? false],
       );
-      contacts = cResult.rows;
+      // A freshly-created contact has no linked user yet -> enriches to "No Access".
+      contacts = cResult.rows.map((row) => enrichListContact(row, new Map(), new Map()));
     }
 
     return Response.json(toFrontendOrg(org, contacts, []), { status: 201 });

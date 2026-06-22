@@ -205,6 +205,21 @@ export const [CrmProvider, useCrm] = createContextHook(() => {
     onSuccess: invalidateOrgs,
   });
 
+  // CRM CONSOLIDATION — the single write path for all people/hub-access mutations.
+  // Every people action (enable/disable hub access, promote/remove org admin,
+  // resend invite, reset password) is keyed by contactId and routed through the
+  // contacts API, which manages the invisible User/OrganizationMembership auth
+  // substrate server-side. The UI never touches memberships directly.
+  const contactActionMutation = useMutation({
+    mutationFn: async ({ orgId, contactId, action }: { orgId: string; contactId: string; action: string }) => {
+      return apiFetch(`/api/orgs/${orgId}/contacts/${contactId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ action }),
+      });
+    },
+    onSuccess: invalidateOrgs,
+  });
+
   const addActivityMutation = useMutation({
     mutationFn: async ({
       orgId,
@@ -397,32 +412,6 @@ export const [CrmProvider, useCrm] = createContextHook(() => {
     },
   });
 
-  const createMembershipMutation = useMutation({
-    mutationFn: async (data: {
-      organizationId: string;
-      userId: string;
-      role: MembershipRole;
-      canManageUsers?: boolean;
-      canViewInvoices?: boolean;
-      canPayInvoices?: boolean;
-      canApproveQuotes?: boolean;
-    }): Promise<OrgMembership> => {
-      return apiFetch('/api/memberships', { method: 'POST', body: JSON.stringify(data) });
-    },
-    onSuccess: (_data, vars) => {
-      queryClient.invalidateQueries({ queryKey: ['memberships', vars.organizationId] });
-    },
-  });
-
-  const deleteMembershipMutation = useMutation({
-    mutationFn: async ({ membershipId, orgId }: { membershipId: string; orgId: string }) => {
-      return apiFetch(`/api/memberships/${membershipId}`, { method: 'DELETE' });
-    },
-    onSuccess: (_data, vars) => {
-      queryClient.invalidateQueries({ queryKey: ['memberships', vars.orgId] });
-    },
-  });
-
   return {
     orgs,
     templates,
@@ -435,6 +424,8 @@ export const [CrmProvider, useCrm] = createContextHook(() => {
     addContact: addContactMutation.mutate,
     updateContact: updateContactMutation.mutate,
     deleteContact: deleteContactMutation.mutate,
+    contactAction: contactActionMutation.mutate,
+    contactActionAsync: contactActionMutation.mutateAsync,
     addActivity: addActivityMutation.mutate,
     updateActivity: updateActivityMutation.mutate,
     deleteActivity: deleteActivityMutation.mutate,
@@ -448,8 +439,5 @@ export const [CrmProvider, useCrm] = createContextHook(() => {
     deleteDepartment: deleteDepartmentMutation.mutate,
     updateOrgHubEnabled: updateOrgHubEnabledMutation.mutate,
     updateOrgHubEnabledAsync: updateOrgHubEnabledMutation.mutateAsync,
-    createMembership: createMembershipMutation.mutate,
-    createMembershipAsync: createMembershipMutation.mutateAsync,
-    deleteMembership: deleteMembershipMutation.mutate,
   };
 });
