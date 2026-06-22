@@ -1,0 +1,495 @@
+Product Dataset Consolidation + Architecture Correction + Migration Planning
+
+STOP.
+
+Do not perform migration.
+
+Do not create products.
+
+Do not update products.
+
+Do not delete products.
+
+Do not archive products.
+
+Do not modify quotes.
+
+Do not modify projects.
+
+Do not modify client hubs.
+
+Do not modify mockups.
+
+Do not modify catalogs.
+
+This is a planning, validation, and architecture alignment phase only.
+
+Architecture Correction
+
+The approved curated product spreadsheet is now the authoritative source for the Product Dataset.
+
+The spreadsheet is the source of truth.
+
+vendorCatalog.ts is NOT the source of truth.
+
+types/quote.ts is NOT the source of truth.
+
+Legacy quote product lists are NOT the source of truth.
+
+Legacy mockup product lists are NOT the source of truth.
+
+These legacy systems should only be used as supplemental data sources for:
+
+* Color palettes
+* Hex color values
+* Garment metadata
+* Historical style information
+* Migration assistance
+
+They are not the authoritative catalog.
+
+Approved Architecture
+
+Catalogs
+↓
+Products
+↓
+Quotes
+↓
+Projects
+↓
+Mockups
+↓
+Production
+
+Catalogs
+
+Catalogs represent supplier relationships.
+
+Examples:
+
+* S&S Activewear
+* SanMar
+* McCreary's
+* Shaka Wear
+* Independent Trading
+* LA Apparel
+* Momentec
+
+Catalogs remain separate from Products.
+
+Catalogs are responsible for:
+
+* Catalog PDFs
+* Website links
+* Client Hub visibility
+* Featured status
+* Future API credentials
+* Future product imports
+* Supplier relationship management
+
+Products
+
+Products are Katalyst Ko Recommended Products.
+
+Products are curated.
+
+Products are not vendor catalogs.
+
+Products are not every product we can sell.
+
+Products are not every product available through APIs.
+
+Products are the shared Product Dataset.
+
+The Product Dataset becomes the source of truth for:
+
+* Style Number
+* Brand
+* Product Name
+* Category
+* Product Type
+* Colors
+* Available Catalogs
+* Placement Templates
+* Assets
+* Default Cost
+
+Shared Product Dataset
+
+The following systems should consume the same Product Dataset:
+
+* Products Page
+* New Quote → Products + Sizes
+* Start A Project → Products + Sizes
+* Client Hubs
+* Mockup Designer
+
+Separate product lists should not exist.
+
+Separate color lists should not exist.
+
+Separate garment style lists should not exist.
+
+Separate curated product catalogs should not exist.
+
+Recommended Products vs Catalog Products vs Manual Products
+
+The system must support three distinct product sources.
+
+1. Recommended Products (Priority 1)
+
+These are curated Katalyst Ko products stored in the Product Dataset.
+
+Examples:
+
+* NL6210
+* BC3001
+* 1717
+* 18500
+* K500
+
+These are the products Katalyst Ko wants clients and team members to choose first.
+
+These products power:
+
+* Products Page
+* Client Hubs
+* Quotes
+* Projects
+* Mockups
+
+2. Catalog Products (Priority 2)
+
+These originate from Catalogs and future vendor APIs.
+
+Examples:
+
+* S&S Activewear
+* SanMar
+* McCreary's
+* Shaka Wear
+* Independent Trading
+* LA Apparel
+* Momentec
+
+Catalog Products are searchable.
+
+Catalog Products are not automatically added to the Product Dataset.
+
+Catalog Products remain separate from Recommended Products.
+
+If a Catalog Product becomes commonly used:
+
+Allow a deliberate action:
+
+"Add to Recommended Products"
+
+Only then should it become part of the Product Dataset.
+
+3. Manual Products (Priority 3)
+
+Users must always be able to manually enter:
+
+* Style Number
+* Brand
+* Product Name
+
+Manual Products do not require a Product record.
+
+Manual Products do not require a Catalog record.
+
+Manual Products remain valid throughout the system.
+
+Workflow Priority
+
+Quotes:
+
+1. Recommended Products
+2. Catalog Search
+3. Manual Entry
+
+Projects:
+
+1. Recommended Products
+2. Catalog Search
+3. Manual Entry
+
+Mockups:
+
+1. Recommended Products
+2. Catalog Search
+3. Generic Mockup Product
+
+Client Hubs:
+
+1. Recommended Products
+2. Manual Product Request
+
+Future API Rule
+
+Catalog APIs must never automatically create Product records.
+
+Catalog APIs remain a searchable source.
+
+Recommended Products remain curated.
+
+This separation is intentional and must be preserved.
+
+Migration Planning Requirements
+
+Before any migration:
+
+Step 1
+
+Export all existing Product records.
+
+Step 2
+
+Compare:
+
+* Existing Product records
+* Approved spreadsheet
+
+Step 3
+
+Produce four buckets:
+
+KEEP
+CREATE
+UPDATE
+ARCHIVE
+
+Definitions:
+
+KEEP
+
+Existing Product exists in spreadsheet and requires no change.
+
+CREATE
+
+Product exists in spreadsheet but does not exist in Product Dataset.
+
+UPDATE
+
+Product exists in both places but requires changes.
+
+ARCHIVE
+
+Existing Product does not exist in spreadsheet and should be reviewed.
+
+Important:
+
+ARCHIVE does NOT mean delete.
+
+ARCHIVE does NOT mean automatically remove.
+
+ARCHIVE means review.
+
+No automatic deletions.
+
+No automatic removals.
+
+No automatic archival actions.
+
+Step 4
+
+Present complete report for approval.
+
+Step 5
+
+Only after approval may migration planning continue.
+
+Product Migration Rules
+
+The approved spreadsheet is the only allowed source for determining:
+
+* Which products exist
+* Which products are created
+* Which products are updated
+* Which products are archived
+
+Do not import products simply because they exist in:
+
+* vendorCatalog.ts
+* types/quote.ts
+* Legacy mockup systems
+* Legacy quote systems
+
+Those systems are reference sources only.
+
+Color Migration
+
+After product validation:
+
+Compare approved products against:
+
+vendorCatalog.ts
+
+Identify:
+
+* Available color palettes
+* Available hex values
+* Missing colors
+* Missing palettes
+
+Provide a color migration report.
+
+Do not import colors yet.
+
+Catalog Relationship Rules
+
+Products should reference Catalogs.
+
+Example:
+
+NL6210
+
+Available Through:
+
+* S&S Activewear
+* SanMar
+
+Catalogs remain the supplier relationship layer.
+
+Products remain the curated recommendation layer.
+
+Future APIs attach to Catalogs.
+
+Future APIs do not directly create Product records.
+
+Client Hub Clarification
+
+Clients never see pricing.
+
+Clients may select:
+
+* Product
+* Color
+* Sizes
+
+from the Product Dataset.
+
+Project submissions should preserve product references.
+
+When a project is converted into a quote:
+
+Auto-populate:
+
+* Product
+* Colors
+* Available Catalogs
+* Default Cost
+* Placement Template
+
+from the Product Dataset.
+
+Snapshot Rule
+
+Products contain default operational values.
+
+Examples:
+
+* Default Cost
+* Preferred Catalog
+* Placement Template
+* Product Metadata
+* Product Attributes
+
+When a Product is selected for:
+
+* Quote
+* Project
+* Mockup
+* Order
+
+the Product Dataset supplies the initial defaults.
+
+After the record is created:
+
+The Quote, Project, Mockup, or Order owns its own values.
+
+Changes to Product records do not retroactively modify historical records.
+
+Historical records must never automatically change because a Product record changed later.
+
+Example:
+
+NL6210
+
+Default Cost:
+$4.50
+
+Quote #1001 created:
+
+Product Cost:
+$4.50
+
+User edits Quote #1001:
+
+Product Cost:
+$4.85
+
+Later:
+
+NL6210 Default Cost changes to $5.10
+
+Result:
+
+Quote #1001 remains $4.85
+
+Future quotes use $5.10.
+
+Mockup Architecture Clarification
+
+Do not replace garmentData.ts.
+
+garmentData.ts serves a different purpose.
+
+Product Dataset responsibilities:
+
+* Style
+* Brand
+* Colors
+* Vendors
+* Placement Template
+* Assets
+
+garmentData.ts responsibilities:
+
+* Mockup canvas geometry
+* Artwork zones
+* Garment rendering
+* Placement positioning
+
+These systems should work together.
+
+They are not the same system.
+
+Required Output
+
+Return:
+
+1. Current Product count
+2. Spreadsheet Product count
+3. KEEP list
+4. CREATE list
+5. UPDATE list
+6. ARCHIVE list
+7. Color migration opportunities
+8. Catalog relationship recommendations
+9. Systems currently using legacy product data
+10. Systems currently using hardcoded product lists
+11. Quote integration impact
+12. Client Hub impact
+13. Mockup Designer impact
+14. Risks
+15. Recommended implementation order
+
+Do not perform migration.
+
+Do not perform deletion.
+
+Do not perform archival actions.
+
+Planning and validation only.
