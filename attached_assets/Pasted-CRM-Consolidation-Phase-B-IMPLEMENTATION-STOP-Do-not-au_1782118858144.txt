@@ -1,0 +1,136 @@
+CRM Consolidation Phase B — IMPLEMENTATION
+
+STOP.
+
+Do not audit.
+
+Do not roadmap.
+
+Do not redesign Client Hub.
+
+Implement the CRM-first architecture already approved.
+
+Objective:
+
+Contacts become the single source of truth for people.
+
+Remove duplicate people-management systems.
+
+--------------------------------------------------
+IMPLEMENT
+--------------------------------------------------
+
+Move Hub Access management into Contacts.
+
+Move Org Admin management into Contacts.
+
+Use Contacts as the authoritative people record.
+
+All Hub User counts and Org Admin counts should derive from Contacts.
+
+--------------------------------------------------
+CLIENT HUB SECTION
+--------------------------------------------------
+
+Convert Client Hub section into:
+
+- Hub Status
+- Hub URL
+- Share Hub
+- Branding
+- Readiness
+- Hub Users (metric)
+- Org Admins (metric)
+
+No separate people list.
+
+--------------------------------------------------
+REMOVE DUPLICATION
+--------------------------------------------------
+
+Eliminate duplicate management of:
+
+- Team Members
+- Hub Members
+- Org Admins
+
+People should be managed from Contacts.
+
+--------------------------------------------------
+CONTACTS
+--------------------------------------------------
+
+Contacts should support:
+
+- Role
+- Primary Contact
+- Hub Access
+- Org Admin
+
+All changes should update underlying User and Membership records automatically.
+
+--------------------------------------------------
+COUNTS
+--------------------------------------------------
+
+Hub Users =
+Contacts with Hub Access
+
+Org Admins =
+Contacts with Org Admin
+
+No separate counting logic.
+
+--------------------------------------------------
+HUB MANAGEMENT
+--------------------------------------------------
+
+Evaluate whether Hub Management can be retired.
+
+If not:
+
+Remove all people management from it.
+
+Retain only:
+
+- Branding
+- Share Hub
+- Readiness
+- Activity
+- Analytics
+
+--------------------------------------------------
+VALIDATION
+--------------------------------------------------
+
+Create Contact
+
+Grant Hub Access
+
+Refresh
+
+Verify:
+
+Contact visible
+
+Hub User count updates
+
+Org Admin count updates
+
+Portal access still works
+
+No duplicate records
+
+--------------------------------------------------
+OUTPUT
+--------------------------------------------------
+
+1. Files changed
+2. Components removed
+3. Components consolidated
+4. Contact enhancements
+5. Hub metric changes
+6. Validation results
+7. Recommendation regarding full Hub Management removal
+
+Implement. Do not audit.

@@ -24,3 +24,4 @@
 - [Two vendor systems](two-vendor-systems.md) — `Vendor` table (sourcing, /api/vendors, GET-only) vs `ClientCatalog` (Catalogs tab, full CRUD). Don't confuse them. Approved apparel vendors = 7 named; no auto-seeding.
 - [useEffect dep TDZ](react-effect-tdz.md) — a useEffect whose dep array lists useCallback fns must be declared AFTER them; dep array evals at render → crash "Cannot access X before initialization". LSP won't catch it.
 - [Portal canonical read source](portal-canonical-read-source.md) — Client Hub totals/pieces/per-piece MUST come from Project.calculations JSON, never the (mostly-empty) Quote table or lineItemCount-as-PCS.
+- [CRM/Hub provisioning & linkedUserId](crm-hub-provisioning.md) — Contact↔User hub access keyed on linkedUserId (authoritative); portal LOGIN is separate email-based auth. Grant flow has a 204-race FK bug from reusing the optimistic client_<ts> id.
