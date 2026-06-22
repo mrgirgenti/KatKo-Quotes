@@ -1,0 +1,547 @@
+Client Hub Stabilization + Customer Experience Overhaul
+
+This phase combines:
+
+1. Client Hub Activation Fixes
+2. Hub Management Cleanup
+3. Customer-Facing Project/Quote Detail Redesign
+4. Dashboard / My Projects Alignment
+5. Frontend vs Backend Visibility Rules
+
+Execute all items below.
+
+STOP.
+
+Do not redesign Katalyst OS.
+
+Do not create a separate customer platform.
+
+Do not create duplicate workflows.
+
+The Client Hub should remain a client-safe version of Katalyst OS.
+
+The architecture should stay recognizable between backend and frontend.
+
+Differences should be driven by permissions and visibility, not entirely different structures.
+
+---
+
+## PART 1 — CLIENT HUB ACTIVATION AUDIT
+
+Current behavior is broken.
+
+Issues observed:
+
+* Hub On / Hub Off does not persist
+* Hub Readiness activates visually but does not actually enable the Hub
+* Enabling Client Hub Access on Contacts does not properly create access
+* Hub Management does not correctly pull Organization Contacts
+* Org Admin assignment is disconnected
+* Team Members section is disconnected
+
+Audit:
+
+Organization
+↓
+Contacts
+↓
+Hub Settings
+↓
+Hub Activation
+↓
+Org Admin
+↓
+Team Members
+↓
+Client Hub Access
+
+Identify:
+
+* Where activation state is stored
+* Why activation state is not persisting
+* Why readiness updates without activation
+* Why contacts are not appearing
+* Why Hub access settings are not synchronizing
+
+Fix root causes.
+
+No temporary workarounds.
+
+---
+
+## PART 2 — CONTACTS AS SOURCE OF TRUTH
+
+Organization Contacts are the source of truth.
+
+Do not create separate Hub User systems.
+
+Hub Management must always pull directly from Contacts.
+
+Display:
+
+Name
+Email
+Phone
+Role
+Hub Access
+Org Admin
+
+Requirements:
+
+Enable Hub Access
+
+Disable Hub Access
+
+Promote to Org Admin
+
+Remove Org Admin
+
+Changes should immediately synchronize.
+
+No duplicate records.
+
+No manual syncing.
+
+---
+
+## PART 3 — HUB MANAGEMENT CONSOLIDATION
+
+Merge:
+
+Org Admin
++
+Team Members
+
+into a single Team Members section.
+
+Display:
+
+Name
+
+Role
+
+Hub Access
+
+Org Admin
+
+Status
+
+Actions
+
+Keep everything manageable from one location.
+
+---
+
+## PART 4 — HUB SETTINGS UI STANDARDIZATION
+
+Match established Katalyst OS standards.
+
+Section headers:
+
+Black background
+
+White text
+
+Apply to:
+
+Team Members
+
+Share Hub
+
+Branding
+
+Recent Activity
+
+Hub Readiness
+
+Any Hub Management section
+
+Metric cards:
+
+Centered
+
+Light gray metric container
+
+Match:
+
+Organizations
+
+Projects
+
+Sales
+
+Products
+
+Clients
+
+Do not invent a custom metric layout.
+
+---
+
+## PART 5 — CLIENT HUB EXPERIENCE PHILOSOPHY
+
+IMPORTANT
+
+Do NOT redesign the Client Hub into a separate product.
+
+The Client Hub should feel like:
+
+Katalyst OS
+minus
+internal information
+
+NOT
+
+A completely different application.
+
+Reuse existing architecture wherever possible.
+
+Reuse existing sections wherever possible.
+
+Reuse existing terminology wherever possible.
+
+---
+
+## PART 6 — TERMINOLOGY RULES
+
+Customer-facing terminology must be derived from:
+
+Start a Project
+
+Client Hub
+
+Existing customer workflows
+
+Do not invent new terminology.
+
+Do not introduce:
+
+Decoration
+
+Fulfillment Method
+
+Production Method
+
+SKU
+
+Applicator
+
+Cost of Goods
+
+Markup
+
+Use language already present throughout the customer experience.
+
+Examples:
+
+Project
+
+Product
+
+Color
+
+Service Style
+
+Print Locations
+
+Artwork
+
+Mockup
+
+Quote
+
+Invoice
+
+Due Date
+
+Payment Status
+
+---
+
+## PART 7 — CLIENT PROJECT / QUOTE DETAIL REDESIGN
+
+Current implementation exposes backend operational information.
+
+This is not acceptable.
+
+Audit all Client Hub detail views.
+
+Project Detail
+
+Quote Detail
+
+Invoice Detail
+
+Remove all internal operational fields.
+
+---
+
+## PART 8 — VISIBILITY RULES
+
+BACKEND ONLY
+
+Never show clients:
+
+Product Cost
+
+Service Cost
+
+Cost of Goods
+
+Markup
+
+Margin
+
+Vendor
+
+Applicator
+
+Internal Notes
+
+Production Notes
+
+Internal Statuses
+
+Operational Calculations
+
+---
+
+CLIENT VISIBLE
+
+Project Name
+
+Status
+
+Progress
+
+Service Style
+
+Product
+
+Color
+
+Print Locations
+
+Artwork
+
+Mockups
+
+Files
+
+Due Date
+
+Quote
+
+Invoice
+
+Payment Status
+
+---
+
+## PART 9 — CUSTOMER ACTIONS
+
+Support:
+
+Approve Quote
+
+Pay Invoice
+
+Download Invoice PDF
+
+Download Mockups
+
+Favorite Project
+
+Reorder Project
+
+Contact Katalyst Ko
+
+Display actions prominently.
+
+---
+
+## PART 10 — PROJECT DETAIL DESIGN DIRECTION
+
+Use the current Project Detail layout as the foundation.
+
+Do NOT completely redesign it.
+
+Improve it.
+
+Retain:
+
+Project Header
+
+Status
+
+Progress Tracker
+
+General Layout Structure
+
+Enhance:
+
+Mockup visibility
+
+Project summary
+
+File access
+
+Customer actions
+
+Quote visibility
+
+Invoice visibility
+
+The page should feel like:
+
+Customer Project Center
+
+not
+
+Backend Quote Builder
+
+---
+
+## PART 11 — MOCKUP PRIORITY
+
+Mockups are one of the most important assets.
+
+If mockups exist:
+
+Display prominently.
+
+Prioritize over pricing.
+
+Prioritize over operational data.
+
+Allow:
+
+Preview
+
+Download
+
+Future approval workflows
+
+---
+
+## PART 12 — ACTIVE PROJECTS ALIGNMENT
+
+Dashboard Active Projects should align with My Projects.
+
+Current implementations are diverging.
+
+Audit both.
+
+Use one source of truth.
+
+Reuse the same project card/list architecture.
+
+Avoid duplicate implementations.
+
+---
+
+## PART 13 — MY PROJECTS DATA AUDIT
+
+Current My Projects tables show missing information.
+
+Fields displaying blank:
+
+Pieces
+
+Totals
+
+Per Piece
+
+Audit:
+
+API
+
+DTOs
+
+Mappings
+
+Queries
+
+Rendering
+
+Fix missing values.
+
+Project information already exists and should display correctly.
+
+---
+
+## PART 14 — QUOTE / INVOICE EXPERIENCE
+
+Use existing invoice architecture as guidance.
+
+Customers need:
+
+Products
+
+Quantities
+
+Sizes
+
+Locations
+
+Mockups
+
+Pricing
+
+Totals
+
+Status
+
+Actions
+
+Do not expose backend calculations.
+
+Pricing should remain customer-friendly.
+
+---
+
+## PART 15 — PRODUCT MODEL LAW VALIDATION
+
+Verify:
+
+Recommended Products
+
+and
+
+Manual Products
+
+continue functioning correctly.
+
+No client workflow should require:
+
+Product Dataset match
+
+Vendor assignment
+
+Catalog assignment
+
+Manual entry must remain supported.
+
+---
+
+## PART 16 — REQUIRED OUTPUT
+
+Return:
+
+1. Root causes found
+2. Files changed
+3. Database relationships audited
+4. Hub activation fixes
+5. Contact synchronization fixes
+6. Team Member consolidation changes
+7. Hub UI standardization changes
+8. Visibility rule implementation
+9. Client Detail redesign changes
+10. Mockup improvements
+11. Dashboard/My Projects alignment changes
+12. Missing project data fixes
+13. Product Model Law verification
+14. Risks
+15. Testing checklist
+
+Execute all fixes necessary to make Client Hubs reliable, customer-facing, and aligned with Katalyst OS architecture.
