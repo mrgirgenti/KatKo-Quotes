@@ -12,3 +12,27 @@ id = "6kl56SVxgIj2HsAaLwBX_"
 uri = "file://CLIENT_HUB_AUDIT_ROADMAP.md"
 type = "text"
 title = "Client Hub Data Integrity Audit — Sequenced Roadmap"
+
+[[outputs]]
+id = "ntCMpejKY0alrmnB3h8uO"
+uri = "file://.local/samples/1_single-item.pdf"
+type = "pdf"
+title = "Customer PDF — Single item (1 mockup)"
+
+[[outputs]]
+id = "HivJKi5F6UXT5Qyan5cxZ"
+uri = "file://.local/samples/2_multi-item.pdf"
+type = "pdf"
+title = "Customer PDF — Multiple items (each its own mockup)"
+
+[[outputs]]
+id = "6L1gotNOtA-hbh-3wqqOp"
+uri = "file://.local/samples/3_no-mockups.pdf"
+type = "pdf"
+title = "Customer PDF — No mockups (per-item placeholder)"
+
+[[outputs]]
+id = "vwxoEeSzRS3yn76c_i9Jf"
+uri = "file://.local/samples/4_multiple-mockups.pdf"
+type = "pdf"
+title = "Customer PDF — Multiple mockups on one item"
