@@ -27,6 +27,21 @@ export async function GET(_req: Request, { orgId }: { orgId: string }) {
           FROM "ProjectItem" pi
           WHERE pi."projectId" = p.id
         ) AS "lineItemCount",
+        -- Number of designs = line items in the canonical Project JSON.
+        -- Drives the "+N Designs" card badge for multi-design projects.
+        CASE WHEN jsonb_typeof(p."lineItemsData") = 'array'
+             THEN jsonb_array_length(p."lineItemsData") ELSE 0 END AS "designCount",
+        -- Primary card thumbnail = first line item that carries a mockup.
+        -- Customer-safe: only the mockup URI is exposed (never cost/markup).
+        (
+          SELECT li->>'mockupUri'
+          FROM jsonb_array_elements(
+            CASE WHEN jsonb_typeof(p."lineItemsData") = 'array'
+                 THEN p."lineItemsData" ELSE '[]'::jsonb END
+          ) li
+          WHERE COALESCE(li->>'mockupUri', '') <> ''
+          LIMIT 1
+        ) AS "thumbUri",
         -- Customer-facing totals come from the canonical Project JSON
         -- (Project.calculations), NOT the mostly-empty relational Quote table.
         NULLIF(p.calculations->>'total', '')::numeric          AS "totalCost",

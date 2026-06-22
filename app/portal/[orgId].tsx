@@ -120,6 +120,8 @@ interface PortalProject {
   orderDate: string | null;
   createdAt: string;
   lineItemCount: number;
+  designCount: number;
+  thumbUri: string | null;
   totalCost: string | null;
   pieces: number | null;
   perPiece: string | null;
@@ -1965,7 +1967,11 @@ export default function ClientPortal() {
 
     const displayed = orgProjects.filter(p => {
       const norm = normalSt(p.status);
-      if (mpStatusFilter && norm !== mpStatusFilter) return false;
+      if (mpStatusFilter === 'FAVORITES') {
+        if (!favoriteProjectIds.includes(p.id)) return false;
+      } else if (mpStatusFilter && norm !== mpStatusFilter) {
+        return false;
+      }
       if (mpSearch.trim()) {
         const q = mpSearch.toLowerCase();
         if (!p.title.toLowerCase().includes(q)) return false;

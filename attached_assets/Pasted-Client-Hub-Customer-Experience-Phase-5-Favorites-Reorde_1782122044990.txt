@@ -1,0 +1,176 @@
+Client Hub Customer Experience Phase 5 — Favorites + Reorder Foundation
+
+STOP.
+
+Do not audit.
+
+Do not roadmap.
+
+Implement.
+
+The Client Hub now allows customers to browse projects and view project details.
+
+The next step is making it easy for customers to return and order again.
+
+---
+
+## OBJECTIVE
+
+Create a Favorites and Reorder system.
+
+Customers should be able to:
+
+* Favorite projects
+* View favorite projects
+* Reorder previous projects
+* Reuse previous project information
+
+---
+
+## FAVORITES
+
+Add persistent favorites.
+
+Do NOT use localStorage.
+
+Favorites must be stored in the database.
+
+Favorites should survive:
+
+* Device changes
+* Browser changes
+* Login sessions
+
+---
+
+## PROJECT CARDS
+
+Add favorite icon:
+
+☆ = not favorited
+
+★ = favorited
+
+Use Katalyst orange when active.
+
+Top-right corner of project card.
+
+Favorite click should not open project.
+
+---
+
+## FILTERS
+
+Add:
+
+All
+Needs Review
+Being Quoted
+Quote Ready
+In Production
+Completed
+Favorites
+
+Favorites should display favorited projects regardless of status.
+
+---
+
+## REORDER
+
+Add Reorder capability.
+
+Customer clicks:
+
+Reorder Project
+
+System creates a new Project Request draft.
+
+Copy:
+
+* Product selections
+* Colors
+* Sizes
+* Locations
+* Artwork references
+* Notes
+
+Do NOT copy:
+
+* Pricing
+* Status
+* Internal notes
+* Internal assignments
+* Production dates
+
+---
+
+## REORDER FLOW
+
+Customer clicks Reorder.
+
+System creates draft.
+
+Customer lands on:
+
+Review Your Reorder
+
+They may:
+
+* Submit immediately
+* Modify quantities
+* Add notes
+* Upload new artwork
+
+---
+
+## PROJECT HISTORY
+
+Display:
+
+Originally Ordered:
+Date
+
+Last Reordered:
+Date
+
+Times Reordered:
+Count
+
+---
+
+## VALIDATION
+
+Test:
+
+* Favorite project
+* Unfavorite project
+* Refresh browser
+* Logout/login
+* Reorder single-item project
+* Reorder multi-item project
+
+Verify:
+
+Favorites persist
+
+Reorders create new requests
+
+No pricing copies
+
+No internal fields copy
+
+---
+
+## OUTPUT
+
+1. Schema changes
+2. API changes
+3. UI changes
+4. Favorite architecture
+5. Reorder architecture
+6. Validation results
+7. Screenshots
+
+Implement.
+
+Do not audit.

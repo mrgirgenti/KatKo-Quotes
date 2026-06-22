@@ -1,0 +1,274 @@
+Client Hub Customer Experience Phase 3 — Line Item Mockup Architecture + Pricing Terminology Restoration
+
+STOP.
+
+Do not audit.
+
+Do not roadmap.
+
+Implement.
+
+The current Project Detail and Quote Detail pages still treat mockups as project-level assets.
+
+That architecture breaks down when projects contain multiple line items.
+
+Example:
+
+* Shirt
+* Hat
+* Polo
+
+Each product may have a completely different mockup.
+
+Mockups should belong to the line item they represent.
+
+Additionally, customer-facing pricing language must match the language used throughout Katalyst OS.
+
+---
+
+## OBJECTIVE
+
+Move from:
+
+Project
+→ Mockup Gallery
+→ Order Summary
+
+to:
+
+Project
+→ Line Item
+→ Mockup
+→ Product Details
+
+→ Line Item
+→ Mockup
+→ Product Details
+
+Customers should immediately understand:
+
+* Which mockup belongs to which product
+* Which decoration belongs to which product
+* Which quantity belongs to which product
+
+---
+
+## LINE ITEM CARDS
+
+Every line item should display:
+
+* Mockup
+* Product Name
+* Product Color
+* Service Style
+* Print Locations
+* Sizes
+* Quantity
+
+Mockup should be the hero element.
+
+The line item card should feel like a product card within an order.
+
+---
+
+## MOCKUP DISPLAY
+
+If a line item has one mockup:
+
+Display it prominently.
+
+If a line item has multiple mockups:
+
+Display:
+
+* Primary Mockup
+* Thumbnail Strip
+
+Support:
+
+* Thumbnail selection
+* Expand
+* Download
+
+Clicking a thumbnail should replace the primary mockup.
+
+---
+
+## REMOVE PROJECT-LEVEL MOCKUP GALLERY
+
+Do not maintain a generic mockup gallery at the top of the page.
+
+Mockups should live alongside the line item they represent.
+
+The project page should become:
+
+Project Header
+↓
+Line Item Cards
+↓
+Pricing
+↓
+Actions
+
+not
+
+Project Header
+↓
+Generic Mockup Gallery
+↓
+Order Summary
+
+---
+
+## MULTI-PRODUCT ORDERS
+
+Test:
+
+* Shirt
+* Hat
+* Polo
+
+Verify customers can clearly identify:
+
+Which mockup belongs to which product.
+
+Example:
+
+NL6210 Tee
+↓
+Shirt Mockup
+
+Richardson 112
+↓
+Hat Mockup
+
+Port Authority Polo
+↓
+Polo Mockup
+
+---
+
+## DOWNLOADS
+
+Allow mockup download from the individual line item.
+
+Do not require customers to search through galleries.
+
+Downloads should be contextually tied to the product they represent.
+
+---
+
+## PROJECT CARD PREPARATION
+
+Prepare data structures for the My Projects Card Grid.
+
+Determine project primary image using:
+
+1. Approved Mockup
+2. Latest Mockup
+3. Product Image
+4. Initial Fallback
+
+Return this value from the DTO.
+
+Do not redesign My Projects here.
+
+Only prepare and expose the data.
+
+---
+
+## PRICING TERMINOLOGY RESTORATION
+
+Current implementation introduced:
+
+Processing & Handling
+
+This terminology does not exist elsewhere in Katalyst OS.
+
+Remove:
+
+Processing & Handling
+
+Restore Katalyst terminology:
+
+* Subtotal
+* Online Fee
+* Card Fee
+* Sales Tax
+* Shipping
+* Total
+
+Future:
+
+* Rush Fee
+
+Only display rows when values exist.
+
+Do not show empty rows.
+
+Maintain all customer visibility protections.
+
+Do not expose:
+
+* Cost
+* Markup
+* Margin
+* COGS
+* Vendor pricing
+* Internal calculations
+
+---
+
+## QUOTE DETAIL
+
+Apply the same mockup architecture and pricing terminology to Quote Detail.
+
+Line items should own their mockups.
+
+Pricing language should match Project Detail.
+
+---
+
+## VALIDATION
+
+Test:
+
+* Single-line-item project
+* Multi-line-item project
+* Multiple mockups on one line item
+* No mockups
+* Project Detail
+* Quote Detail
+
+Verify:
+
+* Correct mockup-to-product pairing
+* Downloads function
+* No project-level gallery remains
+* Online Fee displays correctly
+* Card Fee displays correctly
+* Sales Tax displays correctly
+* Shipping displays correctly
+* No Processing & Handling remains
+* No internal financials visible
+
+---
+
+## OUTPUT
+
+1. Files changed
+2. Components changed
+3. Line item architecture
+4. Mockup architecture
+5. Pricing terminology updates
+6. DTO changes
+7. Validation results
+8. Screenshots
+
+Implement.
+
+Do not audit.
+
+Do not roadmap.
+
+Complete the full implementation in this sprint.
