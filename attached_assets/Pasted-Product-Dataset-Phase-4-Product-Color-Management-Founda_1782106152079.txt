@@ -1,0 +1,299 @@
+Product Dataset — Phase 4 Product Color Management Foundation
+
+This phase follows:
+
+* Product Dataset Foundation
+* Catalog Assignment Foundation
+* Default Cost Foundation
+* Quote Integration Phase 1
+
+Execute ONLY the work defined below.
+
+Do not perform color migration.
+
+Do not import vendorCatalog.ts palettes.
+
+Do not modify Mockup Designer rendering.
+
+Do not modify garmentData.ts.
+
+Do not modify Client Hub product selection.
+
+Do not modify Placement Templates.
+
+Do not modify Catalog APIs.
+
+This phase establishes the Product Color Management system.
+
+Objective
+
+Create the complete color management framework so colors can be managed directly inside the Product Dataset.
+
+The Product Dataset should become the source of truth for approved product colors.
+
+Architecture Reminder
+
+Catalogs
+↓
+Products
+↓
+Colors
+↓
+Quotes
+↓
+Projects
+↓
+Mockups
+↓
+Production
+
+Products own colors.
+
+Quotes consume colors.
+
+Products remain the source of truth.
+
+Step 1 — Audit Existing Color Architecture
+
+Audit:
+
+* ProductColor table
+* Product Detail Colors tab
+* Existing Product color APIs
+* Existing Product color UI
+
+Return findings.
+
+Do not remove existing functionality.
+
+Step 2 — Standardize Product Color Model
+
+Each Product Color should support:
+
+Required:
+
+* Color Name
+* Hex Value
+* Display Order
+* Active / Inactive
+
+Optional:
+
+* Catalog Color Code
+* Notes
+
+Future compatible only.
+
+No migration required.
+
+Step 3 — Product Detail Color Management
+
+Colors tab becomes the primary management interface.
+
+Requirements:
+
+Add Color
+
+Edit Color
+
+Deactivate Color
+
+Reactivate Color
+
+Delete Color
+
+Reorder Colors
+
+Color Swatch Preview
+
+Hex Preview
+
+Color Count
+
+Active Color Count
+
+Inactive Color Count
+
+Requirements:
+
+Fast workflow.
+
+Minimal clicks.
+
+No separate color management page.
+
+Everything should live inside the Product Detail Colors tab.
+
+Step 4 — Bulk Color Utilities
+
+Add tools to support future population.
+
+Examples:
+
+Copy Colors From Product
+
+Example:
+
+BC3001
+→ Copy colors to BC3001Y
+
+1717
+→ Copy colors to 9018
+
+Clone Color Set
+
+Clear All Colors
+
+Import Color List
+
+Do not build manufacturer imports yet.
+
+Prepare the workflow.
+
+Step 5 — Products Table Visibility
+
+Products table should indicate color completeness.
+
+Display:
+
+Color Count
+
+or
+
+Color Status
+
+Examples:
+
+0 Colors
+
+4 Colors
+
+12 Colors
+
+24 Colors
+
+Keep display compact.
+
+No oversized columns.
+
+Step 6 — Product Audit
+
+Expand Product Audit.
+
+Add:
+
+Missing Colors
+
+Products With Colors
+
+Products Without Colors
+
+Color Coverage %
+
+Category Color Coverage
+
+Products With Inactive Colors Only
+
+Return:
+
+Coverage by category.
+
+Coverage by recommendation level.
+
+Step 7 — Quote Compatibility
+
+Recommended Product selected
+
+↓
+
+Use Product Colors
+
+If Product has no colors
+
+↓
+
+Allow free-text/manual color entry
+
+Manual Products remain supported.
+
+Do not gate quoting.
+
+Maintain Product Model Law.
+
+Step 8 — Future Client Hub Readiness
+
+Prepare Product Colors for:
+
+Client Product Selection
+
+Do not build Client Hub UI.
+
+Prepare only.
+
+Step 9 — Future Mockup Readiness
+
+Prepare Product Colors for:
+
+Mockup Designer
+
+Do not modify Mockup Designer.
+
+Do not modify garmentData.ts.
+
+Prepare only.
+
+Step 10 — Future API Readiness
+
+Prepare Product Colors for:
+
+Catalog APIs
+
+Vendor APIs
+
+Manufacturer APIs
+
+Future APIs may provide colors.
+
+Future APIs must not overwrite Product Colors automatically.
+
+Product Colors remain curated.
+
+Future color hierarchy:
+
+Manual Product Color
+↓
+Product Dataset Color
+↓
+Catalog/API Color
+↓
+No Color
+
+Required Output
+
+Return:
+
+1. Existing color architecture
+2. Files changed
+3. Schema changes
+4. Color management workflow
+5. Bulk utility workflow
+6. Product table changes
+7. Product audit changes
+8. Quote compatibility verification
+9. Client Hub readiness
+10. Mockup readiness
+11. Future API readiness
+12. Risks
+13. Testing checklist
+
+Execute only this phase.
+
+Do not begin:
+
+* Color migration
+* Placement Templates
+* Client Hub Product Selection
+* Mockup Integration
+* Catalog APIs
+
+until this phase is complete and reviewed.

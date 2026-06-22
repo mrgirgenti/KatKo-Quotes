@@ -13,7 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Pencil, Plus, X, ChevronDown, Upload, Palette } from 'lucide-react-native';
+import { Pencil, Plus, X, ChevronDown, Upload, Palette, ArrowUp, ArrowDown, Trash2, Search, Copy, Download } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { apiFetch, getAuthHeaders } from '@/lib/apiFetch';
 import PageBackHeader from '@/components/PageBackHeader';
@@ -118,6 +118,8 @@ interface ColorData {
   hex: string | null;
   isActive: boolean;
   sortOrder: number;
+  catalogColorCode?: string | null;
+  notes?: string | null;
   assets: AssetData[];
 }
 
@@ -334,10 +336,10 @@ function ColorFormModal({
 }: {
   visible: boolean;
   initial: ColorData | null;
-  onSave: (form: { colorCode: string; colorName: string; hex: string }) => Promise<void>;
+  onSave: (form: { colorCode: string; colorName: string; hex: string; catalogColorCode?: string; notes?: string }) => Promise<void>;
   onClose: () => void;
 }) {
-  const [form, setForm] = useState({ colorCode: '', colorName: '', hex: '' });
+  const [form, setForm] = useState({ colorCode: '', colorName: '', hex: '', catalogColorCode: '', notes: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -345,8 +347,14 @@ function ColorFormModal({
     if (visible) {
       setForm(
         initial
-          ? { colorCode: initial.colorCode, colorName: initial.colorName, hex: initial.hex || '' }
-          : { colorCode: '', colorName: '', hex: '' },
+          ? {
+              colorCode:        initial.colorCode,
+              colorName:        initial.colorName,
+              hex:              initial.hex || '',
+              catalogColorCode: initial.catalogColorCode || '',
+              notes:            initial.notes || '',
+            }
+          : { colorCode: '', colorName: '', hex: '', catalogColorCode: '', notes: '' },
       );
       setError('');
       setSaving(false);
@@ -359,7 +367,13 @@ function ColorFormModal({
     setError('');
     setSaving(true);
     try {
-      await onSave(form);
+      await onSave({
+        colorCode:        form.colorCode,
+        colorName:        form.colorName,
+        hex:              form.hex,
+        catalogColorCode: form.catalogColorCode.trim() || undefined,
+        notes:            form.notes.trim() || undefined,
+      });
       onClose();
     } catch (e: any) {
       setError(e.message || 'Failed to save color.');
@@ -380,7 +394,7 @@ function ColorFormModal({
               <X size={20} color={TEXT_LIGHT} />
             </TouchableOpacity>
           </View>
-          <View style={fm.body}>
+          <ScrollView style={fm.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {!!error && <View style={fm.errorBox}><Text style={fm.errorText}>{error}</Text></View>}
 
             <Text style={fm.label}>Color Code <Text style={{ color: BRAND }}>*</Text></Text>
@@ -414,8 +428,35 @@ function ColorFormModal({
                 autoCapitalize="none"
               />
             </View>
+
+            <Text style={fm.label}>
+              Catalog Color Code{' '}
+              <Text style={{ color: TEXT_LIGHT, fontWeight: '400' }}>(Optional)</Text>
+            </Text>
+            <TextInput
+              style={fm.input}
+              value={form.catalogColorCode}
+              onChangeText={v => setForm(f => ({ ...f, catalogColorCode: v }))}
+              placeholder="e.g. BC3001-BLK"
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="characters"
+            />
+
+            <Text style={fm.label}>
+              Notes{' '}
+              <Text style={{ color: TEXT_LIGHT, fontWeight: '400' }}>(Optional)</Text>
+            </Text>
+            <TextInput
+              style={[fm.input, { minHeight: 56, paddingTop: 8 }]}
+              value={form.notes}
+              onChangeText={v => setForm(f => ({ ...f, notes: v }))}
+              placeholder="e.g. Discontinued as of 2024"
+              placeholderTextColor="#9CA3AF"
+              multiline
+              numberOfLines={2}
+            />
             <View style={{ height: 16 }} />
-          </View>
+          </ScrollView>
           <View style={fm.footer}>
             <TouchableOpacity style={fm.btnCancel} onPress={onClose}>
               <Text style={fm.btnCancelText}>Cancel</Text>
@@ -433,18 +474,232 @@ function ColorFormModal({
   );
 }
 
+// ── Bulk Panel ────────────────────────────────────────────────────────────────
+function BulkPanel({ productId, onRefresh }: { productId: string; onRefresh: () => void }) {
+  const [panel, setPanel] = useState<'copy-from' | 'import' | null>(null);
+  const [search, setSearch] = useState('');
+  const [searchResults, setSearchResults] = useState<Array<{ id: string; styleNumber: string; brand: string; name: string }>>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [selectedSource, setSelectedSource] = useState<{ id: string; label: string } | null>(null);
+  const [importText, setImportText] = useState('');
+  const [clearConfirm, setClearConfirm] = useState(false);
+  const [working, setWorking] = useState(false);
+  const [resultMsg, setResultMsg] = useState<string | null>(null);
+
+  const doSearch = useCallback(async (q: string) => {
+    if (!q.trim()) { setSearchResults([]); return; }
+    setSearchLoading(true);
+    try {
+      const data = await apiFetch(`/api/products?q=${encodeURIComponent(q)}&limit=10`);
+      setSearchResults((data as any).products ?? []);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => doSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search, doSearch]);
+
+  const handleCopyFrom = async () => {
+    if (!selectedSource) return;
+    setWorking(true); setResultMsg(null);
+    try {
+      const res = await apiFetch(`/api/products/${productId}/colors/bulk`, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'copy-from', sourceProductId: selectedSource.id }),
+      }) as { copied: number; skipped: number };
+      setResultMsg(`Copied ${res.copied} color${res.copied !== 1 ? 's' : ''}${res.skipped > 0 ? `, ${res.skipped} skipped` : ''}`);
+      setPanel(null); setSearch(''); setSelectedSource(null); setSearchResults([]);
+      onRefresh();
+    } catch (e: any) { setResultMsg(`Error: ${e.message}`); }
+    finally { setWorking(false); }
+  };
+
+  const handleImport = async () => {
+    if (!importText.trim()) return;
+    setWorking(true); setResultMsg(null);
+    try {
+      const res = await apiFetch(`/api/products/${productId}/colors/bulk`, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'import', lines: importText }),
+      }) as { imported: number; skipped: number };
+      setResultMsg(`Imported ${res.imported} color${res.imported !== 1 ? 's' : ''}${res.skipped > 0 ? `, ${res.skipped} skipped` : ''}`);
+      setImportText(''); setPanel(null);
+      onRefresh();
+    } catch (e: any) { setResultMsg(`Error: ${e.message}`); }
+    finally { setWorking(false); }
+  };
+
+  const handleClear = async () => {
+    setWorking(true); setResultMsg(null);
+    try {
+      const res = await apiFetch(`/api/products/${productId}/colors/bulk`, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'clear' }),
+      }) as { deleted: number };
+      setResultMsg(`Cleared ${res.deleted} color${res.deleted !== 1 ? 's' : ''}`);
+      setClearConfirm(false);
+      onRefresh();
+    } catch (e: any) { setResultMsg(`Error: ${e.message}`); }
+    finally { setWorking(false); }
+  };
+
+  const togglePanel = (p: 'copy-from' | 'import') => {
+    setPanel(prev => prev === p ? null : p);
+    setSearch(''); setSelectedSource(null); setSearchResults([]);
+  };
+
+  return (
+    <View style={s.bulkPanel}>
+      <View style={s.bulkHeader}>
+        <Copy size={13} color={TEXT_LIGHT} />
+        <Text style={s.bulkTitle}>Bulk Actions</Text>
+      </View>
+
+      {resultMsg && (
+        <View style={s.bulkResult}>
+          <Text style={s.bulkResultText} numberOfLines={2}>{resultMsg}</Text>
+          <TouchableOpacity onPress={() => setResultMsg(null)} hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}>
+            <X size={13} color={TEXT_LIGHT} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <View style={s.bulkBtnRow}>
+        <TouchableOpacity style={[s.bulkBtn, panel === 'copy-from' && s.bulkBtnActive]} onPress={() => togglePanel('copy-from')}>
+          <Copy size={12} color={panel === 'copy-from' ? BRAND : TEXT_LIGHT} />
+          <Text style={[s.bulkBtnText, panel === 'copy-from' && s.bulkBtnTextActive]}>Copy From</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[s.bulkBtn, panel === 'import' && s.bulkBtnActive]} onPress={() => togglePanel('import')}>
+          <Download size={12} color={panel === 'import' ? BRAND : TEXT_LIGHT} />
+          <Text style={[s.bulkBtnText, panel === 'import' && s.bulkBtnTextActive]}>Import List</Text>
+        </TouchableOpacity>
+        {clearConfirm ? (
+          <View style={s.bulkClearConfirm}>
+            <Text style={s.bulkClearText}>Delete all?</Text>
+            <TouchableOpacity style={s.bulkClearYes} onPress={handleClear} disabled={working}>
+              {working ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.bulkClearYesText}>Yes</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setClearConfirm(false)}>
+              <Text style={s.bulkCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity style={[s.bulkBtn, s.bulkBtnDanger]} onPress={() => setClearConfirm(true)}>
+            <Trash2 size={12} color="#DC2626" />
+            <Text style={[s.bulkBtnText, { color: '#DC2626' }]}>Clear All</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {panel === 'copy-from' && (
+        <View style={s.bulkExpanded}>
+          <Text style={s.bulkHint}>Copy active colors from another product. Existing color codes will be skipped.</Text>
+          <View style={s.bulkSearchRow}>
+            <Search size={13} color={TEXT_LIGHT} />
+            <TextInput
+              style={s.bulkSearchInput}
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Style # or product name…"
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {searchLoading && <ActivityIndicator size="small" color={BRAND} />}
+          </View>
+          {searchResults.length > 0 && !selectedSource && (
+            <View style={s.bulkPickList}>
+              {searchResults.map(p => (
+                <TouchableOpacity
+                  key={p.id}
+                  style={s.bulkPickRow}
+                  onPress={() => { setSelectedSource({ id: p.id, label: `${p.styleNumber} — ${p.brand} ${p.name}` }); setSearch(''); setSearchResults([]); }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={s.bulkPickStyle}>{p.styleNumber}</Text>
+                  <Text style={s.bulkPickName} numberOfLines={1}>{p.brand} {p.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+          {selectedSource && (
+            <View style={s.bulkSelected}>
+              <Text style={s.bulkSelectedLabel} numberOfLines={1}>{selectedSource.label}</Text>
+              <TouchableOpacity onPress={() => setSelectedSource(null)} hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}>
+                <X size={13} color={TEXT_LIGHT} />
+              </TouchableOpacity>
+            </View>
+          )}
+          <TouchableOpacity
+            style={[s.bulkActionBtn, (!selectedSource || working) && { opacity: 0.45 }]}
+            onPress={handleCopyFrom}
+            disabled={!selectedSource || working}
+          >
+            {working ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.bulkActionBtnText}>Copy Colors</Text>}
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {panel === 'import' && (
+        <View style={s.bulkExpanded}>
+          <Text style={s.bulkHint}>{'Paste one color per line. Format: CODE | Name | #HEX\nAlso supports comma or tab delimiters.'}</Text>
+          <TextInput
+            style={s.bulkImportInput}
+            value={importText}
+            onChangeText={setImportText}
+            placeholder={'BLK | Black | #000000\nWHT | White | #FFFFFF\nNVY | Navy | #1B2A4A'}
+            placeholderTextColor="#9CA3AF"
+            multiline
+            numberOfLines={5}
+          />
+          <TouchableOpacity
+            style={[s.bulkActionBtn, (!importText.trim() || working) && { opacity: 0.45 }]}
+            onPress={handleImport}
+            disabled={!importText.trim() || working}
+          >
+            {working ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.bulkActionBtnText}>Import Colors</Text>}
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+}
+
 // ── Colors Tab ────────────────────────────────────────────────────────────────
 function ColorsTab({
   colors,
+  productId,
   onAdd,
   onEdit,
   onToggleActive,
+  onDelete,
+  onReorder,
+  onRefresh,
 }: {
   colors: ColorData[];
+  productId: string;
   onAdd: () => void;
   onEdit: (c: ColorData) => void;
   onToggleActive: (c: ColorData) => void;
+  onDelete: (c: ColorData) => void;
+  onReorder: (colorId: string, direction: 'up' | 'down') => void;
+  onRefresh: () => void;
 }) {
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  const activeCount   = colors.filter(c => c.isActive).length;
+  const inactiveCount = colors.filter(c => !c.isActive).length;
+
+  const sorted = useMemo(
+    () => [...colors].sort((a, b) => a.sortOrder - b.sortOrder || a.colorName.localeCompare(b.colorName)),
+    [colors],
+  );
+
   return (
     <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
       <View style={s.tabContentInner}>
@@ -453,16 +708,22 @@ function ColorsTab({
             <Plus size={14} color="#fff" />
             <Text style={s.addBtnText}>Add Color</Text>
           </TouchableOpacity>
-          <Text style={s.tabSubtitle}>{colors.length} color{colors.length !== 1 ? 's' : ''}</Text>
+          <View style={s.colorCountRow}>
+            <Text style={s.colorCountActive}>{activeCount} active</Text>
+            {inactiveCount > 0 && (
+              <Text style={s.colorCountInactive}> · {inactiveCount} inactive</Text>
+            )}
+          </View>
         </View>
 
-        {colors.length === 0 ? (
+        {sorted.length === 0 ? (
           <View style={s.tabEmpty}>
             <Text style={s.tabEmptyText}>No colors yet. Add a color variant to get started.</Text>
           </View>
         ) : (
           <View style={s.colorTable}>
             <View style={s.colorTableHeader}>
+              <View style={[s.ch, s.chOrder]} />
               <View style={[s.ch, s.chSwatch]} />
               <Text style={[s.chText, s.chCode]}>Code</Text>
               <Text style={[s.chText, s.chName]}>Name</Text>
@@ -470,10 +731,31 @@ function ColorsTab({
               <Text style={[s.chText, s.chStatus]}>Status</Text>
               <View style={[s.ch, s.chActions]} />
             </View>
-            {colors.map(color => {
+            {sorted.map((color, idx) => {
               const swatch = validHexColor(color.hex);
+              const isFirst = idx === 0;
+              const isLast  = idx === sorted.length - 1;
+              const isConfirm = deleteConfirmId === color.id;
               return (
-                <View key={color.id} style={s.colorRow}>
+                <View key={color.id} style={[s.colorRow, !color.isActive && s.colorRowDimmed]}>
+                  <View style={[s.ch, s.chOrder]}>
+                    <TouchableOpacity
+                      style={[s.orderBtn, isFirst && s.orderBtnDisabled]}
+                      onPress={() => !isFirst && onReorder(color.id, 'up')}
+                      disabled={isFirst}
+                      hitSlop={{ top: 2, bottom: 2, left: 4, right: 4 }}
+                    >
+                      <ArrowUp size={10} color={isFirst ? '#D1D5DB' : TEXT_LIGHT} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[s.orderBtn, isLast && s.orderBtnDisabled]}
+                      onPress={() => !isLast && onReorder(color.id, 'down')}
+                      disabled={isLast}
+                      hitSlop={{ top: 2, bottom: 2, left: 4, right: 4 }}
+                    >
+                      <ArrowDown size={10} color={isLast ? '#D1D5DB' : TEXT_LIGHT} />
+                    </TouchableOpacity>
+                  </View>
                   <View style={[s.ch, s.chSwatch]}>
                     <View style={[s.swatch, { backgroundColor: swatch || '#E5E7EB' }]} />
                   </View>
@@ -487,7 +769,7 @@ function ColorsTab({
                       </Text>
                     </View>
                   </View>
-                  <View style={[s.ch, s.chActions, { flexDirection: 'row', gap: 4 }]}>
+                  <View style={[s.ch, s.chActions, { flexDirection: 'row', alignItems: 'center', gap: 3 }]}>
                     <TouchableOpacity
                       style={s.iconBtn}
                       onPress={() => onEdit(color)}
@@ -503,12 +785,30 @@ function ColorsTab({
                         {color.isActive ? 'Disable' : 'Enable'}
                       </Text>
                     </TouchableOpacity>
+                    {isConfirm ? (
+                      <TouchableOpacity
+                        style={s.deleteConfirmBtn}
+                        onPress={() => { setDeleteConfirmId(null); onDelete(color); }}
+                      >
+                        <Text style={s.deleteConfirmText}>Del?</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={s.iconBtn}
+                        onPress={() => setDeleteConfirmId(color.id)}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      >
+                        <Trash2 size={13} color="#EF4444" />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
               );
             })}
           </View>
         )}
+
+        <BulkPanel productId={productId} onRefresh={onRefresh} />
       </View>
     </ScrollView>
   );
@@ -1039,6 +1339,8 @@ export default function ProductDetailScreen() {
     colorCode: string;
     colorName: string;
     hex: string;
+    catalogColorCode?: string;
+    notes?: string;
   }) => {
     if (editingColor) {
       await apiFetch(`/api/products/${productId}/colors/${editingColor.id}`, {
@@ -1063,6 +1365,40 @@ export default function ProductDetailScreen() {
       await loadAll();
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to update color');
+    }
+  };
+
+  const handleDeleteColor = async (color: ColorData) => {
+    try {
+      await apiFetch(`/api/products/${productId}/colors/${color.id}`, { method: 'DELETE' });
+      await loadAll();
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to delete color');
+    }
+  };
+
+  const handleReorderColor = async (colorId: string, direction: 'up' | 'down') => {
+    const sorted = [...colors].sort(
+      (a, b) => a.sortOrder - b.sortOrder || a.colorName.localeCompare(b.colorName),
+    );
+    const idx     = sorted.findIndex(c => c.id === colorId);
+    if (idx === -1) return;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= sorted.length) return;
+    try {
+      await Promise.all([
+        apiFetch(`/api/products/${productId}/colors/${sorted[idx].id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ sortOrder: swapIdx }),
+        }),
+        apiFetch(`/api/products/${productId}/colors/${sorted[swapIdx].id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ sortOrder: idx }),
+        }),
+      ]);
+      await loadAll();
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to reorder color');
     }
   };
 
@@ -1270,9 +1606,13 @@ export default function ProductDetailScreen() {
       {activeTab === 'colors' && (
         <ColorsTab
           colors={colors}
+          productId={productId}
           onAdd={() => { setEditingColor(null); setColorModal(true); }}
           onEdit={color => { setEditingColor(color); setColorModal(true); }}
           onToggleActive={handleToggleColorActive}
+          onDelete={handleDeleteColor}
+          onReorder={handleReorderColor}
+          onRefresh={loadAll}
         />
       )}
 
@@ -1493,12 +1833,127 @@ const s = StyleSheet.create({
   cdBold: { fontWeight: '600' },
   cdMono: { fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
 
+  chOrder:  { width: 26, marginRight: 6, alignItems: 'center' as any, gap: 1 },
   chSwatch: { width: 32, marginRight: 10 },
-  chCode: { width: 80, marginRight: 12 },
-  chName: { flex: 1, minWidth: 80, marginRight: 12 },
-  chHex: { width: 80, marginRight: 12 },
+  chCode:   { width: 80, marginRight: 12 },
+  chName:   { flex: 1, minWidth: 80, marginRight: 12 },
+  chHex:    { width: 80, marginRight: 12 },
   chStatus: { width: 64, marginRight: 8 },
-  chActions: { width: 120 },
+  chActions: { width: 152 },
+
+  colorRowDimmed: { opacity: 0.55 },
+
+  colorCountRow: { flexDirection: 'row' as any, alignItems: 'center' as any },
+  colorCountActive:   { fontSize: 13, color: TEXT_LIGHT, fontWeight: '500' as any },
+  colorCountInactive: { fontSize: 13, color: '#D97706' },
+
+  orderBtn: { padding: 2, alignItems: 'center' as any, justifyContent: 'center' as any },
+  orderBtnDisabled: { opacity: 0.25 },
+
+  deleteConfirmBtn: {
+    borderRadius: 5, paddingHorizontal: 7, paddingVertical: 4,
+    backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FECACA',
+  },
+  deleteConfirmText: { fontSize: 11, fontWeight: '700' as any, color: '#DC2626' },
+
+  bulkPanel: {
+    marginTop: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: BORDER,
+    backgroundColor: SURFACE,
+    overflow: 'hidden' as any,
+  },
+  bulkHeader: {
+    flexDirection: 'row' as any, alignItems: 'center' as any, gap: 7,
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: BORDER,
+    backgroundColor: '#F8FAFC',
+  },
+  bulkTitle: { fontSize: 12, fontWeight: '700' as any, color: TEXT_LIGHT, textTransform: 'uppercase' as any, letterSpacing: 0.4 },
+
+  bulkResult: {
+    flexDirection: 'row' as any, alignItems: 'flex-start' as any, gap: 8,
+    paddingHorizontal: 14, paddingVertical: 8,
+    backgroundColor: '#F0FDF4',
+    borderBottomWidth: 1, borderBottomColor: '#D1FAE5',
+  },
+  bulkResultText: { flex: 1, fontSize: 12, color: '#059669', fontWeight: '500' as any },
+
+  bulkBtnRow: {
+    flexDirection: 'row' as any, alignItems: 'center' as any,
+    paddingHorizontal: 14, paddingVertical: 10, gap: 8, flexWrap: 'wrap' as any,
+  },
+  bulkBtn: {
+    flexDirection: 'row' as any, alignItems: 'center' as any, gap: 5,
+    borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6,
+    borderWidth: 1, borderColor: BORDER, backgroundColor: BG,
+  },
+  bulkBtnActive: { borderColor: BRAND, backgroundColor: '#EFF6FF' },
+  bulkBtnDanger: { borderColor: '#FECACA', backgroundColor: '#FFF5F5' },
+  bulkBtnText: { fontSize: 12, fontWeight: '600' as any, color: TEXT_LIGHT },
+  bulkBtnTextActive: { color: BRAND },
+
+  bulkClearConfirm: {
+    flexDirection: 'row' as any, alignItems: 'center' as any, gap: 8,
+    borderRadius: 6, paddingHorizontal: 10, paddingVertical: 5,
+    borderWidth: 1, borderColor: '#FECACA', backgroundColor: '#FFF5F5',
+  },
+  bulkClearText: { fontSize: 12, color: '#DC2626', fontWeight: '600' as any },
+  bulkClearYes: {
+    backgroundColor: '#DC2626', borderRadius: 5,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  bulkClearYesText: { fontSize: 11, fontWeight: '700' as any, color: '#fff' },
+  bulkCancelText: { fontSize: 12, color: TEXT_LIGHT },
+
+  bulkExpanded: {
+    paddingHorizontal: 14, paddingTop: 2, paddingBottom: 14, gap: 10,
+    borderTopWidth: 1, borderTopColor: BORDER,
+  },
+  bulkHint: { fontSize: 12, color: TEXT_LIGHT, lineHeight: 17 },
+
+  bulkSearchRow: {
+    flexDirection: 'row' as any, alignItems: 'center' as any, gap: 8,
+    borderWidth: 1, borderColor: BORDER, borderRadius: 7,
+    paddingHorizontal: 10, paddingVertical: 7, backgroundColor: BG,
+  },
+  bulkSearchInput: {
+    flex: 1, fontSize: 13, color: TEXT, outlineStyle: 'none' as any,
+  },
+
+  bulkPickList: {
+    borderWidth: 1, borderColor: BORDER, borderRadius: 7,
+    backgroundColor: SURFACE, overflow: 'hidden' as any,
+  },
+  bulkPickRow: {
+    flexDirection: 'row' as any, alignItems: 'center' as any, gap: 10,
+    paddingHorizontal: 12, paddingVertical: 9,
+    borderBottomWidth: 1, borderBottomColor: BORDER,
+  },
+  bulkPickStyle: { fontSize: 11, fontWeight: '700' as any, color: BRAND, minWidth: 40 },
+  bulkPickName:  { flex: 1, fontSize: 13, color: TEXT },
+
+  bulkSelected: {
+    flexDirection: 'row' as any, alignItems: 'center' as any, gap: 8,
+    borderWidth: 1, borderColor: BRAND, borderRadius: 7,
+    paddingHorizontal: 12, paddingVertical: 7, backgroundColor: '#EFF6FF',
+  },
+  bulkSelectedLabel: { flex: 1, fontSize: 13, color: BRAND, fontWeight: '500' as any },
+
+  bulkActionBtn: {
+    backgroundColor: BRAND, borderRadius: 7,
+    paddingVertical: 9, alignItems: 'center' as any,
+  },
+  bulkActionBtnText: { fontSize: 13, fontWeight: '600' as any, color: '#fff' },
+
+  bulkImportInput: {
+    borderWidth: 1, borderColor: BORDER, borderRadius: 7,
+    paddingHorizontal: 12, paddingVertical: 9,
+    fontSize: 13, color: TEXT, backgroundColor: BG,
+    minHeight: 110, textAlignVertical: 'top' as any,
+    outlineStyle: 'none' as any, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
 
   swatch: { width: 22, height: 22, borderRadius: 11, borderWidth: 1, borderColor: '#E5E7EB' },
   swatchMd: { width: 18, height: 18, borderRadius: 9, borderWidth: 1, borderColor: '#E5E7EB' },

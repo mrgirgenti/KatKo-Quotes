@@ -605,15 +605,17 @@ model Product {
 }
 
 model ProductColor {
-  id        String   @id @default(uuid())
-  productId String
-  colorCode String
-  colorName String
-  hex       String?
-  isActive  Boolean  @default(true)
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String   @id @default(uuid())
+  productId        String
+  colorCode        String
+  colorName        String
+  hex              String?
+  isActive         Boolean  @default(true)
+  sortOrder        Int      @default(0)
+  catalogColorCode String?
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   product Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   assets  ProductAsset[]

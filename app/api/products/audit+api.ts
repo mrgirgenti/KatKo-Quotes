@@ -22,15 +22,20 @@ export async function GET(request: Request) {
         p."lastCostUpdatedAt",
         p."templateId",
         p."updatedAt",
-        COALESCE(color_ct.cnt, 0)::int     AS "colorCount",
-        COALESCE(asset_ct.cnt, 0)::int     AS "assetCount",
-        COALESCE(placement_ct.cnt, 0)::int AS "placementCount",
-        COALESCE(vendor_ct.cnt, 0)::int    AS "vendorCount"
+        COALESCE(color_ct.cnt, 0)::int       AS "colorCount",
+        COALESCE(all_color_ct.cnt, 0)::int   AS "totalColorCount",
+        COALESCE(asset_ct.cnt, 0)::int       AS "assetCount",
+        COALESCE(placement_ct.cnt, 0)::int   AS "placementCount",
+        COALESCE(vendor_ct.cnt, 0)::int      AS "vendorCount"
       FROM "Product" p
       LEFT JOIN (
         SELECT "productId", COUNT(*)::int AS cnt
         FROM "ProductColor" WHERE "isActive" = true GROUP BY "productId"
       ) color_ct ON color_ct."productId" = p.id
+      LEFT JOIN (
+        SELECT "productId", COUNT(*)::int AS cnt
+        FROM "ProductColor" GROUP BY "productId"
+      ) all_color_ct ON all_color_ct."productId" = p.id
       LEFT JOIN (
         SELECT pc."productId", COUNT(pa.id)::int AS cnt
         FROM "ProductColor" pc
@@ -53,17 +58,19 @@ export async function GET(request: Request) {
     const now = new Date();
     const staleThresholdDays = 90;
 
-    const missingCost:     typeof products = [];
-    const missingColors:   typeof products = [];
-    const missingAssets:   typeof products = [];
-    const missingTemplate: typeof products = [];
-    const missingVendors:  typeof products = [];
-    const missingRec:      typeof products = [];
-    const staleCost:       typeof products = [];
-    const neverUpdated:    typeof products = [];
-    const zeroCost:        typeof products = [];
+    const missingCost:        typeof products = [];
+    const missingColors:      typeof products = [];
+    const inactiveOnlyColors: typeof products = [];
+    const missingAssets:      typeof products = [];
+    const missingTemplate:    typeof products = [];
+    const missingVendors:     typeof products = [];
+    const missingRec:         typeof products = [];
+    const staleCost:          typeof products = [];
+    const neverUpdated:       typeof products = [];
+    const zeroCost:           typeof products = [];
 
-    const categoryMap: Record<string, { total: number; withCost: number }> = {};
+    const categoryMap:      Record<string, { total: number; withCost: number }> = {};
+    const categoryColorMap: Record<string, { total: number; withColors: number }> = {};
 
     for (const p of products) {
       const costNum = p.defaultBlankCost != null ? parseFloat(String(p.defaultBlankCost)) : null;
@@ -78,6 +85,7 @@ export async function GET(request: Request) {
       }
 
       if (p.colorCount === 0) missingColors.push(p);
+      if (p.colorCount === 0 && p.totalColorCount > 0) inactiveOnlyColors.push(p);
       if (p.assetCount === 0) missingAssets.push(p);
       if (!p.templateId && p.placementCount === 0) missingTemplate.push(p);
       if (p.vendorCount === 0) missingVendors.push(p);
@@ -87,9 +95,12 @@ export async function GET(request: Request) {
       if (daysSinceUpdate > 180) neverUpdated.push(p);
 
       const cat = (p.category || 'Uncategorized') as string;
-      if (!categoryMap[cat]) categoryMap[cat] = { total: 0, withCost: 0 };
+      if (!categoryMap[cat])      categoryMap[cat]      = { total: 0, withCost: 0 };
+      if (!categoryColorMap[cat]) categoryColorMap[cat] = { total: 0, withColors: 0 };
       categoryMap[cat].total++;
+      categoryColorMap[cat].total++;
       if (costNum !== null && !isNaN(costNum as number) && costNum > 0) categoryMap[cat].withCost++;
+      if (p.colorCount > 0) categoryColorMap[cat].withColors++;
     }
 
     const withCost = products.filter(p => {
@@ -97,6 +108,9 @@ export async function GET(request: Request) {
       return c !== null && !isNaN(c) && c > 0;
     }).length;
     const costCoverage = products.length > 0 ? Math.round((withCost / products.length) * 100) : 0;
+
+    const withColors   = products.filter(p => p.colorCount > 0).length;
+    const colorCoverage = products.length > 0 ? Math.round((withColors / products.length) * 100) : 0;
 
     const categoryBreakdown = Object.entries(categoryMap)
       .map(([category, d]) => ({
@@ -107,10 +121,21 @@ export async function GET(request: Request) {
       }))
       .sort((a, b) => b.total - a.total);
 
+    const categoryColorBreakdown = Object.entries(categoryColorMap)
+      .map(([category, d]) => ({
+        category,
+        total: d.total,
+        withColors: d.withColors,
+        pct: d.total > 0 ? Math.round((d.withColors / d.total) * 100) : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+
     const summary = {
       totalActive:    products.length,
       withCost,
       costCoverage,
+      withColors,
+      colorCoverage,
       quoteReady: products.filter(p =>
         p.defaultBlankCost !== null &&
         p.colorCount > 0
@@ -144,15 +169,17 @@ export async function GET(request: Request) {
     return Response.json({
       summary,
       categoryBreakdown,
-      missingCost:     slim(missingCost),
-      zeroCost:        slim(zeroCost),
-      missingColors:   slim(missingColors),
-      missingAssets:   slim(missingAssets),
-      missingTemplate: slim(missingTemplate),
-      missingVendors:  slim(missingVendors),
-      missingRec:      slim(missingRec),
-      staleCost:       slim(staleCost),
-      neverUpdated:    slim(neverUpdated),
+      categoryColorBreakdown,
+      missingCost:        slim(missingCost),
+      zeroCost:           slim(zeroCost),
+      missingColors:      slim(missingColors),
+      inactiveOnlyColors: slim(inactiveOnlyColors),
+      missingAssets:      slim(missingAssets),
+      missingTemplate:    slim(missingTemplate),
+      missingVendors:     slim(missingVendors),
+      missingRec:         slim(missingRec),
+      staleCost:          slim(staleCost),
+      neverUpdated:       slim(neverUpdated),
     });
   } catch (err) {
     console.error('[GET /api/products/audit]', err);

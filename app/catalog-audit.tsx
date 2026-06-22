@@ -45,26 +45,37 @@ interface CategoryCostSummary {
   pct: number;
 }
 
+interface CategoryColorSummary {
+  category: string;
+  total: number;
+  withColors: number;
+  pct: number;
+}
+
 interface AuditData {
   summary: {
     totalActive: number;
     withCost?: number;
     costCoverage?: number;
+    withColors?: number;
+    colorCoverage?: number;
     quoteReady: number;
     mockupReady: number;
     withVendors?: number;
     withRecLevel?: number;
   };
-  categoryBreakdown?: CategoryCostSummary[];
-  missingCost:     AuditProduct[];
-  zeroCost?:       AuditProduct[];
-  missingColors:   AuditProduct[];
-  missingAssets:   AuditProduct[];
-  missingTemplate: AuditProduct[];
-  missingVendors?: AuditProduct[];
-  missingRec?:     AuditProduct[];
-  staleCost:       AuditProduct[];
-  neverUpdated:    AuditProduct[];
+  categoryBreakdown?:      CategoryCostSummary[];
+  categoryColorBreakdown?: CategoryColorSummary[];
+  missingCost:        AuditProduct[];
+  zeroCost?:          AuditProduct[];
+  missingColors:      AuditProduct[];
+  inactiveOnlyColors?: AuditProduct[];
+  missingAssets:      AuditProduct[];
+  missingTemplate:    AuditProduct[];
+  missingVendors?:    AuditProduct[];
+  missingRec?:        AuditProduct[];
+  staleCost:          AuditProduct[];
+  neverUpdated:       AuditProduct[];
 }
 
 function SummaryCard({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
@@ -234,6 +245,24 @@ export default function CatalogAuditScreen() {
             </View>
           </View>
 
+          {/* Color coverage summary */}
+          <View style={s.summaryRow}>
+            <SummaryCard label="With Colors" value={data.summary.withColors ?? 0} total={data.summary.totalActive} color="#8B5CF6" />
+            <View style={s.summaryCard}>
+              <Text style={[s.summaryValue, { color: (data.summary.colorCoverage ?? 0) >= 80 ? '#10B981' : (data.summary.colorCoverage ?? 0) >= 50 ? '#F59E0B' : '#EF4444' }]}>
+                {data.summary.colorCoverage ?? 0}%
+              </Text>
+              <Text style={s.summaryLabel}>Color Coverage</Text>
+              <View style={s.summaryBar}>
+                <View style={[s.summaryBarFill, {
+                  width: `${data.summary.colorCoverage ?? 0}%` as any,
+                  backgroundColor: (data.summary.colorCoverage ?? 0) >= 80 ? '#10B981' : (data.summary.colorCoverage ?? 0) >= 50 ? '#F59E0B' : '#EF4444',
+                }]} />
+              </View>
+              <Text style={s.summaryPct}>of active products with colors</Text>
+            </View>
+          </View>
+
           {/* Issue sections */}
           <View style={s.sectionHeader}>
             <AlertTriangle size={17} color="#D97706" />
@@ -262,6 +291,14 @@ export default function CatalogAuditScreen() {
             products={data.missingColors}
             color="#EF4444"
             icon={<XCircle size={18} color="#EF4444" />}
+            onPress={goToProduct}
+          />
+          <IssueSection
+            title="Inactive Colors Only"
+            description="Has colors but all are deactivated — reactivate or add new variants"
+            products={data.inactiveOnlyColors ?? []}
+            color="#F59E0B"
+            icon={<AlertTriangle size={18} color="#F59E0B" />}
             onPress={goToProduct}
           />
           <IssueSection
@@ -342,6 +379,42 @@ export default function CatalogAuditScreen() {
                         color: row.pct >= 80 ? '#10B981' : row.pct >= 50 ? '#D97706' : '#EF4444',
                       }]}>{row.pct}%</Text>
                       <Text style={s.catCount}>{row.withCost}/{row.total}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
+          {(data.categoryColorBreakdown?.length ?? 0) > 0 && (
+            <>
+              <View style={s.sectionHeader}>
+                <ClipboardList size={17} color="#8B5CF6" />
+                <Text style={s.sectionTitle}>Color Coverage by Category</Text>
+              </View>
+              <View style={[s.issueSection, { padding: 0 }]}>
+                {data.categoryColorBreakdown!.map((row, idx) => (
+                  <View
+                    key={row.category}
+                    style={[
+                      s.catRow,
+                      idx < data.categoryColorBreakdown!.length - 1 && s.catRowBorder,
+                    ]}
+                  >
+                    <View style={s.catRowLeft}>
+                      <Text style={s.catRowName}>{row.category}</Text>
+                      <View style={s.catBarWrap}>
+                        <View style={[s.catBarFill, {
+                          width: `${row.pct}%` as any,
+                          backgroundColor: row.pct >= 80 ? '#10B981' : row.pct >= 50 ? '#F59E0B' : '#EF4444',
+                        }]} />
+                      </View>
+                    </View>
+                    <View style={s.catRowRight}>
+                      <Text style={[s.catPct, {
+                        color: row.pct >= 80 ? '#10B981' : row.pct >= 50 ? '#D97706' : '#EF4444',
+                      }]}>{row.pct}%</Text>
+                      <Text style={s.catCount}>{row.withColors}/{row.total}</Text>
                     </View>
                   </View>
                 ))}

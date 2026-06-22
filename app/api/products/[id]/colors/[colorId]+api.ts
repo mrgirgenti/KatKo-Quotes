@@ -17,17 +17,19 @@ export async function PATCH(
     return Response.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { colorCode, colorName, hex, isActive, sortOrder } = body;
+  const { colorCode, colorName, hex, isActive, sortOrder, catalogColorCode, notes } = body;
 
   const updates: string[] = [];
   const values: unknown[] = [];
   let idx = 1;
 
-  if (colorCode !== undefined) { updates.push(`"colorCode" = $${idx++}`); values.push(colorCode); }
-  if (colorName !== undefined) { updates.push(`"colorName" = $${idx++}`); values.push(colorName); }
-  if (hex !== undefined)       { updates.push(`hex = $${idx++}`);         values.push(hex || null); }
-  if (isActive !== undefined)  { updates.push(`"isActive" = $${idx++}`);  values.push(isActive); }
-  if (sortOrder !== undefined) { updates.push(`"sortOrder" = $${idx++}`); values.push(sortOrder); }
+  if (colorCode !== undefined)        { updates.push(`"colorCode" = $${idx++}`);        values.push(colorCode); }
+  if (colorName !== undefined)        { updates.push(`"colorName" = $${idx++}`);        values.push(colorName); }
+  if (hex !== undefined)              { updates.push(`hex = $${idx++}`);                values.push(hex || null); }
+  if (isActive !== undefined)         { updates.push(`"isActive" = $${idx++}`);         values.push(isActive); }
+  if (sortOrder !== undefined)        { updates.push(`"sortOrder" = $${idx++}`);        values.push(sortOrder); }
+  if (catalogColorCode !== undefined) { updates.push(`"catalogColorCode" = $${idx++}`); values.push(catalogColorCode || null); }
+  if (notes !== undefined)            { updates.push(`notes = $${idx++}`);              values.push(notes || null); }
 
   if (updates.length === 0) return Response.json({ error: 'No fields to update' }, { status: 400 });
 

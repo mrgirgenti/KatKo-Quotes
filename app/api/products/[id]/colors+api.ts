@@ -39,7 +39,7 @@ export async function POST(request: Request, { id }: { id: string }) {
     return Response.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { colorCode, colorName, hex, sortOrder } = body as Record<string, string>;
+  const { colorCode, colorName, hex, sortOrder, catalogColorCode, notes } = body as Record<string, string>;
 
   if (!colorCode?.trim()) return Response.json({ error: 'colorCode is required' }, { status: 400 });
   if (!colorName?.trim()) return Response.json({ error: 'colorName is required' }, { status: 400 });
@@ -50,10 +50,10 @@ export async function POST(request: Request, { id }: { id: string }) {
     if (productCheck.rows.length === 0) return Response.json({ error: 'Product not found' }, { status: 404 });
 
     const result = await client.query(
-      `INSERT INTO "ProductColor" (id, "productId", "colorCode", "colorName", hex, "isActive", "sortOrder", "createdAt", "updatedAt")
-       VALUES (gen_random_uuid(), $1, $2, $3, $4, true, $5, NOW(), NOW())
+      `INSERT INTO "ProductColor" (id, "productId", "colorCode", "colorName", hex, "catalogColorCode", notes, "isActive", "sortOrder", "createdAt", "updatedAt")
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, true, $7, NOW(), NOW())
        RETURNING *`,
-      [id, colorCode.trim(), colorName.trim(), hex?.trim() || null, sortOrder ?? 0],
+      [id, colorCode.trim(), colorName.trim(), hex?.trim() || null, catalogColorCode?.trim() || null, notes?.trim() || null, sortOrder ?? 0],
     );
     return Response.json({ color: result.rows[0] }, { status: 201 });
   } catch (err: unknown) {

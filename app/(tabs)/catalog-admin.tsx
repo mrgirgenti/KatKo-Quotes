@@ -44,7 +44,7 @@ const BORDER = Colors.light.border;
 const SURFACE = Colors.light.surface;
 const BG = Colors.light.background;
 
-type SortField = 'style' | 'brand' | 'name' | 'category' | 'vendors' | 'cost' | 'status';
+type SortField = 'style' | 'brand' | 'name' | 'category' | 'vendors' | 'cost' | 'status' | 'colors';
 type SortDir = 'asc' | 'desc';
 
 const EMPTY_FORM = {
@@ -930,6 +930,7 @@ export default function CatalogAdminScreen() {
       else if (sortField === 'category') cmp = (a.category || '').localeCompare(b.category || '');
       else if (sortField === 'vendors')  cmp = (a.catalogCount ?? 0) - (b.catalogCount ?? 0);
       else if (sortField === 'cost')     cmp = (a.defaultBlankCost ?? -Infinity) - (b.defaultBlankCost ?? -Infinity);
+      else if (sortField === 'colors')  cmp = (a.colorCount ?? 0) - (b.colorCount ?? 0);
       else if (sortField === 'status')   cmp = (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0);
       return sortDir === 'asc' ? cmp : -cmp;
     });
@@ -1473,6 +1474,7 @@ export default function CatalogAdminScreen() {
               <View style={s.cRec}><SortBtn field="status" label="Rec" /></View>
               <View style={s.cVendor}><SortBtn field="vendors" label="Catalogs" /></View>
               <View style={s.cCost}><SortBtn field="cost" label="Cost" /></View>
+              <View style={s.cColor}><SortBtn field="colors" label="Colors" /></View>
               <View style={s.cStatus}><SortBtn field="status" label="Status" /></View>
               <View style={s.cActions} />
             </View>
@@ -1586,6 +1588,14 @@ export default function CatalogAdminScreen() {
                   </>
                 )}
               </TouchableOpacity>
+              <View style={s.cColor}>
+                <Text style={[
+                  s.colorCountText,
+                  (product.colorCount ?? 0) === 0 ? s.colorCountZero : s.colorCountFilled,
+                ]}>
+                  {product.colorCount ?? 0}
+                </Text>
+              </View>
               <View style={s.cStatus}>
                 <View style={[s.badge, product.isActive ? s.badgeActive : s.badgeInactive]}>
                   <Text style={[s.badgeText, product.isActive ? s.badgeTextActive : s.badgeTextInactive]}>
@@ -1855,8 +1865,13 @@ const s = StyleSheet.create({
   cRec:    { width: 86, marginRight: 12, justifyContent: 'center' as any },
   cVendor: { width: 140, marginRight: 16, justifyContent: 'center' as any },
   cCost:   { width: 80, marginRight: 12, justifyContent: 'center' as any },
+  cColor:  { width: 64, marginRight: 12, alignItems: 'center' as any, justifyContent: 'center' as any },
   cStatus: { width: 80, marginRight: 8 },
   cActions: { width: 44, alignItems: 'center', position: 'relative' as any },
+
+  colorCountText: { fontSize: 13, fontWeight: '600', textAlign: 'center' as any },
+  colorCountZero: { color: '#D97706' },
+  colorCountFilled: { color: '#059669' },
 
   costCell: { fontSize: 13, fontWeight: '600', color: TEXT },
   costCellMissing: { fontSize: 13, color: '#D1D5DB', borderBottomWidth: 1, borderBottomColor: '#D1D5DB', borderStyle: 'dashed' as any },
