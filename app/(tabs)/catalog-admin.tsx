@@ -83,6 +83,8 @@ interface Product {
   gender?: string | null;
   vendorCount?: number;
   preferredVendorName?: string | null;
+  catalogNames?: string[];
+  catalogCount?: number;
   defaultBlankCost?: number | string | null;
   lastCostUpdatedAt?: string | null;
   colorCount?: number;
@@ -380,6 +382,136 @@ function BulkVendorModal({ visible, mode, onSave, onClose }: {
                   : <Text style={fm.btnSaveText}>Apply to Selected</Text>}
               </TouchableOpacity>
             </View>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+// ── CatalogAssignModal ────────────────────────────────────────────────────────
+function CatalogAssignModal({ visible, product, onSave, onClose }: {
+  visible: boolean;
+  product: Product | null;
+  onSave: () => void;
+  onClose: () => void;
+}) {
+  const [catalogs, setCatalogs] = useState<{ id: string; name: string; isAssigned: boolean }[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (visible && product) {
+      setLoading(true);
+      setError('');
+      apiFetch(`/api/products/${product.id}/catalogs`)
+        .then((data: any) => {
+          const cats = (data.catalogs || []) as { id: string; name: string; isAssigned: boolean }[];
+          setCatalogs(cats);
+          setSelected(new Set(cats.filter(c => c.isAssigned).map(c => c.id)));
+        })
+        .catch((e: any) => setError(e.message || 'Failed to load catalogs'))
+        .finally(() => setLoading(false));
+    }
+  }, [visible, product]);
+
+  const toggle = (id: string) => setSelected(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
+  const handleSave = async () => {
+    if (!product) return;
+    setSaving(true);
+    try {
+      await apiFetch(`/api/products/${product.id}/catalogs`, {
+        method: 'PUT',
+        body: JSON.stringify({ vendorIds: Array.from(selected) }),
+      });
+      onSave();
+      onClose();
+    } catch (e: any) {
+      setError(e.message || 'Failed to save catalog assignments');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={fm.overlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} style={[fm.sheet, { width: 420 }]} onPress={() => {}}>
+          <View style={fm.header}>
+            <View style={{ flex: 1 }}>
+              <Text style={fm.title}>Assign Catalogs</Text>
+              {product && (
+                <Text style={{ fontSize: 12, color: TEXT_LIGHT, marginTop: 2 }}>
+                  {product.styleNumber} — {product.name}
+                </Text>
+              )}
+            </View>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={20} color={TEXT_LIGHT} />
+            </TouchableOpacity>
+          </View>
+          <View style={[fm.body, { paddingBottom: 8 }]}>
+            {!!error && <View style={fm.errorBox}><Text style={fm.errorText}>{error}</Text></View>}
+            {loading ? (
+              <ActivityIndicator color={BRAND} size="small" style={{ marginVertical: 24 }} />
+            ) : (
+              <View style={{ gap: 6, paddingVertical: 4 }}>
+                {catalogs.map(cat => (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={{
+                      flexDirection: 'row' as const, alignItems: 'center' as const, gap: 12,
+                      paddingHorizontal: 12, paddingVertical: 10,
+                      borderWidth: 1,
+                      borderColor: selected.has(cat.id) ? BRAND : BORDER,
+                      borderRadius: 8,
+                      backgroundColor: selected.has(cat.id) ? '#EFF6FF' : BG,
+                    }}
+                    onPress={() => toggle(cat.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{
+                      width: 18, height: 18, borderRadius: 4,
+                      borderWidth: 1.5,
+                      borderColor: selected.has(cat.id) ? BRAND : BORDER,
+                      backgroundColor: selected.has(cat.id) ? BRAND : '#fff',
+                      alignItems: 'center' as const, justifyContent: 'center' as const,
+                    }}>
+                      {selected.has(cat.id) && <Check size={11} color="#fff" strokeWidth={3} />}
+                    </View>
+                    <Text style={{ fontSize: 14, color: TEXT, fontWeight: selected.has(cat.id) ? '600' : '400' }}>
+                      {cat.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                {catalogs.length === 0 && !loading && (
+                  <Text style={{ fontSize: 13, color: TEXT_LIGHT, textAlign: 'center' as any, padding: 20 }}>
+                    No active catalogs found.
+                  </Text>
+                )}
+              </View>
+            )}
+          </View>
+          <View style={fm.footer}>
+            <TouchableOpacity style={fm.btnCancel} onPress={onClose}>
+              <Text style={fm.btnCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[fm.btnSave, (saving || loading) && { opacity: 0.6 }]}
+              onPress={handleSave}
+              disabled={saving || loading}
+            >
+              {saving
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={fm.btnSaveText}>Save Catalogs</Text>}
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </TouchableOpacity>
@@ -758,6 +890,8 @@ export default function CatalogAdminScreen() {
   const [bulkCostModal, setBulkCostModal] = useState<'set' | 'increase' | 'decrease' | null>(null);
   const [bulkVendorModal, setBulkVendorModal] = useState<'assign' | 'preferred' | null>(null);
   const [bulkTemplateModal, setBulkTemplateModal] = useState(false);
+  const [catalogProduct, setCatalogProduct] = useState<Product | null>(null);
+  const [catalogModal, setCatalogModal] = useState(false);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -794,7 +928,7 @@ export default function CatalogAdminScreen() {
       else if (sortField === 'brand')    cmp = (a.brand || '').localeCompare(b.brand || '');
       else if (sortField === 'name')     cmp = (a.name || '').localeCompare(b.name || '');
       else if (sortField === 'category') cmp = (a.category || '').localeCompare(b.category || '');
-      else if (sortField === 'vendors')  cmp = (a.vendorCount ?? 0) - (b.vendorCount ?? 0);
+      else if (sortField === 'vendors')  cmp = (a.catalogCount ?? 0) - (b.catalogCount ?? 0);
       else if (sortField === 'cost')     cmp = (a.defaultBlankCost ?? -Infinity) - (b.defaultBlankCost ?? -Infinity);
       else if (sortField === 'status')   cmp = (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0);
       return sortDir === 'asc' ? cmp : -cmp;
@@ -1337,7 +1471,7 @@ export default function CatalogAdminScreen() {
               <View style={s.cName}><SortBtn field="name" label="Product" /></View>
               <View style={s.cCat}><SortBtn field="category" label="Category" /></View>
               <View style={s.cRec}><SortBtn field="status" label="Rec" /></View>
-              <View style={s.cVendor}><SortBtn field="vendors" label="Vendors" /></View>
+              <View style={s.cVendor}><SortBtn field="vendors" label="Catalogs" /></View>
               <View style={s.cCost}><SortBtn field="cost" label="Cost" /></View>
               <View style={s.cStatus}><SortBtn field="status" label="Status" /></View>
               <View style={s.cActions} />
@@ -1403,14 +1537,11 @@ export default function CatalogAdminScreen() {
                 ) : null}
               </View>
               <View style={s.cVendor}>
-                <Text style={s.td} numberOfLines={1}>
-                  {product.preferredVendorName ?? '—'}
+                <Text style={s.td} numberOfLines={2}>
+                  {(product.catalogNames?.length ?? 0) > 0
+                    ? product.catalogNames!.join(' • ')
+                    : '—'}
                 </Text>
-                {(product.vendorCount ?? 0) > 0 && (
-                  <Text style={s.tdSub} numberOfLines={1}>
-                    {product.vendorCount} {product.vendorCount === 1 ? 'vendor' : 'vendors'}
-                  </Text>
-                )}
               </View>
               <TouchableOpacity
                 style={s.cCost}
@@ -1488,6 +1619,11 @@ export default function CatalogAdminScreen() {
                         <Text style={s.menuItemText}>Edit</Text>
                       </TouchableOpacity>
                       <View style={s.menuDivider} />
+                      <TouchableOpacity style={s.menuItem} onPress={() => { close(); setCatalogProduct(product); setCatalogModal(true); }}>
+                        <Package size={15} color={TEXT_LIGHT} />
+                        <Text style={s.menuItemText}>Assign Catalogs</Text>
+                      </TouchableOpacity>
+                      <View style={s.menuDivider} />
                       <TouchableOpacity style={s.menuItem} onPress={() => { close(); handleToggleActive(product); }}>
                         {product.isActive ? <EyeOff size={15} color="#DC2626" /> : <Eye size={15} color="#059669" />}
                         <Text style={[s.menuItemText, { color: product.isActive ? '#DC2626' : '#059669' }]}>
@@ -1543,6 +1679,13 @@ export default function CatalogAdminScreen() {
         visible={bulkTemplateModal}
         onSave={handleBulkAssignTemplate}
         onClose={() => setBulkTemplateModal(false)}
+      />
+
+      <CatalogAssignModal
+        visible={catalogModal}
+        product={catalogProduct}
+        onSave={loadProducts}
+        onClose={() => { setCatalogModal(false); setCatalogProduct(null); }}
       />
     </View>
   );

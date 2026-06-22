@@ -531,13 +531,15 @@ enum GarmentSide {
 }
 
 model Vendor {
-  id         String   @id @default(uuid())
-  name       String   @unique
+  id         String    @id @default(uuid())
+  name       String    @unique
   website    String?
   catalogUrl String?
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  isActive   Boolean   @default(true)
+  apiStatus  String?
+  apiSyncAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   sources ProductVendor[]
 

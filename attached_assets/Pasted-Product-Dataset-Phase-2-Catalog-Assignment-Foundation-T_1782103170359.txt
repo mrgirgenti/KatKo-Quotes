@@ -1,0 +1,324 @@
+Product Dataset — Phase 2 Catalog Assignment Foundation
+
+This phase follows the successful Product Dataset foundation build.
+
+Execute ONLY the work defined below.
+
+Do not perform Quote integration.
+
+Do not perform Client Hub integration.
+
+Do not perform Mockup integration.
+
+Do not perform API integration.
+
+Do not modify garmentData.ts.
+
+Do not modify LineItemCard.
+
+Do not modify Start A Project.
+
+Do not modify existing quote workflows.
+
+Do not modify product costs.
+
+Do not modify product colors.
+
+Do not modify placement templates.
+
+This phase establishes the relationship between Catalogs and Products.
+
+Architecture Reminder
+
+Catalogs
+↓
+Products
+↓
+Quotes
+↓
+Projects
+↓
+Mockups
+↓
+Production
+
+Catalogs represent supplier relationships.
+
+Products represent Katalyst Ko Recommended Products.
+
+Future APIs attach to Catalogs.
+
+Products remain curated.
+
+Catalog Assignments are the bridge between Catalogs and Products.
+
+Catalog Definitions
+
+The approved Catalogs are:
+
+* S&S Activewear
+* SanMar
+* McCreary's
+* Shaka Wear
+* Independent Trading
+* LA Apparel
+* Momentec
+
+Do not automatically create additional Catalogs.
+
+Do not import additional Catalogs.
+
+Do not infer additional Catalogs.
+
+Catalog Assignment Objective
+
+Every Product should be able to reference one or more Catalogs.
+
+Example:
+
+BC3001
+
+Available Through:
+
+* S&S Activewear
+* SanMar
+
+Example:
+
+NL6210
+
+Available Through:
+
+* S&S Activewear
+* SanMar
+
+Example:
+
+IND4000
+
+Available Through:
+
+* Independent Trading
+
+Example:
+
+SHGW
+
+Available Through:
+
+* Shaka Wear
+
+Catalog relationships should be many-to-many.
+
+A Product may belong to multiple Catalogs.
+
+A Catalog may contain many Products.
+
+Step 1 — Verify Existing Architecture
+
+Audit current Catalog relationships.
+
+Identify:
+
+* Existing Product ↔ Catalog relationships
+* Existing Product ↔ Vendor relationships
+* Existing join tables
+* Existing catalog assignment logic
+
+Return findings.
+
+Do not remove existing relationships.
+
+Step 2 — Catalog Assignment Readiness
+
+Ensure Product records support:
+
+Available Catalogs
+
+without relying on:
+
+* free-text vendor names
+* hardcoded arrays
+* manual string matching
+
+Catalog relationships should use actual Catalog records.
+
+Step 3 — Catalog Assignment UI
+
+Products Page
+
+Add a Catalog Assignment workflow.
+
+Requirements:
+
+Single Product:
+
+Allow:
+
+Assign Catalogs
+
+Example:
+
+NL6210
+
+☑ S&S Activewear
+☑ SanMar
+☐ McCreary's
+☐ Shaka Wear
+☐ Independent Trading
+☐ LA Apparel
+☐ Momentec
+
+Save relationship.
+
+Bulk Assignment
+
+Support:
+
+Select products
+→ Assign Catalog
+
+Examples:
+
+Select 15 products
+→ Assign S&S Activewear
+
+Select 10 products
+→ Assign SanMar
+
+Select 3 products
+→ Assign Independent Trading
+
+Support multi-catalog assignment.
+
+Do not limit products to a single Catalog.
+
+Step 4 — Products Table
+
+Update Products table.
+
+Display:
+
+Catalog Count
+
+or
+
+Catalog Badges
+
+Example:
+
+S&S • SanMar
+
+Example:
+
+Independent Trading
+
+Example:
+
+Shaka Wear
+
+Keep display compact.
+
+Do not create oversized cells.
+
+Step 5 — Product Detail Page
+
+Update Product Detail page.
+
+Use the approved header layout.
+
+Display:
+
+Catalogs
+
+alongside:
+
+Cost
+Placement Template
+
+Example:
+
+Cost                    Catalogs                        Placement Template
+
+$5.95                   S&S • SanMar                   Standard T-Shirt
+
+Do not restore the old Sources tab.
+
+Catalog visibility should be surfaced directly in the Product Detail experience.
+
+Step 6 — Health Reporting
+
+Update Product Audit.
+
+Add:
+
+Missing Catalog Assignments
+
+Products with:
+
+0 Catalogs
+
+should be flagged.
+
+Return:
+
+Products Missing Catalogs
+
+Catalog Coverage %
+
+Catalog Assignment Counts
+
+Catalogs With No Products
+
+Step 7 — Future API Readiness
+
+Prepare Catalog relationships for future APIs.
+
+Catalogs should eventually support:
+
+* API Credentials
+* API Status
+* API Sync Metadata
+
+Do not build APIs.
+
+Do not build sync.
+
+Do not build imports.
+
+Only ensure Catalog relationships are future-compatible.
+
+Important Rules
+
+Catalogs are supplier relationships.
+
+Products are curated recommendations.
+
+Catalogs are NOT Products.
+
+Products are NOT Catalogs.
+
+Catalog APIs must never automatically create Product records.
+
+Catalog Products remain separate from Recommended Products.
+
+Only deliberate user actions should create Recommended Products.
+
+Required Output
+
+Return:
+
+1. Existing relationship architecture
+2. Schema changes
+3. Files changed
+4. UI changes
+5. Bulk assignment workflow
+6. Product Detail changes
+7. Product Audit changes
+8. Catalog coverage summary
+9. Risks
+10. Testing checklist
+
+Execute only this phase.
+
+Do not begin Costs, Colors, Placements, Quotes, Client Hubs, Mockups, or APIs.

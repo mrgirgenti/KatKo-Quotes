@@ -1232,7 +1232,7 @@ export default function ProductDetailScreen() {
           </TouchableOpacity>
           <View style={s.hdrSep} />
           <View style={[s.hdrCell, { flex: 2 }]}>
-            <Text style={s.hdrLabel}>Vendors</Text>
+            <Text style={s.hdrLabel}>Catalogs</Text>
             <Text style={s.hdrValue} numberOfLines={1}>
               {sources.filter(src => src.isActive).map(src => src.vendorName).join(' • ') || '—'}
             </Text>

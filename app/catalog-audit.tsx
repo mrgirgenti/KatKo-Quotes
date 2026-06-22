@@ -32,16 +32,26 @@ interface AuditProduct {
   colorCount: number;
   assetCount: number;
   placementCount: number;
+  vendorCount?: number;
   templateId: string | null;
   updatedAt: string;
+  recommendationLevel?: string | null;
 }
 
 interface AuditData {
-  summary: { totalActive: number; quoteReady: number; mockupReady: number };
+  summary: {
+    totalActive: number;
+    quoteReady: number;
+    mockupReady: number;
+    withVendors?: number;
+    withRecLevel?: number;
+  };
   missingCost:     AuditProduct[];
   missingColors:   AuditProduct[];
   missingAssets:   AuditProduct[];
   missingTemplate: AuditProduct[];
+  missingVendors?: AuditProduct[];
+  missingRec?:     AuditProduct[];
   staleCost:       AuditProduct[];
   neverUpdated:    AuditProduct[];
 }
@@ -192,6 +202,10 @@ export default function CatalogAuditScreen() {
             <SummaryCard label="Quote Ready" value={data.summary.quoteReady} total={data.summary.totalActive} color="#10B981" />
             <SummaryCard label="Mockup Ready" value={data.summary.mockupReady} total={data.summary.totalActive} color="#8B5CF6" />
           </View>
+          <View style={s.summaryRow}>
+            <SummaryCard label="Catalog Assigned" value={data.summary.withVendors ?? 0} total={data.summary.totalActive} color="#0EA5E9" />
+            <SummaryCard label="Rec Level Set" value={data.summary.withRecLevel ?? 0} total={data.summary.totalActive} color="#F59E0B" />
+          </View>
 
           {/* Issue sections */}
           <View style={s.sectionHeader}>
@@ -245,6 +259,22 @@ export default function CatalogAuditScreen() {
             products={data.neverUpdated}
             color="#9CA3AF"
             icon={<AlertTriangle size={18} color="#9CA3AF" />}
+            onPress={goToProduct}
+          />
+          <IssueSection
+            title="Missing Catalog Assignments"
+            description="Not linked to any supplier catalog — cannot surface in catalog sourcing"
+            products={data.missingVendors ?? []}
+            color="#0EA5E9"
+            icon={<XCircle size={18} color="#0EA5E9" />}
+            onPress={goToProduct}
+          />
+          <IssueSection
+            title="Missing Rec Level"
+            description="No recommendation level set (Core / Secondary / Specialized)"
+            products={data.missingRec ?? []}
+            color="#F59E0B"
+            icon={<AlertTriangle size={18} color="#F59E0B" />}
             onPress={goToProduct}
           />
 
