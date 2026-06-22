@@ -478,6 +478,21 @@ model ClientCatalog {
   sortOrder       Int      @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  products ProductClientCatalog[]
+}
+
+model ProductClientCatalog {
+  productId       String
+  clientCatalogId String
+  createdAt       DateTime @default(now())
+
+  product       Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  clientCatalog ClientCatalog @relation(fields: [clientCatalogId], references: [id], onDelete: Cascade)
+
+  @@id([productId, clientCatalogId])
+  @@index([productId])
+  @@index([clientCatalogId])
 }
 
 model EmailNotification {
@@ -589,10 +604,11 @@ model Product {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  colors        ProductColor[]
-  placements    ProductPlacement[]
-  vendorSources ProductVendor[]
-  template      PlacementTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  colors         ProductColor[]
+  placements     ProductPlacement[]
+  vendorSources  ProductVendor[]
+  clientCatalogs ProductClientCatalog[]
+  template       PlacementTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
 
   @@index([styleNumber])
   @@index([brand])

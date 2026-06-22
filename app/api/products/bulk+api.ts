@@ -162,6 +162,19 @@ export async function POST(request: Request) {
         return Response.json({ updated: ids.length });
       }
 
+      case 'assign-catalog': {
+        const { catalogId } = body as { catalogId?: string };
+        if (!catalogId?.trim()) return Response.json({ error: 'catalogId required' }, { status: 400 });
+        for (const productId of ids) {
+          await client.query(
+            `INSERT INTO "ProductClientCatalog" ("productId", "clientCatalogId", "createdAt")
+             VALUES ($1, $2, NOW()) ON CONFLICT DO NOTHING`,
+            [productId, catalogId],
+          );
+        }
+        return Response.json({ updated: ids.length });
+      }
+
       default:
         return Response.json({ error: `Unknown action: ${action}` }, { status: 400 });
     }

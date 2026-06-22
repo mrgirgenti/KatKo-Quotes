@@ -63,13 +63,12 @@ export async function GET(request: Request) {
          WHERE pv."isPreferred" = true AND pv."isActive" = true
        ) pv_pref ON pv_pref."productId" = p.id
        LEFT JOIN (
-         SELECT pv."productId",
-                array_agg(v.name ORDER BY v.name) AS catalog_names,
+         SELECT pcc."productId",
+                array_agg(cc.name ORDER BY cc.name) AS catalog_names,
                 COUNT(*)::int AS catalog_count
-         FROM "ProductVendor" pv
-         JOIN "Vendor" v ON v.id = pv."vendorId" AND v."isActive" = true
-         WHERE pv."isActive" = true
-         GROUP BY pv."productId"
+         FROM "ProductClientCatalog" pcc
+         JOIN "ClientCatalog" cc ON cc.id = pcc."clientCatalogId" AND cc."isActive" = true
+         GROUP BY pcc."productId"
        ) cat ON cat."productId" = p.id
        LEFT JOIN (
          SELECT "productId", COUNT(*)::int AS cnt

@@ -290,9 +290,8 @@ function BulkCostModal({ visible, mode, onSave, onClose }: {
 }
 
 // ── BulkVendorModal ───────────────────────────────────────────────────────────
-function BulkVendorModal({ visible, mode, onSave, onClose }: {
+function BulkVendorModal({ visible, onSave, onClose }: {
   visible: boolean;
-  mode: 'assign' | 'preferred' | null;
   onSave: (vendorId: string) => Promise<void>;
   onClose: () => void;
 }) {
@@ -315,8 +314,6 @@ function BulkVendorModal({ visible, mode, onSave, onClose }: {
     }
   }, [visible]);
 
-  const title = mode === 'assign' ? 'Assign Vendor' : 'Set Preferred Vendor';
-
   const handleSave = async () => {
     if (!selectedId) { setError('Select a vendor.'); return; }
     setError('');
@@ -336,12 +333,12 @@ function BulkVendorModal({ visible, mode, onSave, onClose }: {
       <TouchableOpacity style={fm.overlay} activeOpacity={1} onPress={onClose}>
         <TouchableOpacity activeOpacity={1} style={[fm.sheet, { width: 400 }]} onPress={() => {}}>
           <View style={fm.header}>
-            <Text style={fm.title}>{title}</Text>
+            <Text style={fm.title}>Set Preferred Vendor</Text>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <X size={20} color={TEXT_LIGHT} />
             </TouchableOpacity>
           </View>
-          <View style={[fm.body, { paddingBottom: 20 }]}>
+          <View style={fm.body}>
             {!!error && <View style={fm.errorBox}><Text style={fm.errorText}>{error}</Text></View>}
             {loading ? (
               <ActivityIndicator color={BRAND} size="small" style={{ marginVertical: 20 }} />
@@ -368,20 +365,119 @@ function BulkVendorModal({ visible, mode, onSave, onClose }: {
                 </View>
               </>
             )}
-            <View style={{ flexDirection: 'row' as const, justifyContent: 'flex-end' as const, gap: 10, marginTop: 16 }}>
-              <TouchableOpacity style={[fm.btnCancel, { flex: 0, paddingHorizontal: 16 }]} onPress={onClose}>
-                <Text style={fm.btnCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[fm.btnSave, { flex: 0, paddingHorizontal: 20 }, (saving || loading) && { opacity: 0.6 }]}
-                onPress={handleSave}
-                disabled={saving || loading}
-              >
-                {saving
-                  ? <ActivityIndicator color="#fff" size="small" />
-                  : <Text style={fm.btnSaveText}>Apply to Selected</Text>}
-              </TouchableOpacity>
-            </View>
+          </View>
+          <View style={fm.footer}>
+            <TouchableOpacity style={fm.btnCancel} onPress={onClose}>
+              <Text style={fm.btnCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[fm.btnSave, (saving || loading) && { opacity: 0.6 }]}
+              onPress={handleSave}
+              disabled={saving || loading}
+            >
+              {saving
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={fm.btnSaveText}>Apply to Selected</Text>}
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+function BulkCatalogModal({ visible, onSave, onClose }: {
+  visible: boolean;
+  onSave: (catalogId: string) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [catalogs, setCatalogs] = useState<{ id: string; name: string }[]>([]);
+  const [selectedId, setSelectedId] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (visible) {
+      setSelectedId('');
+      setError('');
+      setSaving(false);
+      setLoading(true);
+      apiFetch('/api/client-catalogs')
+        .then((data: any) => {
+          const rows = Array.isArray(data) ? data : [];
+          setCatalogs(rows.filter((c: any) => c.isActive !== false));
+        })
+        .catch(() => setError('Failed to load catalogs.'))
+        .finally(() => setLoading(false));
+    }
+  }, [visible]);
+
+  const handleSave = async () => {
+    if (!selectedId) { setError('Select a catalog.'); return; }
+    setError('');
+    setSaving(true);
+    try {
+      await onSave(selectedId);
+      onClose();
+    } catch (e: any) {
+      setError(e.message || 'Failed to assign catalog.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={fm.overlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} style={[fm.sheet, { width: 400 }]} onPress={() => {}}>
+          <View style={fm.header}>
+            <Text style={fm.title}>Assign Catalog</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={20} color={TEXT_LIGHT} />
+            </TouchableOpacity>
+          </View>
+          <View style={fm.body}>
+            {!!error && <View style={fm.errorBox}><Text style={fm.errorText}>{error}</Text></View>}
+            {loading ? (
+              <ActivityIndicator color={BRAND} size="small" style={{ marginVertical: 20 }} />
+            ) : (
+              <>
+                <Text style={fm.label}>Catalog</Text>
+                <View style={[fm.dropdown, { marginBottom: 0, maxHeight: 260 }]}>
+                  <ScrollView showsVerticalScrollIndicator={false}>
+                    {catalogs.map(c => (
+                      <TouchableOpacity
+                        key={c.id}
+                        style={[fm.dropOption, selectedId === c.id && fm.dropOptionActive]}
+                        onPress={() => setSelectedId(c.id)}
+                      >
+                        <Text style={[fm.dropOptionText, selectedId === c.id && fm.dropOptionTextActive]}>{c.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                    {catalogs.length === 0 && (
+                      <View style={{ padding: 14 }}>
+                        <Text style={{ fontSize: 14, color: TEXT_LIGHT }}>No catalogs found. Add catalogs in the Catalogs tab first.</Text>
+                      </View>
+                    )}
+                  </ScrollView>
+                </View>
+              </>
+            )}
+          </View>
+          <View style={fm.footer}>
+            <TouchableOpacity style={fm.btnCancel} onPress={onClose}>
+              <Text style={fm.btnCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[fm.btnSave, (saving || loading) && { opacity: 0.6 }]}
+              onPress={handleSave}
+              disabled={saving || loading}
+            >
+              {saving
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={fm.btnSaveText}>Apply to Selected</Text>}
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </TouchableOpacity>
@@ -888,7 +984,8 @@ export default function CatalogAdminScreen() {
   const lastCostPress = useRef<{ id: string; time: number } | null>(null);
 
   const [bulkCostModal, setBulkCostModal] = useState<'set' | 'increase' | 'decrease' | null>(null);
-  const [bulkVendorModal, setBulkVendorModal] = useState<'assign' | 'preferred' | null>(null);
+  const [bulkVendorModal, setBulkVendorModal] = useState<'preferred' | null>(null);
+  const [bulkCatalogModal, setBulkCatalogModal] = useState(false);
   const [bulkTemplateModal, setBulkTemplateModal] = useState(false);
   const [catalogProduct, setCatalogProduct] = useState<Product | null>(null);
   const [catalogModal, setCatalogModal] = useState(false);
@@ -1155,6 +1252,18 @@ export default function CatalogAdminScreen() {
     } catch (e: any) { Alert.alert('Error', e.message || 'Failed to assign vendor'); }
   };
 
+  const handleBulkAssignCatalog = async (catalogId: string) => {
+    const ids = [...selectedIds];
+    try {
+      await apiFetch('/api/products/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'assign-catalog', ids, catalogId }),
+      });
+      await loadProducts();
+      setSelectedIds(new Set());
+    } catch (e: any) { Alert.alert('Error', e.message || 'Failed to assign catalog'); }
+  };
+
   const handleBulkSetPreferredVendor = async (vendorId: string) => {
     const ids = [...selectedIds];
     try {
@@ -1392,8 +1501,8 @@ export default function CatalogAdminScreen() {
                   <Text style={s.floatItemText}>Template</Text>
                 </TouchableOpacity>
                 <View style={s.floatDivider} />
-                <TouchableOpacity style={s.floatItem} onPress={() => { close(); setBulkVendorModal('assign'); }}>
-                  <Text style={s.floatItemText}>Assign Vendor</Text>
+                <TouchableOpacity style={s.floatItem} onPress={() => { close(); setBulkCatalogModal(true); }}>
+                  <Text style={s.floatItemText}>Assign Catalog</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.floatItem} onPress={() => { close(); setBulkVendorModal('preferred'); }}>
                   <Text style={s.floatItemText}>Set Preferred Vendor</Text>
@@ -1676,13 +1785,15 @@ export default function CatalogAdminScreen() {
       />
 
       <BulkVendorModal
-        visible={!!bulkVendorModal}
-        mode={bulkVendorModal}
-        onSave={async (vendorId) => {
-          if (bulkVendorModal === 'assign') await handleBulkAssignVendor(vendorId);
-          else await handleBulkSetPreferredVendor(vendorId);
-        }}
+        visible={bulkVendorModal === 'preferred'}
+        onSave={handleBulkSetPreferredVendor}
         onClose={() => setBulkVendorModal(null)}
+      />
+
+      <BulkCatalogModal
+        visible={bulkCatalogModal}
+        onSave={handleBulkAssignCatalog}
+        onClose={() => setBulkCatalogModal(false)}
       />
 
       <BulkTemplateModal
