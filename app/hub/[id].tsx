@@ -51,7 +51,7 @@ import {
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
 import { useQuotes } from '@/contexts/QuotesContext';
-import { OrgMembership, MembershipRole } from '@/types/crm';
+import { OrgMembership, MembershipRole, Contact } from '@/types/crm';
 import { OrgAvatar } from '@/components/OrgAvatar';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 
@@ -167,7 +167,7 @@ export default function HubManagementScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { orgs, isLoading: crmLoading, updateOrgHubEnabled } = useCrm();
+  const { orgs, isLoading: crmLoading, updateOrgHubEnabled, updateOrgHubEnabledAsync } = useCrm();
   const { quotes } = useQuotes();
   const { isMobile, isTablet, isDesktop } = useBreakpoint();
 
@@ -208,6 +208,17 @@ export default function HubManagementScreen() {
     enabled: !!id,
   });
 
+  const { data: orgContacts = [], refetch: refetchContacts } = useQuery<Contact[]>({
+    queryKey: ['hub-contacts', id],
+    queryFn: async () => {
+      if (!id) return [];
+      const res = await fetch(`/api/orgs/${id}/contacts`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!id,
+  });
+
   const recentActivities = useMemo(() => {
     const acts = (orgDetail?.activities || []) as any[];
     return acts.slice(0, 5);
@@ -220,6 +231,17 @@ export default function HubManagementScreen() {
   const clientOrgAdmins = allClientMembers.filter((m) => m.role === 'ORG_ADMIN');
   const regularClients = allClientMembers.filter((m) => m.role !== 'ORG_ADMIN');
   const accountReps = memberships.filter((m) => m.userType === 'INTERNAL');
+
+  const membershipByUserId = useMemo(() => {
+    const map = new Map<string, OrgMembership>();
+    memberships.forEach((m) => { if (m.userId) map.set(m.userId, m); });
+    return map;
+  }, [memberships]);
+
+  const contactsWithHub = useMemo(() => orgContacts.map((c) => ({
+    contact: c,
+    membership: c.linkedUserId ? membershipByUserId.get(c.linkedUserId) : undefined,
+  })), [orgContacts, membershipByUserId]);
   const realInternalUsers = (internalUsers as any[]).filter((u) => !!u.name?.trim());
   const defaultRepUser = realInternalUsers.find((u: any) => u.role === 'org_admin') || realInternalUsers[0];
 
@@ -238,12 +260,12 @@ export default function HubManagementScreen() {
   }, [recentActivities]);
 
   const hubReadiness = useMemo(() => [
-    { label: 'Hub Enabled', done: !!hubOn },
-    { label: 'Team Member Added', done: allClientMembers.length > 0 },
-    { label: 'Hub Link Generated', done: !!hubOn },
+    { label: 'Hub Enabled', done: !!org?.hubEnabled },
+    { label: 'Team Member Added', done: allClientMembers.length > 0 || contactsWithHub.some((c) => !!c.membership) },
+    { label: 'Hub Link Generated', done: !!org?.hubEnabled },
     { label: 'Organization Admin Assigned', done: clientOrgAdmins.length > 0 },
     { label: 'Organization Logo Added', done: !!(org?.logoUrl) },
-  ], [hubOn, allClientMembers, clientOrgAdmins, org?.logoUrl]);
+  ], [org?.hubEnabled, allClientMembers, contactsWithHub, clientOrgAdmins, org?.logoUrl]);
 
   const readinessPct = Math.round((hubReadiness.filter((r) => r.done).length / hubReadiness.length) * 100);
 
@@ -266,6 +288,7 @@ export default function HubManagementScreen() {
 
   const [linkCopied, setLinkCopied] = useState(false);
   const [resendCopied, setResendCopied] = useState<string | null>(null);
+  const [togglingContactId, setTogglingContactId] = useState<string | null>(null);
 
   const portalUrl = typeof window !== 'undefined' ? `${window.location.origin}/portal/${id}` : `/portal/${id}`;
 
@@ -287,12 +310,105 @@ export default function HubManagementScreen() {
     }
   }, [portalUrl]);
 
-  const handleHubToggle = useCallback(() => {
+  const handleHubToggle = useCallback(async () => {
     if (!org) return;
     const newVal = !hubOn;
     setHubOn(newVal);
-    updateOrgHubEnabled({ orgId: org.id, enabled: newVal });
-  }, [org, hubOn, updateOrgHubEnabled]);
+    try {
+      await updateOrgHubEnabledAsync({ orgId: org.id, enabled: newVal });
+      queryClient.invalidateQueries({ queryKey: ['org-detail-hub', id] });
+      queryClient.invalidateQueries({ queryKey: ['client-hubs'] });
+    } catch {
+      setHubOn(!newVal);
+      Alert.alert('Error', 'Failed to update hub status. Please try again.');
+    }
+  }, [org, hubOn, id, updateOrgHubEnabledAsync, queryClient]);
+
+  const handleGrantHubAccess = useCallback(async (contact: Contact) => {
+    if (!org) return;
+    if (!contact.email) {
+      Alert.alert('Missing Email', `${contact.firstName} ${contact.lastName} has no email address. Add one in Org Details first.`);
+      return;
+    }
+    setTogglingContactId(contact.id);
+    try {
+      const userId = `client_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const userRes = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: userId, name: `${contact.firstName} ${contact.lastName}`.trim(), email: contact.email, userType: 'CLIENT' }),
+      });
+      if (!userRes.ok) throw new Error('Failed to create user');
+      const user = await userRes.json();
+      const memRes = await fetch('/api/memberships', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId: org.id, userId: user.id, role: 'MEMBER' }),
+      });
+      if (!memRes.ok) throw new Error('Failed to create membership');
+      await fetch(`/api/orgs/${org.id}/contacts/${contact.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ linkedUserId: user.id }),
+      });
+      await Promise.all([refetchMemberships(), refetchContacts()]);
+      queryClient.invalidateQueries({ queryKey: ['client-hubs'] });
+      queryClient.invalidateQueries({ queryKey: ['crm_orgs'] });
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to grant hub access. Please try again.');
+    } finally {
+      setTogglingContactId(null);
+    }
+  }, [org, refetchMemberships, refetchContacts, queryClient]);
+
+  const handleRevokeHubAccess = useCallback((contact: Contact, membership: OrgMembership) => {
+    if (!org) return;
+    Alert.alert(
+      'Revoke Hub Access',
+      `Remove ${contact.firstName} ${contact.lastName}'s access to this hub?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Revoke',
+          style: 'destructive',
+          onPress: async () => {
+            setTogglingContactId(contact.id);
+            try {
+              await fetch(`/api/memberships/${membership.id}`, { method: 'DELETE' });
+              await fetch(`/api/orgs/${org.id}/contacts/${contact.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ linkedUserId: null }),
+              });
+              await Promise.all([refetchMemberships(), refetchContacts()]);
+              queryClient.invalidateQueries({ queryKey: ['client-hubs'] });
+              queryClient.invalidateQueries({ queryKey: ['crm_orgs'] });
+            } catch {
+              Alert.alert('Error', 'Failed to revoke access. Please try again.');
+            } finally {
+              setTogglingContactId(null);
+            }
+          },
+        },
+      ],
+    );
+  }, [org, refetchMemberships, refetchContacts, queryClient]);
+
+  const handleToggleOrgAdmin = useCallback(async (membership: OrgMembership) => {
+    const newRole: MembershipRole = membership.role === 'ORG_ADMIN' ? 'MEMBER' : 'ORG_ADMIN';
+    try {
+      const res = await fetch(`/api/memberships/${membership.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      await refetchMemberships();
+      queryClient.invalidateQueries({ queryKey: ['client-hubs'] });
+    } catch {
+      Alert.alert('Error', 'Failed to update role. Please try again.');
+    }
+  }, [refetchMemberships, queryClient]);
 
   const handleAssignAdmin = useCallback(async () => {
     if (!org || !selectedAdminMembershipId) return;
@@ -623,39 +739,77 @@ export default function HubManagementScreen() {
           <View style={[styles.gridCard, !isDesktop && styles.gridCardFull]}>
             <View style={styles.cardHeader}>
               <Users size={16} color={TINT} />
-              <Text style={styles.cardTitle}>Team Members{allClientMembers.length > 0 ? ` (${allClientMembers.length})` : ''}</Text>
+              <Text style={styles.cardTitle}>
+                Team Members{orgContacts.length > 0 ? ` (${orgContacts.length})` : ''}
+              </Text>
             </View>
-            <Text style={styles.cardDesc}>Manage users who have access to this client hub.</Text>
-            {membershipsLoading ? (
+            <Text style={styles.cardDesc}>Contacts from this org — toggle hub access per person.</Text>
+            {membershipsLoading && orgContacts.length === 0 ? (
               <View style={{ paddingVertical: 12, alignItems: 'center' }}>
                 <ActivityIndicator size="small" color={TINT} />
               </View>
-            ) : allClientMembers.length === 0 ? (
+            ) : orgContacts.length === 0 ? (
               <View style={styles.noAdminBox}>
-                <Text style={styles.noAdminText}>No hub members yet.</Text>
+                <Text style={styles.noAdminText}>No contacts yet. Add contacts in Org Details.</Text>
               </View>
             ) : (
-              allClientMembers.slice(0, 3).map((m) => (
-                <View key={m.id} style={styles.miniMemberRow}>
-                  <View style={[styles.miniAvatar, { backgroundColor: m.userStatus === 'INVITED' ? '#D1D5DB' : '#6366F1' }]}>
-                    <Text style={styles.miniAvatarText}>{(m.userName || '?')[0].toUpperCase()}</Text>
+              contactsWithHub.slice(0, 4).map(({ contact, membership }) => {
+                const isToggling = togglingContactId === contact.id;
+                const fullName = `${contact.firstName} ${contact.lastName}`.trim();
+                const avatarBg = membership
+                  ? (membership.userStatus === 'INVITED' ? '#D1D5DB' : '#6366F1')
+                  : '#E5E7EB';
+                const avatarTextColor = membership ? '#fff' : '#9CA3AF';
+                return (
+                  <View key={contact.id} style={styles.miniMemberRow}>
+                    <View style={[styles.miniAvatar, { backgroundColor: avatarBg }]}>
+                      <Text style={[styles.miniAvatarText, { color: avatarTextColor }]}>
+                        {(contact.firstName || '?')[0].toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={styles.miniMemberName} numberOfLines={1}>{fullName || 'Unnamed'}</Text>
+                      {contact.email
+                        ? <Text style={styles.miniMemberEmail} numberOfLines={1}>{contact.email}</Text>
+                        : <Text style={[styles.miniMemberEmail, { color: '#F59E0B' }]}>No email</Text>}
+                    </View>
+                    {isToggling ? (
+                      <ActivityIndicator size="small" color={TINT} style={{ marginLeft: 6 }} />
+                    ) : membership ? (
+                      <View style={styles.contactHubActions}>
+                        <RoleBadge role={membership.role} />
+                        <TouchableOpacity
+                          onPress={() => handleToggleOrgAdmin(membership)}
+                          style={styles.adminToggleBtn}
+                        >
+                          <ShieldCheck size={13} color={membership.role === 'ORG_ADMIN' ? TINT : '#9CA3AF'} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => handleRevokeHubAccess(contact, membership)}
+                          style={styles.revokeBtn}
+                        >
+                          <Text style={styles.revokeBtnText}>Revoke</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.grantAccessBtn}
+                        onPress={() => handleGrantHubAccess(contact)}
+                      >
+                        <Text style={styles.grantAccessBtnText}>Grant Access</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.miniMemberName}>{m.userName || 'Unknown'}</Text>
-                    {m.userEmail ? <Text style={styles.miniMemberEmail}>{m.userEmail}</Text> : null}
-                  </View>
-                  <RoleBadge role={m.role} />
-                  <ChevronRight size={13} color={Colors.light.textSecondary} />
-                </View>
-              ))
+                );
+              })
             )}
             <TouchableOpacity
               style={styles.cardBtnOutline}
               onPress={() => { setClientForm({ name: '', email: '', role: 'MEMBER' }); setInviteError(''); setInviteClientModal(true); }}
               activeOpacity={0.8}
             >
-              <Text style={styles.cardBtnOutlineText}>Manage Members</Text>
-              <ChevronRight size={13} color={TINT} />
+              <Plus size={13} color={TINT} />
+              <Text style={styles.cardBtnOutlineText}>Invite New Contact</Text>
             </TouchableOpacity>
           </View>
 
@@ -1479,4 +1633,11 @@ const styles = StyleSheet.create({
 
   inlineError: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6, marginTop: 8, backgroundColor: '#FEF2F2', borderRadius: 7, padding: 8 },
   inlineErrorText: { fontSize: 12, color: Colors.light.error, flex: 1 },
+
+  contactHubActions: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4 },
+  adminToggleBtn: { padding: 4, borderRadius: 4 },
+  revokeBtn: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 5, borderWidth: 1, borderColor: '#FECACA' },
+  revokeBtnText: { fontSize: 10, fontWeight: '600' as const, color: '#DC2626' },
+  grantAccessBtn: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: TINT },
+  grantAccessBtnText: { fontSize: 11, fontWeight: '600' as const, color: '#fff' },
 });

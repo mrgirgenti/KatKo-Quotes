@@ -1,0 +1,468 @@
+Client Hub Launch Readiness Sprint
+
+This sprint focuses on preparing Client Hubs for real-world customer usage.
+
+The objective is:
+
+A customer should be able to:
+
+* Log into their Client Hub
+* Submit projects
+* View projects
+* Review quotes
+* Review invoices
+* View mockups
+* Download files
+* Understand project status
+
+without seeing internal operational data.
+
+STOP.
+
+Do not work on:
+
+* Vendor APIs
+* Product Imports
+* Color Imports
+* Placement Templates
+* Mockup Generation Enhancements
+* Inventory Sync
+* Pricing Sync
+
+Those will be addressed in future phases.
+
+This sprint is Client Hub only.
+
+---
+
+## PHASE 1 — COMPLETE FOUNDATION VALIDATION
+
+Before building anything else:
+
+Verify Part 1–2 implementation.
+
+Validate:
+
+Hub Activation
+
+Hub Readiness
+
+Contact Synchronization
+
+Org Admin Assignment
+
+Team Member Assignment
+
+Share Hub
+
+Client Access
+
+Required Output:
+
+* Tests performed
+* Pass / Fail results
+* Remaining issues
+* Screenshots where applicable
+
+Fix any remaining foundation issues discovered.
+
+---
+
+## PHASE 2 — MY PROJECTS DATA INTEGRITY
+
+Audit:
+
+Dashboard Active Projects
+
+My Projects
+
+Submitted Projects
+
+Completed Projects
+
+Quote History
+
+Invoice History
+
+Identify why data is missing.
+
+Current issues observed:
+
+* Pieces missing
+* Totals missing
+* Per Piece missing
+* Project information not displaying consistently
+
+Trace:
+
+Database
+↓
+API
+↓
+DTO
+↓
+Client Hub
+↓
+Rendering
+
+Fix root causes.
+
+Do not hardcode values.
+
+Required Result:
+
+Project records display:
+
+* Project Name
+* Status
+* Total Pieces
+* Total Price
+* Created Date
+* Due Date
+* Quote Status
+* Invoice Status
+
+when data exists.
+
+---
+
+## PHASE 3 — DASHBOARD / MY PROJECTS ALIGNMENT
+
+Audit:
+
+Dashboard Active Projects
+
+My Projects Active Projects
+
+Determine whether:
+
+* Duplicate logic exists
+* Duplicate rendering exists
+* Different data sources exist
+
+Create a shared architecture.
+
+Goal:
+
+Dashboard and My Projects should consume the same project data model.
+
+Avoid duplicate implementations.
+
+Avoid separate project card systems.
+
+Maintain one source of truth.
+
+---
+
+## PHASE 4 — CLIENT VISIBILITY AUDIT
+
+Audit all customer-facing views.
+
+Including:
+
+Project Detail
+
+Quote Detail
+
+Invoice Detail
+
+My Projects
+
+Dashboard
+
+Identify all internal-only fields.
+
+---
+
+## INTERNAL ONLY
+
+Never expose:
+
+Product Cost
+
+Service Cost
+
+Cost of Goods
+
+Markup
+
+Margin
+
+Vendor
+
+Applicator
+
+Internal Notes
+
+Production Notes
+
+Internal Statuses
+
+Operational Calculations
+
+---
+
+## CLIENT SAFE
+
+Display:
+
+Project Name
+
+Status
+
+Progress
+
+Service Style
+
+Product
+
+Color
+
+Print Locations
+
+Artwork
+
+Mockups
+
+Files
+
+Due Date
+
+Quote
+
+Invoice
+
+Payment Status
+
+Customer Notes
+
+---
+
+## PHASE 5 — CUSTOMER PROJECT DETAIL REDESIGN
+
+IMPORTANT
+
+Do not build a completely separate experience.
+
+Client Hub should remain recognizable as Katalyst OS.
+
+The customer should feel they are viewing the same project.
+
+The difference is permissions and visibility.
+
+Reuse existing components whenever possible.
+
+Do not create duplicate architectures.
+
+---
+
+## PROJECT DETAIL TARGET
+
+Header
+
+Project Name
+
+Status
+
+Due Date
+
+Progress Tracker
+
+---
+
+Mockups
+
+Front Mockup
+
+Back Mockup
+
+Additional Mockups
+
+Download Mockups
+
+---
+
+Project Details
+
+Product
+
+Color
+
+Service Style
+
+Print Locations
+
+Artwork
+
+Files
+
+---
+
+Pricing
+
+Subtotal
+
+Tax
+
+Shipping
+
+Total
+
+---
+
+Customer Actions
+
+Approve Quote
+
+Pay Invoice
+
+Download Invoice PDF
+
+Download Mockups
+
+Favorite Project
+
+Reorder Project
+
+Contact Katalyst Ko
+
+---
+
+## PHASE 6 — MOCKUP PRIORITIZATION
+
+Mockups should become one of the most prominent customer-facing elements.
+
+If mockups exist:
+
+Display them prominently.
+
+Allow:
+
+Preview
+
+Expand
+
+Download
+
+Future approval workflows
+
+Do not bury mockups beneath operational information.
+
+---
+
+## PHASE 7 — QUOTE + INVOICE EXPERIENCE
+
+Use the current invoice architecture as guidance.
+
+Customers need:
+
+Products
+
+Quantities
+
+Sizes
+
+Locations
+
+Pricing
+
+Totals
+
+Status
+
+Actions
+
+Do not expose backend calculations.
+
+Do not expose operational costing.
+
+The experience should feel:
+
+Professional
+
+Customer-facing
+
+Easy to understand
+
+---
+
+## PHASE 8 — CUSTOMER LANGUAGE AUDIT
+
+Customer-facing terminology must match existing customer workflows.
+
+Reference:
+
+Start a Project
+
+Client Hub
+
+Existing project submission experience
+
+Do not introduce new terminology.
+
+Avoid:
+
+Decoration
+
+Fulfillment Method
+
+Production Method
+
+Applicator
+
+Cost of Goods
+
+Markup
+
+Use language customers already learned elsewhere in the platform.
+
+---
+
+## PHASE 9 — CUSTOMER ACTION READINESS
+
+Prepare architecture for:
+
+Approve Quote
+
+Pay Invoice
+
+Download Invoice
+
+Download Mockups
+
+Favorite Project
+
+Reorder Project
+
+Contact Katalyst Ko
+
+Implement where possible.
+
+Create placeholders where future integrations are required.
+
+---
+
+## PHASE 10 — COMPLETION REPORT
+
+Return:
+
+1. Foundation validation results
+2. Bugs fixed
+3. Files changed
+4. Data integrity fixes
+5. Dashboard alignment changes
+6. Visibility rule implementation
+7. Project Detail redesign changes
+8. Mockup improvements
+9. Quote Detail changes
+10. Invoice Detail changes
+11. Customer terminology changes
+12. Remaining known issues
+13. Recommended next sprint
+14. Testing checklist
+
+Goal:
+
+Client Hub should be stable, customer-safe, visually polished, and launch-ready before the next major milestone.
+
+Do not begin Placement Templates, Vendor APIs, Product Imports, or Mockup Intelligence work during this sprint.

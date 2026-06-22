@@ -55,7 +55,6 @@ function toFrontendOrg(org: any, contacts: any[], activityLogs: any[]): Organiza
     notes: org.notes ?? undefined,
     address: org.address ?? undefined,
     zip: undefined,
-    website: org.website ?? undefined,
     status: (org.crmStatus || 'Cold') as Organization['status'],
     convertedToActiveDate: org.convertedToActiveDate
       ? new Date(org.convertedToActiveDate).toISOString()

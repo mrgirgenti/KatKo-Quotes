@@ -447,6 +447,7 @@ export const [CrmProvider, useCrm] = createContextHook(() => {
     updateDepartment: updateDepartmentMutation.mutate,
     deleteDepartment: deleteDepartmentMutation.mutate,
     updateOrgHubEnabled: updateOrgHubEnabledMutation.mutate,
+    updateOrgHubEnabledAsync: updateOrgHubEnabledMutation.mutateAsync,
     createMembership: createMembershipMutation.mutate,
     createMembershipAsync: createMembershipMutation.mutateAsync,
     deleteMembership: deleteMembershipMutation.mutate,
