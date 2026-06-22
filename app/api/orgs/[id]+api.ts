@@ -106,11 +106,10 @@ export async function PUT(request: Request, { id }: { id: string }) {
         "hubEnabled" = $10,
         "logoUrl" = $11,
         "internalLogoUrl" = $12,
-        address = $13,
-        website = $14,
-        "hubEverEnabled" = $15,
+        website = $13,
+        "hubEverEnabled" = $14,
         "updatedAt" = NOW()
-      WHERE id = $16 RETURNING *`,
+      WHERE id = $15 RETURNING *`,
       [
         body.name ?? existing.name,
         body.type !== undefined ? body.type : existing.type,
@@ -124,7 +123,6 @@ export async function PUT(request: Request, { id }: { id: string }) {
         body.hubEnabled !== undefined ? body.hubEnabled : (existing.hubEnabled ?? false),
         body.logoUrl !== undefined ? (body.logoUrl || null) : (existing.logoUrl ?? null),
         body.internalLogoUrl !== undefined ? (body.internalLogoUrl || null) : (existing.internalLogoUrl ?? null),
-        body.address !== undefined ? (body.address || null) : (existing.address ?? null),
         body.website !== undefined ? (body.website || null) : (existing.website ?? null),
         body.hubEnabled === true ? true : (existing.hubEverEnabled ?? false),
         id,
