@@ -1568,7 +1568,7 @@ export default function ProductDetailScreen() {
           </TouchableOpacity>
           <View style={s.hdrSep} />
           <View style={[s.hdrCell, { flex: 2 }]}>
-            <Text style={s.hdrLabel}>Catalogs</Text>
+            <Text style={s.hdrLabel}>Vendors</Text>
             <Text style={s.hdrValue} numberOfLines={1}>
               {sources.filter(src => src.isActive).map(src => src.vendorName).join(' • ') || '—'}
             </Text>
@@ -1582,6 +1582,23 @@ export default function ProductDetailScreen() {
                 : '—'}
             </Text>
           </View>
+        </View>
+
+        {/* Readiness indicators */}
+        <View style={s.readinessRow}>
+          {([
+            { ok: product.defaultBlankCost != null, label: 'Cost' },
+            { ok: colors.some(c => c.isActive), label: 'Colors' },
+            { ok: sources.some(src => src.isActive), label: 'Vendors' },
+            { ok: !!product.templateId, label: 'Template' },
+          ] as { ok: boolean; label: string }[]).map(({ ok, label }) => (
+            <View key={label} style={[s.readinessItem, ok ? s.readinessOk : s.readinessMiss]}>
+              <Text style={[s.readinessIcon, { color: ok ? '#059669' : '#B91C1C' }]}>
+                {ok ? '✓' : '✗'}
+              </Text>
+              <Text style={[s.readinessLabel, { color: ok ? '#059669' : '#B91C1C' }]}>{label}</Text>
+            </View>
+          ))}
         </View>
       </View>
 
@@ -1697,6 +1714,12 @@ const s = StyleSheet.create({
   hdrLabel: { fontSize: 10, fontWeight: '600', color: TEXT_LIGHT, textTransform: 'uppercase', letterSpacing: 0.3 },
   hdrValue: { fontSize: 13, fontWeight: '600', color: TEXT },
   hdrValueMissing: { color: '#D97706', fontWeight: '500' },
+  readinessRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingTop: 6 },
+  readinessItem: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
+  readinessOk:   { backgroundColor: '#ECFDF5' },
+  readinessMiss: { backgroundColor: '#FEF2F2' },
+  readinessIcon: { fontSize: 11, fontWeight: '700' },
+  readinessLabel:{ fontSize: 11, fontWeight: '500' },
   costEditBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     borderWidth: 1, borderColor: BRAND, borderRadius: 6,

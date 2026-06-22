@@ -36,6 +36,21 @@ export async function PATCH(request: Request, params: { id?: string } = {}) {
     updates.push(`"isActive" = $${idx++}`);
     values.push(Boolean(body.isActive));
   }
+  if (body.notes !== undefined) {
+    const notes = typeof body.notes === 'string' && body.notes.trim() ? body.notes.trim() : null;
+    updates.push(`notes = $${idx++}`);
+    values.push(notes);
+  }
+  if (body.apiEnabled !== undefined) { updates.push(`"apiEnabled" = $${idx++}`); values.push(Boolean(body.apiEnabled)); }
+  if (body.apiProvider !== undefined) {
+    const apiProvider = typeof body.apiProvider === 'string' && body.apiProvider.trim() ? body.apiProvider.trim() : null;
+    updates.push(`"apiProvider" = $${idx++}`); values.push(apiProvider);
+  }
+  if (body.importEnabled !== undefined)      { updates.push(`"importEnabled" = $${idx++}`);      values.push(Boolean(body.importEnabled)); }
+  if (body.productImportEnabled !== undefined) { updates.push(`"productImportEnabled" = $${idx++}`); values.push(Boolean(body.productImportEnabled)); }
+  if (body.colorImportEnabled !== undefined)   { updates.push(`"colorImportEnabled" = $${idx++}`);   values.push(Boolean(body.colorImportEnabled)); }
+  if (body.pricingSyncEnabled !== undefined)   { updates.push(`"pricingSyncEnabled" = $${idx++}`);   values.push(Boolean(body.pricingSyncEnabled)); }
+  if (body.inventorySyncEnabled !== undefined) { updates.push(`"inventorySyncEnabled" = $${idx++}`); values.push(Boolean(body.inventorySyncEnabled)); }
 
   if (updates.length === 0) {
     return Response.json({ error: 'No fields to update' }, { status: 400 });

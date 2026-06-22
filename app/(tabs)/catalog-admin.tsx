@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Switch,
+  Linking,
   useWindowDimensions,
 } from 'react-native';
 import OverlayMenu from '@/components/OverlayMenu';
@@ -31,6 +33,9 @@ import {
   ClipboardList,
   DollarSign,
   ArrowUpDown,
+  Globe,
+  BookOpen,
+  Truck,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import Colors from '@/constants/colors';
@@ -947,6 +952,382 @@ function ProductFormModal({
   );
 }
 
+// ── Vendor types + components ─────────────────────────────────────────────────
+interface VendorFull {
+  id: string;
+  name: string;
+  website: string | null;
+  catalogUrl: string | null;
+  isActive: boolean;
+  notes: string | null;
+  apiEnabled: boolean;
+  apiProvider: string | null;
+  apiStatus: string | null;
+  importEnabled: boolean;
+  productImportEnabled: boolean;
+  colorImportEnabled: boolean;
+  pricingSyncEnabled: boolean;
+  inventorySyncEnabled: boolean;
+  lastSyncDate: string | null;
+  sourceCount?: number;
+}
+
+function CapBadge({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <View style={[vc.capBadge, ok ? vc.capOk : vc.capMiss]}>
+      <Text style={[vc.capIcon, { color: ok ? '#059669' : '#9CA3AF' }]}>{ok ? '✓' : '✗'}</Text>
+      <Text style={[vc.capLabel, { color: ok ? '#059669' : '#6B7280' }]}>{label}</Text>
+    </View>
+  );
+}
+
+function VendorCard({ vendor, onEdit, onToggle }: {
+  vendor: VendorFull; onEdit: () => void; onToggle: () => void;
+}) {
+  const initials = vendor.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
+  const caps = [
+    { label: 'Website',        ok: !!vendor.website },
+    { label: 'Catalog',        ok: !!vendor.catalogUrl },
+    { label: 'Product Import', ok: vendor.productImportEnabled },
+    { label: 'API Connected',  ok: vendor.apiEnabled },
+    { label: 'Inventory Sync', ok: vendor.inventorySyncEnabled },
+  ];
+  return (
+    <View style={[vc.card, !vendor.isActive && vc.cardInactive]}>
+      <View style={vc.cardTop}>
+        <View style={vc.avatar}>
+          <Text style={vc.avatarText}>{initials}</Text>
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={vc.vendorName}>{vendor.name}</Text>
+          <Text style={vc.vendorMeta}>
+            {vendor.sourceCount ?? 0} product{(vendor.sourceCount ?? 0) !== 1 ? 's' : ''}
+            {!vendor.isActive ? ' · Inactive' : ''}
+          </Text>
+        </View>
+        <OverlayMenu menuWidth={160} align="right"
+          trigger={({ open }) => (
+            <TouchableOpacity onPress={open} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <MoreVertical size={16} color={TEXT_LIGHT} />
+            </TouchableOpacity>
+          )}
+        >
+          {({ close }) => (
+            <>
+              <TouchableOpacity style={vc.menuItem} onPress={() => { close(); onEdit(); }}>
+                <Text style={vc.menuItemText}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={vc.menuItem} onPress={() => { close(); onToggle(); }}>
+                <Text style={vc.menuItemText}>{vendor.isActive ? 'Deactivate' : 'Activate'}</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </OverlayMenu>
+      </View>
+      {(vendor.website || vendor.catalogUrl) && (
+        <View style={vc.linkRow}>
+          {vendor.website && (
+            <TouchableOpacity style={vc.linkBtn} onPress={() => Linking.openURL(vendor.website!)}>
+              <Globe size={12} color={BRAND} />
+              <Text style={vc.linkText}>Website</Text>
+            </TouchableOpacity>
+          )}
+          {vendor.catalogUrl && (
+            <TouchableOpacity style={vc.linkBtn} onPress={() => Linking.openURL(vendor.catalogUrl!)}>
+              <BookOpen size={12} color={BRAND} />
+              <Text style={vc.linkText}>Catalog</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+      <View style={vc.capsRow}>
+        {caps.map(c => <CapBadge key={c.label} ok={c.ok} label={c.label} />)}
+      </View>
+      {!!vendor.notes && <Text style={vc.notes} numberOfLines={2}>{vendor.notes}</Text>}
+    </View>
+  );
+}
+
+function VendorEditModal({ visible, vendor, onSave, onClose }: {
+  visible: boolean;
+  vendor: VendorFull | null;
+  onSave: (form: Record<string, unknown>) => Promise<void>;
+  onClose: () => void;
+}) {
+  const EMPTY = {
+    name: '', website: '', catalogUrl: '', notes: '',
+    isActive: true, apiEnabled: false, apiProvider: '',
+    importEnabled: false, productImportEnabled: false, colorImportEnabled: false,
+    pricingSyncEnabled: false, inventorySyncEnabled: false,
+  };
+  const [form, setForm] = useState(EMPTY);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!visible) return;
+    setError(''); setSaving(false);
+    setForm(vendor ? {
+      name: vendor.name, website: vendor.website || '', catalogUrl: vendor.catalogUrl || '',
+      notes: vendor.notes || '', isActive: vendor.isActive, apiEnabled: vendor.apiEnabled,
+      apiProvider: vendor.apiProvider || '', importEnabled: vendor.importEnabled,
+      productImportEnabled: vendor.productImportEnabled, colorImportEnabled: vendor.colorImportEnabled,
+      pricingSyncEnabled: vendor.pricingSyncEnabled, inventorySyncEnabled: vendor.inventorySyncEnabled,
+    } : EMPTY);
+  }, [visible, vendor]);
+
+  const upd = <K extends keyof typeof EMPTY>(k: K, v: typeof EMPTY[K]) =>
+    setForm(f => ({ ...f, [k]: v }));
+
+  const handleSave = async () => {
+    if (!form.name.trim()) { setError('Name is required.'); return; }
+    setError(''); setSaving(true);
+    try {
+      await onSave({
+        name: form.name.trim(),
+        website: form.website.trim() || null, catalogUrl: form.catalogUrl.trim() || null,
+        notes: form.notes.trim() || null, isActive: form.isActive,
+        apiEnabled: form.apiEnabled, apiProvider: form.apiProvider.trim() || null,
+        importEnabled: form.importEnabled, productImportEnabled: form.productImportEnabled,
+        colorImportEnabled: form.colorImportEnabled, pricingSyncEnabled: form.pricingSyncEnabled,
+        inventorySyncEnabled: form.inventorySyncEnabled,
+      });
+      onClose();
+    } catch (e: any) { setError(e.message || 'Failed to save vendor.'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={fm.overlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} style={[fm.sheet, { width: 460 }]}>
+          <View style={fm.header}>
+            <Text style={fm.title}>{vendor ? 'Edit Vendor' : 'Add Vendor'}</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={20} color={TEXT_LIGHT} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={fm.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            {!!error && <View style={fm.errorBox}><Text style={fm.errorText}>{error}</Text></View>}
+
+            <Text style={fm.label}>Name <Text style={{ color: BRAND }}>*</Text></Text>
+            <TextInput style={fm.input} value={form.name} onChangeText={v => upd('name', v)}
+              placeholder="e.g. S&S Activewear" placeholderTextColor="#9CA3AF" />
+
+            <Text style={fm.label}>Website URL</Text>
+            <TextInput style={fm.input} value={form.website} onChangeText={v => upd('website', v)}
+              placeholder="https://ssactivewear.com" placeholderTextColor="#9CA3AF" autoCapitalize="none" />
+
+            <Text style={fm.label}>Catalog URL</Text>
+            <TextInput style={fm.input} value={form.catalogUrl} onChangeText={v => upd('catalogUrl', v)}
+              placeholder="https://ssactivewear.com/catalog" placeholderTextColor="#9CA3AF" autoCapitalize="none" />
+
+            <Text style={fm.label}>Notes</Text>
+            <TextInput style={[fm.input, { minHeight: 64, textAlignVertical: 'top' }]}
+              value={form.notes} onChangeText={v => upd('notes', v)}
+              placeholder="Internal notes…" placeholderTextColor="#9CA3AF"
+              multiline numberOfLines={3} />
+
+            <View style={vc.toggleRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={fm.label}>Active</Text>
+                <Text style={{ fontSize: 12, color: TEXT_LIGHT, marginTop: 2 }}>Show in product sourcing</Text>
+              </View>
+              <Switch value={form.isActive} onValueChange={v => upd('isActive', v)} trackColor={{ true: BRAND }} />
+            </View>
+
+            <View style={vc.sectionDivider} />
+            <Text style={vc.sectionTitle}>Import Capabilities</Text>
+            <View style={vc.toggleRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={fm.label}>Import Enabled</Text>
+                <Text style={{ fontSize: 12, color: TEXT_LIGHT, marginTop: 2 }}>Can import data from this vendor</Text>
+              </View>
+              <Switch value={form.importEnabled} onValueChange={v => upd('importEnabled', v)} trackColor={{ true: BRAND }} />
+            </View>
+            {form.importEnabled && (<>
+              <View style={vc.toggleRow}>
+                <Text style={[fm.label, { marginBottom: 0 }]}>Product Import</Text>
+                <Switch value={form.productImportEnabled} onValueChange={v => upd('productImportEnabled', v)} trackColor={{ true: BRAND }} />
+              </View>
+              <View style={vc.toggleRow}>
+                <Text style={[fm.label, { marginBottom: 0 }]}>Color Import</Text>
+                <Switch value={form.colorImportEnabled} onValueChange={v => upd('colorImportEnabled', v)} trackColor={{ true: BRAND }} />
+              </View>
+            </>)}
+            <View style={vc.toggleRow}>
+              <Text style={[fm.label, { marginBottom: 0 }]}>Pricing Sync</Text>
+              <Switch value={form.pricingSyncEnabled} onValueChange={v => upd('pricingSyncEnabled', v)} trackColor={{ true: BRAND }} />
+            </View>
+            <View style={vc.toggleRow}>
+              <Text style={[fm.label, { marginBottom: 0 }]}>Inventory Sync</Text>
+              <Switch value={form.inventorySyncEnabled} onValueChange={v => upd('inventorySyncEnabled', v)} trackColor={{ true: BRAND }} />
+            </View>
+
+            <View style={vc.sectionDivider} />
+            <Text style={vc.sectionTitle}>API Integration</Text>
+            <View style={vc.toggleRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={fm.label}>API Enabled</Text>
+                <Text style={{ fontSize: 12, color: TEXT_LIGHT, marginTop: 2 }}>Future API connection</Text>
+              </View>
+              <Switch value={form.apiEnabled} onValueChange={v => upd('apiEnabled', v)} trackColor={{ true: BRAND }} />
+            </View>
+            {form.apiEnabled && (<>
+              <Text style={fm.label}>API Provider</Text>
+              <TextInput style={fm.input} value={form.apiProvider} onChangeText={v => upd('apiProvider', v)}
+                placeholder="e.g. SanMar API, SSA Direct" placeholderTextColor="#9CA3AF" />
+            </>)}
+          </ScrollView>
+          <View style={fm.footer}>
+            <TouchableOpacity style={fm.btnCancel} onPress={onClose}>
+              <Text style={fm.btnCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[fm.btnSave, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
+              {saving
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={fm.btnSaveText}>{vendor ? 'Save Changes' : 'Add Vendor'}</Text>}
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+function VendorsSection({ vendors, vendorsLoading, onRefresh }: {
+  vendors: VendorFull[];
+  vendorsLoading: boolean;
+  onRefresh: () => void;
+}) {
+  const [showModal, setShowModal] = useState(false);
+  const [editingVendor, setEditingVendor] = useState<VendorFull | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
+
+  const displayed = showInactive ? vendors : vendors.filter(v => v.isActive);
+
+  const handleToggle = async (vendor: VendorFull) => {
+    try {
+      await apiFetch(`/api/vendors/${vendor.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ isActive: !vendor.isActive }),
+      });
+      onRefresh();
+    } catch (e: any) { Alert.alert('Error', e.message || 'Failed to update vendor'); }
+  };
+
+  const handleSave = async (form: Record<string, unknown>) => {
+    if (editingVendor) {
+      await apiFetch(`/api/vendors/${editingVendor.id}`, { method: 'PATCH', body: JSON.stringify(form) });
+    } else {
+      await apiFetch('/api/vendors', { method: 'POST', body: JSON.stringify(form) });
+    }
+    onRefresh();
+  };
+
+  return (
+    <View style={{ flex: 1 }}>
+      <View style={s.pageHeader}>
+        <View style={s.pageHeaderLeft}>
+          <Truck size={22} color={BRAND} />
+          <Text style={s.pageTitle}>Vendors</Text>
+          {!vendorsLoading && (
+            <View style={s.countBadge}>
+              <Text style={s.countText}>{vendors.filter(v => v.isActive).length}</Text>
+            </View>
+          )}
+        </View>
+        <View style={s.headerActions}>
+          <TouchableOpacity style={s.outlineBtn} onPress={() => setShowInactive(x => !x)}>
+            <Text style={s.outlineBtnText}>{showInactive ? 'Hide Inactive' : 'Show Inactive'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.addBtn} onPress={() => { setEditingVendor(null); setShowModal(true); }}>
+            <Plus size={16} color="#fff" />
+            <Text style={s.addBtnText}>Add Vendor</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {vendorsLoading ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={BRAND} size="large" />
+        </View>
+      ) : displayed.length === 0 ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, padding: 40 }}>
+          <Truck size={32} color={TEXT_LIGHT} />
+          <Text style={{ fontSize: 15, color: TEXT_LIGHT }}>No vendors yet</Text>
+          <Text style={{ fontSize: 13, color: TEXT_LIGHT, textAlign: 'center' }}>
+            Add sourcing vendors like S&amp;S Activewear, SanMar, etc.
+          </Text>
+        </View>
+      ) : (
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={vc.grid}>
+          {displayed.map(v => (
+            <VendorCard
+              key={v.id}
+              vendor={v}
+              onEdit={() => { setEditingVendor(v); setShowModal(true); }}
+              onToggle={() => handleToggle(v)}
+            />
+          ))}
+        </ScrollView>
+      )}
+
+      <VendorEditModal
+        visible={showModal}
+        vendor={editingVendor}
+        onSave={handleSave}
+        onClose={() => { setShowModal(false); setEditingVendor(null); }}
+      />
+    </View>
+  );
+}
+
+const vc = StyleSheet.create({
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, padding: 20 },
+  card: {
+    width: 280, backgroundColor: '#fff', borderRadius: 10,
+    borderWidth: 1, borderColor: BORDER, padding: 16, gap: 10,
+  },
+  cardInactive: { opacity: 0.55 },
+  cardTop:      { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  avatar: {
+    width: 36, height: 36, borderRadius: 8, backgroundColor: '#EFF6FF',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarText:   { fontSize: 13, fontWeight: '700', color: BRAND },
+  vendorName:   { fontSize: 14, fontWeight: '600', color: TEXT },
+  vendorMeta:   { fontSize: 12, color: TEXT_LIGHT },
+  linkRow:      { flexDirection: 'row', gap: 8 },
+  linkBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6,
+    borderWidth: 1, borderColor: BORDER, backgroundColor: '#F9FAFB',
+  },
+  linkText:      { fontSize: 12, color: BRAND, fontWeight: '500' },
+  capsRow:       { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
+  capBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
+  },
+  capOk:         { backgroundColor: '#ECFDF5' },
+  capMiss:       { backgroundColor: '#F3F4F6' },
+  capIcon:       { fontSize: 9, fontWeight: '700' },
+  capLabel:      { fontSize: 11 },
+  notes:         { fontSize: 12, color: TEXT_LIGHT, lineHeight: 16 },
+  menuItem:      { padding: 12 },
+  menuItemText:  { fontSize: 14, color: TEXT },
+  toggleRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginBottom: 12, marginTop: 4,
+  },
+  sectionDivider: { height: 1, backgroundColor: BORDER, marginVertical: 12 },
+  sectionTitle: {
+    fontSize: 11, fontWeight: '600', color: TEXT_LIGHT,
+    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
+  },
+});
+
 // ── Main Screen ───────────────────────────────────────────────────────────────
 const TABLE_MIN_WIDTH = 1090;
 
@@ -963,6 +1344,9 @@ export default function CatalogAdminScreen() {
   const [filterCat, setFilterCat] = useState('');
   const [filterRec, setFilterRec] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [pageTab, setPageTab] = useState<'products' | 'vendors'>('products');
+  const [vendorsList, setVendorsList] = useState<VendorFull[]>([]);
+  const [vendorsLoading, setVendorsLoading] = useState(false);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
@@ -1003,6 +1387,20 @@ export default function CatalogAdminScreen() {
   }, []);
 
   useEffect(() => { loadProducts(); }, [loadProducts]);
+
+  const loadVendors = useCallback(async () => {
+    setVendorsLoading(true);
+    try {
+      const data = await apiFetch('/api/vendors');
+      setVendorsList((data as any).vendors || []);
+    } catch (e) {
+      console.error('[CatalogAdmin] vendor load error', e);
+    } finally {
+      setVendorsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { if (pageTab === 'vendors') loadVendors(); }, [pageTab, loadVendors]);
 
   const filtered = useMemo(() => {
     const base = products.filter(p => {
@@ -1317,6 +1715,28 @@ export default function CatalogAdminScreen() {
   return (
     <View style={s.screen}>
 
+      {/* ── Page tabs ── */}
+      <View style={s.pageTabs}>
+        <TouchableOpacity
+          style={[s.pageTabBtn, pageTab === 'products' && s.pageTabBtnActive]}
+          onPress={() => setPageTab('products')}
+        >
+          <Package size={15} color={pageTab === 'products' ? BRAND : TEXT_LIGHT} />
+          <Text style={[s.pageTabText, pageTab === 'products' && s.pageTabTextActive]}>Products</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[s.pageTabBtn, pageTab === 'vendors' && s.pageTabBtnActive]}
+          onPress={() => setPageTab('vendors')}
+        >
+          <Truck size={15} color={pageTab === 'vendors' ? BRAND : TEXT_LIGHT} />
+          <Text style={[s.pageTabText, pageTab === 'vendors' && s.pageTabTextActive]}>Vendors</Text>
+        </TouchableOpacity>
+      </View>
+
+      {pageTab === 'vendors' ? (
+        <VendorsSection vendors={vendorsList} vendorsLoading={vendorsLoading} onRefresh={loadVendors} />
+      ) : (<>
+
       {/* Page header */}
       <View style={s.pageHeader}>
         <View style={s.pageHeaderLeft}>
@@ -1581,7 +2001,7 @@ export default function CatalogAdminScreen() {
               <View style={s.cName}><SortBtn field="name" label="Product" /></View>
               <View style={s.cCat}><SortBtn field="category" label="Category" /></View>
               <View style={s.cRec}><SortBtn field="status" label="Rec" /></View>
-              <View style={s.cVendor}><SortBtn field="vendors" label="Catalogs" /></View>
+              <View style={s.cVendor}><SortBtn field="vendors" label="Vendors" /></View>
               <View style={s.cCost}><SortBtn field="cost" label="Cost" /></View>
               <View style={s.cColor}><SortBtn field="colors" label="Colors" /></View>
               <View style={s.cStatus}><SortBtn field="status" label="Status" /></View>
@@ -1761,7 +2181,7 @@ export default function CatalogAdminScreen() {
         </ScrollView>
       </ScrollView>
 
-
+      </>)}
 
       <ProductFormModal
         visible={modalVisible}
@@ -1815,6 +2235,15 @@ export default function CatalogAdminScreen() {
 // ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: BG },
+  pageTabs: { flexDirection: 'row', borderBottomWidth: 1, borderColor: BORDER, backgroundColor: '#fff' },
+  pageTabBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingVertical: 10, paddingHorizontal: 16,
+    borderBottomWidth: 2, borderBottomColor: 'transparent',
+  },
+  pageTabBtnActive: { borderBottomColor: BRAND },
+  pageTabText: { fontSize: 13, color: TEXT_LIGHT, fontWeight: '500' },
+  pageTabTextActive: { color: BRAND, fontWeight: '600' },
 
   pageHeader: {
     flexDirection: 'row',

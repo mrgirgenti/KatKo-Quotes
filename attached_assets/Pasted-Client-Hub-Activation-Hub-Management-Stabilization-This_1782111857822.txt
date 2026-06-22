@@ -1,0 +1,345 @@
+Client Hub Activation + Hub Management Stabilization
+
+This is a bug-fix and architecture cleanup task.
+
+The current Client Hub activation flow is not functioning correctly and must be audited end-to-end.
+
+Execute all items below.
+
+---
+
+## PROBLEM SUMMARY
+
+Client Hub activation is unreliable and appears disconnected from the Organization being managed.
+
+Current behavior:
+
+1. Contacts already exist inside the Organization.
+
+2. Hub Settings does not properly surface those contacts.
+
+3. Enabling Client Hub access on a Contact does not appear to create or assign Hub access.
+
+4. Hub On / Hub Off state does not persist correctly.
+
+5. Hub Readiness activates visually but actual Hub activation does not remain saved.
+
+6. Org Admin and Team Member management are fragmented and disconnected from Organization Contacts.
+
+The entire Hub Management workflow needs to be audited and stabilized.
+
+---
+
+## PART 1 — FULL HUB ACTIVATION AUDIT
+
+Audit the complete Client Hub activation flow.
+
+Trace:
+
+Organization
+↓
+Contacts
+↓
+Hub Settings
+↓
+Hub Activation
+↓
+Hub Users
+↓
+Org Admin
+↓
+Team Members
+↓
+Client Hub Access
+
+Identify:
+
+* Where Hub activation state is stored
+* Why Hub On / Hub Off is not persisting
+* Why Hub readiness updates without actual activation
+* Why enabling Client Hub access on a Contact does not create usable access
+* Why Hub Management does not surface Organization Contacts
+
+Return findings.
+
+Fix root causes.
+
+Do not implement temporary workarounds.
+
+---
+
+## PART 2 — ORGANIZATION CONTACT INTEGRATION
+
+Hub Management must pull directly from Organization Contacts.
+
+When viewing Hub Management:
+
+Display all Contacts belonging to that Organization.
+
+For each Contact show:
+
+Name
+Email
+Phone
+Role
+Client Hub Access Status
+
+Examples:
+
+John Smith
+Pastor
+Hub Access Enabled
+
+Jane Doe
+Office Manager
+Hub Access Disabled
+
+This list should always remain synchronized with Organization Contacts.
+
+No separate contact system.
+
+No duplicate user system.
+
+---
+
+## PART 3 — ORG ADMIN + TEAM MEMBER CONSOLIDATION
+
+Current Org Admin and Team Members sections should be consolidated.
+
+Create one section:
+
+Team Members
+
+Display:
+
+Name
+Role
+Hub Access
+Org Admin
+
+Examples:
+
+John Smith
+
+Role:
+Pastor
+
+Hub Access:
+Enabled
+
+Org Admin:
+Yes
+
+---
+
+Jane Doe
+
+Role:
+Office Manager
+
+Hub Access:
+Enabled
+
+Org Admin:
+No
+
+Requirements:
+
+Promote to Org Admin
+
+Remove Org Admin
+
+Enable Hub Access
+
+Disable Hub Access
+
+Everything should happen from one screen.
+
+---
+
+## PART 4 — CONTACT FORM INTEGRATION
+
+Add/Edit Contact forms should remain the source of truth.
+
+Current Contact fields already include:
+
+Role
+
+Expand this relationship.
+
+Requirements:
+
+Contact Role remains editable.
+
+Hub Access setting should correlate directly with Hub Management.
+
+Org Admin should be assignable from the Contact workflow.
+
+If a Contact is marked:
+
+Hub Access Enabled
+
+they should immediately appear in Hub Management.
+
+No manual syncing.
+
+No duplicate entry.
+
+---
+
+## PART 5 — HUB ACTIVATION WORKFLOW
+
+Target workflow:
+
+Create Contact
+↓
+Enable Client Hub Access
+↓
+Contact appears in Team Members
+↓
+Assign Org Admin if desired
+↓
+Enable Hub
+↓
+Hub becomes active
+
+Requirements:
+
+Hub activation state persists.
+
+Page refresh does not lose state.
+
+Organization saves correctly.
+
+Hub readiness reflects actual data.
+
+---
+
+## PART 6 — HUB SETTINGS PAGE UI STANDARDIZATION
+
+Match established Katalyst OS design patterns.
+
+Section headers should match:
+
+Organizations
+Products
+Sales
+Projects
+Clients
+
+Style:
+
+Black background
+
+White text
+
+Apply to:
+
+Team Members
+
+Share Hub
+
+Branding
+
+Recent Activity
+
+Hub Readiness
+
+Any other Hub Management sections
+
+---
+
+## PART 7 — METRIC HEADER STANDARDIZATION
+
+Top metric area should match every major page.
+
+Requirements:
+
+Use standard light gray metric container background.
+
+Center metrics horizontally.
+
+Consistent spacing.
+
+Consistent card sizing.
+
+Consistent typography.
+
+Match:
+
+Organizations
+
+Projects
+
+Sales
+
+Clients
+
+Products
+
+Do not create a unique Hub metric layout.
+
+Use existing platform standard.
+
+---
+
+## PART 8 — HUB READINESS LOGIC AUDIT
+
+Audit Hub Readiness.
+
+Verify:
+
+What conditions determine readiness.
+
+What conditions are missing.
+
+Whether readiness is reading actual Organization data.
+
+Whether readiness is reading stale data.
+
+Whether readiness updates after changes.
+
+Fix any disconnects.
+
+---
+
+## PART 9 — SHARE HUB VALIDATION
+
+Verify Share Hub functionality.
+
+Confirm:
+
+Correct Hub URL generation.
+
+Correct Organization linkage.
+
+Correct Hub activation dependency.
+
+Correct permission checks.
+
+Report any issues found.
+
+---
+
+## PART 10 — REQUIRED OUTPUT
+
+Return:
+
+1. Root causes found
+2. Files changed
+3. Database relationships audited
+4. Hub activation fixes
+5. Contact synchronization fixes
+6. Team Member consolidation changes
+7. Contact form integration changes
+8. UI standardization changes
+9. Hub Readiness fixes
+10. Share Hub validation results
+11. Risks
+12. Testing checklist
+
+Execute all fixes necessary to make Client Hub activation reliable and Organization-driven.
+
+Do not stop after identifying issues.
+
+Fix them.

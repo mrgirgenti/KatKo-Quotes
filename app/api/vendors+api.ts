@@ -39,16 +39,28 @@ export async function POST(request: Request) {
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   if (!name) return Response.json({ error: 'name is required' }, { status: 400 });
 
-  const website = typeof body.website === 'string' && body.website.trim() ? body.website.trim() : null;
+  const website    = typeof body.website    === 'string' && body.website.trim()    ? body.website.trim()    : null;
   const catalogUrl = typeof body.catalogUrl === 'string' && body.catalogUrl.trim() ? body.catalogUrl.trim() : null;
-  const isActive = body.isActive === undefined ? true : Boolean(body.isActive);
+  const notes      = typeof body.notes      === 'string' && body.notes.trim()      ? body.notes.trim()      : null;
+  const apiProvider = typeof body.apiProvider === 'string' && body.apiProvider.trim() ? body.apiProvider.trim() : null;
+  const isActive           = body.isActive           === undefined ? true  : Boolean(body.isActive);
+  const apiEnabled         = body.apiEnabled         === undefined ? false : Boolean(body.apiEnabled);
+  const importEnabled      = body.importEnabled      === undefined ? false : Boolean(body.importEnabled);
+  const productImportEnabled = body.productImportEnabled === undefined ? false : Boolean(body.productImportEnabled);
+  const colorImportEnabled   = body.colorImportEnabled   === undefined ? false : Boolean(body.colorImportEnabled);
+  const pricingSyncEnabled   = body.pricingSyncEnabled   === undefined ? false : Boolean(body.pricingSyncEnabled);
+  const inventorySyncEnabled = body.inventorySyncEnabled === undefined ? false : Boolean(body.inventorySyncEnabled);
 
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `INSERT INTO "Vendor" (name, website, "catalogUrl", "isActive")
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-      [name, website, catalogUrl, isActive],
+      `INSERT INTO "Vendor" (name, website, "catalogUrl", notes, "isActive",
+         "apiEnabled", "apiProvider", "importEnabled", "productImportEnabled",
+         "colorImportEnabled", "pricingSyncEnabled", "inventorySyncEnabled")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+      [name, website, catalogUrl, notes, isActive,
+       apiEnabled, apiProvider, importEnabled, productImportEnabled,
+       colorImportEnabled, pricingSyncEnabled, inventorySyncEnabled],
     );
     return Response.json({ vendor: result.rows[0] }, { status: 201 });
   } catch (err: unknown) {
