@@ -108,7 +108,7 @@ function OrgRow({ org, onPress, onDelete, visibleCols, isSelected, onToggleSelec
         </View>
         {col('org', (
           <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
-            <Text style={[styles.tableOrgName, styles.tableOrgNameLink]} numberOfLines={1}>{org.name}</Text>
+            <Text style={styles.tableOrgName} numberOfLines={1}>{org.name}</Text>
           </TouchableOpacity>
         ))}
         {col('bizType', org.type
@@ -124,7 +124,7 @@ function OrgRow({ org, onPress, onDelete, visibleCols, isSelected, onToggleSelec
           : <Text style={styles.tableDim}>—</Text>
         )}
         {col('email', primaryContact?.email
-          ? <Text style={styles.tableCell} numberOfLines={1}>{primaryContact.email}</Text>
+          ? <Text style={styles.tableCell}>{primaryContact.email}</Text>
           : <Text style={styles.tableDim}>—</Text>
         )}
         {col('phone', primaryContact?.phone

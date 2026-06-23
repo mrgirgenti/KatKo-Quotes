@@ -238,20 +238,20 @@ function SaleRow({ quote, effectiveStatus, onPress, onDelete, onRevert, onEdit, 
           {quote.exportedToSheets && <Sheet size={11} color={Colors.light.success} />}
         </View>
       </View>
+      <View style={styles.colQuote}>
+        <Text style={styles.tableInvoice} numberOfLines={1}>{quote.invoiceNumber || quote.projectNumber || '—'}</Text>
+      </View>
+      <View style={styles.colProject}>
+        <Text style={styles.tableProject} numberOfLines={1}>{quote.projectName}</Text>
+      </View>
+      <View style={styles.colClient}>
+        <Text style={styles.tableClient} numberOfLines={1}>{quote.personOrganization}</Text>
+      </View>
       <View style={styles.colOrderDate}>
         <Text style={styles.tableDate}>{formatDate(quote.orderDate)}</Text>
       </View>
       <View style={styles.colDueDate}>
         <Text style={styles.tableDate}>{quote.inHandsDate ? formatDate(quote.inHandsDate) : '—'}</Text>
-      </View>
-      <View style={styles.colClient}>
-        <Text style={styles.tableClient} numberOfLines={1}>{quote.personOrganization}</Text>
-      </View>
-      <View style={styles.colProject}>
-        <Text style={styles.tableProject} numberOfLines={1}>{quote.projectName}</Text>
-      </View>
-      <View style={styles.colQuote}>
-        <Text style={styles.tableInvoice} numberOfLines={1}>{quote.invoiceNumber || quote.projectNumber || '—'}</Text>
       </View>
       <View style={styles.colServices}>
         <Text style={styles.tableServices}>
@@ -830,11 +830,11 @@ export default function SalesScreen() {
                   />
                 </View>
                 <View style={styles.colStatus}><SortBtn field="status" label="Status" /></View>
+                <View style={styles.colQuote}><SortBtn field="invoice" label="Invoice #" /></View>
+                <View style={styles.colProject}><SortBtn field="project" label="Project" /></View>
+                <View style={styles.colClient}><SortBtn field="client" label="Client" /></View>
                 <View style={styles.colOrderDate}><SortBtn field="date" label="Order Date" /></View>
                 <View style={styles.colDueDate}><SortBtn field="inHands" label="Due Date" /></View>
-                <View style={styles.colClient}><SortBtn field="client" label="Client" /></View>
-                <View style={styles.colProject}><SortBtn field="project" label="Project" /></View>
-                <View style={styles.colQuote}><SortBtn field="invoice" label="Invoice #" /></View>
                 <View style={styles.colServices}><SortBtn field="services" label="Service(s)" /></View>
                 <View style={styles.colApplicator}><SortBtn field="applicator" label="Applicator(s)" /></View>
                 <View style={styles.colPcs}><SortBtn field="pcs" label="# PCS" /></View>
@@ -1004,8 +1004,8 @@ const styles = StyleSheet.create({
   statusIcons:  { flexDirection: 'row', alignItems: 'center', gap: 3 },
   colOrderDate: { ...TABLE_COL.date, ...TABLE_CELL.center },
   colDueDate:   { ...TABLE_COL.date, ...TABLE_CELL.center },
-  colClient:    { ...TABLE_COL.text, ...TABLE_CELL.left },
-  colProject:   { ...TABLE_COL.textPrimary, ...TABLE_CELL.left, flexBasis: 210, minWidth: 160, maxWidth: 300 },
+  colClient:    { ...TABLE_COL.text, ...TABLE_CELL.left, flexBasis: 180, minWidth: 150, maxWidth: 280 },
+  colProject:   { ...TABLE_COL.textPrimary, ...TABLE_CELL.left, flexBasis: 178, minWidth: 136, maxWidth: 255 },
   colQuote:     { ...TABLE_COL.numeric, ...TABLE_CELL.center },
   colServices:  { ...TABLE_COL.text, ...TABLE_CELL.left },
   colApplicator: { ...TABLE_COL.text, ...TABLE_CELL.left },

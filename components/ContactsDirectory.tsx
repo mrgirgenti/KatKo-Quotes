@@ -41,7 +41,7 @@ const COL_STYLE: Record<ColId, any> = {
   org:       { ...TABLE_COL.text, ...TABLE_CELL.left },
   role:      { ...TABLE_COL.text, ...TABLE_CELL.left },
   email:     { ...TABLE_COL.text, ...TABLE_CELL.left },
-  phone:     { ...TABLE_COL.text, ...TABLE_CELL.left },
+  phone:     { width: 138, ...TABLE_CELL.left },
   status:    { ...TABLE_COL.status, ...TABLE_CELL.center },
   hub:       { ...TABLE_COL.status, ...TABLE_CELL.center },
   lastLogin: { ...TABLE_COL.date, ...TABLE_CELL.center },
@@ -103,8 +103,8 @@ function PersonRow({ person, onPress, isSelected, onToggleSelect, visibleCols }:
           {isSelected && <Check size={11} color="#fff" />}
         </View>
       </TouchableOpacity>
-      <View style={{ width: 44 }}>
-        <OrgAvatar name={name} size={32} shape="circle" />
+      <View style={{ width: 48 }}>
+        <OrgAvatar name={name} size={36} shape="circle" />
       </View>
       {col('name', <Text style={styles.cellName} numberOfLines={1}>{name}</Text>)}
       {col('org', <Text style={styles.cell} numberOfLines={1}>{person.orgName}</Text>)}
@@ -382,7 +382,7 @@ export default function ContactsDirectory() {
           {visibleSelectedCount > 0 && <Check size={11} color="#fff" />}
         </View>
       </TouchableOpacity>
-      <View style={{ width: 44 }} />
+      <View style={{ width: 48 }} />
       {CONTACT_TOGGLEABLE_COLS.filter((c) => visibleCols.includes(c.id)).map((c) => {
         const isCentered = c.id === 'status' || c.id === 'hub' || c.id === 'lastLogin';
         const cs: any = { ...colStyle(c.id), ...(isCentered ? { alignItems: 'center' } : {}) };

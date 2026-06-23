@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, Image } from 'react-native';
-import { ChevronRight, Check, Calendar, Package, ChevronLeft } from 'lucide-react-native';
+import { ChevronRight, Check, Calendar, Package, ChevronLeft, Scissors } from 'lucide-react-native';
 import { getEffectiveStatus, STATUS_CONFIG } from '@/types/quote';
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
@@ -193,7 +193,7 @@ export function ProjectCard({
               </>
             )}
           </View>
-          {/* Left: project number + name + client · service */}
+          {/* Left: project number + name + client */}
           <View style={styles.cmpDesktopLeft}>
             <View style={styles.cmpDesktopTopRow}>
               {selectionMode && (
@@ -209,11 +209,20 @@ export function ProjectCard({
               </View>
             </View>
             <Text style={styles.cmpName} numberOfLines={1}>{quote.projectName || '—'}</Text>
-            {(quote.personOrganization || serviceText) ? (
-              <Text style={styles.cmpMeta} numberOfLines={1}>
-                {[quote.personOrganization, serviceText].filter(Boolean).join(' · ')}
-              </Text>
+            {quote.personOrganization ? (
+              <Text style={styles.cmpMeta} numberOfLines={1}>{quote.personOrganization}</Text>
             ) : null}
+          </View>
+
+          <View style={styles.cmpVertDivider} />
+
+          {/* Services */}
+          <View style={styles.cmpDesktopDataCol}>
+            <View style={styles.cmpDesktopColLabelRow}>
+              <Scissors size={11} color="#94A3B8" />
+              <Text style={styles.cmpColLabelTxt}>Services</Text>
+            </View>
+            <Text style={styles.cmpColVal} numberOfLines={2}>{serviceText || '—'}</Text>
           </View>
 
           <View style={styles.cmpVertDivider} />
@@ -551,7 +560,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden' as const,
   },
   cmpDesktopLeft: {
-    flex: 1,
+    flex: 0.65,
     minWidth: 0,
     paddingHorizontal: 14,
     paddingVertical: 11,
@@ -614,8 +623,8 @@ const styles = StyleSheet.create({
 
   /* ── Compact thumbnail carousel ── */
   cmpThumbWrap: {
-    width: 64,
-    height: 72,
+    width: 77,
+    height: 86,
     backgroundColor: '#F3F4F6',
     flexShrink: 0,
     overflow: 'hidden' as const,
@@ -623,12 +632,12 @@ const styles = StyleSheet.create({
     alignSelf: 'center' as const,
   },
   cmpThumbImg: {
-    width: 64,
-    height: 72,
+    width: 77,
+    height: 86,
   },
   cmpThumbFallback: {
-    width: 64,
-    height: 72,
+    width: 77,
+    height: 86,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
