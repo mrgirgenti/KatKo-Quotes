@@ -182,7 +182,7 @@ export function getModeVisibility(mode: DocumentMode): DocumentVisibility {
         showPricing: true,
         showNotesColumn: false,
         showNotesBox: true,
-        showApprovalCallout: true,
+        showApprovalCallout: false,
         showProductionNotesBox: false,
         showChecklist: false,
         showThankYouFooter: true,

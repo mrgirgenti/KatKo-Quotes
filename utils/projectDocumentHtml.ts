@@ -81,7 +81,7 @@ function renderHeader(model: ProjectDocumentModel): string {
       <div class="doc-logo">${safeImg(COMPANY.logoUrl, 'logo-img')}</div>
       <div class="doc-contact">${contactRows}</div>
       <div class="doc-title-block">
-        <div class="doc-title">${esc(v.title)}</div>
+        <div class="doc-title${v.title.length > 14 ? ' doc-title-wrap' : ''}">${esc(v.title)}</div>
         ${metaRows}
       </div>
     </div>
@@ -299,7 +299,7 @@ function styles(): string {
   return `
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{background:#fff;color:#111;font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .doc-page{max-width:820px;margin:0 auto;padding:28px 32px 36px}
+    .doc-page{max-width:900px;margin:0 auto;padding:28px 32px 36px}
 
     /* Header */
     .doc-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
@@ -309,8 +309,9 @@ function styles(): string {
     .contact-row{display:flex;align-items:flex-start;gap:7px;margin-bottom:6px}
     .contact-row svg{flex:0 0 auto;margin-top:1px}
     .contact-addr span{color:#444}
-    .doc-title-block{flex:0 0 auto;text-align:right;min-width:200px;background:#f5f5f5;border-radius:8px;padding:12px 16px}
+    .doc-title-block{flex:0 0 auto;text-align:right;min-width:200px;max-width:240px;background:#f5f5f5;border-radius:8px;padding:12px 16px}
     .doc-title{font-size:34px;font-weight:800;letter-spacing:-0.5px;line-height:1.04;color:#111;margin-bottom:8px}
+    .doc-title-wrap{font-size:22px;letter-spacing:0;word-break:break-word;white-space:normal;line-height:1.2}
     .title-meta{font-size:12px;color:#222;margin-top:3px}
     .meta-key{color:${BRAND};font-weight:700}
 
@@ -339,8 +340,8 @@ function styles(): string {
     /* Line item cell */
     .cell-lineitem{position:relative}
     .li-num{position:absolute;top:8px;left:8px;width:22px;height:22px;background:#111;color:#fff;border-radius:5px;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:2}
-    .li-mocks{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding-top:4px}
-    .li-mock{width:46%;height:84px;object-fit:contain;background:#fafafa;border:1px solid #eee;border-radius:6px}
+    .li-mocks{display:flex;flex-direction:column;gap:6px;padding-top:4px}
+    .li-mock{width:100%;height:140px;object-fit:contain;background:#fafafa;border:1px solid #eee;border-radius:6px;display:block}
     .li-mock-empty{display:flex;align-items:center;justify-content:center;color:#bbb;font-size:10px}
 
     /* Item details */
@@ -356,7 +357,7 @@ function styles(): string {
     .mini td{padding:4px 8px;border-bottom:1px solid #f0f0f0;color:#222}
     .mini td:last-child{text-align:right;font-weight:600}
     .mini .qty-center{text-align:center;font-weight:600}
-    .mini-total td{color:${BRAND};font-weight:800;border-bottom:none;border-top:1px solid #eee;padding-top:6px}
+    .mini-total td{color:${BRAND};font-weight:800;border-bottom:none;border-top:1px solid #eee;padding-top:6px;white-space:nowrap}
 
     /* Production blank notes column */
     .cell-notes .notes-lines{display:flex;flex-direction:column;gap:18px;padding-top:6px}

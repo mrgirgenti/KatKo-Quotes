@@ -82,6 +82,7 @@ import MediaPickerModal from '@/components/MediaPickerModal';
 import MediaCard from '@/components/MediaCard';
 import OverlayMenu from '@/components/OverlayMenu';
 import { formatPhone } from '@/utils/phone';
+import { buildProjectDocumentHTML } from '@/utils/projectDocumentHtml';
 
 const BRAND = '#FF5A00';
 const BRAND_DARK = '#CC4700';
@@ -2566,9 +2567,44 @@ export default function ClientPortal() {
             <TouchableOpacity style={mpStyles.viewBtn} onPress={() => handleViewProject(p.id)} activeOpacity={0.85}>
               <Text style={mpStyles.viewBtnText}>View Project</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={mpStyles.dotsMenuBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={mpStyles.dotsMenuBtnText}>{String.fromCharCode(8942)}</Text>
-            </TouchableOpacity>
+            <OverlayMenu
+              menuWidth={192}
+              align="right"
+              trigger={({ open }) => (
+                <TouchableOpacity style={mpStyles.dotsMenuBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={open} activeOpacity={0.7}>
+                  <Text style={mpStyles.dotsMenuBtnText}>{String.fromCharCode(8942)}</Text>
+                </TouchableOpacity>
+              )}
+            >
+              {({ close }) => (
+                <>
+                  <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 14, paddingVertical: 11 }}
+                    onPress={() => { close(); handleViewProject(p.id); }}
+                    activeOpacity={0.7}
+                  >
+                    <Download size={14} color="#6B7280" />
+                    <Text style={{ fontSize: 13, color: '#111827' }}>Download PDF</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 14, paddingVertical: 11 }}
+                    onPress={() => { close(); handleReorderProject(p.id, p.title || ''); }}
+                    activeOpacity={0.7}
+                  >
+                    <RefreshCw size={14} color="#6B7280" />
+                    <Text style={{ fontSize: 13, color: '#111827' }}>Reorder Project</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 14, paddingVertical: 11 }}
+                    onPress={() => { close(); toggleFavorite(p.id); }}
+                    activeOpacity={0.7}
+                  >
+                    <Star size={14} color="#6B7280" />
+                    <Text style={{ fontSize: 13, color: '#111827' }}>{favoriteProjectIds.includes(p.id) ? 'Unfavorite' : 'Favorite'}</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </OverlayMenu>
           </View>
         </View>
       );
@@ -2951,20 +2987,22 @@ export default function ClientPortal() {
     const canPreviewFile = (f: any) => isImgFile(f) || isPdfFile(f);
 
     const downloadSummaryPdf = () => {
-      if (!proj) return;
-      downloadCustomerProjectPdf({
-        title: proj.title || 'Project',
-        status: PORTAL_STATUS_CONFIG[proj.status.toUpperCase().replace('QUOTE_SENT', 'QUOTED')]?.label || proj.status,
-        orderType: proj.orderType,
-        inHandsDate: proj.inHandsDate ? formatDate(proj.inHandsDate) : null,
-        orgName: orgDisplayName || undefined,
-        customerName: session?.userName,
-        notes: proj.notesClient,
-        orgId: orgIdForFiles,
-        lineItems,
-        pricing: pricingRows,
-        total: grandTotal,
-      });
+      if (!proj || Platform.OS !== 'web' || typeof window === 'undefined') return;
+      const printScript =
+        `<script>(function(){var go=function(){try{window.focus();window.print();}catch(e){}};` +
+        `var imgs=[].slice.call(document.images);var p=imgs.filter(function(i){return !i.complete;});` +
+        `if(!p.length){setTimeout(go,400);return;}var n=p.length,f=false;` +
+        `var fire=function(){if(f)return;f=true;setTimeout(go,300);};` +
+        `p.forEach(function(i){i.addEventListener('load',function(){if(--n<=0)fire();});` +
+        `i.addEventListener('error',function(){if(--n<=0)fire();});});` +
+        `setTimeout(function(){if(!f){f=true;go();}},7000);})();<` + `/script>`;
+      const html = buildProjectDocumentHTML(docSource, 'ORDER_DETAIL').replace(/<\/body>/, printScript + '</body>');
+      const win = window.open('', '_blank', 'width=920,height=1040');
+      if (!win) return;
+      win.document.open();
+      win.document.write(html);
+      win.document.close();
+      win.focus();
     };
 
     const assetCatHeader = (title: string, count: number) => (
@@ -3280,19 +3318,7 @@ export default function ClientPortal() {
                   <TouchableOpacity
                     style={pvStyles.actionPrimary}
                     activeOpacity={0.85}
-                    onPress={() => downloadCustomerProjectPdf({
-                      title: proj.title || 'Project',
-                      status: PORTAL_STATUS_CONFIG[proj.status.toUpperCase().replace('QUOTE_SENT', 'QUOTED')]?.label || proj.status,
-                      orderType: proj.orderType,
-                      inHandsDate: proj.inHandsDate ? formatDate(proj.inHandsDate) : null,
-                      orgName: orgDisplayName || undefined,
-                      customerName: session?.userName,
-                      notes: proj.notesClient,
-                      orgId: orgIdForFiles,
-                      lineItems,
-                      pricing: pricingRows,
-                      total: grandTotal,
-                    })}
+                    onPress={downloadSummaryPdf}
                   >
                     <Download size={16} color="#fff" />
                     <Text style={pvStyles.actionPrimaryText}>Download PDF</Text>
