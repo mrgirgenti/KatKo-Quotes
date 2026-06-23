@@ -125,7 +125,7 @@ Every phone number, ANYWHERE it appears (tables, forms, invoices/PDFs, templates
 Never render a raw `.phone` field directly — always pipe it through a `utils/phone` helper.
 
 - **MediaCard file type**: `<MediaCard>` shows the file type only in the `typeLabel` metadata line below the image (e.g. "Jun 20, 2026 · PNG · 1.2 MB"). There is no separate file-type badge/pill — it was removed as redundant clutter. Always pass `typeLabel` on every usage so the metadata line is complete.
-- **Table column widths**: Primary identifier columns (`textPrimary` token) use per-table overrides of `flexBasis/minWidth/maxWidth` rather than the global default (320/260/420). Current overrides: Organizations `org` col −25% (240/195/315), Contacts `name` col −25% (240/195/315), Quotes/Projects `colProject` col −45% (176/143/231), Client Hubs `colOrg` col −60% (`flex: 0.8, minWidth: 88`).
+- **Table column widths**: Global defaults tightened (textPrimary 280/220/400, text 130/110/220, status 120, date 110, numeric 88). Per-table overrides: Organizations `org` (240/195/315), `bizType` fixed 130px, `phone` fixed 138px; Quotes/Projects `colProject` (210/160/300); Client Hubs `colOrg` (`flex:1, minWidth:160, maxWidth:300`).
 
 ## Gotchas
 

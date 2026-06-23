@@ -43,10 +43,10 @@ const AVATAR_W = 48;
 const CHECKBOX_W = 36;
 const COL_STYLE: Record<ColId, any> = {
   org:      { ...TABLE_COL.textPrimary, ...TABLE_CELL.left, flexBasis: 240, minWidth: 195, maxWidth: 315 },
-  bizType:  { ...TABLE_COL.text, ...TABLE_CELL.left },
+  bizType:  { width: 130, ...TABLE_CELL.left },
   contact:  { ...TABLE_COL.text, ...TABLE_CELL.left },
   email:    { ...TABLE_COL.text, ...TABLE_CELL.left },
-  phone:    { ...TABLE_COL.text, ...TABLE_CELL.left },
+  phone:    { width: 138, ...TABLE_CELL.left },
   status:   { ...TABLE_COL.status, ...TABLE_CELL.center },
   hub:      { ...TABLE_COL.status, ...TABLE_CELL.center },
   campaign: { ...TABLE_COL.text, ...TABLE_CELL.left },
@@ -579,7 +579,7 @@ function OrganizationsScreen() {
       ) : (
         <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
           <ScrollView horizontal showsHorizontalScrollIndicator={true} contentContainerStyle={{ flexGrow: 1 }} style={{ outlineStyle: 'none' } as any}>
-            <View style={{ minWidth: 1600, flexGrow: 1 }}>
+            <View style={{ minWidth: 1220, flexGrow: 1 }}>
               {tableHeaderRow}
               <View style={styles.tableBody}>
                 {filtered.map((org, idx) => (

@@ -32,13 +32,13 @@ import { ViewStyle } from 'react-native';
  * scrolls horizontally rather than compressing columns to unreadable.
  */
 export const TABLE_COL = {
-  textPrimary: { flexGrow: 1, flexShrink: 1, flexBasis: 320, minWidth: 260, maxWidth: 420 },
-  text:        { flexGrow: 1, flexShrink: 1, flexBasis: 170, minWidth: 150, maxWidth: 320 },
-  status:      { width: 150 },
-  date:        { width: 140 },
-  numeric:     { width: 110 },
-  numericWide: { width: 120 },
-  action:      { minWidth: 170 },
+  textPrimary: { flexGrow: 1, flexShrink: 1, flexBasis: 280, minWidth: 220, maxWidth: 400 },
+  text:        { flexGrow: 1, flexShrink: 1, flexBasis: 130, minWidth: 110, maxWidth: 220 },
+  status:      { width: 120 },
+  date:        { width: 110 },
+  numeric:     { width: 88 },
+  numericWide: { width: 108 },
+  action:      { minWidth: 140 },
 } satisfies Record<string, ViewStyle>;
 
 /**

@@ -127,8 +127,8 @@ function matchesChip(chip: ChipId, s: HubStats): boolean {
 
 type SortField = 'name' | 'users' | 'lastLogin' | 'invites' | 'status';
 const AVATAR_W = 44;
-const COL = { users: 110, lastLogin: 150, invites: 130, status: 168, actions: 148 };
-const TABLE_MIN_W = 1020;
+const COL = { users: 88, lastLogin: 118, invites: 88, status: 128, actions: 120 };
+const TABLE_MIN_W = 780;
 
 function HubStatusBadge({ status }: { status: HubStatusKey }) {
   const cfg = HUB_STATUS_CFG[status];
@@ -518,7 +518,7 @@ const styles = StyleSheet.create({
   tableDivider: { height: 1, backgroundColor: Colors.light.border, marginLeft: 16 },
 
   colAvatar: { width: AVATAR_W },
-  colOrg: { flex: 0.8, minWidth: 88, paddingRight: 12 },
+  colOrg: { flex: 1, minWidth: 160, maxWidth: 300, paddingRight: 12 },
   colUsers: { width: COL.users },
   colLastLogin: { width: COL.lastLogin },
   colInvites: { width: COL.invites },

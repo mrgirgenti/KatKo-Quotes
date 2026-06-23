@@ -523,11 +523,11 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch' as const,
   },
   cmpDesktopDataCol: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 11,
     gap: 5,
     justifyContent: 'center' as const,
-    minWidth: 106,
+    minWidth: 86,
   },
   cmpDesktopColLabelRow: {
     flexDirection: 'row' as const,
@@ -547,12 +547,12 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   cmpDesktopFinCol: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 11,
     gap: 3,
     justifyContent: 'center' as const,
     alignItems: 'flex-end' as const,
-    minWidth: 84,
+    minWidth: 74,
   },
   cmpFinBigVal: {
     fontSize: 15,

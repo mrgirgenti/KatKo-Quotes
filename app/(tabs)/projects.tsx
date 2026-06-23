@@ -860,7 +860,7 @@ export default function ProjectsScreen() {
       ) : (
         <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
           <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }} style={{ outlineStyle: 'none' } as any}>
-            <View style={{ minWidth: 2090, flexGrow: 1 }}>
+            <View style={{ minWidth: 1600, flexGrow: 1 }}>
               <View style={styles.tableHeader}>
                 <View style={styles.colCheckbox}>
                   <Checkbox
@@ -1035,7 +1035,7 @@ const styles = StyleSheet.create({
   colOrderDate: { ...TABLE_COL.date, ...TABLE_CELL.center },
   colDueDate:   { ...TABLE_COL.date, ...TABLE_CELL.center },
   colClient:    { ...TABLE_COL.text, ...TABLE_CELL.left },
-  colProject:   { ...TABLE_COL.textPrimary, ...TABLE_CELL.left, flexBasis: 176, minWidth: 143, maxWidth: 231 },
+  colProject:   { ...TABLE_COL.textPrimary, ...TABLE_CELL.left, flexBasis: 210, minWidth: 160, maxWidth: 300 },
   colInvoice:   { ...TABLE_COL.numeric, ...TABLE_CELL.center },
   colApplicator:{ ...TABLE_COL.text, ...TABLE_CELL.left },
   colServices:  { ...TABLE_COL.text, ...TABLE_CELL.left },

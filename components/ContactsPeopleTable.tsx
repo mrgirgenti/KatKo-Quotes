@@ -35,17 +35,17 @@ function statusPill(state: HubAccessState | undefined): PillCfg {
   }
 }
 
-const TABLE_MIN_W = 1036;
+const TABLE_MIN_W = 900;
 
 const CW = {
-  name:         162,
-  email:        178,
-  role:         116,
-  phone:        126,
-  status:       106,
-  primary:       90,
-  admin:         90,
-  lastActivity: 114,
+  name:         180,
+  email:        158,
+  role:          96,
+  phone:        120,
+  status:        96,
+  primary:       80,
+  admin:         80,
+  lastActivity:  96,
   actions:       54,
 } as const;
 

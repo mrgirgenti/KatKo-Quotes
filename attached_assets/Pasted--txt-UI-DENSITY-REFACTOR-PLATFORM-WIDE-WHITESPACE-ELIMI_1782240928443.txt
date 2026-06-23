@@ -1,0 +1,361 @@
+```txt
+UI DENSITY REFACTOR — PLATFORM-WIDE WHITESPACE ELIMINATION
+
+STOP.
+
+Do not audit.
+
+Do not create a plan.
+
+Do not create a roadmap.
+
+Implement.
+
+This is a visual density and information architecture refactor.
+
+I have attached screenshots showing the problem areas highlighted in purple.
+
+The purple areas represent wasted horizontal space that is making the platform feel unfinished, amateur, and database-driven instead of polished software.
+
+The goal is not to redesign functionality.
+
+The goal is to eliminate unnecessary whitespace and improve information density across the platform.
+
+--------------------------------------------------
+PRIMARY PROBLEM
+--------------------------------------------------
+
+The application is currently behaving like a CRUD database.
+
+Columns are being distributed based on available width instead of content requirements.
+
+The result:
+
+- Massive dead space
+- Stretched layouts
+- Weak visual hierarchy
+- Low information density
+- Tables that feel cheap
+- Cards that feel disconnected
+- Users constantly scanning across large empty areas
+
+The screenshots clearly demonstrate this issue.
+
+--------------------------------------------------
+GLOBAL DESIGN RULE
+--------------------------------------------------
+
+Immediately adopt this rule platform-wide:
+
+Columns must be sized based on content density.
+
+NOT based on equal width distribution.
+
+Priority width should always be given to:
+
+1. Project Name
+2. Organization Name
+3. Contact Name
+4. Customer Name
+5. Searchable primary content
+
+Minimal width should be given to:
+
+- Status pills
+- Hub status
+- Business type
+- Role
+- Invite status
+- PCS
+- Revenue
+- Profit
+- Quantity
+- Badges
+- Dates
+- Small metadata
+
+No column should consume more width than the content requires.
+
+--------------------------------------------------
+TARGET
+--------------------------------------------------
+
+Reduce wasted horizontal space by approximately:
+
+20%-40%
+
+without sacrificing readability.
+
+The application should feel:
+
+- tighter
+- faster
+- more professional
+- more intentional
+
+while remaining clean.
+
+--------------------------------------------------
+ORGANIZATIONS PAGE
+--------------------------------------------------
+
+Refactor table layout.
+
+Current problems:
+
+Business Type column is oversized.
+
+Contact column is oversized.
+
+Status columns are oversized.
+
+Hub columns are oversized.
+
+Implement:
+
+Organization Name:
+flex-grow
+
+Contact:
+flex-grow
+
+Business Type:
+content width
+
+Phone:
+content width
+
+Status:
+pill width
+
+Hub Status:
+pill width
+
+Remove all unnecessary spacing.
+
+The organization name should become the visual anchor.
+
+--------------------------------------------------
+CONTACTS PAGE
+--------------------------------------------------
+
+Refactor table layout.
+
+Current problems:
+
+Role column oversized.
+
+Status column oversized.
+
+Hub Status oversized.
+
+Implement:
+
+Client Name:
+flex-grow
+
+Organization:
+flex-grow
+
+Role:
+content width
+
+Email:
+auto width
+
+Phone:
+content width
+
+Status:
+pill width
+
+Hub Status:
+pill width
+
+The table should feel substantially tighter.
+
+--------------------------------------------------
+QUOTES PAGE
+--------------------------------------------------
+
+Current layout behaves like a spreadsheet.
+
+Compress all low-value columns.
+
+Project Name should receive significantly more width.
+
+Service Style should shrink.
+
+Invoice # should shrink.
+
+Status should shrink.
+
+Date columns should shrink.
+
+Remove excessive spacing between columns.
+
+--------------------------------------------------
+PROJECTS PAGE
+--------------------------------------------------
+
+Same treatment.
+
+The project title is the primary information.
+
+Everything else should support it.
+
+Current implementation gives too much width to:
+
+- Invoice #
+- Services
+- Applicator
+- Status
+
+and not enough to:
+
+- Project Name
+- Customer
+
+Fix this.
+
+--------------------------------------------------
+CLIENT HUBS PAGE
+--------------------------------------------------
+
+Current page contains extreme dead space.
+
+Shrink:
+
+- Hub Users
+- Pending Invites
+- Hub Status
+
+Expand:
+
+- Organization
+- Contact
+- Activity information
+
+Table should feel balanced.
+
+--------------------------------------------------
+ORGANIZATION DETAILS PAGE
+--------------------------------------------------
+
+This page contains multiple examples of oversized metric blocks.
+
+Active Projects
+
+Submitted Quotes
+
+Client Hub
+
+Contact Rows
+
+All require optimization.
+
+Specific fixes:
+
+Project cards should allocate more width to:
+
+- Project Name
+- Customer
+- Service
+
+and less width to:
+
+- Revenue
+- Profit
+- PCS
+
+These metrics do not deserve equal visual weight.
+
+The project itself is the primary content.
+
+--------------------------------------------------
+CARD SYSTEM REFACTOR
+--------------------------------------------------
+
+Review all card layouts.
+
+Eliminate:
+
+- oversized padding
+- oversized gutters
+- oversized spacing between metadata
+
+Where possible:
+
+reduce horizontal padding 10%-20%.
+
+Improve information density without creating clutter.
+
+--------------------------------------------------
+DO NOT
+--------------------------------------------------
+
+Do not:
+
+- reduce font sizes
+- create cramped layouts
+- remove information
+- redesign workflows
+- rebuild pages
+
+This is not a functionality sprint.
+
+This is a density optimization sprint.
+
+--------------------------------------------------
+VALIDATION
+--------------------------------------------------
+
+Review and refactor:
+
+- Organizations
+- Contacts
+- Quotes
+- Projects
+- Client Hubs
+- Organization Details
+
+Compare before vs after.
+
+Confirm:
+
+- reduced whitespace
+- improved visual hierarchy
+- improved scanability
+- improved density
+- improved professional appearance
+
+The attached screenshots are the source of truth.
+
+Every purple-highlighted area should be evaluated and reduced where appropriate.
+
+--------------------------------------------------
+OUTPUT
+--------------------------------------------------
+
+Return:
+
+1. Files changed
+2. Components changed
+3. Density improvements by page
+4. Width allocation changes
+5. Spacing reductions
+6. Before/after screenshots
+7. Validation results
+
+IMPLEMENT.
+
+Do not audit.
+
+Do not create a future plan.
+
+Do not stop after one page.
+
+Apply the density refactor platform-wide in this sprint.
+```
+
+I would attach all six screenshots with the purple overlays when sending this. The screenshots are far more valuable than another written explanation because they show Replit exactly where the dead space exists.
