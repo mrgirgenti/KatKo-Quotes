@@ -9,6 +9,8 @@ import {
   RefreshControl,
   TextInput,
   Platform,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -24,8 +26,12 @@ import {
   ShieldCheck,
   Mail,
   UserX,
-  Wrench,
   Ban,
+  Wrench,
+  Send,
+  Clock,
+  CheckCircle,
+  AlertCircle,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
@@ -38,21 +44,30 @@ function getPrimaryContact(org: Organization): Contact | undefined {
   return org.contacts.find((c) => c.isPrimary) ?? org.contacts[0];
 }
 
-type HubStatusKey = 'Active' | 'Pending Setup' | 'Invite Pending' | 'No Users' | 'Disabled';
+type HubStatusKey = 'Active' | 'Inactive' | 'Disabled' | 'Setup Required';
 
 const HUB_STATUS_CFG: Record<HubStatusKey, { label: string; color: string; bg: string; border: string; dot: string; Icon: any }> = {
-  'Active':         { label: 'Active',        color: '#15803D', bg: '#DCFCE7', border: '#86EFAC', dot: '#16A34A', Icon: ShieldCheck },
-  'Invite Pending': { label: 'Invite Pending', color: '#B45309', bg: '#FEF3C7', border: '#FCD34D', dot: '#D97706', Icon: Mail },
-  'Pending Setup':  { label: 'Pending Setup',  color: '#4338CA', bg: '#EEF2FF', border: '#C7D2FE', dot: '#6366F1', Icon: Wrench },
-  'No Users':       { label: 'No Users',       color: '#6B7280', bg: '#F3F4F6', border: '#E5E7EB', dot: '#9CA3AF', Icon: UserX },
-  'Disabled':       { label: 'Deactivated',    color: '#B91C1C', bg: '#FEE2E2', border: '#FCA5A5', dot: '#EF4444', Icon: Ban },
+  'Active':        { label: 'Active',        color: '#15803D', bg: '#DCFCE7', border: '#86EFAC', dot: '#16A34A', Icon: ShieldCheck },
+  'Inactive':      { label: 'Inactive',      color: '#6B7280', bg: '#F3F4F6', border: '#E5E7EB', dot: '#9CA3AF', Icon: UserX },
+  'Disabled':      { label: 'Disabled',      color: '#B91C1C', bg: '#FEE2E2', border: '#FCA5A5', dot: '#EF4444', Icon: Ban },
+  'Setup Required':{ label: 'Setup Required',color: '#4338CA', bg: '#EEF2FF', border: '#C7D2FE', dot: '#6366F1', Icon: Wrench },
 };
 
 const HUB_STATUS_RANK: Record<HubStatusKey, number> = {
-  'Active': 0, 'Invite Pending': 1, 'Pending Setup': 2, 'No Users': 3, 'Disabled': 4,
+  'Active': 0, 'Inactive': 1, 'Setup Required': 2, 'Disabled': 3,
 };
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+type InviteStatus = 'Pending' | 'Accepted' | 'Expired';
+
+type InviteDetail = {
+  contactId: string;
+  name: string;
+  email: string;
+  inviteSentAt: string | null;
+  status: InviteStatus;
+};
 
 type HubStats = {
   org: Organization;
@@ -64,7 +79,20 @@ type HubStats = {
   status: HubStatusKey;
   primaryName: string | null;
   primaryEmail: string | null;
+  inviteDetails: InviteDetail[];
 };
+
+function getInviteStatus(c: Contact, now: number): InviteStatus {
+  if (c.hubStatus === 'Active') return 'Accepted';
+  if (c.hubStatus === 'Invited') {
+    if (c.inviteSentAt) {
+      const sent = new Date(c.inviteSentAt).getTime();
+      if (!isNaN(sent) && now - sent > THIRTY_DAYS_MS) return 'Expired';
+    }
+    return 'Pending';
+  }
+  return 'Pending';
+}
 
 function computeHubStats(org: Organization, now: number): HubStats {
   const contacts = org.contacts || [];
@@ -85,12 +113,22 @@ function computeHubStats(org: Organization, now: number): HubStats {
   let status: HubStatusKey;
   if (!org.hubEnabled) status = 'Disabled';
   else if (activeCount > 0) status = 'Active';
-  else if (invitedCount > 0) status = 'Invite Pending';
-  else if (users.length > 0) status = 'No Users';
-  else status = 'Pending Setup';
+  else if (users.length > 0) status = 'Inactive';
+  else status = 'Setup Required';
 
   const primary = getPrimaryContact(org);
   const primaryName = primary ? `${primary.firstName} ${primary.lastName}`.trim() || null : null;
+
+  const inviteDetails: InviteDetail[] = contacts
+    .filter((c) => c.inviteSentAt || c.hubStatus === 'Invited' || c.hubStatus === 'Active')
+    .filter((c) => c.email)
+    .map((c): InviteDetail => ({
+      contactId: c.id,
+      name: `${c.firstName} ${c.lastName}`.trim() || c.email || 'Unknown',
+      email: c.email || '',
+      inviteSentAt: c.inviteSentAt ?? null,
+      status: getInviteStatus(c, now),
+    }));
 
   return {
     org,
@@ -102,6 +140,7 @@ function computeHubStats(org: Organization, now: number): HubStats {
     status,
     primaryName,
     primaryEmail: primary?.email || null,
+    inviteDetails,
   };
 }
 
@@ -112,23 +151,31 @@ function fmtDate(ms: number | null) {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-type ChipId = 'All' | 'Active' | 'Invite Pending' | 'No Users' | 'Inactive';
-const CHIPS: ChipId[] = ['All', 'Active', 'Invite Pending', 'No Users', 'Inactive'];
+function fmtDateStr(s: string | null) {
+  if (!s) return '—';
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+type ChipId = 'All' | 'Active' | 'Inactive' | 'Setup Required' | 'Disabled';
+const CHIPS: ChipId[] = ['All', 'Active', 'Inactive', 'Setup Required', 'Disabled'];
 
 function matchesChip(chip: ChipId, s: HubStats): boolean {
-  switch (chip) {
-    case 'All': return true;
-    case 'Active': return s.status === 'Active';
-    case 'Invite Pending': return s.status === 'Invite Pending';
-    case 'No Users': return s.status === 'No Users' || s.status === 'Pending Setup';
-    case 'Inactive': return s.status === 'Disabled';
-  }
+  if (chip === 'All') return true;
+  return s.status === chip;
 }
 
 type SortField = 'name' | 'users' | 'lastLogin' | 'invites' | 'status';
 const AVATAR_W = 44;
-const COL = { users: 88, lastLogin: 118, invites: 88, status: 128, actions: 120 };
-const TABLE_MIN_W = 780;
+const COL = { users: 80, lastLogin: 118, invites: 88, status: 138, actions: 120 };
+const TABLE_MIN_W = 800;
+
+const INVITE_STATUS_CFG: Record<InviteStatus, { color: string; bg: string; border: string; Icon: any; label: string }> = {
+  Pending:  { color: '#B45309', bg: '#FEF3C7', border: '#FCD34D', Icon: Clock,        label: 'Pending' },
+  Accepted: { color: '#15803D', bg: '#DCFCE7', border: '#86EFAC', Icon: CheckCircle,  label: 'Accepted' },
+  Expired:  { color: '#B91C1C', bg: '#FEE2E2', border: '#FCA5A5', Icon: AlertCircle,  label: 'Expired' },
+};
 
 function HubStatusBadge({ status }: { status: HubStatusKey }) {
   const cfg = HUB_STATUS_CFG[status];
@@ -141,21 +188,99 @@ function HubStatusBadge({ status }: { status: HubStatusKey }) {
   );
 }
 
+function InviteDetailsModal({
+  stats,
+  onClose,
+  onResend,
+  resendingId,
+}: {
+  stats: HubStats;
+  onClose: () => void;
+  onResend: (contactId: string) => void;
+  resendingId: string | null;
+}) {
+  const { org, inviteDetails } = stats;
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.modalOverlay} onPress={onClose}>
+        <Pressable style={styles.inviteModal} onPress={() => {}}>
+          <View style={styles.inviteModalHeader}>
+            <View style={{ gap: 2 }}>
+              <Text style={styles.inviteModalTitle}>Invite Details</Text>
+              <Text style={styles.inviteModalSub}>{org.name}</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={20} color={Colors.light.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          {inviteDetails.length === 0 ? (
+            <View style={styles.inviteEmpty}>
+              <Text style={styles.inviteEmptyText}>No invitations have been sent for this hub.</Text>
+            </View>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+              {inviteDetails.map((inv, idx) => {
+                const cfg = INVITE_STATUS_CFG[inv.status];
+                const StatusIcon = cfg.Icon;
+                const canResend = inv.status === 'Pending' || inv.status === 'Expired';
+                const isResending = resendingId === inv.contactId;
+                return (
+                  <View key={inv.contactId} style={[styles.inviteRow, idx < inviteDetails.length - 1 && styles.inviteRowDivider]}>
+                    <View style={styles.inviteRowLeft}>
+                      <Text style={styles.inviteName} numberOfLines={1}>{inv.name}</Text>
+                      <Text style={styles.inviteEmail} numberOfLines={1}>{inv.email}</Text>
+                      <Text style={styles.inviteDate}>Invited: {fmtDateStr(inv.inviteSentAt)}</Text>
+                    </View>
+                    <View style={styles.inviteRowRight}>
+                      <View style={[styles.inviteStatusBadge, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
+                        <StatusIcon size={10} color={cfg.color} />
+                        <Text style={[styles.inviteStatusText, { color: cfg.color }]}>{cfg.label}</Text>
+                      </View>
+                      {canResend && (
+                        <TouchableOpacity
+                          style={[styles.resendBtn, isResending && styles.resendBtnDisabled]}
+                          onPress={() => onResend(inv.contactId)}
+                          disabled={isResending}
+                          activeOpacity={0.8}
+                        >
+                          <Send size={11} color={isResending ? Colors.light.textSecondary : Colors.light.tint} />
+                          <Text style={[styles.resendBtnText, isResending && { color: Colors.light.textSecondary }]}>
+                            {isResending ? 'Sending…' : 'Resend Invite'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          )}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 function HubRow({
   stats,
   onPress,
   onOpenHub,
   onCopyLink,
+  onInviteClick,
   copied,
 }: {
   stats: HubStats;
   onPress: () => void;
   onOpenHub: () => void;
   onCopyLink: () => void;
+  onInviteClick: () => void;
   copied: boolean;
 }) {
   const { org } = stats;
   const last = fmtDate(stats.lastLogin);
+  const hasInvites = stats.inviteDetails.length > 0;
+  const pendingCount = stats.inviteDetails.filter((i) => i.status === 'Pending').length;
 
   return (
     <TouchableOpacity
@@ -186,12 +311,27 @@ function HubRow({
           : <Text style={styles.tableDim}>Never</Text>}
       </View>
       <View style={styles.colInvites}>
-        {stats.invitedCount > 0 ? (
-          <View style={styles.invitePill}>
+        {!hasInvites ? (
+          <Text style={styles.tableDim}>N/A</Text>
+        ) : pendingCount > 0 ? (
+          <TouchableOpacity
+            style={styles.invitePillBtn}
+            onPress={(e) => { e.stopPropagation?.(); onInviteClick(); }}
+            activeOpacity={0.8}
+          >
             <Mail size={11} color="#B45309" />
-            <Text style={styles.invitePillText}>{stats.invitedCount}</Text>
-          </View>
-        ) : <Text style={styles.tableDim}>—</Text>}
+            <Text style={styles.invitePillText}>{pendingCount}</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.inviteAllAcceptedBtn}
+            onPress={(e) => { e.stopPropagation?.(); onInviteClick(); }}
+            activeOpacity={0.8}
+          >
+            <CheckCircle2 size={11} color="#15803D" />
+            <Text style={styles.inviteAllAcceptedText}>All Accepted</Text>
+          </TouchableOpacity>
+        )}
       </View>
       <View style={styles.colStatus}>
         <HubStatusBadge status={stats.status} />
@@ -232,13 +372,15 @@ function HubRow({
 
 export default function ClientHubsScreen() {
   const router = useRouter();
-  const { orgs, isLoading } = useCrm();
+  const { orgs, isLoading, refreshOrg } = useCrm() as any;
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [chip, setChip] = useState<ChipId>('All');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>('status');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [inviteModalOrgId, setInviteModalOrgId] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
   const { isMobile } = useBreakpoint();
 
   const now = Date.now();
@@ -246,32 +388,32 @@ export default function ClientHubsScreen() {
   const decorated = useMemo(
     () =>
       orgs
-        .filter((o) => o.hubEnabled || o.hubEverEnabled)
-        .map((o) => computeHubStats(o, now)),
+        .filter((o: Organization) => o.hubEnabled || o.hubEverEnabled)
+        .map((o: Organization) => computeHubStats(o, now)),
     [orgs, now],
   );
 
   const metrics = useMemo(() => {
     let totalHubs = 0;
     let loggedIn30 = 0;
-    let pendingInvites = 0;
+    let totalInvited = 0;
     for (const s of decorated) {
       if (s.org.hubEnabled) {
         totalHubs += 1;
         loggedIn30 += s.recentlyActive;
-        pendingInvites += s.invitedCount;
+        totalInvited += s.invitedCount;
       }
     }
-    return { totalHubs, loggedIn30, pendingInvites };
+    return { totalHubs, loggedIn30, totalInvited };
   }, [decorated]);
 
   const chipCounts = useMemo(() => {
-    const c: Record<ChipId, number> = { 'All': decorated.length, 'Active': 0, 'Invite Pending': 0, 'No Users': 0, 'Inactive': 0 };
+    const c: Record<ChipId, number> = { 'All': decorated.length, 'Active': 0, 'Inactive': 0, 'Setup Required': 0, 'Disabled': 0 };
     for (const s of decorated) {
       if (matchesChip('Active', s)) c['Active'] += 1;
-      if (matchesChip('Invite Pending', s)) c['Invite Pending'] += 1;
-      if (matchesChip('No Users', s)) c['No Users'] += 1;
       if (matchesChip('Inactive', s)) c['Inactive'] += 1;
+      if (matchesChip('Setup Required', s)) c['Setup Required'] += 1;
+      if (matchesChip('Disabled', s)) c['Disabled'] += 1;
     }
     return c;
   }, [decorated]);
@@ -279,7 +421,7 @@ export default function ClientHubsScreen() {
   const q = search.toLowerCase().trim();
 
   const filtered = useMemo(() => {
-    const list = decorated.filter((s) => {
+    const list = decorated.filter((s: HubStats) => {
       if (!matchesChip(chip, s)) return false;
       if (q) {
         const org = s.org;
@@ -287,7 +429,7 @@ export default function ClientHubsScreen() {
           org.name.toLowerCase().includes(q) ||
           (s.primaryName || '').toLowerCase().includes(q) ||
           (s.primaryEmail || '').toLowerCase().includes(q) ||
-          org.contacts.some((c) =>
+          org.contacts.some((c: Contact) =>
             `${c.firstName} ${c.lastName}`.toLowerCase().includes(q) ||
             (c.email || '').toLowerCase().includes(q));
         if (!hit) return false;
@@ -296,7 +438,7 @@ export default function ClientHubsScreen() {
     });
     const dir = sortDir === 'asc' ? 1 : -1;
     const nameOf = (s: HubStats) => s.org.name.toLowerCase();
-    return [...list].sort((a, b) => {
+    return [...list].sort((a: HubStats, b: HubStats) => {
       let cmp = 0;
       switch (sortField) {
         case 'name': cmp = nameOf(a).localeCompare(nameOf(b)); break;
@@ -327,6 +469,25 @@ export default function ClientHubsScreen() {
     else { setSortField(field); setSortDir('asc'); }
   }, [sortField]);
 
+  const handleResend = useCallback(async (orgId: string, contactId: string) => {
+    setResendingId(contactId);
+    try {
+      await fetch(`/api/orgs/${orgId}/contacts/${contactId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'resendInvite' }),
+      });
+      if (refreshOrg) await refreshOrg(orgId);
+    } catch {
+    } finally {
+      setResendingId(null);
+    }
+  }, [refreshOrg]);
+
+  const inviteModalStats = inviteModalOrgId
+    ? decorated.find((s: HubStats) => s.org.id === inviteModalOrgId) ?? null
+    : null;
+
   const SortBtn = ({ field, label }: { field: SortField; label: string }) => (
     <TouchableOpacity style={styles.sortBtn} onPress={() => toggleSort(field)} activeOpacity={0.7}>
       <Text style={[styles.sortBtnText, sortField === field && styles.sortBtnTextActive]} numberOfLines={1}>{label}</Text>
@@ -338,9 +499,9 @@ export default function ClientHubsScreen() {
     <View style={styles.tableHeader}>
       <View style={styles.colAvatar} />
       <View style={styles.colOrg}><SortBtn field="name" label="Organization" /></View>
-      <View style={styles.colUsers}><SortBtn field="users" label="Hub Users" /></View>
+      <View style={styles.colUsers}><SortBtn field="users" label="Users" /></View>
       <View style={styles.colLastLogin}><SortBtn field="lastLogin" label="Last Login" /></View>
-      <View style={styles.colInvites}><SortBtn field="invites" label="Pending Invites" /></View>
+      <View style={styles.colInvites}><SortBtn field="invites" label="Invited" /></View>
       <View style={styles.colStatus}><SortBtn field="status" label="Hub Status" /></View>
       <Text style={[styles.thText, styles.colActionsHeader]}>ACTIONS</Text>
     </View>
@@ -366,8 +527,8 @@ export default function ClientHubsScreen() {
           </View>
           <View style={styles.statDivider} />
           <View style={[styles.statItem, isMobile && styles.statItemMobile]}>
-            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: '#D97706' }]}>{metrics.pendingInvites}</Text>
-            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Pending Invites</Text>
+            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: '#D97706' }]}>{metrics.totalInvited}</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Invited</Text>
           </View>
         </View>
 
@@ -427,7 +588,7 @@ export default function ClientHubsScreen() {
             <View style={{ minWidth: TABLE_MIN_W, flexGrow: 1 }}>
               {tableHeader}
               <View style={styles.tableBody}>
-                {filtered.map((s, idx) => (
+                {filtered.map((s: HubStats, idx: number) => (
                   <View key={s.org.id}>
                     <HubRow
                       stats={s}
@@ -438,6 +599,7 @@ export default function ClientHubsScreen() {
                         else router.push(`/portal/${s.org.id}` as any);
                       }}
                       onCopyLink={() => handleCopyLink(s.org)}
+                      onInviteClick={() => setInviteModalOrgId(s.org.id)}
                       copied={copiedId === s.org.id}
                     />
                     {idx < filtered.length - 1 && <View style={styles.tableDivider} />}
@@ -448,6 +610,15 @@ export default function ClientHubsScreen() {
           </ScrollView>
           <View style={{ height: 40 }} />
         </ScrollView>
+      )}
+
+      {inviteModalStats && (
+        <InviteDetailsModal
+          stats={inviteModalStats}
+          onClose={() => setInviteModalOrgId(null)}
+          onResend={(contactId) => handleResend(inviteModalStats.org.id, contactId)}
+          resendingId={resendingId}
+        />
       )}
     </View>
   );
@@ -534,8 +705,11 @@ const styles = StyleSheet.create({
 
   usersPill: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999, backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB' },
   usersPillText: { fontSize: 13, fontWeight: '700' as const, color: Colors.light.text },
-  invitePill: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FCD34D' },
+
+  invitePillBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FCD34D' },
   invitePillText: { fontSize: 12, fontWeight: '700' as const, color: '#B45309' },
+  inviteAllAcceptedBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: '#DCFCE7', borderWidth: 1, borderColor: '#86EFAC' },
+  inviteAllAcceptedText: { fontSize: 11, fontWeight: '600' as const, color: '#15803D' },
 
   hubBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, borderWidth: 1 },
   hubBadgeText: { fontSize: 11, fontWeight: '700' as const },
@@ -544,4 +718,25 @@ const styles = StyleSheet.create({
   actionPrimaryText: { fontSize: 12, fontWeight: '700' as const, color: '#fff' },
   actionGhost: { width: 28, height: 28, borderRadius: 7, borderWidth: 1, borderColor: Colors.light.border, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.light.surface },
   actionGhostDone: { borderColor: '#86EFAC', backgroundColor: '#F0FDF4' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  inviteModal: { backgroundColor: '#fff', borderRadius: 16, width: '100%', maxWidth: 480, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12 },
+  inviteModalHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 },
+  inviteModalTitle: { fontSize: 18, fontWeight: '800' as const, color: Colors.light.text },
+  inviteModalSub: { fontSize: 13, color: Colors.light.textSecondary, marginTop: 2 },
+  inviteEmpty: { paddingVertical: 24, alignItems: 'center' },
+  inviteEmptyText: { fontSize: 14, color: Colors.light.textSecondary, textAlign: 'center' as const },
+
+  inviteRow: { paddingVertical: 14, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
+  inviteRowDivider: { borderBottomWidth: 1, borderBottomColor: Colors.light.border },
+  inviteRowLeft: { flex: 1, gap: 2 },
+  inviteRowRight: { alignItems: 'flex-end', gap: 8 },
+  inviteName: { fontSize: 14, fontWeight: '700' as const, color: Colors.light.text },
+  inviteEmail: { fontSize: 12, color: Colors.light.textSecondary },
+  inviteDate: { fontSize: 11, color: Colors.light.textSecondary, marginTop: 2 },
+  inviteStatusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, borderWidth: 1 },
+  inviteStatusText: { fontSize: 11, fontWeight: '700' as const },
+  resendBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 7, borderWidth: 1.5, borderColor: Colors.light.tint, backgroundColor: '#FFF4EE' },
+  resendBtnDisabled: { borderColor: Colors.light.border, backgroundColor: Colors.light.background },
+  resendBtnText: { fontSize: 12, fontWeight: '600' as const, color: Colors.light.tint },
 });

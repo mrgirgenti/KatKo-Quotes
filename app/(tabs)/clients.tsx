@@ -25,18 +25,18 @@ import { ContactImportModal } from '@/components/ContactImportModal';
 import { formatPhone, formatPhoneInput, normalizePhone } from '@/utils/phone';
 
 // ── Column system ──────────────────────────────────────────────────────────────
-type ColId = 'org' | 'bizType' | 'contact' | 'phone' | 'email' | 'status' | 'hub' | 'campaign' | 'actions';
+type ColId = 'org' | 'bizType' | 'contact' | 'role' | 'phone' | 'email' | 'status' | 'hub' | 'campaign' | 'actions';
 type SortField = 'name' | 'type' | 'contact' | 'campaign' | 'status' | 'hub';
 type SortDir = 'asc' | 'desc';
 type AddMode = 'org' | 'person';
 type AddStep = 'details';
 
 type FilterState = {
-  org: string; bizType: string[]; contact: string; phone: string;
+  org: string; bizType: string[]; contact: string; role: string; phone: string;
   email: string; status: CrmStatus[]; hub: string[];
 };
 
-const EMPTY_FILTERS: FilterState = { org: '', bizType: [], contact: '', phone: '', email: '', status: [], hub: [] };
+const EMPTY_FILTERS: FilterState = { org: '', bizType: [], contact: '', role: '', phone: '', email: '', status: [], hub: [] };
 const FILTER_TABS: (CrmStatus | 'All')[] = ['All', 'Cold', 'Working', 'Active Client', 'Past Client'];
 
 const AVATAR_W = 48;
@@ -45,6 +45,7 @@ const COL_STYLE: Record<ColId, any> = {
   org:      { ...TABLE_COL.textPrimary, ...TABLE_CELL.left, flexBasis: 240, minWidth: 195, maxWidth: 315 },
   bizType:  { width: 130, ...TABLE_CELL.left },
   contact:  { ...TABLE_COL.text, ...TABLE_CELL.left },
+  role:     { width: 140, ...TABLE_CELL.left },
   email:    { ...TABLE_COL.text, ...TABLE_CELL.left },
   phone:    { width: 138, ...TABLE_CELL.left },
   status:   { ...TABLE_COL.status, ...TABLE_CELL.center },
@@ -57,13 +58,14 @@ const TOGGLEABLE_COLS: { id: ColId; label: string }[] = [
   { id: 'org', label: 'Organization' },
   { id: 'bizType', label: 'Business Type' },
   { id: 'contact', label: 'Contact Name' },
+  { id: 'role', label: 'Title / Role' },
   { id: 'email', label: 'Email Address' },
   { id: 'phone', label: 'Phone Number' },
   { id: 'status', label: 'Status' },
   { id: 'hub', label: 'Client Hub' },
   { id: 'campaign', label: 'Campaign' },
 ];
-const DEFAULT_VISIBLE: ColId[] = ['org', 'bizType', 'contact', 'email', 'phone', 'status', 'hub', 'actions'];
+const DEFAULT_VISIBLE: ColId[] = ['org', 'bizType', 'contact', 'role', 'email', 'phone', 'status', 'hub', 'actions'];
 
 const EMPTY_ORG_FORM = { name: '', type: '', city: '', state: '', notes: '', status: 'Cold' as CrmStatus };
 const EMPTY_CONTACT_FORM = { firstName: '', lastName: '', phone: '', email: '', role: '' };
@@ -104,7 +106,11 @@ function OrgRow({ org, onPress, onDelete, visibleCols, isSelected, onToggleSelec
         <View style={{ width: AVATAR_W }}>
           <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={36} shape="circle" />
         </View>
-        {col('org', <Text style={styles.tableOrgName} numberOfLines={1}>{org.name}</Text>)}
+        {col('org', (
+          <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+            <Text style={[styles.tableOrgName, styles.tableOrgNameLink]} numberOfLines={1}>{org.name}</Text>
+          </TouchableOpacity>
+        ))}
         {col('bizType', org.type
           ? <Text style={styles.tableCell} numberOfLines={1}>{org.type}</Text>
           : <Text style={styles.tableDim}>—</Text>
@@ -112,6 +118,10 @@ function OrgRow({ org, onPress, onDelete, visibleCols, isSelected, onToggleSelec
         {col('contact', primaryContact
           ? <Text style={styles.tableCell} numberOfLines={1}>{primaryContact.firstName} {primaryContact.lastName}</Text>
           : <Text style={styles.tableDim}>No contact</Text>
+        )}
+        {col('role', primaryContact?.role
+          ? <Text style={styles.tableCell} numberOfLines={1}>{primaryContact.role}</Text>
+          : <Text style={styles.tableDim}>—</Text>
         )}
         {col('email', primaryContact?.email
           ? <Text style={styles.tableCell} numberOfLines={1}>{primaryContact.email}</Text>
@@ -218,6 +228,7 @@ function OrganizationsScreen() {
     if (colFilters.org) n++;
     if (colFilters.bizType.length) n++;
     if (colFilters.contact) n++;
+    if (colFilters.role) n++;
     if (colFilters.phone) n++;
     if (colFilters.email) n++;
     if (colFilters.status.length) n++;
@@ -242,6 +253,7 @@ function OrganizationsScreen() {
         if (!pc) return false;
         if (!`${pc.firstName} ${pc.lastName}`.toLowerCase().includes(colFilters.contact.toLowerCase())) return false;
       }
+      if (colFilters.role && !(pc?.role || '').toLowerCase().includes(colFilters.role.toLowerCase())) return false;
       if (colFilters.phone && !normalizePhone(pc?.phone).includes(normalizePhone(colFilters.phone))) return false;
       if (colFilters.email && !(pc?.email || '').toLowerCase().includes(colFilters.email.toLowerCase())) return false;
       if (colFilters.status.length && !colFilters.status.includes(o.status)) return false;
@@ -376,6 +388,7 @@ function OrganizationsScreen() {
             {col.id === 'org' && <SortBtn field="name" label="Organization" />}
             {col.id === 'bizType' && <SortBtn field="type" label="Business Type" />}
             {col.id === 'contact' && <SortBtn field="contact" label="Contact" />}
+            {col.id === 'role' && <Text style={styles.sortBtnText}>Title / Role</Text>}
             {col.id === 'email' && <Text style={styles.sortBtnText}>Email</Text>}
             {col.id === 'phone' && <Text style={styles.sortBtnText}>Phone</Text>}
             {col.id === 'status' && <SortBtn field="status" label="Status" />}
@@ -491,6 +504,7 @@ function OrganizationsScreen() {
             {[
               { key: 'org', label: 'Organization', val: colFilters.org, set: (v: string) => setColFilters((f) => ({ ...f, org: v })) },
               { key: 'contact', label: 'Contact Name', val: colFilters.contact, set: (v: string) => setColFilters((f) => ({ ...f, contact: v })) },
+              { key: 'role', label: 'Title / Role', val: colFilters.role, set: (v: string) => setColFilters((f) => ({ ...f, role: v })) },
               { key: 'phone', label: 'Phone', val: colFilters.phone, set: (v: string) => setColFilters((f) => ({ ...f, phone: v })) },
               { key: 'email', label: 'Email', val: colFilters.email, set: (v: string) => setColFilters((f) => ({ ...f, email: v })) },
             ].map(({ key, label, val, set }) => (
@@ -579,7 +593,7 @@ function OrganizationsScreen() {
       ) : (
         <ScrollView style={{ flex: 1, outlineStyle: 'none' } as any} showsVerticalScrollIndicator={false}>
           <ScrollView horizontal showsHorizontalScrollIndicator={true} contentContainerStyle={{ flexGrow: 1 }} style={{ outlineStyle: 'none' } as any}>
-            <View style={{ minWidth: 1220, flexGrow: 1 }}>
+            <View style={{ minWidth: 1360, flexGrow: 1 }}>
               {tableHeaderRow}
               <View style={styles.tableBody}>
                 {filtered.map((org, idx) => (
@@ -835,6 +849,7 @@ const styles = StyleSheet.create({
   bulkActionDanger: { backgroundColor: 'rgba(239,68,68,0.15)' },
   bulkActionText: { fontSize: 12, fontWeight: '600' as const, color: 'rgba(255,255,255,0.9)' },
   tableOrgName: { fontSize: 14, fontWeight: '600' as const, color: Colors.light.text },
+  tableOrgNameLink: { color: Colors.light.tint, textDecorationLine: 'underline' as const },
   tableCell: { fontSize: 13, color: Colors.light.textSecondary },
   tableDim: { fontSize: 13, color: Colors.light.border },
   tableCampaignActive: { fontSize: 12, color: Colors.light.tint, fontWeight: '500' as const },
