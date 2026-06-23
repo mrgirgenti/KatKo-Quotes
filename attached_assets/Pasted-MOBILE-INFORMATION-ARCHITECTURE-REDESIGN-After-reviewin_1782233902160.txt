@@ -1,0 +1,138 @@
+MOBILE INFORMATION ARCHITECTURE REDESIGN
+
+After reviewing the attached mobile screenshots, I do not want the solution to be limited to fixing responsive bugs and accordion behavior.
+
+I want a full evaluation of the Client Hub mobile information architecture.
+
+GOAL
+
+The mobile experience should feel intentional and optimized for mobile devices while still presenting the exact same content, functionality, and workflows as desktop.
+
+Mobile should not be a separate application.
+
+Mobile should not remove important information.
+
+Mobile should not introduce mobile-only content.
+
+Mobile should simply organize the same information more effectively for smaller screens.
+
+SECTION-BASED MOBILE NAVIGATION
+
+Evaluate all Client Hub pages and identify areas where large accordion stacks should be replaced with a section navigation pattern.
+
+Reference the attached Planning Center screenshots as inspiration.
+
+Example:
+
+Instead of displaying:
+
+* Organization Branding
+* Organization Information
+* Client Hub Settings
+* My Profile
+* Team Management
+* Help
+
+as a long stack of accordions on mobile,
+
+consider displaying:
+
+Organization Profile
+
+☰ Sections
+
+Menu:
+
+* Overview
+* Branding
+* Organization
+* Team
+* Client Hub
+* Settings
+
+Only one section should be visible at a time.
+
+This reduces:
+
+* Excessive scrolling
+* Accordion bugs
+* Hidden content
+* Layout complexity
+* Mobile clutter
+
+while maintaining access to all information.
+
+MOBILE SECTION NAVIGATION SHOULD BE CONSIDERED FOR:
+
+* Organization Profile
+* Project Details
+* Quote Details
+* User Management
+* Client Settings
+* Account Settings
+* Any page containing 5+ major content sections
+
+ACCORDIONS SHOULD REMAIN APPROPRIATE FOR:
+
+* FAQ sections
+* Help content
+* Advanced settings
+* Optional configuration areas
+* Secondary content
+
+DESKTOP VS MOBILE PARITY
+
+Desktop and mobile must contain:
+
+* The same fields
+* The same actions
+* The same workflows
+* The same statuses
+* The same content
+
+Only the presentation may differ.
+
+No mobile-specific descriptions should be added.
+
+No desktop content should be removed.
+
+If content is hidden behind a menu or section selector, it must remain fully accessible.
+
+RESPONSIVE AUDIT REQUIREMENTS
+
+Review all Client Hub pages and correct:
+
+* Horizontal overflow
+* Clipped content
+* Truncated buttons
+* Overlapping elements
+* Broken card layouts
+* Responsive grid issues
+* Mobile typography issues
+* Accordion height bugs
+* Blank whitespace created by collapsed sections
+
+ACCORDION REQUIREMENTS
+
+For any accordion that remains:
+
+* Collapsed sections must consume zero layout height
+* No blank whitespace may remain
+* Page height must recalculate correctly
+* Hidden content must not reserve space
+* Mobile and desktop behavior must remain consistent
+
+DELIVERABLES
+
+Provide a summary of:
+
+1. Pages audited
+2. Components updated
+3. Responsive issues corrected
+4. Areas converted from accordions to section navigation
+5. Files modified
+6. Remaining mobile limitations, if any
+
+Do not implement isolated fixes.
+
+Identify the underlying responsive patterns causing these issues and implement a scalable mobile design system across the entire Client Hub.
