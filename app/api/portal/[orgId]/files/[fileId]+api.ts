@@ -39,9 +39,9 @@ export async function PATCH(request: Request, { orgId, fileId }: { orgId: string
   if (!orgId || !fileId) return Response.json({ error: 'orgId and fileId required' }, { status: 400 });
 
   const body = await request.json().catch(() => ({}));
-  const { originalName } = body;
-  if (!originalName || !originalName.trim()) {
-    return Response.json({ error: 'originalName required' }, { status: 400 });
+  const { originalName, projectId } = body;
+  if (!originalName && !projectId) {
+    return Response.json({ error: 'originalName or projectId required' }, { status: 400 });
   }
 
   const client = await pool.connect();
@@ -52,10 +52,22 @@ export async function PATCH(request: Request, { orgId, fileId }: { orgId: string
     );
     if (!check.rows[0]) return Response.json({ error: 'File not found' }, { status: 404 });
 
-    await client.query(
-      `UPDATE "File" SET "originalName" = $1 WHERE id = $2`,
-      [originalName.trim(), fileId]
-    );
+    if (originalName) {
+      await client.query(
+        `UPDATE "File" SET "originalName" = $1 WHERE id = $2`,
+        [originalName.trim(), fileId]
+      );
+    } else if (projectId) {
+      const projCheck = await client.query(
+        `SELECT id FROM "Project" WHERE id = $1 AND "organizationId" = $2`,
+        [projectId, orgId]
+      );
+      if (!projCheck.rows[0]) return Response.json({ error: 'Project not found' }, { status: 404 });
+      await client.query(
+        `UPDATE "File" SET "projectId" = $1 WHERE id = $2`,
+        [projectId, fileId]
+      );
+    }
     return Response.json({ success: true });
   } finally {
     client.release();

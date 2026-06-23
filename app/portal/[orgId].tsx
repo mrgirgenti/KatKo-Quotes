@@ -1473,6 +1473,24 @@ export default function ClientPortal() {
         const data = await res.json();
         setLineItems(reorderLineItemsFromSource(data.lineItemsData || []));
         if (data.notesClient) setRequestNotes(data.notesClient);
+        // Pre-fill artwork from the source project's attached files.
+        // Skip INVOICE_PDF (staff-only) and MOCKUP (already carried per line
+        // item via mockupBinFile in reorderLineItemsFromSource above).
+        const SKIP_FILE_TYPES = new Set(['INVOICE_PDF', 'MOCKUP']);
+        const artworkFiles: MediaFile[] = (Array.isArray(data.files) ? data.files : [])
+          .filter((f: any) => f?.id && !SKIP_FILE_TYPES.has(f.fileType || ''))
+          .map((f: any): MediaFile => ({
+            id: f.id,
+            originalName: f.originalName ?? 'Untitled',
+            mimeType: f.mimeType ?? null,
+            fileSize: f.fileSize ?? null,
+            fileType: f.fileType ?? '',
+            projectId: null,
+            createdAt: f.createdAt ?? '',
+            firstName: null,
+            lastName: null,
+          }));
+        if (artworkFiles.length > 0) setArtworkFromBin(artworkFiles);
       }
     } catch {}
   }, [session]);
@@ -2007,7 +2025,7 @@ export default function ClientPortal() {
           await fetch('/api/files', { method: 'POST', body: fd }).catch(() => {});
         }
         for (const bf of artworkFromBin) {
-          await fetch(`/api/files/${bf.id}`, {
+          await fetch(`/api/portal/${session.orgId}/files/${bf.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ projectId }),
