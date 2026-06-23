@@ -2,6 +2,7 @@ import { pool } from '@/lib/pool';
 import type { Pool } from 'pg';
 import type { Quote, ProjectPriority } from '@/types/quote';
 import { authenticateRequest, unauthorized, forbidden } from '@/lib/auth';
+import { resolveMockups } from '@/utils/mockupService';
 
 function dbPriorityToFrontend(p: string | null | undefined): ProjectPriority {
   switch (p) {
@@ -145,7 +146,10 @@ export async function GET(request: Request) {
     if (!authedUser) return unauthorized();
     runBackfillOnce(pool).catch(() => {});
     const result = await pool.query(`SELECT * FROM "Project" ORDER BY "createdAt" DESC`);
-    return Response.json(result.rows.map(toFrontendQuote));
+    return Response.json(result.rows.map(row => ({
+      ...toFrontendQuote(row),
+      ...resolveMockups((row.lineItemsData as any[]) || []),
+    })));
   } catch (err) {
     console.error('[GET /api/projects]', err);
     return Response.json({ error: 'Failed to load projects' }, { status: 500 });

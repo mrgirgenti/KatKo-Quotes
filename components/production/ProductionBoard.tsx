@@ -88,7 +88,7 @@ function BoardCard({ quote, onOpen, accentColor }: { quote: Quote; onOpen: () =>
   const projNum = quote.projectNumber || quote.invoiceNumber;
   const service = serviceTypeLabel(quote);
   const rush = isRush(quote);
-  const mockupUri = (quote.lineItems || []).find((li) => li.mockupUri)?.mockupUri;
+  const mockupUri = quote.primaryMockup ?? (quote.lineItems || []).find((li: any) => li.mockupUri)?.mockupUri;
 
   // Only show badge for elevated priorities — Normal is the default and needs no label
   const showPriority = quote.priority && quote.priority !== 'Normal' && quote.priority !== 'Low';

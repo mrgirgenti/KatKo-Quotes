@@ -124,10 +124,10 @@ interface PortalProject {
   createdAt: string;
   lineItemCount: number;
   designCount: number;
-  thumbUri: string | null;
-  primaryImageUri: string | null;
-  mockupUris: string[] | null;
+  primaryMockup: string | null;
+  mockupGallery: string[] | null;
   mockupCount: number;
+  resolvedImageSource: 'mockup' | 'fallback';
   artworkCount: number;
   proofCount: number;
   invoiceCount: number;
@@ -150,6 +150,10 @@ interface FullPortalProject {
   inHandsDate: string | null;
   notesClient: string | null;
   lineItemsData: any[] | null;
+  primaryMockup?: string | null;
+  mockupGallery?: string[] | null;
+  mockupCount?: number;
+  resolvedImageSource?: 'mockup' | 'fallback';
   calculations: any | null;
   hasOnlineFee: boolean;
   hasSalesTax: boolean;
@@ -2505,10 +2509,7 @@ export default function ClientPortal() {
     };
 
     const renderCard = (p: PortalProject) => {
-      const rawUris: string[] = Array.isArray(p.mockupUris) && p.mockupUris.length > 0
-        ? p.mockupUris
-        : (p.thumbUri ? [p.thumbUri] : []);
-      const resolvedUris = rawUris.map(u => resolveMockupUrl(u, session?.orgId || '')).filter(Boolean);
+      const resolvedUris = (p.mockupGallery ?? []).map(u => resolveMockupUrl(u, session?.orgId || '')).filter(Boolean);
       const hasImage = resolvedUris.length > 0;
       const activeIdx = mpCardIdx[p.id] ?? 0;
       const thumbColor = THUMB_COLORS[(p.title.charCodeAt(0) || 0) % THUMB_COLORS.length];

@@ -114,7 +114,21 @@ export async function GET(_req: Request, { orgId }: { orgId: string }) {
       [orgId]
     );
 
-    return Response.json(result.rows);
+    // Remap SQL columns to canonical DTO field names consumed by every client surface.
+    const rows = (result.rows as any[]).map(row => {
+      const { thumbUri, primaryImageUri, mockupUris, ...rest } = row;
+      const gallery: string[] = Array.isArray(mockupUris)
+        ? (mockupUris as any[]).filter(Boolean)
+        : (primaryImageUri ? [primaryImageUri] : []);
+      const primaryMockup: string | null = gallery[0] ?? null;
+      return {
+        ...rest,
+        primaryMockup,
+        mockupGallery: gallery,
+        resolvedImageSource: primaryMockup ? 'mockup' : 'fallback',
+      };
+    });
+    return Response.json(rows);
   } catch (err) {
     console.error('[GET /api/portal/[orgId]/projects]', err);
     return Response.json({ error: 'Server error' }, { status: 500 });

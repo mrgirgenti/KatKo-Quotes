@@ -64,9 +64,9 @@ export function ProjectCard({
   const total = quote.calculations?.total ?? 0;
   const profit = quote.calculations?.markupAmount ?? 0;
   const dueDate = quote.inHandsDate ? formatDate(quote.inHandsDate) : '—';
-  const allMockupUris: string[] = (quote.lineItems || [])
-    .map((li: any) => li.mockupUri)
-    .filter((u: any): u is string => !!u);
+  const allMockupUris: string[] = Array.isArray(quote.mockupGallery)
+    ? quote.mockupGallery
+    : (quote.lineItems || []).map((li: any) => li.mockupUri).filter(Boolean);
   const [cmpImgIdx, setCmpImgIdx] = useState(0);
   const cmpThumbColor = CMP_THUMB_COLORS[(((quote.projectName || '')[0] || '').charCodeAt(0) || 0) % CMP_THUMB_COLORS.length];
   const cmpThumbInitial = ((quote.projectName || '').trim()[0] || '?').toUpperCase();

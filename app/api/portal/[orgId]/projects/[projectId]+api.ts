@@ -1,5 +1,6 @@
 import { pool } from '@/lib/pool';
 import { calculateLineItemSubtotal } from '@/utils/quoteCalculations';
+import { resolveMockups } from '@/utils/mockupService';
 
 export async function GET(
   _req: Request,
@@ -146,6 +147,7 @@ export async function GET(
       calculations: safeCalc,
       files: filesResult.rows,
       invoices: invoicesResult.rows,
+      ...resolveMockups(safeLineItems),
     });
   } catch (err) {
     console.error('[GET /api/portal/[orgId]/projects/[projectId]]', err);

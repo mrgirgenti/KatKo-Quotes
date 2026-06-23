@@ -144,6 +144,12 @@ export interface Quote {
   priority?: ProjectPriority | null;
   assignedToUserId?: string | null;
   rush?: boolean;
+  // Computed mockup DTO fields — populated by API, consumed by all display surfaces.
+  // Never independently derived in components; always read from the project object.
+  primaryMockup?: string | null;
+  mockupGallery?: string[];
+  mockupCount?: number;
+  resolvedImageSource?: 'mockup' | 'fallback';
 }
 
 export type ProjectPriority = 'Critical' | 'High' | 'Normal' | 'Low';
