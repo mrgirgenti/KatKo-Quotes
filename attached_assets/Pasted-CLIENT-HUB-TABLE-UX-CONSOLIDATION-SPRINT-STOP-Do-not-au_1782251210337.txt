@@ -1,0 +1,486 @@
+CLIENT HUB + TABLE UX CONSOLIDATION SPRINT
+
+STOP.
+
+Do not audit.
+
+Do not roadmap.
+
+Implement.
+
+This sprint contains multiple approved UX improvements that affect table architecture, navigation patterns, record discoverability, mockup visibility, and usability throughout Katalyst OS.
+
+Implement all approved changes together.
+
+---
+
+# OBJECTIVE
+
+Improve:
+
+* Project discoverability
+* Organization discoverability
+* Contact discoverability
+* Table usability
+* Mockup visibility
+* Client Hub usability
+* Cross-platform consistency
+
+Maintain existing table architecture.
+
+DO NOT redesign these pages into cards.
+
+DO NOT rebuild layouts.
+
+Refine and improve the current system.
+
+---
+
+# PART 1 — ORGANIZATIONS MUST BE CLICKABLE
+
+Organizations are records and should behave like records.
+
+Current:
+
+Organization
+→ View Button
+
+New:
+
+Organization Name
+→ Clickable
+
+Opens:
+
+Organization Details
+
+Examples:
+
+Battlestar Coffee Co
+Shilo AI
+Abide Church
+
+All organization names should open Organization Details.
+
+The View button may remain.
+
+---
+
+# PART 2 — PROJECTS & QUOTES TABLE COLUMN ORDER
+
+Apply this exact order to BOTH:
+
+Projects Page
+Quotes Page
+
+Approved order:
+
+STATUS
+INVOICE #
+PROJECT
+CLIENT
+ORDER DATE
+DUE DATE
+SERVICE(S)
+APPLICATOR(S)
+PCS
+TOTAL
+PER PCS
+PROFIT
+ACTIONS
+
+Do not use different orders between Projects and Quotes.
+
+Maintain consistency.
+
+---
+
+# PART 3 — ACTIVE PROJECTS / SUBMITTED QUOTES COLUMN ORDER
+
+Inside Organization Details:
+
+Active Projects
+Submitted Quotes
+
+Current implementation places Status too far right.
+
+Move Status immediately after Project.
+
+New order:
+
+PROJECT
+STATUS
+SERVICE(S)
+SUBMITTED
+DUE DATE
+PCS
+TOTAL
+PER PCS
+PROFIT
+ACTIONS
+
+Reason:
+
+Users think:
+
+What project is this?
+What stage is it in?
+
+before
+
+What service is being used?
+
+---
+
+# PART 4 — PROJECT MOCKUPS IN TABLES
+
+Implement the approved visual direction.
+
+---
+
+## ACTIVE PROJECTS
+
+Within the Project column display:
+
+* Mockup carousel thumbnail
+* Project Name
+* Invoice #
+* Client Name
+
+Mockup belongs INSIDE the Project column.
+
+DO NOT create a separate Mockup column.
+
+---
+
+## SUBMITTED QUOTES
+
+Within the Project column display:
+
+* Mockup carousel thumbnail
+* Project Name
+* Quote #
+* Client Name
+
+Mockup belongs INSIDE the Project column.
+
+DO NOT create a separate Mockup column.
+
+---
+
+# PART 5 — MOCKUP CAROUSEL BEHAVIOR
+
+For projects containing multiple mockups:
+
+Display:
+
+* Primary mockup
+* Left navigation arrow
+* Right navigation arrow
+* Indicator dots
+
+Example:
+
+[o o o o]
+
+Current image:
+
+● o o o
+
+Active dot should use Katalyst orange.
+
+Users should be able to browse mockups directly inside:
+
+* Client Hub My Projects
+* Organization Details Active Projects
+* Organization Details Submitted Quotes
+
+without opening the project.
+
+---
+
+# PART 6 — CLIENT HUB PROJECT CARDS
+
+Maintain existing approved card architecture.
+
+Do not redesign.
+
+Implement the approved mockup carousel behavior:
+
+* Left / Right arrows
+* Indicator dots
+* Favorite star top-right
+* Mockup-first presentation
+
+Primary mockup should come from the approved mockup hierarchy.
+
+---
+
+# PART 7 — ORGANIZATIONS TABLE
+
+Add:
+
+Title / Role
+
+Placement:
+
+Organization
+Business Type
+Contact
+Title / Role
+Email
+Phone
+Status
+Client Hub
+Actions
+
+Source:
+
+Primary Contact title/role.
+
+If no title exists:
+
+Display:
+
+—
+
+Do not display:
+
+Unknown
+No title
+
+---
+
+# PART 8 — CLIENT HUBS PAGE CLEANUP
+
+Rename:
+
+HUB USERS
+→ USERS
+
+PENDING INVITES
+→ INVITED
+
+---
+
+## HUB STATUS FIX
+
+Current:
+
+Invite Pending
+
+This is incorrect when the hub itself is active.
+
+Hub Status should represent:
+
+Hub State
+
+Examples:
+
+Active
+Inactive
+
+NOT invitation state.
+
+Invitation state belongs in the INVITED column.
+
+---
+
+## INVITED COLUMN
+
+Make the invited count/status interactive.
+
+Clicking should open:
+
+Invite Details Modal
+
+Display:
+
+* Name
+* Email
+* Invitation Date
+* Status
+
+Status examples:
+
+* Pending
+* Accepted
+* Expired
+
+Include:
+
+Resend Invite
+
+action.
+
+When no outstanding invitations exist:
+
+Display:
+
+N/A
+
+instead of Invite Pending.
+
+---
+
+# PART 9 — FROZEN COLUMNS
+
+Implement frozen columns for improved usability on wide tables.
+
+---
+
+## ORGANIZATIONS
+
+Freeze:
+
+Organization
+
+---
+
+## CONTACTS
+
+Freeze:
+
+Client Name
+
+---
+
+## PROJECTS
+
+Freeze:
+
+Status
+Invoice #
+Project
+
+---
+
+## QUOTES
+
+Freeze:
+
+Status
+Invoice #
+Project
+
+Requirements:
+
+* Sticky positioning remains aligned with headers
+* Sorting remains functional
+* Row interactions remain functional
+* Dropdown menus remain functional
+* No overlap issues
+* Proper z-index layering during horizontal scrolling
+* Works across all supported screen sizes
+
+Reference behavior:
+
+* Airtable
+* HubSpot
+* Monday.com
+* ClickUp
+
+Purpose:
+
+Allow users to horizontally scroll without losing record identity.
+
+---
+
+# PART 10 — TABLE DENSITY CLEANUP
+
+Multiple pages still contain excessive unused whitespace between columns.
+
+This creates a visually cheap and unfinished appearance.
+
+Reduce unnecessary column widths and reclaim wasted horizontal space.
+
+Examples already identified:
+
+* Organizations
+* Contacts
+* Projects
+* Quotes
+* Client Hubs
+
+Do not randomly shrink columns.
+
+Resize based on content requirements.
+
+Goal:
+
+Create tighter, more professional, information-dense tables.
+
+---
+
+# PART 11 — CONSISTENCY RULE
+
+Across:
+
+* Organizations
+* Contacts
+* Projects
+* Quotes
+* Client Hubs
+* Organization Details
+* Client Hub
+
+follow the same philosophy:
+
+Important record first.
+
+Supporting metadata second.
+
+Actions last.
+
+Do not create page-specific interpretations.
+
+Maintain consistency everywhere.
+
+---
+
+# VALIDATION
+
+Verify:
+
+* Organizations clickable
+* Projects table order updated
+* Quotes table order updated
+* Organization Details table order updated
+* Mockup carousel visible in tables
+* Mockup carousel visible in Client Hub
+* Favorite star remains top-right
+* Title / Role column added
+* Hub Users renamed to Users
+* Pending Invites renamed to Invited
+* Invite modal functioning
+* Hub Status corrected
+* Organizations frozen column working
+* Contacts frozen column working
+* Projects frozen columns working
+* Quotes frozen columns working
+* Table spacing improved
+* No dropdown regressions
+* No sorting regressions
+
+---
+
+# OUTPUT
+
+1. Files changed
+2. Components changed
+3. Table order changes
+4. Mockup carousel implementation
+5. Client Hub updates
+6. Client Hubs page updates
+7. Frozen column implementation
+8. Table density improvements
+9. Validation results
+10. Screenshots
+
+Implement.
+
+Do not audit.
+
+Do not roadmap.
+
+Complete the full implementation in this sprint.
