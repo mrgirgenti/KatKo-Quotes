@@ -1,0 +1,341 @@
+CRM Consolidation Phase — Remove Hub Management & Make Organization Details the Single Source of Truth
+
+STOP.
+
+Do not audit.
+
+Do not roadmap.
+
+Implement.
+
+The current Client Hub architecture is overcomplicated and still contains duplicate management systems.
+
+We already established the intended architecture:
+
+Organization
+→ Contacts
+→ Client Hub Access
+
+Contacts are the source of truth.
+
+Organization Details is the source of truth.
+
+Hub Management is now redundant.
+
+This sprint is a consolidation sprint.
+
+⸻
+
+OBJECTIVE
+
+Remove Hub Management as a people-management surface.
+
+Move all remaining useful functionality into Organization Details.
+
+Create one authoritative place to manage:
+
+* Contacts
+* Hub Access
+* Org Admins
+* Hub Sharing
+* Hub Status
+* Hub Readiness
+
+No duplicate interfaces.
+
+No duplicate datasets.
+
+No duplicate workflows.
+
+⸻
+
+SOURCE OF TRUTH RULE
+
+The CRM is the source of truth.
+
+Specifically:
+
+Organization
+→ Contacts
+
+Everything derives from Contacts.
+
+Not:
+
+* Memberships
+* Hub Users
+* Team Members
+* Hub Management datasets
+
+Those are implementation details.
+
+The UI should never present them as separate systems.
+
+⸻
+
+REMOVE HUB MANAGEMENT AS A MANAGEMENT SURFACE
+
+The following should no longer be editable from Hub Management:
+
+* Team Members
+* Org Admins
+* Invite Contact
+* Member Roles
+* Hub User Management
+
+These functions belong to Contacts.
+
+If Hub Management remains temporarily:
+
+It becomes a read-only operational dashboard.
+
+No people management.
+
+⸻
+
+ORGANIZATION DETAILS ENHANCEMENTS
+
+The Client Hub section inside Organization Details becomes the home for Hub administration.
+
+Move or surface:
+
+* Hub On / Off
+* Hub URL
+* Copy URL
+* Open Hub
+* QR Code
+* Hub Readiness
+* Hub Metrics
+
+directly within Organization Details.
+
+The user should not need to leave the Organization Details page to manage a Client Hub.
+
+⸻
+
+CONTACTS TABLE REDESIGN
+
+Replace the current card-list contact layout.
+
+Create a modern CRM table.
+
+Columns:
+
+* Name
+* Role / Title
+* Email
+* Phone
+* Status
+* Primary Contact
+* Hub Access
+* Org Admin
+* Last Activity
+* Actions
+
+⸻
+
+STATUS PILLS
+
+Use pills for:
+
+Primary Contact
+
+Hub Access:
+
+* Active
+* Disabled
+
+Org Admin:
+
+* Yes
+* No
+
+Status:
+
+* Active
+* Invited
+* Disabled
+
+Match Katalyst styling:
+
+* Black headers
+* Orange accents
+* Clean spacing
+
+⸻
+
+CONTACT MANAGEMENT RULES
+
+Contacts are the only place where:
+
+* Hub Access is granted
+* Hub Access is revoked
+* Org Admin is assigned
+* Org Admin is removed
+
+There should never be another interface that manages those permissions.
+
+⸻
+
+CLIENT HUB SECTION REWORK
+
+The Client Hub section inside Organization Details should become:
+
+Hub Status
+
+Hub URL
+
+Open Hub
+
+Copy Link
+
+QR Code
+
+Hub Readiness
+
+Metrics
+
+Users
+
+Admins
+
+Pending Invites
+
+All metrics must derive from Contacts.
+
+Never from a separate dataset.
+
+⸻
+
+METRIC RULES
+
+Hub Users
+
+= Contacts with Hub Access
+
+Org Admins
+
+= Contacts with Org Admin enabled
+
+Pending Invites
+
+= Contacts invited but not activated
+
+No separate membership counts.
+
+No separate team-member counts.
+
+⸻
+
+READINESS RULES
+
+Readiness derives from:
+
+* Hub Enabled
+* Contact Exists
+* Hub User Exists
+* Org Admin Assigned
+* Logo Uploaded
+
+Everything should use CRM data.
+
+No duplicate calculations.
+
+⸻
+
+DATA CONSISTENCY REQUIREMENT
+
+Verify:
+
+Organization Details
+
+Client Hub
+
+Portal Access
+
+Projects
+
+Quotes
+
+all use the same Contact relationships.
+
+No email-based matching.
+
+No duplicate lookup systems.
+
+No competing datasets.
+
+One source of truth.
+
+⸻
+
+HUB MANAGEMENT PAGE
+
+Evaluate whether Hub Management should:
+
+A)
+Remain as a read-only dashboard
+
+or
+
+B)
+Be fully removed
+
+If removed:
+
+Add redirects to Organization Details.
+
+Preserve all functionality.
+
+Do not break URLs.
+
+⸻
+
+VALIDATION
+
+Test:
+
+* Organization with 0 contacts
+* Organization with 1 contact
+* Organization with multiple contacts
+* Hub disabled
+* Hub enabled
+* Org admin assigned
+* Org admin removed
+* Invite user
+* Revoke user
+* Open hub
+* Share hub
+
+Verify:
+
+Contacts and Hub metrics always match.
+
+Users and Admins always match.
+
+Readiness always matches.
+
+No duplicate management surfaces remain.
+
+⸻
+
+OUTPUT
+
+Return:
+
+1. Files changed
+2. Components removed
+3. Components consolidated
+4. New Contacts table
+5. New Client Hub section
+6. Hub Management disposition
+7. Validation results
+8. Screenshots
+
+Implement.
+
+Do not audit.
+
+Do not create additional management screens.
+
+Organization Details becomes the single source of truth for Client Hub administration.
