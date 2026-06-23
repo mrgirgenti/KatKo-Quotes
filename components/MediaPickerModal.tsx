@@ -18,7 +18,7 @@ const BRAND = '#FF5A00';
 export interface PickerMediaFile {
   id: string;
   originalName: string;
-  mimeType?: string;
+  mimeType?: string | null;
   fileSize?: number;
   createdAt?: string;
 }

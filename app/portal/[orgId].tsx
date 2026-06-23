@@ -78,7 +78,7 @@ import {
   MessageCircle,
 } from 'lucide-react-native';
 import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
-import MediaPickerModal from '@/components/MediaPickerModal';
+import MediaPickerModal, { PickerMediaFile } from '@/components/MediaPickerModal';
 import MediaCard from '@/components/MediaCard';
 import OverlayMenu from '@/components/OverlayMenu';
 import { formatPhone } from '@/utils/phone';
@@ -1690,7 +1690,7 @@ export default function ClientPortal() {
     if (session && mediaBinFiles.length === 0) fetchMediaBin(session.orgId);
   }, [session, mediaBinFiles.length, fetchMediaBin]);
 
-  const handleBinPickerSelect = useCallback((file: MediaFile) => {
+  const handleBinPickerSelect = useCallback((file: PickerMediaFile) => {
     setBinPickerVisible(false);
     if (binPickerTarget === 'mockup' && binPickerLineItemId) {
       setLineItems(prev => prev.map(li =>
@@ -1699,9 +1699,10 @@ export default function ClientPortal() {
           : li
       ));
     } else if (binPickerTarget === 'artwork') {
-      setArtworkFromBin(prev => prev.find(f => f.id === file.id) ? prev : [...prev, file]);
+      const full = mediaBinFiles.find(f => f.id === file.id);
+      if (full) setArtworkFromBin(prev => prev.find(f => f.id === file.id) ? prev : [...prev, full]);
     }
-  }, [binPickerTarget, binPickerLineItemId]);
+  }, [binPickerTarget, binPickerLineItemId, mediaBinFiles]);
 
   const handleRenamePortalFile = useCallback(async (fileId: string, newName: string) => {
     if (!session || !newName.trim()) { setRenamingPortalFileId(null); return; }
@@ -2041,7 +2042,6 @@ export default function ClientPortal() {
       // Consume the reorder linkage so a later unrelated submit can't be
       // mis-attributed to this source project.
       setReorderSourceId(null);
-      setStep('success');
     } catch {
       setSubmitError('Connection error. Please try again.');
     } finally {
@@ -2696,7 +2696,6 @@ export default function ClientPortal() {
           <View style={mpStyles.headerTop}>
             <View>
               <Text style={mpStyles.headerTitle}>My Projects</Text>
-              <Text style={mpStyles.headerSubtitle}>Track the status of your projects in real time.</Text>
             </View>
             <TouchableOpacity style={mpStyles.startProjectBtn} onPress={() => setActiveView('submit')} activeOpacity={0.85}>
               <Plus size={14} color="#fff" />
@@ -3120,7 +3119,7 @@ export default function ClientPortal() {
             <Text style={{ color: TEXT_LIGHT }}>Project not found.</Text>
           </View>
         ) : (
-          <View style={{ flexDirection: 'row', gap: 20, alignItems: 'flex-start' }}>
+          <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 20, alignItems: 'flex-start' }}>
             {/* Left / Main column */}
             <View style={{ flex: 1, gap: 16 }}>
 
@@ -3248,7 +3247,7 @@ export default function ClientPortal() {
             </View>
 
             {/* Right column: Quote response + Pricing + Actions */}
-            <View style={{ width: 280, gap: 16 }}>
+            <View style={{ width: isMobile ? ('100%' as any) : 280, gap: 16 }}>
               {/* Quote response (Approve / Request Changes / Decline) */}
               {(canRespondToQuote || quoteResp) && (
                 <View style={pvStyles.card}>
@@ -3449,7 +3448,6 @@ export default function ClientPortal() {
         <View style={dash.pageTitleRow}>
           <View>
             <Text style={dash.pageTitle}>Media Bin</Text>
-            <Text style={mbStyles.pageSubtitle}>Store and manage your artwork, logos, and files.</Text>
           </View>
           <TouchableOpacity style={mbStyles.uploadBtn} onPress={() => mediaBinInputRef.current?.click?.()} disabled={mediaBinUploading}>
             {mediaBinUploading
@@ -3627,7 +3625,6 @@ export default function ClientPortal() {
         <View style={catStyles.headerRow}>
           <View>
             <Text style={dash.pageTitle}>Product Catalogs</Text>
-            <Text style={catStyles.headerSub}>Browse product lines shared by Katalyst Ko</Text>
           </View>
           <TouchableOpacity style={catStyles.requestBtn} onPress={() => setActiveView('submit')} activeOpacity={0.85}>
             <ExternalLink size={14} color="#fff" />
@@ -3666,7 +3663,7 @@ export default function ClientPortal() {
                 {displayed.map(cat => {
                   const color = CAT_COLORS[cat.category] || '#6B7280';
                   const initials = (cat.vendorName || cat.name).split(' ').map((w: string) => w[0]).join('').slice(0, 3).toUpperCase();
-                  const cardW = numCols === 1 ? '100%' : numCols === 2 ? '48%' : numCols === 4 ? '23.5%' : '32%';
+                  const cardW = numCols === 2 ? '48%' : '23.5%';
                   return (
                     <View key={cat.id} style={[catStyles.card, { width: cardW as any, flexGrow: 0, flexShrink: 0 }]}>
                       {/* Badge row */}
@@ -3778,9 +3775,9 @@ export default function ClientPortal() {
           <View style={[svStyles.formRow, isMobile && { flexDirection: 'column' as any }]}>
             <View style={[styles.card, { flex: 1, maxWidth: 680 }]}>
             <Text style={styles.formTitle}>{reorderSourceId ? 'Review Your Reorder' : 'Submit a Project Request'}</Text>
-            <Text style={styles.formSub}>{reorderSourceId
-              ? "We've pre-filled your previous order below. Adjust quantities, add notes, or upload new artwork, then submit."
-              : 'Fill in the details below — your submission will come straight into Ko OS ready for pricing.'}</Text>
+            {reorderSourceId ? (
+              <Text style={styles.formSub}>{"We've pre-filled your previous order below. Adjust quantities, add notes, or upload new artwork, then submit."}</Text>
+            ) : null}
 
             <View style={styles.sectionCard}>
               <Text style={styles.sectionLabel}>Request Details</Text>
@@ -3986,9 +3983,9 @@ export default function ClientPortal() {
     const [copied, setCopied] = useState(false);
     const [openSections, setOpenSections] = useState<{ branding: boolean; info: boolean; settings: boolean }>({ branding: false, info: false, settings: false });
     const toggleSection = (k: 'branding' | 'info' | 'settings') => setOpenSections((s) => ({ ...s, [k]: !s[k] }));
-    const showBranding = !isMobile || openSections.branding;
-    const showInfo = !isMobile || openSections.info;
-    const showSettings = !isMobile || openSections.settings;
+    const showBranding = true;
+    const showInfo = true;
+    const showSettings = true;
 
     const CardHead = ({ title, right, collapsible, expanded, onToggle }: { title: string; right?: React.ReactNode; collapsible?: boolean; expanded?: boolean; onToggle?: () => void }) => {
       const inner = (
@@ -4193,7 +4190,7 @@ export default function ClientPortal() {
 
           {/* Card 1: Organization Branding */}
           <View style={[profStyles.card, { flex: 1 }]}>
-            <CardHead title="ORGANIZATION BRANDING" collapsible={isMobile} expanded={openSections.branding} onToggle={() => toggleSection('branding')} />
+            <CardHead title="ORGANIZATION BRANDING" />
             {showBranding && (
               <View style={[profStyles.cardBody, isMobile && profStyles.cardBodyMobile]}>
                 <View style={[profStyles.logoSquare, isMobile && { alignSelf: 'center' }]}>
@@ -4229,7 +4226,7 @@ export default function ClientPortal() {
 
           {/* Card 2: Organization Information */}
           <View style={[profStyles.card, { flex: 1 }]}>
-            <CardHead title="ORGANIZATION INFORMATION" collapsible={isMobile} expanded={openSections.info} onToggle={() => toggleSection('info')} />
+            <CardHead title="ORGANIZATION INFORMATION" />
             {showInfo && (
               <View style={[profStyles.cardBody, isMobile && profStyles.cardBodyMobile]}>
                 <View style={{ gap: 14 }}>
@@ -4276,7 +4273,7 @@ export default function ClientPortal() {
 
           {/* Card 3: Client Hub Settings */}
           <View style={[profStyles.card, { flex: 1 }]}>
-            <CardHead title="CLIENT HUB SETTINGS" collapsible={isMobile} expanded={openSections.settings} onToggle={() => toggleSection('settings')} />
+            <CardHead title="CLIENT HUB SETTINGS" />
             {showSettings && (
               <View style={[profStyles.cardBody, isMobile && profStyles.cardBodyMobile]}>
                 <View style={{ gap: 14 }}>
@@ -6600,122 +6597,6 @@ const profStyles = StyleSheet.create({
   sidebarDropdownText: { fontSize: 13, fontWeight: '500' as const, color: '#E5E7EB' },
   sidebarDropdownSep: { height: 1, backgroundColor: '#2A2A2A', marginVertical: 2, marginHorizontal: 4 },
 
-  // ── LEGACY stubs (kept so any stale references don't error) ───────────────
-  section: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 22,
-    marginBottom: 18, borderWidth: 1, borderColor: BORDER,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4,
-  },
-  avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 },
-  avatar: {
-    width: 60, height: 60, borderRadius: 30,
-    backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center',
-  },
-  avatarText: { fontSize: 24, fontWeight: '700', color: '#fff' },
-  avatarLarge: {
-    width: 88, height: 88, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6,
-  },
-  avatarLargeText: { fontSize: 38, fontWeight: '700', color: '#fff' },
-  userName: { fontSize: 18, fontWeight: '700', color: TEXT, marginBottom: 2 },
-  userEmail: { fontSize: 13, color: TEXT_LIGHT, marginBottom: 6 },
-  orgBadge: {
-    alignSelf: 'flex-start', backgroundColor: '#FFF4EE', borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1, borderColor: '#FFD5BB',
-  },
-  orgBadgeText: { fontSize: 11, fontWeight: '600', color: BRAND },
-  infoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  infoCell: { flex: 1, minWidth: 120 },
-  infoLabel: { fontSize: 10, fontWeight: '700', color: TEXT_PLACEHOLDER, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 },
-  infoValue: { fontSize: 14, fontWeight: '500', color: TEXT },
-  sectionHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14,
-  },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: TEXT },
-  memberCount: { fontSize: 12, color: TEXT_LIGHT },
-  inviteRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  inviteInputWrap: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
-    borderWidth: 1, borderColor: BORDER, borderRadius: 9,
-    paddingHorizontal: 12, paddingVertical: 9, backgroundColor: BG,
-  },
-  inviteInput: { flex: 1, fontSize: 13, color: TEXT, outlineStyle: 'none' } as any,
-  inviteBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: BRAND, borderRadius: 9,
-    paddingHorizontal: 14, paddingVertical: 10,
-  },
-  inviteBtnDisabled: { opacity: 0.5 },
-  inviteBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  errorText: { fontSize: 12, color: '#DC2626', marginBottom: 8 },
-  successText: { fontSize: 12, color: '#16A34A', marginBottom: 8 },
-  memberList: { borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: BORDER },
-  memberRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#fff',
-  },
-  memberRowAlt: { backgroundColor: '#FAFAFA' },
-  memberAvatar: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  memberAvatarText: { fontSize: 13, fontWeight: '700', color: TEXT_MED },
-  memberName: { fontSize: 13, fontWeight: '600', color: TEXT },
-  memberEmail: { fontSize: 11, color: TEXT_LIGHT },
-  memberMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 0 },
-  rolePill: {
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20,
-    backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: BORDER,
-  },
-  rolePillAdmin: { backgroundColor: '#FFF4EE', borderColor: '#FFD5BB' },
-  rolePillText: { fontSize: 10, fontWeight: '600', color: TEXT_LIGHT },
-  rolePillTextAdmin: { color: BRAND },
-  invitedBadge: {
-    paddingHorizontal: 7, paddingVertical: 2, borderRadius: 20,
-    backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE',
-  },
-  invitedBadgeText: { fontSize: 10, fontWeight: '600', color: '#2563EB' },
-  removeBtn: { padding: 6, borderRadius: 6, backgroundColor: '#FEF2F2' },
-  emptyTeam: { alignItems: 'center', paddingVertical: 20 },
-  emptyTeamText: { fontSize: 13, color: TEXT_LIGHT },
-  editBlock: { marginBottom: 18 },
-  editLabel: { fontSize: 10, fontWeight: '700', color: TEXT_PLACEHOLDER, textTransform: 'uppercase', letterSpacing: 0.5 },
-  editBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    borderWidth: 1, borderColor: BRAND, borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 8,
-  },
-  editBtnText: { fontSize: 12, fontWeight: '600', color: BRAND },
-  editBtnDestructive: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    borderWidth: 1, borderColor: '#FECACA', borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#FEF2F2',
-  },
-  editBtnDestructiveText: { fontSize: 12, fontWeight: '600', color: '#DC2626' },
-  colorSwatches: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10 },
-  colorSwatch: {
-    width: 32, height: 32, borderRadius: 16,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  colorSwatchSelected: {
-    borderWidth: 3, borderColor: '#fff',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 4,
-  },
-  orgLogoPreview: {
-    borderRadius: 10, borderWidth: 1, borderColor: BORDER,
-    backgroundColor: '#F9FAFB', padding: 16, alignItems: 'center',
-  },
-  orgLogoEmpty: {
-    borderRadius: 10, borderWidth: 1, borderColor: BORDER, borderStyle: 'dashed' as any,
-    backgroundColor: '#F9FAFB', padding: 28, alignItems: 'center',
-  },
-  signOutBlock: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    marginTop: 8, padding: 16, borderRadius: 12,
-    borderWidth: 1, borderColor: '#FEE2E2', backgroundColor: '#FFF5F5',
-  },
-  signOutText: { fontSize: 14, fontWeight: '600', color: '#DC2626' },
 });
 
 const pvStyles = StyleSheet.create({
