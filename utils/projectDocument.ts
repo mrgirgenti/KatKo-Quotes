@@ -164,7 +164,7 @@ export function getModeVisibility(mode: DocumentMode): DocumentVisibility {
     case 'PRODUCTION':
       return {
         title: 'PRODUCTION PUNCH SHEET',
-        numberLabel: 'Project #',
+        numberLabel: 'Invoice #',
         secondaryDateLabel: 'In Hands Date',
         showPricing: false,
         showNotesColumn: true,
@@ -343,7 +343,7 @@ export function buildProjectDocumentModel(
   const grandTotalQty = lineItems.reduce((sum, li) => sum + li.totalQty, 0);
 
   const documentNumber =
-    mode === 'INVOICE'
+    mode === 'INVOICE' || mode === 'PRODUCTION'
       ? source.invoiceNumber || null
       : source.projectNumber || source.invoiceNumber || null;
 

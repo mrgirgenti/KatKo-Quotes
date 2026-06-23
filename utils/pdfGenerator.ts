@@ -569,9 +569,20 @@ export async function generateProjectDocumentPDF(
     const html = buildProjectDocumentHTML(quote, mode);
 
     if (Platform.OS === 'web') {
-      const client = sanitizeFilename(quote.personOrganization || 'Client');
-      const project = sanitizeFilename(quote.projectName || MODE_FILE_LABEL[mode]);
-      downloadHtmlAsFile(html, `${client}_${project}_${MODE_FILE_LABEL[mode]}.html`);
+      // Open in a new tab and trigger the browser's print dialog.
+      // The user can choose "Save as PDF" in the dialog to get a real PDF file
+      // that opens in their PDF viewer rather than the browser.
+      const win = openHtmlInNewWindow(html);
+      if (!win) {
+        // Popup blocked — fall back to HTML download so they still get the file
+        const client = sanitizeFilename(quote.personOrganization || 'Client');
+        const project = sanitizeFilename(quote.projectName || MODE_FILE_LABEL[mode]);
+        downloadHtmlAsFile(html, `${client}_${project}_${MODE_FILE_LABEL[mode]}.html`);
+        return;
+      }
+      setTimeout(() => {
+        try { win.print(); } catch (_) {}
+      }, 800);
       return;
     }
 

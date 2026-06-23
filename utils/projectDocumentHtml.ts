@@ -65,9 +65,8 @@ function renderHeader(model: ProjectDocumentModel): string {
   ].join('');
 
   const metaRows = [
-    model.documentNumber
-      ? `<div class="title-meta"><span class="meta-key">${esc(v.numberLabel)}:</span> ${esc(model.documentNumber)}</div>`
-      : '',
+    // Always show the number row — dash if no number has been assigned yet
+    `<div class="title-meta"><span class="meta-key">${esc(v.numberLabel)}:</span> ${model.documentNumber ? esc(model.documentNumber) : '—'}</div>`,
     model.date
       ? `<div class="title-meta"><strong>Date:</strong> ${esc(model.date)}</div>`
       : '',
@@ -244,8 +243,10 @@ function renderProductionNotesBox(): string {
     <div class="notes-col">
       <div class="prod-notes-box">
         <div class="prod-notes-head">PRODUCTION NOTES / SPECIAL INSTRUCTIONS</div>
-        <div class="prod-notes-lines">
-          <span></span><span></span><span></span><span></span><span></span>
+        <div class="prod-notes-content">
+          <div class="prod-notes-lines">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
         </div>
       </div>
     </div>`;
@@ -313,7 +314,7 @@ function styles(): string {
     .doc-title{font-size:34px;font-weight:800;letter-spacing:-0.5px;line-height:1.04;color:#111;margin-bottom:8px}
     .doc-title-wrap{font-size:22px;letter-spacing:0;word-break:break-word;white-space:normal;line-height:1.2}
     .title-meta{font-size:12px;color:#222;margin-top:3px}
-    .meta-key{color:${BRAND};font-weight:700}
+    .meta-key{color:#111;font-weight:700}
 
     .brand-divider{height:2px;background:${BRAND};border-radius:2px;margin:18px 0}
     .footer-divider{margin:22px 0 12px}
@@ -387,12 +388,14 @@ function styles(): string {
     .ot-grand span:last-child{color:${BRAND}}
 
     /* Production bottom */
-    .prod-notes-box{border:1px solid #e6e6e6;border-radius:8px;padding:12px 14px}
-    .prod-notes-head{font-weight:700;font-size:12px;color:#111;margin-bottom:14px}
+    .prod-notes-box{border:1px solid #e6e6e6;border-radius:8px;overflow:hidden}
+    .prod-notes-head{background:#111;color:#fff;font-weight:700;font-size:12px;text-align:center;padding:7px 10px}
+    .prod-notes-content{padding:12px 14px}
     .prod-notes-lines{display:flex;flex-direction:column;gap:22px}
     .prod-notes-lines span{display:block;border-bottom:1px solid #d9d9d9;height:1px}
-    .checklist-box{border:1px solid #e6e6e6;border-radius:8px;padding:12px 14px}
-    .checklist-head{font-weight:700;font-size:12px;color:#111;margin-bottom:12px}
+    .checklist-box{border:1px solid #e6e6e6;border-radius:8px;overflow:hidden}
+    .checklist-head{background:#111;color:#fff;font-weight:700;font-size:12px;text-align:center;padding:7px 10px}
+    .checklist-body{padding:12px 14px}
     .check-row{display:flex;align-items:center;gap:9px;margin-bottom:10px;font-size:12px;color:#222}
     .check-box{flex:0 0 auto;width:14px;height:14px;border:1.5px solid #999;border-radius:3px}
 
