@@ -126,6 +126,7 @@ interface PortalProject {
   designCount: number;
   thumbUri: string | null;
   primaryImageUri: string | null;
+  mockupUris: string[] | null;
   mockupCount: number;
   artworkCount: number;
   proofCount: number;
@@ -2475,6 +2476,7 @@ export default function ClientPortal() {
     });
 
     const THUMB_COLORS = ['#FF5A00', '#2563EB', '#7C3AED', '#059669', '#DC2626', '#D97706', '#0891B2'];
+    const [mpCardIdx, setMpCardIdx] = useState<Record<string, number>>({});
 
     const SortTh = ({ field, label, style, align }: {
       field: typeof mpSortField; label: string;
@@ -2502,129 +2504,147 @@ export default function ClientPortal() {
       );
     };
 
-    const ColHeaders = () => (
-      <View style={mpStyles.tableHeader}>
-        <View style={mpStyles.thumbCol} />
-        <SortTh field="project" label="PROJECT" style={mpStyles.colProject} />
-        <SortTh field="status" label="STATUS" style={mpStyles.colStatus} />
-        <SortTh field="order" label="ORDER DATE" style={mpStyles.colOrderDate} />
-        <SortTh field="inHands" label="DUE DATE" style={mpStyles.colDueDate} />
-        <SortTh field="items" label="PCS" style={mpStyles.colPcs} />
-        <SortTh field="total" label="TOTAL" style={mpStyles.colTotal} />
-        <View style={mpStyles.colPerPcs}>
-          <Text style={mpStyles.thText}>PER PCS</Text>
-        </View>
-        <View style={mpStyles.colActions}>
-          <Text style={mpStyles.thText}>ACTION</Text>
-        </View>
-      </View>
-    );
-
-    const renderRow = (p: PortalProject, idx: number) => {
+    const renderCard = (p: PortalProject) => {
+      const rawUris: string[] = Array.isArray(p.mockupUris) && p.mockupUris.length > 0
+        ? p.mockupUris
+        : (p.thumbUri ? [p.thumbUri] : []);
+      const resolvedUris = rawUris.map(u => resolveMockupUrl(u, session?.orgId || '')).filter(Boolean);
+      const hasImage = resolvedUris.length > 0;
+      const activeIdx = mpCardIdx[p.id] ?? 0;
+      const thumbColor = THUMB_COLORS[(p.title.charCodeAt(0) || 0) % THUMB_COLORS.length];
+      const initial = (p.title.trim()[0] || '?').toUpperCase();
       const cost = p.totalCost && parseFloat(p.totalCost) > 0 ? parseFloat(p.totalCost) : null;
       const pcs = p.pieces && p.pieces > 0 ? p.pieces : null;
       const perPcs = p.perPiece && parseFloat(p.perPiece) > 0 ? parseFloat(p.perPiece) : null;
-      const thumbColor = THUMB_COLORS[(p.title.charCodeAt(0) || 0) % THUMB_COLORS.length];
-      const initial = (p.title.trim()[0] || '?').toUpperCase();
+      const isFav = favoriteProjectIds.includes(p.id);
       return (
-        <View key={p.id} style={[mpStyles.tRow, idx % 2 === 1 && mpStyles.tRowAlt]}>
-          <View style={mpStyles.thumbCol}>
-            <View style={[mpStyles.thumb, { backgroundColor: thumbColor + '22' }]}>
-              <Text style={[mpStyles.thumbInitial, { color: thumbColor }]}>{initial}</Text>
-            </View>
-          </View>
-          <View style={[mpStyles.colProject, mpStyles.tdCell, { paddingRight: 10 }]}>
-            <Text style={mpStyles.tRowName} numberOfLines={2}>{p.title}</Text>
-            {(() => {
-              const chips = assetCountSummary(p);
-              if (chips.length === 0) return null;
-              return (
-                <View style={mpStyles.assetChipsRow}>
-                  {chips.map(c => (
-                    <View key={c} style={mpStyles.assetChip}>
-                      <Text style={mpStyles.assetChipText}>{c}</Text>
-                    </View>
-                  ))}
-                </View>
-              );
-            })()}
-          </View>
-          <View style={[mpStyles.colStatus, mpStyles.tdCell]}>
-            <StatusPill status={p.status} quoteResponse={p.quoteResponse} />
-          </View>
-          <View style={[mpStyles.colOrderDate, mpStyles.tdCell]}>
-            <Text style={mpStyles.tDue}>{p.orderDate ? formatDate(p.orderDate) : '\u2014'}</Text>
-          </View>
-          <View style={[mpStyles.colDueDate, mpStyles.tdCell]}>
-            <Text style={mpStyles.tDue}>Due {p.inHandsDate ? formatDate(p.inHandsDate) : '\u2014'}</Text>
-          </View>
-          <View style={[mpStyles.colPcs, mpStyles.tdCellRight]}>
-            <Text style={mpStyles.tNum}>{pcs ?? '\u2014'}</Text>
-          </View>
-          <View style={[mpStyles.colTotal, mpStyles.tdCellRight]}>
-            <Text style={[mpStyles.tNum, cost ? mpStyles.tNumBold : undefined]}>
-              {cost ? `$${cost.toFixed(2)}` : '\u2014'}
-            </Text>
-          </View>
-          <View style={[mpStyles.colPerPcs, mpStyles.tdCellRight]}>
-            <Text style={mpStyles.tNum}>{perPcs ? `$${perPcs.toFixed(2)}` : '\u2014'}</Text>
-          </View>
-          <View style={[mpStyles.colActions, mpStyles.tdCellActions]}>
+        <TouchableOpacity key={p.id} style={mpStyles.mpCard} onPress={() => handleViewProject(p.id)} activeOpacity={0.92}>
+          <View style={mpStyles.mpCardImgWrap}>
+            {hasImage ? (
+              <Image source={{ uri: resolvedUris[activeIdx] }} style={mpStyles.mpCardImg} resizeMode="contain" />
+            ) : (
+              <View style={[mpStyles.mpCardImgFallback, { backgroundColor: thumbColor + '22' }]}>
+                <Text style={[mpStyles.mpCardInitial, { color: thumbColor }]}>{initial}</Text>
+              </View>
+            )}
+            {resolvedUris.length > 1 && (
+              <TouchableOpacity
+                style={[mpStyles.mpCardArrow, mpStyles.mpCardArrowLeft]}
+                onPress={(e: any) => { e?.stopPropagation?.(); setMpCardIdx(prev => ({ ...prev, [p.id]: (activeIdx - 1 + resolvedUris.length) % resolvedUris.length })); }}
+                hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                activeOpacity={0.8}
+              >
+                <ChevronLeft size={13} color="#fff" />
+              </TouchableOpacity>
+            )}
+            {resolvedUris.length > 1 && (
+              <TouchableOpacity
+                style={[mpStyles.mpCardArrow, mpStyles.mpCardArrowRight]}
+                onPress={(e: any) => { e?.stopPropagation?.(); setMpCardIdx(prev => ({ ...prev, [p.id]: (activeIdx + 1) % resolvedUris.length })); }}
+                hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                activeOpacity={0.8}
+              >
+                <ChevronRight size={13} color="#fff" />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
+              style={mpStyles.mpCardStar}
               onPress={(e: any) => { e?.stopPropagation?.(); toggleFavorite(p.id); }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              activeOpacity={0.7}
-              style={{ padding: 4 }}
+              activeOpacity={0.8}
             >
-              <Star
-                size={16}
-                color={favoriteProjectIds.includes(p.id) ? BRAND : '#C9CDD3'}
-                fill={favoriteProjectIds.includes(p.id) ? BRAND : 'transparent'}
-              />
+              <Star size={16} color={isFav ? BRAND : '#fff'} fill={isFav ? BRAND : 'transparent'} strokeWidth={isFav ? 2 : 1.5} />
             </TouchableOpacity>
-            <TouchableOpacity style={mpStyles.viewBtn} onPress={() => handleViewProject(p.id)} activeOpacity={0.85}>
-              <Text style={mpStyles.viewBtnText}>View Project</Text>
-            </TouchableOpacity>
-            <OverlayMenu
-              menuWidth={192}
-              align="right"
-              trigger={({ open }) => (
-                <TouchableOpacity style={mpStyles.dotsMenuBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={open} activeOpacity={0.7}>
-                  <Text style={mpStyles.dotsMenuBtnText}>{String.fromCharCode(8942)}</Text>
-                </TouchableOpacity>
-              )}
-            >
-              {({ close }) => (
-                <>
+            {resolvedUris.length > 1 && (
+              <View style={mpStyles.mpCardDots}>
+                {resolvedUris.map((_, di) => (
                   <TouchableOpacity
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 14, paddingVertical: 11 }}
-                    onPress={() => { close(); handleViewProject(p.id); }}
-                    activeOpacity={0.7}
-                  >
-                    <Download size={14} color="#6B7280" />
-                    <Text style={{ fontSize: 13, color: '#111827' }}>Download PDF</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 14, paddingVertical: 11 }}
-                    onPress={() => { close(); handleReorderProject(p.id, p.title || ''); }}
-                    activeOpacity={0.7}
-                  >
-                    <RefreshCw size={14} color="#6B7280" />
-                    <Text style={{ fontSize: 13, color: '#111827' }}>Reorder Project</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 14, paddingVertical: 11 }}
-                    onPress={() => { close(); toggleFavorite(p.id); }}
-                    activeOpacity={0.7}
-                  >
-                    <Star size={14} color="#6B7280" />
-                    <Text style={{ fontSize: 13, color: '#111827' }}>{favoriteProjectIds.includes(p.id) ? 'Unfavorite' : 'Favorite'}</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </OverlayMenu>
+                    key={di}
+                    style={[mpStyles.mpCardDot, di === activeIdx && mpStyles.mpCardDotActive]}
+                    onPress={(e: any) => { e?.stopPropagation?.(); setMpCardIdx(prev => ({ ...prev, [p.id]: di })); }}
+                  />
+                ))}
+              </View>
+            )}
           </View>
-        </View>
+          <View style={mpStyles.mpCardBody}>
+            <View style={mpStyles.mpCardTitleRow}>
+              <Text style={mpStyles.mpCardTitle} numberOfLines={2}>{p.title}</Text>
+              <StatusPill status={p.status} quoteResponse={p.quoteResponse} />
+            </View>
+            {p.designCount > 0 && (
+              <Text style={mpStyles.mpCardSubtitle} numberOfLines={1}>
+                {p.designCount} Design{p.designCount !== 1 ? 's' : ''}
+              </Text>
+            )}
+            <View style={mpStyles.mpCardMetrics}>
+              <View style={mpStyles.mpCardMetric}>
+                <Text style={mpStyles.mpCardMetricVal}>{pcs ?? '\u2014'}</Text>
+                <Text style={mpStyles.mpCardMetricLabel}>PCS</Text>
+              </View>
+              <View style={mpStyles.mpCardMetricDivider} />
+              <View style={mpStyles.mpCardMetric}>
+                <Text style={[mpStyles.mpCardMetricVal, cost ? { color: BRAND } : undefined]}>
+                  {cost ? `$${cost.toFixed(2)}` : '\u2014'}
+                </Text>
+                <Text style={mpStyles.mpCardMetricLabel}>TOTAL</Text>
+              </View>
+              <View style={mpStyles.mpCardMetricDivider} />
+              <View style={mpStyles.mpCardMetric}>
+                <Text style={mpStyles.mpCardMetricVal}>{perPcs ? `$${perPcs.toFixed(2)}` : '\u2014'}</Text>
+                <Text style={mpStyles.mpCardMetricLabel}>PER PCS</Text>
+              </View>
+            </View>
+            <Text style={mpStyles.mpCardDue}>
+              {p.status === 'COMPLETED' || p.status === 'PAID'
+                ? (p.inHandsDate ? `Completed ${formatDate(p.inHandsDate)}` : 'Completed')
+                : (p.inHandsDate ? `Due ${formatDate(p.inHandsDate)}` : '\u2014')}
+            </Text>
+            <View style={mpStyles.mpCardActions}>
+              <TouchableOpacity style={mpStyles.mpCardViewBtn} onPress={() => handleViewProject(p.id)} activeOpacity={0.85}>
+                <Text style={mpStyles.mpCardViewBtnText}>View Project</Text>
+              </TouchableOpacity>
+              <OverlayMenu
+                menuWidth={192}
+                align="right"
+                trigger={({ open }) => (
+                  <TouchableOpacity style={mpStyles.dotsMenuBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={open} activeOpacity={0.7}>
+                    <Text style={mpStyles.dotsMenuBtnText}>{String.fromCharCode(8942)}</Text>
+                  </TouchableOpacity>
+                )}
+              >
+                {({ close }) => (
+                  <>
+                    <TouchableOpacity
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 14, paddingVertical: 11 }}
+                      onPress={() => { close(); handleViewProject(p.id); }}
+                      activeOpacity={0.7}
+                    >
+                      <Download size={14} color="#6B7280" />
+                      <Text style={{ fontSize: 13, color: '#111827' }}>Download PDF</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 14, paddingVertical: 11 }}
+                      onPress={() => { close(); handleReorderProject(p.id, p.title || ''); }}
+                      activeOpacity={0.7}
+                    >
+                      <RefreshCw size={14} color="#6B7280" />
+                      <Text style={{ fontSize: 13, color: '#111827' }}>Reorder Project</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 14, paddingVertical: 11 }}
+                      onPress={() => { close(); toggleFavorite(p.id); }}
+                      activeOpacity={0.7}
+                    >
+                      <Star size={14} color="#6B7280" />
+                      <Text style={{ fontSize: 13, color: '#111827' }}>{isFav ? 'Unfavorite' : 'Favorite'}</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </OverlayMenu>
+            </View>
+          </View>
+        </TouchableOpacity>
       );
     };
 
@@ -2648,12 +2668,9 @@ export default function ClientPortal() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ flexGrow: 1 }}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, gap: 16 }}
           >
-            <View style={{ minWidth: 1360, flexGrow: 1 }}>
-              <ColHeaders />
-              {pagedRows.map((p, i) => renderRow(p, i))}
-            </View>
+            {pagedRows.map(p => renderCard(p))}
           </ScrollView>
         </View>
       );
@@ -6370,6 +6387,167 @@ const mpStyles = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 12,
   },
   ctaBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+
+  mpCard: {
+    width: 222,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  mpCardImgWrap: {
+    width: 222,
+    height: 200,
+    backgroundColor: '#F3F4F6',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mpCardImg: {
+    width: 222,
+    height: 200,
+  },
+  mpCardImgFallback: {
+    width: 222,
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mpCardInitial: {
+    fontSize: 72,
+    fontWeight: '900',
+    letterSpacing: -3,
+  },
+  mpCardArrow: {
+    position: 'absolute',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(0,0,0,0.38)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    top: 87,
+  },
+  mpCardArrowLeft: { left: 8 },
+  mpCardArrowRight: { right: 8 },
+  mpCardStar: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mpCardDots: {
+    position: 'absolute',
+    bottom: 7,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 5,
+  },
+  mpCardDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.55)',
+  },
+  mpCardDotActive: {
+    backgroundColor: BRAND,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  mpCardBody: {
+    padding: 14,
+    gap: 7,
+  },
+  mpCardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  mpCardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+    flex: 1,
+    lineHeight: 19,
+  },
+  mpCardSubtitle: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: -3,
+  },
+  mpCardMetrics: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    paddingTop: 8,
+    marginTop: 1,
+  },
+  mpCardMetric: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  mpCardMetricDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: '#E5E7EB',
+  },
+  mpCardMetricVal: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  mpCardMetricLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#9CA3AF',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  mpCardDue: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  mpCardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    paddingTop: 8,
+    marginTop: 2,
+    gap: 8,
+  },
+  mpCardViewBtn: {
+    flex: 1,
+    paddingVertical: 7,
+    borderRadius: 7,
+    backgroundColor: BRAND,
+    alignItems: 'center',
+  },
+  mpCardViewBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
+  },
 });
 
 const profStyles = StyleSheet.create({

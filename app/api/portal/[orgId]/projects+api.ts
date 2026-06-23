@@ -97,7 +97,15 @@ export async function GET(_req: Request, { orgId }: { orgId: string }) {
         -- (Project.calculations), NOT the mostly-empty relational Quote table.
         NULLIF(p.calculations->>'total', '')::numeric          AS "totalCost",
         NULLIF(p.calculations->>'totalQuantity', '')::int      AS "pieces",
-        NULLIF(p.calculations->>'totalPerPiece', '')::numeric  AS "perPiece"
+        NULLIF(p.calculations->>'totalPerPiece', '')::numeric  AS "perPiece",
+        (
+          SELECT jsonb_agg(li->>'mockupUri')
+          FROM jsonb_array_elements(
+            CASE WHEN jsonb_typeof(p."lineItemsData") = 'array'
+                 THEN p."lineItemsData" ELSE '[]'::jsonb END
+          ) li
+          WHERE COALESCE(li->>'mockupUri', '') <> ''
+        ) AS "mockupUris"
       FROM "Project" p
       WHERE p."organizationId" = $1
         AND p.status != 'CANCELLED'::"ProjectStatus"

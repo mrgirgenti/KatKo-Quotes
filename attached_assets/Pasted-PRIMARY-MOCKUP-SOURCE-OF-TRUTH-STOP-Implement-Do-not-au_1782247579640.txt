@@ -1,0 +1,162 @@
+PRIMARY MOCKUP SOURCE OF TRUTH
+
+STOP.
+
+Implement.
+
+Do not audit.
+
+Do not roadmap.
+
+Mockups are now a core project identity throughout Katalyst OS.
+
+Every project must expose a single authoritative Primary Mockup value.
+
+All project-facing views must consume this same value.
+
+Do not allow individual screens to independently choose images.
+
+---
+
+## OBJECTIVE
+
+Create a single centralized mockup resolution service.
+
+All project imagery must originate from this source.
+
+---
+
+## PRIMARY MOCKUP SELECTION ORDER
+
+1. Approved Mockup attached to a line item
+2. Most recently uploaded line-item mockup
+3. Product image
+4. Project initial/avatar fallback
+
+Return the resolved Primary Mockup from the project DTO.
+
+Do not recalculate this separately in components.
+
+---
+
+## ALL OF THE FOLLOWING MUST USE THE SAME PRIMARY MOCKUP
+
+CLIENT HUB
+
+* My Projects
+* Favorites
+* Project Detail
+
+BACKEND
+
+* Active Projects
+* Submitted Quotes
+* Projects page
+* Quotes page
+
+DOCUMENTS
+
+* Quote PDF
+* Invoice PDF
+* Production Punch Sheet
+
+MEDIA
+
+* Project Assets
+* Mockup galleries
+
+FUTURE
+
+* Dashboard widgets
+* Activity feeds
+* Reporting widgets
+
+---
+
+## MULTI-LINE-ITEM PROJECTS
+
+Primary Mockup:
+
+Use the first approved line-item mockup.
+
+Carousel:
+
+Display all line-item mockups.
+
+The primary mockup should always be first.
+
+---
+
+## DTO CHANGES
+
+Expose:
+
+primaryMockup
+
+mockupCount
+
+mockupGallery
+
+resolvedImageSource
+
+All consumers should read these fields.
+
+---
+
+## FORBIDDEN
+
+Do not allow:
+
+Project Detail choosing one image
+
+PDF choosing another image
+
+Client Hub choosing another image
+
+Organization Details choosing another image
+
+Every surface must use the same source.
+
+---
+
+## VALIDATION
+
+Create test scenarios:
+
+* 1 line item
+* 3 line items
+* 5 line items
+* No mockups
+* Product image only
+* Approved mockup replaced
+
+Verify:
+
+Client Hub
+
+Organization Details
+
+Project Detail
+
+Quote Detail
+
+PDFs
+
+Production Punch Sheets
+
+all update automatically.
+
+---
+
+OUTPUT
+
+1. Files changed
+2. DTO changes
+3. Mockup resolution service
+4. Components updated
+5. Validation results
+6. Screenshots
+
+Implement.
+
+This becomes the authoritative source of project imagery throughout Katalyst OS.

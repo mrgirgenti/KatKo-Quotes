@@ -1,0 +1,204 @@
+CLIENT HUB + ORGANIZATION DETAILS — PROJECT MOCKUP IDENTITY IMPLEMENTATION
+
+STOP.
+
+Do not audit.
+
+Do not roadmap.
+
+Implement.
+
+The project mockup is now the visual identity of a project.
+
+Project initials/letter avatars should only be used as a final fallback when no mockups or product images exist.
+
+---
+
+## OBJECTIVE
+
+Make project imagery visible throughout both:
+
+1. Client Hub
+2. Organization Details
+
+using the project's Primary Mockup.
+
+---
+
+## CLIENT HUB — MY PROJECTS
+
+Replace the current project avatar/initial block.
+
+Use the project's Primary Mockup instead.
+
+The mockup should become the hero element of the card.
+
+---
+
+MULTIPLE LINE ITEMS
+
+If multiple line-item mockups exist:
+
+Display a lightweight image carousel.
+
+Example:
+
+┌─────────────┐
+│             │
+│   MOCKUP    │
+│             │
+│ ←       →   │
+└─────────────┘
+
+● ○ ○ ○
+
+The active image indicator should be orange.
+
+Users should be able to:
+
+* click arrows
+* swipe on touch devices
+* navigate mockups
+
+Do not use a "+3" badge.
+
+Customers should see the actual mockups.
+
+---
+
+CARD CONTENT
+
+Maintain current card architecture.
+
+Do NOT redesign.
+
+Keep:
+
+* Project Name
+* Status
+* PCS
+* Total
+* Per PCS
+* Due Date
+* Favorite Star
+
+The only change is replacing project initials with project imagery.
+
+---
+
+FAVORITES
+
+Keep favorite star in upper-right corner.
+
+This is intentional.
+
+Do not move it.
+
+---
+
+## ORGANIZATION DETAILS
+
+Do not convert Active Projects or Submitted Quotes into cards.
+
+Maintain the current operational table structure.
+
+---
+
+ACTIVE PROJECTS
+
+Replace the empty image area with the project's Primary Mockup.
+
+Support:
+
+* Single mockup thumbnail
+* Carousel if multiple mockups exist
+* Dot indicators
+* Arrow navigation
+
+Keep existing operational fields:
+
+* Project Name
+* Project #
+* Client
+* Service
+* Submitted Date
+* Due Date
+* PCS
+* Revenue
+* Profit
+* Status
+
+---
+
+SUBMITTED QUOTES
+
+Apply identical treatment.
+
+Mockup should appear beside project identity information.
+
+Keep the table layout.
+
+Do not redesign.
+
+---
+
+SUBMITTED DATE
+
+Ensure Submitted Date exists and displays in:
+
+* Active Projects
+* Submitted Quotes
+
+Format:
+
+Apr 21, 2026
+13 days ago
+
+Due Date format:
+
+Apr 30, 2026
+in 2 days
+
+Color only the relative status text.
+
+---
+
+FALLBACKS
+
+If no mockup exists:
+
+Use Product Image.
+
+If no product image exists:
+
+Use Initial Avatar.
+
+---
+
+VALIDATION
+
+Verify:
+
+* Single mockup projects
+* Multiple line-item projects
+* Multiple mockups
+* No mockups
+* Mobile
+* Tablet
+* Desktop
+
+---
+
+OUTPUT
+
+1. Files changed
+2. Components changed
+3. Client Hub updates
+4. Organization Details updates
+5. Carousel implementation
+6. Validation results
+7. Screenshots
+
+Implement.
+
+Do not audit.

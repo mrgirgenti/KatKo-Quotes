@@ -1,11 +1,13 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
-import { ChevronRight, Check, Calendar, Package } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, Image } from 'react-native';
+import { ChevronRight, Check, Calendar, Package, ChevronLeft } from 'lucide-react-native';
 import { getEffectiveStatus, STATUS_CONFIG } from '@/types/quote';
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
 import Colors from '@/constants/colors';
 import { metricValueStyle } from '@/components/Metric';
+
+const CMP_THUMB_COLORS = ['#FF5A00', '#2563EB', '#7C3AED', '#059669', '#DC2626', '#D97706', '#0891B2'];
 
 interface ProjectCardProps {
   queue: number;
@@ -62,6 +64,12 @@ export function ProjectCard({
   const total = quote.calculations?.total ?? 0;
   const profit = quote.calculations?.markupAmount ?? 0;
   const dueDate = quote.inHandsDate ? formatDate(quote.inHandsDate) : '—';
+  const allMockupUris: string[] = (quote.lineItems || [])
+    .map((li: any) => li.mockupUri)
+    .filter((u: any): u is string => !!u);
+  const [cmpImgIdx, setCmpImgIdx] = useState(0);
+  const cmpThumbColor = CMP_THUMB_COLORS[(((quote.projectName || '')[0] || '').charCodeAt(0) || 0) % CMP_THUMB_COLORS.length];
+  const cmpThumbInitial = ((quote.projectName || '').trim()[0] || '?').toUpperCase();
 
   if (compact) {
     const checkbox = selectionMode ? (
@@ -146,6 +154,45 @@ export function ProjectCard({
           onPress={selectionMode ? (onToggleSelect ?? onPress) : onPress}
           activeOpacity={0.75}
         >
+          {/* Mockup thumbnail with carousel */}
+          <View style={styles.cmpThumbWrap}>
+            {allMockupUris.length > 0 ? (
+              <Image
+                source={{ uri: allMockupUris[cmpImgIdx] }}
+                style={styles.cmpThumbImg}
+                resizeMode="contain"
+              />
+            ) : (
+              <View style={[styles.cmpThumbFallback, { backgroundColor: cmpThumbColor + '22' }]}>
+                <Text style={[styles.cmpThumbInitial, { color: cmpThumbColor }]}>{cmpThumbInitial}</Text>
+              </View>
+            )}
+            {allMockupUris.length > 1 && (
+              <>
+                <TouchableOpacity
+                  style={[styles.cmpThumbArrow, styles.cmpThumbArrowLeft]}
+                  onPress={(e: any) => { e?.stopPropagation?.(); setCmpImgIdx(i => (i - 1 + allMockupUris.length) % allMockupUris.length); }}
+                  hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                  activeOpacity={0.8}
+                >
+                  <ChevronLeft size={10} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.cmpThumbArrow, styles.cmpThumbArrowRight]}
+                  onPress={(e: any) => { e?.stopPropagation?.(); setCmpImgIdx(i => (i + 1) % allMockupUris.length); }}
+                  hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                  activeOpacity={0.8}
+                >
+                  <ChevronRight size={10} color="#fff" />
+                </TouchableOpacity>
+                <View style={styles.cmpThumbDots}>
+                  {allMockupUris.map((_: string, di: number) => (
+                    <View key={di} style={[styles.cmpThumbDot, di === cmpImgIdx && styles.cmpThumbDotActive]} />
+                  ))}
+                </View>
+              </>
+            )}
+          </View>
           {/* Left: project number + name + client · service */}
           <View style={styles.cmpDesktopLeft}>
             <View style={styles.cmpDesktopTopRow}>
@@ -563,5 +610,63 @@ const styles = StyleSheet.create({
     justifyContent: 'center' as const,
     alignItems: 'center' as const,
     alignSelf: 'stretch' as const,
+  },
+
+  /* ── Compact thumbnail carousel ── */
+  cmpThumbWrap: {
+    width: 64,
+    height: 72,
+    backgroundColor: '#F3F4F6',
+    flexShrink: 0,
+    overflow: 'hidden' as const,
+    position: 'relative' as const,
+    alignSelf: 'center' as const,
+  },
+  cmpThumbImg: {
+    width: 64,
+    height: 72,
+  },
+  cmpThumbFallback: {
+    width: 64,
+    height: 72,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  cmpThumbInitial: {
+    fontSize: 22,
+    fontWeight: '900' as const,
+  },
+  cmpThumbArrow: {
+    position: 'absolute' as const,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(0,0,0,0.38)',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    top: 27,
+  },
+  cmpThumbArrowLeft: { left: 1 },
+  cmpThumbArrowRight: { right: 1 },
+  cmpThumbDots: {
+    position: 'absolute' as const,
+    bottom: 4,
+    left: 0,
+    right: 0,
+    flexDirection: 'row' as const,
+    justifyContent: 'center' as const,
+    gap: 3,
+  },
+  cmpThumbDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+  },
+  cmpThumbDotActive: {
+    backgroundColor: '#FF5A00',
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
 });
