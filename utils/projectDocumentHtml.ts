@@ -299,8 +299,8 @@ function renderFooter(model: ProjectDocumentModel): string {
 function styles(): string {
   return `
     *{box-sizing:border-box;margin:0;padding:0}
-    html,body{background:#fff;color:#111;font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .doc-page{max-width:900px;margin:0 auto;padding:28px 32px 36px}
+    html,body{background:#fff;color:#111;font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;-webkit-print-color-adjust:exact;print-color-adjust:exact;overflow-x:auto}
+    .doc-page{max-width:900px;min-width:680px;margin:0 auto;padding:28px 32px 36px}
 
     /* Header */
     .doc-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
@@ -405,13 +405,6 @@ function styles(): string {
     .footer-sub{color:#444;font-size:12px;margin-top:2px}
 
     @media print{ .doc-page{padding:18px 20px} @page{margin:14mm} }
-    @media (max-width:640px){
-      .doc-header{flex-wrap:wrap}
-      .doc-logo,.doc-contact{width:100%}
-      .doc-title-block{text-align:left}
-      .info-grid{flex-wrap:wrap}
-      .bottom-grid{flex-direction:column}
-    }
   `;
 }
 
