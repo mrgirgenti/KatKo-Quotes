@@ -1,4 +1,5 @@
 import { pool } from '@/lib/pool';
+import { calculateLineItemSubtotal } from '@/utils/quoteCalculations';
 
 export async function GET(
   _req: Request,
@@ -84,27 +85,43 @@ export async function GET(
     // whitelist only the keys the customer view renders.
     const { lineItemsData, calculations, ...rest } = result.rows[0] as any;
 
-    const safeLineItems = (Array.isArray(lineItemsData) ? lineItemsData : []).map((li: any) => ({
-      id: li?.id,
-      designName: li?.designName ?? '',
-      serviceStyle: li?.serviceStyle ?? '',
-      location1: li?.location1 ?? '',
-      location2: li?.location2 ?? '',
-      location3: li?.location3 ?? '',
-      location4: li?.location4 ?? '',
-      locationDetails: li?.locationDetails ?? '',
-      product: li?.product ?? '',
-      productColor: li?.productColor ?? '',
-      mockupUri: li?.mockupUri ?? '',
-      sizes: li?.sizes ?? {},
-      garmentVariants: Array.isArray(li?.garmentVariants)
-        ? li.garmentVariants.map((v: any) => ({
-            product: v?.product ?? '',
-            color: v?.color ?? '',
-            sizes: v?.sizes ?? {},
-          }))
-        : [],
-    }));
+    const safeLineItems = (Array.isArray(lineItemsData) ? lineItemsData : []).map((li: any) => {
+      // Bundled customer price ONLY — computed server-side from the raw item. We
+      // surface the per-piece and line totals the customer pays, never the cost /
+      // markup / COGS breakdown those values are derived from.
+      let customerUnitPrice = 0;
+      let customerLineTotal = 0;
+      try {
+        const c = calculateLineItemSubtotal(li);
+        customerUnitPrice = c.perPiece;
+        customerLineTotal = c.subtotal;
+      } catch {
+        /* unexpected shape — leave bundled price at 0 (renders as a dash) */
+      }
+      return {
+        id: li?.id,
+        designName: li?.designName ?? '',
+        serviceStyle: li?.serviceStyle ?? '',
+        location1: li?.location1 ?? '',
+        location2: li?.location2 ?? '',
+        location3: li?.location3 ?? '',
+        location4: li?.location4 ?? '',
+        locationDetails: li?.locationDetails ?? '',
+        product: li?.product ?? '',
+        productColor: li?.productColor ?? '',
+        mockupUri: li?.mockupUri ?? '',
+        sizes: li?.sizes ?? {},
+        customerUnitPrice,
+        customerLineTotal,
+        garmentVariants: Array.isArray(li?.garmentVariants)
+          ? li.garmentVariants.map((v: any) => ({
+              product: v?.product ?? '',
+              color: v?.color ?? '',
+              sizes: v?.sizes ?? {},
+            }))
+          : [],
+      };
+    });
 
     const safeCalc = calculations
       ? {

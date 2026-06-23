@@ -5,6 +5,8 @@ import { Quote, LineItem, SIZE_LABELS } from '@/types/quote';
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { formatPhone } from '@/utils/phone';
 import { UserProfile } from '@/types/user';
+import { buildProjectDocumentHTML } from '@/utils/projectDocumentHtml';
+import { DocumentMode } from '@/utils/projectDocument';
 
 function getTotalSizeQuantities(item: LineItem): string {
   const sizes: string[] = [];
@@ -510,7 +512,7 @@ function openHtmlInNewWindow(html: string): Window | null {
 
 export async function generateAndSharePDF(quote: Quote, user?: UserProfile | null): Promise<void> {
   try {
-    const html = generateQuoteHTML(quote, user);
+    const html = buildProjectDocumentHTML(quote, 'QUOTE');
 
     if (Platform.OS === 'web') {
       const client = sanitizeFilename(quote.personOrganization || 'Client');
@@ -537,8 +539,66 @@ export async function generateAndSharePDF(quote: Quote, user?: UserProfile | nul
 }
 
 export async function printQuote(quote: Quote, user?: UserProfile | null): Promise<void> {
+  return printProjectDocument(quote, 'QUOTE', user);
+}
+
+// ── Unified Project Document exports (Quote / Invoice / Production Punch Sheet) ──
+// All modes render from the SAME html template via buildProjectDocumentHTML, so a
+// downloaded/printed document is identical to the Client Hub Order Detail view.
+
+const MODE_FILE_LABEL: Record<DocumentMode, string> = {
+  QUOTE: 'Quote',
+  INVOICE: 'Invoice',
+  PRODUCTION: 'Production_Punch_Sheet',
+  ORDER_DETAIL: 'Order',
+};
+
+const MODE_DIALOG_LABEL: Record<DocumentMode, string> = {
+  QUOTE: 'Quote',
+  INVOICE: 'Invoice',
+  PRODUCTION: 'Production Punch Sheet',
+  ORDER_DETAIL: 'Order Detail',
+};
+
+export async function generateProjectDocumentPDF(
+  quote: Quote,
+  mode: DocumentMode,
+  _user?: UserProfile | null,
+): Promise<void> {
   try {
-    const html = generateQuoteHTML(quote, user);
+    const html = buildProjectDocumentHTML(quote, mode);
+
+    if (Platform.OS === 'web') {
+      const client = sanitizeFilename(quote.personOrganization || 'Client');
+      const project = sanitizeFilename(quote.projectName || MODE_FILE_LABEL[mode]);
+      downloadHtmlAsFile(html, `${client}_${project}_${MODE_FILE_LABEL[mode]}.html`);
+      return;
+    }
+
+    const { uri } = await Print.printToFileAsync({ html, base64: false });
+    const isAvailable = await Sharing.isAvailableAsync();
+    if (isAvailable) {
+      await Sharing.shareAsync(uri, {
+        mimeType: 'application/pdf',
+        dialogTitle: `Share ${MODE_DIALOG_LABEL[mode]}`,
+        UTI: 'com.adobe.pdf',
+      });
+    } else {
+      throw new Error('Sharing is not available on this device');
+    }
+  } catch (error) {
+    console.error(`Error generating ${mode} PDF:`, error);
+    throw error;
+  }
+}
+
+export async function printProjectDocument(
+  quote: Quote,
+  mode: DocumentMode,
+  _user?: UserProfile | null,
+): Promise<void> {
+  try {
+    const html = buildProjectDocumentHTML(quote, mode);
 
     if (Platform.OS === 'web') {
       const win = openHtmlInNewWindow(html);

@@ -61,7 +61,8 @@ import { formatPhone } from '@/utils/phone';
 import { LineItem, SIZE_LABELS, GarmentVariant, STATUS_CONFIG, QuoteStatus, OperationalProjectStatus, DeliveryMethod, OPERATIONAL_STATUSES, OPERATIONAL_STATUS_CONFIG, OPERATIONAL_NEXT, HOLD_REASONS, DELIVERY_METHODS } from '@/types/quote';
 import { useUser } from '@/contexts/UserContext';
 import { useCrm } from '@/contexts/CrmContext';
-import { generateAndSharePDF, printQuote, generateWorkOrderPDFs } from '@/utils/pdfGenerator';
+import { printQuote, generateWorkOrderPDFs, generateProjectDocumentPDF } from '@/utils/pdfGenerator';
+import { DocumentMode } from '@/utils/projectDocument';
 import { Toast } from '@/components/Toast';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PriorityControl } from '@/components/production/PriorityControl';
@@ -209,13 +210,13 @@ export default function QuoteDetailScreen() {
     return getTotalQuantity(item.sizes, isPromotional);
   };
 
-  const handleExportPDF = useCallback(async () => {
+  const handleExportDocument = useCallback(async (mode: DocumentMode) => {
     if (!quote) return;
     try {
-      await generateAndSharePDF(quote, currentUser);
+      await generateProjectDocumentPDF(quote, mode, currentUser);
     } catch (error) {
-      console.log('Error exporting PDF:', error);
-      Alert.alert('Error', 'Failed to export PDF');
+      console.log('Error exporting document:', error);
+      Alert.alert('Error', 'Failed to export document');
     }
   }, [quote, currentUser]);
 
@@ -242,6 +243,35 @@ export default function QuoteDetailScreen() {
       Alert.alert('Error', 'Failed to print');
     }
   }, [quote, currentUser]);
+
+  // Unified document exports. Quote PDF is always available; Invoice and the
+  // Production Punch Sheet unlock as the project advances. All three render from
+  // the SAME template as the Client Hub Order Detail (mode controls visibility).
+  const renderDocumentExports = () => {
+    const status = quote?.status || '';
+    const invoiceReady = ['quoted', 'invoice_sent', 'paid', 'active', 'production_started', 'completed'].includes(status);
+    const productionReady = ['paid', 'active', 'production_started', 'completed'].includes(status);
+    return (
+      <>
+        <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleExportDocument('QUOTE'); }}>
+          <Download size={18} color={Colors.light.text} />
+          <Text style={styles.menuItemText}>Quote PDF</Text>
+        </TouchableOpacity>
+        {invoiceReady && (
+          <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleExportDocument('INVOICE'); }}>
+            <FileText size={18} color={Colors.light.text} />
+            <Text style={styles.menuItemText}>Invoice PDF</Text>
+          </TouchableOpacity>
+        )}
+        {productionReady && (
+          <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleExportDocument('PRODUCTION'); }}>
+            <ClipboardList size={18} color={Colors.light.text} />
+            <Text style={styles.menuItemText}>Production Punch Sheet</Text>
+          </TouchableOpacity>
+        )}
+      </>
+    );
+  };
 
   const handleEdit = useCallback(() => {
     if (!quote) return;
@@ -1849,10 +1879,7 @@ export default function QuoteDetailScreen() {
                     </TouchableOpacity>
                   )}
                   <View style={styles.menuSeparator} />
-                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleExportPDF(); }}>
-                    <Download size={18} color={Colors.light.text} />
-                    <Text style={styles.menuItemText}>Export to PDF</Text>
-                  </TouchableOpacity>
+                  {renderDocumentExports()}
                   <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handlePrint(); }}>
                     <Printer size={18} color={Colors.light.text} />
                     <Text style={styles.menuItemText}>Print</Text>
@@ -1874,10 +1901,7 @@ export default function QuoteDetailScreen() {
                     <Text style={[styles.menuItemText, { color: Colors.light.tint }]}>Start Production</Text>
                   </TouchableOpacity>
                   <View style={styles.menuSeparator} />
-                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleExportPDF(); }}>
-                    <Download size={18} color={Colors.light.text} />
-                    <Text style={styles.menuItemText}>Export to PDF</Text>
-                  </TouchableOpacity>
+                  {renderDocumentExports()}
                   <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleDownloadWorkOrder(); }}>
                     <FileText size={18} color={Colors.light.tint} />
                     <Text style={[styles.menuItemText, { color: Colors.light.tint }]}>Download Work Order</Text>
@@ -1912,10 +1936,7 @@ export default function QuoteDetailScreen() {
                     </TouchableOpacity>
                   )}
                   <View style={styles.menuSeparator} />
-                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleExportPDF(); }}>
-                    <Download size={18} color={Colors.light.text} />
-                    <Text style={styles.menuItemText}>Export to PDF</Text>
-                  </TouchableOpacity>
+                  {renderDocumentExports()}
                   <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleDownloadWorkOrder(); }}>
                     <FileText size={18} color={Colors.light.tint} />
                     <Text style={[styles.menuItemText, { color: Colors.light.tint }]}>Download Work Order</Text>
@@ -1943,10 +1964,7 @@ export default function QuoteDetailScreen() {
                     <Text style={styles.menuItemText}>Edit Quote</Text>
                   </TouchableOpacity>
                   <View style={styles.menuSeparator} />
-                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleExportPDF(); }}>
-                    <Download size={18} color={Colors.light.text} />
-                    <Text style={styles.menuItemText}>Export to PDF</Text>
-                  </TouchableOpacity>
+                  {renderDocumentExports()}
                   <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handlePrint(); }}>
                     <Printer size={18} color={Colors.light.text} />
                     <Text style={styles.menuItemText}>Print</Text>

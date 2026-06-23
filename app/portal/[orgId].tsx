@@ -19,6 +19,7 @@ import {
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { TABLE_COL, TABLE_CELL } from '@/constants/tableLayout';
+import ProjectDocument from '@/components/ProjectDocument';
 import {
   CheckCircle,
   Send,
@@ -2828,6 +2829,36 @@ export default function ClientPortal() {
     if (rushFee > 0) pricingRows.push({ label: 'Rush Fee', value: rushFee });
     const isFavorite = proj ? favoriteProjectIds.includes(proj.id) : false;
 
+    // ── Unified Project Document source (ORDER_DETAIL) ───────────────────────
+    // The Client Hub Order Detail renders the EXACT same document staff export as
+    // the Quote / Invoice / Production PDFs. Mockup refs are resolved to public
+    // portal file URLs first (relative URLs resolve against the parent page inside
+    // the iframe srcDoc). Customer-safe: pricing is bundled per-piece + totals only.
+    const pAny = proj as any;
+    const docLineItems = lineItems.map((li: any) => {
+      const rawMocks: string[] = Array.isArray(li.mockups) && li.mockups.length
+        ? li.mockups
+        : (li.mockupUri ? [li.mockupUri] : []);
+      return {
+        ...li,
+        // Clear the raw (Clerk-gated) ref so the document only uses the resolved
+        // public portal URLs below — otherwise collectMockups picks the raw one first.
+        mockupUri: '',
+        mockups: rawMocks.map((u: string) => resolveMockupUrl(u, orgIdForFiles)).filter(Boolean),
+      };
+    });
+    const docSource = {
+      personOrganization: orgDisplayName || session?.userName || undefined,
+      projectName: proj?.title || undefined,
+      projectNumber: pAny?.projectNumber || undefined,
+      invoiceNumber: pAny?.invoiceNumber || undefined,
+      orderDate: pAny?.orderDate || proj?.createdAt || undefined,
+      inHandsDate: proj?.inHandsDate || undefined,
+      notesClient: proj?.notesClient || undefined,
+      lineItems: docLineItems,
+      calculations: calc,
+    };
+
     // ── Quote response (Phase 7) ────────────────────────────────────────────
     const mappedStatusPV = (proj?.status || '').toUpperCase().replace('QUOTE_SENT', 'QUOTED');
     const quoteResp = proj?.quoteResponse || null;
@@ -3037,7 +3068,8 @@ export default function ClientPortal() {
             {/* Left / Main column */}
             <View style={{ flex: 1, gap: 16 }}>
 
-              {/* Header card */}
+              {/* Status + pipeline chrome. The unified document below carries the
+                  customer / project / dates / notes header, so this stays slim. */}
               <View style={pvStyles.card}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                   <StatusPill status={proj.status} quoteResponse={proj.quoteResponse} />
@@ -3047,53 +3079,12 @@ export default function ClientPortal() {
                     </View>
                   ) : null}
                 </View>
-                <Text style={pvStyles.projectTitle}>{proj.title || 'Untitled Project'}</Text>
-                <View style={{ flexDirection: 'row', gap: 28, marginTop: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-                  <View>
-                    <Text style={pvStyles.metaLabel}>IN-HANDS DATE</Text>
-                    <Text style={pvStyles.metaValue}>{proj.inHandsDate ? formatDate(proj.inHandsDate) : '—'}</Text>
-                  </View>
-                  <View>
-                    <Text style={pvStyles.metaLabel}>SUBMITTED</Text>
-                    <Text style={pvStyles.metaValue}>{formatDate(proj.createdAt)}</Text>
-                  </View>
-                  <View>
-                    <Text style={pvStyles.metaLabel}>TOTAL PIECES</Text>
-                    <Text style={pvStyles.metaValue}>{totalQty} pcs</Text>
-                  </View>
-                </View>
                 <ProjectPipeline status={proj.status} />
-                {proj.notesClient ? (
-                  <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: BORDER }}>
-                    <Text style={pvStyles.metaLabel}>NOTES</Text>
-                    <Text style={{ fontSize: 13, color: TEXT, marginTop: 4, lineHeight: 20 }}>{proj.notesClient}</Text>
-                  </View>
-                ) : null}
               </View>
 
-              {/* Order Summary — line-item product cards lead the page */}
-              <View style={pvStyles.card}>
-                <Text style={pvStyles.sectionTitle}>Order Summary</Text>
-
-                {lineItems.length === 0 ? (
-                  <Text style={{ color: TEXT_LIGHT, fontSize: 13, marginTop: 8 }}>No items yet.</Text>
-                ) : (
-                  <View style={{ marginTop: 4 }}>
-                    {lineItems.map((li: any, idx: number) => (
-                      <PortalCustomerLineItemCard key={li.id || idx} li={li} index={idx} orgIdForFiles={orgIdForFiles} />
-                    ))}
-                  </View>
-                )}
-
-                {/* Footer summary bar */}
-                {lineItems.length > 0 && (
-                  <View style={pvStyles.lineItemFooter}>
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>
-                      {lineItems.length} Design{lineItems.length !== 1 ? 's' : ''} • {totalQty} Total Pieces
-                    </Text>
-                  </View>
-                )}
-              </View>
+              {/* Unified Project Document — the EXACT same artifact staff export as
+                  the Quote / Invoice / Production PDFs (mode = ORDER_DETAIL). */}
+              <ProjectDocument source={docSource} mode="ORDER_DETAIL" />
 
               {/* Project Assets — single download center for the whole project */}
               <View style={pvStyles.card}>

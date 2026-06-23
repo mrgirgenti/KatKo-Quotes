@@ -1,0 +1,336 @@
+Yes. This is the right direction.
+
+Your next Replit prompt should be **Project Document System**, not “PDF redesign.”
+
+It should force one reusable layout for:
+
+`Quote → Invoice → Production Punch Sheet → Client Hub Order Detail`
+
+with visibility rules by document type.
+
+Project Document System — Unified Quote, Invoice, Production Sheet, and Order Detail Template
+
+STOP.
+
+Do not audit.
+
+Do not roadmap.
+
+Implement.
+
+The current Quote, Invoice, Production Punch Sheet, Client Hub Order Detail, and downloadable PDFs must stop behaving like separate layouts.
+
+They should all use the same base document structure.
+
+This is a template consolidation project.
+
+---
+
+## OBJECTIVE
+
+Create one reusable Project Document layout that can render as:
+
+* Quote
+* Invoice
+* Production Punch Sheet
+* Client Hub Order Detail
+* Downloadable PDF
+
+The same information hierarchy should be used everywhere.
+
+The only difference should be visibility rules based on document type.
+
+---
+
+## REFERENCE DIRECTION
+
+Use the uploaded revised templates as the visual direction:
+
+* QUOTE.png
+* INVOICE.png
+* PRODUCTION.png
+
+Match the Katalyst Ko look:
+
+* Large Katalyst Ko logo in header
+* Company info in header
+* Clean white background
+* Black section headers
+* Orange accents
+* Simple table/grid layout
+* Professional print-ready appearance
+* Line-item driven structure
+
+---
+
+## BASE TEMPLATE STRUCTURE
+
+Header:
+
+* Katalyst Ko logo
+* Company address
+* Phone
+* Website
+* Document type:
+
+  * QUOTE
+  * INVOICE
+  * PRODUCTION PUNCH SHEET
+* Document number
+* Date
+* Due date or in-hands date when applicable
+
+Top Info Row:
+
+* Customer
+* Project
+* Notes
+
+Main Section:
+
+A repeatable line item table.
+
+Each quote/project line item = one row/section.
+
+Do not group line items.
+
+Do not merge line items.
+
+Do not create special layouts for similar products.
+
+The quote structure is already the source of truth.
+
+One line item in the quote = one line item in the document.
+
+---
+
+## LINE ITEM STRUCTURE
+
+Each line item must show:
+
+* Line item number
+* Mockup image(s)
+* Line item name
+* Product
+* Decoration / service style
+* Locations
+* Project notes / line item notes
+* Sizes
+* Quantities
+* Total quantity
+
+For Quote and Invoice only, also show:
+
+* Per piece
+* Line item total
+
+---
+
+## QUOTE MODE
+
+Document title:
+
+QUOTE
+
+Show:
+
+* Mockups
+* Product details
+* Decoration
+* Locations
+* Notes
+* Sizes
+* Quantities
+* Total quantity
+* Per piece
+* Line item total
+* Order totals
+* Approval / payment note if applicable
+
+---
+
+## INVOICE MODE
+
+Document title:
+
+INVOICE
+
+Show the same base layout as Quote.
+
+Show:
+
+* Mockups
+* Product details
+* Decoration
+* Locations
+* Notes
+* Sizes
+* Quantities
+* Total quantity
+* Per piece
+* Line item total
+* Order totals
+* Invoice number
+* Due date
+* Payment status if available
+
+---
+
+## PRODUCTION PUNCH SHEET MODE
+
+Document title:
+
+PRODUCTION PUNCH SHEET
+
+Use the same base layout.
+
+Hide all customer pricing.
+
+Do not show:
+
+* Per piece
+* Line item total
+* Subtotal
+* Online fee
+* Card fee
+* Sales tax
+* Shipping
+* Total
+
+Show:
+
+* Mockups
+* Product details
+* Decoration
+* Locations
+* Notes
+* Sizes
+* Quantities
+* Total quantity
+* Production notes
+* Special instructions
+* Checklist
+
+Checklist:
+
+* Artwork Approved
+* Sizes & Quantities Verified
+* Garment Colors Verified
+* Decoration & Locations Verified
+* All Details Confirmed
+
+---
+
+## CLIENT HUB ORDER DETAIL
+
+Client Hub Order Detail should visually match this same template.
+
+The web view and downloaded PDF should feel like the same document.
+
+Customers should not see one layout online and a totally different layout in the PDF.
+
+---
+
+## ORDER TOTALS
+
+For Quote and Invoice modes, show:
+
+* Subtotal
+* Online Fee
+* Card Fee
+* Sales Tax
+* Shipping
+* Total
+
+Only show rows when values exist.
+
+Do not show:
+
+* Product cost
+* Service cost
+* Markup
+* Margin
+* COGS
+* Vendor cost
+* Internal calculations
+
+---
+
+## SCALABILITY
+
+The layout must work for:
+
+* 1 line item
+* 3 line items
+* 5 line items
+* 7+ line items
+
+Do not create separate templates for different order sizes.
+
+The document should grow vertically as line items increase.
+
+---
+
+## TEMPLATE PRINCIPLE
+
+Do not build separate systems for:
+
+* Quote PDF
+* Invoice PDF
+* Production PDF
+* Client Hub Order Detail
+
+Build one Project Document component/template with modes.
+
+Modes control visibility.
+
+The underlying layout remains consistent.
+
+---
+
+## VALIDATION
+
+Test:
+
+* Quote with 1 line item
+* Quote with 3 line items
+* Quote with 5+ line items
+* Invoice mode
+* Production Punch Sheet mode
+* Client Hub Order Detail
+* Downloaded PDF
+
+Verify:
+
+* Same visual structure across modes
+* Correct document title
+* Correct line item data
+* Mockups appear per line item
+* Pricing appears only when appropriate
+* Production sheet hides all pricing
+* PDFs print cleanly
+* Client Hub view matches PDF structure
+
+---
+
+## OUTPUT
+
+Return:
+
+1. Files changed
+2. Components created
+3. Components removed or consolidated
+4. Template modes implemented
+5. Visibility rules by mode
+6. PDF changes
+7. Client Hub Order Detail changes
+8. Validation results
+9. Screenshots or generated PDF examples
+
+Implement.
+
+Do not audit.
+
+Do not create separate document systems.
+
+One base template. Multiple modes.
