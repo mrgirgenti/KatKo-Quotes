@@ -6,13 +6,14 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Modal,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import PageBackHeader from '@/components/PageBackHeader';
-import { Plus, Save, X } from 'lucide-react-native';
+import { Plus, Save, X, AlertTriangle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { useUser } from '@/contexts/UserContext';
@@ -89,10 +90,21 @@ export default function EditQuoteScreen() {
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [completedModalVisible, setCompletedModalVisible] = useState(false);
+  const [editingUnlocked, setEditingUnlocked] = useState(false);
+
+  // Show the confirmation modal whenever a completed project finishes loading
+  useEffect(() => {
+    if (isLoaded && isCompleted && !editingUnlocked) {
+      setCompletedModalVisible(true);
+    }
+  }, [isLoaded, isCompleted, editingUnlocked]);
 
   // Re-init if the same edit screen is re-used for a different id
   useEffect(() => {
     setIsLoaded(false);
+    setEditingUnlocked(false);
+    setCompletedModalVisible(false);
   }, [id]);
 
   useEffect(() => {
@@ -192,28 +204,11 @@ export default function EditQuoteScreen() {
       Alert.alert('Missing Info', 'Please enter a project name.');
       return;
     }
-
-    // For completed projects, require explicit confirmation before saving
-    if (isCompleted) {
-      Alert.alert(
-        'Edit Completed Project',
-        'This project is marked as Completed. Are you sure you want to make changes?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Yes, Save Changes', style: 'destructive', onPress: doSave },
-        ]
-      );
-      return;
-    }
-
     doSave();
-  }, [personOrganization, projectName, isCompleted, doSave]);
+  }, [personOrganization, projectName, doSave]);
 
   const handleCancel = useCallback(() => {
-    Alert.alert('Discard Changes', 'Are you sure you want to discard your changes?', [
-      { text: 'Keep Editing', style: 'cancel' },
-      { text: 'Discard', style: 'destructive', onPress: () => router.back() },
-    ]);
+    router.back();
   }, [router]);
 
   // Loading state — data hasn't arrived from server yet
@@ -270,13 +265,43 @@ export default function EditQuoteScreen() {
       />
       <PageBackHeader title="Edit Quote" />
 
-      {isCompleted && (
-        <View style={styles.completedBanner}>
-          <Text style={styles.completedBannerText}>
-            ⚠ This project is Completed — changes will require confirmation before saving.
-          </Text>
+      {/* Completed project confirmation — centered modal, shown before any editing */}
+      <Modal
+        visible={completedModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { setCompletedModalVisible(false); router.back(); }}
+      >
+        <View style={styles.completedOverlay}>
+          <View style={styles.completedCard}>
+            <View style={styles.completedIconRing}>
+              <AlertTriangle size={26} color="#D97706" />
+            </View>
+            <Text style={styles.completedCardTitle}>
+              Editing this may change finalized data such as final quotes, pricing, quantities, etc.
+            </Text>
+            <Text style={styles.completedCardSub}>
+              Proceed carefully. Changes take effect immediately when you save.
+            </Text>
+            <View style={styles.completedCardButtons}>
+              <TouchableOpacity
+                style={[styles.completedBtn, styles.completedBtnCancel]}
+                onPress={() => { setCompletedModalVisible(false); router.back(); }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.completedBtnCancelText}>Cancel Editing</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.completedBtn, styles.completedBtnContinue]}
+                onPress={() => { setCompletedModalVisible(false); setEditingUnlocked(true); }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.completedBtnContinueText}>Continue Editing</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      )}
+      </Modal>
 
       <ScrollView
         style={styles.scrollView}
@@ -443,17 +468,78 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600' as const,
   },
-  completedBanner: {
-    backgroundColor: '#FFF3CD',
-    borderBottomWidth: 1,
-    borderBottomColor: '#FFC107',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+  completedOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.52)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
   },
-  completedBannerText: {
+  completedCard: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 28,
+    maxWidth: 440,
+    width: '100%' as const,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 24,
+  },
+  completedIconRing: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+  },
+  completedCardTitle: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#111827',
+    textAlign: 'center' as const,
+    lineHeight: 23,
+    marginBottom: 10,
+  },
+  completedCardSub: {
     fontSize: 13,
-    color: '#856404',
-    fontWeight: '500' as const,
+    color: '#6B7280',
+    textAlign: 'center' as const,
+    lineHeight: 19,
+    marginBottom: 26,
+  },
+  completedCardButtons: {
+    flexDirection: 'row' as const,
+    gap: 10,
+    width: '100%' as const,
+  },
+  completedBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completedBtnCancel: {
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  completedBtnCancelText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#374151',
+  },
+  completedBtnContinue: {
+    backgroundColor: '#FF5A00',
+  },
+  completedBtnContinueText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: '#fff',
   },
   section: {
     marginBottom: 24,
