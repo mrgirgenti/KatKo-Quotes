@@ -77,8 +77,8 @@ export function SidebarNav({ collapsed = false, onNavigate }: NavProps) {
     if (isOnSystemPage) setSystemOpen(true);
   }, [isOnSystemPage]);
 
-  const { projects } = useQuotes();
-  const needsReviewCount = projects.filter(
+  const { sales } = useQuotes();
+  const needsReviewCount = sales.filter(
     (p) => (p.status || '').toLowerCase() === 'needs_review',
   ).length;
   const badgeMap: Record<string, number> = { '/sales': needsReviewCount };

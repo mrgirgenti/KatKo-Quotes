@@ -335,19 +335,21 @@ export default function QuoteDetailScreen() {
           typeof window !== 'undefined'
             ? `${window.location.origin}/portal/quote/${quote.id}`
             : '';
-        fetch('/api/send-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'quote',
-            clientEmail: contactEmail,
-            clientName: quote.personOrganization || 'there',
-            projectName: quote.projectName || 'Your Order',
-            total: quote.calculations?.total ?? null,
-            portalUrl,
-            waveLink: quote.waveInvoiceLink || '',
-          }),
-        }).catch((e) => console.warn('[quote email]', e));
+        getAuthHeaders().then(authH =>
+          fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authH },
+            body: JSON.stringify({
+              type: 'quote',
+              clientEmail: contactEmail,
+              clientName: quote.personOrganization || 'there',
+              projectName: quote.projectName || 'Your Order',
+              total: quote.calculations?.total ?? null,
+              portalUrl,
+              waveLink: quote.waveInvoiceLink || '',
+            }),
+          })
+        ).catch((e) => console.warn('[quote email]', e));
         setToastMessage('Quote sent by email and link copied!');
       } else {
         setToastMessage('Quote marked as sent! Link copied.');

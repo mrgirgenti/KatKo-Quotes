@@ -54,7 +54,7 @@ export async function POST(
     // Membership + permission lookup. Only CLIENT members of this org.
     const memRes = await pool.query(
       `SELECT u.id, u."firstName", u."lastName", u.email,
-              om."canApproveQuotes", om."isPrimaryContact"
+              om."canApproveQuotes", om."isPrimaryContact", om.role
        FROM "OrganizationMembership" om
        JOIN "User" u ON u.id = om."userId"
        WHERE om."organizationId" = $1 AND u.id = $2 AND u."userType" = 'CLIENT'`,
@@ -111,9 +111,9 @@ export async function POST(
     // ── Approve / Request Changes / Decline ───────────────────────────────────
     // All members may request changes or decline a quote.
     // Only primary contacts or members with canApproveQuotes may approve.
-    if (action === 'approve' && !member.canApproveQuotes && !member.isPrimaryContact) {
+    if (action === 'approve' && !member.canApproveQuotes && !member.isPrimaryContact && member.role !== 'ORG_ADMIN') {
       return Response.json(
-        { error: 'Only the primary contact or an account admin can approve quotes.' },
+        { error: 'Only the primary contact, org admin, or an authorized member can approve quotes.' },
         { status: 403 }
       );
     }

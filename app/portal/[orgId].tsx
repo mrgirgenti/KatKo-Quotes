@@ -210,7 +210,8 @@ const PORTAL_STATUS_CONFIG: Record<string, { label: string; color: string; bg: s
   PAID:          { label: 'Paid',            color: '#059669', bg: '#ECFDF5' },
   IN_PRODUCTION: { label: 'In Production',   color: '#EA580C', bg: '#FFF7ED' },
   COMPLETED:     { label: 'Completed',       color: '#16A34A', bg: '#F0FDF4' },
-  CANCELLED:     { label: 'Cancelled',       color: '#6B7280', bg: '#F3F4F6' },
+  CANCELLED:     { label: 'Expired',         color: '#6B7280', bg: '#F3F4F6' },
+  EXPIRED:       { label: 'Expired',         color: '#6B7280', bg: '#F3F4F6' },
 };
 
 const QUOTE_RESPONSE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -2117,7 +2118,7 @@ export default function ClientPortal() {
     ['NEEDS_REVIEW', 'QUOTING'].includes(normalizeStatus(p.status))
   );
   const quoteProjects = orgProjects.filter(p =>
-    ['QUOTED', 'QUOTE_SENT', 'INVOICE_SENT', 'PAID', 'IN_PRODUCTION', 'COMPLETED'].includes(normalizeStatus(p.status))
+    ['NEEDS_REVIEW', 'QUOTING', 'QUOTED', 'QUOTE_SENT', 'INVOICE_SENT'].includes(normalizeStatus(p.status))
   );
   const activeProjects = orgProjects.filter(p =>
     ['PAID', 'IN_PRODUCTION'].includes(normalizeStatus(p.status))
@@ -2278,19 +2279,24 @@ export default function ClientPortal() {
           </SectionCard>
         </View>
         <View style={{ flex: 1, minWidth: 220 }}>
-          <SectionCard title="Quotes & Invoices" count={quoteProjects.length} onViewAll={() => setActiveView('projects')}>
+          <SectionCard title="Quotes & Requests" count={quoteProjects.length} onViewAll={() => setActiveView('projects')}>
             {projectsLoading
               ? <ActivityIndicator color={BRAND} style={{ marginVertical: 20 }} />
               : quoteProjects.length === 0
-                ? <EmptyState icon={<Receipt size={22} color="#9CA3AF" />} title="No pending quotes" sub="Quotes ready for review will appear here." />
+                ? <EmptyState icon={<Receipt size={22} color="#9CA3AF" />} title="Nothing pending" sub="Submitted requests and quotes will appear here." />
                 : quoteProjects.slice(0, 3).map(p => (
-                    <View key={p.id} style={dash.quoteRow}>
+                    <TouchableOpacity
+                      key={p.id}
+                      style={dash.quoteRow}
+                      activeOpacity={0.75}
+                      onPress={() => { setSelectedProjectId(p.id); setActiveView('project-view'); }}
+                    >
                       <View style={{ flex: 1 }}>
                         <Text style={dash.quoteTitle} numberOfLines={1}>{p.title}</Text>
                         <Text style={dash.quoteMeta}>{formatDate(p.createdAt)}</Text>
                       </View>
                       <StatusPill status={p.status} quoteResponse={p.quoteResponse} />
-                    </View>
+                    </TouchableOpacity>
                   ))
             }
           </SectionCard>
@@ -2566,14 +2572,14 @@ export default function ClientPortal() {
             )}
           </View>
           <View style={mpStyles.mpCardBody}>
+            <View style={{ marginBottom: 6, alignSelf: 'flex-start' }}>
+              <StatusPill status={p.status} quoteResponse={p.quoteResponse} />
+            </View>
+            {p.orderType ? (
+              <Text style={{ fontSize: 11, color: TEXT_LIGHT, fontWeight: '700', letterSpacing: 0.2, marginBottom: 3 }} numberOfLines={1}>{p.orderType}</Text>
+            ) : null}
             <View style={mpStyles.mpCardTitleRow}>
               <Text style={mpStyles.mpCardTitle} numberOfLines={2}>{p.title}</Text>
-              <View style={{ alignItems: 'flex-end', gap: 3, flexShrink: 0, marginLeft: 6 }}>
-                <StatusPill status={p.status} quoteResponse={p.quoteResponse} />
-                {p.orderType ? (
-                  <Text style={{ fontSize: 10, color: TEXT_LIGHT, fontWeight: '600' }} numberOfLines={1}>{p.orderType}</Text>
-                ) : null}
-              </View>
             </View>
             {p.clientName ? (
               <Text style={mpStyles.mpCardSubtitle} numberOfLines={1}>{p.clientName}</Text>

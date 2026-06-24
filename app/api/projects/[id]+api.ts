@@ -186,7 +186,7 @@ export async function PUT(request: Request, { id }: { id: string }) {
     const keep = <T>(incoming: T | undefined, existing: T): T =>
       incoming === undefined ? existing : incoming;
 
-    const operationalStatus = keep(b.operationalStatus, prev?.operationalStatus ?? null);
+    let operationalStatus = keep(b.operationalStatus, prev?.operationalStatus ?? null);
     const holdReason = keep(b.holdReason, prev?.holdReason ?? null);
     const holdNotes = keep(b.holdNotes, prev?.holdNotes ?? null);
     const holdPlacedAt = keep(b.holdPlacedAt, prev?.holdPlacedAt ?? null);
@@ -196,6 +196,19 @@ export async function PUT(request: Request, { id }: { id: string }) {
     // Use the effective status (incoming if present, otherwise the existing one) so
     // partial saves that omit status still upgrade an already paid-or-later project.
     const effectiveStatus = body.status ?? prev?.frontendStatus;
+
+    // Auto-sync operationalStatus with lifecycle transitions so both fields never diverge.
+    // Only fires when the caller has NOT explicitly set operationalStatus in this PATCH.
+    if (b.operationalStatus === undefined && effectiveStatus) {
+      const IN_PRODUCTION_STATUSES = ['active', 'production_started', 'in_production'];
+      const PRE_PRODUCTION_OPERATIONAL = new Set([null, 'Accepted', 'Awaiting Artwork', 'Artwork Approval', 'Awaiting Payment', 'Ready for Production']);
+      if (IN_PRODUCTION_STATUSES.includes(effectiveStatus) && PRE_PRODUCTION_OPERATIONAL.has(operationalStatus)) {
+        operationalStatus = 'In Production';
+      } else if (effectiveStatus === 'completed' && !['Completed', 'Delivered', 'Closed'].includes(operationalStatus ?? '')) {
+        operationalStatus = 'Completed';
+      }
+    }
+
     const paymentReceived = keep(b.paymentReceived, prev?.paymentReceived ?? false) || PAID_OR_LATER.has(effectiveStatus);
     const artworkReceived = keep(b.artworkReceived, prev?.artworkReceived ?? false);
     const proofApproved = keep(b.proofApproved, prev?.proofApproved ?? false);

@@ -17,6 +17,7 @@ export async function GET(_req: Request, { orgId }: { orgId: string }) {
         CASE p.status::text
           WHEN 'QUOTE_SENT' THEN 'QUOTED'
           WHEN 'DRAFT' THEN 'NEEDS_REVIEW'
+          WHEN 'CANCELLED' THEN 'EXPIRED'
           ELSE p.status::text
         END AS status,
         p."inHandsDate",
@@ -110,7 +111,6 @@ export async function GET(_req: Request, { orgId }: { orgId: string }) {
         ) AS "mockupUris"
       FROM "Project" p
       WHERE p."organizationId" = $1
-        AND p.status != 'CANCELLED'::"ProjectStatus"
       ORDER BY p."createdAt" DESC
       LIMIT 100`,
       [orgId]

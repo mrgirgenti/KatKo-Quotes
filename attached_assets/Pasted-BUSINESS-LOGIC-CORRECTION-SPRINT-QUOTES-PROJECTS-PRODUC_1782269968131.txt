@@ -1,0 +1,502 @@
+BUSINESS LOGIC CORRECTION SPRINT — QUOTES, PROJECTS, PRODUCTION, CLIENT HUBS & PERMISSIONS
+
+STOP.
+
+Do not audit.
+
+Do not roadmap.
+
+Implement.
+
+Your implementation review exposed several areas where the current system behavior does not match the intended business workflow.
+
+Before making additional visual changes, correct the underlying business logic and lifecycle architecture.
+
+These are not enhancement requests.
+
+These are workflow corrections.
+
+---
+
+# PART 1 — QUOTES VS PROJECTS LIFECYCLE
+
+The current system is incorrectly allowing quote-stage records to appear in Projects.
+
+A project request submitted through Client Hub should create a Quote Request.
+
+It should NOT appear in Projects.
+
+---
+
+## QUOTES PAGE
+
+The Quotes page should contain:
+
+DRAFT
+
+NEEDS_REVIEW
+
+QUOTING
+
+QUOTED
+
+INVOICE_SENT
+
+These are all quote-related states.
+
+---
+
+## PROJECTS PAGE
+
+The Projects page should contain:
+
+PAID
+
+IN_PRODUCTION
+
+COMPLETED
+
+These are actual projects.
+
+---
+
+## REQUIRED FIX
+
+A Client Hub submission currently creates:
+
+NEEDS_REVIEW
+
+This record is appearing in Projects.
+
+This is incorrect.
+
+NEEDS_REVIEW records belong in Quotes.
+
+Only actual projects belong in Projects.
+
+Implement the separation.
+
+---
+
+# PART 2 — PRODUCTION STATUS SYNCHRONIZATION
+
+The system currently allows:
+
+Project Status = IN_PRODUCTION
+
+while
+
+Operational Status = Ready For Production
+
+This must never happen.
+
+---
+
+## SOURCE OF TRUTH RULE
+
+Lifecycle Status:
+
+PAID
+IN_PRODUCTION
+COMPLETED
+
+and
+
+Operational Status:
+
+Ready For Production
+In Production
+On Hold
+Completed
+Delivered
+Closed
+
+must remain synchronized.
+
+---
+
+## REQUIRED FIX
+
+When a project enters:
+
+IN_PRODUCTION
+
+automatically update:
+
+Operational Status = In Production
+
+Likewise:
+
+COMPLETED
+
+should synchronize appropriately.
+
+Prevent lifecycle and operational statuses from diverging.
+
+A project should never display:
+
+"In Production"
+
+in one location and
+
+"Ready For Production"
+
+in another.
+
+---
+
+# PART 3 — CLIENT HUB STATUS MAPPING
+
+The Client Hub should follow a clear lifecycle.
+
+---
+
+## SUBMITTED QUOTES
+
+Display:
+
+NEEDS_REVIEW
+
+QUOTING
+
+QUOTED
+
+INVOICE_SENT
+
+These all belong to the quote journey.
+
+---
+
+## ACTIVE PROJECTS
+
+Display:
+
+PAID
+
+IN_PRODUCTION
+
+Only active work belongs here.
+
+---
+
+## COMPLETED PROJECTS
+
+Display:
+
+COMPLETED
+
+Only completed work belongs here.
+
+---
+
+## EXPIRED QUOTES
+
+Expired quotes should NOT disappear.
+
+Clients often revisit expired quotes.
+
+Current implementation excludes them completely.
+
+This is incorrect.
+
+Add:
+
+Expired Quotes
+
+filter pill.
+
+Expired records should remain accessible.
+
+Do not display them in:
+
+Active Projects
+
+Completed Projects
+
+or
+
+Submitted Quotes
+
+---
+
+# PART 4 — PERMISSION MODEL CORRECTION
+
+Current implementation allows:
+
+Primary Contact
+
+OR
+
+canApproveQuotes
+
+to approve quotes.
+
+This is incomplete.
+
+---
+
+## REQUIRED APPROVAL PERMISSIONS
+
+Allow quote approval when user is:
+
+Primary Contact
+
+OR
+
+Org Admin
+
+OR
+
+canApproveQuotes
+
+---
+
+## TEAM MEMBER PERMISSIONS
+
+All Hub members should be able to:
+
+View Projects
+
+View Quotes
+
+Request Changes
+
+Decline Quotes
+
+Download Artwork
+
+Download Mockups
+
+Access Media
+
+Submit Project Requests
+
+View Order Details
+
+---
+
+## RESTRICTED PERMISSIONS
+
+Only:
+
+Primary Contact
+
+Org Admin
+
+may:
+
+Approve Quotes
+
+Manage Team Members
+
+Manage Organization Branding
+
+Manage Hub Settings
+
+Manage Organization Profile
+
+---
+
+# PART 5 — CLIENT HUB CARD FIXES
+
+The Active Project cards are close but still incomplete.
+
+Implement:
+
+Service Type
+
+under the status pills.
+
+Example:
+
+IN PRODUCTION
+
+Direct To Film
+
+Client Name
+
+This information was present in the approved mockup.
+
+---
+
+## CLIENT NAME
+
+Display:
+
+Client Name
+
+beneath the project title.
+
+Example:
+
+Team Shirts
+
+Joshy G
+
+---
+
+# PART 6 — EXPIRED QUOTES BUG
+
+Current implementation:
+
+Expired quotes stored as CANCELLED
+
+Portal API excludes CANCELLED
+
+Result:
+
+Expired Quotes filter has no records.
+
+---
+
+## REQUIRED FIX
+
+Expired Quotes must appear inside:
+
+Expired Quotes
+
+filter pill.
+
+Do not exclude them from portal visibility.
+
+Display them as:
+
+Expired
+
+rather than Cancelled.
+
+---
+
+# PART 7 — ORGANIZATION DETAILS FOLLOW-UP
+
+Validate and complete the following items:
+
+Organization logo upload
+
+Client profile image upload
+
+Logo synchronization
+
+Organization profile image
+
+Client Hub branding image
+
+Client Hub sidebar logo
+
+All must remain synchronized.
+
+One logo.
+
+One source of truth.
+
+---
+
+## CLIENT HUB SECTION
+
+When Hub is active:
+
+Button should display:
+
+Open
+
+When Hub is not active:
+
+Button should display:
+
+Activate
+
+Remove redundant Open button.
+
+---
+
+## HUB READINESS
+
+Remove:
+
+At least one active user
+
+requirement.
+
+Remove:
+
+Manage People In Contacts
+
+action.
+
+Contacts already manage people.
+
+---
+
+# PART 8 — IMPLEMENTATION AUDIT
+
+After implementation, provide proof of completion.
+
+For every item below return:
+
+Implemented
+
+Partially Implemented
+
+Not Implemented
+
+with supporting screenshots.
+
+---
+
+Quotes vs Projects separation
+
+Production status synchronization
+
+Client Hub status mapping
+
+Expired Quotes visibility
+
+Org Admin approval permissions
+
+Client Hub card service type
+
+Client Hub client name
+
+Logo synchronization
+
+Activate/Open button logic
+
+Expired Quotes filter
+
+---
+
+# PART 9 — QUESTIONS REQUIRING CLARIFICATION
+
+If ANY requirement is unclear:
+
+STOP.
+
+Ask questions.
+
+Do not assume.
+
+Do not invent business logic.
+
+Return a numbered list of specific clarification questions before coding.
+
+---
+
+# OUTPUT
+
+1. Files changed
+2. Business logic changes
+3. Status mapping changes
+4. Permissions changes
+5. Client Hub changes
+6. API changes
+7. Validation results
+8. Screenshots
+9. Remaining questions
+
+Implement the corrections.
+
+Do not audit.
+
+Do not roadmap.
+
+Correct the lifecycle architecture before additional feature work.

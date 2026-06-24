@@ -747,7 +747,7 @@ export default function OrgProfileScreen() {
   const hubPendingCount = contactsList.filter((c) => c.hubAccess === 'invited').length;
   const hubAdminCount = contactsList.filter((c) => c.isOrgAdmin).length;
   const hubHasLogo = !!org.logoUrl;
-  const hubReady = localHubEnabled && hubHasLogo && hubAdminCount > 0;
+  const hubReady = localHubEnabled && hubHasLogo;
 
   const clientHubInner = (
     <>
@@ -827,7 +827,6 @@ export default function OrgProfileScreen() {
             {[
               { ok: localHubEnabled, label: 'Hub enabled' },
               { ok: hubHasLogo, label: 'Branding / logo set' },
-              { ok: hubAdminCount > 0, label: 'At least one org admin' },
             ].map((item) => (
               <View key={item.label} style={styles.hubReadyRow}>
                 {item.ok

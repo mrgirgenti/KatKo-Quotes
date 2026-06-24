@@ -48,15 +48,10 @@ type SortDir = 'asc' | 'desc';
 
 const STATUS_PILLS: { key: 'all' | QuoteStatus; label: string }[] = [
   { key: 'all',                label: 'All'             },
-  { key: 'needs_review',       label: 'Needs Review'    },
-  { key: 'quoting',            label: 'Quoting'         },
-  { key: 'quoted',             label: 'Quoted'          },
-  { key: 'invoice_sent',       label: 'Invoice Sent'    },
   { key: 'paid',               label: 'Paid'            },
   { key: 'active',             label: 'In Production'   },
   { key: 'production_started', label: 'In Production'   },
   { key: 'completed',          label: 'Completed'       },
-  { key: 'expired',            label: 'Expired'         },
 ];
 
 function StatusBadge({ status }: { status: QuoteStatus }) {
@@ -687,17 +682,10 @@ export default function ProjectsScreen() {
           </View>
           <View style={styles.statDivider} />
           <View style={[styles.statItem, isMobile && styles.statItemMobile]}>
-            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: '#2563EB' }]}>
-              {(statusCounts['quoting'] ?? 0) + (statusCounts['quoted'] ?? 0)}
+            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: '#059669' }]}>
+              {statusCounts['paid'] ?? 0}
             </Text>
-            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Quoted</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={[styles.statItem, isMobile && styles.statItemMobile]}>
-            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: '#DC2626' }]}>
-              {statusCounts['needs_review'] ?? 0}
-            </Text>
-            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>{isDesktop ? 'Needs Review' : 'Review'}</Text>
+            <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Paid</Text>
           </View>
         </View>
 

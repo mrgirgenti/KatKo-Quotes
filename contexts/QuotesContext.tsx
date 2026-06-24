@@ -472,10 +472,15 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
     ? (quotesQuery.data || [])
     : (quotesQuery.data || []).filter((q) => q.userId === currentUserId);
 
-  const projects = userQuotes.filter((q) => q.status !== 'draft');
+  const projects = userQuotes.filter(
+    (q) => q.status === 'paid' || q.status === 'active' ||
+           q.status === 'production_started' || q.status === 'completed',
+  );
   const quotes = userQuotes.filter((q) => q.status !== 'draft');
   const sales = userQuotes.filter(
-    (q) => q.status === 'active' || q.status === 'production_started' || q.status === 'completed',
+    (q) => q.status === 'draft' || q.status === 'needs_review' ||
+           q.status === 'quoting' || q.status === 'quoted' ||
+           q.status === 'invoice_sent' || q.status === 'expired',
   );
   // Production lens: projects that have entered the operational workflow, plus
   // any completed or in-production projects that may not have an operationalStatus

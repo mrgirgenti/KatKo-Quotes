@@ -131,7 +131,7 @@ function downloadQuotePdf(quote: ClientQuoteData): void {
       rushFee: quote.rushFee,
     },
   };
-  const html = buildProjectDocumentHTML(source, 'ORDER_DETAIL');
+  const html = buildProjectDocumentHTML(source, 'QUOTE');
   const win = window.open('', '_blank', 'width=920,height=1040');
   if (!win) return;
   win.document.open();
@@ -286,7 +286,7 @@ export default function ClientQuoteView() {
             {/* Left column — document + files */}
             <View style={s.leftCol}>
               {docSource && (
-                <ProjectDocument source={docSource} mode="ORDER_DETAIL" minHeight={700} />
+                <ProjectDocument source={docSource} mode="QUOTE" minHeight={700} />
               )}
 
               {/* Customer files (only when present) */}
