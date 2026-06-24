@@ -2360,16 +2360,46 @@ export default function ClientPortal() {
       return 0;
     });
 
-    const SUBMITTED_STATUSES = ['NEEDS_REVIEW', 'QUOTING'];
-    const QUOTES_SENT_STATUSES = ['QUOTED', 'INVOICE_SENT'];
-    const ACTIVE_STATUSES = ['PAID', 'IN_PRODUCTION'];
-    const COMPLETED_STATUSES = ['COMPLETED'];
-    const submittedProjects = sortedDisplayed.filter(p => SUBMITTED_STATUSES.includes(normalSt(p.status)));
-    const quotesSentProjects = sortedDisplayed.filter(p => QUOTES_SENT_STATUSES.includes(normalSt(p.status)));
-    const activeProjects = sortedDisplayed.filter(p => ACTIVE_STATUSES.includes(normalSt(p.status)));
-    const completedProjects = sortedDisplayed.filter(p => COMPLETED_STATUSES.includes(normalSt(p.status)));
+    // ── Workflow-stage grouping — exactly three customer-facing sections ──────
+    // A record's status routes it into a bucket; statuses NEVER spawn their own
+    // section. Terminal quote statuses (Expired / Cancelled) are excluded from
+    // all three sections and remain reachable only via the "Expired Quotes"
+    // filter pill. Active is the catch-all for every post-approval status.
+    const SUBMITTED_QUOTE_STATUSES = [
+      'NEEDS_REVIEW', 'QUOTING', 'QUOTED',
+      'CHANGE_REQUESTED', 'REVISION_REQUESTED',
+      'AWAITING_APPROVAL', 'AWAITING_RESPONSE',
+    ];
+    const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED'];
+    const SECTION_EXCLUDED_STATUSES = ['EXPIRED', 'CANCELLED'];
 
-    const totalPages = Math.max(1, Math.ceil(Math.max(submittedProjects.length, quotesSentProjects.length, activeProjects.length, completedProjects.length) / PAGE_SIZE));
+    const sectionOf = (status: string): 'SUBMITTED' | 'ACTIVE' | 'COMPLETED' | null => {
+      const norm = normalSt(status);
+      if (SECTION_EXCLUDED_STATUSES.includes(norm)) return null;
+      if (COMPLETED_STATUSES.includes(norm)) return 'COMPLETED';
+      if (SUBMITTED_QUOTE_STATUSES.includes(norm)) return 'SUBMITTED';
+      // Accepted, Active, Ready For Production, In Production, On Hold, Awaiting
+      // Artwork, Awaiting Mockup Approval, Invoiced, Paid + any other active status.
+      return 'ACTIVE';
+    };
+
+    const submittedProjects = sortedDisplayed.filter(p => sectionOf(p.status) === 'SUBMITTED');
+    const activeProjects = sortedDisplayed.filter(p => sectionOf(p.status) === 'ACTIVE');
+    const completedProjects = sortedDisplayed.filter(p => sectionOf(p.status) === 'COMPLETED');
+    const expiredProjects = sortedDisplayed.filter(p => SECTION_EXCLUDED_STATUSES.includes(normalSt(p.status)));
+
+    // The default view shows only the three workflow sections; the Expired pill
+    // shows only the excluded records. Pagination and the empty state must track
+    // whichever set is on screen so excluded rows never create blank pages or a
+    // blank body in the default view.
+    const isExpiredView = mpStatusFilter === 'EXPIRED';
+    const visibleCount = isExpiredView
+      ? expiredProjects.length
+      : submittedProjects.length + activeProjects.length + completedProjects.length;
+    const pageBasis = isExpiredView
+      ? expiredProjects.length
+      : Math.max(submittedProjects.length, activeProjects.length, completedProjects.length);
+    const totalPages = Math.max(1, Math.ceil(pageBasis / PAGE_SIZE));
 
     const hasActiveFilters = !!(mpStatusFilter || mpDateFrom || mpDateTo || mpCostMin || mpCostMax);
     const advFilterCount = [mpDateFrom || mpDateTo, mpCostMin || mpCostMax].filter(Boolean).length;
@@ -2761,7 +2791,7 @@ export default function ClientPortal() {
         >
           {projectsLoading ? (
             <ActivityIndicator color={BRAND} style={{ marginTop: 40 }} />
-          ) : sortedDisplayed.length === 0 ? (
+          ) : visibleCount === 0 ? (
             <View style={{ paddingTop: 48, alignItems: 'center' }}>
               {hasActiveFilters || mpSearch ? (
                 <EmptyState
@@ -2785,10 +2815,15 @@ export default function ClientPortal() {
             </View>
           ) : (
             <>
-              {renderSection('SUBMITTED QUOTES', submittedProjects, 'View all submitted', 'NEEDS_REVIEW')}
-              {renderSection('QUOTES SENT', quotesSentProjects, 'View all quotes', 'QUOTED')}
-              {renderSection('ACTIVE PROJECTS', activeProjects, 'View all active', 'PAID')}
-              {renderSection('COMPLETED PROJECTS', completedProjects, 'View all completed', 'COMPLETED')}
+              {mpStatusFilter === 'EXPIRED' ? (
+                renderSection('EXPIRED QUOTES', expiredProjects, 'View all expired', 'EXPIRED')
+              ) : (
+                <>
+                  {renderSection('SUBMITTED QUOTES', submittedProjects, 'View all submitted', 'NEEDS_REVIEW')}
+                  {renderSection('ACTIVE PROJECTS', activeProjects, 'View all active', 'PAID')}
+                  {renderSection('COMPLETED PROJECTS', completedProjects, 'View all completed', 'COMPLETED')}
+                </>
+              )}
               <Pagination />
             </>
           )}
