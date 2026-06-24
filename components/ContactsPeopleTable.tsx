@@ -39,8 +39,8 @@ const TABLE_MIN_W = 900;
 
 const CW = {
   name:         180,
+  role:         170,
   email:        158,
-  role:          96,
   phone:        120,
   status:        96,
   primary:       80,
@@ -105,11 +105,11 @@ export default function ContactsPeopleTable({
               <View style={[styles.th, { width: CW.name }]}>
                 <Text style={styles.thText}>NAME</Text>
               </View>
-              <View style={[styles.th, { width: CW.email }]}>
-                <Text style={styles.thText}>EMAIL</Text>
-              </View>
               <View style={[styles.th, { width: CW.role }]}>
                 <Text style={styles.thText}>ROLE / TITLE</Text>
+              </View>
+              <View style={[styles.th, { width: CW.email }]}>
+                <Text style={styles.thText}>EMAIL</Text>
               </View>
               <View style={[styles.th, { width: CW.phone }]}>
                 <Text style={styles.thText}>PHONE</Text>
@@ -141,14 +141,14 @@ export default function ContactsPeopleTable({
                       {c.firstName} {c.lastName}
                     </Text>
                   </View>
-                  <View style={[styles.td, { width: CW.email }]}>
-                    <Text style={styles.cellText} numberOfLines={1}>
-                      {c.email || '—'}
-                    </Text>
-                  </View>
                   <View style={[styles.td, { width: CW.role }]}>
                     <Text style={styles.cellText} numberOfLines={1}>
                       {c.role || '—'}
+                    </Text>
+                  </View>
+                  <View style={[styles.td, { width: CW.email }]}>
+                    <Text style={styles.cellText} numberOfLines={1}>
+                      {c.email || '—'}
                     </Text>
                   </View>
                   <View style={[styles.td, { width: CW.phone }]}>
