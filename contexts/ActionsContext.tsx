@@ -38,6 +38,15 @@ export const [ActionsProvider, useActions] = createContextHook(() => {
   const countByCategory = (category: ActionCategory) =>
     actions.filter(a => ACTION_CATEGORY[a.type] === category && a.status !== 'RESOLVED').length;
 
+  const markAllReadMutation = useMutation({
+    mutationFn: () =>
+      apiFetch('/api/actions', {
+        method: 'PUT',
+        body: JSON.stringify({ action: 'mark_all_read' }),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['actions'] }),
+  });
+
   const markViewedMutation = useMutation({
     mutationFn: (id: string) =>
       apiFetch(`/api/actions/${id}`, {
@@ -66,6 +75,7 @@ export const [ActionsProvider, useActions] = createContextHook(() => {
     systemAlertsCount: countByCategory('SYSTEM_ALERTS'),
     markViewed: (id: string) => markViewedMutation.mutate(id),
     markResolved: (id: string) => markResolvedMutation.mutate(id),
+    markAllRead: () => markAllReadMutation.mutate(),
     refetch: () => queryClient.invalidateQueries({ queryKey: ['actions'] }),
   };
 });

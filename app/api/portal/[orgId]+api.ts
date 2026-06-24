@@ -48,6 +48,7 @@ export async function POST(request: Request, { orgId }: { orgId: string }) {
       `SELECT u.id,
               TRIM(u."firstName" || ' ' || COALESCE(u."lastName", '')) AS name,
               u.email, u."userType", u.status, om.role,
+              om."isPrimaryContact", om."canApproveQuotes",
               u."avatarColor", u."avatarUri"
        FROM "OrganizationMembership" om
        JOIN "User" u ON u.id = om."userId"
@@ -79,6 +80,8 @@ export async function POST(request: Request, { orgId }: { orgId: string }) {
       userName: user.name,
       userEmail: user.email,
       role: user.role,
+      isPrimaryContact: !!user.isPrimaryContact,
+      canApproveQuotes: !!user.canApproveQuotes,
       orgName: org.name,
       orgId: org.id,
       avatarColor: user.avatarColor || '#FF5A00',

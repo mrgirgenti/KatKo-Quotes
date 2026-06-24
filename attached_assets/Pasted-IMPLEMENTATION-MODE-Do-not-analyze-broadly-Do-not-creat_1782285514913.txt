@@ -1,0 +1,227 @@
+IMPLEMENTATION MODE
+
+Do not analyze broadly.
+Do not create an architecture report.
+Do not revisit Clerk.
+Do not modify unrelated pages.
+
+Focus only on the Client Hub “Start a Project” / “Submit a Project Request” form.
+
+Begin implementation immediately once the relevant files are located.
+
+When complete, report:
+
+* Files changed
+* Components changed
+* What was implemented
+* Any remaining issues
+
+---
+
+## CLIENT HUB START A PROJECT FORM REFINEMENT
+
+OBJECTIVE
+
+Update the Client Hub “Start a Project” form so the line item structure visually and functionally aligns more closely with the backend New Quote form.
+
+The backend New Quote form already has the correct pattern for:
+
+* Products + Sizes black header
+* Orange Add Style/Color button
+* Multiple product/style/color/size rows
+* Clear black section headers
+
+Use the backend New Quote form as the reference.
+
+---
+
+## CHANGE 1 — PROJECT NOTES POSITION + LABEL
+
+Current issue:
+
+The Client Hub form has “Line Item Notes” positioned below Products + Sizes.
+
+Required change:
+
+Move this field ABOVE Products + Sizes.
+
+Rename:
+
+Line Item Notes
+
+to:
+
+Project Notes
+
+This should match the backend New Quote form language and layout.
+
+---
+
+## CHANGE 2 — PRODUCTS + SIZES HEADER
+
+Current issue:
+
+The Client Hub Products + Sizes section does not visually match the backend New Quote form.
+
+Required change:
+
+Products + Sizes must have:
+
+* Black header background
+* White text
+* Orange Add Style/Color button on the right
+
+Header text:
+
+PRODUCTS + SIZES
+
+Button text:
+
+* Add Style/Color
+
+This section should visually match the backend New Quote form.
+
+---
+
+## CHANGE 3 — ADD STYLE/COLOR FUNCTIONALITY
+
+The Add Style/Color button must add another complete product row below the existing one.
+
+Each added row should include:
+
+* Product category dropdown
+* Style / Product dropdown or input
+* Color dropdown
+* Size quantity fields
+* Delete/remove option for that row
+
+Size fields should match existing behavior:
+
+* XS
+* SM
+* MD
+* LG
+* XL
+* 2XL
+* 3XL
+* 4XL
+* Total
+
+Adding a new style/color should not erase or overwrite existing rows.
+
+Each row should maintain its own quantities.
+
+This should work like the backend New Quote form.
+
+---
+
+## CHANGE 4 — BLACK SECTION HEADERS
+
+These Client Hub form sections should use black header bars with white text:
+
+* Mockup
+* Products + Sizes
+* Overall Request Notes
+* Attach Artwork Files
+
+Do not make the entire section black.
+
+Only the section header bar should be black.
+
+The content area below should remain white/light gray and usable.
+
+---
+
+## CHANGE 5 — MOCKUP SECTION
+
+Add a black header bar above the Mockup area.
+
+Header text:
+
+MOCKUP
+
+Preserve existing mockup functionality.
+
+Do not remove upload options.
+
+Do not change current mockup behavior.
+
+---
+
+## CHANGE 6 — OVERALL REQUEST NOTES SECTION
+
+Add a black header bar above Overall Request Notes.
+
+Header text:
+
+OVERALL REQUEST NOTES
+
+Preserve existing notes field functionality.
+
+---
+
+## CHANGE 7 — ATTACH ARTWORK FILES SECTION
+
+Add a black header bar above Attach Artwork Files.
+
+Header text:
+
+ATTACH ARTWORK FILES
+
+Preserve existing file upload functionality.
+
+Do not change accepted file types.
+
+Do not change upload behavior.
+
+---
+
+## DESIGN REQUIREMENTS
+
+Match Katalyst OS design language:
+
+* Black section headers
+* White uppercase header text
+* Orange action buttons
+* Rounded cards
+* Consistent spacing
+* Consistent typography
+
+Do not over-redesign the form.
+
+This is a targeted alignment pass.
+
+---
+
+## DO NOT CHANGE
+
+Do not change:
+
+* Request Details section
+* Organization field
+* Submitted By field
+* Project Name field
+* Order Type field
+* In Hands Date field
+* Existing submit behavior
+* Existing validation
+* Existing backend data structure unless required for Add Style/Color
+* Client Hub routing
+* Authentication
+* Permissions
+
+---
+
+## SUCCESS CRITERIA
+
+After implementation:
+
+* Project Notes appears above Products + Sizes.
+* Products + Sizes has a black header.
+* Products + Sizes includes orange + Add Style/Color button.
+* Clicking + Add Style/Color adds another style/product/color/size row.
+* Mockup has a black header.
+* Overall Request Notes has a black header.
+* Attach Artwork Files has a black header.
+* The form feels visually aligned with the backend New Quote form.
+* Existing Client Hub form functionality still works.

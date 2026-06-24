@@ -526,6 +526,8 @@ interface ClientSession {
   userName: string;
   userEmail: string;
   role: string;
+  isPrimaryContact?: boolean;
+  canApproveQuotes?: boolean;
   orgName: string;
   orgId: string;
   avatarColor?: string;
@@ -3281,14 +3283,16 @@ export default function ClientPortal() {
                       <Text style={{ fontSize: 12, color: TEXT_LIGHT, lineHeight: 18 }}>
                         Review your quote and let us know how you’d like to proceed.
                       </Text>
-                      <TouchableOpacity
-                        style={pvStyles.qrApprove}
-                        activeOpacity={0.85}
-                        onPress={() => { setQuoteActionError(null); setQuoteActionNote(''); setQuoteActionModal({ action: 'approve' }); }}
-                      >
-                        <Check size={16} color="#fff" />
-                        <Text style={pvStyles.qrApproveText}>Approve Quote</Text>
-                      </TouchableOpacity>
+                      {(session?.isPrimaryContact || session?.canApproveQuotes || session?.role === 'ORG_ADMIN') && (
+                        <TouchableOpacity
+                          style={pvStyles.qrApprove}
+                          activeOpacity={0.85}
+                          onPress={() => { setQuoteActionError(null); setQuoteActionNote(''); setQuoteActionModal({ action: 'approve' }); }}
+                        >
+                          <Check size={16} color="#fff" />
+                          <Text style={pvStyles.qrApproveText}>Approve Quote</Text>
+                        </TouchableOpacity>
+                      )}
                       <TouchableOpacity
                         style={pvStyles.actionSecondary}
                         activeOpacity={0.85}
@@ -3787,8 +3791,12 @@ export default function ClientPortal() {
                 </View>
               </View>
             )}
-            <TouchableOpacity style={[styles.btn, { marginTop: 4 }]} onPress={handleNewRequest}>
-              <Text style={styles.btnText}>Submit Another Request</Text>
+            <TouchableOpacity style={[styles.btn, { marginTop: 4 }]} onPress={() => { setSubmittedId(''); setActiveView('projects'); }}>
+              <Text style={styles.btnText}>View My Projects</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.backBtn} onPress={handleNewRequest}>
+              <Plus size={14} color={TEXT_LIGHT} />
+              <Text style={styles.backBtnText}>Submit Another Request</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.backBtn} onPress={() => setActiveView('home')}>
               <ArrowLeft size={14} color={TEXT_LIGHT} />

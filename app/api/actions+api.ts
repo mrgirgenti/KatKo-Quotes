@@ -81,6 +81,24 @@ export async function GET(request: Request) {
   }
 }
 
+export async function PUT(request: Request) {
+  try {
+    const authedUser = await authenticateRequest(request);
+    if (!authedUser) return unauthorized();
+    const body = await request.json().catch(() => ({}));
+    if (body.action === 'mark_all_read') {
+      await pool.query(
+        `UPDATE "ActionItem" SET status = 'VIEWED', "viewedAt" = NOW() WHERE status = 'NEW'`
+      );
+      return Response.json({ ok: true });
+    }
+    return Response.json({ error: 'Unknown action' }, { status: 400 });
+  } catch (err) {
+    console.error('[PUT /api/actions]', err);
+    return Response.json({ error: 'Failed' }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const authedUser = await authenticateRequest(request);

@@ -644,7 +644,7 @@ export default function QuoteDetailScreen() {
         <View style={styles.sendQuotePanelHeader}>
           <Send size={16} color="#FF5A00" />
           <Text style={styles.sendQuotePanelTitle}>
-            {isQuoted ? 'Quote Sent' : 'Send Quote'}
+            Send Quote
           </Text>
         </View>
         {quote.quoteSentAt ? (
@@ -657,7 +657,7 @@ export default function QuoteDetailScreen() {
         ) : null}
         <Text style={styles.sendQuotePanelSub}>
           {isQuoted
-            ? 'Share this link again or mark as paid once payment is received.'
+            ? 'Re-send the quote link to your client or copy it to share manually.'
             : 'Share this link with your client so they can review and approve the quote.'}
         </Text>
         {!isReadyToSend && !isQuoted && (
