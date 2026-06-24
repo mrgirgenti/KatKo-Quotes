@@ -1,0 +1,286 @@
+Action Center Final Alignment Pass — Match Approved Inbox Layout
+
+STOP.
+
+Do not redesign.
+
+Do not reinterpret.
+
+Do not create new UI patterns.
+
+The current Action Center is approximately 90% complete.
+
+This sprint is strictly a layout-alignment pass to match the approved Action Center mockup.
+
+The architecture is now mostly correct.
+
+The remaining issues are layout, spacing, hierarchy, and inbox behavior.
+
+The approved Action Center mockup remains the source of truth.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+The Action Center should behave like:
+
+- Email Inbox
+- Zendesk Inbox
+- HubSpot Inbox
+- Help Scout Inbox
+
+NOT:
+
+- Dashboard
+- Kanban Board
+- Analytics Page
+
+The Action List is the primary content.
+
+The Detail Panel is the secondary content.
+
+Metric cards are summaries only.
+
+--------------------------------------------------
+1. REMOVE DEAD SPACE BETWEEN LIST AND DETAIL PANEL
+--------------------------------------------------
+
+Current issue:
+
+There is a large empty vertical column between the action list and the detail panel.
+
+This space serves no purpose.
+
+Currently:
+
+Action List
+        [huge empty gap]
+                    Detail Panel
+
+Desired:
+
+Action List            Detail Panel
+
+The action list should expand horizontally and consume all available space up to the detail panel.
+
+The detail panel should sit directly beside the list.
+
+No spacer column.
+
+No unused flex area.
+
+No dead space.
+
+Audit the layout containers and remove any width allocations creating this gap.
+
+--------------------------------------------------
+2. MOVE DETAIL PANEL UP
+--------------------------------------------------
+
+Current issue:
+
+The detail panel begins lower on the page than the action list.
+
+This creates unnecessary dead space above the panel.
+
+The detail panel should align vertically with the top of the action list.
+
+Reference the approved mockup.
+
+The list and panel should visually start at the same position.
+
+--------------------------------------------------
+3. METRIC SECTION BACKGROUND
+--------------------------------------------------
+
+Current issue:
+
+The metric section background does not match the rest of Katalyst OS.
+
+Use the same light-grey metric-section treatment used elsewhere:
+
+- Dashboard
+- CRM
+- Projects
+- Organization Details
+
+The metric area should visually belong to the platform.
+
+Do not invent a new styling system.
+
+--------------------------------------------------
+4. METRIC CARD HEIGHT CONSISTENCY
+--------------------------------------------------
+
+Current issue:
+
+Long labels wrap inconsistently.
+
+Example:
+
+Needs Review
+
+vs
+
+Customer Requests
+
+causing uneven card heights.
+
+Requirements:
+
+- All cards must always be the same height
+- All counts align
+- All labels align
+- All cards visually balanced
+
+If necessary:
+
+- Intentionally stack labels
+- Use fixed-height cards
+- Constrain label regions
+
+But never allow card heights to vary.
+
+--------------------------------------------------
+5. DEFAULT VIEW MUST BE "ALL"
+--------------------------------------------------
+
+The default Action Center behavior should function like an inbox.
+
+When opening Action Center:
+
+Selected filter:
+
+ALL
+
+The action list should display:
+
+- Needs Review
+- Customer Requests
+- Production Issues
+- System Alerts
+
+combined together.
+
+The metric cards are category summaries.
+
+The metric cards are NOT independent pages.
+
+Think:
+
+Inbox
+
+NOT:
+
+Separate Dashboards
+
+Verify:
+
+- ALL filter selected by default
+- ALL actions displayed by default
+- Metric cards display counts only
+- Metric cards do not control page structure
+
+--------------------------------------------------
+6. LIST IS THE PRIMARY CONTENT
+--------------------------------------------------
+
+The action list should dominate the page.
+
+The user should immediately see actionable items.
+
+The list should consume roughly:
+
+65–75% width
+
+The detail panel should consume roughly:
+
+25–35% width
+
+The page should feel like:
+
+Master → Detail
+
+not
+
+Dashboard → Widget
+
+--------------------------------------------------
+7. DETAIL PANEL POLISH
+--------------------------------------------------
+
+Keep the current detail panel architecture.
+
+Continue using:
+
+- Organization
+- Project / Quote / Invoice Reference
+- Requested By
+- Date / Time
+- Priority
+- Comments
+- Attachments
+- Open CTA
+- Mark Resolved
+
+But tighten spacing so the panel feels dense and useful.
+
+Reduce unnecessary whitespace.
+
+--------------------------------------------------
+8. MOBILE RESPONSIVE VALIDATION
+--------------------------------------------------
+
+Verify mobile behavior.
+
+Requirements:
+
+- Compact metric cards
+- Action list remains primary
+- Detail panel opens as drawer/bottom sheet
+- No giant empty metric columns
+- No wasted space
+
+The mobile layout should feel intentionally designed.
+
+--------------------------------------------------
+9. MATCH THE APPROVED MOCKUP
+--------------------------------------------------
+
+This sprint is complete only when the live application visually resembles the approved Action Center mockup.
+
+Do not stop after minor CSS adjustments.
+
+Do not stop after technical compliance.
+
+Continue refining until:
+
+- Layout matches
+- Spacing matches
+- Hierarchy matches
+- Inbox behavior matches
+
+The approved mockup is the success criteria.
+
+--------------------------------------------------
+REQUIRED OUTPUT
+--------------------------------------------------
+
+Return:
+
+1. Files changed
+2. Layout changes
+3. Dead-space fixes
+4. Metric-card fixes
+5. Detail-panel fixes
+6. Confirmation of default inbox behavior
+7. Desktop screenshot
+8. Mobile screenshot
+
+Implement.
+
+Do not redesign.
+
+Do not create new UI patterns.
+
+Match the approved Action Center inbox layout exactly.

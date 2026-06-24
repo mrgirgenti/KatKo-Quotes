@@ -139,7 +139,7 @@ function StatCard({
         </View>
         <View style={s.statBody}>
           <Text style={[s.statCount, { color: active ? color : '#111' }]}>{count}</Text>
-          <Text style={s.statLabel}>{ACTION_CATEGORY_LABEL[category]}</Text>
+          <Text style={s.statLabel} numberOfLines={1}>{ACTION_CATEGORY_LABEL[category]}</Text>
         </View>
       </View>
       <View style={[s.statBar, { backgroundColor: color }]} />
@@ -509,8 +509,8 @@ export default function ActionCenterScreen() {
 
         {/* TABLE */}
         <View style={[s.tableWrap, isDesktop && { flex: 1, minWidth: 0 }]}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={{ minWidth: isMobile ? 640 : 720 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+            <View style={{ minWidth: isMobile ? 640 : 720, flexGrow: 1 }}>
 
               {/* Table header */}
               <View style={s.tableHead}>
@@ -755,31 +755,33 @@ const s = StyleSheet.create({
   // Stat cards
   statsSection: {
     flexShrink: 0, flexGrow: 0,
-    borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+    backgroundColor: '#F9FAFB',
+    borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
   },
-  statsRow: { paddingHorizontal: 16, paddingVertical: 10, gap: 10 },
+  statsRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 10 },
   statCard: {
-    width: 178, borderRadius: 10, borderWidth: 1,
+    width: 172, height: 76, borderRadius: 10, borderWidth: 1,
     overflow: 'hidden', backgroundColor: '#fff',
     shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 1 },
   },
   statCardInner: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 14, paddingVertical: 14, gap: 12,
+    paddingHorizontal: 12, paddingVertical: 0, gap: 10,
+    flex: 1,
   },
   statIconCircle: {
-    width: 38, height: 38, borderRadius: 19,
+    width: 36, height: 36, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  statBody: { flex: 1 },
-  statCount: { fontSize: 26, fontWeight: '800', lineHeight: 28, color: '#111' },
-  statLabel: { fontSize: 11, fontWeight: '500', color: '#6B7280', marginTop: 2 },
-  statBar: { height: 3 },
+  statBody: { flex: 1, justifyContent: 'center' },
+  statCount: { fontSize: 24, fontWeight: '800', lineHeight: 26, color: '#111' },
+  statLabel: { fontSize: 10, fontWeight: '500', color: '#6B7280', marginTop: 2 },
+  statBar: { height: 3, flexShrink: 0 },
 
   // Filter pills
   filterBar: {
     borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
-    paddingBottom: 10,
+    paddingVertical: 8,
   },
   filterPills: { paddingHorizontal: 16, gap: 6 },
   pill: {
@@ -867,7 +869,7 @@ const s = StyleSheet.create({
 
   // Split drawer (desktop) — always visible on desktop
   splitDrawer: {
-    width: 390, borderLeftWidth: 1, borderLeftColor: '#E5E7EB',
+    width: 340, borderLeftWidth: 1, borderLeftColor: '#E5E7EB',
     flexShrink: 0,
   },
   panelEmpty: {
@@ -912,13 +914,13 @@ const s = StyleSheet.create({
     fontSize: 10, fontWeight: '700', color: '#fff',
     letterSpacing: 0.8, textTransform: 'uppercase',
   },
-  drawerSecBody: { padding: 14, gap: 10 },
+  drawerSecBody: { padding: 12, gap: 8 },
   drawerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
-  drawerRowLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
-  drawerRowValue: { fontSize: 13, color: '#111', fontWeight: '500' },
-  drawerCommentText: { fontSize: 13, color: '#374151', lineHeight: 20 },
+  drawerRowLabel: { fontSize: 11, color: '#6B7280', fontWeight: '500' },
+  drawerRowValue: { fontSize: 12, color: '#111', fontWeight: '500' },
+  drawerCommentText: { fontSize: 12, color: '#374151', lineHeight: 18 },
   drawerFooter: {
-    flexDirection: 'row', gap: 8, padding: 12,
+    flexDirection: 'row', gap: 8, padding: 10,
     borderTopWidth: 1, borderTopColor: '#E5E7EB', flexWrap: 'wrap',
   },
   drawerFooterPrimary: {

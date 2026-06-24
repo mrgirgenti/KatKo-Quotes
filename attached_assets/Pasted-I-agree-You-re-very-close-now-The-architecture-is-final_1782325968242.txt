@@ -1,0 +1,211 @@
+I agree. You're very close now. The architecture is finally correct, but there are still some layout mistakes preventing it from matching the mockup.
+
+I'd send this exactly:
+
+---
+
+# Action Center Final Layout Corrections
+
+STOP.
+
+Do not redesign.
+
+Do not re-interpret.
+
+The current Action Center is approximately 90% correct.
+
+This sprint is strictly a layout alignment pass to match the approved Action Center mockup.
+
+---
+
+## 1. Remove Dead Space Between Table And Detail Panel
+
+The large empty gap between the action table and the detail panel must be eliminated.
+
+Currently:
+
+```text
+Action Table
+      [large empty gap]
+                Detail Panel
+```
+
+Desired:
+
+```text
+Action Table                Detail Panel
+```
+
+The action table/list should expand horizontally and consume all available width up to the detail panel.
+
+The detail panel should sit immediately beside the table.
+
+No dead middle column.
+
+No spacer column.
+
+No unused flex area.
+
+Audit the layout container and remove any unused width allocations.
+
+---
+
+## 2. Raise The Detail Panel
+
+The detail panel begins too low on the page.
+
+Currently:
+
+* Table begins near top
+* Detail panel begins lower
+
+This creates dead space above the detail panel.
+
+Move the detail panel upward so it aligns with the top of the table/list area.
+
+Reference the approved mockup.
+
+Table and detail panel should visually start at the same vertical position.
+
+---
+
+## 3. Metric Card Background
+
+The metric card container area should match the standard Katalyst dashboard metric sections.
+
+Use the same light-grey metric background treatment used throughout:
+
+* Dashboard
+* CRM metrics
+* Project metrics
+* Organization metrics
+
+The current white background feels disconnected from the rest of the system.
+
+Match existing site-wide metric styling.
+
+Do not invent a new metric section style.
+
+---
+
+## 4. Metric Card Height Consistency
+
+All metric cards must always remain the same height.
+
+Current issue:
+
+Long labels wrap inconsistently.
+
+Example:
+
+```text
+Customer Requests
+```
+
+wraps differently than:
+
+```text
+Needs Review
+```
+
+causing visual imbalance.
+
+Requirements:
+
+* All cards same height
+* All cards same vertical alignment
+* All metric counts align
+* All labels align
+
+If necessary:
+
+* Intentionally stack labels
+* Constrain labels
+* Use fixed card heights
+
+But never allow one card to become taller than the others.
+
+---
+
+## 5. Confirm Default View Logic
+
+The default Action Center view should behave like an inbox.
+
+When entering Action Center:
+
+Selected filter:
+
+```text
+All
+```
+
+The action list should show:
+
+* Needs Review
+* Customer Requests
+* Production Issues
+* System Alerts
+
+combined together.
+
+The metric cards are category summaries.
+
+The metric cards are NOT independent page views.
+
+Think:
+
+```text
+Email Inbox
+```
+
+not
+
+```text
+Separate dashboards
+```
+
+Verify:
+
+All filter displays all action types.
+
+Metric cards show counts only.
+
+The action table displays all actions by default.
+
+---
+
+## 6. Match The Approved Mockup
+
+The goal is not merely "functional."
+
+The goal is visual parity with the approved Action Center concept.
+
+The approved mockup remains the source of truth.
+
+Continue refining spacing, hierarchy, and layout until the live application resembles the approved design.
+
+---
+
+## Required Output
+
+Return:
+
+1. Files changed
+2. Layout changes
+3. Dead-space fixes
+4. Metric card fixes
+5. Confirmation of default inbox behavior
+6. Desktop screenshot
+7. Mobile screenshot
+
+Implement.
+
+Do not redesign.
+
+Do not introduce new UI patterns.
+
+Match the approved Action Center layout exactly.
+
+---
+
+One additional thing I'd add verbally (not necessarily in the prompt): the mockup actually behaves more like a **master-detail application** (email, Help Scout, HubSpot inbox, Zendesk) than a dashboard. If Replit keeps thinking "dashboard," you'll keep getting cards and whitespace. If they think "inbox," they'll naturally allocate 65–75% width to the action list and 25–35% to the detail panel, which is what your mockup is doing.
