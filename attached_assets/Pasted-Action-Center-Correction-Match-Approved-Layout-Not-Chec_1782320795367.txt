@@ -1,0 +1,135 @@
+Action Center Correction — Match Approved Layout, Not Checklist Compliance
+
+STOP.
+
+Do not claim this is complete based on individual checklist items.
+
+The implemented Action Center does NOT match the approved mockup or intended user experience.
+
+This is not acceptable.
+
+The issue is not whether:
+- columns exist
+- filter pills exist
+- CTA labels exist
+- TypeScript passes
+
+The issue is that the actual screen is visually and functionally far from the approved Action Center design.
+
+Reference:
+The approved mockup shows:
+- usable Action Center dashboard
+- compact metric cards
+- action table that fills the page appropriately
+- right-side detail drawer/panel
+- clean spacing
+- professional desktop layout
+- functional responsive behavior
+
+Current implementation shows:
+- oversized empty metric columns/cards
+- massive unused vertical space
+- action row pushed far below
+- no useful detail panel visible
+- mobile/tablet layout that looks broken
+- layout does not resemble the approved mockup
+- poor information density
+- poor hierarchy
+- poor usability
+
+This is a layout and UX failure, not a data issue.
+
+IMPLEMENTATION REQUIREMENTS
+
+1. Rebuild the Action Center layout to match the approved mockup direction.
+
+Desktop/tablet layout:
+- Top header: Action Center title, search, filters, Mark all as read
+- Compact metric cards across the top
+- Filter pills below metrics
+- Main action table/list below filters
+- Right-side details panel/drawer when an action is selected
+- Details panel should include:
+  - action title
+  - organization
+  - project/quote/invoice reference
+  - requested by
+  - date/time
+  - priority
+  - comments
+  - attachments
+  - primary CTA
+  - mark resolved
+
+2. Fix the metric cards.
+
+Current cards are far too tall and mostly empty.
+
+Metric cards should be compact summary cards, not giant vertical columns.
+
+They should show:
+- icon
+- count
+- label
+- colored accent
+
+They should NOT consume most of the viewport height.
+
+3. Fix responsive behavior.
+
+On mobile:
+- Metrics should become compact horizontal scroll cards or 2-column compact cards
+- The action list should remain readable
+- The table should not be squeezed into unusable columns
+- Details should open as a bottom sheet or full-screen drawer
+- Do not show massive empty cards
+
+4. Fix the main list.
+
+The action list should be the primary content.
+
+It should show:
+- priority
+- type
+- details
+- time
+- action button
+
+Rows should be readable and visually aligned.
+
+5. Add selected-action state.
+
+When an action is clicked:
+- open the detail panel/drawer
+- display full details
+- allow Open Quote / Open Project / Open Organization
+- allow Mark Resolved
+
+6. Do not hide behind screenshot-tool auth issues.
+
+The user is looking at the live authenticated app.
+
+If the live authenticated app does not match the approved mockup, the task is not done.
+
+7. Acceptance criteria.
+
+The task is complete only when:
+- the live app visually resembles the approved Action Center mockup
+- metric cards are compact
+- action list is prominent and usable
+- details panel/drawer works
+- mobile layout is intentionally designed, not squeezed
+- no massive empty columns remain
+- screenshots prove the fixed desktop/tablet/mobile states
+
+Required output:
+1. Root cause of layout mismatch
+2. Files changed
+3. Layout changes made
+4. Mobile changes made
+5. Screenshots of final desktop/tablet/mobile
+6. Confirmation that the live app, not just code review, matches the approved mockup
+
+Implement the actual approved Action Center experience.
+
+Do not return another checklist-compliance report.

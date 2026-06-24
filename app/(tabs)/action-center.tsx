@@ -122,10 +122,10 @@ function StatCard({
   const color = CAT_COLOR[category];
   const bg = active ? CAT_LIGHT[category] : '#fff';
   const icons: Record<ActionCategory, React.ReactElement> = {
-    NEEDS_REVIEW:      <AlertTriangle size={18} color={color} />,
-    CUSTOMER_REQUESTS: <MessageCircle size={18} color={color} />,
-    PRODUCTION_ISSUES: <Settings size={18} color={color} />,
-    SYSTEM_ALERTS:     <Bell size={18} color={color} />,
+    NEEDS_REVIEW:      <AlertTriangle size={16} color={color} />,
+    CUSTOMER_REQUESTS: <MessageCircle size={16} color={color} />,
+    PRODUCTION_ISSUES: <Settings size={16} color={color} />,
+    SYSTEM_ALERTS:     <Bell size={16} color={color} />,
   };
   return (
     <TouchableOpacity
@@ -133,12 +133,14 @@ function StatCard({
       onPress={onPress}
       activeOpacity={0.8}
     >
-      <View style={[s.statIconCircle, { backgroundColor: CAT_LIGHT[category] }]}>
-        {icons[category]}
-      </View>
-      <View style={s.statBody}>
-        <Text style={[s.statCount, { color: active ? color : '#111' }]}>{count}</Text>
-        <Text style={s.statLabel}>{ACTION_CATEGORY_LABEL[category]}</Text>
+      <View style={s.statCardInner}>
+        <View style={[s.statIconCircle, { backgroundColor: CAT_LIGHT[category] }]}>
+          {icons[category]}
+        </View>
+        <View style={s.statBody}>
+          <Text style={[s.statCount, { color: active ? color : '#111' }]}>{count}</Text>
+          <Text style={s.statLabel}>{ACTION_CATEGORY_LABEL[category]}</Text>
+        </View>
       </View>
       <View style={[s.statBar, { backgroundColor: color }]} />
     </TouchableOpacity>
@@ -725,20 +727,23 @@ const s = StyleSheet.create({
   refreshBtn: { padding: 6 },
 
   // Stat cards
-  statsRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 10 },
+  statsRow: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
   statCard: {
-    width: 165, borderRadius: 10, borderWidth: 1,
+    width: 170, borderRadius: 10, borderWidth: 1,
     overflow: 'hidden', backgroundColor: '#fff',
     shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 1 },
   },
-  statIconCircle: {
-    width: 38, height: 38, borderRadius: 19,
-    alignItems: 'center', justifyContent: 'center',
-    margin: 12, marginBottom: 6,
+  statCardInner: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 12, paddingVertical: 10, gap: 10,
   },
-  statBody: { paddingHorizontal: 12, paddingBottom: 12 },
-  statCount: { fontSize: 28, fontWeight: '800', lineHeight: 32 },
-  statLabel: { fontSize: 11, fontWeight: '500', color: '#6B7280', marginTop: 1 },
+  statIconCircle: {
+    width: 34, height: 34, borderRadius: 17,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  statBody: { flex: 1 },
+  statCount: { fontSize: 22, fontWeight: '800', lineHeight: 24, color: '#111' },
+  statLabel: { fontSize: 10, fontWeight: '500', color: '#6B7280', marginTop: 1 },
   statBar: { height: 3 },
 
   // Filter pills
