@@ -44,7 +44,7 @@ const CHECKBOX_W = 36;
 const COL_STYLE: Record<ColId, any> = {
   org:      { ...TABLE_COL.textPrimary, ...TABLE_CELL.left, flexBasis: 240, minWidth: 195, maxWidth: 315 },
   bizType:  { width: 130, ...TABLE_CELL.left },
-  contact:  { ...TABLE_COL.text, ...TABLE_CELL.left },
+  contact:  { flexGrow: 1, flexShrink: 1, flexBasis: 104, minWidth: 88, maxWidth: 176, ...TABLE_CELL.left },
   role:     { width: 140, ...TABLE_CELL.left },
   email:    { ...TABLE_COL.text, ...TABLE_CELL.left },
   phone:    { width: 138, ...TABLE_CELL.left },

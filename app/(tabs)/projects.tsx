@@ -349,7 +349,7 @@ export default function ProjectsScreen() {
   const [statusFilter, setStatusFilter] = useState<'all' | QuoteStatus>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [sortField, setSortField] = useState<SortField>('date');
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [minTotal, setMinTotal] = useState('');
   const [maxTotal, setMinMax] = useState('');
   const [opFilter, setOpFilter] = useState<'all' | OperationalProjectStatus>('all');

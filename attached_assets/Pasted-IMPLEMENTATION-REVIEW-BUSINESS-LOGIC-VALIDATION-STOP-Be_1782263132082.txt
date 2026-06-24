@@ -1,0 +1,290 @@
+IMPLEMENTATION REVIEW + BUSINESS LOGIC VALIDATION
+
+STOP.
+
+Before implementing additional changes, validate your understanding of the following business rules.
+
+Several recent implementations indicate the system may not fully understand the intended lifecycle between:
+
+* Quote Requests
+* Quotes
+* Projects
+* Production
+* Completed Orders
+* Client Hub visibility
+
+This must be clarified before additional work is performed.
+
+---
+
+## PART 1 — REQUIRED UNDERSTANDING REPORT
+
+Provide a written report explaining your understanding of:
+
+1. What belongs in the Quotes page
+2. What belongs in the Projects page
+3. What statuses are considered Quote statuses
+4. What statuses are considered Project statuses
+5. What statuses should appear in Production
+6. What statuses should appear in Client Hub Submitted Quotes
+7. What statuses should appear in Client Hub Active Projects
+8. What statuses should appear in Client Hub Completed Projects
+
+Use actual statuses from the system.
+
+Do not provide generic explanations.
+
+---
+
+## PART 2 — QUOTES VS PROJECTS
+
+Current behavior appears incorrect.
+
+Example:
+
+A client submits a request from Client Hub.
+
+This should create a Quote Request.
+
+It should appear in:
+
+Quotes
+
+Status:
+
+Needs Review
+
+It should NOT appear in:
+
+Projects
+
+until it becomes a Project according to the approved business rules.
+
+Currently quote requests are appearing in Projects.
+
+This appears incorrect.
+
+Review and explain.
+
+---
+
+## PART 3 — PRODUCTION STATUS VALIDATION
+
+Current behavior appears inconsistent.
+
+Example:
+
+Project status:
+
+In Production
+
+Production Queue:
+
+Ready For Production
+
+These cannot both be true simultaneously.
+
+Review:
+
+* Production page
+* Project page
+* Organization Details
+* Client Hub
+
+Identify where status sources diverge.
+
+Explain the intended source of truth.
+
+---
+
+## PART 4 — CLIENT HUB VISIBILITY RULES
+
+Review current implementation and explain:
+
+Submitted Quotes section
+
+Active Projects section
+
+Completed Projects section
+
+Expired Quotes section
+
+Which statuses belong in each.
+
+Current implementation appears inconsistent.
+
+Provide exact mappings.
+
+---
+
+## PART 5 — ROLE PERMISSIONS
+
+Current behavior appears incorrect.
+
+A standard Hub user cannot submit Quote Change Requests.
+
+That is not intended.
+
+Review current permission model.
+
+Explain:
+
+Primary Contact
+
+Org Admin
+
+Member
+
+and which actions each can perform.
+
+Specifically validate:
+
+Quote Approval
+
+Request Changes
+
+Decline Quote
+
+Project Viewing
+
+Artwork Download
+
+Media Access
+
+Team Management
+
+Organization Branding
+
+---
+
+## PART 6 — IMPLEMENTATION REVIEW
+
+After completing the report above:
+
+Review every item below and identify:
+
+Implemented
+Partially Implemented
+Not Implemented
+
+for each item.
+
+---
+
+ORGANIZATIONS PAGE
+
+* Organization names clickable but not hyperlinks
+* Full email display
+* Full phone display
+* Project column reduction
+* Services column addition
+* Larger mockup images
+
+---
+
+CONTACTS PAGE
+
+* Match Organizations table sizing exactly
+* Match row heights
+* Match avatar sizes
+* Fix Client Name width
+* Fix Phone width
+
+---
+
+PROJECTS PAGE
+
+* Client column wider
+* Project column smaller
+* Approved column order implemented
+
+---
+
+QUOTES PAGE
+
+* Client column wider
+* Project column smaller
+* Approved column order implemented
+
+---
+
+PRODUCTION PAGE
+
+* Status synchronization
+* Completed projects visible
+* New Active Project style table layout
+
+---
+
+ORGANIZATION DETAILS
+
+* Organization image upload
+* Client image sync
+* Logo sync
+* Activate/Open button behavior
+* Remove redundant Open button
+* Remove active user checklist item
+* Remove Manage People redundancy
+
+---
+
+CLIENT HUB
+
+* Service type under project status
+* Client name under project title
+* Reorder retains artwork/mockups
+* PDF download behavior
+
+---
+
+CLIENT HUB DASHBOARD
+
+* Active Projects mirror My Projects
+* View All behavior
+
+---
+
+EMAIL DELIVERY
+
+* Send Quote button behavior
+* Resend & Copy behavior
+* Missing quote emails
+
+---
+
+QUOTE SUMMARY PAGE
+
+* Uses same layout as Client Hub Order Detail
+* Client Hub submissions visible immediately
+* Submitted Quotes section added
+* Expired Quotes filter
+
+---
+
+PERMISSIONS
+
+* Request Changes permission bug
+
+---
+
+QUOTES & INVOICES SECTION
+
+* Review and recommend replacement architecture
+
+---
+
+OUTPUT
+
+Return:
+
+1. Business rule understanding report
+2. Status mapping report
+3. Permissions report
+4. Implemented items
+5. Partially implemented items
+6. Missing items
+7. Questions requiring clarification
+
+DO NOT begin coding until this report is completed.
+
+If any requirement is unclear, ask specific questions rather than making assumptions.

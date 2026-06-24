@@ -1,0 +1,21 @@
+FURTHER UPDATES
+1. Issues with receiving a quote submission from client hub
+	1. A client submitted a project and attached artwork. I received it and quoted it. When done, I clicked the Orange button at the bottom to Send the quote. The client never got that email. I had to go in and click the "Re-Send & Copy" button (which by the way just should be called "Send Quote"). Then the client got it. 
+
+2. Confusion on quote or project home
+	1. In the example I gave above, when i recieve a quote form a client from the client hub, that quote went showed up in my Projects page. Its should have gone to the Quotes page because its a Quote. Its not a project yet until it meets one of the requirements we established already. Please review that and give me a report of your understanding of what should live in the Quotes page and what should live in the Projects page, especially based on their Status. 
+	2. Default view for the Quotes and Projects page should be by order date, newest to oldest. 
+	3. When new quote submissions come in, i like the red "Needs Review" status. However, there needs to be something else that indicates that a new submission came in. Maybe a number in the sidebar to the right of Quotes that counts all the "Needs Review"s or a message popup in the upper right corner that goes away when acknowledged in some way by either exiting it out or clicking a button of some sort? 
+	4. Currently in the Quotes page, it shows Completed and In Production statuses... these are both Projects and should live in the project page. 
+
+3. When a client clicks the "review your quote" via the email, Quote Summary needs different layout  
+	1. The Quote Summary page that shows up when a client clicks "review your quote" from the quote sent email, that layout should actually be the SAME LAYOUT as the order details page we implemented within the Client Hubs (see attached for reference). There is no reason to have a second competing layout here. Even if the client receiving this quote is not a member of a Client Hub, they should have the similar experience. 
+	2. Likewise, when a client submits a quote in their Client Hub, they need to be able to see those from the moment they submit it. Quote submissions are not showing until AFTER they have been quoted and are in the Quote Ready status. 
+	3. In the My Projects page, I think we need to add another section for "SUBMITTED QUOTES". In here should live all submitted quotes, and quotes waiting review. The ONLY projects that should show in the ACTIVE PROJECTS section are actual projects that are NOT quote statuses and are NOT completed. The Completed Projects section is ONLY completed projects. Expired quotes (after 30 days) should disappear from this page and a new filter pill at the top that says "Expired Quotes" should be how clients are able to access those Expired Quotes. Everything else should be in one of these now three sections: SUBMITTED QUOTES, ACTIVE PROJECTS, COMPLETED PROJECTS.
+	   
+
+4. client hub quote button experience
+	1. I just went to submit some changes from the Request Changes button by clicking into the quote marked "Quote Ready". It told me that I did not ahve permission to submit those requests. I have a feeling this is somehow tied to the status of the user. To be clear: ANYONE can submit these changes/requests. However, ONLY the Primary Contact or Org Admin should  have permissions to adjust settings such as Organization Branding or adding/removing team members to their organization. Otherwise, everyone within a Hub should have the same permissions. 
+
+5. Client Hub Quotes & Invoices section needs a revamp
+	1. At face value, this seems helpful, but this section isnt and its also not actionable in any way. 

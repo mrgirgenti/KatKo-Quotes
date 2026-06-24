@@ -2128,7 +2128,7 @@ export default function ClientPortal() {
     ['QUOTED', 'QUOTE_SENT', 'INVOICE_SENT', 'PAID', 'IN_PRODUCTION', 'COMPLETED'].includes(normalizeStatus(p.status))
   );
   const activeProjects = orgProjects.filter(p =>
-    !['COMPLETED', 'CANCELLED'].includes(normalizeStatus(p.status))
+    ['PAID', 'IN_PRODUCTION'].includes(normalizeStatus(p.status))
   );
 
   function formatDate(d: string | null) {
@@ -2281,7 +2281,7 @@ export default function ClientPortal() {
               ? <ActivityIndicator color={BRAND} style={{ marginVertical: 20 }} />
               : activeProjects.length === 0
                 ? <EmptyState icon={<Folder size={22} color="#9CA3AF" />} title="No active projects" sub="Submit a request to get started." />
-                : activeProjects.slice(0, 3).map(p => <ProjectCard key={p.id} project={p} />)
+                : activeProjects.slice(0, 4).map(p => <ProjectCard key={p.id} project={p} />)
             }
           </SectionCard>
         </View>
@@ -2444,12 +2444,14 @@ export default function ClientPortal() {
       return 0;
     });
 
-    const ACTIVE_STATUSES = ['NEEDS_REVIEW', 'QUOTING', 'QUOTED', 'INVOICE_SENT', 'IN_PRODUCTION'];
+    const SUBMITTED_STATUSES = ['NEEDS_REVIEW', 'QUOTING', 'QUOTED', 'INVOICE_SENT'];
+    const ACTIVE_STATUSES = ['PAID', 'IN_PRODUCTION'];
     const COMPLETED_STATUSES = ['COMPLETED', 'EXPIRED', 'CANCELLED'];
+    const submittedProjects = sortedDisplayed.filter(p => SUBMITTED_STATUSES.includes(normalSt(p.status)));
     const activeProjects = sortedDisplayed.filter(p => ACTIVE_STATUSES.includes(normalSt(p.status)));
     const completedProjects = sortedDisplayed.filter(p => COMPLETED_STATUSES.includes(normalSt(p.status)));
 
-    const totalPages = Math.max(1, Math.ceil(Math.max(activeProjects.length, completedProjects.length) / PAGE_SIZE));
+    const totalPages = Math.max(1, Math.ceil(Math.max(submittedProjects.length, activeProjects.length, completedProjects.length) / PAGE_SIZE));
 
     const hasActiveFilters = !!(mpStatusFilter || mpDateFrom || mpDateTo || mpCostMin || mpCostMax);
     const advFilterCount = [mpDateFrom || mpDateTo, mpCostMin || mpCostMax].filter(Boolean).length;
@@ -2468,8 +2470,11 @@ export default function ClientPortal() {
       { key: 'NEEDS_REVIEW', label: 'Needs Review' },
       { key: 'QUOTING', label: 'Being Quoted' },
       { key: 'QUOTED', label: 'Quote Ready' },
+      { key: 'INVOICE_SENT', label: 'Invoice Sent' },
+      { key: 'PAID', label: 'Paid' },
       { key: 'IN_PRODUCTION', label: 'In Production' },
       { key: 'COMPLETED', label: 'Completed' },
+      { key: 'EXPIRED', label: 'Expired Quotes' },
       { key: 'FAVORITES', label: 'Favorites' },
     ];
 
@@ -2855,7 +2860,8 @@ export default function ClientPortal() {
             </View>
           ) : (
             <>
-              {renderSection('ACTIVE PROJECTS', activeProjects, 'View all active', null)}
+              {renderSection('SUBMITTED QUOTES', submittedProjects, 'View all submitted', 'NEEDS_REVIEW')}
+              {renderSection('ACTIVE PROJECTS', activeProjects, 'View all active', 'PAID')}
               {renderSection('COMPLETED PROJECTS', completedProjects, 'View all completed', 'COMPLETED')}
               <Pagination />
             </>

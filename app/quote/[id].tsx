@@ -689,7 +689,7 @@ export default function QuoteDetailScreen() {
                 <>
                   <Send size={14} color="#fff" />
                   <Text style={styles.sendQuoteBtnSolidText}>
-                    {isQuoted ? 'Re-Send & Copy' : 'Send & Copy Link'}
+                    {'Send Quote'}
                   </Text>
                 </>
               )}

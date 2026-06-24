@@ -5,6 +5,7 @@ import { User, Plus, LogOut, ChevronDown, ChevronUp } from 'lucide-react-native'
 import { useClerk } from '@clerk/clerk-expo';
 import { NAV_GROUPS, SYSTEM_HREFS, isItemActive, NavItem } from '@/components/navConfig';
 import { useUser } from '@/contexts/UserContext';
+import { useQuotes } from '@/contexts/QuotesContext';
 
 export const SB = {
   bg: '#000000',
@@ -76,13 +77,19 @@ export function SidebarNav({ collapsed = false, onNavigate }: NavProps) {
     if (isOnSystemPage) setSystemOpen(true);
   }, [isOnSystemPage]);
 
+  const { projects } = useQuotes();
+  const needsReviewCount = projects.filter(
+    (p) => (p.status || '').toLowerCase() === 'needs_review',
+  ).length;
+  const badgeMap: Record<string, number> = { '/sales': needsReviewCount };
+
   const go = (item: NavItem) => {
     if (item.disabled) return;
     router.push(item.href as any);
     onNavigate?.();
   };
 
-  const renderItem = (item: NavItem, nested = false) => {
+  const renderItem = (item: NavItem, nested = false, badge = 0) => {
     const active = isItemActive(item.href, pathname, view);
     const Icon = item.icon;
     return (
@@ -119,6 +126,13 @@ export function SidebarNav({ collapsed = false, onNavigate }: NavProps) {
             <Text style={styles.soonText}>Soon</Text>
           </View>
         )}
+        {!collapsed && badge > 0 && (
+          <View style={[styles.badgePill, active && styles.badgePillActive]}>
+            <Text style={[styles.badgePillText, active && styles.badgePillTextActive]}>
+              {badge > 99 ? '99+' : badge}
+            </Text>
+          </View>
+        )}
       </TouchableOpacity>
     );
   };
@@ -143,10 +157,10 @@ export function SidebarNav({ collapsed = false, onNavigate }: NavProps) {
                   : <ChevronDown size={12} color={SB.sectionLabel} />
                 }
               </TouchableOpacity>
-              {systemOpen && group.items.map((item) => renderItem(item, true))}
+              {systemOpen && group.items.map((item) => renderItem(item, true, badgeMap[item.href] || 0))}
             </>
           ) : (
-            group.items.map((item) => renderItem(item, false))
+            group.items.map((item) => renderItem(item, false, badgeMap[item.href] || 0))
           )}
         </View>
       ))}
@@ -309,6 +323,27 @@ const styles = StyleSheet.create({
     color: SB.text,
     letterSpacing: 0.5,
     textTransform: 'uppercase' as const,
+  },
+  badgePill: {
+    backgroundColor: '#FF5A00',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 5,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  badgePillActive: {
+    backgroundColor: '#fff',
+  },
+  badgePillText: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: '#fff',
+    lineHeight: 14,
+  },
+  badgePillTextActive: {
+    color: '#FF5A00',
   },
   systemToggle: {
     flexDirection: 'row',
