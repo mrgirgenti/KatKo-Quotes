@@ -250,6 +250,8 @@ export async function POST(request: Request) {
         orderType: mappedOrderType,
         lineItemCount: lineItemsData.length,
         inHandsDate: inHandsDate || null,
+        requestedByName: clientName,
+        requestedByEmail: clientEmail,
       },
     }).catch(() => {});
 

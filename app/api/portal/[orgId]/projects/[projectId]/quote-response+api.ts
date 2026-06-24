@@ -253,7 +253,7 @@ export async function POST(
         description: note || 'Customer requested changes to the quote.',
         organizationId: orgId,
         projectId,
-        metadata: { responderName, note: note || null, orgName: org.name },
+        metadata: { responderName, requestedByName: responderName, requestedByEmail: responderEmail, note: note || null, orgName: org.name },
       }).catch(() => {});
     }
 

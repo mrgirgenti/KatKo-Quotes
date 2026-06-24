@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, TextInput,
-  ScrollView, Modal, Pressable, ActivityIndicator,
+  ScrollView, Modal, Pressable, ActivityIndicator, Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   Search, X, CheckCircle, Eye, ExternalLink,
   AlertTriangle, MessageCircle, Bell, Settings,
-  ChevronLeft, ChevronRight, SlidersHorizontal, RefreshCw,
+  ChevronLeft, ChevronRight, SlidersHorizontal, RefreshCw, Paperclip,
 } from 'lucide-react-native';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useActions } from '@/contexts/ActionsContext';
@@ -15,7 +15,7 @@ import OverlayMenu from '@/components/OverlayMenu';
 import {
   ACTION_CATEGORY, ACTION_TYPE_LABEL, ACTION_CATEGORY_LABEL,
 } from '@/types/actions';
-import type { ActionItemWithContext, ActionStatus, ActionCategory, ActionType } from '@/types/actions';
+import type { ActionItemWithContext, ActionCategory, ActionType } from '@/types/actions';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -47,24 +47,20 @@ const CAT_LIGHT: Record<ActionCategory, string> = {
 };
 
 const ACTION_CTA: Record<ActionType, string> = {
-  NEW_QUOTE_SUBMISSION:        'Review Quote',
+  NEW_QUOTE_SUBMISSION:        'Open Quote',
   QUOTE_MISSING_INFORMATION:   'Open Quote',
   QUOTE_RETURNED_FOR_REVISION: 'Open Quote',
   QUOTE_REVISION_REQUEST:      'Open Quote',
-  ARTWORK_UPLOADED:            'View Project',
-  CUSTOMER_COMMENT:            'View Project',
-  MISSING_ARTWORK:             'View Project',
-  MOCKUP_APPROVAL_REQUIRED:    'Review Mockup',
-  PRODUCTION_ISSUE_REPORTED:   'View Project',
+  ARTWORK_UPLOADED:            'Open Project',
+  CUSTOMER_COMMENT:            'Open Project',
+  MISSING_ARTWORK:             'Open Project',
+  MOCKUP_APPROVAL_REQUIRED:    'Open Project',
+  PRODUCTION_ISSUE_REPORTED:   'Open Project',
   QUOTE_DELIVERY_FAILED:       'Open Quote',
   INVOICE_DELIVERY_FAILED:     'Open Quote',
-  EMAIL_BOUNCE:                'View Project',
+  EMAIL_BOUNCE:                'Open Quote',
   PAYMENT_LINK_FAILED:         'Open Quote',
   PDF_GENERATION_FAILED:       'Open Quote',
-};
-
-const STATUS_LABEL: Record<ActionStatus, string> = {
-  NEW: 'New', VIEWED: 'Viewed', RESOLVED: 'Resolved',
 };
 
 type FilterKey = 'all' | 'new' | 'viewed' | 'resolved' | ActionCategory;
@@ -99,9 +95,10 @@ function fullDate(iso: string | null): string {
   });
 }
 
-function initials(name?: string | null): string {
-  if (!name) return '?';
-  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+function ctaFor(item: ActionItemWithContext): string {
+  if (item.projectId) return ACTION_CTA[item.type] ?? 'Open Project';
+  if (item.organizationId) return 'Open Organization';
+  return 'Open';
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -113,15 +110,6 @@ function PriorityDot({ priority }: { priority: string }) {
     <View style={s.priDotRow}>
       <View style={[s.dot, { backgroundColor: color }]} />
       <Text style={[s.priText, { color }]}>{label}</Text>
-    </View>
-  );
-}
-
-function AvatarCircle({ name, size = 28 }: { name?: string | null; size?: number }) {
-  if (!name) return <Text style={s.assignedDash}>—</Text>;
-  return (
-    <View style={[s.avatar, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Text style={[s.avatarText, { fontSize: size * 0.38 }]}>{initials(name)}</Text>
     </View>
   );
 }
@@ -162,30 +150,25 @@ function StatCard({
 function DrawerPanel({
   item,
   onClose,
-  onMarkViewed,
   onMarkResolved,
 }: {
   item: ActionItemWithContext;
   onClose: () => void;
-  onMarkViewed: () => void;
   onMarkResolved: () => void;
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<'details' | 'activity' | 'related'>('details');
   const category = ACTION_CATEGORY[item.type];
   const color = CAT_COLOR[category];
-  const ctaLabel = ACTION_CTA[item.type] ?? 'Open';
+  const ctaLabel = ctaFor(item);
 
   const navigate = () => {
     if (item.projectId) router.push(`/quote/${item.projectId}` as any);
     else if (item.organizationId) router.push(`/crm/${item.organizationId}` as any);
   };
 
-  const TABS: { key: typeof tab; label: string }[] = [
-    { key: 'details', label: 'Details' },
-    { key: 'activity', label: 'Activity' },
-    { key: 'related', label: 'Related' },
-  ];
+  const requestedByName = item.metadata?.requestedByName ?? item.metadata?.responderName ?? null;
+  const requestedByEmail = item.metadata?.requestedByEmail ?? null;
+  const attachments: any[] = Array.isArray(item.metadata?.attachments) ? item.metadata!.attachments : [];
 
   return (
     <View style={s.drawer}>
@@ -218,162 +201,95 @@ function DrawerPanel({
         </TouchableOpacity>
       </View>
 
-      {/* Tabs */}
-      <View style={s.drawerTabs}>
-        {TABS.map(({ key, label }) => (
-          <TouchableOpacity
-            key={key}
-            style={[s.drawerTab, tab === key && s.drawerTabActive]}
-            onPress={() => setTab(key)}
-          >
-            <Text style={[s.drawerTabText, tab === key && { color: BRAND, fontWeight: '700' as const }]}>
-              {label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
       <ScrollView style={s.drawerScroll} showsVerticalScrollIndicator={false}>
-        {tab === 'details' && (
-          <>
-            {/* Organization */}
-            {(item.organizationName || item.projectTitle) ? (
-              <View style={s.drawerSection}>
-                <View style={s.drawerSecHead}><Text style={s.drawerSecTitle}>Organization</Text></View>
-                <View style={s.drawerSecBody}>
-                  <View style={s.drawerGrid}>
-                    {item.organizationName ? (
-                      <View style={s.drawerGridCell}>
-                        <Text style={s.drawerGridLabel}>Organization</Text>
-                        <Text style={s.drawerGridValue}>{item.organizationName}</Text>
-                      </View>
-                    ) : null}
-                    {item.projectTitle ? (
-                      <View style={s.drawerGridCell}>
-                        <Text style={s.drawerGridLabel}>Project</Text>
-                        <Text style={s.drawerGridValue}>{item.projectTitle}</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  {item.projectNumber ? (
-                    <View style={s.drawerRow}>
-                      <Text style={s.drawerRowLabel}>Quote / Project #</Text>
-                      <Text style={s.drawerRowValue}>{item.projectNumber}</Text>
-                    </View>
-                  ) : null}
-                  <View style={s.drawerRow}>
-                    <Text style={s.drawerRowLabel}>Date Requested</Text>
-                    <Text style={s.drawerRowValue}>{fullDate(item.createdAt)}</Text>
-                  </View>
-                  <View style={s.drawerRow}>
-                    <Text style={s.drawerRowLabel}>Priority</Text>
-                    <PriorityDot priority={item.priority} />
-                  </View>
-                </View>
-              </View>
-            ) : null}
-
-            {/* Comments / Description */}
-            {item.description ? (
-              <View style={s.drawerSection}>
-                <View style={s.drawerSecHead}><Text style={s.drawerSecTitle}>Comments</Text></View>
-                <View style={s.drawerSecBody}>
-                  <Text style={s.drawerCommentText}>{item.description}</Text>
-                </View>
-              </View>
-            ) : null}
-
-            {/* Status */}
-            <View style={s.drawerSection}>
-              <View style={s.drawerSecHead}><Text style={s.drawerSecTitle}>Status</Text></View>
-              <View style={s.drawerSecBody}>
-                <View style={s.statusPillRow}>
-                  {(['NEW', 'VIEWED', 'RESOLVED'] as ActionStatus[]).map(st => (
-                    <TouchableOpacity
-                      key={st}
-                      style={[
-                        s.statusPill,
-                        item.status === st && s.statusPillActive,
-                      ]}
-                      onPress={() => {
-                        if (st === 'VIEWED') onMarkViewed();
-                        else if (st === 'RESOLVED') onMarkResolved();
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={[s.statusPillText, item.status === st && s.statusPillTextActive]}>
-                        {STATUS_LABEL[st]}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
+        {/* DETAILS */}
+        <View style={s.drawerSection}>
+          <View style={s.drawerSecHead}><Text style={s.drawerSecTitle}>Details</Text></View>
+          <View style={s.drawerSecBody}>
+            <View style={s.drawerRow}>
+              <Text style={s.drawerRowLabel}>Action Type</Text>
+              <Text style={s.drawerRowValue}>{ACTION_TYPE_LABEL[item.type]}</Text>
             </View>
-          </>
-        )}
-
-        {tab === 'activity' && (
-          <View style={s.drawerSection}>
-            <View style={s.drawerSecHead}><Text style={s.drawerSecTitle}>Activity</Text></View>
-            <View style={[s.drawerSecBody, { gap: 14 }]}>
-              <TimelineItem
-                dot="#6B7280"
-                label="Item created"
-                time={fullDate(item.createdAt)}
-              />
-              {item.viewedAt ? (
-                <TimelineItem dot="#D97706" label="Marked viewed" time={fullDate(item.viewedAt)} />
-              ) : null}
-              {item.resolvedAt ? (
-                <TimelineItem dot="#16A34A" label="Marked resolved" time={fullDate(item.resolvedAt)} />
-              ) : null}
-              {!item.viewedAt && !item.resolvedAt ? (
-                <Text style={s.activityEmpty}>No further activity yet.</Text>
-              ) : null}
+            <View style={s.drawerRow}>
+              <Text style={s.drawerRowLabel}>Priority</Text>
+              <PriorityDot priority={item.priority} />
+            </View>
+            {item.organizationName ? (
+              <View style={s.drawerRow}>
+                <Text style={s.drawerRowLabel}>Organization</Text>
+                <Text style={s.drawerRowValue} numberOfLines={1}>{item.organizationName}</Text>
+              </View>
+            ) : null}
+            {item.projectTitle ? (
+              <View style={s.drawerRow}>
+                <Text style={s.drawerRowLabel}>Project</Text>
+                <Text style={s.drawerRowValue} numberOfLines={1}>{item.projectTitle}</Text>
+              </View>
+            ) : null}
+            {item.projectNumber ? (
+              <View style={s.drawerRow}>
+                <Text style={s.drawerRowLabel}>Quote / Project #</Text>
+                <Text style={s.drawerRowValue}>{item.projectNumber}</Text>
+              </View>
+            ) : null}
+            {requestedByName ? (
+              <View style={s.drawerRow}>
+                <Text style={s.drawerRowLabel}>Requested By</Text>
+                <Text style={s.drawerRowValue} numberOfLines={1}>{requestedByName}</Text>
+              </View>
+            ) : null}
+            {requestedByEmail ? (
+              <View style={s.drawerRow}>
+                <Text style={s.drawerRowLabel}>Requested By Email</Text>
+                <Text style={s.drawerRowValue} numberOfLines={1}>{requestedByEmail}</Text>
+              </View>
+            ) : null}
+            <View style={s.drawerRow}>
+              <Text style={s.drawerRowLabel}>Date / Time</Text>
+              <Text style={s.drawerRowValue}>{fullDate(item.createdAt)}</Text>
             </View>
           </View>
-        )}
+        </View>
 
-        {tab === 'related' && (
+        {/* COMMENTS */}
+        {item.description ? (
           <View style={s.drawerSection}>
-            <View style={s.drawerSecHead}><Text style={s.drawerSecTitle}>Related Records</Text></View>
+            <View style={s.drawerSecHead}><Text style={s.drawerSecTitle}>Comments</Text></View>
+            <View style={s.drawerSecBody}>
+              <Text style={s.drawerCommentText}>{item.description}</Text>
+            </View>
+          </View>
+        ) : null}
+
+        {/* ATTACHMENTS */}
+        {attachments.length > 0 ? (
+          <View style={s.drawerSection}>
+            <View style={s.drawerSecHead}><Text style={s.drawerSecTitle}>Attachments</Text></View>
             <View style={[s.drawerSecBody, { gap: 10 }]}>
-              {item.projectId ? (
-                <TouchableOpacity
-                  style={s.relatedLink}
-                  onPress={() => router.push(`/quote/${item.projectId}` as any)}
-                  activeOpacity={0.8}
-                >
-                  <ExternalLink size={14} color={BRAND} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.relatedLinkTitle}>{item.projectTitle || 'Project'}</Text>
-                    {item.projectNumber ? (
-                      <Text style={s.relatedLinkSub}>{item.projectNumber}</Text>
-                    ) : null}
-                  </View>
-                  <ChevronRight size={14} color="#9CA3AF" />
-                </TouchableOpacity>
-              ) : null}
-              {item.organizationId ? (
-                <TouchableOpacity
-                  style={s.relatedLink}
-                  onPress={() => router.push(`/crm/${item.organizationId}` as any)}
-                  activeOpacity={0.8}
-                >
-                  <ExternalLink size={14} color="#6B7280" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.relatedLinkTitle}>{item.organizationName || 'Organization'}</Text>
-                    <Text style={s.relatedLinkSub}>Organization profile</Text>
-                  </View>
-                  <ChevronRight size={14} color="#9CA3AF" />
-                </TouchableOpacity>
-              ) : null}
-              {!item.projectId && !item.organizationId ? (
-                <Text style={s.activityEmpty}>No linked records.</Text>
-              ) : null}
+              {attachments.map((att, i) => {
+                const name = typeof att === 'string'
+                  ? (att.split('/').pop() || att)
+                  : (att?.name || att?.url || `Attachment ${i + 1}`);
+                const url = typeof att === 'string' ? att : (att?.url || null);
+                return (
+                  <TouchableOpacity
+                    key={i}
+                    style={s.relatedLink}
+                    activeOpacity={0.8}
+                    disabled={!url}
+                    onPress={() => { if (url) Linking.openURL(url).catch(() => {}); }}
+                  >
+                    <Paperclip size={14} color={BRAND} />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={s.relatedLinkTitle} numberOfLines={1}>{name}</Text>
+                    </View>
+                    {url ? <ChevronRight size={14} color="#9CA3AF" /> : null}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
-        )}
+        ) : null}
 
         <View style={{ height: 20 }} />
       </ScrollView>
@@ -391,18 +307,6 @@ function DrawerPanel({
             <Text style={s.drawerFooterSecondaryText}>Mark as Resolved</Text>
           </TouchableOpacity>
         ) : null}
-      </View>
-    </View>
-  );
-}
-
-function TimelineItem({ dot, label, time }: { dot: string; label: string; time: string }) {
-  return (
-    <View style={s.timelineItem}>
-      <View style={[s.dot, { backgroundColor: dot, marginTop: 4 }]} />
-      <View>
-        <Text style={s.timelineLabel}>{label}</Text>
-        <Text style={s.timelineTime}>{time}</Text>
       </View>
     </View>
   );
@@ -466,10 +370,6 @@ export default function ActionCenterScreen() {
     setSelectedItem(null);
   }, []);
 
-  const handleMarkViewed = useCallback(() => {
-    if (selectedItem) markViewed(selectedItem.id);
-  }, [selectedItem, markViewed]);
-
   const handleMarkResolved = useCallback(() => {
     if (selectedItem) { markResolved(selectedItem.id); closeDrawer(); }
   }, [selectedItem, markResolved, closeDrawer]);
@@ -486,6 +386,7 @@ export default function ActionCenterScreen() {
     { key: 'CUSTOMER_REQUESTS', label: 'Customer Requests',  count: customerRequestsCount },
     { key: 'PRODUCTION_ISSUES', label: 'Production Issues',  count: productionIssuesCount },
     { key: 'SYSTEM_ALERTS',     label: 'System Alerts',      count: systemAlertsCount },
+    { key: 'resolved',          label: 'Resolved' },
   ];
 
   const STAT_CATS: ActionCategory[] = ['NEEDS_REVIEW', 'CUSTOMER_REQUESTS', 'PRODUCTION_ISSUES', 'SYSTEM_ALERTS'];
@@ -596,7 +497,6 @@ export default function ActionCenterScreen() {
                 <Text style={[s.th, { width: 90 }]}>PRIORITY</Text>
                 <Text style={[s.th, { width: 160 }]}>TYPE</Text>
                 <Text style={[s.th, { flex: 1, minWidth: 180 }]}>DETAILS</Text>
-                {!isMobile && <Text style={[s.th, { width: 80 }]}>ASSIGNED</Text>}
                 <Text style={[s.th, { width: 80 }]}>TIME</Text>
                 <Text style={[s.th, { width: 130 }]}>ACTIONS</Text>
               </View>
@@ -617,7 +517,7 @@ export default function ActionCenterScreen() {
                   pageItems.map((item, idx) => {
                     const isSelected = selectedItem?.id === item.id;
                     const category = ACTION_CATEGORY[item.type];
-                    const ctaLabel = ACTION_CTA[item.type] ?? 'Open';
+                    const ctaLabel = ctaFor(item);
                     const isResolved = item.status === 'RESOLVED';
                     return (
                       <TouchableOpacity
@@ -653,13 +553,6 @@ export default function ActionCenterScreen() {
                             <Text style={s.tdSub} numberOfLines={1}>{item.description ?? '—'}</Text>
                           )}
                         </View>
-
-                        {/* ASSIGNED TO */}
-                        {!isMobile && (
-                          <View style={[s.td, { width: 80 }]}>
-                            <AvatarCircle name={null} />
-                          </View>
-                        )}
 
                         {/* TIME */}
                         <View style={[s.td, { width: 80, flexDirection: 'column', alignItems: 'flex-start', gap: 2 }]}>
@@ -697,10 +590,10 @@ export default function ActionCenterScreen() {
                                   <Eye size={13} color="#374151" />
                                   <Text style={s.menuItemText}>View Details</Text>
                                 </TouchableOpacity>
-                                {item.projectId ? (
+                                {(item.projectId || item.organizationId) ? (
                                   <TouchableOpacity style={s.menuItem} onPress={() => { close(); navigate(item); }}>
                                     <ExternalLink size={13} color="#374151" />
-                                    <Text style={s.menuItemText}>Open Project</Text>
+                                    <Text style={s.menuItemText}>{ctaFor(item)}</Text>
                                   </TouchableOpacity>
                                 ) : null}
                                 {item.status === 'NEW' ? (
@@ -775,7 +668,6 @@ export default function ActionCenterScreen() {
             <DrawerPanel
               item={selectedItem}
               onClose={closeDrawer}
-              onMarkViewed={handleMarkViewed}
               onMarkResolved={handleMarkResolved}
             />
           </View>
@@ -791,7 +683,6 @@ export default function ActionCenterScreen() {
               <DrawerPanel
                 item={selectedItem}
                 onClose={closeDrawer}
-                onMarkViewed={handleMarkViewed}
                 onMarkResolved={handleMarkResolved}
               />
             ) : null}
@@ -904,14 +795,6 @@ const s = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4 },
   priText: { fontSize: 12, fontWeight: '600' },
 
-  // Avatar
-  avatar: {
-    backgroundColor: '#374151',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  avatarText: { color: '#fff', fontWeight: '700' },
-  assignedDash: { fontSize: 14, color: '#9CA3AF' },
-
   // Row CTA
   ctaBtn: {
     borderWidth: 1, borderColor: BRAND, borderRadius: 7,
@@ -978,16 +861,6 @@ const s = StyleSheet.create({
   },
   priBadgeText: { fontSize: 10, fontWeight: '700' },
   drawerBreadcrumb: { fontSize: 11, color: '#6B7280' },
-  drawerTabs: {
-    flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
-    paddingHorizontal: 14,
-  },
-  drawerTab: {
-    paddingHorizontal: 4, paddingVertical: 10, marginRight: 18,
-    borderBottomWidth: 2, borderBottomColor: 'transparent',
-  },
-  drawerTabActive: { borderBottomColor: BRAND },
-  drawerTabText: { fontSize: 13, fontWeight: '500', color: '#6B7280' },
   drawerScroll: { flex: 1 },
   drawerSection: { marginTop: 1 },
   drawerSecHead: {
@@ -998,22 +871,10 @@ const s = StyleSheet.create({
     letterSpacing: 0.8, textTransform: 'uppercase',
   },
   drawerSecBody: { padding: 14, gap: 10 },
-  drawerGrid: { flexDirection: 'row', gap: 12 },
-  drawerGridCell: { flex: 1 },
-  drawerGridLabel: { fontSize: 10, fontWeight: '600', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 3 },
-  drawerGridValue: { fontSize: 13, fontWeight: '600', color: '#111' },
-  drawerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  drawerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
   drawerRowLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
   drawerRowValue: { fontSize: 13, color: '#111', fontWeight: '500' },
   drawerCommentText: { fontSize: 13, color: '#374151', lineHeight: 20 },
-  statusPillRow: { flexDirection: 'row', gap: 8 },
-  statusPill: {
-    flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: 8,
-    borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#F9FAFB',
-  },
-  statusPillActive: { backgroundColor: '#111', borderColor: '#111' },
-  statusPillText: { fontSize: 12, fontWeight: '600', color: '#6B7280' },
-  statusPillTextActive: { color: '#fff' },
   drawerFooter: {
     flexDirection: 'row', gap: 8, padding: 12,
     borderTopWidth: 1, borderTopColor: '#E5E7EB', flexWrap: 'wrap',
@@ -1030,18 +891,11 @@ const s = StyleSheet.create({
   },
   drawerFooterSecondaryText: { fontSize: 13, fontWeight: '600', color: '#374151' },
 
-  // Timeline
-  timelineItem: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
-  timelineLabel: { fontSize: 12, fontWeight: '600', color: '#374151' },
-  timelineTime: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
-  activityEmpty: { fontSize: 12, color: '#9CA3AF', fontStyle: 'italic' },
-
-  // Related
+  // Attachment link
   relatedLink: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB',
     backgroundColor: '#FAFAFA',
   },
   relatedLinkTitle: { fontSize: 13, fontWeight: '600', color: '#111' },
-  relatedLinkSub: { fontSize: 11, color: '#6B7280', marginTop: 1 },
 });
