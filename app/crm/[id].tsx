@@ -271,7 +271,7 @@ export default function OrgProfileScreen() {
   const [activeSearch, setActiveSearch] = useState('');
   const [activeServiceFilter, setActiveServiceFilter] = useState('');
   const [activeStatusFilter, setActiveStatusFilter] = useState('');
-  const [projectsSubTab, setProjectsSubTab] = useState<'active' | 'quotes' | 'completed'>('active');
+  const [projectsSubTab, setProjectsSubTab] = useState<'all' | 'active' | 'quotes' | 'completed' | 'expired'>('all');
   const [projectsSearch, setProjectsSearch] = useState('');
 
   type OrgTab = 'overview' | 'contacts' | 'hub' | 'media' | 'activity' | 'notes' | 'comms' | 'projects';
@@ -473,14 +473,28 @@ export default function OrgProfileScreen() {
     return list;
   }, [activeQuotes, activeProjectStatusFilter, activeProjectServiceFilter, activeProjectSearch]);
 
-  const relatedQuoteServices = useMemo(() => {
-    const svcs = new Set<string>();
-    relatedQuotes.forEach((q) => (q.lineItems || []).forEach((li: any) => { if (li.serviceStyle) svcs.add(li.serviceStyle); }));
-    return Array.from(svcs);
+  const submittedQuotesPool = useMemo(() => {
+    return relatedQuotes.filter((q) => {
+      const s = q.status;
+      return s !== 'active' && s !== 'production_started' && s !== 'completed' && getEffectiveStatus(q) !== 'expired';
+    });
   }, [relatedQuotes]);
 
+  const submittedQuoteMetrics = useMemo(() => {
+    const revenue = submittedQuotesPool.reduce((s, q) => s + (q.calculations?.total ?? 0), 0);
+    const markup = submittedQuotesPool.reduce((s, q) => s + (q.calculations?.markupAmount ?? 0), 0);
+    const pcs = submittedQuotesPool.reduce((s, q) => s + getPcs(q), 0);
+    return { revenue, markup, pcs };
+  }, [submittedQuotesPool]);
+
+  const relatedQuoteServices = useMemo(() => {
+    const svcs = new Set<string>();
+    submittedQuotesPool.forEach((q) => (q.lineItems || []).forEach((li: any) => { if (li.serviceStyle) svcs.add(li.serviceStyle); }));
+    return Array.from(svcs);
+  }, [submittedQuotesPool]);
+
   const filteredRelatedQuotes = useMemo(() => {
-    let list = relatedQuotes;
+    let list = submittedQuotesPool;
     if (quotesStatusFilter !== 'all') {
       list = list.filter((q) => getEffectiveStatus(q) === quotesStatusFilter);
     }
@@ -496,7 +510,7 @@ export default function OrgProfileScreen() {
       );
     }
     return list;
-  }, [relatedQuotes, quotesStatusFilter, quotesServiceFilter, quotesSearch]);
+  }, [submittedQuotesPool, quotesStatusFilter, quotesServiceFilter, quotesSearch]);
 
   const legacyMetrics = useMemo(() => {
     const totalRevenue = completedQuotes.reduce((s, q) => s + (q.calculations?.total ?? 0), 0);
@@ -1124,8 +1138,8 @@ export default function OrgProfileScreen() {
           <View style={styles.infoCardHeaderLeft}>
             <FileText size={15} color="#fff" />
             <Text style={styles.infoCardTitle}>Submitted Quotes</Text>
-            {relatedQuotes.length > 0 && (
-              <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{relatedQuotes.length}</Text></View>
+            {submittedQuotesPool.length > 0 && (
+              <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{submittedQuotesPool.length}</Text></View>
             )}
           </View>
           <TouchableOpacity onPress={() => { setActiveTab('projects'); setProjectsSubTab('quotes'); }}>
@@ -1134,26 +1148,26 @@ export default function OrgProfileScreen() {
         </View>
         <View style={styles.revenueStatsRow}>
           <View style={styles.revenueStatBox}>
-            <Text style={styles.revenueStatValue}>{relatedQuotes.length}</Text>
-            <Text style={styles.revenueStatLabel}>Total Quotes</Text>
+            <Text style={styles.revenueStatValue}>{submittedQuotesPool.length}</Text>
+            <Text style={styles.revenueStatLabel}>Open Quotes</Text>
           </View>
           <View style={styles.revenueStatDivider} />
           <View style={styles.revenueStatBox}>
-            <Text style={[styles.revenueStatValue, { color: Colors.light.success }]}>{formatCurrency(quoteMetrics.revenue)}</Text>
+            <Text style={[styles.revenueStatValue, { color: Colors.light.success }]}>{formatCurrency(submittedQuoteMetrics.revenue)}</Text>
             <Text style={styles.revenueStatLabel}>Revenue</Text>
           </View>
           <View style={styles.revenueStatDivider} />
           <View style={styles.revenueStatBox}>
-            <Text style={[styles.revenueStatValue, { color: '#FF5A00' }]}>{formatCurrency(quoteMetrics.markup)}</Text>
+            <Text style={[styles.revenueStatValue, { color: '#FF5A00' }]}>{formatCurrency(submittedQuoteMetrics.markup)}</Text>
             <Text style={styles.revenueStatLabel}>Profit</Text>
           </View>
           <View style={styles.revenueStatDivider} />
           <View style={styles.revenueStatBox}>
-            <Text style={styles.revenueStatValue}>{quoteMetrics.pcs.toLocaleString()}</Text>
+            <Text style={styles.revenueStatValue}>{submittedQuoteMetrics.pcs.toLocaleString()}</Text>
             <Text style={styles.revenueStatLabel}>PCS</Text>
           </View>
         </View>
-        {relatedQuotes.length > 0 && (
+        {submittedQuotesPool.length > 0 && (
           <View style={styles.embSFRow}>
             <View style={styles.embSearchBox}>
               <Search size={13} color={Colors.light.textSecondary} />
@@ -1235,10 +1249,10 @@ export default function OrgProfileScreen() {
             </OverlayMenu>
           </View>
         )}
-        {relatedQuotes.length === 0 ? (
+        {submittedQuotesPool.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyCardText}>No quotes yet.</Text>
-            <Text style={styles.emptyCardSub}>Create a quote to link it to this organization.</Text>
+            <Text style={styles.emptyCardText}>No open quotes.</Text>
+            <Text style={styles.emptyCardSub}>Active projects and expired quotes appear in the Projects tab.</Text>
           </View>
         ) : filteredRelatedQuotes.length === 0 ? (
           <View style={styles.emptyCard}><Text style={styles.emptyCardText}>No matches</Text></View>
@@ -1713,8 +1727,8 @@ export default function OrgProfileScreen() {
                 <View style={styles.infoCardHeaderLeft}>
                   <FileText size={14} color="#fff" />
                   <Text style={styles.infoCardTitle}>Submitted Quotes</Text>
-                  {relatedQuotes.length > 0 && (
-                    <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{relatedQuotes.length}</Text></View>
+                  {submittedQuotesPool.length > 0 && (
+                    <View style={styles.infoCardBadge}><Text style={styles.infoCardBadgeText}>{submittedQuotesPool.length}</Text></View>
                   )}
                 </View>
                 <TouchableOpacity onPress={() => { setActiveTab('projects'); setProjectsSubTab('quotes'); }}>
@@ -1723,21 +1737,21 @@ export default function OrgProfileScreen() {
               </View>
               <View style={styles.v2SecondaryStats}>
                 <View style={styles.revenueStatBox}>
-                  <Text style={styles.v2SecondaryStatValue}>{relatedQuotes.length}</Text>
-                  <Text style={styles.revenueStatLabel}>Total</Text>
+                  <Text style={styles.v2SecondaryStatValue}>{submittedQuotesPool.length}</Text>
+                  <Text style={styles.revenueStatLabel}>Open Quotes</Text>
                 </View>
                 <View style={styles.revenueStatDivider} />
                 <View style={styles.revenueStatBox}>
-                  <Text style={[styles.v2SecondaryStatValue, { color: Colors.light.success }]}>{formatCurrency(quoteMetrics.revenue)}</Text>
+                  <Text style={[styles.v2SecondaryStatValue, { color: Colors.light.success }]}>{formatCurrency(submittedQuoteMetrics.revenue)}</Text>
                   <Text style={styles.revenueStatLabel}>Revenue</Text>
                 </View>
                 <View style={styles.revenueStatDivider} />
                 <View style={styles.revenueStatBox}>
-                  <Text style={[styles.v2SecondaryStatValue, { color: '#FF5A00' }]}>{formatCurrency(quoteMetrics.markup)}</Text>
+                  <Text style={[styles.v2SecondaryStatValue, { color: '#FF5A00' }]}>{formatCurrency(submittedQuoteMetrics.markup)}</Text>
                   <Text style={styles.revenueStatLabel}>Profit</Text>
                 </View>
               </View>
-              {relatedQuotes.length > 0 && (
+              {submittedQuotesPool.length > 0 && (
                 <View style={styles.embSFRow}>
                   <View style={styles.embSearchBox}>
                     <Search size={13} color={Colors.light.textSecondary} />
@@ -1770,7 +1784,7 @@ export default function OrgProfileScreen() {
                     }}
                   >
                     {({ close }) => {
-                      const statuses = [...new Set(relatedQuotes.map(q => getEffectiveStatus(q)))];
+                      const statuses = [...new Set(submittedQuotesPool.map(q => getEffectiveStatus(q)))];
                       return (
                         <>
                           <Text style={styles.embFilterSectionLabel}>Status</Text>
@@ -1819,9 +1833,9 @@ export default function OrgProfileScreen() {
                   </OverlayMenu>
                 </View>
               )}
-              {relatedQuotes.length === 0 ? (
+              {submittedQuotesPool.length === 0 ? (
                 <View style={styles.emptyCard}>
-                  <Text style={styles.emptyCardText}>No quotes yet.</Text>
+                  <Text style={styles.emptyCardText}>No open quotes.</Text>
                 </View>
               ) : filteredRelatedQuotes.length === 0 ? (
                 <View style={styles.emptyCard}>
@@ -2029,13 +2043,15 @@ export default function OrgProfileScreen() {
                   </View>
                   {/* Sub-tab bar */}
                   <View style={{ flexDirection: 'row' as const, gap: 6, marginBottom: 12 }}>
-                    {(['active', 'quotes', 'completed'] as const).map((sub) => {
-                      const counts = { active: activeQuotes.length, quotes: relatedQuotes.length, completed: relatedQuotes.filter(q => q.status === 'completed').length };
+                    {(['all', 'active', 'quotes', 'completed', 'expired'] as const).map((sub) => {
+                      const expiredCount = relatedQuotes.filter(q => getEffectiveStatus(q) === 'expired').length;
+                      const counts: Record<string, number> = { all: relatedQuotes.length, active: activeQuotes.length, quotes: submittedQuotesPool.length, completed: relatedQuotes.filter(q => q.status === 'completed').length, expired: expiredCount };
+                      const labels: Record<string, string> = { all: 'All Projects', active: 'Active', quotes: 'Quotes', completed: 'Completed', expired: 'Expired Quotes' };
                       return (
                         <TouchableOpacity key={sub} onPress={() => setProjectsSubTab(sub)}
-                          style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, backgroundColor: projectsSubTab === sub ? Colors.light.primary : Colors.light.backgroundSecondary, borderWidth: 1, borderColor: projectsSubTab === sub ? Colors.light.primary : Colors.light.border }}>
+                          style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, backgroundColor: projectsSubTab === sub ? Colors.light.primary : Colors.light.highlightBg, borderWidth: 1, borderColor: projectsSubTab === sub ? Colors.light.primary : Colors.light.border }}>
                           <Text style={{ fontSize: 12, fontWeight: '600', color: projectsSubTab === sub ? '#fff' : Colors.light.textSecondary }}>
-                            {sub === 'active' ? 'Active' : sub === 'quotes' ? 'All Quotes' : 'Completed'} ({counts[sub]})
+                            {labels[sub]} ({counts[sub]})
                           </Text>
                         </TouchableOpacity>
                       );
@@ -2056,11 +2072,15 @@ export default function OrgProfileScreen() {
                   </View>
                   {/* Cards */}
                   {(() => {
-                    const pool = projectsSubTab === 'active' ? activeQuotes : projectsSubTab === 'completed' ? relatedQuotes.filter(q => q.status === 'completed') : relatedQuotes;
+                    const pool = projectsSubTab === 'active' ? activeQuotes
+                      : projectsSubTab === 'quotes' ? submittedQuotesPool
+                      : projectsSubTab === 'completed' ? relatedQuotes.filter(q => q.status === 'completed')
+                      : projectsSubTab === 'expired' ? relatedQuotes.filter(q => getEffectiveStatus(q) === 'expired')
+                      : relatedQuotes;
                     const sorted = [...pool].sort((a, b) => {
-                      const da = a.orderDate ? new Date(a.orderDate.replace(/-/g, '/')).getTime() : 0;
-                      const db = b.orderDate ? new Date(b.orderDate.replace(/-/g, '/')).getTime() : 0;
-                      return da - db;
+                      const da = a.orderDate ? new Date(a.orderDate.replace(/-/g, '/')).getTime() : new Date(a.createdAt).getTime();
+                      const db = b.orderDate ? new Date(b.orderDate.replace(/-/g, '/')).getTime() : new Date(b.createdAt).getTime();
+                      return db - da;
                     });
                     const filtered = sorted.filter(q => {
                       const pNum = ((q as any).projectNumber || q.invoiceNumber || '').toLowerCase();
@@ -2080,6 +2100,7 @@ export default function OrgProfileScreen() {
                         key={q.id}
                         queue={idx + 1}
                         quote={q}
+                        compact
                         onPress={() => router.push(`/quote/${q.id}` as any)}
                       />
                     ));
@@ -2135,13 +2156,15 @@ export default function OrgProfileScreen() {
               <View style={styles.tabContentPad}>
                 {/* Sub-tab bar */}
                 <View style={{ flexDirection: 'row' as const, gap: 6, marginBottom: 12, marginTop: 8 }}>
-                  {(['active', 'quotes', 'completed'] as const).map((sub) => {
-                    const counts = { active: activeQuotes.length, quotes: relatedQuotes.length, completed: relatedQuotes.filter(q => q.status === 'completed').length };
+                  {(['all', 'active', 'quotes', 'completed', 'expired'] as const).map((sub) => {
+                    const expiredCount = relatedQuotes.filter(q => getEffectiveStatus(q) === 'expired').length;
+                    const counts: Record<string, number> = { all: relatedQuotes.length, active: activeQuotes.length, quotes: submittedQuotesPool.length, completed: relatedQuotes.filter(q => q.status === 'completed').length, expired: expiredCount };
+                    const labels: Record<string, string> = { all: 'All Projects', active: 'Active', quotes: 'Quotes', completed: 'Completed', expired: 'Expired Quotes' };
                     return (
                       <TouchableOpacity key={sub} onPress={() => setProjectsSubTab(sub)}
-                        style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, backgroundColor: projectsSubTab === sub ? Colors.light.primary : Colors.light.backgroundSecondary, borderWidth: 1, borderColor: projectsSubTab === sub ? Colors.light.primary : Colors.light.border }}>
+                        style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, backgroundColor: projectsSubTab === sub ? Colors.light.primary : Colors.light.highlightBg, borderWidth: 1, borderColor: projectsSubTab === sub ? Colors.light.primary : Colors.light.border }}>
                         <Text style={{ fontSize: 12, fontWeight: '600', color: projectsSubTab === sub ? '#fff' : Colors.light.textSecondary }}>
-                          {sub === 'active' ? 'Active' : sub === 'quotes' ? 'All Quotes' : 'Completed'} ({counts[sub]})
+                          {labels[sub]} ({counts[sub]})
                         </Text>
                       </TouchableOpacity>
                     );
@@ -2161,11 +2184,15 @@ export default function OrgProfileScreen() {
                   </View>
                 </View>
                 {(() => {
-                  const pool = projectsSubTab === 'active' ? activeQuotes : projectsSubTab === 'completed' ? relatedQuotes.filter(q => q.status === 'completed') : relatedQuotes;
+                  const pool = projectsSubTab === 'active' ? activeQuotes
+                    : projectsSubTab === 'quotes' ? submittedQuotesPool
+                    : projectsSubTab === 'completed' ? relatedQuotes.filter(q => q.status === 'completed')
+                    : projectsSubTab === 'expired' ? relatedQuotes.filter(q => getEffectiveStatus(q) === 'expired')
+                    : relatedQuotes;
                   const sorted = [...pool].sort((a, b) => {
-                    const da = a.orderDate ? new Date(a.orderDate.replace(/-/g, '/')).getTime() : 0;
-                    const db = b.orderDate ? new Date(b.orderDate.replace(/-/g, '/')).getTime() : 0;
-                    return da - db;
+                    const da = a.orderDate ? new Date(a.orderDate.replace(/-/g, '/')).getTime() : new Date(a.createdAt).getTime();
+                    const db = b.orderDate ? new Date(b.orderDate.replace(/-/g, '/')).getTime() : new Date(b.createdAt).getTime();
+                    return db - da;
                   });
                   const filtered = sorted.filter(q => {
                     const pNum = ((q as any).projectNumber || q.invoiceNumber || '').toLowerCase();
@@ -2185,6 +2212,7 @@ export default function OrgProfileScreen() {
                       key={q.id}
                       queue={idx + 1}
                       quote={q}
+                      compact
                       onPress={() => router.push(`/quote/${q.id}` as any)}
                     />
                   ));
@@ -4755,7 +4783,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     gap: 7,
-    backgroundColor: Colors.light.backgroundSecondary,
+    backgroundColor: Colors.light.highlightBg,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: Colors.light.border,
@@ -4825,7 +4853,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: Colors.light.border,
-    backgroundColor: Colors.light.backgroundSecondary,
+    backgroundColor: Colors.light.highlightBg,
   },
   p16PillActive: {
     backgroundColor: Colors.light.primary,

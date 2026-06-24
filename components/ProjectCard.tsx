@@ -217,12 +217,18 @@ export function ProjectCard({
           <View style={styles.cmpVertDivider} />
 
           {/* Services */}
-          <View style={styles.cmpDesktopDataCol}>
+          <View style={styles.cmpServicesDataCol}>
             <View style={styles.cmpDesktopColLabelRow}>
               <Scissors size={11} color="#94A3B8" />
               <Text style={styles.cmpColLabelTxt}>Services</Text>
             </View>
-            <Text style={styles.cmpColVal} numberOfLines={2}>{serviceText || '—'}</Text>
+            {services.length > 0 ? (
+              services.map((s, i) => (
+                <Text key={i} style={services.length > 1 ? styles.cmpColValSm : styles.cmpColVal}>{s}</Text>
+              ))
+            ) : (
+              <Text style={styles.cmpColVal}>—</Text>
+            )}
           </View>
 
           <View style={styles.cmpVertDivider} />
@@ -578,12 +584,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#E2E8F0',
     alignSelf: 'stretch' as const,
   },
+  cmpServicesDataCol: {
+    paddingHorizontal: 10,
+    paddingVertical: 11,
+    gap: 3,
+    justifyContent: 'center' as const,
+    width: 120,
+  },
   cmpDesktopDataCol: {
     paddingHorizontal: 10,
     paddingVertical: 11,
     gap: 5,
     justifyContent: 'center' as const,
-    minWidth: 86,
+    width: 96,
   },
   cmpDesktopColLabelRow: {
     flexDirection: 'row' as const,
@@ -602,13 +615,19 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: '#111827',
   },
+  cmpColValSm: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: '#111827',
+    lineHeight: 16,
+  },
   cmpDesktopFinCol: {
     paddingHorizontal: 10,
     paddingVertical: 11,
     gap: 3,
     justifyContent: 'center' as const,
     alignItems: 'flex-end' as const,
-    minWidth: 74,
+    width: 88,
   },
   cmpFinBigVal: {
     fontSize: 15,
