@@ -204,51 +204,66 @@ function DrawerPanel({
       </View>
 
       <ScrollView style={s.drawerScroll} showsVerticalScrollIndicator={false}>
-        {/* DETAILS */}
+
+        {/* ORGANIZATION section */}
+        {(item.organizationName || item.projectTitle) ? (
+          <View style={s.drawerSection}>
+            <View style={s.drawerSecHead}><Text style={s.drawerSecTitle}>Organization</Text></View>
+            <View style={s.drawerSecBody}>
+              <View style={s.drawerGrid}>
+                {item.organizationName ? (
+                  <View style={s.drawerGridCell}>
+                    <Text style={s.drawerGridLabel}>Organization</Text>
+                    <Text style={s.drawerGridValue} numberOfLines={2}>{item.organizationName}</Text>
+                  </View>
+                ) : null}
+                {item.projectTitle ? (
+                  <View style={s.drawerGridCell}>
+                    <Text style={s.drawerGridLabel}>Project</Text>
+                    <Text style={s.drawerGridValue} numberOfLines={2}>{item.projectTitle}</Text>
+                  </View>
+                ) : null}
+              </View>
+            </View>
+          </View>
+        ) : null}
+
+        {/* DETAILS section */}
         <View style={s.drawerSection}>
           <View style={s.drawerSecHead}><Text style={s.drawerSecTitle}>Details</Text></View>
           <View style={s.drawerSecBody}>
+            {(item.projectNumber || requestedByName) ? (
+              <View style={s.drawerGrid}>
+                {item.projectNumber ? (
+                  <View style={s.drawerGridCell}>
+                    <Text style={s.drawerGridLabel}>Quote / Project #</Text>
+                    <Text style={s.drawerGridValue}>{item.projectNumber}</Text>
+                  </View>
+                ) : null}
+                {requestedByName ? (
+                  <View style={s.drawerGridCell}>
+                    <Text style={s.drawerGridLabel}>Requested By</Text>
+                    <Text style={s.drawerGridValue} numberOfLines={1}>{requestedByName}</Text>
+                    {requestedByEmail ? (
+                      <Text style={s.drawerGridSub} numberOfLines={1}>{requestedByEmail}</Text>
+                    ) : null}
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+            <View style={s.drawerGrid}>
+              <View style={s.drawerGridCell}>
+                <Text style={s.drawerGridLabel}>Date / Time</Text>
+                <Text style={s.drawerGridValue}>{fullDate(item.createdAt)}</Text>
+              </View>
+              <View style={s.drawerGridCell}>
+                <Text style={s.drawerGridLabel}>Priority</Text>
+                <PriorityDot priority={item.priority} />
+              </View>
+            </View>
             <View style={s.drawerRow}>
               <Text style={s.drawerRowLabel}>Action Type</Text>
               <Text style={s.drawerRowValue}>{ACTION_TYPE_LABEL[item.type]}</Text>
-            </View>
-            <View style={s.drawerRow}>
-              <Text style={s.drawerRowLabel}>Priority</Text>
-              <PriorityDot priority={item.priority} />
-            </View>
-            {item.organizationName ? (
-              <View style={s.drawerRow}>
-                <Text style={s.drawerRowLabel}>Organization</Text>
-                <Text style={s.drawerRowValue} numberOfLines={1}>{item.organizationName}</Text>
-              </View>
-            ) : null}
-            {item.projectTitle ? (
-              <View style={s.drawerRow}>
-                <Text style={s.drawerRowLabel}>Project</Text>
-                <Text style={s.drawerRowValue} numberOfLines={1}>{item.projectTitle}</Text>
-              </View>
-            ) : null}
-            {item.projectNumber ? (
-              <View style={s.drawerRow}>
-                <Text style={s.drawerRowLabel}>Quote / Project #</Text>
-                <Text style={s.drawerRowValue}>{item.projectNumber}</Text>
-              </View>
-            ) : null}
-            {requestedByName ? (
-              <View style={s.drawerRow}>
-                <Text style={s.drawerRowLabel}>Requested By</Text>
-                <Text style={s.drawerRowValue} numberOfLines={1}>{requestedByName}</Text>
-              </View>
-            ) : null}
-            {requestedByEmail ? (
-              <View style={s.drawerRow}>
-                <Text style={s.drawerRowLabel}>Requested By Email</Text>
-                <Text style={s.drawerRowValue} numberOfLines={1}>{requestedByEmail}</Text>
-              </View>
-            ) : null}
-            <View style={s.drawerRow}>
-              <Text style={s.drawerRowLabel}>Date / Time</Text>
-              <Text style={s.drawerRowValue}>{fullDate(item.createdAt)}</Text>
             </View>
           </View>
         </View>
@@ -266,7 +281,9 @@ function DrawerPanel({
         {/* ATTACHMENTS */}
         {attachments.length > 0 ? (
           <View style={s.drawerSection}>
-            <View style={s.drawerSecHead}><Text style={s.drawerSecTitle}>Attachments</Text></View>
+            <View style={s.drawerSecHead}>
+              <Text style={s.drawerSecTitle}>Attachments ({attachments.length})</Text>
+            </View>
             <View style={[s.drawerSecBody, { gap: 10 }]}>
               {attachments.map((att, i) => {
                 const name = typeof att === 'string'
@@ -399,7 +416,6 @@ export default function ActionCenterScreen() {
     SYSTEM_ALERTS:     systemAlertsCount,
   };
 
-  const showSplit = isDesktop && drawerOpen;
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -449,21 +465,23 @@ export default function ActionCenterScreen() {
       </View>
 
       {/* STAT CARDS */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={s.statsRow}
-      >
-        {STAT_CATS.map(cat => (
-          <StatCard
-            key={cat}
-            category={cat}
-            count={catCounts[cat]}
-            active={filter === cat}
-            onPress={() => setFilterAndReset(filter === cat ? 'all' : cat)}
-          />
-        ))}
-      </ScrollView>
+      <View style={s.statsSection}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.statsRow}
+        >
+          {STAT_CATS.map(cat => (
+            <StatCard
+              key={cat}
+              category={cat}
+              count={catCounts[cat]}
+              active={filter === cat}
+              onPress={() => setFilterAndReset(filter === cat ? 'all' : cat)}
+            />
+          ))}
+        </ScrollView>
+      </View>
 
       {/* FILTER PILLS */}
       <View style={s.filterBar}>
@@ -487,10 +505,10 @@ export default function ActionCenterScreen() {
       </View>
 
       {/* MAIN AREA */}
-      <View style={[s.mainArea, showSplit && { flexDirection: 'row' }]}>
+      <View style={[s.mainArea, isDesktop && { flexDirection: 'row' }]}>
 
         {/* TABLE */}
-        <View style={[s.tableWrap, showSplit && { flex: 1, minWidth: 0 }]}>
+        <View style={[s.tableWrap, isDesktop && { flex: 1, minWidth: 0 }]}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={{ minWidth: isMobile ? 640 : 720 }}>
 
@@ -664,16 +682,24 @@ export default function ActionCenterScreen() {
           )}
         </View>
 
-        {/* DESKTOP SPLIT DRAWER */}
-        {showSplit && selectedItem ? (
+        {/* DESKTOP PANEL — always visible on desktop */}
+        {isDesktop && (
           <View style={s.splitDrawer}>
-            <DrawerPanel
-              item={selectedItem}
-              onClose={closeDrawer}
-              onMarkResolved={handleMarkResolved}
-            />
+            {selectedItem ? (
+              <DrawerPanel
+                item={selectedItem}
+                onClose={closeDrawer}
+                onMarkResolved={handleMarkResolved}
+              />
+            ) : (
+              <View style={s.panelEmpty}>
+                <MessageCircle size={28} color="#D1D5DB" />
+                <Text style={s.panelEmptyTitle}>Action Details</Text>
+                <Text style={s.panelEmptyText}>Select an action from the list to view details</Text>
+              </View>
+            )}
           </View>
-        ) : null}
+        )}
       </View>
 
       {/* MOBILE DRAWER MODAL */}
@@ -727,23 +753,27 @@ const s = StyleSheet.create({
   refreshBtn: { padding: 6 },
 
   // Stat cards
-  statsRow: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
+  statsSection: {
+    flexShrink: 0, flexGrow: 0,
+    borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+  },
+  statsRow: { paddingHorizontal: 16, paddingVertical: 10, gap: 10 },
   statCard: {
-    width: 170, borderRadius: 10, borderWidth: 1,
+    width: 178, borderRadius: 10, borderWidth: 1,
     overflow: 'hidden', backgroundColor: '#fff',
     shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 1 },
   },
   statCardInner: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 12, paddingVertical: 10, gap: 10,
+    paddingHorizontal: 14, paddingVertical: 14, gap: 12,
   },
   statIconCircle: {
-    width: 34, height: 34, borderRadius: 17,
+    width: 38, height: 38, borderRadius: 19,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   statBody: { flex: 1 },
-  statCount: { fontSize: 22, fontWeight: '800', lineHeight: 24, color: '#111' },
-  statLabel: { fontSize: 10, fontWeight: '500', color: '#6B7280', marginTop: 1 },
+  statCount: { fontSize: 26, fontWeight: '800', lineHeight: 28, color: '#111' },
+  statLabel: { fontSize: 11, fontWeight: '500', color: '#6B7280', marginTop: 2 },
   statBar: { height: 3 },
 
   // Filter pills
@@ -835,10 +865,17 @@ const s = StyleSheet.create({
   empty: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
   emptyText: { fontSize: 13, color: '#9CA3AF' },
 
-  // Split drawer (desktop)
+  // Split drawer (desktop) — always visible on desktop
   splitDrawer: {
-    width: 380, borderLeftWidth: 1, borderLeftColor: '#E5E7EB',
+    width: 390, borderLeftWidth: 1, borderLeftColor: '#E5E7EB',
+    flexShrink: 0,
   },
+  panelEmpty: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 24, gap: 10,
+  },
+  panelEmptyTitle: { fontSize: 14, fontWeight: '700', color: '#374151', marginTop: 4 },
+  panelEmptyText: { fontSize: 12, color: '#9CA3AF', textAlign: 'center', lineHeight: 18 },
 
   // Mobile modal
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
@@ -895,6 +932,16 @@ const s = StyleSheet.create({
     backgroundColor: '#fff',
   },
   drawerFooterSecondaryText: { fontSize: 13, fontWeight: '600', color: '#374151' },
+
+  // Drawer 2-column grid
+  drawerGrid: { flexDirection: 'row', gap: 16, marginBottom: 2 },
+  drawerGridCell: { flex: 1, minWidth: 0 },
+  drawerGridLabel: {
+    fontSize: 9, fontWeight: '700', color: '#9CA3AF',
+    textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4,
+  },
+  drawerGridValue: { fontSize: 13, fontWeight: '600', color: '#111' },
+  drawerGridSub: { fontSize: 11, color: '#6B7280', marginTop: 2 },
 
   // Attachment link
   relatedLink: {

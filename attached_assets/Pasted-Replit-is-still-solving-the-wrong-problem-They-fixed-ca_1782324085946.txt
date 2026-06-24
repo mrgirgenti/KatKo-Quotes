@@ -1,0 +1,192 @@
+Replit is still solving the wrong problem.
+
+They fixed card height, but the page is still using a broken **Kanban-column layout** instead of the approved **Action Center dashboard layout**.
+
+Send this:
+
+Action Center Correction — Remove Kanban Columns and Build the Approved Dashboard Layout
+
+STOP.
+
+Do not claim this is complete.
+
+Do not make another small CSS adjustment.
+
+Do not report checklist compliance.
+
+The current Action Center implementation is still wrong.
+
+The issue is not only card height.
+
+The issue is that the page is still using a giant Kanban-style column layout across the top.
+
+That is NOT the approved Action Center design.
+
+---
+
+## CURRENT FAILURE
+
+The live app still shows:
+
+* Four giant empty vertical columns/cards
+* Massive unused white space
+* Action table pushed downward
+* No prominent working detail panel
+* Layout that does not resemble the approved mockup
+* Page still feels broken and unfinished
+
+This is not acceptable.
+
+The approved mockup is an Action Center dashboard, not a Kanban board.
+
+---
+
+## REMOVE THE KANBAN LAYOUT
+
+Remove the current giant category-column layout entirely.
+
+Do not shrink it.
+
+Do not restyle it.
+
+Do not keep it.
+
+Delete/remove the layout pattern that creates four empty vertical sections.
+
+The metric cards should be compact summary cards only.
+
+---
+
+## APPROVED DESKTOP LAYOUT
+
+Build this structure:
+
+Header Row:
+
+* Action Center title
+* Search
+* Filters
+* Mark all as read
+* Refresh
+
+Metric Row:
+
+* Compact cards only
+* Needs Review
+* Customer Requests
+* Awaiting Payment / Production Issues
+* Client Hub Users / System Alerts depending current data model
+
+Each metric card should be approximately card-height summary style, not a column.
+
+Filter Pills:
+
+* All
+* New
+* Needs Review
+* Customer Requests
+* Payments
+* More / remaining filters
+
+Main Content:
+Left side:
+
+* Action table/list
+* Rows should be the primary content
+
+Right side:
+
+* Selected action detail panel
+
+---
+
+## DETAIL PANEL
+
+The right-side panel is required on desktop.
+
+When an action is selected, show:
+
+* Action title
+* Priority
+* Organization
+* Project / Quote / Invoice reference
+* Requested by
+* Date / time
+* Comments
+* Attachments
+* Assigned to
+* Primary CTA
+* Mark resolved
+
+Do not hide this behind a menu unless viewport requires it.
+
+Desktop should show list + detail panel side by side.
+
+---
+
+## MAIN TABLE
+
+The action list should be visible immediately without scrolling past empty sections.
+
+Columns:
+
+* Priority
+* Type
+* Details
+* Time
+* Actions
+
+Rows should be compact and readable.
+
+The table/list should dominate the screen.
+
+---
+
+## MOBILE LAYOUT
+
+Mobile should not show giant empty cards.
+
+Mobile should use:
+
+* Compact metric cards in horizontal scroll or 2-column compact grid
+* Filter pills below
+* Action list below
+* Detail view as full-screen drawer or bottom sheet
+
+No giant Kanban columns.
+
+---
+
+## NON-NEGOTIABLE ACCEPTANCE CRITERIA
+
+This is complete only when:
+
+1. The giant empty columns are gone.
+2. Metric cards are compact summary cards.
+3. The action table/list is the main content.
+4. Desktop has a right-side detail panel.
+5. Mobile uses compact metrics and a usable list.
+6. The live authenticated app resembles the approved Action Center mockup.
+7. Screenshots prove desktop and mobile layouts.
+
+If any giant empty category columns remain, the task is not complete.
+
+---
+
+## REQUIRED OUTPUT
+
+Return:
+
+1. Files changed
+2. Components removed
+3. Layout structure implemented
+4. Confirmation Kanban column layout was removed
+5. Desktop screenshot
+6. Mobile screenshot
+7. Validation that selecting an action opens the detail panel/drawer
+
+Implement the approved Action Center layout.
+
+Do not make another minor CSS patch.
+
+Do not call this complete until the live app visually matches the approved direction.
