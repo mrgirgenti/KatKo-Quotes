@@ -644,7 +644,7 @@ export default function QuoteDetailScreen() {
         <View style={styles.sendQuotePanelHeader}>
           <Send size={16} color="#FF5A00" />
           <Text style={styles.sendQuotePanelTitle}>
-            {isQuoted ? 'Quote Sent' : 'Send Quote to Client'}
+            {isQuoted ? 'Quote Sent' : 'Send Quote'}
           </Text>
         </View>
         {quote.quoteSentAt ? (

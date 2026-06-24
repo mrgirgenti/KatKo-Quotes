@@ -1,0 +1,487 @@
+ACTION CENTER — FULL IMPLEMENTATION SPRINT
+
+STOP.
+
+Do not audit.
+
+Do not roadmap.
+
+Implement.
+
+The purpose of Action Center is to become the operational command center of Katalyst OS.
+
+This is NOT:
+
+- A notification center
+- An activity log
+- A messaging center
+- An inbox
+
+It is:
+
+A prioritized work queue for items that require human attention.
+
+Action Center should answer one question:
+
+"What requires action right now?"
+
+If no action is required, it does not belong in Action Center.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SIDEBAR LOCATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Place Action Center directly below Dashboard.
+
+Example:
+
+Dashboard
+
+ACTION CENTER (7)
+
+Quotes
+Projects
+Production
+
+Organizations
+Contacts
+
+Client Hubs
+Web Stores
+
+The badge count should represent all unresolved Action Center items.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VISUAL DESIGN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Follow existing Katalyst OS design language.
+
+Use:
+
+- White page background
+- Black section headers
+- White header text
+- Orange action buttons
+- Existing status pill styles
+- Existing typography
+- Existing spacing system
+
+DO NOT create a new design language.
+
+Action Center should feel native to the platform.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PAGE LAYOUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Header:
+
+ACTION CENTER
+
+Below header:
+
+Stat cards:
+
+- Needs Review
+- Customer Requests
+- Production Issues
+- System Alerts
+
+Each displays unresolved count.
+
+Below stat cards:
+
+Filter pills:
+
+- All
+- New
+- Viewed
+- Resolved
+
+Search bar
+
+Main work queue
+
+Right-side detail drawer
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MAIN QUEUE COLUMNS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Use:
+
+PRIORITY
+TYPE
+DETAILS
+TIME
+ACTIONS
+
+Do NOT include:
+
+- Assigned To
+- Owner
+- Team
+- Department
+
+Not needed at this stage.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ACTION STATES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Every Action can only be:
+
+NEW
+
+VIEWED
+
+RESOLVED
+
+Do not add:
+
+- Assigned
+- Escalated
+- Waiting
+- Deferred
+- Snoozed
+
+Keep the workflow simple.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CATEGORY 1 — NEEDS REVIEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create actions for:
+
+NEW_QUOTE_SUBMISSION
+
+QUOTE_MISSING_INFORMATION
+
+QUOTE_RETURNED_FOR_REVISION
+
+Examples:
+
+New Quote Submission
+
+Abide Church
+
+VBS Shirts
+
+Review Required
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CATEGORY 2 — CUSTOMER REQUESTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create actions for:
+
+QUOTE_REVISION_REQUEST
+
+ARTWORK_UPLOADED
+
+CUSTOMER_COMMENT
+
+Examples:
+
+Customer Requested Changes
+
+Need XL increased from 3 to 5
+
+Customer Uploaded Artwork
+
+Uploaded revised logo.ai
+
+Customer Added Comment
+
+Requested black garment instead
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CATEGORY 3 — PRODUCTION ISSUES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create actions for:
+
+MISSING_ARTWORK
+
+MOCKUP_APPROVAL_REQUIRED
+
+PRODUCTION_ISSUE_REPORTED
+
+Examples:
+
+Missing Artwork
+
+Line Item 2 has no artwork
+
+Mockup Approval Required
+
+Customer has not approved mockup
+
+Production Issue
+
+Garment unavailable
+
+Production Issue
+
+Inventory shortage
+
+Only items that block production belong here.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CATEGORY 4 — SYSTEM ALERTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create actions for:
+
+QUOTE_DELIVERY_FAILED
+
+INVOICE_DELIVERY_FAILED
+
+EMAIL_BOUNCE
+
+PAYMENT_LINK_FAILED
+
+PDF_GENERATION_FAILED
+
+Examples:
+
+Quote Delivery Failed
+
+Unable to send Q-1042
+
+Invoice Delivery Failed
+
+Email bounced
+
+Payment Link Failed
+
+Unable to generate payment session
+
+System alerts should surface invisible failures that impact customers or revenue.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DO NOT INCLUDE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The following DO NOT belong in Action Center:
+
+Quote Expiring
+
+Awaiting Payment
+
+Payment Received
+
+Ready For Production
+
+Project Overdue
+
+Invite Pending
+
+Hub Setup Incomplete
+
+Project Viewed
+
+PDF Downloaded
+
+Client Logged In
+
+Organization Updated
+
+These are:
+
+- statuses
+- metrics
+- activity logs
+
+not actionable work.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DETAIL DRAWER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Selecting an action opens a right-side drawer.
+
+Drawer sections:
+
+DETAILS
+
+ACTIVITY
+
+RELATED
+
+Each section header should use:
+
+- Black background
+- White text
+
+consistent with the rest of Katalyst OS.
+
+Inside the drawer:
+
+Comments
+
+Attachments
+
+Status
+
+Related Quote
+
+Related Project
+
+Related Organization
+
+Display all available contextual information.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ACTION BEHAVIOR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Every Action should contain:
+
+Open Related Record
+
+Mark Viewed
+
+Mark Resolved
+
+Examples:
+
+Open Quote
+
+Open Project
+
+Open Organization
+
+Do not create duplicate workflows.
+
+Users should be taken directly to the source record.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DATA MODEL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Build a reusable Action model.
+
+Example:
+
+Action
+
+id
+
+type
+
+priority
+
+status
+
+organizationId
+
+projectId
+
+quoteId
+
+createdAt
+
+resolvedAt
+
+metadata
+
+Action Types:
+
+NEW_QUOTE_SUBMISSION
+
+QUOTE_MISSING_INFORMATION
+
+QUOTE_RETURNED_FOR_REVISION
+
+QUOTE_REVISION_REQUEST
+
+ARTWORK_UPLOADED
+
+CUSTOMER_COMMENT
+
+MISSING_ARTWORK
+
+MOCKUP_APPROVAL_REQUIRED
+
+PRODUCTION_ISSUE_REPORTED
+
+QUOTE_DELIVERY_FAILED
+
+INVOICE_DELIVERY_FAILED
+
+EMAIL_BOUNCE
+
+PAYMENT_LINK_FAILED
+
+PDF_GENERATION_FAILED
+
+This model should be reusable by future systems.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FUTURE COMPATIBILITY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tasks page exists but remains dormant.
+
+Do NOT build Tasks.
+
+Do NOT integrate Tasks.
+
+Do NOT create assignment workflows.
+
+However:
+
+Build Action Center in a way that future systems can consume the same Action model.
+
+Future systems may include:
+
+- Tasks
+- Templates
+- Notifications
+- Automations
+- Reporting
+
+Action Center is the first consumer of this architecture.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VALIDATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Verify:
+
+- Sidebar placement
+- Badge counts
+- Stat cards
+- Filter pills
+- Search
+- Queue rendering
+- Detail drawer
+- Open Record actions
+- Viewed state
+- Resolved state
+- All Action types functioning
+- System alerts functioning
+- Production issues functioning
+- Customer request actions functioning
+- Needs review actions functioning
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OUTPUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Files changed
+2. Components created
+3. Database changes
+4. Action model implementation
+5. Action types implemented
+6. UI implementation
+7. Validation results
+8. Screenshots
+
+Implement.
+
+Do not audit.
+
+Do not roadmap.

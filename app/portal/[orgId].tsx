@@ -2442,14 +2442,16 @@ export default function ClientPortal() {
       return 0;
     });
 
-    const SUBMITTED_STATUSES = ['NEEDS_REVIEW', 'QUOTING', 'QUOTED', 'INVOICE_SENT'];
+    const SUBMITTED_STATUSES = ['NEEDS_REVIEW', 'QUOTING'];
+    const QUOTES_SENT_STATUSES = ['QUOTED', 'INVOICE_SENT'];
     const ACTIVE_STATUSES = ['PAID', 'IN_PRODUCTION'];
     const COMPLETED_STATUSES = ['COMPLETED'];
     const submittedProjects = sortedDisplayed.filter(p => SUBMITTED_STATUSES.includes(normalSt(p.status)));
+    const quotesSentProjects = sortedDisplayed.filter(p => QUOTES_SENT_STATUSES.includes(normalSt(p.status)));
     const activeProjects = sortedDisplayed.filter(p => ACTIVE_STATUSES.includes(normalSt(p.status)));
     const completedProjects = sortedDisplayed.filter(p => COMPLETED_STATUSES.includes(normalSt(p.status)));
 
-    const totalPages = Math.max(1, Math.ceil(Math.max(submittedProjects.length, activeProjects.length, completedProjects.length) / PAGE_SIZE));
+    const totalPages = Math.max(1, Math.ceil(Math.max(submittedProjects.length, quotesSentProjects.length, activeProjects.length, completedProjects.length) / PAGE_SIZE));
 
     const hasActiveFilters = !!(mpStatusFilter || mpDateFrom || mpDateTo || mpCostMin || mpCostMax);
     const advFilterCount = [mpDateFrom || mpDateTo, mpCostMin || mpCostMax].filter(Boolean).length;
@@ -2866,6 +2868,7 @@ export default function ClientPortal() {
           ) : (
             <>
               {renderSection('SUBMITTED QUOTES', submittedProjects, 'View all submitted', 'NEEDS_REVIEW')}
+              {renderSection('QUOTES SENT', quotesSentProjects, 'View all quotes', 'QUOTED')}
               {renderSection('ACTIVE PROJECTS', activeProjects, 'View all active', 'PAID')}
               {renderSection('COMPLETED PROJECTS', completedProjects, 'View all completed', 'COMPLETED')}
               <Pagination />
