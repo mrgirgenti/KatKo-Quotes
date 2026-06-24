@@ -8,6 +8,7 @@ import {
   Search, X, CheckCircle, Eye, ExternalLink,
   AlertTriangle, MessageCircle, Bell, Settings,
   ChevronLeft, ChevronRight, SlidersHorizontal, RefreshCw, Paperclip,
+  Building2, FolderOpen, Hash, Calendar, Flag, FileText,
 } from 'lucide-react-native';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useActions } from '@/contexts/ActionsContext';
@@ -205,66 +206,89 @@ function DrawerPanel({
 
       <ScrollView style={s.drawerScroll} showsVerticalScrollIndicator={false}>
 
-        {/* ORGANIZATION section */}
-        {(item.organizationName || item.projectTitle) ? (
-          <View style={s.drawerSection}>
-            <View style={s.drawerSecHead}><Text style={s.drawerSecTitle}>Organization</Text></View>
-            <View style={s.drawerSecBody}>
+        {/* OVERVIEW section */}
+        <View style={s.drawerSection}>
+          <View style={s.drawerSecHead}><Text style={s.drawerSecTitle}>Overview</Text></View>
+          <View style={s.drawerSecBody}>
+            {(item.organizationName || item.projectTitle) ? (
               <View style={s.drawerGrid}>
                 {item.organizationName ? (
                   <View style={s.drawerGridCell}>
-                    <Text style={s.drawerGridLabel}>Organization</Text>
+                    <View style={s.drawerGridIconRow}>
+                      <Building2 size={12} color="#9CA3AF" />
+                      <Text style={s.drawerGridLabel}>Organization</Text>
+                    </View>
                     <Text style={s.drawerGridValue} numberOfLines={2}>{item.organizationName}</Text>
                   </View>
                 ) : null}
                 {item.projectTitle ? (
                   <View style={s.drawerGridCell}>
-                    <Text style={s.drawerGridLabel}>Project</Text>
+                    <View style={s.drawerGridIconRow}>
+                      <FolderOpen size={12} color="#9CA3AF" />
+                      <Text style={s.drawerGridLabel}>Project</Text>
+                    </View>
                     <Text style={s.drawerGridValue} numberOfLines={2}>{item.projectTitle}</Text>
-                  </View>
-                ) : null}
-              </View>
-            </View>
-          </View>
-        ) : null}
-
-        {/* DETAILS section */}
-        <View style={s.drawerSection}>
-          <View style={s.drawerSecHead}><Text style={s.drawerSecTitle}>Details</Text></View>
-          <View style={s.drawerSecBody}>
-            {(item.projectNumber || requestedByName) ? (
-              <View style={s.drawerGrid}>
-                {item.projectNumber ? (
-                  <View style={s.drawerGridCell}>
-                    <Text style={s.drawerGridLabel}>Quote / Project #</Text>
-                    <Text style={s.drawerGridValue}>{item.projectNumber}</Text>
-                  </View>
-                ) : null}
-                {requestedByName ? (
-                  <View style={s.drawerGridCell}>
-                    <Text style={s.drawerGridLabel}>Requested By</Text>
-                    <Text style={s.drawerGridValue} numberOfLines={1}>{requestedByName}</Text>
-                    {requestedByEmail ? (
-                      <Text style={s.drawerGridSub} numberOfLines={1}>{requestedByEmail}</Text>
-                    ) : null}
                   </View>
                 ) : null}
               </View>
             ) : null}
             <View style={s.drawerGrid}>
+              {item.projectNumber ? (
+                <View style={s.drawerGridCell}>
+                  <View style={s.drawerGridIconRow}>
+                    <Hash size={12} color="#9CA3AF" />
+                    <Text style={s.drawerGridLabel}>Quote / Project #</Text>
+                  </View>
+                  <Text style={s.drawerGridValue}>{item.projectNumber}</Text>
+                </View>
+              ) : null}
               <View style={s.drawerGridCell}>
-                <Text style={s.drawerGridLabel}>Date / Time</Text>
-                <Text style={s.drawerGridValue}>{fullDate(item.createdAt)}</Text>
-              </View>
-              <View style={s.drawerGridCell}>
-                <Text style={s.drawerGridLabel}>Priority</Text>
-                <PriorityDot priority={item.priority} />
+                <View style={s.drawerGridIconRow}>
+                  <View style={[s.dot, { backgroundColor: PRIORITY_DOT[item.priority] ?? '#6B7280' }]} />
+                  <Text style={s.drawerGridLabel}>Priority</Text>
+                </View>
+                <Text style={[s.drawerGridValue, { color: PRIORITY_DOT[item.priority] ?? '#6B7280' }]}>
+                  {PRIORITY_LABEL[item.priority] ?? item.priority}
+                </Text>
               </View>
             </View>
-            <View style={s.drawerRow}>
-              <Text style={s.drawerRowLabel}>Action Type</Text>
-              <Text style={s.drawerRowValue}>{ACTION_TYPE_LABEL[item.type]}</Text>
+          </View>
+        </View>
+
+        {/* DETAILS section */}
+        <View style={s.drawerSection}>
+          <View style={s.drawerSecHead}><Text style={s.drawerSecTitle}>Details</Text></View>
+          <View style={s.drawerSecBody}>
+            <View style={s.drawerIconRow}>
+              <Calendar size={14} color="#9CA3AF" />
+              <Text style={s.drawerIconLabel}>Date / Time</Text>
+              <Text style={s.drawerIconValue}>{fullDate(item.createdAt)}</Text>
             </View>
+            <View style={s.drawerIconRow}>
+              <Flag size={14} color="#9CA3AF" />
+              <Text style={s.drawerIconLabel}>Priority</Text>
+              <View style={s.priDotRow}>
+                <View style={[s.dot, { backgroundColor: PRIORITY_DOT[item.priority] ?? '#6B7280' }]} />
+                <Text style={[s.priText, { color: PRIORITY_DOT[item.priority] ?? '#6B7280' }]}>
+                  {PRIORITY_LABEL[item.priority] ?? item.priority}
+                </Text>
+              </View>
+            </View>
+            <View style={s.drawerIconRow}>
+              <FileText size={14} color="#9CA3AF" />
+              <Text style={s.drawerIconLabel}>Action Type</Text>
+              <Text style={s.drawerIconValue}>{ACTION_TYPE_LABEL[item.type]}</Text>
+            </View>
+            {requestedByName ? (
+              <View style={s.drawerIconRow}>
+                <MessageCircle size={14} color="#9CA3AF" />
+                <Text style={s.drawerIconLabel}>Requested By</Text>
+                <View style={{ alignItems: 'flex-end', flex: 1 }}>
+                  <Text style={s.drawerIconValue} numberOfLines={1}>{requestedByName}</Text>
+                  {requestedByEmail ? <Text style={s.drawerGridSub} numberOfLines={1}>{requestedByEmail}</Text> : null}
+                </View>
+              </View>
+            ) : null}
           </View>
         </View>
 
@@ -273,47 +297,53 @@ function DrawerPanel({
           <View style={s.drawerSection}>
             <View style={s.drawerSecHead}><Text style={s.drawerSecTitle}>Comments</Text></View>
             <View style={s.drawerSecBody}>
-              <Text style={s.drawerCommentText}>{item.description}</Text>
+              <View style={s.drawerIconRow}>
+                <MessageCircle size={14} color="#9CA3AF" />
+                <Text style={[s.drawerCommentText, { flex: 1 }]}>{item.description}</Text>
+              </View>
             </View>
           </View>
         ) : null}
 
-        {/* ATTACHMENTS */}
-        {attachments.length > 0 ? (
-          <View style={s.drawerSection}>
-            <View style={s.drawerSecHead}>
-              <Text style={s.drawerSecTitle}>Attachments ({attachments.length})</Text>
-            </View>
-            <View style={[s.drawerSecBody, { gap: 10 }]}>
-              {attachments.map((att, i) => {
-                const name = typeof att === 'string'
-                  ? (att.split('/').pop() || att)
-                  : (att?.name || att?.url || `Attachment ${i + 1}`);
-                const url = typeof att === 'string' ? att : (att?.url || null);
-                return (
-                  <TouchableOpacity
-                    key={i}
-                    style={s.relatedLink}
-                    activeOpacity={0.8}
-                    disabled={!url}
-                    onPress={() => { if (url) Linking.openURL(url).catch(() => {}); }}
-                  >
-                    <Paperclip size={14} color={BRAND} />
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={s.relatedLinkTitle} numberOfLines={1}>{name}</Text>
-                    </View>
-                    {url ? <ChevronRight size={14} color="#9CA3AF" /> : null}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+        {/* ATTACHMENTS — always shown */}
+        <View style={s.drawerSection}>
+          <View style={s.drawerSecHead}>
+            <Text style={s.drawerSecTitle}>Attachments ({attachments.length})</Text>
           </View>
-        ) : null}
+          <View style={[s.drawerSecBody, { gap: 10 }]}>
+            {attachments.length === 0 ? (
+              <View style={s.drawerIconRow}>
+                <Paperclip size={14} color="#D1D5DB" />
+                <Text style={{ fontSize: 12, color: '#9CA3AF' }}>No attachments</Text>
+              </View>
+            ) : attachments.map((att, i) => {
+              const name = typeof att === 'string'
+                ? (att.split('/').pop() || att)
+                : (att?.name || att?.url || `Attachment ${i + 1}`);
+              const url = typeof att === 'string' ? att : (att?.url || null);
+              return (
+                <TouchableOpacity
+                  key={i}
+                  style={s.relatedLink}
+                  activeOpacity={0.8}
+                  disabled={!url}
+                  onPress={() => { if (url) Linking.openURL(url).catch(() => {}); }}
+                >
+                  <Paperclip size={14} color={BRAND} />
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={s.relatedLinkTitle} numberOfLines={1}>{name}</Text>
+                  </View>
+                  {url ? <ChevronRight size={14} color="#9CA3AF" /> : null}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
 
         <View style={{ height: 20 }} />
       </ScrollView>
 
-      {/* Bottom action buttons */}
+      {/* Bottom action buttons — stacked full-width per mockup */}
       <View style={s.drawerFooter}>
         {(item.projectId || item.organizationId) ? (
           <TouchableOpacity style={s.drawerFooterPrimary} onPress={navigate} activeOpacity={0.85}>
@@ -464,53 +494,56 @@ export default function ActionCenterScreen() {
         </View>
       </View>
 
-      {/* STAT CARDS */}
-      <View style={s.statsSection}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.statsRow}
-        >
-          {STAT_CATS.map(cat => (
-            <StatCard
-              key={cat}
-              category={cat}
-              count={catCounts[cat]}
-              active={filter === cat}
-              onPress={() => setFilterAndReset(filter === cat ? 'all' : cat)}
-            />
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* FILTER PILLS */}
-      <View style={s.filterBar}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterPills}>
-          {FILTERS.map(({ key, label, count }) => (
-            <TouchableOpacity
-              key={key}
-              style={[s.pill, filter === key && s.pillActive]}
-              onPress={() => setFilterAndReset(filter === key && key !== 'all' ? 'all' : key)}
-              activeOpacity={0.8}
-            >
-              <Text style={[s.pillText, filter === key && s.pillTextActive]}>{label}</Text>
-              {count != null && count > 0 ? (
-                <View style={[s.pillBadge, filter === key && s.pillBadgeActive]}>
-                  <Text style={[s.pillBadgeText, filter === key && s.pillBadgeTextActive]}>{count}</Text>
-                </View>
-              ) : null}
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* MAIN AREA */}
+      {/* MAIN AREA — left column (stats+filters+table) beside right panel */}
       <View style={[s.mainArea, isDesktop && { flexDirection: 'row' }]}>
 
-        {/* TABLE */}
-        <View style={[s.tableWrap, isDesktop && { flex: 1, minWidth: 0 }]}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
-            <View style={{ minWidth: isMobile ? 640 : 720, flexGrow: 1 }}>
+        {/* LEFT COLUMN */}
+        <View style={[s.leftCol, isDesktop && { flex: 1, minWidth: 0 }]}>
+
+          {/* STAT CARDS */}
+          <View style={s.statsSection}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.statsRow}
+            >
+              {STAT_CATS.map(cat => (
+                <StatCard
+                  key={cat}
+                  category={cat}
+                  count={catCounts[cat]}
+                  active={filter === cat}
+                  onPress={() => setFilterAndReset(filter === cat ? 'all' : cat)}
+                />
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* FILTER PILLS */}
+          <View style={s.filterBar}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterPills}>
+              {FILTERS.map(({ key, label, count }) => (
+                <TouchableOpacity
+                  key={key}
+                  style={[s.pill, filter === key && s.pillActive]}
+                  onPress={() => setFilterAndReset(filter === key && key !== 'all' ? 'all' : key)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[s.pillText, filter === key && s.pillTextActive]}>{label}</Text>
+                  {count != null && count > 0 ? (
+                    <View style={[s.pillBadge, filter === key && s.pillBadgeActive]}>
+                      <Text style={[s.pillBadgeText, filter === key && s.pillBadgeTextActive]}>{count}</Text>
+                    </View>
+                  ) : null}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* TABLE */}
+          <View style={s.tableWrap}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+              <View style={{ minWidth: isMobile ? 640 : 720, flexGrow: 1 }}>
 
               {/* Table header */}
               <View style={s.tableHead}>
@@ -681,6 +714,7 @@ export default function ActionCenterScreen() {
             </View>
           )}
         </View>
+        </View>{/* end leftCol */}
 
         {/* DESKTOP PANEL — always visible on desktop */}
         {isDesktop && (
@@ -803,6 +837,7 @@ const s = StyleSheet.create({
 
   // Main area
   mainArea: { flex: 1 },
+  leftCol: { flex: 1, minWidth: 0 },
   tableWrap: { flex: 1 },
 
   // Table
@@ -920,30 +955,39 @@ const s = StyleSheet.create({
   drawerRowValue: { fontSize: 12, color: '#111', fontWeight: '500' },
   drawerCommentText: { fontSize: 12, color: '#374151', lineHeight: 18 },
   drawerFooter: {
-    flexDirection: 'row', gap: 8, padding: 10,
-    borderTopWidth: 1, borderTopColor: '#E5E7EB', flexWrap: 'wrap',
+    flexDirection: 'column', gap: 8, padding: 12,
+    borderTopWidth: 1, borderTopColor: '#E5E7EB',
   },
   drawerFooterPrimary: {
-    flex: 1, backgroundColor: BRAND, borderRadius: 8, height: 40,
+    backgroundColor: BRAND, borderRadius: 8, height: 44,
     alignItems: 'center', justifyContent: 'center',
   },
-  drawerFooterPrimaryText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  drawerFooterPrimaryText: { fontSize: 14, fontWeight: '700', color: '#fff' },
   drawerFooterSecondary: {
-    flex: 1, borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, height: 40,
+    borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, height: 44,
     alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6,
     backgroundColor: '#fff',
   },
   drawerFooterSecondaryText: { fontSize: 13, fontWeight: '600', color: '#374151' },
 
   // Drawer 2-column grid
-  drawerGrid: { flexDirection: 'row', gap: 16, marginBottom: 2 },
+  drawerGrid: { flexDirection: 'row', gap: 16, marginBottom: 10 },
   drawerGridCell: { flex: 1, minWidth: 0 },
+  drawerGridIconRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 3 },
   drawerGridLabel: {
     fontSize: 9, fontWeight: '700', color: '#9CA3AF',
-    textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4,
+    textTransform: 'uppercase', letterSpacing: 0.6,
   },
   drawerGridValue: { fontSize: 13, fontWeight: '600', color: '#111' },
   drawerGridSub: { fontSize: 11, color: '#6B7280', marginTop: 2 },
+
+  // Drawer icon rows (DETAILS section)
+  drawerIconRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#F9FAFB',
+  },
+  drawerIconLabel: { flex: 1, fontSize: 12, color: '#6B7280', fontWeight: '500' },
+  drawerIconValue: { fontSize: 12, color: '#111', fontWeight: '600', textAlign: 'right' as any },
 
   // Attachment link
   relatedLink: {

@@ -1,0 +1,247 @@
+Action Center Final Polish — Match Approved Detail Panel Mockup
+
+STOP.
+
+Do not redesign.
+
+Do not audit.
+
+Do not reinterpret.
+
+This is the final visual polish pass for the Action Center.
+
+The architecture is now correct.
+
+This sprint is strictly about layout refinement, spacing, hierarchy, and visual consistency.
+
+The attached mockup is now the source of truth.
+
+The goal is for the live application to match it as closely as possible.
+
+--------------------------------------------------
+1. REMOVE THE LAST DEAD SPACE
+--------------------------------------------------
+
+There is still unnecessary dead space between the Action List and the right-side Detail Panel.
+
+Currently:
+
+Action List
+          [dead space]
+                    Detail Panel
+
+This should become:
+
+Action List            Detail Panel
+
+The Action List should expand horizontally until it nearly touches the Detail Panel.
+
+There should not be an empty spacer column.
+
+Audit the parent flex/grid layout and remove any unused width allocation.
+
+The page should feel like one cohesive workspace.
+
+--------------------------------------------------
+2. RAISE THE ENTIRE DETAIL PANEL
+--------------------------------------------------
+
+The Detail Panel currently begins too low.
+
+There is empty space above it while the metric cards occupy the left side.
+
+The Detail Panel should begin at the SAME vertical position as the metric section.
+
+Specifically:
+
+The top of the Detail Panel should align with the top of the metric cards.
+
+The detail column should extend from near the top of the page all the way to the bottom action buttons.
+
+Do NOT start the Detail Panel lower than the Action List.
+
+This matches the approved mockup and removes wasted vertical space.
+
+--------------------------------------------------
+3. CENTER THE METRIC CARDS
+--------------------------------------------------
+
+The metric cards currently feel left-heavy.
+
+Center the entire metric card row over the Action List.
+
+Visually align the metric row with the Action List header below.
+
+Think of the metric cards as belonging to the Action List—not the entire page.
+
+The metric row should feel naturally centered over:
+
+-----------------------------------------
+Action List
+-----------------------------------------
+
+—not stretched awkwardly across the available width.
+
+--------------------------------------------------
+4. MATCH SITE-WIDE METRIC STYLING
+--------------------------------------------------
+
+The background behind the metric cards should match every other dashboard metric section throughout Katalyst OS.
+
+Use the same light gray section background used in:
+
+• Dashboard
+• Organization Details
+• Projects
+• CRM
+
+Do not invent a unique Action Center metric background.
+
+Maintain visual consistency across the platform.
+
+--------------------------------------------------
+5. REDESIGN THE DETAIL PANEL TO MATCH THE APPROVED MOCKUP
+--------------------------------------------------
+
+Use the attached mockup as the visual reference.
+
+The panel should become a series of clean information sections with black Katalyst headers.
+
+Recommended hierarchy:
+
+Header
+• Action Title
+• Quote / Project Number
+• Organization
+• Priority Badge
+
+OVERVIEW
+--------------------------------
+Organization
+Project
+Quote / Project #
+
+DETAILS
+--------------------------------
+Date / Time
+Priority
+Action Type
+
+COMMENTS
+--------------------------------
+Customer comments
+
+ATTACHMENTS
+--------------------------------
+Files or "No attachments"
+
+Bottom Actions
+
+[ Open Quote ]
+
+[ Mark as Resolved ]
+
+Maintain the existing functionality.
+
+Only improve hierarchy, spacing, readability, and consistency.
+
+--------------------------------------------------
+6. BUTTON STYLING
+--------------------------------------------------
+
+Use the standard Katalyst button system.
+
+Primary:
+
+Large orange filled button
+
+Open Quote
+
+Secondary:
+
+Large outlined button
+
+Mark as Resolved
+
+Match the standard button sizing used throughout the application.
+
+--------------------------------------------------
+7. DEFAULT ACTION CENTER BEHAVIOR
+--------------------------------------------------
+
+Verify the default Action Center behaves like an inbox.
+
+Default selected filter:
+
+ALL
+
+The Action List should display all actions across every category.
+
+The metric cards are summary counts only.
+
+The metric cards do NOT represent separate page layouts.
+
+Think:
+
+Email Inbox
+
+NOT
+
+Multiple dashboards.
+
+--------------------------------------------------
+8. VISUAL CONSISTENCY
+--------------------------------------------------
+
+The Action Center should now feel like it belongs inside Katalyst OS.
+
+It should visually match:
+
+• Organization Details
+• Projects
+• Client Hub
+• Quotes
+• Production
+• Dashboard
+
+Use the same spacing, typography, black headers, orange accents, border radius, and card styling throughout.
+
+Nothing about the Action Center should feel like a separate application.
+
+--------------------------------------------------
+VALIDATION
+--------------------------------------------------
+
+Verify:
+
+✓ No dead space between Action List and Detail Panel
+✓ Detail Panel begins at the top of the metric row
+✓ Metric cards are centered over the Action List
+✓ Metric section uses the standard light-gray background
+✓ Detail Panel matches the approved mockup hierarchy
+✓ Buttons match Katalyst styling
+✓ ALL is the default inbox filter
+✓ Desktop resembles the approved design
+✓ Tablet remains clean
+✓ Mobile remains usable
+
+--------------------------------------------------
+OUTPUT
+--------------------------------------------------
+
+Return:
+
+1. Files changed
+2. Layout adjustments
+3. Detail Panel improvements
+4. Metric alignment improvements
+5. Confirmation of default inbox behavior
+6. Desktop screenshot
+7. Tablet screenshot
+8. Mobile screenshot
+
+Implement.
+
+Do not redesign.
+
+This is the final polish pass to bring the Action Center to production quality.
