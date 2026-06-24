@@ -68,11 +68,11 @@ const COMPARE_LABELS: Record<CompareKey, string> = {
 
 // ── Revenue / Profit helpers ───────────────────────────────────────────────────
 function getRevenue(q: Quote): number {
-  return (q.salesData?.amountCollected as number | undefined) ?? q.calculations.total;
+  return (q.salesData?.amountCollected as number | undefined) ?? q.calculations?.total ?? 0;
 }
 
 function getProfit(q: Quote): number {
-  if (!q.salesData) return (q.calculations as any).markupAmount ?? 0;
+  if (!q.salesData) return (q.calculations as any)?.markupAmount ?? 0;
   const sfCost = q.salesData.actualServiceFeesCost ?? 0;
   const sfProfit = q.salesData.actualServiceFeesProfit ?? 0;
   const onlineFee = q.salesData.actualOnlineFee ?? 0;
@@ -84,12 +84,12 @@ function getProfit(q: Quote): number {
     sfCost +
     q.salesData.actualOtherCosts;
   const actualTotal = actualCOG + onlineFee + salesTax + cardFee;
-  const quotedFees = (q.calculations as any).serviceFeeTotal ?? 0;
+  const quotedFees = (q.calculations as any)?.serviceFeeTotal ?? 0;
   return q.salesData.amountCollected - actualTotal + sfProfit + (quotedFees - sfCost);
 }
 
 function getPcs(q: Quote): number {
-  return q.lineItems.reduce(
+  return (q.lineItems || []).reduce(
     (s: number, li: any) =>
       s +
       Object.values(li.sizes || {}).reduce(
@@ -308,9 +308,9 @@ function computeReconciliationQueue(quotes: Quote[]) {
   );
   return {
     count: pending.length,
-    revenueWaiting: pending.reduce((s, q) => s + q.calculations.total, 0),
+    revenueWaiting: pending.reduce((s, q) => s + (q.calculations?.total ?? 0), 0),
     profitWaiting: pending.reduce(
-      (s, q) => s + ((q.calculations as any).markupAmount ?? 0),
+      (s, q) => s + ((q.calculations as any)?.markupAmount ?? 0),
       0,
     ),
   };

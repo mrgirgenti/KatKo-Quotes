@@ -57,11 +57,11 @@ const STATUS_PILLS: { key: 'all' | QuoteStatus; label: string }[] = [
 ];
 
 function getSalesRevenue(sale: Quote): number {
-  return sale.salesData?.amountCollected || sale.calculations.total;
+  return sale.salesData?.amountCollected || sale.calculations?.total || 0;
 }
 
 function getSalesProfit(sale: Quote): number {
-  if (!sale.salesData) return sale.calculations.markupAmount;
+  if (!sale.salesData) return (sale.calculations as any)?.markupAmount ?? 0;
   const serviceFeesCost = sale.salesData.actualServiceFeesCost ?? 0;
   const serviceFeesProfit = sale.salesData.actualServiceFeesProfit ?? 0;
   const onlineFee = sale.salesData.actualOnlineFee ?? 0;
@@ -72,14 +72,14 @@ function getSalesProfit(sale: Quote): number {
                     serviceFeesCost + sale.salesData.actualOtherCosts;
   const actualTotalWithFees = actualCOG + onlineFee + salesTax + cardFee;
 
-  const quotedFees = sale.calculations.serviceFeeTotal;
+  const quotedFees = (sale.calculations as any)?.serviceFeeTotal ?? 0;
   const feesDifference = quotedFees - serviceFeesCost;
 
   return sale.salesData.amountCollected - actualTotalWithFees + serviceFeesProfit + feesDifference;
 }
 
 function getPcs(quote: Quote): number {
-  return quote.lineItems.reduce((s: number, li: any) =>
+  return (quote.lineItems || []).reduce((s: number, li: any) =>
     s + Object.values(li.sizes || {}).reduce((ps: number, v: any) => ps + (Number(v) || 0), 0), 0);
 }
 
