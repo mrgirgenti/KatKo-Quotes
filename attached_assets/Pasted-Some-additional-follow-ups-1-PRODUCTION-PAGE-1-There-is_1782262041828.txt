@@ -1,0 +1,27 @@
+Some additional follow ups: 
+1. PRODUCTION PAGE
+	1. There is a project in there currently in the Ready for Production status. However, when i click into the project, and view it, the status says its "in production". This same status is true everywhere else. This should have moved to the In Production status section. Something is off with that system right now. Those statuses are KEY! 
+	2. Additionally, there are a few projects that have been "Completed" and are marked as such in their project, but in the production page, they are not showing. Thats a bug and needs to be addressed. Again, those statuses are KEY! 
+	3. The same table look that we just implemented in the Active/Submitted Projects in the Organization Details page, we should implement as the same layout in the Production Queue view!!! However, note that some details are going to be different in this page, so it is not a direct copy of the Active/Submitted Projects area.
+
+2. ORGANIZATION DETAILS PAGES
+	1. I cannot upload a Organization profile picture... I think this is true of a client profile as well. Needs fix. Note that if a client changes their profile picture in their profile/via Client Hub, it should change it on our end. If an org admin changes the company logo in their Client Hub, it should change the Organization profile picture on our end as well.
+	2. The client hub section is a bit off still... 
+		1. The "Turn On/Off" orange button should really say "Open" when live and that button should take you to the Client Hub page. When it hasn't been turned on, it should say "Activate". 
+		2. The current "open" button to the right of the hub URL is not necessary. 
+		3. The Hub readiness check list is nice, but there is no way to currently manage the details it accounts for. 
+			1. Branding/Logo does not show in the Organization Details profile. However, it is set in the Client Hub. These are synonymous. Whatever logo is displayed in the Organization profile picture is usually the brands logo and should be the same logo that shows in the Client Hub in the "Organization Branding" section, and in the sidebar. An Client hub organization admin/primary contact should be able to change this in their Client Hub profile (which is already possible for them to do). It just needs to sync both ways.
+			2. The "at least one active user" int that checklist doesn't make sense - remove it. 
+			3. When I click "Manage people in contacts", it does nothing. this feels redundant with contacts already above it - remove it.
+
+3. CLIENT HUBS - MY PROJECTS PAGE
+	1. ACTIVE/COMPLETED PROJECTS cards look GREAT!!! Great job!!!
+	2. The service type is missing underneath the project status pills -please refer back to the original mockup. 
+	3. The text below the project name should say the respective client name (in this case, Joshy G)
+	4. Clicking "Reorder" still does NOT include the mockup or artwork. It should. Especially since its alreayd tied to a previous order. 
+	5. When I download a PDF, it downloads and then opens up a print dialogue box. It should download and if anything, open the PDF viewer app on my device. 
+
+4. CLIENT HUBS - DASHBOARD
+	1. The Active Projects section should replicate the Active Projects section in the My Projects page -- maybe the first 4 projects and then client should select "view all"
+	2. In the Quptes 
+---
