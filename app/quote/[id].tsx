@@ -311,7 +311,8 @@ export default function QuoteDetailScreen() {
 
   const handleMarkQuoteSent = useCallback(async () => {
     if (!quote || isSendingQuote) return;
-    if (!isReadyToSend) {
+    const isQuotedAlready = quote.status === 'quoted' || quote.status === 'invoice_sent';
+    if (!isReadyToSend && !isQuotedAlready) {
       Alert.alert(
         'Pricing Required',
         'Please add product costs and service costs before sending the quote. Fees and markup default to $0.00 and do not need to be set.',

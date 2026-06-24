@@ -477,8 +477,12 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
   const sales = userQuotes.filter(
     (q) => q.status === 'active' || q.status === 'production_started' || q.status === 'completed',
   );
-  // Production lens: only projects that have entered the operational workflow.
-  const productionProjects = userQuotes.filter((q) => !!q.operationalStatus);
+  // Production lens: projects that have entered the operational workflow, plus
+  // any completed or in-production projects that may not have an operationalStatus
+  // set (e.g. completed directly from the project detail without going through the board).
+  const productionProjects = userQuotes.filter(
+    (q) => !!q.operationalStatus || q.status === 'completed' || q.status === 'production_started',
+  );
 
   return {
     quotes,

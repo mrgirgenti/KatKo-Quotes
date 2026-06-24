@@ -50,7 +50,6 @@ import {
   Inbox,
   Package,
   Upload,
-  ExternalLink,
   Copy,
   CheckCircle2,
   Film,
@@ -748,7 +747,7 @@ export default function OrgProfileScreen() {
   const hubPendingCount = contactsList.filter((c) => c.hubAccess === 'invited').length;
   const hubAdminCount = contactsList.filter((c) => c.isOrgAdmin).length;
   const hubHasLogo = !!org.logoUrl;
-  const hubReady = localHubEnabled && hubHasLogo && hubActiveCount > 0 && hubAdminCount > 0;
+  const hubReady = localHubEnabled && hubHasLogo && hubAdminCount > 0;
 
   const clientHubInner = (
     <>
@@ -761,8 +760,18 @@ export default function OrgProfileScreen() {
             ? <View style={styles.hubStatusBadge}><Text style={styles.hubStatusBadgeText}>Active</Text></View>
             : <View style={[styles.hubStatusBadge, styles.hubStatusBadgeOff]}><Text style={[styles.hubStatusBadgeText, styles.hubStatusBadgeTextOff]}>Inactive</Text></View>}
         </View>
-        <TouchableOpacity style={styles.hubSettingsBtn} onPress={handleHubToggle} activeOpacity={0.8}>
-          <Text style={styles.hubSettingsBtnText}>{localHubEnabled ? 'Turn Off' : 'Turn On'}</Text>
+        <TouchableOpacity
+          style={styles.hubSettingsBtn}
+          onPress={() => {
+            if (localHubEnabled) {
+              if (Platform.OS === 'web') (window as any).open(`/portal/${org.id}`, '_blank');
+            } else {
+              handleHubToggle();
+            }
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.hubSettingsBtnText}>{localHubEnabled ? 'Open' : 'Activate'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -777,10 +786,6 @@ export default function OrgProfileScreen() {
                 : `/portal/${org.id}`}
             </Text>
             <View style={styles.hubUrlActions}>
-              <TouchableOpacity style={styles.hubUrlActionBtn} onPress={() => { if (Platform.OS === 'web') (window as any).open(`/portal/${org.id}`, '_blank'); }}>
-                <ExternalLink size={10} color={Colors.light.textSecondary} />
-                <Text style={styles.hubUrlActionBtnText}>Open</Text>
-              </TouchableOpacity>
               <TouchableOpacity style={styles.hubUrlActionBtn} onPress={handleCopyHubLink}>
                 {hubLinkCopied ? <CheckCircle2 size={10} color="#16A34A" /> : <Copy size={10} color={Colors.light.textSecondary} />}
                 <Text style={[styles.hubUrlActionBtnText, hubLinkCopied && { color: '#16A34A' }]}>{hubLinkCopied ? 'Copied' : 'Copy'}</Text>
@@ -822,7 +827,6 @@ export default function OrgProfileScreen() {
             {[
               { ok: localHubEnabled, label: 'Hub enabled' },
               { ok: hubHasLogo, label: 'Branding / logo set' },
-              { ok: hubActiveCount > 0, label: 'At least one active user' },
               { ok: hubAdminCount > 0, label: 'At least one org admin' },
             ].map((item) => (
               <View key={item.label} style={styles.hubReadyRow}>
@@ -834,11 +838,6 @@ export default function OrgProfileScreen() {
             ))}
           </View>
 
-          {/* Manage people → Contacts (the single people-management surface) */}
-          <TouchableOpacity style={styles.hubManageBtn} onPress={() => setActiveTab('contacts')} activeOpacity={0.85}>
-            <Users size={13} color="#FF5A00" />
-            <Text style={styles.hubManageBtnText}>Manage People in Contacts</Text>
-          </TouchableOpacity>
         </>
       ) : (
         <View style={styles.hubDisabledBanner}>
@@ -1375,7 +1374,6 @@ export default function OrgProfileScreen() {
                     currentLogoUrl={org.logoUrl}
                     onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })}
                     size={128}
-                    hideActions
                   />
 
                   {/* Right content: actions → name → info */}
@@ -2118,7 +2116,7 @@ export default function OrgProfileScreen() {
             {/* Mobile header */}
             <View style={styles.v2MobileHeader}>
               <View style={styles.v2MobileHeaderTop}>
-                <OrgLogoUploader orgId={org.id} orgName={org.name} currentLogoUrl={org.logoUrl} onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })} size={52} hideActions />
+                <OrgLogoUploader orgId={org.id} orgName={org.name} currentLogoUrl={org.logoUrl} onLogoChange={(url) => updateOrg({ ...org, logoUrl: url ?? undefined })} size={52} />
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.v2MobileOrgName} numberOfLines={1}>{org.name}</Text>
                   {primaryContact ? (

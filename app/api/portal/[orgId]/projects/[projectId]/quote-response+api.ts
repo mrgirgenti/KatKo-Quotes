@@ -109,9 +109,14 @@ export async function POST(
     }
 
     // ── Approve / Request Changes / Decline ───────────────────────────────────
-    // Any authenticated member of the org can respond to a quote (approve,
-    // request changes, or decline). Permission restrictions apply only to org
-    // settings (branding, team management), not to quote interactions.
+    // All members may request changes or decline a quote.
+    // Only primary contacts or members with canApproveQuotes may approve.
+    if (action === 'approve' && !member.canApproveQuotes && !member.isPrimaryContact) {
+      return Response.json(
+        { error: 'Only the primary contact or an account admin can approve quotes.' },
+        { status: 403 }
+      );
+    }
 
     if (action === 'request_changes' && !note) {
       return Response.json({ error: 'Please describe the changes you would like.' }, { status: 400 });

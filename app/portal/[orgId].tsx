@@ -139,6 +139,8 @@ interface PortalProject {
   timesReordered: number | null;
   lastReorderedAt: string | null;
   quoteResponse: string | null;
+  orderType: string | null;
+  clientName: string | null;
 }
 
 interface FullPortalProject {
@@ -503,18 +505,6 @@ function downloadCustomerProjectPdf(opts: {
       <div class="sec">Contact Information</div>
       <div class="meta">Katalyst Ko</div>
       <div class="meta">jobs@katalystko.com</div>
-      <script>
-        (function(){
-          var go=function(){try{window.focus();window.print();}catch(e){}};
-          var imgs=[].slice.call(document.images);
-          var pending=imgs.filter(function(i){return !i.complete;});
-          if(!pending.length){setTimeout(go,300);return;}
-          var left=pending.length,fired=false;
-          var fire=function(){if(fired)return;fired=true;setTimeout(go,250);};
-          pending.forEach(function(i){i.addEventListener('load',function(){if(--left<=0)fire();});i.addEventListener('error',function(){if(--left<=0)fire();});});
-          setTimeout(function(){if(!fired){fired=true;go();}},6000);
-        })();
-      </script>
     </body></html>`;
   win.document.open();
   win.document.write(html);
@@ -2047,12 +2037,14 @@ export default function ClientPortal() {
       // Consume the reorder linkage so a later unrelated submit can't be
       // mis-attributed to this source project.
       setReorderSourceId(null);
+      // Refresh the projects list so the new submission appears immediately.
+      fetchOrgProjects(session.orgId);
     } catch {
       setSubmitError('Connection error. Please try again.');
     } finally {
       setSubmitting(false);
     }
-  }, [session, projectName, orderType, inHandsDate, requestNotes, lineItems, pendingFiles, artworkFromBin, reorderSourceId]);
+  }, [session, projectName, orderType, inHandsDate, requestNotes, lineItems, pendingFiles, artworkFromBin, reorderSourceId, fetchOrgProjects]);
 
   const handleNewRequest = useCallback(() => {
     setProjectName('');
@@ -2446,7 +2438,7 @@ export default function ClientPortal() {
 
     const SUBMITTED_STATUSES = ['NEEDS_REVIEW', 'QUOTING', 'QUOTED', 'INVOICE_SENT'];
     const ACTIVE_STATUSES = ['PAID', 'IN_PRODUCTION'];
-    const COMPLETED_STATUSES = ['COMPLETED', 'EXPIRED', 'CANCELLED'];
+    const COMPLETED_STATUSES = ['COMPLETED'];
     const submittedProjects = sortedDisplayed.filter(p => SUBMITTED_STATUSES.includes(normalSt(p.status)));
     const activeProjects = sortedDisplayed.filter(p => ACTIVE_STATUSES.includes(normalSt(p.status)));
     const completedProjects = sortedDisplayed.filter(p => COMPLETED_STATUSES.includes(normalSt(p.status)));
@@ -2576,13 +2568,20 @@ export default function ClientPortal() {
           <View style={mpStyles.mpCardBody}>
             <View style={mpStyles.mpCardTitleRow}>
               <Text style={mpStyles.mpCardTitle} numberOfLines={2}>{p.title}</Text>
-              <StatusPill status={p.status} quoteResponse={p.quoteResponse} />
+              <View style={{ alignItems: 'flex-end', gap: 3, flexShrink: 0, marginLeft: 6 }}>
+                <StatusPill status={p.status} quoteResponse={p.quoteResponse} />
+                {p.orderType ? (
+                  <Text style={{ fontSize: 10, color: TEXT_LIGHT, fontWeight: '600' }} numberOfLines={1}>{p.orderType}</Text>
+                ) : null}
+              </View>
             </View>
-            {p.designCount > 0 && (
+            {p.clientName ? (
+              <Text style={mpStyles.mpCardSubtitle} numberOfLines={1}>{p.clientName}</Text>
+            ) : p.designCount > 0 ? (
               <Text style={mpStyles.mpCardSubtitle} numberOfLines={1}>
                 {p.designCount} Design{p.designCount !== 1 ? 's' : ''}
               </Text>
-            )}
+            ) : null}
             <View style={mpStyles.mpCardMetrics}>
               <View style={mpStyles.mpCardMetric}>
                 <Text style={mpStyles.mpCardMetricVal}>{pcs ?? '\u2014'}</Text>
@@ -3029,15 +3028,7 @@ export default function ClientPortal() {
 
     const downloadSummaryPdf = () => {
       if (!proj || Platform.OS !== 'web' || typeof window === 'undefined') return;
-      const printScript =
-        `<script>(function(){var go=function(){try{window.focus();window.print();}catch(e){}};` +
-        `var imgs=[].slice.call(document.images);var p=imgs.filter(function(i){return !i.complete;});` +
-        `if(!p.length){setTimeout(go,400);return;}var n=p.length,f=false;` +
-        `var fire=function(){if(f)return;f=true;setTimeout(go,300);};` +
-        `p.forEach(function(i){i.addEventListener('load',function(){if(--n<=0)fire();});` +
-        `i.addEventListener('error',function(){if(--n<=0)fire();});});` +
-        `setTimeout(function(){if(!f){f=true;go();}},7000);})();<` + `/script>`;
-      const html = buildProjectDocumentHTML(docSource, 'ORDER_DETAIL').replace(/<\/body>/, printScript + '</body>');
+      const html = buildProjectDocumentHTML(docSource, 'ORDER_DETAIL');
       const win = window.open('', '_blank', 'width=920,height=1040');
       if (!win) return;
       win.document.open();
@@ -4747,6 +4738,7 @@ export default function ClientPortal() {
                 {NAV_ITEMS.map(({ id, label, Icon }, idx) => {
                   const isActive = activeView === id;
                   const showDivider = idx === 1 || idx === 3 || idx === 5;
+                  const nrCount = id === 'projects' ? orgProjects.filter(p => p.status === 'NEEDS_REVIEW').length : 0;
                   return (
                     <React.Fragment key={id}>
                       {showDivider && <View style={dash.navDivider} />}
@@ -4760,6 +4752,11 @@ export default function ClientPortal() {
                         <Icon size={16} color={isActive ? '#fff' : '#9CA3AF'} />
                         {!sidebarCollapsed && (
                           <Text style={[dash.navLabel, isActive && dash.navLabelActive]}>{label}</Text>
+                        )}
+                        {!sidebarCollapsed && nrCount > 0 && (
+                          <View style={dash.navBadge}>
+                            <Text style={dash.navBadgeText}>{nrCount}</Text>
+                          </View>
                         )}
                       </TouchableOpacity>
                     </React.Fragment>
@@ -4881,6 +4878,7 @@ export default function ClientPortal() {
                   {NAV_ITEMS.map(({ id, label, Icon }, idx) => {
                     const isActive = activeView === id;
                     const showDivider = idx === 1 || idx === 3 || idx === 5;
+                    const nrCount = id === 'projects' ? orgProjects.filter(p => p.status === 'NEEDS_REVIEW').length : 0;
                     return (
                       <React.Fragment key={id}>
                         {showDivider && <View style={dash.navDivider} />}
@@ -4894,6 +4892,11 @@ export default function ClientPortal() {
                         >
                           <Icon size={16} color={isActive ? '#fff' : '#9CA3AF'} />
                           <Text style={[dash.navLabel, isActive && dash.navLabelActive]}>{label}</Text>
+                          {nrCount > 0 && (
+                            <View style={dash.navBadge}>
+                              <Text style={dash.navBadgeText}>{nrCount}</Text>
+                            </View>
+                          )}
                         </TouchableOpacity>
                       </React.Fragment>
                     );
@@ -5482,8 +5485,13 @@ const dash = StyleSheet.create({
   },
   navItemActive: { backgroundColor: SIDEBAR_ACTIVE },
   navItemCollapsed: { justifyContent: 'center', paddingHorizontal: 0, width: 40, alignSelf: 'center' },
-  navLabel: { fontSize: 13, color: '#9CA3AF', fontWeight: '500' },
+  navLabel: { fontSize: 13, color: '#9CA3AF', fontWeight: '500', flex: 1 },
   navLabelActive: { color: '#fff', fontWeight: '700' },
+  navBadge: {
+    minWidth: 18, height: 18, borderRadius: 9, backgroundColor: '#FF5A00',
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4,
+  },
+  navBadgeText: { fontSize: 11, fontWeight: '700', color: '#fff' },
 
   sidebarFooter: {
     paddingHorizontal: 10,

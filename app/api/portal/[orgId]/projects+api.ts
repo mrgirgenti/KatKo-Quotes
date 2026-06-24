@@ -27,6 +27,8 @@ export async function GET(_req: Request, { orgId }: { orgId: string }) {
         p."timesReordered",
         p."lastReorderedAt",
         p."quoteResponse",
+        p."orderType",
+        p."clientName",
         (
           SELECT COUNT(*)::int
           FROM "ProjectItem" pi

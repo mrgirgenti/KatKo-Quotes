@@ -29,7 +29,7 @@ export function ProductionBoard({ projects, onSetStatus }: Props) {
       'Completed': [],
     };
     projects.forEach((q) => {
-      const col = columnForStatus(q.operationalStatus);
+      const col = columnForStatus(q.operationalStatus, q.status);
       if (col) map[col].push(q);
     });
     (Object.keys(map) as BoardColumnKey[]).forEach((k) => { map[k] = sortForBoard(map[k]); });

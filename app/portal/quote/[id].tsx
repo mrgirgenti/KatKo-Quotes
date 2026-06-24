@@ -11,6 +11,7 @@ import {
   Linking,
 } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
+import ProjectDocument from '@/components/ProjectDocument';
 import {
   CheckCircle,
   Calendar,
@@ -486,15 +487,30 @@ export default function ClientQuoteView() {
                   ) : null}
                 </View>
 
-                {/* Line Items — each owns its mockup (no project-level gallery) */}
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>
-                    Line Items ({quote.lineItems.length})
-                  </Text>
-                  {quote.lineItems.map((item, i) => (
-                    <LineItemCard key={item.id || i} item={item} index={i} />
-                  ))}
-                </View>
+                {/* Line Items — rendered via the canonical ProjectDocument template */}
+                <ProjectDocument
+                  mode="QUOTE"
+                  source={{
+                    projectName: quote.projectName,
+                    title: quote.projectName,
+                    personOrganization: quote.orgName || quote.clientName,
+                    orderType: quote.orderType,
+                    inHandsDate: quote.inHandsDate,
+                    notesClient: quote.notesClient,
+                    lineItems: quote.lineItems,
+                    calculations: {
+                      total: quote.total,
+                      subtotal: quote.subtotal,
+                      totalPerPiece: quote.totalPerPiece,
+                      onlineFee: quote.onlineFee,
+                      cardFee: quote.cardFee,
+                      salesTax: quote.salesTax,
+                      shipping: quote.shipping,
+                      rushFee: quote.rushFee,
+                    },
+                  }}
+                  minHeight={600}
+                />
 
                 {/* Customer Files */}
                 {quote.files.length > 0 && (

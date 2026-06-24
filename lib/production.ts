@@ -54,9 +54,25 @@ const STATUS_TO_COLUMN: Record<string, BoardColumnKey> = BOARD_COLUMNS.reduce((a
   return acc;
 }, {} as Record<string, BoardColumnKey>);
 
-export function columnForStatus(status: string | null | undefined): BoardColumnKey | null {
-  if (!status) return null;
-  return STATUS_TO_COLUMN[status] ?? null;
+export function columnForStatus(
+  status: string | null | undefined,
+  projectStatus?: string | null,
+): BoardColumnKey | null {
+  // A project marked complete in the main lifecycle always belongs in Completed,
+  // even if it was never manually moved through the production board.
+  if (projectStatus === 'completed') return 'Completed';
+
+  const col = status ? (STATUS_TO_COLUMN[status] ?? null) : null;
+
+  // When the project's lifecycle has advanced to production, the board column
+  // must be at least "In Production" — prevents a stale "Ready for Production"
+  // operationalStatus from showing when the project itself is already live.
+  if (projectStatus === 'production_started' || projectStatus === 'in_production') {
+    if (!col || col === 'Ready for Production') return 'In Production';
+    return col;
+  }
+
+  return col;
 }
 
 // ---------------------------------------------------------------------------
