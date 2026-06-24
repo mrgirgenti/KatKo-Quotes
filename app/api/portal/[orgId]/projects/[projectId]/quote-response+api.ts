@@ -6,6 +6,7 @@ import {
   buildQuoteDeclinedAdminEmail,
   buildQuoteResponseCustomerEmail,
 } from '@/lib/email';
+import { createAction } from '@/lib/actions';
 
 const KO_JOBS_EMAIL = 'jobs@katalystko.com';
 type Action = 'view' | 'approve' | 'request_changes' | 'decline';
@@ -242,6 +243,18 @@ export async function POST(
       throw txErr;
     } finally {
       client.release();
+    }
+
+    // Fire-and-forget: surface revision requests in the Action Center
+    if (action === 'request_changes') {
+      createAction({
+        type: 'QUOTE_REVISION_REQUEST',
+        title: `Revision Request — ${projectName}`,
+        description: note || 'Customer requested changes to the quote.',
+        organizationId: orgId,
+        projectId,
+        metadata: { responderName, note: note || null, orgName: org.name },
+      }).catch(() => {});
     }
 
     // Notifications (non-blocking). Build absolute URLs (with scheme) so the email

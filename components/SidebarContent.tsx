@@ -6,6 +6,7 @@ import { useClerk } from '@clerk/clerk-expo';
 import { NAV_GROUPS, SYSTEM_HREFS, isItemActive, NavItem } from '@/components/navConfig';
 import { useUser } from '@/contexts/UserContext';
 import { useQuotes } from '@/contexts/QuotesContext';
+import { useActions } from '@/contexts/ActionsContext';
 
 export const SB = {
   bg: '#000000',
@@ -81,7 +82,11 @@ export function SidebarNav({ collapsed = false, onNavigate }: NavProps) {
   const needsReviewCount = sales.filter(
     (p) => (p.status || '').toLowerCase() === 'needs_review',
   ).length;
-  const badgeMap: Record<string, number> = { '/sales': needsReviewCount };
+  const { unresolvedCount } = useActions();
+  const badgeMap: Record<string, number> = {
+    '/sales': needsReviewCount,
+    '/action-center': unresolvedCount,
+  };
 
   const go = (item: NavItem) => {
     if (item.disabled) return;

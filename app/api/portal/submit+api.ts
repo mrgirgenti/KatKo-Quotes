@@ -1,5 +1,6 @@
 import { pool } from '@/lib/pool';
 import { sendEmail, buildSubmissionConfirmationEmail, buildNewRequestAdminEmail } from '@/lib/email';
+import { createAction } from '@/lib/actions';
 
 const EDIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -237,6 +238,20 @@ export async function POST(request: Request) {
         }),
       ]
     );
+
+    // Fire-and-forget: surface this submission in the Action Center
+    createAction({
+      type: 'NEW_QUOTE_SUBMISSION',
+      title: `New Quote Submission — ${title.trim()}`,
+      description: `${orgName || ''} submitted a new project request.`,
+      organizationId: orgId,
+      projectId: project.id,
+      metadata: {
+        orderType: mappedOrderType,
+        lineItemCount: lineItemsData.length,
+        inHandsDate: inHandsDate || null,
+      },
+    }).catch(() => {});
 
     // Determine portal URL for "View Your Request" link
     const basePortalUrl = body.portalUrl || `${process.env.REPLIT_DEV_DOMAIN || ''}/portal/${orgId}`;

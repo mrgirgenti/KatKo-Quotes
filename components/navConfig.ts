@@ -1,5 +1,6 @@
 import {
   LayoutDashboard,
+  Zap,
   Building2,
   Users,
   FileText,
@@ -33,7 +34,10 @@ export interface NavGroup {
 
 export const NAV_GROUPS: NavGroup[] = [
   {
-    items: [{ label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' }],
+    items: [
+      { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
+      { label: 'Action Center', icon: Zap, href: '/action-center' },
+    ],
   },
   {
     items: [

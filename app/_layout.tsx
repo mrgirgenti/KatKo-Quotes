@@ -12,6 +12,7 @@ import { tokenCache } from '@clerk/clerk-expo/token-cache';
 import { QuotesProvider } from '@/contexts/QuotesContext';
 import { UserProvider } from '@/contexts/UserContext';
 import { CrmProvider } from '@/contexts/CrmContext';
+import { ActionsProvider } from '@/contexts/ActionsContext';
 import { setClerkTokenGetter } from '@/lib/clerkToken';
 
 const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
@@ -254,8 +255,10 @@ export default function RootLayout() {
           <UserProvider>
             <QuotesProvider>
               <CrmProvider>
-                <AuthGate />
-                <RootLayoutNav />
+                <ActionsProvider>
+                  <AuthGate />
+                  <RootLayoutNav />
+                </ActionsProvider>
               </CrmProvider>
             </QuotesProvider>
           </UserProvider>
