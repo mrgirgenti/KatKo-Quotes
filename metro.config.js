@@ -33,10 +33,27 @@ config.watchFolders = (config.watchFolders || []).filter(
 // continuously; they contain no JS and must not trigger bundle invalidations.
 const blockedDirs = [".cache", "attached_assets", ".expo/types", ".agents", ".local"];
 
+const originalResolveRequest = config.resolver?.resolveRequest;
+
 config.resolver = {
   ...config.resolver,
   extraNodeModules: {
     "react-native-reanimated": path.resolve(__dirname, "stubs/react-native-reanimated.js"),
+  },
+  // jspdf's "main" is a Node build (jspdf.node.min.js) whose AMD-style
+  // `require(["html2canvas"])` cannot be transformed by Metro and breaks the
+  // SSR/node bundle. extraNodeModules is only a fallback and does NOT override a
+  // real installed package, so redirect the bare "jspdf" specifier to its ESM
+  // build here (Metro-transformable). It is only ever executed client-side.
+  resolveRequest: (context, moduleName, platform) => {
+    if (moduleName === "jspdf") {
+      return {
+        type: "sourceFile",
+        filePath: path.resolve(__dirname, "node_modules/jspdf/dist/jspdf.es.min.js"),
+      };
+    }
+    const resolve = originalResolveRequest ?? context.resolveRequest;
+    return resolve(context, moduleName, platform);
   },
   blockList: [
     ...(Array.isArray(config.resolver?.blockList)

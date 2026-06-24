@@ -5,7 +5,6 @@ import { User, Plus, LogOut, ChevronDown, ChevronUp } from 'lucide-react-native'
 import { useClerk } from '@clerk/clerk-expo';
 import { NAV_GROUPS, SYSTEM_HREFS, isItemActive, NavItem } from '@/components/navConfig';
 import { useUser } from '@/contexts/UserContext';
-import { useQuotes } from '@/contexts/QuotesContext';
 import { useActions } from '@/contexts/ActionsContext';
 
 export const SB = {
@@ -78,13 +77,8 @@ export function SidebarNav({ collapsed = false, onNavigate }: NavProps) {
     if (isOnSystemPage) setSystemOpen(true);
   }, [isOnSystemPage]);
 
-  const { sales } = useQuotes();
-  const needsReviewCount = sales.filter(
-    (p) => (p.status || '').toLowerCase() === 'needs_review',
-  ).length;
   const { unresolvedCount } = useActions();
   const badgeMap: Record<string, number> = {
-    '/sales': needsReviewCount,
     '/action-center': unresolvedCount,
   };
 

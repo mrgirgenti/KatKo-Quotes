@@ -7,6 +7,7 @@ import { formatPhone } from '@/utils/phone';
 import { UserProfile } from '@/types/user';
 import { buildProjectDocumentHTML } from '@/utils/projectDocumentHtml';
 import { DocumentMode } from '@/utils/projectDocument';
+import { htmlToPdf } from '@/utils/htmlToPdf';
 
 function getTotalSizeQuantities(item: LineItem): string {
   const sizes: string[] = [];
@@ -468,7 +469,7 @@ export async function generateWorkOrderPDFs(quote: Quote, user?: UserProfile | n
     const applicatorSafe = sanitizeFilename(applicator);
 
     if (Platform.OS === 'web') {
-      downloadHtmlAsFile(html, `Work_Order_${applicatorSafe}_${project}.html`);
+      await htmlToPdf(html, `Work_Order_${applicatorSafe}_${project}.pdf`);
       await new Promise((r) => setTimeout(r, 400));
     } else {
       try {
@@ -517,7 +518,7 @@ export async function generateAndSharePDF(quote: Quote, user?: UserProfile | nul
     if (Platform.OS === 'web') {
       const client = sanitizeFilename(quote.personOrganization || 'Client');
       const project = sanitizeFilename(quote.projectName || 'Quote');
-      downloadHtmlAsFile(html, `${client}_${project}.html`);
+      await htmlToPdf(html, `${client}_${project}.pdf`);
       return;
     }
 
@@ -569,20 +570,18 @@ export async function generateProjectDocumentPDF(
     const html = buildProjectDocumentHTML(quote, mode);
 
     if (Platform.OS === 'web') {
-      // Open in a new tab and trigger the browser's print dialog.
-      // The user can choose "Save as PDF" in the dialog to get a real PDF file
-      // that opens in their PDF viewer rather than the browser.
-      const win = openHtmlInNewWindow(html);
-      if (!win) {
-        // Popup blocked — fall back to HTML download so they still get the file
-        const client = sanitizeFilename(quote.personOrganization || 'Client');
-        const project = sanitizeFilename(quote.projectName || MODE_FILE_LABEL[mode]);
-        downloadHtmlAsFile(html, `${client}_${project}_${MODE_FILE_LABEL[mode]}.html`);
-        return;
+      // Generate a real PDF file and download it straight to the user's device
+      // (no popup, no print dialog). Falls back to an HTML download only if PDF
+      // generation fails unexpectedly.
+      const client = sanitizeFilename(quote.personOrganization || 'Client');
+      const project = sanitizeFilename(quote.projectName || MODE_FILE_LABEL[mode]);
+      const baseName = `${client}_${project}_${MODE_FILE_LABEL[mode]}`;
+      try {
+        await htmlToPdf(html, `${baseName}.pdf`);
+      } catch (err) {
+        console.error('PDF generation failed, falling back to HTML download:', err);
+        downloadHtmlAsFile(html, `${baseName}.html`);
       }
-      setTimeout(() => {
-        try { win.print(); } catch (_) {}
-      }, 800);
       return;
     }
 

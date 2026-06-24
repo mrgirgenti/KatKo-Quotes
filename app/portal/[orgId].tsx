@@ -83,6 +83,7 @@ import MediaCard from '@/components/MediaCard';
 import OverlayMenu from '@/components/OverlayMenu';
 import { formatPhone } from '@/utils/phone';
 import { buildProjectDocumentHTML } from '@/utils/projectDocumentHtml';
+import { htmlToPdf } from '@/utils/htmlToPdf';
 
 const BRAND = '#FF5A00';
 const BRAND_DARK = '#CC4700';
@@ -422,95 +423,6 @@ function escapeHtml(s: any): string {
   return String(s ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-// Customer-safe project PDF via browser print. Each line item shows its own
-// mockup(s). Deliberately omits every internal field (cost, markup, margin,
-// COGS, vendor, applicator, fee breakdowns).
-function downloadCustomerProjectPdf(opts: {
-  title: string; status: string; orderType?: string | null;
-  inHandsDate?: string | null; orgName?: string; customerName?: string | null; notes?: string | null;
-  orgId?: string; lineItems: any[]; pricing: Array<{ label: string; value: number }>; total: number | null;
-}): void {
-  if (Platform.OS !== 'web' || typeof window === 'undefined') return;
-  const win = window.open('', '_blank', 'width=820,height=900');
-  if (!win) return;
-  const liHtml = opts.lineItems.map((li, idx) => {
-    const variants = Array.isArray(li.garmentVariants) && li.garmentVariants.length > 0 ? li.garmentVariants : null;
-    const products = variants
-      ? variants.map((v: any) => [v.product, v.color].filter(Boolean).join(' — ')).filter(Boolean)
-      : [[li.product, li.productColor].filter(Boolean).join(' — ')].filter(Boolean);
-    const sizeSets = variants ? variants.map((v: any) => v.sizes ?? {}) : [li.sizes ?? {}];
-    const qty = sizeSets.reduce((s: number, sz: any) =>
-      s + Object.values(sz).reduce((a: number, n: any) => a + (Number(n) || 0), 0), 0);
-    const sizeAgg: Record<string, number> = {};
-    sizeSets.forEach((sz: any) => CUSTOMER_SIZE_LABELS.forEach(s => {
-      sizeAgg[s.key] = (sizeAgg[s.key] || 0) + (Number(sz[s.key]) || 0);
-    }));
-    const sizeStr = CUSTOMER_SIZE_LABELS.filter(s => sizeAgg[s.key] > 0).map(s => `${s.label}: ${sizeAgg[s.key]}`).join(', ');
-    const locations = [li.location1, li.location2, li.location3, li.location4].filter(Boolean).join(', ');
-    const rawMockups: string[] = Array.isArray(li.mockups) && li.mockups.length
-      ? li.mockups
-      : (li.mockupUri ? [li.mockupUri] : []);
-    const mockups: string[] = rawMockups
-      .map((u: string) => resolveMockupUrl(u, opts.orgId || ''))
-      .filter(Boolean);
-    const mockupsHtml = mockups.length
-      ? `<div class="mockups">${mockups.map(m => `<div class="mockup"><img src="${escapeHtml(m)}" alt="Mockup for ${escapeHtml(li.designName || `Item ${idx + 1}`)}"/></div>`).join('')}</div>`
-      : '<div class="nomock">No mockup provided for this item.</div>';
-    return `
-      <div class="item">
-        <div class="item-h"><strong>#${idx + 1} ${escapeHtml(li.designName || `Item ${idx + 1}`)}</strong><span>${qty} pcs</span></div>
-        ${mockupsHtml}
-        ${products.length ? `<div class="row"><span class="k">Product</span><span>${escapeHtml(products.join(' • '))}</span></div>` : ''}
-        ${li.serviceStyle ? `<div class="row"><span class="k">Service</span><span>${escapeHtml(li.serviceStyle)}</span></div>` : ''}
-        ${locations ? `<div class="row"><span class="k">Locations</span><span>${escapeHtml(locations)}</span></div>` : ''}
-        ${sizeStr ? `<div class="row"><span class="k">Sizes</span><span>${escapeHtml(sizeStr)}</span></div>` : ''}
-      </div>`;
-  }).join('');
-  const priceHtml = opts.pricing.map(p =>
-    `<div class="prow"><span>${escapeHtml(p.label)}</span><span>$${p.value.toFixed(2)}</span></div>`).join('');
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(opts.title)}</title>
-    <style>
-      *{box-sizing:border-box}
-      body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111827;margin:0;padding:32px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-      h1{font-size:22px;margin:0 0 4px}.sub{color:#6B7280;font-size:13px;margin-bottom:14px}
-      .badge{display:inline-block;background:#FFF4EE;color:#FF5A00;border-radius:14px;padding:3px 10px;font-size:12px;font-weight:700;margin-right:8px}
-      .sec{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6B7280;margin:22px 0 8px}
-      .kv{display:flex;font-size:13px;padding:2px 0}.kv .k{width:110px;color:#6B7280}
-      .item{border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;margin-bottom:10px;break-inside:avoid;page-break-inside:avoid}
-      .item-h{display:flex;justify-content:space-between;font-size:15px;margin-bottom:6px}
-      .mockups{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 10px}
-      .mockup{width:170px;height:170px;border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;background:#F9FAFB;display:flex;align-items:center;justify-content:center}
-      .mockup img{max-width:100%;max-height:100%;object-fit:contain}
-      .nomock{font-size:12px;color:#9CA3AF;font-style:italic;margin:6px 0 8px}
-      .row{display:flex;font-size:13px;padding:2px 0}.k{width:90px;color:#6B7280}
-      .prow{display:flex;justify-content:space-between;font-size:14px;padding:5px 0;border-bottom:1px solid #F3F4F6}
-      .total{display:flex;justify-content:space-between;font-size:18px;font-weight:800;background:#FF5A00;color:#fff;border-radius:10px;padding:12px 16px;margin-top:10px}
-      .meta{color:#6B7280;font-size:13px;margin-bottom:4px}
-    </style></head><body>
-      <h1>${escapeHtml(opts.title)}</h1>
-      <div class="sub">${escapeHtml(opts.orgName || 'Katalyst Ko')}</div>
-      <div><span class="badge">${escapeHtml(opts.status)}</span>${opts.orderType ? `<span class="badge">${escapeHtml(opts.orderType)}</span>` : ''}</div>
-      ${opts.inHandsDate ? `<div class="meta" style="margin-top:10px">Due Date: ${escapeHtml(opts.inHandsDate)}</div>` : ''}
-      <div class="sec">Customer Information</div>
-      <div class="kv"><span class="k">Customer</span><span>${escapeHtml(opts.orgName || 'Katalyst Ko')}</span></div>
-      ${opts.customerName ? `<div class="kv"><span class="k">Contact</span><span>${escapeHtml(opts.customerName)}</span></div>` : ''}
-      ${opts.inHandsDate ? `<div class="kv"><span class="k">Due Date</span><span>${escapeHtml(opts.inHandsDate)}</span></div>` : ''}
-      <div class="sec">Items</div>
-      ${liHtml || '<div class="meta">No items.</div>'}
-      <div class="sec">Pricing</div>
-      ${priceHtml}
-      ${opts.total != null ? `<div class="total"><span>Total</span><span>$${opts.total.toFixed(2)}</span></div>` : ''}
-      ${opts.notes ? `<div class="sec">Notes</div><div class="meta">${escapeHtml(opts.notes)}</div>` : ''}
-      <div class="sec">Contact Information</div>
-      <div class="meta">Katalyst Ko</div>
-      <div class="meta">jobs@katalystko.com</div>
-    </body></html>`;
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
-  win.focus();
 }
 
 const NAV_ITEMS: { id: ActiveView; label: string; Icon: React.ComponentType<any> }[] = [
@@ -3041,15 +2953,20 @@ export default function ClientPortal() {
     const isPdfFile = (f: any) => f.mimeType === 'application/pdf' || extOf(f.originalName) === 'PDF';
     const canPreviewFile = (f: any) => isImgFile(f) || isPdfFile(f);
 
-    const downloadSummaryPdf = () => {
+    const downloadSummaryPdf = async () => {
       if (!proj || Platform.OS !== 'web' || typeof window === 'undefined') return;
       const html = buildProjectDocumentHTML(docSource, 'ORDER_DETAIL');
-      const win = window.open('', '_blank', 'width=920,height=1040');
-      if (!win) return;
-      win.document.open();
-      win.document.write(html);
-      win.document.close();
-      win.focus();
+      const base =
+        `${proj.title || 'Project'} Order`
+          .replace(/[^a-zA-Z0-9 _-]/g, '')
+          .replace(/\s+/g, '_')
+          .slice(0, 60) || 'Order';
+      try {
+        await htmlToPdf(html, `${base}.pdf`);
+      } catch (err) {
+        console.error('PDF download failed:', err);
+        window.alert('Sorry, the PDF could not be generated. Please try again.');
+      }
     };
 
     const assetCatHeader = (title: string, count: number) => (

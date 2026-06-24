@@ -1,0 +1,285 @@
+ACTION CENTER — APPROVED CORRECTION IMPLEMENTATION
+
+Proceed with Phases 1–6.
+
+Do not re-audit.
+
+Do not reopen the original scope.
+
+Implement the correction plan based on the deviation report.
+
+The shipped code is close enough to correct, but it must be tightened so Action Center does not feel like Tasks, ticketing, help desk, or assignment software.
+
+Action Center is a routing layer.
+
+It surfaces items requiring attention and sends users back to the source record.
+
+Work is completed inside Quotes, Projects, Production, Organizations, etc.
+
+---
+
+# PHASE 1 — REMOVE ASSIGNMENT / TICKETING UI
+
+Remove from Action Center:
+
+* ASSIGNED column
+* AvatarCircle table cell
+* initials() helper
+* avatar styles
+* avatarText styles
+* assignedDash styles
+* Any visual concept of ownership or assignment
+
+Final table columns must be exactly:
+
+PRIORITY
+TYPE
+DETAILS
+TIME
+ACTIONS
+
+Do not add Assigned To.
+
+Do not add Owner.
+
+Do not add Team.
+
+Tasks remain dormant.
+
+---
+
+# PHASE 2 — SIMPLIFY DETAIL DRAWER
+
+Collapse the drawer into one simple context panel.
+
+Remove:
+
+* Details / Activity / Related tab bar
+* Activity timeline
+* Related tab
+* Drawer Status section
+* 3-pill status switcher
+* Any ticket-management style controls
+
+Drawer should show one DETAILS panel only.
+
+Use black section headers with white text.
+
+Use white content cards.
+
+Keep Katalyst orange for primary buttons.
+
+---
+
+# PHASE 3 — DRAWER CONTENT
+
+The drawer should display:
+
+DETAILS
+
+* Action Type
+* Priority
+* Organization
+* Project
+* Quote / Project #
+* Requested By
+* Requested By Email
+* Date / Time
+* Comments
+* Attachments
+
+Primary action:
+
+Open Quote
+
+or
+
+Open Project
+
+or
+
+Open Organization
+
+depending on action type.
+
+Secondary action:
+
+Mark Resolved
+
+No assignment controls.
+
+No status management controls.
+
+---
+
+# PHASE 4 — METADATA SUPPORT
+
+Surface missing fields through metadata where needed:
+
+requestedByName
+requestedByEmail
+attachments
+
+Update action producers where relevant:
+
+* Client Hub quote submissions
+* Customer requested changes
+* Customer comments
+* Artwork uploaded
+
+Do not break existing action types.
+
+---
+
+# PHASE 5 — FILTER PILL DECISION
+
+Use category filter pills, not ticket/workflow pills.
+
+Final filters:
+
+All
+New
+Needs Review
+Customer Requests
+Production Issues
+System Alerts
+Resolved
+
+Do not add:
+
+Assigned To Me
+Payments
+Client Hub Issues
+Awaiting Payment
+
+---
+
+# PHASE 6 — ACTION TYPES
+
+Keep the currently implemented 14 approved action types.
+
+Do not add rejected types.
+
+Approved types only:
+
+NEW_QUOTE_SUBMISSION
+QUOTE_MISSING_INFORMATION
+QUOTE_RETURNED_FOR_REVISION
+QUOTE_REVISION_REQUEST
+ARTWORK_UPLOADED
+CUSTOMER_COMMENT
+MISSING_ARTWORK
+MOCKUP_APPROVAL_REQUIRED
+PRODUCTION_ISSUE_REPORTED
+QUOTE_DELIVERY_FAILED
+INVOICE_DELIVERY_FAILED
+EMAIL_BOUNCE
+PAYMENT_LINK_FAILED
+PDF_GENERATION_FAILED
+
+Do not implement:
+
+Awaiting Payment
+Payment Received
+Invoice Overdue
+Invite Pending
+Client Hub Issues
+Project Viewed
+PDF Downloaded
+Client Login Activity
+
+---
+
+# ROUTING VERIFICATION
+
+Confirm every action routes to the correct source record.
+
+Examples:
+
+New Quote Submission
+→ Open Quote
+
+Customer Requested Changes
+→ Open Quote
+
+Artwork Uploaded
+→ Open Project
+
+Missing Artwork
+→ Open Project
+
+Mockup Approval Required
+→ Open Project or Quote depending on source
+
+Production Issue Reported
+→ Open Project
+
+Quote Delivery Failed
+→ Open Quote
+
+Invoice Delivery Failed
+→ Open Invoice or Quote source record
+
+Email Bounce
+→ Related source record
+
+Payment Link Failed
+→ Related invoice/quote record
+
+---
+
+# DESIGN REQUIREMENTS
+
+Match Katalyst OS design language:
+
+* White page background
+* Black table headers
+* White table header text
+* Black drawer section headers
+* White drawer section header text
+* Orange buttons
+* Existing pill styles
+* Existing spacing
+* Existing typography
+
+Do not redesign the page.
+
+Do not invent a new UI language.
+
+---
+
+# VALIDATION
+
+Validate:
+
+* Table columns are exactly PRIORITY / TYPE / DETAILS / TIME / ACTIONS
+* Assignment UI is fully removed
+* Drawer has no tabs
+* Drawer has no status switcher
+* Drawer has no assignment controls
+* Metadata displays correctly
+* Attachments display when present
+* Requested By displays when present
+* Open source record works
+* Mark Resolved works
+* Filters work
+* Counts remain accurate
+* Sidebar badge remains accurate
+* All 14 approved types still function
+* No rejected action types appear
+
+---
+
+# OUTPUT
+
+Return:
+
+1. Files changed
+2. Removed components
+3. Drawer simplification summary
+4. Metadata changes
+5. Routing verification
+6. Validation results
+7. Screenshots
+
+Implement Phases 1–6 now.

@@ -13,6 +13,7 @@ import {
 import { Stack, useLocalSearchParams } from 'expo-router';
 import ProjectDocument from '@/components/ProjectDocument';
 import { buildProjectDocumentHTML } from '@/utils/projectDocumentHtml';
+import { htmlToPdf } from '@/utils/htmlToPdf';
 import {
   CheckCircle,
   FileText,
@@ -110,7 +111,7 @@ function buildPricingRows(q: Pick<ClientQuoteData,
   return rows;
 }
 
-function downloadQuotePdf(quote: ClientQuoteData): void {
+async function downloadQuotePdf(quote: ClientQuoteData): Promise<void> {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return;
   const source = {
     personOrganization: quote.orgName || quote.clientName,
@@ -132,12 +133,20 @@ function downloadQuotePdf(quote: ClientQuoteData): void {
     },
   };
   const html = buildProjectDocumentHTML(source, 'QUOTE');
-  const win = window.open('', '_blank', 'width=920,height=1040');
-  if (!win) return;
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
-  win.focus();
+  const base =
+    `${quote.orgName || quote.clientName || 'Quote'} ${quote.projectName || ''}`
+      .trim()
+      .replace(/[^a-zA-Z0-9 _-]/g, '')
+      .replace(/\s+/g, '_')
+      .slice(0, 60) || 'Quote';
+  try {
+    await htmlToPdf(html, `${base}.pdf`);
+  } catch (err) {
+    console.error('PDF download failed:', err);
+    if (typeof window !== 'undefined') {
+      window.alert('Sorry, the PDF could not be generated. Please try again.');
+    }
+  }
 }
 
 export default function ClientQuoteView() {
