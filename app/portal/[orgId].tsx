@@ -1125,9 +1125,30 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
             )}
           </View>
 
+          {/* ── Project Notes ── */}
+          <View style={[pFields.container, { marginBottom: 12 }]}>
+            <Text style={pFields.label}>Project Notes</Text>
+            <TextInput
+              style={pFields.textarea}
+              value={item.notes}
+              onChangeText={v => upd({ notes: v })}
+              placeholder="Design details, artwork notes, special instructions for this item…"
+              placeholderTextColor={TEXT_PLACEHOLDER}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+          </View>
+
           {/* ── Products + Sizes ── */}
           <View style={liStyles.sizeSection}>
-            <Text style={liStyles.sizeSectionTitle}>Products + Sizes</Text>
+            <View style={liStyles.sizeSectionHeader}>
+              <Text style={liStyles.sizeSectionHeaderTitle}>PRODUCTS + SIZES</Text>
+              <TouchableOpacity style={liStyles.sizeSectionAddBtn} onPress={addRow}>
+                <Plus size={12} color="#fff" />
+                <Text style={liStyles.sizeSectionAddText}>Add Style/Color</Text>
+              </TouchableOpacity>
+            </View>
 
             {item.sizeRows.map((row, rIdx) => {
               const rt = rowTotal(row);
@@ -1194,10 +1215,6 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
               </View>
             )}
 
-            <TouchableOpacity style={liStyles.addRowBtn} onPress={addRow}>
-              <Plus size={12} color={BRAND} />
-              <Text style={liStyles.addRowText}>Add Garment / Style</Text>
-            </TouchableOpacity>
 
             {total > 0 && (
               <View style={liStyles.grandTotalRow}>
@@ -1207,24 +1224,11 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
             )}
           </View>
 
-          {/* ── Line Item Notes ── */}
-          <View style={[pFields.container, { marginBottom: 10 }]}>
-            <Text style={pFields.label}>Line Item Notes</Text>
-            <TextInput
-              style={pFields.textarea}
-              value={item.notes}
-              onChangeText={v => upd({ notes: v })}
-              placeholder="Design details, artwork notes, special instructions for this item…"
-              placeholderTextColor={TEXT_PLACEHOLDER}
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
-            />
-          </View>
-
           {/* ── Per-Item Mockup Upload ── */}
           <View style={liStyles.artworkSection}>
-            <Text style={pFields.label}>Mockup</Text>
+            <View style={liStyles.artworkSectionHeader}>
+              <Text style={liStyles.artworkSectionHeaderTitle}>MOCKUP</Text>
+            </View>
             <Text style={liStyles.mockupBlurb}>
               Please use this upload area to share a mockup with us (not required). For all actual artwork files, please upload at the end of the form.
             </Text>
@@ -3872,24 +3876,31 @@ export default function ClientPortal() {
               <Text style={styles.addLineItemText}>Add Another Line Item</Text>
             </TouchableOpacity>
 
-            <View style={[pFields.container, { marginTop: 4 }]}>
-              <Text style={pFields.label}>Overall Request Notes</Text>
-              <Text style={pFields.hint}>Any general instructions or context for the entire request.</Text>
-              <TextInput
-                style={pFields.textarea}
-                value={requestNotes}
-                onChangeText={setRequestNotes}
-                placeholder="Shipping details, rush notes, color direction, brand standards…"
-                placeholderTextColor={TEXT_PLACEHOLDER}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
+            <View style={{ borderRadius: 10, borderWidth: 1, borderColor: BORDER, overflow: 'hidden', marginBottom: 14 }}>
+              <View style={{ backgroundColor: '#000', paddingHorizontal: 14, paddingVertical: 10 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff', textTransform: 'uppercase', letterSpacing: 0.8 }}>OVERALL REQUEST NOTES</Text>
+              </View>
+              <View style={{ padding: 12 }}>
+                <Text style={pFields.hint}>Any general instructions or context for the entire request.</Text>
+                <TextInput
+                  style={pFields.textarea}
+                  value={requestNotes}
+                  onChangeText={setRequestNotes}
+                  placeholder="Shipping details, rush notes, color direction, brand standards…"
+                  placeholderTextColor={TEXT_PLACEHOLDER}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
             </View>
 
             {/* Artwork Upload Zone */}
-            <View style={[pFields.container, { marginTop: 4 }]}>
-              <Text style={pFields.label}>Attach Artwork Files</Text>
+            <View style={{ borderRadius: 10, borderWidth: 1, borderColor: BORDER, overflow: 'hidden', marginBottom: 14 }}>
+              <View style={{ backgroundColor: '#000', paddingHorizontal: 14, paddingVertical: 10 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff', textTransform: 'uppercase', letterSpacing: 0.8 }}>ATTACH ARTWORK FILES</Text>
+              </View>
+              <View style={{ padding: 12 }}>
               <Text style={pFields.hint}>AI, SVG, PS, PNG, JPG, PDF, EMB, DST, PES · Multiple files supported</Text>
               {Platform.OS === 'web' && (
                 <input
@@ -3955,6 +3966,7 @@ export default function ClientPortal() {
                   <Text style={upStyles.uploadingText}>Uploading files…</Text>
                 </View>
               )}
+              </View>
             </View>
 
             {submitError ? <View style={styles.errorBox}><Text style={styles.errorText}>{submitError}</Text></View> : null}
@@ -5101,6 +5113,27 @@ const liStyles = StyleSheet.create({
     fontSize: 11, fontWeight: '700', color: TEXT_LIGHT, textTransform: 'uppercase',
     letterSpacing: 0.5, paddingHorizontal: 12, paddingVertical: 8,
     borderBottomWidth: 1, borderBottomColor: BORDER,
+  },
+  sizeSectionHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#000', paddingHorizontal: 12, paddingVertical: 10,
+  },
+  sizeSectionHeaderTitle: {
+    fontSize: 11, fontWeight: '700', color: '#fff',
+    textTransform: 'uppercase', letterSpacing: 0.8,
+  },
+  sizeSectionAddBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: BRAND, borderRadius: 6,
+    paddingHorizontal: 10, paddingVertical: 5,
+  },
+  sizeSectionAddText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  artworkSectionHeader: {
+    backgroundColor: '#000', paddingHorizontal: 12, paddingVertical: 10,
+  },
+  artworkSectionHeaderTitle: {
+    fontSize: 11, fontWeight: '700', color: '#fff',
+    textTransform: 'uppercase', letterSpacing: 0.8,
   },
   sizeVariantRow: {
     flexDirection: 'column',

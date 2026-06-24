@@ -1,0 +1,233 @@
+```text
+ACTION CENTER — IMPLEMENTATION HAS DRIFTED FROM REQUIREMENTS
+
+STOP IMPLEMENTING.
+
+Do not write additional code until you complete the review below.
+
+The current Action Center implementation is not aligned with the approved design direction.
+
+You have built a ticketing/helpdesk system.
+
+You were asked to build an operational work queue.
+
+Those are not the same thing.
+
+Before making any additional changes, compare:
+
+1. The approved Action Center mockup
+2. The current implementation
+
+Then produce a deviation report showing every place where the implementation differs from the approved design.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MAJOR ISSUES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. YOU BUILT A TICKETING SYSTEM
+
+The approved design is:
+
+Action
+→ Open Source Record
+→ Resolve
+
+The current implementation is:
+
+Action
+→ Assign User
+→ Manage Ticket
+→ Resolve
+
+That is incorrect.
+
+REMOVE:
+
+- Assigned To column
+- Assigned To card
+- Assign To Me button
+- Ownership workflows
+- User assignment workflows
+- Ticket-style management concepts
+- Anything resembling a help desk
+
+Tasks remain dormant.
+
+We are NOT building Tasks.
+
+We are NOT building a help desk.
+
+We are NOT building a CRM ticket queue.
+
+We are building an operational work queue.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. YOU ADDED ACTION TYPES THAT WERE EXPLICITLY REJECTED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The following DO NOT belong in Action Center:
+
+- Awaiting Payment
+- Payment Received
+- Invoice Overdue
+- Invite Pending
+- Client Hub Issues
+- Project Viewed
+- PDF Downloaded
+- Client Login Activity
+
+These were already discussed and intentionally removed.
+
+Reason:
+
+They do not require action from Katalyst staff.
+
+If no human action is required, it does not belong in Action Center.
+
+Remove them.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. THE STAT CARDS ARE WRONG
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Current implementation:
+
+- Needs Review
+- Customer Requests
+- Awaiting Payment
+- Client Hub Issues
+
+This is incorrect.
+
+The stat cards should be:
+
+- Needs Review
+- Customer Requests
+- Production Issues
+- System Alerts
+
+Nothing else.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. THE RIGHT PANEL IS OVERBUILT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The right panel is becoming a ticket management screen.
+
+That is not the goal.
+
+The right panel should simply provide context.
+
+Example:
+
+DETAILS
+
+Organization:
+Battlestar Coffee
+
+Project:
+Team Shirts
+
+Quote:
+Q-1023
+
+Requested By:
+Josh Girgenti
+
+Comments:
+Need XL increased from 3 to 5
+
+Attachments:
+1 file
+
+[Open Quote]
+
+That's it.
+
+The work happens inside Quotes, Projects, Production, Organizations, etc.
+
+The work does NOT happen inside Action Center.
+
+Action Center routes people to work.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. YOU IGNORED THE APPROVED MOCKUP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The approved mockup was provided as the visual source of truth.
+
+The current implementation significantly deviates from it.
+
+Review:
+
+- Layout
+- Sections
+- Data hierarchy
+- Actions
+- Visual density
+- Design language
+
+List every deviation.
+
+Do not guess.
+
+Do not interpret.
+
+Compare side-by-side.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. ACTION CENTER IS A ROUTING LAYER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+This is the most important requirement.
+
+Action Center should not become another place where work gets done.
+
+It should direct users to:
+
+- Quotes
+- Projects
+- Production
+- Organizations
+
+Examples:
+
+New Quote Submission
+→ Open Quote
+
+Customer Requested Changes
+→ Open Quote
+
+Artwork Uploaded
+→ Open Project
+
+Missing Artwork
+→ Open Project
+
+Quote Delivery Failed
+→ Open Quote
+
+The action exists only to surface attention.
+
+The actual work happens in the source record.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REQUIRED OUTPUT BEFORE ANY NEW IMPLEMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Produce a report containing:
+
+1. Every deviation from the approved mockup
+2. Every Action Type currently implemented
+3. Every Action Type that should be removed
+4. Every UI component that should be removed
+5. Every UI component that should be simplified
+6. Every Action Type still missing
+7. Your proposed correction plan
+
+Do not continue implementing until this report is complete.
+
+The approved mockup is the source of truth.
+
+The current implementation has drifted significantly away from the approved design and must be brought back into alignment before additional development continues.
+```
