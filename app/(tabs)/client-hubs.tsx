@@ -32,6 +32,8 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  Check,
+  Building2,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
@@ -168,8 +170,9 @@ function matchesChip(chip: ChipId, s: HubStats): boolean {
 
 type SortField = 'name' | 'users' | 'lastLogin' | 'invites' | 'status';
 const AVATAR_W = 44;
+const CHECKBOX_W = 36;
 const COL = { users: 80, lastLogin: 118, invites: 88, status: 138, actions: 120 };
-const TABLE_MIN_W = 800;
+const TABLE_MIN_W = 836;
 
 const INVITE_STATUS_CFG: Record<InviteStatus, { color: string; bg: string; border: string; Icon: any; label: string }> = {
   Pending:  { color: '#B45309', bg: '#FEF3C7', border: '#FCD34D', Icon: Clock,        label: 'Pending' },
@@ -269,6 +272,8 @@ function HubRow({
   onCopyLink,
   onInviteClick,
   copied,
+  isSelected,
+  onToggleSelect,
 }: {
   stats: HubStats;
   onPress: () => void;
@@ -276,6 +281,8 @@ function HubRow({
   onCopyLink: () => void;
   onInviteClick: () => void;
   copied: boolean;
+  isSelected: boolean;
+  onToggleSelect: () => void;
 }) {
   const { org } = stats;
   const last = fmtDate(stats.lastLogin);
@@ -284,10 +291,15 @@ function HubRow({
 
   return (
     <TouchableOpacity
-      style={[styles.tableRow, !org.hubEnabled && styles.tableRowOff]}
+      style={[styles.tableRow, !org.hubEnabled && styles.tableRowOff, isSelected && styles.tableRowSelected]}
       onPress={onPress}
       activeOpacity={0.7}
     >
+      <TouchableOpacity style={styles.colCheckbox} onPress={(e) => { e.stopPropagation?.(); onToggleSelect(); }} activeOpacity={0.7}>
+        <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
+          {isSelected && <Check size={11} color="#fff" />}
+        </View>
+      </TouchableOpacity>
       <View style={styles.colAvatar}>
         <OrgAvatar name={org.name} logoUrl={org.logoUrl} size={36} shape="circle" />
       </View>
@@ -381,7 +393,14 @@ export default function ClientHubsScreen() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [inviteModalOrgId, setInviteModalOrgId] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const selectionMode = selectedIds.size > 0;
   const { isMobile } = useBreakpoint();
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }, []);
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
   const now = Date.now();
 
@@ -452,6 +471,14 @@ export default function ClientHubsScreen() {
     });
   }, [decorated, chip, q, sortField, sortDir]);
 
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(prev =>
+      prev.size > 0 && prev.size === filtered.length
+        ? new Set()
+        : new Set(filtered.map((s: HubStats) => s.org.id))
+    );
+  }, [filtered]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 500);
@@ -495,8 +522,16 @@ export default function ClientHubsScreen() {
     </TouchableOpacity>
   );
 
+  const allSelected = selectedIds.size > 0 && selectedIds.size === filtered.length;
+  const someSelected = selectedIds.size > 0 && selectedIds.size < filtered.length;
+
   const tableHeader = (
     <View style={styles.tableHeader}>
+      <TouchableOpacity style={styles.colCheckbox} onPress={toggleSelectAll}>
+        <View style={[styles.checkbox, allSelected && styles.checkboxChecked, someSelected && styles.checkboxIndeterminate]}>
+          {selectedIds.size > 0 && <Check size={11} color="#fff" />}
+        </View>
+      </TouchableOpacity>
       <View style={styles.colAvatar} />
       <View style={styles.colOrg}><SortBtn field="name" label="Organization" /></View>
       <View style={styles.colUsers}><SortBtn field="users" label="Users" /></View>
@@ -561,6 +596,47 @@ export default function ClientHubsScreen() {
         </View>
       </View>
 
+      {/* ── Bulk action bar ── */}
+      {selectionMode && (
+        <View style={styles.bulkBar}>
+          <View style={styles.bulkBarLeft}>
+            <TouchableOpacity style={styles.bulkClearBtn} onPress={clearSelection}>
+              <X size={12} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.bulkCount}>{selectedIds.size} selected</Text>
+          </View>
+          <View style={styles.bulkActionsRow}>
+            <TouchableOpacity
+              style={styles.bulkAction}
+              onPress={() => {
+                const selected = filtered.filter((s: HubStats) => selectedIds.has(s.org.id));
+                selected.forEach((s: HubStats) => {
+                  if (Platform.OS === 'web' && typeof window !== 'undefined')
+                    window.open(`/portal/${s.org.id}`, '_blank');
+                });
+                clearSelection();
+              }}
+            >
+              <ExternalLink size={12} color={Colors.light.tint} />
+              <Text style={[styles.bulkActionText, { color: Colors.light.tint }]}>Open Hub{selectedIds.size > 1 ? 's' : ''}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.bulkAction}
+              onPress={() => {
+                const selected = filtered.filter((s: HubStats) => selectedIds.has(s.org.id));
+                if (selected.length === 1) {
+                  router.push(`/crm/${selected[0].org.id}` as any);
+                }
+                clearSelection();
+              }}
+            >
+              <Building2 size={12} color={Colors.light.textSecondary} />
+              <Text style={styles.bulkActionText}>View Organization{selectedIds.size > 1 ? 's' : ''}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator color={Colors.light.tint} size="large" />
@@ -601,6 +677,8 @@ export default function ClientHubsScreen() {
                       onCopyLink={() => handleCopyLink(s.org)}
                       onInviteClick={() => setInviteModalOrgId(s.org.id)}
                       copied={copiedId === s.org.id}
+                      isSelected={selectedIds.has(s.org.id)}
+                      onToggleSelect={() => toggleSelect(s.org.id)}
                     />
                     {idx < filtered.length - 1 && <View style={styles.tableDivider} />}
                   </View>
@@ -686,7 +764,21 @@ const styles = StyleSheet.create({
   tableBody: { backgroundColor: Colors.light.surface },
   tableRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: Colors.light.surface },
   tableRowOff: { backgroundColor: '#FAFAFA' },
+  tableRowSelected: { backgroundColor: '#FFF4EE' },
   tableDivider: { height: 1, backgroundColor: Colors.light.border, marginLeft: 16 },
+
+  colCheckbox: { width: CHECKBOX_W, alignItems: 'center', justifyContent: 'center' },
+  checkbox: { width: 16, height: 16, borderRadius: 4, borderWidth: 1.5, borderColor: Colors.light.border, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  checkboxChecked: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
+  checkboxIndeterminate: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
+
+  bulkBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#1F2937', borderBottomWidth: 1, borderBottomColor: '#374151' },
+  bulkBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  bulkClearBtn: { width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  bulkCount: { fontSize: 13, fontWeight: '600' as const, color: '#fff' },
+  bulkActionsRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  bulkAction: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 7, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.07)' },
+  bulkActionText: { fontSize: 12, fontWeight: '600' as const, color: 'rgba(255,255,255,0.85)' },
 
   colAvatar: { width: AVATAR_W },
   colOrg: { flex: 1, minWidth: 160, maxWidth: 300, paddingRight: 12 },
