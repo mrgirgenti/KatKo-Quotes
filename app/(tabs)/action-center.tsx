@@ -502,11 +502,7 @@ export default function ActionCenterScreen() {
 
           {/* STAT CARDS */}
           <View style={s.statsSection}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={s.statsRow}
-            >
+            <View style={s.statsRow}>
               {STAT_CATS.map(cat => (
                 <StatCard
                   key={cat}
@@ -516,7 +512,7 @@ export default function ActionCenterScreen() {
                   onPress={() => setFilterAndReset(filter === cat ? 'all' : cat)}
                 />
               ))}
-            </ScrollView>
+            </View>
           </View>
 
           {/* FILTER PILLS */}
@@ -792,9 +788,11 @@ const s = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
   },
-  statsRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 10 },
+  statsRow: {
+    flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 12, gap: 10,
+  },
   statCard: {
-    width: 172, height: 76, borderRadius: 10, borderWidth: 1,
+    flex: 1, height: 76, borderRadius: 10, borderWidth: 1,
     overflow: 'hidden', backgroundColor: '#fff',
     shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 1 },
   },
