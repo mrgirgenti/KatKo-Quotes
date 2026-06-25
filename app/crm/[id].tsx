@@ -14,7 +14,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import PageBackHeader from '@/components/PageBackHeader';
 import OverlayMenu from '@/components/OverlayMenu';
@@ -212,7 +212,13 @@ export default function OrgProfileScreen() {
     updateOrgHubEnabled,
   } = useCrm();
   const { quotes } = useQuotes();
+  const queryClient = useQueryClient();
   const { isDesktop, isTablet } = useBreakpoint();
+
+  const handleProjectActionComplete = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['projects'] });
+    queryClient.invalidateQueries({ queryKey: ['org_detail', id] });
+  }, [queryClient, id]);
 
   const { data: directOrg, isLoading: directOrgLoading } = useQuery<Organization>({
     queryKey: ['org_detail', id],
@@ -1125,6 +1131,7 @@ export default function OrgProfileScreen() {
               quote={q}
               compact
               onPress={() => router.push(`/quote/${q.id}` as any)}
+              onActionComplete={handleProjectActionComplete}
             />
           ))
         )}
@@ -1262,6 +1269,7 @@ export default function OrgProfileScreen() {
               quote={q}
               compact
               onPress={() => router.push(`/quote/${q.id}` as any)}
+              onActionComplete={handleProjectActionComplete}
             />
           ))
         )}
@@ -1713,6 +1721,7 @@ export default function OrgProfileScreen() {
                     quote={q}
                     compact
                     onPress={() => router.push(`/quote/${q.id}` as any)}
+                    onActionComplete={handleProjectActionComplete}
                   />
                 ))
               )}
@@ -1846,6 +1855,7 @@ export default function OrgProfileScreen() {
                     quote={q}
                     compact
                     onPress={() => router.push(`/quote/${q.id}` as any)}
+                    onActionComplete={handleProjectActionComplete}
                   />
                 ))
               )}

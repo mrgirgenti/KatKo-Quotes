@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Image,
+  View, Text, TouchableOpacity, StyleSheet, Image, Alert, Platform,
 } from 'react-native';
 import {
   ChevronRight, ChevronLeft, Check, Calendar, Package,
-  Scissors, ExternalLink,
+  Scissors, ExternalLink, MoreVertical, Flame, Edit3, Trash2,
+  Sheet, Download, Printer, RotateCcw, CheckCircle, Send,
+  ArrowRight, ClipboardList,
 } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { getEffectiveStatus, STATUS_CONFIG, PRIORITY_CONFIG, DEFAULT_PRIORITY } from '@/types/quote';
 import type { ProjectPriority } from '@/types/quote';
 import { formatCurrency } from '@/utils/quoteCalculations';
@@ -14,6 +17,13 @@ import { parseProjectDate } from '@/lib/production';
 import Colors from '@/constants/colors';
 import { metricValueStyle } from '@/components/Metric';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import OverlayMenu from '@/components/OverlayMenu';
+import { useQuotes } from '@/contexts/QuotesContext';
+import { useUser } from '@/contexts/UserContext';
+import { useCrm } from '@/contexts/CrmContext';
+import { generateProjectDocumentPDF, printQuote } from '@/utils/pdfGenerator';
+import { exportSingleSaleToSheets } from '@/utils/googleSheetsExport';
+import { getAuthHeaders } from '@/lib/apiFetch';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -47,6 +57,14 @@ function getCtaLabel(quote: any): string {
   return 'Open Project';
 }
 
+function isActiveProject(status: string): boolean {
+  return ['active', 'production_started', 'completed'].includes(status);
+}
+
+function isSubmittedQuote(status: string): boolean {
+  return ['needs_review', 'quoting', 'quoted', 'invoice_sent'].includes(status);
+}
+
 function Field({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <View style={s.field}>
@@ -68,6 +86,379 @@ interface ProjectCardProps {
   selectionMode?: boolean;
   onToggleSelect?: () => void;
   compact?: boolean;
+  onActionComplete?: () => void;
+}
+
+// ─── Compact Desktop Actions — internal sub-component ────────────────────────
+
+function CompactActions({
+  quote,
+  onPress,
+  onActionComplete,
+}: {
+  quote: any;
+  onPress: () => void;
+  onActionComplete?: () => void;
+}) {
+  const router = useRouter();
+  const { updateQuoteAsync, deleteQuote, convertToQuote, markExportedToSheets } = useQuotes();
+  const { currentUser } = useUser();
+  const { orgs } = useCrm();
+
+  const status = quote.status as string;
+  const ctaLabel = getCtaLabel(quote);
+  const isActive = isActiveProject(status);
+  const isQuote = isSubmittedQuote(status);
+
+  // Derive linked contact for email (mirrors quote/[id].tsx linkedOrg/linkedContact logic)
+  const linkedContact = useMemo(() => {
+    const linkedOrg = quote.orgId
+      ? orgs.find((o: any) => o.id === quote.orgId)
+      : orgs.find((o: any) => o.name?.toLowerCase() === (quote.personOrganization || '').toLowerCase());
+    if (!linkedOrg) return null;
+    return linkedOrg.contacts?.find((c: any) => c.isPrimary) || linkedOrg.contacts?.[0] || null;
+  }, [orgs, quote.orgId, quote.personOrganization]);
+
+  const invoiceReady = ['quoted', 'invoice_sent', 'paid', 'active', 'production_started', 'completed'].includes(status);
+  const productionReady = ['paid', 'active', 'production_started', 'completed'].includes(status);
+
+  // Mirrors the same check used in quote/[id].tsx handleMarkQuoteSent
+  const isReadyToSend = useMemo(() => {
+    const calc = quote.calculations;
+    if (!calc) return false;
+    const isValidNumber = (v: unknown) =>
+      typeof v === 'number' && !isNaN(v) && isFinite(v);
+    return (
+      isValidNumber(calc.productCostTotal) &&
+      isValidNumber(calc.serviceCostTotal) &&
+      isValidNumber(calc.markupAmount) &&
+      isValidNumber(calc.total)
+    );
+  }, [quote.calculations]);
+
+  const done = useCallback(() => {
+    onActionComplete?.();
+  }, [onActionComplete]);
+
+  const handleEdit = useCallback((e?: any) => {
+    e?.stopPropagation?.();
+    router.push({ pathname: '/quote/edit', params: { id: quote.id } } as any);
+  }, [quote.id, router]);
+
+  const handleViewProduction = useCallback((e?: any) => {
+    e?.stopPropagation?.();
+    router.push(`/quote/production/${quote.id}` as any);
+  }, [quote.id, router]);
+
+  const handleStartQuoting = useCallback(async (e?: any) => {
+    e?.stopPropagation?.();
+    try {
+      await updateQuoteAsync({ ...quote, status: 'quoting' });
+      done();
+    } catch {}
+    router.push({ pathname: '/quote/edit', params: { id: quote.id } } as any);
+  }, [quote, updateQuoteAsync, router, done]);
+
+  const handleSendQuote = useCallback(async (e?: any) => {
+    e?.stopPropagation?.();
+    const isAlreadyQuoted = status === 'quoted' || status === 'invoice_sent';
+    if (!isReadyToSend && !isAlreadyQuoted) {
+      Alert.alert(
+        'Pricing Required',
+        'Please add product costs and service costs before sending the quote.',
+        [
+          { text: 'Edit Quote', onPress: () => handleEdit() },
+          { text: 'Cancel', style: 'cancel' },
+        ],
+      );
+      return;
+    }
+    try {
+      const sentAt = new Date().toISOString();
+      await updateQuoteAsync({ ...quote, status: 'quoted', quoteSentAt: sentAt });
+
+      // Mirror quote/[id].tsx: copy portal link + fire email if contact has an address
+      const portalUrl = typeof window !== 'undefined'
+        ? `${window.location.origin}/portal/quote/${quote.id}`
+        : '';
+      if (Platform.OS === 'web' && portalUrl && navigator?.clipboard) {
+        navigator.clipboard.writeText(portalUrl).catch(() => {});
+      }
+      const contactEmail = linkedContact?.email;
+      if (contactEmail && portalUrl) {
+        getAuthHeaders().then(authH =>
+          fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authH },
+            body: JSON.stringify({
+              type: 'quote',
+              clientEmail: contactEmail,
+              clientName: quote.personOrganization || 'there',
+              projectName: quote.projectName || 'Your Order',
+              total: quote.calculations?.total ?? null,
+              portalUrl,
+              waveLink: quote.waveInvoiceLink || '',
+            }),
+          }),
+        ).catch((err) => console.warn('[card send-quote email]', err));
+      }
+
+      done();
+    } catch {}
+  }, [quote, status, isReadyToSend, updateQuoteAsync, handleEdit, linkedContact, done]);
+
+  const handleMarkPaid = useCallback(async (e?: any) => {
+    e?.stopPropagation?.();
+    try {
+      await updateQuoteAsync({ ...quote, status: 'paid' });
+      done();
+    } catch {}
+  }, [quote, updateQuoteAsync, done]);
+
+  // Use mutate's onSuccess callback for guaranteed completion semantics
+  const handleRevert = useCallback((e?: any) => {
+    e?.stopPropagation?.();
+    if (quote.isLocked) {
+      Alert.alert('Locked', 'Unlock this project first before reverting.');
+      return;
+    }
+    convertToQuote(quote.id, { onSuccess: done });
+  }, [quote, convertToQuote, done]);
+
+  const handleDelete = useCallback((e?: any) => {
+    e?.stopPropagation?.();
+    Alert.alert(
+      'Delete Project',
+      `Delete "${quote.projectName}"? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            deleteQuote(quote.id, { onSuccess: done });
+          },
+        },
+      ],
+    );
+  }, [quote, deleteQuote, done]);
+
+  const handleQuotePdf = useCallback(async (close: () => void) => {
+    close();
+    try {
+      await generateProjectDocumentPDF(quote, 'QUOTE', currentUser);
+    } catch {
+      Alert.alert('Error', 'Failed to export Quote PDF');
+    }
+  }, [quote, currentUser]);
+
+  const handleInvoicePdf = useCallback(async (close: () => void) => {
+    close();
+    try {
+      await generateProjectDocumentPDF(quote, 'INVOICE', currentUser);
+    } catch {
+      Alert.alert('Error', 'Failed to export Invoice PDF');
+    }
+  }, [quote, currentUser]);
+
+  const handleProductionSheet = useCallback(async (close: () => void) => {
+    close();
+    try {
+      await generateProjectDocumentPDF(quote, 'PRODUCTION', currentUser);
+    } catch {
+      Alert.alert('Error', 'Failed to export Production Punch Sheet');
+    }
+  }, [quote, currentUser]);
+
+  const handlePrint = useCallback(async (close: () => void) => {
+    close();
+    try {
+      await printQuote(quote, currentUser);
+    } catch {
+      Alert.alert('Error', 'Failed to print');
+    }
+  }, [quote, currentUser]);
+
+  // Mirrors quote/[id].tsx: check salesData + googleSheetsUrl, call markExportedToSheets on success
+  const handleExportToSheets = useCallback(async (close: () => void) => {
+    close();
+    if (!quote.salesData) {
+      Alert.alert('Not Available', 'Export to Sheets is only available for active projects with sales data.');
+      return;
+    }
+    if (!currentUser?.googleSheetsUrl) {
+      Alert.alert(
+        'Setup Required',
+        'Please set up your Google Sheets Web App URL in Profile settings first.',
+        [{ text: 'OK' }],
+      );
+      return;
+    }
+    try {
+      const result = await exportSingleSaleToSheets(currentUser.googleSheetsUrl, quote);
+      if (result.success) {
+        markExportedToSheets(quote.id, { onSuccess: done });
+      } else {
+        Alert.alert('Export Failed', result.message ?? 'Failed to export to Google Sheets');
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to export to Google Sheets');
+    }
+  }, [quote, currentUser, markExportedToSheets, done]);
+
+  // ── Secondary orange button label / handler ──────────────────────────────
+  let secondaryLabel = '';
+  let secondaryIcon: React.ReactNode = null;
+  let secondaryHandler: (e?: any) => void = () => {};
+  let secondaryColor = '#FF5A00';
+
+  if (isActive) {
+    secondaryLabel = 'View Production';
+    secondaryIcon = <Flame size={11} color="#fff" />;
+    secondaryHandler = handleViewProduction;
+  } else if (status === 'needs_review') {
+    secondaryLabel = 'Start Quoting';
+    secondaryIcon = <ArrowRight size={11} color="#fff" />;
+    secondaryHandler = handleStartQuoting;
+  } else if (status === 'quoting') {
+    secondaryLabel = 'Send Quote';
+    secondaryIcon = <Send size={11} color="#fff" />;
+    secondaryHandler = handleSendQuote;
+  } else if (status === 'quoted' || status === 'invoice_sent') {
+    secondaryLabel = 'Mark as Paid';
+    secondaryIcon = <CheckCircle size={11} color="#fff" />;
+    secondaryHandler = handleMarkPaid;
+    secondaryColor = '#16A34A';
+  }
+
+  return (
+    <View style={s.actionsCol} onStartShouldSetResponder={() => true}>
+      {/* Secondary orange action button */}
+      {secondaryLabel ? (
+        <TouchableOpacity
+          style={[s.actionBtnSolid, { backgroundColor: secondaryColor }]}
+          onPress={(e: any) => { e?.stopPropagation?.(); secondaryHandler(e); }}
+          activeOpacity={0.8}
+        >
+          {secondaryIcon}
+          <Text style={s.actionBtnSolidText} numberOfLines={1}>{secondaryLabel}</Text>
+        </TouchableOpacity>
+      ) : null}
+
+      {/* Row: Open button + ellipsis */}
+      <View style={s.actionBtnRow}>
+        <TouchableOpacity
+          style={[s.actionBtn, { flex: 1 }]}
+          onPress={(e: any) => { e?.stopPropagation?.(); onPress(); }}
+          activeOpacity={0.8}
+        >
+          <ExternalLink size={11} color={Colors.light.text} />
+          <Text style={s.actionBtnText} numberOfLines={1}>{ctaLabel}</Text>
+        </TouchableOpacity>
+
+        <OverlayMenu
+          align="right"
+          menuWidth={200}
+          trigger={({ open }) => (
+            <TouchableOpacity
+              style={s.ellipsisBtn}
+              onPress={(e: any) => { e?.stopPropagation?.(); open(); }}
+              activeOpacity={0.8}
+            >
+              <MoreVertical size={14} color={Colors.light.textSecondary} />
+            </TouchableOpacity>
+          )}
+        >
+          {({ close }) => (
+            <>
+              {/* Edit Quote */}
+              {(!isActive || !quote.isLocked) && (
+                <TouchableOpacity style={s.menuItem} onPress={() => { close(); handleEdit(); }}>
+                  <Edit3 size={15} color={Colors.light.text} />
+                  <Text style={s.menuItemText}>Edit Quote</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Revert to Quoted — active projects only, when not locked */}
+              {isActive && !quote.isLocked && (
+                <TouchableOpacity style={s.menuItem} onPress={() => { close(); handleRevert(); }}>
+                  <RotateCcw size={15} color={Colors.light.textSecondary} />
+                  <Text style={[s.menuItemText, { color: Colors.light.textSecondary }]}>Revert to Quoted</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Mark as Paid — submitted quotes, quoted/invoice_sent only */}
+              {isQuote && (status === 'quoted' || status === 'invoice_sent') && (
+                <TouchableOpacity style={s.menuItem} onPress={() => { close(); handleMarkPaid(); }}>
+                  <CheckCircle size={15} color="#16A34A" />
+                  <Text style={[s.menuItemText, { color: '#16A34A' }]}>Mark as Paid</Text>
+                </TouchableOpacity>
+              )}
+
+              <View style={s.menuSeparator} />
+
+              {/* Quote PDF */}
+              <TouchableOpacity style={s.menuItem} onPress={() => handleQuotePdf(close)}>
+                <Download size={15} color={Colors.light.text} />
+                <Text style={s.menuItemText}>Quote PDF</Text>
+              </TouchableOpacity>
+
+              {/* Invoice PDF */}
+              {invoiceReady && (
+                <TouchableOpacity style={s.menuItem} onPress={() => handleInvoicePdf(close)}>
+                  <ClipboardList size={15} color={Colors.light.text} />
+                  <Text style={s.menuItemText}>Invoice PDF</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Production Punch Sheet — active projects */}
+              {isActive && productionReady && (
+                <TouchableOpacity style={s.menuItem} onPress={() => handleProductionSheet(close)}>
+                  <ClipboardList size={15} color={Colors.light.tint} />
+                  <Text style={[s.menuItemText, { color: Colors.light.tint }]}>Production Punch Sheet</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Export to Sheets — active projects */}
+              {isActive && (
+                <TouchableOpacity style={s.menuItem} onPress={() => handleExportToSheets(close)}>
+                  <Sheet size={15} color={Colors.light.success} />
+                  <Text style={[s.menuItemText, { color: Colors.light.success }]}>Export to Sheets</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Print — submitted quotes */}
+              {isQuote && (
+                <TouchableOpacity style={s.menuItem} onPress={() => handlePrint(close)}>
+                  <Printer size={15} color={Colors.light.text} />
+                  <Text style={s.menuItemText}>Print</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Locked info row — active projects when locked, mirrors quote detail */}
+              {isActive && quote.isLocked && (
+                <View style={s.menuItem}>
+                  <Trash2 size={15} color={Colors.light.textSecondary} />
+                  <Text style={[s.menuItemText, { color: Colors.light.textSecondary }]}>Project is Locked</Text>
+                </View>
+              )}
+
+              {/* Delete — hidden for locked active projects (lock bypass prevention) */}
+              {!(isActive && quote.isLocked) && (
+                <>
+                  <View style={s.menuSeparator} />
+                  <TouchableOpacity style={s.menuItem} onPress={() => { close(); handleDelete(); }}>
+                    <Trash2 size={15} color={Colors.light.error} />
+                    <Text style={[s.menuItemText, { color: Colors.light.error }]}>Delete</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </>
+          )}
+        </OverlayMenu>
+      </View>
+    </View>
+  );
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -80,6 +471,7 @@ export function ProjectCard({
   selectionMode = false,
   onToggleSelect,
   compact = false,
+  onActionComplete,
 }: ProjectCardProps) {
   const { isMobile } = useBreakpoint();
 
@@ -93,7 +485,6 @@ export function ProjectCard({
   const total = quote.calculations?.total ?? 0;
   const profit = quote.calculations?.markupAmount ?? 0;
   const dueInfo = getDueInfo(quote.inHandsDate);
-  const ctaLabel = getCtaLabel(quote);
 
   const priority = (quote.priority as ProjectPriority) || DEFAULT_PRIORITY;
   const priCfg = PRIORITY_CONFIG[priority];
@@ -289,17 +680,12 @@ export function ProjectCard({
             <Text style={s.pcsValue}>{pcs > 0 ? pcs.toLocaleString() : '—'}</Text>
           </View>
 
-          {/* Actions column */}
-          <View style={s.actionsCol} onStartShouldSetResponder={() => true}>
-            <TouchableOpacity
-              style={s.actionBtn}
-              onPress={(e: any) => { e?.stopPropagation?.(); onPress(); }}
-              activeOpacity={0.8}
-            >
-              <ExternalLink size={12} color={Colors.light.text} />
-              <Text style={s.actionBtnText}>{ctaLabel}</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Actions column — status-aware secondary button + ellipsis */}
+          <CompactActions
+            quote={quote}
+            onPress={onPress}
+            onActionComplete={onActionComplete}
+          />
         </TouchableOpacity>
       </View>
     );
@@ -555,27 +941,73 @@ const s = StyleSheet.create({
   },
   pcsValue: { fontSize: 22, fontWeight: '800', color: Colors.light.text, lineHeight: 26 },
 
-  // Actions col
+  // Actions col — wider to accommodate secondary button + ellipsis row
   actionsCol: {
-    width: 150,
-    padding: 12,
+    width: 195,
+    padding: 10,
     justifyContent: 'center',
     gap: 6,
     borderLeftWidth: 1,
     borderLeftColor: '#E2E8F0',
   },
-  actionBtn: {
+  actionBtnRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
     borderRadius: 7,
     borderWidth: 1,
     borderColor: '#D1D5DB',
     backgroundColor: '#F9FAFB',
   },
   actionBtnText: { fontSize: 11, fontWeight: '600', color: Colors.light.text },
+  actionBtnSolid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+    borderRadius: 7,
+  },
+  actionBtnSolidText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  ellipsisBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#F9FAFB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+
+  // Overlay menu items
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  menuItemText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: Colors.light.text,
+  },
+  menuSeparator: {
+    height: 1,
+    backgroundColor: Colors.light.border,
+    marginVertical: 3,
+    marginHorizontal: 8,
+  },
 
   // ── Mobile compact card ──────────────────────────────────────────────────
   cmpCard: {

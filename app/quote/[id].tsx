@@ -1864,6 +1864,12 @@ export default function QuoteDetailScreen() {
                     <Text style={[styles.menuItemText, { color: Colors.light.tint }]}>Start Quoting</Text>
                   </TouchableOpacity>
                   <View style={styles.menuSeparator} />
+                  {renderDocumentExports()}
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handlePrint(); }}>
+                    <Printer size={18} color={Colors.light.text} />
+                    <Text style={styles.menuItemText}>Print</Text>
+                  </TouchableOpacity>
+                  <View style={styles.menuSeparator} />
                   <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]} onPress={handleDelete}>
                     <Trash2 size={18} color={Colors.light.error} />
                     <Text style={[styles.menuItemText, { color: Colors.light.error }]}>Delete</Text>
