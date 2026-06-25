@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Image, Alert, Platform,
+  View, Text, TouchableOpacity, StyleSheet, Image, Alert, Platform, ScrollView,
 } from 'react-native';
 import {
   ChevronRight, ChevronLeft, Check, Calendar, Package,
@@ -95,10 +95,12 @@ function CompactActions({
   quote,
   onPress,
   onActionComplete,
+  containerStyle,
 }: {
   quote: any;
   onPress: () => void;
   onActionComplete?: () => void;
+  containerStyle?: any;
 }) {
   const router = useRouter();
   const { updateQuoteAsync, deleteQuote, convertToQuote, markExportedToSheets } = useQuotes();
@@ -332,7 +334,7 @@ function CompactActions({
   }
 
   return (
-    <View style={s.actionsCol} onStartShouldSetResponder={() => true}>
+    <View style={[s.actionsCol, containerStyle]} onStartShouldSetResponder={() => true}>
       {/* Secondary orange action button */}
       {secondaryLabel ? (
         <TouchableOpacity
@@ -528,6 +530,10 @@ export function ProjectCard({
           {quote.personOrganization ? (
             <Text style={s.cmpMeta} numberOfLines={1}>{quote.personOrganization}</Text>
           ) : null}
+          <View style={s.cmpPriRow}>
+            <View style={[s.cmpPriDot, { backgroundColor: priCfg.color }]} />
+            <Text style={[s.cmpPriText, { color: priCfg.color }]}>{priCfg.label} Priority</Text>
+          </View>
           <View style={s.cmpMobileDataStrip}>
             <View style={s.cmpMobileDataCol}>
               <View style={s.cmpColLabelRow}>
@@ -553,6 +559,12 @@ export function ProjectCard({
               <Text style={s.cmpColVal} numberOfLines={1}>{services[0] || '—'}</Text>
             </View>
           </View>
+          <CompactActions
+            quote={quote}
+            onPress={selectionMode ? (onToggleSelect ?? onPress) : onPress}
+            onActionComplete={onActionComplete}
+            containerStyle={s.cmpActionsWrap}
+          />
         </TouchableOpacity>
       </View>
     );
@@ -561,10 +573,15 @@ export function ProjectCard({
   // ── Desktop compact — production-queue style horizontal row ───────────────
   if (compact) {
     return (
-      <View style={s.row}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={s.rowScrollContent}
+      >
+        <View style={s.row}>
         <Text style={s.queueNum}>#{queue}</Text>
         <TouchableOpacity
-          style={[s.deskCard, isSelected && s.deskCardSelected]}
+          style={[s.deskCard, { minWidth: 840 }, isSelected && s.deskCardSelected]}
           onPress={selectionMode ? (onToggleSelect ?? onPress) : onPress}
           activeOpacity={0.85}
         >
@@ -687,7 +704,8 @@ export function ProjectCard({
             onActionComplete={onActionComplete}
           />
         </TouchableOpacity>
-      </View>
+        </View>
+      </ScrollView>
     );
   }
 
@@ -755,6 +773,10 @@ const s = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 8,
     marginBottom: 8,
+  },
+  rowScrollContent: {
+    flexGrow: 1,
+    minWidth: 880,
   },
   queueNum: {
     ...metricValueStyle,
@@ -1065,6 +1087,20 @@ const s = StyleSheet.create({
     textTransform: 'uppercase',
   },
   cmpColVal: { fontSize: 12, fontWeight: '700', color: '#111827' },
+  cmpPriRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
+  cmpPriDot: { width: 7, height: 7, borderRadius: 4 },
+  cmpPriText: { fontSize: 11, fontWeight: '600' as const },
+  cmpActionsWrap: {
+    width: '100%' as any,
+    borderLeftWidth: 0,
+    padding: 0,
+    paddingTop: 8,
+    marginHorizontal: -12,
+    paddingHorizontal: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    gap: 6,
+  },
 
   // ── Full card (non-compact) ──────────────────────────────────────────────
   card: {
