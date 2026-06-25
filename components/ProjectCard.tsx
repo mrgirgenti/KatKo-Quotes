@@ -1,13 +1,64 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, Image } from 'react-native';
-import { ChevronRight, Check, Calendar, Package, ChevronLeft, Scissors } from 'lucide-react-native';
-import { getEffectiveStatus, STATUS_CONFIG } from '@/types/quote';
+import {
+  View, Text, TouchableOpacity, StyleSheet, Image,
+} from 'react-native';
+import {
+  ChevronRight, ChevronLeft, Check, Calendar, Package,
+  Scissors, ExternalLink,
+} from 'lucide-react-native';
+import { getEffectiveStatus, STATUS_CONFIG, PRIORITY_CONFIG, DEFAULT_PRIORITY } from '@/types/quote';
+import type { ProjectPriority } from '@/types/quote';
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
+import { parseProjectDate } from '@/lib/production';
 import Colors from '@/constants/colors';
 import { metricValueStyle } from '@/components/Metric';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
-const CMP_THUMB_COLORS = ['#FF5A00', '#2563EB', '#7C3AED', '#059669', '#DC2626', '#D97706', '#0891B2'];
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function getPcs(quote: any): number {
+  return (quote.lineItems || []).reduce(
+    (s: number, li: any) =>
+      s + Object.values(li.sizes || {}).reduce((ps: number, v: any) => ps + (Number(v) || 0), 0),
+    0,
+  );
+}
+
+function getDueInfo(inHandsDate?: string | null): { text: string; daysText: string; isOverdue: boolean } {
+  if (!inHandsDate) return { text: '—', daysText: '', isOverdue: false };
+  const d = parseProjectDate(inHandsDate);
+  if (!d) return { text: '—', daysText: '', isOverdue: false };
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const due = new Date(d); due.setHours(0, 0, 0, 0);
+  const diff = Math.round((due.getTime() - today.getTime()) / 86400000);
+  const text = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const isOverdue = diff < 0;
+  const daysText = isOverdue
+    ? `${Math.abs(diff)}d overdue`
+    : diff === 0 ? 'Due today'
+    : `${diff} day${diff !== 1 ? 's' : ''}`;
+  return { text, daysText, isOverdue };
+}
+
+function getCtaLabel(quote: any): string {
+  const eff = getEffectiveStatus(quote);
+  if (['quoted', 'quoting', 'needs_review', 'invoice_sent'].includes(eff)) return 'Open Quote';
+  return 'Open Project';
+}
+
+function Field({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <View style={s.field}>
+      <Text style={s.fieldLabel}>{label}</Text>
+      <Text style={[s.fieldValue, accent && s.fieldValueAccent]} numberOfLines={1}>
+        {value || '—'}
+      </Text>
+    </View>
+  );
+}
+
+// ─── Props ───────────────────────────────────────────────────────────────────
 
 interface ProjectCardProps {
   queue: number;
@@ -19,27 +70,7 @@ interface ProjectCardProps {
   compact?: boolean;
 }
 
-function getPcs(quote: any): number {
-  return (quote.lineItems || []).reduce(
-    (s: number, li: any) =>
-      s + Object.values(li.sizes || {}).reduce((ps: number, v: any) => ps + (Number(v) || 0), 0),
-    0
-  );
-}
-
-function Field({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <Text
-        style={[styles.fieldValue, accent && styles.fieldValueAccent]}
-        numberOfLines={1}
-      >
-        {value || '—'}
-      </Text>
-    </View>
-  );
-}
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export function ProjectCard({
   queue,
@@ -50,287 +81,279 @@ export function ProjectCard({
   onToggleSelect,
   compact = false,
 }: ProjectCardProps) {
-  const { width } = useWindowDimensions();
-  const isMobile = width > 0 && width < 768;
+  const { isMobile } = useBreakpoint();
 
   const eff = getEffectiveStatus(quote);
   const cfg = STATUS_CONFIG[eff];
   const pNum = quote.projectNumber || quote.invoiceNumber || '—';
   const pcs = getPcs(quote);
   const services = [...new Set(
-    (quote.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean)
+    (quote.lineItems || []).map((li: any) => li.serviceStyle).filter(Boolean),
   )] as string[];
-  const serviceText = services.length > 0 ? services.join(' · ') : '';
   const total = quote.calculations?.total ?? 0;
   const profit = quote.calculations?.markupAmount ?? 0;
-  const dueDate = quote.inHandsDate ? formatDate(quote.inHandsDate) : '—';
+  const dueInfo = getDueInfo(quote.inHandsDate);
+  const ctaLabel = getCtaLabel(quote);
+
+  const priority = (quote.priority as ProjectPriority) || DEFAULT_PRIORITY;
+  const priCfg = PRIORITY_CONFIG[priority];
+
   const allMockupUris: string[] = Array.isArray(quote.mockupGallery)
     ? quote.mockupGallery
     : (quote.lineItems || []).map((li: any) => li.mockupUri).filter(Boolean);
-  const [cmpImgIdx, setCmpImgIdx] = useState(0);
-  const cmpThumbColor = CMP_THUMB_COLORS[(((quote.projectName || '')[0] || '').charCodeAt(0) || 0) % CMP_THUMB_COLORS.length];
-  const cmpThumbInitial = ((quote.projectName || '').trim()[0] || '?').toUpperCase();
+  const [thumbIdx, setThumbIdx] = useState(0);
 
-  if (compact) {
+  const thumbInitial = ((quote.projectName || '').trim()[0] || '?').toUpperCase();
+
+  // ── Mobile compact ────────────────────────────────────────────────────────
+  if (compact && isMobile) {
     const checkbox = selectionMode ? (
-      <TouchableOpacity
-        onPress={onToggleSelect}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      >
-        <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
+      <TouchableOpacity onPress={onToggleSelect} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <View style={[s.checkbox, isSelected && s.checkboxChecked]}>
           {isSelected && <Check size={10} color="#fff" strokeWidth={3} />}
         </View>
       </TouchableOpacity>
     ) : null;
 
-    const cmpHeader = (
-      <View style={styles.cmpHeader}>
-        <View style={styles.cmpHeaderLeft}>
-          {checkbox}
-          <Text style={styles.cmpRecordNum}>{pNum}</Text>
-          <View style={[styles.cmpStatusBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
-            <Text style={[styles.cmpStatusText, { color: cfg.color }]}>{cfg.label}</Text>
-          </View>
-        </View>
-        <ChevronRight size={14} color={Colors.light.textSecondary} />
-      </View>
-    );
-
-    if (isMobile) {
-      return (
-        <View style={styles.row}>
-          <Text style={styles.queueNum}>#{queue}</Text>
-          <TouchableOpacity
-            style={[styles.cmpCard, isSelected && styles.cmpCardSelected]}
-            onPress={selectionMode ? (onToggleSelect ?? onPress) : onPress}
-            activeOpacity={0.75}
-          >
-            {cmpHeader}
-            <Text style={styles.cmpName} numberOfLines={1}>{quote.projectName || '—'}</Text>
-            {(quote.personOrganization || serviceText) ? (
-              <Text style={styles.cmpMeta} numberOfLines={1}>
-                {[quote.personOrganization, serviceText].filter(Boolean).join(' · ')}
-              </Text>
-            ) : null}
-            {/* Data strip — same visual language as desktop */}
-            <View style={styles.cmpMobileDataStrip}>
-              <View style={styles.cmpMobileDataCol}>
-                <View style={styles.cmpDesktopColLabelRow}>
-                  <Calendar size={10} color="#94A3B8" />
-                  <Text style={styles.cmpColLabelTxt}>Due</Text>
-                </View>
-                <Text style={styles.cmpColVal}>{dueDate}</Text>
-              </View>
-              <View style={styles.cmpVertDivider} />
-              <View style={styles.cmpMobileDataCol}>
-                <View style={styles.cmpDesktopColLabelRow}>
-                  <Package size={10} color="#94A3B8" />
-                  <Text style={styles.cmpColLabelTxt}>PCS</Text>
-                </View>
-                <Text style={styles.cmpColVal}>{pcs > 0 ? pcs.toLocaleString() : '—'}</Text>
-              </View>
-              <View style={styles.cmpVertDivider} />
-              <View style={styles.cmpMobileFinCol}>
-                <Text style={[styles.cmpFinBigVal, { color: '#059669', fontSize: 13 }]}>{formatCurrency(total)}</Text>
-                <Text style={styles.cmpColLabelTxt}>Revenue</Text>
-              </View>
-              <View style={styles.cmpVertDivider} />
-              <View style={styles.cmpMobileFinCol}>
-                <Text style={[styles.cmpFinBigVal, { color: '#FF5A00', fontSize: 13 }]}>{formatCurrency(profit)}</Text>
-                <Text style={styles.cmpColLabelTxt}>Profit</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
-    // Desktop compact — single horizontal row with divider-separated columns
     return (
-      <View style={styles.row}>
-        <Text style={styles.queueNum}>#{queue}</Text>
+      <View style={s.row}>
+        <Text style={s.queueNum}>#{queue}</Text>
         <TouchableOpacity
-          style={[styles.cmpDesktopCard, isSelected && styles.cmpCardSelected]}
+          style={[s.cmpCard, isSelected && s.cmpCardSelected]}
           onPress={selectionMode ? (onToggleSelect ?? onPress) : onPress}
           activeOpacity={0.75}
         >
-          {/* Mockup thumbnail with carousel */}
-          <View style={styles.cmpThumbWrap}>
-            {allMockupUris.length > 0 ? (
-              <Image
-                source={{ uri: allMockupUris[cmpImgIdx] }}
-                style={styles.cmpThumbImg}
-                resizeMode="contain"
-              />
-            ) : (
-              <View style={[styles.cmpThumbFallback, { backgroundColor: cmpThumbColor + '22' }]}>
-                <Text style={[styles.cmpThumbInitial, { color: cmpThumbColor }]}>{cmpThumbInitial}</Text>
-              </View>
-            )}
-            {allMockupUris.length > 1 && (
-              <>
-                <TouchableOpacity
-                  style={[styles.cmpThumbArrow, styles.cmpThumbArrowLeft]}
-                  onPress={(e: any) => { e?.stopPropagation?.(); setCmpImgIdx(i => (i - 1 + allMockupUris.length) % allMockupUris.length); }}
-                  hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
-                  activeOpacity={0.8}
-                >
-                  <ChevronLeft size={10} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.cmpThumbArrow, styles.cmpThumbArrowRight]}
-                  onPress={(e: any) => { e?.stopPropagation?.(); setCmpImgIdx(i => (i + 1) % allMockupUris.length); }}
-                  hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
-                  activeOpacity={0.8}
-                >
-                  <ChevronRight size={10} color="#fff" />
-                </TouchableOpacity>
-                <View style={styles.cmpThumbDots}>
-                  {allMockupUris.map((_: string, di: number) => (
-                    <View key={di} style={[styles.cmpThumbDot, di === cmpImgIdx && styles.cmpThumbDotActive]} />
-                  ))}
-                </View>
-              </>
-            )}
-          </View>
-          {/* Left: project number + name + client */}
-          <View style={styles.cmpDesktopLeft}>
-            <View style={styles.cmpDesktopTopRow}>
-              {selectionMode && (
-                <TouchableOpacity onPress={onToggleSelect} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
-                    {isSelected && <Check size={10} color="#fff" strokeWidth={3} />}
-                  </View>
-                </TouchableOpacity>
-              )}
-              <Text style={styles.cmpRecordNum}>{pNum}</Text>
-              <View style={[styles.cmpStatusBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
-                <Text style={[styles.cmpStatusText, { color: cfg.color }]}>{cfg.label}</Text>
+          <View style={s.cmpHeader}>
+            <View style={s.cmpHeaderLeft}>
+              {checkbox}
+              <Text style={s.cmpRecordNum}>{pNum}</Text>
+              <View style={[s.cmpStatusBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+                <Text style={[s.cmpStatusText, { color: cfg.color }]}>{cfg.label}</Text>
               </View>
             </View>
-            <Text style={styles.cmpName} numberOfLines={1}>{quote.projectName || '—'}</Text>
-            {quote.personOrganization ? (
-              <Text style={styles.cmpMeta} numberOfLines={1}>{quote.personOrganization}</Text>
-            ) : null}
+            <ChevronRight size={14} color={Colors.light.textSecondary} />
           </View>
-
-          <View style={styles.cmpVertDivider} />
-
-          {/* Services */}
-          <View style={styles.cmpServicesDataCol}>
-            <View style={styles.cmpDesktopColLabelRow}>
-              <Scissors size={11} color="#94A3B8" />
-              <Text style={styles.cmpColLabelTxt}>Services</Text>
+          <Text style={s.cmpName} numberOfLines={1}>{quote.projectName || '—'}</Text>
+          {quote.personOrganization ? (
+            <Text style={s.cmpMeta} numberOfLines={1}>{quote.personOrganization}</Text>
+          ) : null}
+          <View style={s.cmpMobileDataStrip}>
+            <View style={s.cmpMobileDataCol}>
+              <View style={s.cmpColLabelRow}>
+                <Calendar size={10} color="#94A3B8" />
+                <Text style={s.cmpColLabelTxt}>Due</Text>
+              </View>
+              <Text style={s.cmpColVal}>{dueInfo.text}</Text>
             </View>
-            {services.length > 0 ? (
-              services.map((s, i) => (
-                <Text key={i} style={services.length > 1 ? styles.cmpColValSm : styles.cmpColVal}>{s}</Text>
-              ))
-            ) : (
-              <Text style={styles.cmpColVal}>—</Text>
-            )}
-          </View>
-
-          <View style={styles.cmpVertDivider} />
-
-          {/* Due Date */}
-          <View style={styles.cmpDesktopDataCol}>
-            <View style={styles.cmpDesktopColLabelRow}>
-              <Calendar size={11} color="#94A3B8" />
-              <Text style={styles.cmpColLabelTxt}>Due Date</Text>
+            <View style={s.cmpVertDivider} />
+            <View style={s.cmpMobileDataCol}>
+              <View style={s.cmpColLabelRow}>
+                <Package size={10} color="#94A3B8" />
+                <Text style={s.cmpColLabelTxt}>PCS</Text>
+              </View>
+              <Text style={s.cmpColVal}>{pcs > 0 ? pcs.toLocaleString() : '—'}</Text>
             </View>
-            <Text style={styles.cmpColVal}>{dueDate}</Text>
-          </View>
-
-          <View style={styles.cmpVertDivider} />
-
-          {/* PCS */}
-          <View style={styles.cmpDesktopDataCol}>
-            <View style={styles.cmpDesktopColLabelRow}>
-              <Package size={11} color="#94A3B8" />
-              <Text style={styles.cmpColLabelTxt}>PCS</Text>
+            <View style={s.cmpVertDivider} />
+            <View style={s.cmpMobileDataCol}>
+              <View style={s.cmpColLabelRow}>
+                <Scissors size={10} color="#94A3B8" />
+                <Text style={s.cmpColLabelTxt}>Service</Text>
+              </View>
+              <Text style={s.cmpColVal} numberOfLines={1}>{services[0] || '—'}</Text>
             </View>
-            <Text style={styles.cmpColVal}>{pcs > 0 ? pcs.toLocaleString() : '—'}</Text>
-          </View>
-
-          <View style={styles.cmpVertDivider} />
-
-          {/* Revenue */}
-          <View style={styles.cmpDesktopFinCol}>
-            <Text style={[styles.cmpFinBigVal, { color: '#059669' }]}>{formatCurrency(total)}</Text>
-            <Text style={styles.cmpColLabelTxt}>Revenue</Text>
-          </View>
-
-          <View style={styles.cmpVertDivider} />
-
-          {/* Profit */}
-          <View style={styles.cmpDesktopFinCol}>
-            <Text style={[styles.cmpFinBigVal, { color: '#FF5A00' }]}>{formatCurrency(profit)}</Text>
-            <Text style={styles.cmpColLabelTxt}>Profit</Text>
-          </View>
-
-          <View style={styles.cmpChevronWrap}>
-            <ChevronRight size={16} color={Colors.light.textSecondary} />
           </View>
         </TouchableOpacity>
       </View>
     );
   }
 
+  // ── Desktop compact — production-queue style horizontal row ───────────────
+  if (compact) {
+    return (
+      <View style={s.row}>
+        <Text style={s.queueNum}>#{queue}</Text>
+        <TouchableOpacity
+          style={[s.deskCard, isSelected && s.deskCardSelected]}
+          onPress={selectionMode ? (onToggleSelect ?? onPress) : onPress}
+          activeOpacity={0.85}
+        >
+          {/* Mockup column — dark background, project # badge, carousel */}
+          <View style={s.thumbCol}>
+            <View style={s.thumbWrap}>
+              {allMockupUris.length > 0 ? (
+                <Image
+                  source={{ uri: allMockupUris[thumbIdx] }}
+                  style={s.thumbImg}
+                  resizeMode="contain"
+                />
+              ) : (
+                <View style={s.thumbFallback}>
+                  <Text style={s.thumbInitial}>{thumbInitial}</Text>
+                </View>
+              )}
+
+              {/* Project number badge — top left */}
+              <View style={s.projNumBadge}>
+                <Text style={s.projNumText}>{pNum}</Text>
+              </View>
+
+              {/* Mockup count badge — bottom left */}
+              {allMockupUris.length > 1 && (
+                <View style={s.mockupCountBadge}>
+                  <Text style={s.mockupCountText}>{allMockupUris.length} MOCKUPS</Text>
+                </View>
+              )}
+
+              {/* Carousel arrows + orange dots */}
+              {allMockupUris.length > 1 && (
+                <>
+                  <TouchableOpacity
+                    style={[s.thumbArrow, s.thumbArrowLeft]}
+                    onPress={(e: any) => {
+                      e?.stopPropagation?.();
+                      setThumbIdx(i => (i - 1 + allMockupUris.length) % allMockupUris.length);
+                    }}
+                    hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                    activeOpacity={0.8}
+                  >
+                    <ChevronLeft size={10} color="#fff" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.thumbArrow, s.thumbArrowRight]}
+                    onPress={(e: any) => {
+                      e?.stopPropagation?.();
+                      setThumbIdx(i => (i + 1) % allMockupUris.length);
+                    }}
+                    hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                    activeOpacity={0.8}
+                  >
+                    <ChevronRight size={10} color="#fff" />
+                  </TouchableOpacity>
+                  <View style={s.thumbDots}>
+                    {allMockupUris.map((_: string, di: number) => (
+                      <View key={di} style={[s.thumbDot, di === thumbIdx && s.thumbDotActive]} />
+                    ))}
+                  </View>
+                </>
+              )}
+            </View>
+          </View>
+
+          {/* Info column — name + org */}
+          <View style={s.infoCol}>
+            <Text style={s.projName} numberOfLines={2}>{quote.projectName || '—'}</Text>
+            <Text style={s.orgName} numberOfLines={1}>{quote.personOrganization || '—'}</Text>
+          </View>
+
+          {/* Status + Priority column */}
+          <View style={s.statusCol}>
+            <Text style={s.colLabel}>STATUS</Text>
+            <View style={[s.statusPill, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+              <Text style={[s.statusPillText, { color: cfg.color }]}>{cfg.label}</Text>
+            </View>
+            <Text style={[s.colLabel, { marginTop: 10 }]}>PRIORITY</Text>
+            <View style={s.priRow}>
+              <View style={[s.priDot, { backgroundColor: priCfg.color }]} />
+              <Text style={[s.priText, { color: priCfg.color }]}>{priCfg.label}</Text>
+            </View>
+          </View>
+
+          {/* Service column */}
+          <View style={s.serviceCol}>
+            <Text style={s.colLabel}>SERVICE</Text>
+            {services.length > 0
+              ? services.map((sv, i) => (
+                  <Text key={i} style={s.colValue} numberOfLines={1}>{sv}</Text>
+                ))
+              : <Text style={s.colMuted}>—</Text>}
+          </View>
+
+          {/* Due Date column */}
+          <View style={s.dueDateCol}>
+            <Text style={s.colLabel}>DUE DATE</Text>
+            <Text style={s.dueDateText}>{dueInfo.text}</Text>
+            {dueInfo.daysText ? (
+              <View style={[s.daysBadge, {
+                backgroundColor: dueInfo.isOverdue ? '#FEE2E2' : '#FFF3E8',
+              }]}>
+                <Text style={[s.daysText, {
+                  color: dueInfo.isOverdue ? '#DC2626' : '#FF5A00',
+                }]}>{dueInfo.daysText}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          {/* PCS column */}
+          <View style={s.pcsCol}>
+            <Text style={s.colLabel}>PCS</Text>
+            <Text style={s.pcsValue}>{pcs > 0 ? pcs.toLocaleString() : '—'}</Text>
+          </View>
+
+          {/* Actions column */}
+          <View style={s.actionsCol} onStartShouldSetResponder={() => true}>
+            <TouchableOpacity
+              style={s.actionBtn}
+              onPress={(e: any) => { e?.stopPropagation?.(); onPress(); }}
+              activeOpacity={0.8}
+            >
+              <ExternalLink size={12} color={Colors.light.text} />
+              <Text style={s.actionBtnText}>{ctaLabel}</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // ── Full card (non-compact) ───────────────────────────────────────────────
   const serviceTextFull = services.length > 0 ? services.join(' · ') : '—';
 
   return (
-    <View style={styles.row}>
-      <Text style={styles.queueNum}>#{queue}</Text>
+    <View style={s.row}>
+      <Text style={s.queueNum}>#{queue}</Text>
       <TouchableOpacity
-        style={[styles.card, isSelected && styles.cardSelected]}
+        style={[s.card, isSelected && s.cardSelected]}
         onPress={selectionMode ? (onToggleSelect ?? onPress) : onPress}
         activeOpacity={0.75}
       >
-        {/* Header: record # + status (+ optional checkbox) + chevron */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
+        <View style={s.header}>
+          <View style={s.headerLeft}>
             {selectionMode && (
-              <TouchableOpacity
-                onPress={onToggleSelect}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
+              <TouchableOpacity onPress={onToggleSelect} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <View style={[s.checkbox, isSelected && s.checkboxChecked]}>
                   {isSelected && <Check size={10} color="#fff" strokeWidth={3} />}
                 </View>
               </TouchableOpacity>
             )}
-            <Text style={styles.recordNum}>{pNum}</Text>
-            <View style={[styles.statusBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
-              <Text style={[styles.statusBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
+            <Text style={s.recordNum}>{pNum}</Text>
+            <View style={[s.statusBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+              <Text style={[s.statusBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
             </View>
           </View>
           <ChevronRight size={16} color={Colors.light.textSecondary} />
         </View>
 
-        {/* Labeled field grid — preserves desktop column meaning */}
-        <View style={styles.grid}>
+        <View style={s.grid}>
           <Field label="PROJECT" value={quote.projectName} accent />
           <Field label="CLIENT" value={quote.personOrganization} accent />
         </View>
-        <View style={styles.grid}>
+        <View style={s.grid}>
           <Field label="ORDER DATE" value={quote.orderDate ? formatDate(quote.orderDate) : ''} />
           <Field label="DUE DATE" value={quote.inHandsDate ? formatDate(quote.inHandsDate) : ''} />
         </View>
-        <View style={styles.grid}>
+        <View style={s.grid}>
           <Field label="SERVICE" value={serviceTextFull} />
           <Field label="PCS" value={pcs > 0 ? `${pcs.toLocaleString()}` : ''} />
         </View>
 
-        {/* Financials footer */}
-        <View style={styles.footer}>
-          <View style={styles.finCol}>
-            <Text style={styles.fieldLabel}>TOTAL</Text>
-            <Text style={styles.finValue}>{formatCurrency(total)}</Text>
+        <View style={s.footer}>
+          <View style={s.finCol}>
+            <Text style={s.fieldLabel}>TOTAL</Text>
+            <Text style={s.finValue}>{formatCurrency(total)}</Text>
           </View>
-          <View style={styles.finCol}>
-            <Text style={styles.fieldLabel}>PROFIT</Text>
-            <Text style={[styles.finValue, styles.profitValue]}>{formatCurrency(profit)}</Text>
+          <View style={s.finCol}>
+            <Text style={s.fieldLabel}>PROFIT</Text>
+            <Text style={[s.finValue, s.profitValue]}>{formatCurrency(profit)}</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -338,127 +361,226 @@ export function ProjectCard({
   );
 }
 
-const styles = StyleSheet.create({
+// ─── Styles ──────────────────────────────────────────────────────────────────
+
+const s = StyleSheet.create({
   row: {
-    flexDirection: 'row' as const,
-    alignItems: 'flex-start' as const,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: 8,
     marginBottom: 8,
   },
   queueNum: {
     ...metricValueStyle,
     width: 36,
-    textAlign: 'right' as const,
+    textAlign: 'right',
     flexShrink: 0,
     paddingTop: 10,
   },
-  card: {
+
+  // ── Desktop compact card ─────────────────────────────────────────────────
+  deskCard: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    backgroundColor: Colors.light.surface,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    gap: 8,
+    overflow: 'hidden',
+    minHeight: 110,
   },
-  cardSelected: {
-    borderColor: Colors.light.primary,
-    backgroundColor: '#FFF7F3',
-  },
-  header: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
-    gap: 8,
-  },
-  headerLeft: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 8,
-    flex: 1,
-    minWidth: 0,
-    flexWrap: 'wrap' as const,
-  },
-  recordNum: {
-    fontSize: 13,
-    fontWeight: '800' as const,
-    color: '#111827',
-    letterSpacing: 0.3,
-  },
-  checkbox: {
-    width: 16,
-    height: 16,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#fff',
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-  checkboxChecked: {
-    backgroundColor: Colors.light.primary,
-    borderColor: Colors.light.primary,
-  },
-  statusBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  statusBadgeText: {
-    fontSize: 10,
-    fontWeight: '600' as const,
-  },
-  grid: {
-    flexDirection: 'row' as const,
-    gap: 12,
-  },
-  field: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  fieldLabel: {
-    fontSize: 9,
-    fontWeight: '700' as const,
-    color: '#94A3B8',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase' as const,
-  },
-  fieldValue: {
-    fontSize: 13,
-    color: '#374151',
-  },
-  fieldValueAccent: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: '#111827',
-  },
-  footer: {
-    flexDirection: 'row' as const,
-    gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    paddingTop: 8,
-  },
-  finCol: {
-    flex: 1,
-    gap: 2,
-  },
-  finValue: {
-    fontSize: 16,
-    fontWeight: '800' as const,
-    color: '#111827',
-  },
-  profitValue: {
-    color: '#059669',
+  deskCardSelected: {
+    borderColor: Colors.light.tint,
+    borderWidth: 2,
   },
 
-  /* ── Compact card styles ── */
+  // Mockup col
+  thumbCol: { width: 120, flexShrink: 0 },
+  thumbWrap: {
+    flex: 1,
+    backgroundColor: '#111',
+    minHeight: 110,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  thumbImg: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    width: '100%',
+    height: '100%',
+  },
+  thumbFallback: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  thumbInitial: { fontSize: 26, fontWeight: '800', color: '#fff', letterSpacing: 1 },
+
+  // Project # badge
+  projNumBadge: {
+    position: 'absolute',
+    top: 7,
+    left: 7,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  projNumText: { fontSize: 10, fontWeight: '700', color: '#fff' },
+
+  // Mockup count badge
+  mockupCountBadge: {
+    position: 'absolute',
+    bottom: 7,
+    left: 7,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  mockupCountText: { fontSize: 9, fontWeight: '700', color: '#fff', letterSpacing: 0.3 },
+
+  // Carousel arrows
+  thumbArrow: {
+    position: 'absolute',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    top: '50%',
+    marginTop: -9,
+  },
+  thumbArrowLeft: { left: 3 },
+  thumbArrowRight: { right: 3 },
+
+  // Orange dots
+  thumbDots: {
+    position: 'absolute',
+    bottom: 5,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  thumbDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.45)',
+  },
+  thumbDotActive: {
+    backgroundColor: '#FF5A00',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+
+  // Info col
+  infoCol: {
+    flex: 1,
+    padding: 12,
+    justifyContent: 'center',
+    gap: 4,
+    minWidth: 130,
+  },
+  projName: { fontSize: 14, fontWeight: '800', color: Colors.light.text, lineHeight: 19 },
+  orgName: { fontSize: 12, color: Colors.light.textSecondary, fontWeight: '500' },
+
+  // Shared column helpers
+  colLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  colValue: { fontSize: 12, fontWeight: '600', color: Colors.light.text, lineHeight: 16 },
+  colMuted: { fontSize: 11, color: Colors.light.textSecondary },
+
+  // Status + Priority col
+  statusCol: {
+    width: 140,
+    padding: 12,
+    justifyContent: 'flex-start',
+    borderLeftWidth: 1,
+    borderLeftColor: '#E2E8F0',
+  },
+  statusPill: {
+    alignSelf: 'flex-start',
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  statusPillText: { fontSize: 10, fontWeight: '700' },
+  priRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  priDot: { width: 8, height: 8, borderRadius: 4 },
+  priText: { fontSize: 12, fontWeight: '600' },
+
+  // Service col
+  serviceCol: {
+    width: 120,
+    padding: 12,
+    justifyContent: 'flex-start',
+    borderLeftWidth: 1,
+    borderLeftColor: '#E2E8F0',
+  },
+
+  // Due Date col
+  dueDateCol: {
+    width: 110,
+    padding: 12,
+    justifyContent: 'flex-start',
+    borderLeftWidth: 1,
+    borderLeftColor: '#E2E8F0',
+  },
+  dueDateText: { fontSize: 12, fontWeight: '600', color: Colors.light.text, marginBottom: 3 },
+  daysBadge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, alignSelf: 'flex-start' },
+  daysText: { fontSize: 10, fontWeight: '700' },
+
+  // PCS col
+  pcsCol: {
+    width: 72,
+    padding: 12,
+    justifyContent: 'flex-start',
+    borderLeftWidth: 1,
+    borderLeftColor: '#E2E8F0',
+  },
+  pcsValue: { fontSize: 22, fontWeight: '800', color: Colors.light.text, lineHeight: 26 },
+
+  // Actions col
+  actionsCol: {
+    width: 150,
+    padding: 12,
+    justifyContent: 'center',
+    gap: 6,
+    borderLeftWidth: 1,
+    borderLeftColor: '#E2E8F0',
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#F9FAFB',
+  },
+  actionBtnText: { fontSize: 11, fontWeight: '600', color: Colors.light.text },
+
+  // ── Mobile compact card ──────────────────────────────────────────────────
   cmpCard: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#fff',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -466,73 +588,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     gap: 5,
   },
-  cmpCardSelected: {
-    borderColor: Colors.light.primary,
-    backgroundColor: '#FFF7F3',
-  },
+  cmpCardSelected: { borderColor: Colors.light.tint, backgroundColor: '#FFF7F3' },
   cmpHeader: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 6,
   },
   cmpHeaderLeft: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
     flex: 1,
     minWidth: 0,
-    flexWrap: 'wrap' as const,
+    flexWrap: 'wrap',
   },
-  cmpRecordNum: {
-    fontSize: 12,
-    fontWeight: '800' as const,
-    color: '#111827',
-    letterSpacing: 0.3,
-  },
-  cmpStatusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  cmpStatusText: {
-    fontSize: 9,
-    fontWeight: '600' as const,
-  },
-  cmpName: {
-    fontSize: 13,
-    fontWeight: '700' as const,
-    color: '#111827',
-  },
-  cmpMeta: {
-    fontSize: 11,
-    color: '#64748B',
-  },
-  cmpRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 6,
-    flexWrap: 'wrap' as const,
-  },
-  cmpStatItem: {
-    fontSize: 11,
-    color: '#94A3B8',
-  },
-  cmpStatVal: {
-    fontSize: 11,
-    fontWeight: '700' as const,
-    color: '#374151',
-  },
-  cmpSep: {
-    fontSize: 11,
-    color: '#CBD5E1',
-  },
-
-  /* Mobile data strip — same visual language as desktop divider columns */
+  cmpRecordNum: { fontSize: 12, fontWeight: '800', color: '#111827', letterSpacing: 0.3 },
+  cmpStatusBadge: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 20, borderWidth: 1 },
+  cmpStatusText: { fontSize: 9, fontWeight: '600' },
+  cmpName: { fontSize: 13, fontWeight: '700', color: '#111827' },
+  cmpMeta: { fontSize: 11, color: '#64748B' },
+  cmpVertDivider: { width: 1, backgroundColor: '#E2E8F0', alignSelf: 'stretch' },
   cmpMobileDataStrip: {
-    flexDirection: 'row' as const,
-    alignItems: 'stretch' as const,
+    flexDirection: 'row',
+    alignItems: 'stretch',
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
     marginTop: 4,
@@ -543,158 +622,77 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 7,
     gap: 3,
-    justifyContent: 'center' as const,
+    justifyContent: 'center',
   },
-  cmpMobileFinCol: {
-    flex: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    gap: 2,
-    justifyContent: 'center' as const,
-    alignItems: 'flex-end' as const,
+  cmpColLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  cmpColLabelTxt: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#94A3B8',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
+  cmpColVal: { fontSize: 12, fontWeight: '700', color: '#111827' },
 
-  /* ── Desktop compact — single horizontal row ── */
-  cmpDesktopCard: {
+  // ── Full card (non-compact) ──────────────────────────────────────────────
+  card: {
     flex: 1,
-    flexDirection: 'row' as const,
-    alignItems: 'stretch' as const,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#fff',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    overflow: 'hidden' as const,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 8,
   },
-  cmpDesktopLeft: {
-    flex: 0.65,
+  cardSelected: { borderColor: Colors.light.tint, backgroundColor: '#FFF7F3' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
     minWidth: 0,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    gap: 3,
-    justifyContent: 'center' as const,
+    flexWrap: 'wrap',
   },
-  cmpDesktopTopRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 6,
-    flexWrap: 'wrap' as const,
+  recordNum: { fontSize: 13, fontWeight: '800', color: '#111827', letterSpacing: 0.3 },
+  checkbox: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  cmpVertDivider: {
-    width: 1,
-    backgroundColor: '#E2E8F0',
-    alignSelf: 'stretch' as const,
-  },
-  cmpServicesDataCol: {
-    paddingHorizontal: 10,
-    paddingVertical: 11,
-    gap: 3,
-    justifyContent: 'center' as const,
-    width: 120,
-  },
-  cmpDesktopDataCol: {
-    paddingHorizontal: 10,
-    paddingVertical: 11,
-    gap: 5,
-    justifyContent: 'center' as const,
-    width: 96,
-  },
-  cmpDesktopColLabelRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 4,
-  },
-  cmpColLabelTxt: {
-    fontSize: 10,
-    fontWeight: '700' as const,
+  checkboxChecked: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
+  statusBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 20, borderWidth: 1 },
+  statusBadgeText: { fontSize: 10, fontWeight: '600' },
+  grid: { flexDirection: 'row', gap: 12 },
+  field: { flex: 1, minWidth: 0, gap: 2 },
+  fieldLabel: {
+    fontSize: 9,
+    fontWeight: '700',
     color: '#94A3B8',
-    letterSpacing: 0.3,
-    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
-  cmpColVal: {
-    fontSize: 13,
-    fontWeight: '700' as const,
-    color: '#111827',
+  fieldValue: { fontSize: 13, color: '#374151' },
+  fieldValueAccent: { fontSize: 14, fontWeight: '600', color: '#111827' },
+  footer: {
+    flexDirection: 'row',
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingTop: 8,
   },
-  cmpColValSm: {
-    fontSize: 11,
-    fontWeight: '600' as const,
-    color: '#111827',
-    lineHeight: 16,
-  },
-  cmpDesktopFinCol: {
-    paddingHorizontal: 10,
-    paddingVertical: 11,
-    gap: 3,
-    justifyContent: 'center' as const,
-    alignItems: 'flex-end' as const,
-    width: 88,
-  },
-  cmpFinBigVal: {
-    fontSize: 15,
-    fontWeight: '800' as const,
-  },
-  cmpChevronWrap: {
-    paddingHorizontal: 10,
-    justifyContent: 'center' as const,
-    alignItems: 'center' as const,
-    alignSelf: 'stretch' as const,
-  },
-
-  /* ── Compact thumbnail carousel ── */
-  cmpThumbWrap: {
-    width: 77,
-    height: 86,
-    backgroundColor: '#F3F4F6',
-    flexShrink: 0,
-    overflow: 'hidden' as const,
-    position: 'relative' as const,
-    alignSelf: 'center' as const,
-  },
-  cmpThumbImg: {
-    width: 77,
-    height: 86,
-  },
-  cmpThumbFallback: {
-    width: 77,
-    height: 86,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-  cmpThumbInitial: {
-    fontSize: 22,
-    fontWeight: '900' as const,
-  },
-  cmpThumbArrow: {
-    position: 'absolute' as const,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: 'rgba(0,0,0,0.38)',
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    top: 27,
-  },
-  cmpThumbArrowLeft: { left: 1 },
-  cmpThumbArrowRight: { right: 1 },
-  cmpThumbDots: {
-    position: 'absolute' as const,
-    bottom: 4,
-    left: 0,
-    right: 0,
-    flexDirection: 'row' as const,
-    justifyContent: 'center' as const,
-    gap: 3,
-  },
-  cmpThumbDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-  },
-  cmpThumbDotActive: {
-    backgroundColor: '#FF5A00',
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-  },
+  finCol: { flex: 1, gap: 2 },
+  finValue: { fontSize: 16, fontWeight: '800', color: '#111827' },
+  profitValue: { color: '#059669' },
 });
