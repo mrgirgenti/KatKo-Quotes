@@ -53,7 +53,7 @@ export default function ProductionScreen() {
   const { views, defaultViewId, loaded, saveView, deleteView, setDefaultView } = useProductionViews();
   const { isDesktop } = useBreakpoint();
 
-  const [tab, setTab] = useState<TabKey>('board');
+  const [tab, setTab] = useState<TabKey>('queue');
   const [filters, setFilters] = useState<ProductionFilters>(EMPTY_FILTERS);
   const [sortField, setSortField] = useState<SortField>('priority');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
