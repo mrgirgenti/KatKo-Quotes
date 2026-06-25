@@ -1,0 +1,233 @@
+Production Queue Correction — Replace Current Table With Approved Production Workflow View
+
+STOP.
+
+Do not audit.
+
+Do not roadmap.
+
+Do not claim this is complete.
+
+The Production page Queue view is still using the old basic table layout.
+
+It does not match the production workflow experience we were trying to implement.
+
+This is not acceptable.
+
+---
+
+## CURRENT PROBLEM
+
+The current Queue view shows:
+
+* Basic spreadsheet table
+* Tiny priority/status pills
+* No production workflow detail
+* No mockups
+* No punch sheet access
+* No production-ready hierarchy
+* No clear next action
+* No visual indication of what needs to be produced
+
+This does not work for a printshop production page.
+
+---
+
+## OBJECTIVE
+
+Rebuild the Production Queue view into a true production workflow queue.
+
+The Production page should help the team quickly understand:
+
+* What needs to be produced
+* What stage it is in
+* What product/mockup is involved
+* Quantity
+* Due date
+* Priority
+* Production actions
+* Punch sheet access
+
+---
+
+## DO NOT BUILD A GENERIC TABLE
+
+Do not keep the current spreadsheet-style table as the main experience.
+
+The Production Queue should be more visual and workflow-oriented.
+
+Use production cards or enriched queue rows.
+
+The page should feel operational, not like a raw database table.
+
+---
+
+## QUEUE ITEM REQUIREMENTS
+
+Each production queue item should show:
+
+* Project number
+* Project name
+* Organization
+* Primary mockup thumbnail
+* Service type
+* Total quantity
+* Due date
+* Priority
+* Production status
+* Current stage
+* Primary next action
+
+Actions:
+
+* Open Project
+* View Production Sheet
+* Download Production Punch Sheet
+* Update Status
+* Mark Complete / Move Forward
+
+---
+
+## MOCKUP REQUIREMENT
+
+Every queue item should attempt to show the primary project mockup.
+
+Use the same hierarchy already implemented elsewhere:
+
+1. Approved line-item mockup
+2. Latest line-item mockup
+3. Product image
+4. Initial fallback
+
+Production workers should be able to visually recognize the job.
+
+---
+
+## PRODUCTION PUNCH SHEET INTEGRATION
+
+The new Project Document System already supports Production Punch Sheet mode.
+
+Production Queue must expose that directly.
+
+Add actions:
+
+* View Punch Sheet
+* Download Punch Sheet
+
+This should use the existing Project Document template in PRODUCTION mode.
+
+Do not create a separate punch sheet system.
+
+---
+
+## STATUS / STAGE WORKFLOW
+
+Queue items should support production-specific statuses/stages.
+
+At minimum:
+
+* Accepted
+* In Production
+* On Hold
+* Completed
+
+If existing statuses differ, map them cleanly.
+
+Do not expose confusing backend-only statuses.
+
+---
+
+## METRICS
+
+Keep the existing top metrics, but make sure they reflect real production status:
+
+* In Workflow
+* Production
+* On Hold
+* Completed
+
+Metrics should use the standard light-gray metric section styling used throughout Katalyst OS.
+
+---
+
+## VIEWS
+
+Keep existing tabs:
+
+* Board
+* Queue
+* Calendar
+* Analytics
+
+But Queue must be the production-ready list/card experience.
+
+If Board is not functional yet, do not focus there.
+
+This sprint is Queue only.
+
+---
+
+## LAYOUT DIRECTION
+
+Preferred queue layout:
+
+Enriched rows or compact cards.
+
+Each item should be visually scannable.
+
+Avoid huge empty whitespace.
+
+Avoid raw spreadsheet styling.
+
+Use:
+
+* Black section/table headers
+* Orange primary actions
+* Status pills
+* Mockup thumbnails
+* Clean spacing
+
+---
+
+## VALIDATION
+
+Test with current visible projects:
+
+* P-1009 Project Name
+* P-1008 Team Shirts
+
+Verify both show:
+
+* correct project number
+* correct name
+* correct organization
+* correct service type
+* correct quantity
+* correct due date
+* correct status
+* production actions
+* punch sheet access
+
+---
+
+## OUTPUT
+
+Return:
+
+1. Files changed
+2. Components changed
+3. Queue layout changes
+4. Mockup integration
+5. Punch sheet integration
+6. Status mapping
+7. Validation results
+8. Desktop screenshot
+9. Mobile screenshot
+
+Implement.
+
+Do not audit.
+
+Do not leave the Queue view as a basic table.
+
+Make the Production Queue actually usable for printshop production work.
