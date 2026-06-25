@@ -9,6 +9,7 @@ import {
   Platform,
   Linking,
   useWindowDimensions,
+  Image,
 } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import ProjectDocument from '@/components/ProjectDocument';
@@ -234,7 +235,11 @@ export default function ClientQuoteView() {
 
       {/* Top bar */}
       <View style={s.topBar}>
-        <Text style={s.logoText}>KATALYST KO</Text>
+        <Image
+          source={require('../../../assets/images/ko-logo-horizontal.png')}
+          style={s.topBarLogo}
+          resizeMode="contain"
+        />
         <Text style={s.logoSub}>Quote Summary</Text>
       </View>
 
@@ -496,9 +501,9 @@ const SIDEBAR_W = 288;
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: BG },
 
-  topBar: { backgroundColor: '#000', paddingHorizontal: 24, paddingVertical: 14 },
-  logoText: { color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 2 },
-  logoSub: { color: BRAND, fontSize: 10, fontWeight: '600', letterSpacing: 1, marginTop: 1 },
+  topBar: { backgroundColor: '#000', paddingHorizontal: 24, paddingVertical: 12 },
+  topBarLogo: { width: 200, height: 40 },
+  logoSub: { color: BRAND, fontSize: 10, fontWeight: '600', letterSpacing: 1, marginTop: 4 },
 
   scroll:       { flexGrow: 1, padding: 32 },
   scrollMobile: { flexGrow: 1, padding: 16 },

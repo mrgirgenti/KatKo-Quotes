@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { useSignUp, useSSO } from '@clerk/clerk-expo';
 import { useRouter, Link } from 'expo-router';
@@ -113,9 +114,11 @@ export default function SignUpScreen() {
     return (
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
-          <View style={styles.logoBadge}>
-            <Text style={styles.logoText}>KK</Text>
-          </View>
+          <Image
+            source={require('../assets/images/ko-logo.png')}
+            style={styles.logoBadge}
+            resizeMode="cover"
+          />
           <Text style={styles.title}>Check your email</Text>
           <Text style={styles.subtitle}>We sent a verification code to {email}</Text>
 
@@ -238,8 +241,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.border,
     ...(Platform.OS === 'web' ? { boxShadow: '0 10px 30px rgba(0,0,0,0.08)' } as any : {}),
   },
-  logoBadge: { alignSelf: 'center', width: 56, height: 56, borderRadius: 14, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  logoText: { color: Colors.light.primary, fontSize: 22, fontWeight: '800' },
+  logoBadge: { alignSelf: 'center', width: 80, height: 80, borderRadius: 16, overflow: 'hidden', marginBottom: 16 },
   title: { fontSize: 26, fontWeight: '800', color: Colors.light.text, textAlign: 'center' },
   subtitle: { fontSize: 14, color: Colors.light.textSecondary, textAlign: 'center', marginTop: 4, marginBottom: 24 },
   googleBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, height: 48, borderRadius: 10, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: '#fff' },

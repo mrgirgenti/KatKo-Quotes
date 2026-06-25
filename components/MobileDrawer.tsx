@@ -14,7 +14,7 @@ import { SB, SidebarNav, ProfileFooter, NewQuoteButton, KK_SIDEBAR_DATASET } fro
 import { useUser } from '@/contexts/UserContext';
 
 const DRAWER_W = 280;
-const FALLBACK_LOGO_URI = '/katalyst-logo.png';
+const FALLBACK_LOGO_URI = '/ko-logo-horizontal.png';
 
 const SAFE_TOP = Platform.OS === 'web' ? 12 : 44;
 

@@ -11,5 +11,5 @@ export const COMPANY = {
   addressLines: ['921 S Val Vista Dr Unit 116', 'Mesa, Arizona 85204', 'United States'],
   // Absolute URL works in every context (native expo-print, web iframe, downloaded html).
   logoUrl: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/4xwcbfcj6r2usqk7tds89',
-  logoFallback: '/katalyst-logo.png',
+  logoFallback: '/ko-logo-horizontal.png',
 } as const;

@@ -41,7 +41,7 @@ import {
 } from '@/utils/quoteCalculations';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 
-const LOGO_URI = '/katalyst-logo.png';
+const LOGO_URI = '/ko-logo-horizontal.png';
 
 const createEmptyLineItem = (): LineItem => ({
   id: generateId(),
