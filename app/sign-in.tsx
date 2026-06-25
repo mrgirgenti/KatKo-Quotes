@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { useSignIn, useSSO } from '@clerk/clerk-expo';
 import { useRouter, Link } from 'expo-router';
@@ -208,9 +209,11 @@ export default function SignInScreen() {
   return (
     <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
       <View style={styles.card}>
-        <View style={styles.logoBadge}>
-          <Text style={styles.logoText}>KK</Text>
-        </View>
+        <Image
+          source={require('../assets/images/ko-logo.png')}
+          style={styles.logoBadge}
+          resizeMode="cover"
+        />
 
         {/* ── MFA step ─────────────────────────────────────────────────── */}
         {mfaStep ? (
@@ -385,15 +388,12 @@ const styles = StyleSheet.create({
   },
   logoBadge: {
     alignSelf: 'center',
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-    backgroundColor: '#000',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    overflow: 'hidden',
     marginBottom: 16,
   },
-  logoText: { color: Colors.light.primary, fontSize: 22, fontWeight: '800' },
   title: { fontSize: 26, fontWeight: '800', color: Colors.light.text, textAlign: 'center' },
   subtitle: {
     fontSize: 14,
