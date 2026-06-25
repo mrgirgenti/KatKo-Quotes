@@ -38,6 +38,7 @@ import {
 import Colors from '@/constants/colors';
 import { useCrm } from '@/contexts/CrmContext';
 import { Organization, Contact } from '@/types/crm';
+import { formatPhone } from '@/utils/phone';
 import { OrgAvatar } from '@/components/OrgAvatar';
 import { metricValueStyle, metricLabelStyle, metricValueStyleMobile, metricLabelStyleMobile } from '@/components/Metric';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -81,6 +82,7 @@ type HubStats = {
   status: HubStatusKey;
   primaryName: string | null;
   primaryEmail: string | null;
+  primaryPhone: string | null;
   inviteDetails: InviteDetail[];
 };
 
@@ -120,6 +122,7 @@ function computeHubStats(org: Organization, now: number): HubStats {
 
   const primary = getPrimaryContact(org);
   const primaryName = primary ? `${primary.firstName} ${primary.lastName}`.trim() || null : null;
+  const primaryPhone = primary?.phone ? formatPhone(primary.phone) : null;
 
   const inviteDetails: InviteDetail[] = contacts
     .filter((c) => c.inviteSentAt || c.hubStatus === 'Invited' || c.hubStatus === 'Active')
@@ -142,6 +145,7 @@ function computeHubStats(org: Organization, now: number): HubStats {
     status,
     primaryName,
     primaryEmail: primary?.email || null,
+    primaryPhone,
     inviteDetails,
   };
 }
@@ -171,8 +175,8 @@ function matchesChip(chip: ChipId, s: HubStats): boolean {
 type SortField = 'name' | 'contact' | 'users' | 'lastLogin' | 'invites' | 'status';
 const AVATAR_W = 44;
 const CHECKBOX_W = 36;
-const COL = { contact: 148, email: 178, users: 80, lastLogin: 118, invites: 88, status: 138, actions: 120 };
-const TABLE_MIN_W = 1150;
+const COL = { contact: 148, email: 178, phone: 148, users: 80, lastLogin: 118, invites: 88, status: 138, actions: 120 };
+const TABLE_MIN_W = 1300;
 
 const INVITE_STATUS_CFG: Record<InviteStatus, { color: string; bg: string; border: string; Icon: any; label: string }> = {
   Pending:  { color: '#B45309', bg: '#FEF3C7', border: '#FCD34D', Icon: Clock,        label: 'Pending' },
@@ -314,6 +318,11 @@ function HubRow({
       <View style={styles.colEmail}>
         {stats.primaryEmail
           ? <Text style={styles.tableCell} numberOfLines={1}>{stats.primaryEmail}</Text>
+          : <Text style={styles.tableDim}>—</Text>}
+      </View>
+      <View style={styles.colPhone}>
+        {stats.primaryPhone
+          ? <Text style={styles.tableCell} numberOfLines={1}>{stats.primaryPhone}</Text>
           : <Text style={styles.tableDim}>—</Text>}
       </View>
       <View style={styles.colUsers}>
@@ -544,6 +553,7 @@ export default function ClientHubsScreen() {
       <View style={styles.colOrg}><SortBtn field="name" label="Organization" /></View>
       <View style={styles.colContact}><SortBtn field="contact" label="Org Admin" /></View>
       <View style={styles.colEmail}><Text style={styles.thText}>Admin Email</Text></View>
+      <View style={styles.colPhone}><Text style={styles.thText}>Admin Phone</Text></View>
       <View style={styles.colUsers}><SortBtn field="users" label="Users" /></View>
       <View style={styles.colInvites}><SortBtn field="invites" label="Invited" /></View>
       <View style={styles.colStatus}><SortBtn field="status" label="Hub Status" /></View>
@@ -794,6 +804,7 @@ const styles = StyleSheet.create({
   colOrg: { flex: 1, minWidth: 140, maxWidth: 260, paddingRight: 12 },
   colContact: { width: COL.contact, paddingRight: 8 },
   colEmail: { width: COL.email, paddingRight: 8 },
+  colPhone: { width: COL.phone, paddingRight: 8 },
   colUsers: { width: COL.users },
   colInvites: { width: COL.invites },
   colStatus: { width: COL.status },
