@@ -162,17 +162,33 @@ export function ProductionQueueCard({ project, isSelected, onSelect, onSetStatus
       <View style={s.infoCol}>
         <Text style={s.projectName} numberOfLines={2}>{project.projectName || '—'}</Text>
         <Text style={s.orgName} numberOfLines={1}>{project.personOrganization || '—'}</Text>
+      </View>
+
+      {/* Service column */}
+      <View style={s.serviceCol}>
+        <Text style={s.colLabel}>SERVICE</Text>
         <View style={s.metaRow}>
           <ServiceIcon size={12} color={Colors.light.textSecondary} />
-          <Text style={s.metaText} numberOfLines={1}>{svcLabel}</Text>
+          <Text style={s.colValue} numberOfLines={2}>{svcLabel}</Text>
         </View>
-        <View style={s.metaRow}>
-          <Text style={s.metaText}>{totalPieces(project) || '—'} Pieces</Text>
-          {sizeRange !== '—' && <>
-            <View style={s.metaDot} />
-            <Text style={s.metaText}>{sizeRange}</Text>
-          </>}
-        </View>
+      </View>
+
+      {/* Due Date column */}
+      <View style={s.dueDateCol}>
+        <Text style={s.colLabel}>DUE DATE</Text>
+        <Text style={s.dueDateText}>{dueInfo.text}</Text>
+        {dueInfo.daysText ? (
+          <View style={[s.daysBadge, { backgroundColor: dueInfo.isOverdue ? '#FEE2E2' : '#FFF3E8' }]}>
+            <Text style={[s.daysText, { color: dueInfo.isOverdue ? '#DC2626' : '#FF5A00' }]}>{dueInfo.daysText}</Text>
+          </View>
+        ) : null}
+      </View>
+
+      {/* PCS column */}
+      <View style={s.pcsCol}>
+        <Text style={s.colLabel}>PCS</Text>
+        <Text style={s.pcsValue}>{totalPieces(project) || '—'}</Text>
+        {sizeRange !== '—' && <Text style={s.colMuted} numberOfLines={1}>{sizeRange}</Text>}
       </View>
 
       {/* Garment + Locations column */}
@@ -198,13 +214,6 @@ export function ProductionQueueCard({ project, isSelected, onSelect, onSetStatus
         <OperationalStatusControl status={opStatus} onChange={onSetStatus} align="right" />
         <Text style={[s.colLabel, { marginTop: 10 }]}>PRIORITY</Text>
         <PriorityControl priority={priority} onChange={onSetPriority} small align="right" />
-        <Text style={[s.colLabel, { marginTop: 10 }]}>DUE DATE</Text>
-        <Text style={s.dueDateText}>{dueInfo.text}</Text>
-        {dueInfo.daysText ? (
-          <View style={[s.daysBadge, { backgroundColor: dueInfo.isOverdue ? '#FEE2E2' : '#FFF3E8' }]}>
-            <Text style={[s.daysText, { color: dueInfo.isOverdue ? '#DC2626' : '#FF5A00' }]}>{dueInfo.daysText}</Text>
-          </View>
-        ) : null}
       </View>
 
       {/* Actions column */}
@@ -253,12 +262,15 @@ const s = StyleSheet.create({
   mockupCountBadge: { position: 'absolute', bottom: 8, left: 8, backgroundColor: 'rgba(0,0,0,0.65)', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   mockupCountText: { fontSize: 9, fontWeight: '700', color: '#fff', letterSpacing: 0.3 },
 
-  infoCol: { flex: 1, padding: 14, justifyContent: 'center', gap: 4, minWidth: 160 },
+  infoCol: { flex: 1, padding: 14, justifyContent: 'center', gap: 4, minWidth: 140 },
   projectName: { fontSize: 15, fontWeight: '800', color: Colors.light.text, lineHeight: 20 },
   orgName: { fontSize: 12, color: Colors.light.textSecondary, fontWeight: '500' },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
-  metaText: { fontSize: 11, color: Colors.light.textSecondary },
-  metaDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: Colors.light.textSecondary },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
+
+  serviceCol: { width: 120, padding: 12, justifyContent: 'flex-start', borderLeftWidth: 1, borderLeftColor: Colors.light.border },
+  dueDateCol: { width: 110, padding: 12, justifyContent: 'flex-start', borderLeftWidth: 1, borderLeftColor: Colors.light.border },
+  pcsCol: { width: 72, padding: 12, justifyContent: 'flex-start', borderLeftWidth: 1, borderLeftColor: Colors.light.border },
+  pcsValue: { fontSize: 22, fontWeight: '800', color: Colors.light.text, lineHeight: 26 },
 
   garmentCol: { width: 140, padding: 12, justifyContent: 'flex-start', borderLeftWidth: 1, borderLeftColor: Colors.light.border },
   colLabel: { fontSize: 9, fontWeight: '700', color: Colors.light.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 },
@@ -268,14 +280,14 @@ const s = StyleSheet.create({
   locationPill: { backgroundColor: '#F3F4F6', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   locationPillText: { fontSize: 10, fontWeight: '600', color: '#374151' },
 
-  statusCol: { width: 155, padding: 12, justifyContent: 'flex-start', borderLeftWidth: 1, borderLeftColor: Colors.light.border },
+  statusCol: { width: 150, padding: 12, justifyContent: 'flex-start', borderLeftWidth: 1, borderLeftColor: Colors.light.border },
   statusPill: { borderRadius: DS.radius.pill, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 2, alignSelf: 'flex-start' },
   statusPillText: { fontSize: 10, fontWeight: '700' },
   dueDateText: { fontSize: 12, fontWeight: '600', color: Colors.light.text, marginBottom: 3 },
   daysBadge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, alignSelf: 'flex-start' },
   daysText: { fontSize: 10, fontWeight: '700' },
 
-  actionsCol: { width: 160, padding: 12, justifyContent: 'center', gap: 6, borderLeftWidth: 1, borderLeftColor: Colors.light.border },
+  actionsCol: { width: 185, padding: 12, justifyContent: 'center', gap: 6, borderLeftWidth: 1, borderLeftColor: Colors.light.border },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 8, borderRadius: DS.radius.sm, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: Colors.light.background },
   actionBtnText: { fontSize: 11, fontWeight: '600', color: Colors.light.text },
   primaryActionBtn: { paddingHorizontal: 10, paddingVertical: 9, borderRadius: DS.radius.sm, backgroundColor: Colors.light.tint, alignItems: 'center' },
