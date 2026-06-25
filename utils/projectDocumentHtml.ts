@@ -304,8 +304,8 @@ function styles(): string {
 
     /* Header */
     .doc-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
-    .doc-logo{flex:0 0 auto;width:34%}
-    .logo-img{max-width:240px;width:100%;height:auto;object-fit:contain}
+    .doc-logo{flex:0 0 auto;width:34%;background:#111;border-radius:6px;padding:12px 16px;display:flex;align-items:center}
+    .logo-img{max-width:300px;width:100%;height:auto;object-fit:contain}
     .doc-contact{flex:1 1 auto;padding-top:6px;font-size:12px;color:#222}
     .contact-row{display:flex;align-items:flex-start;gap:7px;margin-bottom:6px}
     .contact-row svg{flex:0 0 auto;margin-top:1px}

@@ -135,6 +135,20 @@ Never render a raw `.phone` field directly — always pipe it through a `utils/p
 - **`isAdmin` Context Evaluation**: Be mindful of asynchronous `UserContext` initialization; `isAdmin` checks should account for `currentUser=null` state.
 - **Expo Router Navigation with Server IDs**: When creating new records, navigate using the server-returned UUID (`onSuccess: (saved) => router.push(/quote/${saved.id})`) instead of client-generated IDs or blind timeouts.
 
+## Brand Assets
+
+### PRIMARY LOGO — Non-Negotiable
+The **horizontal "KATALYST KO | KO." wordmark** (`ko-logo-horizontal.png`) is the primary brand asset going forward. It must appear in the upper-left of every document: Quote, Invoice, Production Punch Sheet, and any future documents.
+
+- **Bundled file**: `assets/images/ko-logo-horizontal.png` (for React Native `<Image require()>`)
+- **Public URL**: `public/ko-logo-horizontal.png` → served at `/ko-logo-horizontal.png`
+- **PDF/document embed**: `constants/logoDataUri.ts` exports `KO_LOGO_HORIZONTAL_URI` — a base64 data URI of the same file, used by `constants/company.ts → COMPANY.logoUrl` so the logo renders in every PDF context (native expo-print, web print dialog, downloaded HTML, iframes) without any network dependency.
+- **Sidebar / UI**: `COMPANY.logoFallback = '/ko-logo-horizontal.png'` — used when no org logo is uploaded.
+
+The square **KO. flag icon** (`ko-logo.png`) is for auth page icon badges (sign-in, sign-up, forgot-password) only.
+
+Do not use the old R2 CDN URL or old pennant-style Katalyst Ko logo anywhere.
+
 ## Pointers
 
 - **Expo Router Docs**: [https://docs.expo.dev/router/introduction/](https://docs.expo.dev/router/introduction/)
