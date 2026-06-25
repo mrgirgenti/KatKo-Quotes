@@ -46,17 +46,17 @@ function getPrimaryContact(org: Organization): Contact | undefined {
   return org.contacts.find((c) => c.isPrimary) ?? org.contacts[0];
 }
 
-type HubStatusKey = 'Active' | 'Inactive' | 'Disabled' | 'Setup Required';
+type HubStatusKey = 'Active' | 'Pending' | 'Disabled' | 'Invite Needed';
 
 const HUB_STATUS_CFG: Record<HubStatusKey, { label: string; color: string; bg: string; border: string; dot: string; Icon: any }> = {
-  'Active':        { label: 'Active',        color: '#15803D', bg: '#DCFCE7', border: '#86EFAC', dot: '#16A34A', Icon: ShieldCheck },
-  'Inactive':      { label: 'Inactive',      color: '#6B7280', bg: '#F3F4F6', border: '#E5E7EB', dot: '#9CA3AF', Icon: UserX },
-  'Disabled':      { label: 'Disabled',      color: '#B91C1C', bg: '#FEE2E2', border: '#FCA5A5', dot: '#EF4444', Icon: Ban },
-  'Setup Required':{ label: 'Setup Required',color: '#4338CA', bg: '#EEF2FF', border: '#C7D2FE', dot: '#6366F1', Icon: Wrench },
+  'Active':       { label: 'Active',       color: '#15803D', bg: '#DCFCE7', border: '#86EFAC', dot: '#16A34A', Icon: ShieldCheck },
+  'Pending':      { label: 'Pending',      color: '#B45309', bg: '#FEF3C7', border: '#FCD34D', dot: '#D97706', Icon: Clock },
+  'Disabled':     { label: 'Disabled',     color: '#B91C1C', bg: '#FEE2E2', border: '#FCA5A5', dot: '#EF4444', Icon: Ban },
+  'Invite Needed':{ label: 'Invite Needed',color: '#6B7280', bg: '#F3F4F6', border: '#E5E7EB', dot: '#9CA3AF', Icon: UserX },
 };
 
 const HUB_STATUS_RANK: Record<HubStatusKey, number> = {
-  'Active': 0, 'Inactive': 1, 'Setup Required': 2, 'Disabled': 3,
+  'Active': 0, 'Pending': 1, 'Invite Needed': 2, 'Disabled': 3,
 };
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -115,8 +115,8 @@ function computeHubStats(org: Organization, now: number): HubStats {
   let status: HubStatusKey;
   if (!org.hubEnabled) status = 'Disabled';
   else if (activeCount > 0) status = 'Active';
-  else if (users.length > 0) status = 'Inactive';
-  else status = 'Setup Required';
+  else if (users.length > 0) status = 'Pending';
+  else status = 'Invite Needed';
 
   const primary = getPrimaryContact(org);
   const primaryName = primary ? `${primary.firstName} ${primary.lastName}`.trim() || null : null;
@@ -160,19 +160,19 @@ function fmtDateStr(s: string | null) {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-type ChipId = 'All' | 'Active' | 'Inactive' | 'Setup Required' | 'Disabled';
-const CHIPS: ChipId[] = ['All', 'Active', 'Inactive', 'Setup Required', 'Disabled'];
+type ChipId = 'All' | 'Active' | 'Pending' | 'Invite Needed' | 'Disabled';
+const CHIPS: ChipId[] = ['All', 'Active', 'Pending', 'Invite Needed', 'Disabled'];
 
 function matchesChip(chip: ChipId, s: HubStats): boolean {
   if (chip === 'All') return true;
   return s.status === chip;
 }
 
-type SortField = 'name' | 'users' | 'lastLogin' | 'invites' | 'status';
+type SortField = 'name' | 'contact' | 'users' | 'lastLogin' | 'invites' | 'status';
 const AVATAR_W = 44;
 const CHECKBOX_W = 36;
-const COL = { users: 80, lastLogin: 118, invites: 88, status: 138, actions: 120 };
-const TABLE_MIN_W = 836;
+const COL = { contact: 148, email: 178, users: 80, lastLogin: 118, invites: 88, status: 138, actions: 120 };
+const TABLE_MIN_W = 1150;
 
 const INVITE_STATUS_CFG: Record<InviteStatus, { color: string; bg: string; border: string; Icon: any; label: string }> = {
   Pending:  { color: '#B45309', bg: '#FEF3C7', border: '#FCD34D', Icon: Clock,        label: 'Pending' },
@@ -181,7 +181,7 @@ const INVITE_STATUS_CFG: Record<InviteStatus, { color: string; bg: string; borde
 };
 
 function HubStatusBadge({ status }: { status: HubStatusKey }) {
-  const cfg = HUB_STATUS_CFG[status];
+  const cfg = HUB_STATUS_CFG[status] ?? HUB_STATUS_CFG['Invite Needed'];
   const Icon = cfg.Icon;
   return (
     <View style={[styles.hubBadge, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
@@ -305,9 +305,16 @@ function HubRow({
       </View>
       <View style={styles.colOrg}>
         <Text style={styles.tableOrgName} numberOfLines={1}>{org.name}</Text>
+      </View>
+      <View style={styles.colContact}>
         {stats.primaryName
-          ? <Text style={styles.tableSub} numberOfLines={1}>{stats.primaryName}{stats.primaryEmail ? ` · ${stats.primaryEmail}` : ''}</Text>
-          : <Text style={styles.tableSubDim} numberOfLines={1}>No primary contact</Text>}
+          ? <Text style={styles.tableCell} numberOfLines={1}>{stats.primaryName}</Text>
+          : <Text style={styles.tableDim}>—</Text>}
+      </View>
+      <View style={styles.colEmail}>
+        {stats.primaryEmail
+          ? <Text style={styles.tableCell} numberOfLines={1}>{stats.primaryEmail}</Text>
+          : <Text style={styles.tableDim}>—</Text>}
       </View>
       <View style={styles.colUsers}>
         {stats.userCount > 0 ? (
@@ -316,11 +323,6 @@ function HubRow({
             <Text style={styles.usersPillText}>{stats.userCount}</Text>
           </View>
         ) : <Text style={styles.tableDim}>—</Text>}
-      </View>
-      <View style={styles.colLastLogin}>
-        {last
-          ? <Text style={styles.tableCell} numberOfLines={1}>{last}</Text>
-          : <Text style={styles.tableDim}>Never</Text>}
       </View>
       <View style={styles.colInvites}>
         {!hasInvites ? (
@@ -347,6 +349,11 @@ function HubRow({
       </View>
       <View style={styles.colStatus}>
         <HubStatusBadge status={stats.status} />
+      </View>
+      <View style={styles.colLastLogin}>
+        {last
+          ? <Text style={styles.tableCell} numberOfLines={1}>{last}</Text>
+          : <Text style={styles.tableDim}>Never</Text>}
       </View>
       <View style={styles.colActions}>
         {org.hubEnabled ? (
@@ -427,11 +434,11 @@ export default function ClientHubsScreen() {
   }, [decorated]);
 
   const chipCounts = useMemo(() => {
-    const c: Record<ChipId, number> = { 'All': decorated.length, 'Active': 0, 'Inactive': 0, 'Setup Required': 0, 'Disabled': 0 };
+    const c: Record<ChipId, number> = { 'All': decorated.length, 'Active': 0, 'Pending': 0, 'Invite Needed': 0, 'Disabled': 0 };
     for (const s of decorated) {
       if (matchesChip('Active', s)) c['Active'] += 1;
-      if (matchesChip('Inactive', s)) c['Inactive'] += 1;
-      if (matchesChip('Setup Required', s)) c['Setup Required'] += 1;
+      if (matchesChip('Pending', s)) c['Pending'] += 1;
+      if (matchesChip('Invite Needed', s)) c['Invite Needed'] += 1;
       if (matchesChip('Disabled', s)) c['Disabled'] += 1;
     }
     return c;
@@ -461,6 +468,7 @@ export default function ClientHubsScreen() {
       let cmp = 0;
       switch (sortField) {
         case 'name': cmp = nameOf(a).localeCompare(nameOf(b)); break;
+        case 'contact': cmp = (a.primaryName || '').localeCompare(b.primaryName || ''); break;
         case 'users': cmp = a.userCount - b.userCount; break;
         case 'lastLogin': cmp = (a.lastLogin ?? 0) - (b.lastLogin ?? 0); break;
         case 'invites': cmp = a.invitedCount - b.invitedCount; break;
@@ -534,10 +542,12 @@ export default function ClientHubsScreen() {
       </TouchableOpacity>
       <View style={styles.colAvatar} />
       <View style={styles.colOrg}><SortBtn field="name" label="Organization" /></View>
+      <View style={styles.colContact}><SortBtn field="contact" label="Org Admin" /></View>
+      <View style={styles.colEmail}><Text style={styles.thText}>Admin Email</Text></View>
       <View style={styles.colUsers}><SortBtn field="users" label="Users" /></View>
-      <View style={styles.colLastLogin}><SortBtn field="lastLogin" label="Last Login" /></View>
       <View style={styles.colInvites}><SortBtn field="invites" label="Invited" /></View>
       <View style={styles.colStatus}><SortBtn field="status" label="Hub Status" /></View>
+      <View style={styles.colLastLogin}><SortBtn field="lastLogin" label="Last Login" /></View>
       <Text style={[styles.thText, styles.colActionsHeader]}>ACTIONS</Text>
     </View>
   );
@@ -781,11 +791,13 @@ const styles = StyleSheet.create({
   bulkActionText: { fontSize: 12, fontWeight: '600' as const, color: 'rgba(255,255,255,0.85)' },
 
   colAvatar: { width: AVATAR_W },
-  colOrg: { flex: 1, minWidth: 160, maxWidth: 300, paddingRight: 12 },
+  colOrg: { flex: 1, minWidth: 140, maxWidth: 260, paddingRight: 12 },
+  colContact: { width: COL.contact, paddingRight: 8 },
+  colEmail: { width: COL.email, paddingRight: 8 },
   colUsers: { width: COL.users },
-  colLastLogin: { width: COL.lastLogin },
   colInvites: { width: COL.invites },
   colStatus: { width: COL.status },
+  colLastLogin: { width: COL.lastLogin },
   colActions: { flexDirection: 'row', alignItems: 'center', gap: 6, width: COL.actions, justifyContent: 'flex-end' },
   colActionsHeader: { width: COL.actions, textAlign: 'right' as const },
 
