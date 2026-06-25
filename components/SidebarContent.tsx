@@ -325,10 +325,10 @@ const styles = StyleSheet.create({
   },
   badgePill: {
     backgroundColor: '#FF5A00',
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    paddingHorizontal: 5,
+    borderRadius: 11,
+    minWidth: 21,
+    height: 21,
+    paddingHorizontal: 6,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
@@ -336,10 +336,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   badgePillText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700' as const,
     color: '#fff',
-    lineHeight: 14,
+    lineHeight: 16,
   },
   badgePillTextActive: {
     color: '#FF5A00',

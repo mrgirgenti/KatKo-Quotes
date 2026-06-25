@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import {
   Search, X, CheckCircle, Eye, ExternalLink,
   AlertTriangle, MessageCircle, Bell, Settings,
-  ChevronLeft, ChevronRight, SlidersHorizontal, RefreshCw, Paperclip,
+  ChevronLeft, ChevronRight, RefreshCw, Paperclip,
   Building2, FolderOpen, Hash, Calendar, Flag, FileText,
 } from 'lucide-react-native';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -64,7 +64,7 @@ const ACTION_CTA: Record<ActionType, string> = {
   PDF_GENERATION_FAILED:       'Open Quote',
 };
 
-type FilterKey = 'all' | 'new' | 'viewed' | 'resolved' | ActionCategory;
+type FilterKey = 'all' | 'new' | 'resolved' | ActionCategory;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -206,63 +206,14 @@ function DrawerPanel({
 
       <ScrollView style={s.drawerScroll} showsVerticalScrollIndicator={false}>
 
-        {/* OVERVIEW section */}
-        <View style={s.drawerSection}>
-          <View style={s.drawerSecHead}><Text style={s.drawerSecTitle}>Overview</Text></View>
-          <View style={s.drawerSecBody}>
-            {(item.organizationName || item.projectTitle) ? (
-              <View style={s.drawerGrid}>
-                {item.organizationName ? (
-                  <View style={s.drawerGridCell}>
-                    <View style={s.drawerGridIconRow}>
-                      <Building2 size={12} color="#9CA3AF" />
-                      <Text style={s.drawerGridLabel}>Organization</Text>
-                    </View>
-                    <Text style={s.drawerGridValue} numberOfLines={2}>{item.organizationName}</Text>
-                  </View>
-                ) : null}
-                {item.projectTitle ? (
-                  <View style={s.drawerGridCell}>
-                    <View style={s.drawerGridIconRow}>
-                      <FolderOpen size={12} color="#9CA3AF" />
-                      <Text style={s.drawerGridLabel}>Project</Text>
-                    </View>
-                    <Text style={s.drawerGridValue} numberOfLines={2}>{item.projectTitle}</Text>
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
-            <View style={s.drawerGrid}>
-              {item.projectNumber ? (
-                <View style={s.drawerGridCell}>
-                  <View style={s.drawerGridIconRow}>
-                    <Hash size={12} color="#9CA3AF" />
-                    <Text style={s.drawerGridLabel}>Quote / Project #</Text>
-                  </View>
-                  <Text style={s.drawerGridValue}>{item.projectNumber}</Text>
-                </View>
-              ) : null}
-              <View style={s.drawerGridCell}>
-                <View style={s.drawerGridIconRow}>
-                  <View style={[s.dot, { backgroundColor: PRIORITY_DOT[item.priority] ?? '#6B7280' }]} />
-                  <Text style={s.drawerGridLabel}>Priority</Text>
-                </View>
-                <Text style={[s.drawerGridValue, { color: PRIORITY_DOT[item.priority] ?? '#6B7280' }]}>
-                  {PRIORITY_LABEL[item.priority] ?? item.priority}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* DETAILS section */}
+        {/* DETAILS section — single consolidated panel */}
         <View style={s.drawerSection}>
           <View style={s.drawerSecHead}><Text style={s.drawerSecTitle}>Details</Text></View>
           <View style={s.drawerSecBody}>
             <View style={s.drawerIconRow}>
-              <Calendar size={14} color="#9CA3AF" />
-              <Text style={s.drawerIconLabel}>Date / Time</Text>
-              <Text style={s.drawerIconValue}>{fullDate(item.createdAt)}</Text>
+              <FileText size={14} color="#9CA3AF" />
+              <Text style={s.drawerIconLabel}>Action Type</Text>
+              <Text style={s.drawerIconValue}>{ACTION_TYPE_LABEL[item.type]}</Text>
             </View>
             <View style={s.drawerIconRow}>
               <Flag size={14} color="#9CA3AF" />
@@ -274,11 +225,27 @@ function DrawerPanel({
                 </Text>
               </View>
             </View>
-            <View style={s.drawerIconRow}>
-              <FileText size={14} color="#9CA3AF" />
-              <Text style={s.drawerIconLabel}>Action Type</Text>
-              <Text style={s.drawerIconValue}>{ACTION_TYPE_LABEL[item.type]}</Text>
-            </View>
+            {item.organizationName ? (
+              <View style={s.drawerIconRow}>
+                <Building2 size={14} color="#9CA3AF" />
+                <Text style={s.drawerIconLabel}>Organization</Text>
+                <Text style={s.drawerIconValue} numberOfLines={2}>{item.organizationName}</Text>
+              </View>
+            ) : null}
+            {item.projectTitle ? (
+              <View style={s.drawerIconRow}>
+                <FolderOpen size={14} color="#9CA3AF" />
+                <Text style={s.drawerIconLabel}>Project</Text>
+                <Text style={s.drawerIconValue} numberOfLines={2}>{item.projectTitle}</Text>
+              </View>
+            ) : null}
+            {item.projectNumber ? (
+              <View style={s.drawerIconRow}>
+                <Hash size={14} color="#9CA3AF" />
+                <Text style={s.drawerIconLabel}>Quote / Project #</Text>
+                <Text style={s.drawerIconValue}>{item.projectNumber}</Text>
+              </View>
+            ) : null}
             {requestedByName ? (
               <View style={s.drawerIconRow}>
                 <MessageCircle size={14} color="#9CA3AF" />
@@ -289,6 +256,11 @@ function DrawerPanel({
                 </View>
               </View>
             ) : null}
+            <View style={s.drawerIconRow}>
+              <Calendar size={14} color="#9CA3AF" />
+              <Text style={s.drawerIconLabel}>Date / Time</Text>
+              <Text style={s.drawerIconValue}>{fullDate(item.createdAt)}</Text>
+            </View>
           </View>
         </View>
 
@@ -380,12 +352,10 @@ export default function ActionCenterScreen() {
   const [page, setPage] = useState(1);
   const [selectedItem, setSelectedItem] = useState<ActionItemWithContext | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [showFiltersPanel, setShowFiltersPanel] = useState(false);
 
   const filtered = useMemo(() => {
     let items = [...actions];
-    if (filter === 'new')     items = items.filter(a => a.status === 'NEW');
-    else if (filter === 'viewed')   items = items.filter(a => a.status === 'VIEWED');
+    if (filter === 'new')          items = items.filter(a => a.status === 'NEW');
     else if (filter === 'resolved') items = items.filter(a => a.status === 'RESOLVED');
     else if (filter !== 'all') items = items.filter(a => ACTION_CATEGORY[a.type] === filter);
 
@@ -471,16 +441,6 @@ export default function ActionCenterScreen() {
               </TouchableOpacity>
             ) : null}
           </View>
-          {!isMobile && (
-            <TouchableOpacity
-              style={[s.headerBtn, showFiltersPanel && s.headerBtnActive]}
-              onPress={() => setShowFiltersPanel(v => !v)}
-              activeOpacity={0.8}
-            >
-              <SlidersHorizontal size={14} color={showFiltersPanel ? BRAND : '#374151'} />
-              <Text style={[s.headerBtnText, showFiltersPanel && { color: BRAND }]}>Filters</Text>
-            </TouchableOpacity>
-          )}
           <TouchableOpacity
             style={s.markAllBtn}
             onPress={() => markAllRead()}
@@ -968,15 +928,6 @@ const s = StyleSheet.create({
   },
   drawerFooterSecondaryText: { fontSize: 13, fontWeight: '600', color: '#374151' },
 
-  // Drawer 2-column grid
-  drawerGrid: { flexDirection: 'row', gap: 16, marginBottom: 10 },
-  drawerGridCell: { flex: 1, minWidth: 0 },
-  drawerGridIconRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 3 },
-  drawerGridLabel: {
-    fontSize: 9, fontWeight: '700', color: '#9CA3AF',
-    textTransform: 'uppercase', letterSpacing: 0.6,
-  },
-  drawerGridValue: { fontSize: 13, fontWeight: '600', color: '#111' },
   drawerGridSub: { fontSize: 11, color: '#6B7280', marginTop: 2 },
 
   // Drawer icon rows (DETAILS section)
