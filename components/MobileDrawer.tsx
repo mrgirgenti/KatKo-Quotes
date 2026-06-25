@@ -52,7 +52,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           <Menu size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.topTitle} numberOfLines={1}>
-          Katalyst Ko Printshop
+          Katalyst Ko OS
         </Text>
       </View>
 

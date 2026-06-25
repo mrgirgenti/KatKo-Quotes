@@ -84,7 +84,7 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
         </TouchableOpacity>
         {!collapsed && (
           <Text style={styles.businessName} numberOfLines={1}>
-            Katalyst Ko Printshop
+            Katalyst Ko OS
           </Text>
         )}
       </View>
