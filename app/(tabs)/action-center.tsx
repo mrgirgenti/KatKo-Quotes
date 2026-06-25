@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, TextInput,
   ScrollView, Modal, Pressable, ActivityIndicator, Linking,
@@ -352,6 +352,9 @@ export default function ActionCenterScreen() {
   const [page, setPage] = useState(1);
   const [selectedItem, setSelectedItem] = useState<ActionItemWithContext | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [userDismissed, setUserDismissed] = useState(false);
+  const initialAutoSelectDoneRef = useRef(false);
+  const filterAutoSelectSkipFirstRef = useRef(true);
 
   const filtered = useMemo(() => {
     let items = [...actions];
@@ -376,6 +379,7 @@ export default function ActionCenterScreen() {
 
   const setFilterAndReset = useCallback((f: FilterKey) => {
     setFilter(f); setPage(1); setSearch('');
+    setUserDismissed(false);
   }, []);
 
   const openItem = useCallback((item: ActionItemWithContext) => {
@@ -387,6 +391,7 @@ export default function ActionCenterScreen() {
   const closeDrawer = useCallback(() => {
     setDrawerOpen(false);
     setSelectedItem(null);
+    setUserDismissed(true);
   }, []);
 
   const handleMarkResolved = useCallback(() => {
@@ -397,6 +402,38 @@ export default function ActionCenterScreen() {
     if (item.projectId) router.push(`/quote/${item.projectId}` as any);
     else if (item.organizationId) router.push(`/crm/${item.organizationId}` as any);
   }, [router]);
+
+  // ── Auto-select: initial load (fires when actions first arrive from server) ─
+  useEffect(() => {
+    if (initialAutoSelectDoneRef.current) return;
+    if (userDismissed) return;
+    if (filtered.length === 0) return;
+    initialAutoSelectDoneRef.current = true;
+    const top = filtered[0];
+    setSelectedItem(top);
+    setDrawerOpen(true);
+    if (top.status === 'NEW') markViewed(top.id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered]);
+
+  // ── Auto-select: filter pill / stat card change (skips the mount call) ──────
+  useEffect(() => {
+    if (filterAutoSelectSkipFirstRef.current) {
+      filterAutoSelectSkipFirstRef.current = false;
+      return;
+    }
+    if (userDismissed) return;
+    const top = filtered[0];
+    if (top) {
+      setSelectedItem(top);
+      setDrawerOpen(true);
+      if (top.status === 'NEW') markViewed(top.id);
+    } else {
+      setDrawerOpen(false);
+      setSelectedItem(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter]);
 
   const FILTERS: { key: FilterKey; label: string; count?: number }[] = [
     { key: 'all',               label: 'All' },
