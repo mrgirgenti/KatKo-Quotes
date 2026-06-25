@@ -1,12 +1,10 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Platform } from 'react-native';
 import {
-  LayoutGrid,
-  List,
-  CalendarDays,
-  BarChart3,
-  Check,
-  X,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView,
+  TextInput, Platform,
+} from 'react-native';
+import {
+  LayoutGrid, List, CalendarDays, BarChart3, Check, X,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -18,6 +16,8 @@ import { ProductionFilterBar } from '@/components/production/ProductionFilterBar
 import type { SavedViewItem } from '@/components/production/ProductionFilterBar';
 import { ProductionBoard } from '@/components/production/ProductionBoard';
 import { ProductionQueue } from '@/components/production/ProductionQueue';
+import { ProductionCalendar } from '@/components/production/ProductionCalendar';
+import { ProductionDetailPanel } from '@/components/production/ProductionDetailPanel';
 import {
   EMPTY_FILTERS,
   filterProjects,
@@ -26,15 +26,15 @@ import {
 } from '@/lib/production';
 import type { ProductionFilters, SortField, SortDir, BuiltInView } from '@/lib/production';
 import { useProductionViews } from '@/hooks/useProductionViews';
-import type { ProductionViewType, ProductionView } from '@/hooks/useProductionViews';
-import type { OperationalProjectStatus, ProjectPriority } from '@/types/quote';
+import type { ProductionView } from '@/hooks/useProductionViews';
+import type { Quote, OperationalProjectStatus, ProjectPriority } from '@/types/quote';
 
 type TabKey = 'board' | 'queue' | 'calendar' | 'analytics';
 
 const TABS: { key: TabKey; label: string; Icon: any; soon?: boolean }[] = [
   { key: 'board', label: 'Board', Icon: LayoutGrid },
   { key: 'queue', label: 'Queue', Icon: List },
-  { key: 'calendar', label: 'Calendar', Icon: CalendarDays, soon: true },
+  { key: 'calendar', label: 'Calendar', Icon: CalendarDays },
   { key: 'analytics', label: 'Analytics', Icon: BarChart3, soon: true },
 ];
 
@@ -45,10 +45,13 @@ const TAB_LABELS: Record<TabKey, string> = {
   analytics: 'Analytics',
 };
 
+const DETAIL_PANEL_WIDTH = 400;
+
 export default function ProductionScreen() {
   const { productionProjects, setOperationalStatus, setPriority, setAssignee } = useQuotes();
   const { users, currentUserId } = useUser();
   const { views, defaultViewId, loaded, saveView, deleteView, setDefaultView } = useProductionViews();
+  const { isDesktop } = useBreakpoint();
 
   const [tab, setTab] = useState<TabKey>('board');
   const [filters, setFilters] = useState<ProductionFilters>(EMPTY_FILTERS);
@@ -58,9 +61,12 @@ export default function ProductionScreen() {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [newViewName, setNewViewName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<ProductionView | null>(null);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // Built-in presets always available, merged with user-saved custom views.
+  const [selectedProject, setSelectedProject] = useState<Quote | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
+    const d = new Date(); d.setDate(1); return d;
+  });
+
   const builtInViews = useMemo(() => buildDefaultViews(currentUserId ?? null), [currentUserId]);
   const allViews = useMemo<(ProductionView | BuiltInView)[]>(() => [...builtInViews, ...views], [builtInViews, views]);
   const viewItems = useMemo<SavedViewItem[]>(
@@ -84,13 +90,11 @@ export default function ProductionScreen() {
     if (v) applyView(v);
   }, [allViews, applyView]);
 
-  // Apply the remembered default view once on load.
   useEffect(() => {
     if (loaded && !appliedDefault) {
       if (resolvedDefault) applyView(resolvedDefault);
       setAppliedDefault(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, appliedDefault, resolvedDefault]);
 
   const handleSort = useCallback((field: SortField) => {
@@ -118,29 +122,6 @@ export default function ProductionScreen() {
     (filters.due !== 'all' ? 1 : 0) +
     (filters.rush ? 1 : 0);
 
-  // Bulk selection (Queue). Selection is derived from / clamped to the full
-  // visible dataset so it stays valid as filters change.
-  const visibleIds = useMemo(() => visibleProjects.map((q) => q.id), [visibleProjects]);
-
-  useEffect(() => {
-    setSelectedIds((prev) => prev.filter((id) => visibleIds.includes(id)));
-  }, [visibleIds]);
-
-  const toggleSelect = useCallback((quoteId: string) => {
-    setSelectedIds((prev) => (prev.includes(quoteId) ? prev.filter((id) => id !== quoteId) : [...prev, quoteId]));
-  }, []);
-
-  const toggleSelectAll = useCallback(() => {
-    setSelectedIds((prev) => (prev.length === visibleIds.length ? [] : [...visibleIds]));
-  }, [visibleIds]);
-
-  const clearSelection = useCallback(() => setSelectedIds([]), []);
-
-  const bulkSetStatus = useCallback((status: OperationalProjectStatus) => {
-    selectedIds.forEach((quoteId) => setOperationalStatus({ quoteId, status }));
-    setSelectedIds([]);
-  }, [selectedIds, setOperationalStatus]);
-
   const handleSaveView = () => {
     const name = newViewName.trim();
     if (!name) return;
@@ -149,7 +130,6 @@ export default function ProductionScreen() {
     setSaveDialogOpen(false);
   };
 
-  // Stats for the header.
   const stats = useMemo(() => {
     const all = productionProjects;
     return {
@@ -160,14 +140,31 @@ export default function ProductionScreen() {
     };
   }, [productionProjects]);
 
+  const handleSetStatus = useCallback((quoteId: string, status: OperationalProjectStatus) => {
+    setOperationalStatus({ quoteId, status });
+    setSelectedProject((prev) => prev?.id === quoteId ? { ...prev, operationalStatus: status } : prev);
+  }, [setOperationalStatus]);
+
+  const handleSetPriority = useCallback((quoteId: string, priority: ProjectPriority) => {
+    setPriority({ quoteId, priority });
+    setSelectedProject((prev) => prev?.id === quoteId ? { ...prev, priority } : prev);
+  }, [setPriority]);
+
+  const handleSelectProject = useCallback((q: Quote | null) => {
+    setSelectedProject(q);
+  }, []);
+
+  const hasDetailPanel = !!selectedProject && (tab === 'queue' || tab === 'calendar');
+  const showPanelInline = hasDetailPanel && isDesktop;
+
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.title}>Production</Text>
         </View>
 
-        {/* Stats Bar */}
         <View style={styles.statsBar}>
           <Stat value={stats.total} label="In Workflow" color={Colors.light.text} />
           <View style={styles.statDivider} />
@@ -178,7 +175,6 @@ export default function ProductionScreen() {
           <Stat value={stats.completed} label="Completed" color="#16A34A" />
         </View>
 
-        {/* View tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
           {TABS.map(({ key, label, Icon, soon }) => {
             const active = tab === key;
@@ -186,7 +182,7 @@ export default function ProductionScreen() {
               <TouchableOpacity
                 key={key}
                 style={[styles.tab, active && styles.tabActive]}
-                onPress={() => setTab(key)}
+                onPress={() => { setTab(key); if (key !== tab) setSelectedProject(null); }}
               >
                 <Icon size={15} color={active ? Colors.light.tint : Colors.light.textSecondary} />
                 <Text style={[styles.tabText, active && styles.tabTextActive]}>{label}</Text>
@@ -200,7 +196,7 @@ export default function ProductionScreen() {
           })}
         </ScrollView>
 
-        {(tab === 'board' || tab === 'queue') ? (
+        {(tab === 'board' || tab === 'queue' || tab === 'calendar') ? (
           <ProductionFilterBar
             filters={filters}
             onChange={setFilters}
@@ -219,34 +215,51 @@ export default function ProductionScreen() {
         ) : null}
       </View>
 
-      {tab === 'board' ? (
-        <ProductionBoard
-          projects={visibleProjects}
-          users={users}
-          onSetStatus={(quoteId, status: OperationalProjectStatus) => setOperationalStatus({ quoteId, status })}
-          onSetPriority={(quoteId, priority: ProjectPriority) => setPriority({ quoteId, priority })}
-        />
-      ) : tab === 'queue' ? (
-        <ProductionQueue
-          projects={visibleProjects}
-          users={users}
-          sortField={sortField}
-          sortDir={sortDir}
-          onSort={handleSort}
-          selectedIds={selectedIds}
-          onToggleSelect={toggleSelect}
-          onToggleSelectAll={toggleSelectAll}
-          onBulkSetStatus={bulkSetStatus}
-          onClearSelection={clearSelection}
-          onSetStatus={(quoteId, status) => setOperationalStatus({ quoteId, status })}
-          onSetPriority={(quoteId, priority) => setPriority({ quoteId, priority })}
-          onSetAssignee={(quoteId, assignedToUserId) => setAssignee({ quoteId, assignedToUserId })}
-        />
-      ) : (
-        <ComingSoon tab={tab} />
-      )}
+      {/* Content area */}
+      <View style={[styles.contentRow, showPanelInline && { paddingRight: DETAIL_PANEL_WIDTH }]}>
+        {/* Main content */}
+        <View style={{ flex: 1 }}>
+          {tab === 'board' ? (
+            <ProductionBoard
+              projects={visibleProjects}
+              users={users}
+              onSetStatus={(quoteId, status: OperationalProjectStatus) => handleSetStatus(quoteId, status)}
+              onSetPriority={(quoteId, priority: ProjectPriority) => handleSetPriority(quoteId, priority)}
+            />
+          ) : tab === 'queue' ? (
+            <ProductionQueue
+              projects={visibleProjects}
+              selectedId={selectedProject?.id ?? null}
+              onSelectProject={handleSelectProject}
+              onSetStatus={handleSetStatus}
+              onSetPriority={handleSetPriority}
+            />
+          ) : tab === 'calendar' ? (
+            <ProductionCalendar
+              projects={visibleProjects}
+              selectedId={selectedProject?.id ?? null}
+              onSelectProject={handleSelectProject}
+              currentMonth={calendarMonth}
+              onChangeMonth={setCalendarMonth}
+            />
+          ) : (
+            <ComingSoon tab={tab} />
+          )}
+        </View>
 
-      {/* Save view dialog */}
+        {/* Detail panel — inline on desktop, modal on mobile (handled inside component) */}
+        {hasDetailPanel && (
+          <View style={showPanelInline ? styles.detailPanelFixed : { flex: 0 }}>
+            <ProductionDetailPanel
+              project={selectedProject}
+              onClose={() => setSelectedProject(null)}
+              onSetStatus={(status) => handleSetStatus(selectedProject.id, status)}
+              onSetPriority={(priority) => handleSetPriority(selectedProject.id, priority)}
+            />
+          </View>
+        )}
+      </View>
+
       {saveDialogOpen ? (
         <SaveViewDialog
           name={newViewName}
@@ -282,20 +295,8 @@ function Stat({ value, label, color }: { value: number; label: string; color: st
   );
 }
 
-function SaveViewDialog({
-  name,
-  onChangeName,
-  onCancel,
-  onSave,
-  viewType,
-  filterCount,
-}: {
-  name: string;
-  onChangeName: (v: string) => void;
-  onCancel: () => void;
-  onSave: () => void;
-  viewType: string;
-  filterCount: number;
+function SaveViewDialog({ name, onChangeName, onCancel, onSave, viewType, filterCount }: {
+  name: string; onChangeName: (v: string) => void; onCancel: () => void; onSave: () => void; viewType: string; filterCount: number;
 }) {
   return (
     <View style={styles.dialogOverlay}>
@@ -331,18 +332,15 @@ function SaveViewDialog({
 }
 
 function ComingSoon({ tab }: { tab: TabKey }) {
-  const isCalendar = tab === 'calendar';
-  const Icon = isCalendar ? CalendarDays : BarChart3;
+  const Icon = BarChart3;
   return (
     <View style={styles.comingSoon}>
       <View style={styles.comingSoonIcon}>
         <Icon size={40} color={Colors.light.tint} />
       </View>
-      <Text style={styles.comingSoonTitle}>{isCalendar ? 'Production Calendar' : 'Production Analytics'}</Text>
+      <Text style={styles.comingSoonTitle}>Production Analytics</Text>
       <Text style={styles.comingSoonText}>
-        {isCalendar
-          ? 'A scheduling calendar that plots projects by due date and capacity is on the way.'
-          : 'Throughput, cycle-time and bottleneck analytics for your production pipeline are coming next.'}
+        Throughput, cycle-time and bottleneck analytics for your production pipeline are coming next.
       </Text>
       <View style={styles.comingSoonPill}>
         <Text style={styles.comingSoonPillText}>COMING SOON</Text>
@@ -356,9 +354,6 @@ const styles = StyleSheet.create({
   header: { backgroundColor: Colors.light.surface, borderBottomWidth: 1, borderBottomColor: Colors.light.border, paddingTop: Platform.OS === 'web' ? 0 : 48 },
   headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: DS.spacing.xl, paddingTop: DS.spacing.xl, paddingBottom: DS.spacing.md },
   title: { fontSize: 24, fontWeight: '800', color: Colors.light.text },
-
-  viewsBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, height: 40, borderRadius: DS.radius.md, borderWidth: 1.5, borderColor: Colors.light.tint, backgroundColor: '#FFF4EE' },
-  viewsBtnText: { fontSize: 14, fontWeight: '700', color: Colors.light.tint },
 
   statsBar: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginHorizontal: DS.spacing.lg, marginBottom: DS.spacing.md, backgroundColor: '#EBEBEB', borderRadius: 12, padding: 16 },
   statItem: { flex: 1, minWidth: 120, borderRadius: 10, paddingVertical: 14, paddingHorizontal: 12, backgroundColor: Colors.light.surface, alignItems: 'center' },
@@ -377,14 +372,19 @@ const styles = StyleSheet.create({
   soonBadge: { backgroundColor: '#E5E7EB', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 },
   soonBadgeText: { fontSize: 8, fontWeight: '800', color: Colors.light.textSecondary, letterSpacing: 0.5 },
 
-  menuItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 11 },
-  menuItemText: { flex: 1, fontSize: 13, fontWeight: '600', color: Colors.light.text },
-  menuDivider: { height: 1, backgroundColor: Colors.light.border, marginVertical: 2 },
-  menuEmpty: { fontSize: 12, color: Colors.light.textSecondary, paddingHorizontal: 12, paddingVertical: 10 },
-  viewItemRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 4, gap: 6 },
-  viewItemMain: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 7, gap: 8 },
-  viewItemMeta: { fontSize: 11, color: Colors.light.textSecondary, fontWeight: '600' },
-  viewItemIcon: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
+  contentRow: { flex: 1, position: 'relative' },
+
+  detailPanelFixed: {
+    position: 'absolute' as any,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: DETAIL_PANEL_WIDTH,
+    backgroundColor: Colors.light.surface,
+    borderLeftWidth: 1,
+    borderLeftColor: Colors.light.border,
+    ...(Platform.OS === 'web' ? { boxShadow: '-2px 0 12px rgba(0,0,0,0.08)' } as any : {}),
+  },
 
   dialogOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24 },
   dialogCard: { width: '100%', maxWidth: 420, backgroundColor: Colors.light.surface, borderRadius: DS.radius.xxl, padding: 20, gap: 12 },

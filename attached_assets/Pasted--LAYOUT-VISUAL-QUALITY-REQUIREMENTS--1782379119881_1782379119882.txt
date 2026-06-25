@@ -1,0 +1,153 @@
+====================================================
+LAYOUT & VISUAL QUALITY REQUIREMENTS
+====================================================
+
+This is a production-ready UI.
+
+Do not simply make the functionality work.
+
+The visual execution is equally important.
+
+Before considering this implementation complete, perform a full visual review of the page.
+
+----------------------------------------------------
+SPACING
+----------------------------------------------------
+
+Eliminate unnecessary whitespace.
+
+Do not leave:
+
+• empty columns
+• unused flex space
+• oversized gutters
+• uneven margins
+• excessive padding
+• dead areas between panels
+• awkward vertical gaps
+
+Every section should intentionally occupy its available space.
+
+The interface should feel balanced and dense without feeling crowded.
+
+----------------------------------------------------
+ALIGNMENT
+----------------------------------------------------
+
+Verify all major elements align consistently.
+
+Examples:
+
+• metric cards align with the content below
+• section headers align with card edges
+• cards align vertically
+• action buttons align horizontally
+• detail panel sections share consistent spacing
+• image sizes remain consistent
+• typography baselines align
+
+Nothing should appear visually offset.
+
+----------------------------------------------------
+BLACK SECTION HEADERS
+----------------------------------------------------
+
+Continue using the Katalyst design language.
+
+Every major information section should use the standard black header bar with white text.
+
+Examples:
+
+PRODUCTION
+
+PRODUCT
+
+DECORATION
+
+FILES
+
+NOTES
+
+CHECKLIST
+
+TODAY
+
+TOMORROW
+
+NEXT 7 DAYS
+
+OVERDUE
+
+Do not invent alternative section styles.
+
+Reuse the existing header component already used throughout:
+
+• Organization Details
+• Client Hub
+• Order Details
+• Media sections
+• Document layouts
+
+Maintain one consistent visual language across the application.
+
+----------------------------------------------------
+VISUAL HIERARCHY
+----------------------------------------------------
+
+The user's eye should naturally flow:
+
+Metrics
+
+↓
+
+Production Queue
+
+↓
+
+Selected Job
+
+↓
+
+Actions
+
+Information should become progressively more detailed from left to right.
+
+Avoid presenting everything with equal visual weight.
+
+----------------------------------------------------
+RESPONSIVE QUALITY
+----------------------------------------------------
+
+Desktop, tablet, and mobile should each feel intentionally designed.
+
+Do not rely solely on automatic wrapping.
+
+Review each breakpoint independently.
+
+Adjust:
+
+• spacing
+• padding
+• image sizing
+• typography
+• card proportions
+
+for each layout.
+
+----------------------------------------------------
+PRODUCTION READINESS REVIEW
+----------------------------------------------------
+
+Before marking this task complete, review the page as though shipping it to a paying customer.
+
+Ask:
+
+• Does any section feel unfinished?
+• Does any area contain dead space?
+• Are any components misaligned?
+• Is every major section clearly separated?
+• Does it visually match the quality of Client Hub and Organization Details?
+
+If the answer to any of those questions is "no," continue refining before considering the implementation complete.
+
+This sprint is not complete until the interface feels polished, cohesive, and production-ready—not merely functional.

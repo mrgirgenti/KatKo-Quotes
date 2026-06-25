@@ -1,0 +1,504 @@
+Production Module Redesign — Queue + Calendar Workflow Experience
+
+STOP.
+
+Do not audit.
+
+Do not roadmap.
+
+Do not iterate on the existing table.
+
+This is a full redesign of the Production module's Queue and Calendar views.
+
+The attached mockup is now the source of truth.
+
+The current Queue view is a CRM table pretending to be a production system.
+
+That architecture is fundamentally wrong.
+
+We are replacing it with a production-first workflow built specifically for an apparel print shop.
+
+The existing Production Board view can remain for now.
+
+This sprint is ONLY:
+
+• Queue
+• Calendar
+
+====================================================
+OVERALL GOAL
+====================================================
+
+Production is not CRM.
+
+Production is not Sales.
+
+Production is not Accounting.
+
+Production exists for one purpose:
+
+Help production staff quickly determine:
+
+• What needs produced
+• In what order
+• Using which artwork
+• On which garments
+• By what due date
+• Using what production method
+
+Every design decision should support those goals.
+
+====================================================
+QUEUE VIEW
+====================================================
+
+Replace the current spreadsheet table.
+
+Do NOT simply enrich the existing table.
+
+Build the Queue using production workflow cards grouped chronologically.
+
+Structure:
+
+TODAY
+
+Project Card
+
+Project Card
+
+------------------------------------------------
+
+TOMORROW
+
+Project Card
+
+------------------------------------------------
+
+NEXT 7 DAYS
+
+Project Card
+
+------------------------------------------------
+
+ON HOLD
+
+Project Card
+
+------------------------------------------------
+
+OVERDUE
+
+Project Card
+
+Each section should collapse/expand independently.
+
+Display badge counts beside each section title.
+
+====================================================
+PROJECT CARD
+====================================================
+
+Every project card should span the available width.
+
+Cards should feel like production work orders.
+
+LEFT SIDE
+
+• Primary Mockup
+• Additional mockup count badge
+• Project Number
+• Project Name
+• Organization
+• Service Type icon + label
+• Total Quantity
+• Garment Size Range
+
+If multiple line items exist:
+
+Show:
+
++3 Mockups
+
+using the existing mockup hierarchy.
+
+====================================================
+CENTER INFORMATION
+====================================================
+
+Garment
+
+Example:
+
+NL6210 Next Level
+
+Color
+
+Army Green
+
+Locations
+
+Front
+
+Back
+
+Sleeve
+
+Decoration
+
+Direct To Film
+
+Embroidery
+
+Screen Printing
+
+etc.
+
+====================================================
+PRODUCTION STATUS
+====================================================
+
+Replace generic status pills with production checkpoints.
+
+Example:
+
+✓ Artwork Approved
+
+✓ Payment Complete
+
+✓ Garments Received
+
+○ Ready For Production
+
+○ Printing
+
+○ Quality Control
+
+○ Complete
+
+These should be compact horizontal indicators.
+
+Not giant cards.
+
+====================================================
+RIGHT ACTIONS
+====================================================
+
+Primary Button
+
+Start Production
+
+or
+
+Move to Production
+
+depending on current stage.
+
+Secondary
+
+View Punch Sheet
+
+Open Project
+
+Overflow Menu
+
+Everything else.
+
+====================================================
+DETAIL PANEL
+====================================================
+
+Selecting any project opens the right-side detail panel.
+
+Do NOT navigate away.
+
+The panel should reuse the Action Center interaction model.
+
+Panel sections:
+
+HEADER
+
+Mockup
+
+Project Number
+
+Project Name
+
+Organization
+
+Due Date
+
+Days Remaining
+
+Status Badge
+
+------------------------------------------------
+
+PRODUCTION
+
+Service Type
+
+Priority
+
+Current Status
+
+------------------------------------------------
+
+PRODUCT
+
+Garment
+
+Color
+
+Sizes
+
+------------------------------------------------
+
+DECORATION
+
+Locations
+
+Dimensions
+
+Ink / Thread Colors
+
+------------------------------------------------
+
+FILES
+
+Production Punch Sheet
+
+Mockups
+
+Artwork Files
+
+------------------------------------------------
+
+NOTES
+
+Customer Notes
+
+Internal Production Notes
+
+------------------------------------------------
+
+CHECKLIST
+
+Artwork Approved
+
+Garments Received
+
+Ready For Production
+
+Printing
+
+Quality Control
+
+Complete
+
+------------------------------------------------
+
+BOTTOM ACTIONS
+
+Move To Production
+
+Open Punch Sheet
+
+====================================================
+PUNCH SHEET
+====================================================
+
+Do NOT build another punch sheet.
+
+Reuse the Project Document System.
+
+Launch Production mode directly.
+
+====================================================
+MOCKUPS
+====================================================
+
+Mockups should always attempt:
+
+Approved Mockup
+
+↓
+
+Latest Mockup
+
+↓
+
+Product Image
+
+↓
+
+Fallback Initial
+
+Never display empty image boxes if alternatives exist.
+
+====================================================
+CALENDAR VIEW
+====================================================
+
+Calendar is NOT a generic calendar.
+
+It is a production schedule.
+
+Month view.
+
+Each production day displays:
+
+Project thumbnail
+
+Project name
+
+Due date
+
+Priority color
+
+Clicking an event opens the SAME right-side detail panel.
+
+Do not create a different details experience.
+
+====================================================
+MOBILE
+====================================================
+
+Queue
+
+Use compact production cards.
+
+Maintain mockups.
+
+Cards remain visual.
+
+Calendar
+
+Agenda-style schedule.
+
+Tap opens bottom-sheet detail panel.
+
+Reuse desktop information hierarchy.
+
+====================================================
+VISUAL STYLE
+====================================================
+
+Match Katalyst OS.
+
+Use:
+
+Black headers
+
+Orange primary actions
+
+Light gray backgrounds
+
+Rounded cards
+
+Consistent typography
+
+Consistent spacing
+
+The module should feel identical to:
+
+Client Hub
+
+Organization Details
+
+Action Center
+
+Project Detail
+
+====================================================
+DO NOT INCLUDE
+====================================================
+
+No CRM spreadsheet layout.
+
+No giant data grid.
+
+No tiny unreadable columns.
+
+No excessive whitespace.
+
+No duplicated navigation.
+
+No separate punch sheet implementation.
+
+====================================================
+VALIDATION
+====================================================
+
+Verify using existing projects.
+
+Test:
+
+Single mockup
+
+Multiple mockups
+
+Multiple line items
+
+DTF
+
+Screen Print
+
+Embroidery
+
+Missing mockups
+
+Future due dates
+
+Today
+
+Overdue
+
+On Hold
+
+Confirm:
+
+✓ Queue groups chronologically
+
+✓ Cards display correctly
+
+✓ Detail panel functions
+
+✓ Punch sheet launches correctly
+
+✓ Calendar opens same detail panel
+
+✓ Mobile layout works
+
+====================================================
+OUTPUT
+====================================================
+
+Return:
+
+1. Files changed
+
+2. Components changed
+
+3. Queue redesign summary
+
+4. Calendar redesign summary
+
+5. Detail panel implementation
+
+6. Mockup integration
+
+7. Punch sheet integration
+
+8. Mobile implementation
+
+9. Validation results
+
+10. Desktop screenshots
+
+11. Tablet screenshots
+
+12. Mobile screenshots
+
+Implement exactly as described.
+
+The attached mockup is the visual reference and should be followed as closely as practical.
