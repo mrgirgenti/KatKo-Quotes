@@ -1,0 +1,67 @@
+~/workspace$ # 1. Create an annotated recovery tag
+git tag -a v1-pre-force-sync -m "Recovery point before replacing stale Rork scaffold history"
+The tag message has been left in .git/TAG_EDITMSG
+fatal: cannot lock ref 'refs/tags/v1-pre-force-sync': Unable to create '/home/runner/workspace/.git/refs/tags/v1-pre-force-sync.lock': File exists.
+
+Another git process seems to be running in this repository, e.g.
+an editor opened by 'git commit'. Please make sure all processes
+are terminated then try again. If it still fails, a git process
+may have crashed in this repository earlier:
+remove the file manually to continue.
+~/workspace$ ps aux | grep git
+runner       606  0.0  0.0   6928  2404 pts/1    S+   18:22   0:00 /nix/store/l2wvwyg680h0v2la18hz3yiznxy2naqw-gnugrep-3.11/bin/grep --color=auto git
+~/workspace$ rm -f .git/refs/tags/v1-pre-force-sync.lock
+~/workspace$ ls -la .git/refs/tags
+total 0
+drwxr-xr-x 1 runner runner  0 Jun 26 18:23 .
+drwxr-xr-x 1 runner runner 44 Mar 20 20:05 ..
+~/workspace$ git tag -l
+~/workspace$ git tag -a v1-pre-force-sync -m "Recovery point before replacing stale Rork scaffold history"
+~/workspace$ git tag -l "v1-pre-force-sync"
+v1-pre-force-sync
+~/workspace$ git push origin v1-pre-force-sync
+Enumerating objects: 5078, done.
+Counting objects: 100% (5078/5078), done.
+Delta compression using up to 2 threads
+Compressing objects: 100% (1679/1679), done.
+Writing objects: 100% (5041/5041), 61.16 MiB | 33.33 MiB/s, done.
+Total 5041 (delta 3313), reused 4743 (delta 3089), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (3313/3313), completed with 18 local objects.
+To https://github.com/mrgirgenti/KatKo-Quotes
+ * [new tag]         v1-pre-force-sync -> v1-pre-force-sync
+~/workspace$ git push --force-with-lease origin main
+Total 0 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/mrgirgenti/KatKo-Quotes
+ + 931cdf4...15dde79 main -> main (forced update)
+~/workspace$ git fetch origin
+
+git status
+
+git rev-parse HEAD
+
+git rev-parse origin/main
+
+git log --oneline --decorate -5
+
+git tag -l "v1-pre-force-sync"
+error: cannot lock ref 'refs/remotes/origin/HEAD': Unable to create '/home/runner/workspace/.git/refs/remotes/origin/HEAD.lock': File exists.
+
+Another git process seems to be running in this repository, e.g.
+an editor opened by 'git commit'. Please make sure all processes
+are terminated then try again. If it still fails, a git process
+may have crashed in this repository earlier:
+remove the file manually to continue.
+On branch main
+Your branch is up to date with 'origin/main'.
+
+nothing to commit, working tree clean
+15dde79642d60930341217f7200051be6b6a0e82
+15dde79642d60930341217f7200051be6b6a0e82
+15dde79 (HEAD -> main, tag: v1-pre-force-sync, origin/main, origin/HEAD, gitsafe-backup/main) Improve project card layout and equalize padding for better visual consistency
+9de98e5 Automatically display details when viewing actions and changing filters
+14644f9 Make compact project cards horizontally scrollable on desktop
+3223e96 feat: ProjectCard status-aware action buttons (Task #25)
+b45ef4d Update the company logo displayed on official documents
+v1-pre-force-sync
+~/workspace$ rm -f .git/refs/remotes/origin/HEAD.lock
+~/workspace$ 
