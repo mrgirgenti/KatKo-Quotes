@@ -516,24 +516,48 @@ export function ProjectCard({
           onPress={selectionMode ? (onToggleSelect ?? onPress) : onPress}
           activeOpacity={0.75}
         >
-          <View style={s.cmpHeader}>
-            <View style={s.cmpHeaderLeft}>
-              {checkbox}
-              <Text style={s.cmpRecordNum}>{pNum}</Text>
-              <View style={[s.cmpStatusBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
-                <Text style={[s.cmpStatusText, { color: cfg.color }]}>{cfg.label}</Text>
+          {/* Top section: mockup on left, info on right */}
+          <View style={s.cmpTopRow}>
+            {/* Mockup thumbnail */}
+            <View style={s.cmpThumbCol}>
+              {allMockupUris.length > 0 ? (
+                <Image
+                  source={{ uri: allMockupUris[0] }}
+                  style={s.cmpThumbImg}
+                  resizeMode="contain"
+                />
+              ) : (
+                <View style={s.cmpThumbFallback}>
+                  <Text style={s.cmpThumbInitial}>{thumbInitial}</Text>
+                </View>
+              )}
+              <View style={s.cmpProjBadge}>
+                <Text style={s.cmpProjBadgeTxt}>{pNum}</Text>
               </View>
             </View>
-            <ChevronRight size={14} color={Colors.light.textSecondary} />
+
+            {/* Info: status + name + org + priority */}
+            <View style={s.cmpInfoRight}>
+              <View style={s.cmpHeader}>
+                <View style={s.cmpHeaderLeft}>
+                  {checkbox}
+                  <View style={[s.cmpStatusBadge, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}>
+                    <Text style={[s.cmpStatusText, { color: cfg.color }]}>{cfg.label}</Text>
+                  </View>
+                </View>
+                <ChevronRight size={14} color={Colors.light.textSecondary} />
+              </View>
+              <Text style={s.cmpName} numberOfLines={1}>{quote.projectName || '—'}</Text>
+              {quote.personOrganization ? (
+                <Text style={s.cmpMeta} numberOfLines={1}>{quote.personOrganization}</Text>
+              ) : null}
+              <View style={s.cmpPriRow}>
+                <View style={[s.cmpPriDot, { backgroundColor: priCfg.color }]} />
+                <Text style={[s.cmpPriText, { color: priCfg.color }]}>{priCfg.label} Priority</Text>
+              </View>
+            </View>
           </View>
-          <Text style={s.cmpName} numberOfLines={1}>{quote.projectName || '—'}</Text>
-          {quote.personOrganization ? (
-            <Text style={s.cmpMeta} numberOfLines={1}>{quote.personOrganization}</Text>
-          ) : null}
-          <View style={s.cmpPriRow}>
-            <View style={[s.cmpPriDot, { backgroundColor: priCfg.color }]} />
-            <Text style={[s.cmpPriText, { color: priCfg.color }]}>{priCfg.label} Priority</Text>
-          </View>
+
           <View style={s.cmpMobileDataStrip}>
             <View style={s.cmpMobileDataCol}>
               <View style={s.cmpColLabelRow}>
@@ -573,15 +597,10 @@ export function ProjectCard({
   // ── Desktop compact — production-queue style horizontal row ───────────────
   if (compact) {
     return (
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={s.rowScrollContent}
-      >
-        <View style={s.row}>
+      <View style={s.row}>
         <Text style={s.queueNum}>#{queue}</Text>
         <TouchableOpacity
-          style={[s.deskCard, { minWidth: 840 }, isSelected && s.deskCardSelected]}
+          style={[s.deskCard, isSelected && s.deskCardSelected]}
           onPress={selectionMode ? (onToggleSelect ?? onPress) : onPress}
           activeOpacity={0.85}
         >
@@ -704,8 +723,7 @@ export function ProjectCard({
             onActionComplete={onActionComplete}
           />
         </TouchableOpacity>
-        </View>
-      </ScrollView>
+      </View>
     );
   }
 
@@ -915,6 +933,7 @@ const s = StyleSheet.create({
   // Status + Priority col
   statusCol: {
     width: 140,
+    flexShrink: 0,
     padding: 12,
     justifyContent: 'flex-start',
     borderLeftWidth: 1,
@@ -935,6 +954,7 @@ const s = StyleSheet.create({
   // Service col
   serviceCol: {
     width: 120,
+    flexShrink: 0,
     padding: 12,
     justifyContent: 'flex-start',
     borderLeftWidth: 1,
@@ -944,6 +964,7 @@ const s = StyleSheet.create({
   // Due Date col
   dueDateCol: {
     width: 110,
+    flexShrink: 0,
     padding: 12,
     justifyContent: 'flex-start',
     borderLeftWidth: 1,
@@ -956,6 +977,7 @@ const s = StyleSheet.create({
   // PCS col
   pcsCol: {
     width: 72,
+    flexShrink: 0,
     padding: 12,
     justifyContent: 'flex-start',
     borderLeftWidth: 1,
@@ -966,6 +988,7 @@ const s = StyleSheet.create({
   // Actions col — wider to accommodate secondary button + ellipsis row
   actionsCol: {
     width: 195,
+    flexShrink: 0,
     padding: 10,
     justifyContent: 'center',
     gap: 6,
@@ -1032,6 +1055,55 @@ const s = StyleSheet.create({
   },
 
   // ── Mobile compact card ──────────────────────────────────────────────────
+  cmpTopRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+  },
+  cmpThumbCol: {
+    width: 76,
+    height: 76,
+    borderRadius: 8,
+    backgroundColor: '#111',
+    overflow: 'hidden',
+    position: 'relative' as const,
+    flexShrink: 0,
+  },
+  cmpThumbImg: {
+    position: 'absolute' as const,
+    top: 0, left: 0, right: 0, bottom: 0,
+    width: '100%' as any,
+    height: '100%' as any,
+  },
+  cmpThumbFallback: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cmpThumbInitial: {
+    fontSize: 22,
+    fontWeight: '800' as const,
+    color: '#fff',
+  },
+  cmpProjBadge: {
+    position: 'absolute' as const,
+    top: 5,
+    left: 5,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 3,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+  cmpProjBadgeTxt: {
+    fontSize: 8,
+    fontWeight: '700' as const,
+    color: '#fff',
+  },
+  cmpInfoRight: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3,
+  },
   cmpCard: {
     flex: 1,
     backgroundColor: '#fff',
