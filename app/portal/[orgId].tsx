@@ -2039,7 +2039,8 @@ export default function ClientPortal() {
     ['NEEDS_REVIEW', 'QUOTING', 'QUOTED', 'QUOTE_SENT', 'INVOICE_SENT'].includes(normalizeStatus(p.status))
   );
   const activeProjects = orgProjects.filter(p =>
-    ['PAID', 'IN_PRODUCTION'].includes(normalizeStatus(p.status))
+    !['NEEDS_REVIEW', 'QUOTING', 'QUOTED', 'QUOTE_SENT', 'INVOICE_SENT',
+      'EXPIRED', 'CANCELLED'].includes(normalizeStatus(p.status))
   );
 
   function formatDate(d: string | null) {

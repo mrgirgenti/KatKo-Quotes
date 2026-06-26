@@ -95,6 +95,7 @@ import { apiFetch, getAuthHeaders } from '@/lib/apiFetch';
 import MediaCard from '@/components/MediaCard';
 import { FLAG_ORG_LAYOUT_V2 } from '@/constants/featureFlags';
 import { STATUS_CONFIG, getEffectiveStatus, QuoteStatus } from '@/types/quote';
+import { isQuoteStatus, isProjectStatus } from '@/utils/statusUtils';
 import {
   LEGACY_SERVICE_COLORS,
   LEGACY_FALLBACK_COLORS,
@@ -414,7 +415,7 @@ export default function OrgProfileScreen() {
 
   const activeQuotes = useMemo(() => {
     return relatedQuotes
-      .filter((q) => q.status === 'active' || q.status === 'production_started')
+      .filter((q) => isProjectStatus(q.status))
       .sort((a, b) => {
         const da = a.orderDate ? new Date(a.orderDate).getTime() : new Date(a.createdAt).getTime();
         const db = b.orderDate ? new Date(b.orderDate).getTime() : new Date(b.createdAt).getTime();
@@ -480,8 +481,8 @@ export default function OrgProfileScreen() {
 
   const submittedQuotesPool = useMemo(() => {
     return relatedQuotes.filter((q) => {
-      const s = q.status;
-      return s !== 'active' && s !== 'production_started' && s !== 'completed' && getEffectiveStatus(q) !== 'expired';
+      const eff = getEffectiveStatus(q);
+      return isQuoteStatus(eff) && eff !== 'draft' && eff !== 'expired';
     });
   }, [relatedQuotes]);
 

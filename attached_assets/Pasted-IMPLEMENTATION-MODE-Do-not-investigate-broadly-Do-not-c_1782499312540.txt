@@ -1,0 +1,195 @@
+IMPLEMENTATION MODE
+
+Do not investigate broadly.
+Do not create a plan.
+Do not analyze architecture.
+
+Implement the status filtering rules immediately.
+
+When complete, report:
+
+* Files changed
+* Components changed
+* What logic was updated
+* Confirmation that the rule is enforced application-wide
+
+---
+
+## PROJECTS VS QUOTES STATUS ENFORCEMENT
+
+I have found projects displaying in the wrong sections of the application because the UI is not consistently determining whether an item is a Quote or a Project.
+
+Example:
+
+A record with the status **Paid** is currently appearing in **Submitted Quotes** inside Organization Details.
+
+This is incorrect.
+
+"Paid" is a Project status, not a Quote status.
+
+It must appear under **Active Projects**.
+
+This should not be a one-off fix.
+
+Implement this as a universal rule anywhere Quotes and Projects are displayed.
+
+---
+
+## QUOTE STATUSES
+
+These statuses are ALWAYS Quotes:
+
+* Needs Review
+* Quoting
+* Quoted
+* Invoice Sent
+
+These records belong anywhere the application displays Quotes, including:
+
+* Submitted Quotes
+* Quote dashboards
+* Quote filters
+* Quote counts
+* Quote reports
+
+---
+
+## PROJECT STATUSES
+
+These statuses are ALWAYS Projects:
+
+* Paid
+* Ready for Production
+* In Production
+* On Hold
+* Completed
+* Reconciled
+
+These records belong anywhere the application displays Projects, including:
+
+* Active Projects
+* Production Board
+* Project dashboards
+* Project filters
+* Project counts
+* Reports
+
+---
+
+## BUSINESS RULE
+
+The transition is:
+
+Project Request
+↓
+Needs Review
+↓
+Quoting
+↓
+Quoted
+↓
+Invoice Sent
+
+Once payment is received, the record is no longer considered a Quote.
+
+It immediately becomes a Project.
+
+The first Project status is:
+
+Paid
+
+Everything after Paid is operational work.
+
+---
+
+## ORGANIZATION DETAILS PAGE
+
+The Organization Details page must enforce this rule.
+
+Submitted Quotes
+
+Show ONLY:
+
+* Needs Review
+* Quoting
+* Quoted
+* Invoice Sent
+
+Never show:
+
+* Paid
+* Ready for Production
+* In Production
+* On Hold
+* Completed
+* Reconciled
+
+---
+
+Active Projects
+
+Show ONLY:
+
+* Paid
+* Ready for Production
+* In Production
+* On Hold
+* Completed
+* Reconciled
+
+Never show Quote statuses.
+
+---
+
+## DO NOT HARDCODE
+
+Do not manually move records.
+
+Do not create one-off exceptions.
+
+Do not filter by screen.
+
+Instead, create a shared status classification utility so the entire application references a single source of truth.
+
+For example:
+
+isQuoteStatus(status)
+
+isProjectStatus(status)
+
+or an equivalent centralized helper.
+
+Every page should use this same logic.
+
+---
+
+## AUDIT
+
+Search the application for every place that filters or displays Quotes and Projects.
+
+Update every location to use the centralized status classification.
+
+This includes:
+
+* Organization Details
+* Client Hub
+* Dashboard widgets
+* Reports
+* Action Center
+* Production Board
+* Search results
+* Any summary cards or counters
+* Any future components that separate Quotes from Projects
+
+---
+
+## SUCCESS CRITERIA
+
+After implementation:
+
+* Paid and later statuses NEVER appear in Submitted Quotes.
+* Quote statuses NEVER appear in Active Projects.
+* Every page follows the exact same status rules.
+* Quote and Project counts are accurate.
+* No duplicate records appear.
+* The application has a single centralized source of truth for Quote vs Project classification.

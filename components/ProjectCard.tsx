@@ -24,6 +24,7 @@ import { useCrm } from '@/contexts/CrmContext';
 import { generateProjectDocumentPDF, printQuote } from '@/utils/pdfGenerator';
 import { exportSingleSaleToSheets } from '@/utils/googleSheetsExport';
 import { getAuthHeaders } from '@/lib/apiFetch';
+import { isQuoteStatus, isProjectStatus } from '@/utils/statusUtils';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -58,11 +59,11 @@ function getCtaLabel(quote: any): string {
 }
 
 function isActiveProject(status: string): boolean {
-  return ['active', 'production_started', 'completed'].includes(status);
+  return isProjectStatus(status);
 }
 
 function isSubmittedQuote(status: string): boolean {
-  return ['needs_review', 'quoting', 'quoted', 'invoice_sent'].includes(status);
+  return isQuoteStatus(status) && status !== 'draft' && status !== 'expired';
 }
 
 function Field({ label, value, accent }: { label: string; value: string; accent?: boolean }) {

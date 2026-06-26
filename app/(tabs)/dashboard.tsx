@@ -26,6 +26,7 @@ import { useCrm } from '@/contexts/CrmContext';
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { ServiceStyle, STATUS_CONFIG, getEffectiveStatus } from '@/types/quote';
+import { isProjectStatus } from '@/utils/statusUtils';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -37,7 +38,7 @@ export default function DashboardScreen() {
   const serviceCardsPerRow = isMobile ? 2 : isTablet ? 3 : 6;
 
   const stats = useMemo(() => {
-    const salesList = quotes.filter((q) => q.status === 'active' || q.status === 'completed');
+    const salesList = quotes.filter((q) => isProjectStatus(q.status));
     const activeQuotes = quotes.filter((q) => q.status === 'quoted');
     const totalRevenue = salesList.reduce(
       (sum, q) => sum + (q.salesData?.amountCollected ?? q.calculations?.total ?? 0),

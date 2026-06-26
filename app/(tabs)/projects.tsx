@@ -42,6 +42,7 @@ import { Quote, QuoteStatus, getEffectiveStatus, STATUS_CONFIG, OperationalProje
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
 import { generateAndSharePDF, printQuote } from '@/utils/pdfGenerator';
+import { isProjectStatus } from '@/utils/statusUtils';
 
 type SortField = 'date' | 'client' | 'total' | 'status' | 'inHands' | 'project' | 'invoice' | 'services' | 'pcs' | 'markup' | 'applicator' | 'perPcs';
 type SortDir = 'asc' | 'desc';
@@ -121,7 +122,7 @@ function ProjectRow({ quote, effectiveStatus, onPress, onDelete, onConvert, onRe
   const total = quote.calculations?.total ?? 0;
   const totalPcs = lineItemPcs.reduce((s: number, n: number) => s + n, 0);
   const perPcs = totalPcs > 0 ? total / totalPcs : null;
-  const isActive = effectiveStatus === 'active' || effectiveStatus === 'production_started';
+  const isActive = isProjectStatus(effectiveStatus);
   const isCompleted = effectiveStatus === 'completed';
 
   const openMenu = () => {
