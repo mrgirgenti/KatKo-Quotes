@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -462,10 +462,22 @@ const SIZE_LABELS: Record<SizeKey, string> = {
   xs: 'XS', s: 'SM', m: 'MD', l: 'LG', xl: 'XL', xxl: '2XL', xxxl: '3XL', xxxxl: '4XL',
 };
 
+interface CatalogProduct {
+  id: string;
+  styleNumber: string;
+  vendor: string;
+  brand: string;
+  name: string;
+  category: string | null;
+  subcategory: string | null;
+  colors: { id: string; colorCode: string; colorName: string; hex: string | null }[];
+}
+
 interface SizeRow {
   id: string;
   product: string;
   color: string;
+  productId?: string;
   xs: number; s: number; m: number; l: number;
   xl: number; xxl: number; xxxl: number; xxxxl: number;
 }
@@ -492,7 +504,7 @@ let _uid = 0;
 function uid() { return `p${++_uid}`; }
 
 function emptyRow(): SizeRow {
-  return { id: uid(), product: '', color: '', xs: 0, s: 0, m: 0, l: 0, xl: 0, xxl: 0, xxxl: 0, xxxxl: 0 };
+  return { id: uid(), product: '', color: '', productId: undefined, xs: 0, s: 0, m: 0, l: 0, xl: 0, xxl: 0, xxxl: 0, xxxxl: 0 };
 }
 
 function emptyLineItem(): PortalLineItem {
@@ -569,6 +581,7 @@ function reorderLineItemsFromSource(items: any[]): PortalLineItem[] {
         id: uid(),
         product: v?.product || '',
         color: v?.color || '',
+        productId: v?.productId || undefined,
         xs: numSize(v?.sizes, 'xs'), s: numSize(v?.sizes, 's'), m: numSize(v?.sizes, 'm'), l: numSize(v?.sizes, 'l'),
         xl: numSize(v?.sizes, 'xl'), xxl: numSize(v?.sizes, 'xxl'), xxxl: numSize(v?.sizes, 'xxxl'), xxxxl: numSize(v?.sizes, 'xxxxl'),
       }));
@@ -847,6 +860,160 @@ function PortalComboCell({ value, onChangeText, options, placeholder, cellWidth,
 }
 
 // ────────────────────────────────────────────────────────────
+// PortalProductPicker — product field with catalog browse
+// ────────────────────────────────────────────────────────────
+interface PortalProductPickerProps {
+  product: string;
+  productId: string | undefined;
+  onChangeProduct: (product: string, productId: string | undefined) => void;
+  catalogProducts: CatalogProduct[];
+  containerStyle?: any;
+}
+
+function PortalProductPicker({ product, productId, onChangeProduct, catalogProducts, containerStyle }: PortalProductPickerProps) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return catalogProducts;
+    const q = search.toLowerCase();
+    return catalogProducts.filter(p =>
+      p.name.toLowerCase().includes(q) ||
+      p.brand.toLowerCase().includes(q) ||
+      p.styleNumber.toLowerCase().includes(q) ||
+      (p.category || '').toLowerCase().includes(q)
+    );
+  }, [catalogProducts, search]);
+
+  const groups = useMemo(() => {
+    const map: Record<string, CatalogProduct[]> = {};
+    for (const p of filtered) {
+      const cat = p.category || 'Other';
+      if (!map[cat]) map[cat] = [];
+      map[cat].push(p);
+    }
+    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
+  }, [filtered]);
+
+  const handleSelect = (p: CatalogProduct) => {
+    onChangeProduct(`${p.brand} ${p.styleNumber}`, p.id);
+    setOpen(false);
+    setSearch('');
+  };
+
+  return (
+    <View style={[ppStyles.wrapper, containerStyle]}>
+      <View style={ppStyles.inputRow}>
+        <TextInput
+          style={ppStyles.textInput}
+          value={product}
+          onChangeText={v => onChangeProduct(v, productId)}
+          placeholder="Style / Product"
+          placeholderTextColor={TEXT_PLACEHOLDER}
+        />
+        {productId ? (
+          <View style={ppStyles.linkedChip}>
+            <Package size={9} color={BRAND} />
+            <TouchableOpacity
+              onPress={() => onChangeProduct(product, undefined)}
+              hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+            >
+              <X size={8} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+        ) : null}
+        <TouchableOpacity
+          style={ppStyles.browseBtn}
+          onPress={() => { setSearch(''); setOpen(true); }}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+        >
+          <Package size={11} color={BRAND} />
+        </TouchableOpacity>
+      </View>
+
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={ppStyles.overlay} onPress={() => setOpen(false)}>
+          <Pressable style={ppStyles.card} onPress={() => {}}>
+            <View style={ppStyles.cardHeader}>
+              <Text style={ppStyles.cardTitle}>Choose from Catalog</Text>
+              <TouchableOpacity onPress={() => setOpen(false)}>
+                <X size={18} color={TEXT_LIGHT} />
+              </TouchableOpacity>
+            </View>
+            <View style={ppStyles.searchRow}>
+              <Search size={13} color={TEXT_LIGHT} />
+              <TextInput
+                style={ppStyles.searchInput}
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search style, brand, or category…"
+                placeholderTextColor={TEXT_PLACEHOLDER}
+                autoFocus
+              />
+              {search ? (
+                <TouchableOpacity onPress={() => setSearch('')}>
+                  <X size={11} color={TEXT_LIGHT} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
+              {catalogProducts.length === 0 ? (
+                <View style={ppStyles.emptyState}>
+                  <Text style={ppStyles.emptyText}>No catalog products available</Text>
+                </View>
+              ) : groups.length === 0 ? (
+                <View style={ppStyles.emptyState}>
+                  <Text style={ppStyles.emptyText}>No products match your search</Text>
+                </View>
+              ) : groups.map(([cat, prods]) => (
+                <View key={cat}>
+                  <View style={ppStyles.groupHeader}>
+                    <Text style={ppStyles.groupHeaderText}>{cat}</Text>
+                  </View>
+                  {prods.map(p => {
+                    const isSelected = productId === p.id;
+                    return (
+                      <TouchableOpacity
+                        key={p.id}
+                        style={[ppStyles.productRow, isSelected && ppStyles.productRowSel]}
+                        onPress={() => handleSelect(p)}
+                        activeOpacity={0.8}
+                      >
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <Text style={ppStyles.productName} numberOfLines={1}>
+                            {p.brand} {p.styleNumber}
+                          </Text>
+                          {p.name && p.name !== `${p.brand} ${p.styleNumber}` ? (
+                            <Text style={ppStyles.productSub} numberOfLines={1}>{p.name}</Text>
+                          ) : null}
+                          {p.colors.length > 0 ? (
+                            <Text style={ppStyles.productColorList} numberOfLines={1}>
+                              {p.colors.slice(0, 5).map(c => c.colorName).join(', ')}{p.colors.length > 5 ? ` +${p.colors.length - 5}` : ''}
+                            </Text>
+                          ) : null}
+                        </View>
+                        {isSelected ? <Check size={14} color={BRAND} /> : null}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ))}
+              <TouchableOpacity
+                style={ppStyles.manualOption}
+                onPress={() => { onChangeProduct(product, undefined); setOpen(false); setSearch(''); }}
+              >
+                <Edit2 size={12} color="#6B7280" />
+                <Text style={ppStyles.manualOptionText}>Enter product name manually</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
 // PortalLineItemCard
 // ────────────────────────────────────────────────────────────
 interface PortalLineItemCardProps {
@@ -857,9 +1024,10 @@ interface PortalLineItemCardProps {
   onDelete: () => void;
   openDropdown: (title: string, options: readonly string[], selected: string, onSelect: (v: string) => void) => void;
   onOpenMockupBinPicker: (itemId: string) => void;
+  catalogProducts: CatalogProduct[];
 }
 
-function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDropdown, onOpenMockupBinPicker }: PortalLineItemCardProps) {
+function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDropdown, onOpenMockupBinPicker, catalogProducts }: PortalLineItemCardProps) {
   const upd = useCallback((patch: Partial<PortalLineItem>) => onChange({ ...item, ...patch }), [item, onChange]);
   const liFileInputRef = useRef<any>(null);
 
@@ -1068,17 +1236,21 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
                 <View key={row.id} style={[liStyles.sizeVariantRow, rIdx % 2 === 1 && liStyles.sizeVariantRowAlt]}>
                   {/* Row A: Product + Color + Delete */}
                   <View style={liStyles.sizePickerRow}>
-                    <PortalComboCell
-                      value={row.product}
-                      onChangeText={v => updRow(row.id, { product: v })}
-                      options={PRODUCTS}
-                      placeholder="Style / Product"
-                      containerStyle={{ flex: 2, marginHorizontal: 0 }}
+                    <PortalProductPicker
+                      product={row.product}
+                      productId={row.productId}
+                      onChangeProduct={(prod, pid) => updRow(row.id, { product: prod, productId: pid })}
+                      catalogProducts={catalogProducts}
+                      containerStyle={{ flex: 2 }}
                     />
                     <PortalComboCell
                       value={row.color}
                       onChangeText={v => updRow(row.id, { color: v })}
-                      options={PRODUCT_COLORS}
+                      options={
+                        row.productId
+                          ? (catalogProducts.find(p => p.id === row.productId)?.colors.map(c => c.colorName) ?? PRODUCT_COLORS)
+                          : PRODUCT_COLORS
+                      }
                       placeholder="Color"
                       containerStyle={{ flex: 1, marginHorizontal: 0 }}
                     />
@@ -1231,6 +1403,7 @@ export default function ClientPortal() {
   const [inHandsDate, setInHandsDate] = useState('');
   const [requestNotes, setRequestNotes] = useState('');
   const [lineItems, setLineItems] = useState<PortalLineItem[]>([emptyLineItem()]);
+  const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([]);
   // Non-null while the submit form is in "Review Your Reorder" mode; holds the
   // source project id so the new request links back to it on submit.
   const [reorderSourceId, setReorderSourceId] = useState<string | null>(null);
@@ -1315,6 +1488,17 @@ export default function ClientPortal() {
   const [quoteActionNote, setQuoteActionNote] = useState('');
   const [quoteActionSubmitting, setQuoteActionSubmitting] = useState(false);
   const [quoteActionError, setQuoteActionError] = useState<string | null>(null);
+
+  // Fetch catalog products (no auth required — product names are not sensitive)
+  useEffect(() => {
+    if (!orgId) return;
+    fetch(`/api/portal/${orgId}/products`)
+      .then(r => (r.ok ? r.json() : { products: [] }))
+      .then((data: { products?: CatalogProduct[] }) => {
+        if (Array.isArray(data.products)) setCatalogProducts(data.products);
+      })
+      .catch(() => {});
+  }, [orgId]);
 
   // Favorites are DB-backed (per customer + org), so they survive device,
   // browser, and re-login changes. Loaded on login; toggled optimistically.
@@ -1909,6 +2093,7 @@ export default function ClientPortal() {
             .map(r => ({
               product: r.product,
               color: r.color,
+              productId: r.productId || undefined,
               sizes: { xs: r.xs, s: r.s, m: r.m, l: r.l, xl: r.xl, xxl: r.xxl, xxxl: r.xxxl, xxxxl: r.xxxxl, flat: 0 },
             })),
           mockupUri: mockupUris[item.id] || null,
@@ -3822,6 +4007,7 @@ export default function ClientPortal() {
                 onDelete={() => removeLineItem(item.id)}
                 openDropdown={openDropdown}
                 onOpenMockupBinPicker={(itemId) => openBinPicker('mockup', itemId)}
+                catalogProducts={catalogProducts}
               />
             ))}
             <TouchableOpacity style={styles.addLineItemBtn} onPress={addLineItem}>
@@ -5274,6 +5460,121 @@ const comboCellStyles = StyleSheet.create({
   optionSel: { backgroundColor: '#FFF7ED' },
   optionText: { fontSize: 13, color: TEXT_MED, flex: 1 },
   optionTextSel: { color: BRAND, fontWeight: '600' },
+});
+
+const ppStyles = StyleSheet.create({
+  wrapper: { position: 'relative' },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 6,
+    minHeight: 34,
+    paddingHorizontal: 6,
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 12,
+    color: TEXT,
+    paddingVertical: 4,
+    outlineStyle: 'none' as any,
+  },
+  linkedChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FFF7ED',
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    marginRight: 2,
+  },
+  browseBtn: {
+    padding: 4,
+    borderRadius: 4,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    width: '100%',
+    maxWidth: 500,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 4 },
+    overflow: 'hidden',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  cardTitle: { fontSize: 15, fontWeight: '700', color: TEXT },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: TEXT,
+    outlineStyle: 'none' as any,
+  },
+  emptyState: { alignItems: 'center', paddingVertical: 32 },
+  emptyText: { fontSize: 13, color: TEXT_LIGHT },
+  groupHeader: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+  },
+  groupHeaderText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  productRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F9FAFB',
+  },
+  productRowSel: { backgroundColor: '#FFF7ED' },
+  productName: { fontSize: 13, fontWeight: '600', color: TEXT },
+  productSub: { fontSize: 11, color: '#6B7280', marginTop: 1 },
+  productColorList: { fontSize: 10, color: '#9CA3AF', marginTop: 2 },
+  manualOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+  },
+  manualOptionText: { fontSize: 13, color: '#6B7280' },
 });
 
 const pCal = StyleSheet.create({
