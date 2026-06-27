@@ -58,6 +58,9 @@ export interface GarmentVariant {
   brand?: string;
   productName?: string;
   productSource?: 'catalog' | 'manual' | 'vendor_api';
+  // Category of the garment (e.g. "T-Shirts", "Hats") — populated from catalog
+  // or set manually via the category pill selector.
+  category?: string;
 }
 
 export interface LineItem {

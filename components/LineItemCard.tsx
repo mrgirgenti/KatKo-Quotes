@@ -67,6 +67,7 @@ interface CatalogProduct {
   styleNumber: string;
   brand: string;
   name: string;
+  category?: string | null;
   defaultBlankCost?: string | number | null;
 }
 
@@ -155,6 +156,8 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   const focusedVariantIdx = variantStyleFocused.findIndex(Boolean);
   const activeSearchTerm =
     focusedVariantIdx >= 0 ? (variantSearchTerms[focusedVariantIdx] ?? '') : '';
+  const activeCategory =
+    focusedVariantIdx >= 0 ? (variants[focusedVariantIdx]?.category ?? '') : '';
   const [debouncedCatalogTerm, setDebouncedCatalogTerm] = useState('');
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedCatalogTerm(activeSearchTerm.trim()), 250);
@@ -162,12 +165,24 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   }, [activeSearchTerm]);
 
   const catalogSearch = useQuery({
-    queryKey: ['line-item-product-search', debouncedCatalogTerm],
-    queryFn: () => apiFetch(`/api/products?q=${encodeURIComponent(debouncedCatalogTerm)}`),
+    queryKey: ['line-item-product-search', debouncedCatalogTerm, activeCategory],
+    queryFn: () => {
+      let url = `/api/products?q=${encodeURIComponent(debouncedCatalogTerm)}`;
+      if (activeCategory) url += `&category=${encodeURIComponent(activeCategory)}`;
+      return apiFetch(url);
+    },
     enabled: focusedVariantIdx >= 0 && debouncedCatalogTerm.length >= 2,
     staleTime: 30000,
   });
   const catalogResults: CatalogProduct[] = catalogSearch.data?.products ?? [];
+
+  // ── Fetch distinct product categories for the category pill selector ──
+  const categoriesQuery = useQuery({
+    queryKey: ['product-categories'],
+    queryFn: () => apiFetch('/api/products/categories'),
+    staleTime: 5 * 60 * 1000,
+  });
+  const allCategories: string[] = categoriesQuery.data?.categories ?? [];
 
   // Colors / vendors / placements for every catalog-linked variant in this line item.
   // useQueries keeps a stable single hook even as the selected-product set changes.
@@ -235,6 +250,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
       brand: undefined,
       productName: undefined,
       productSource: undefined,
+      category: undefined,
     });
   };
 
@@ -286,6 +302,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
             brand: product.brand,
             productName: product.name,
             productSource: 'catalog' as const,
+            category: product.category ?? v.category,
           }
         : v,
     );
@@ -833,7 +850,43 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                             const selectedColorObj = colorObjects.find((c) => c.name === variant.color);
                             return (
                               <View style={styles.variantPickerSection}>
-                                {/* Single-line row: Type | Style search | Color | Delete */}
+                                {/* Category pills — All + each DB category */}
+                                {allCategories.length > 0 && (
+                                  <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    style={styles.variantCategoryScroll}
+                                    contentContainerStyle={styles.variantCategoryPillRow}
+                                  >
+                                    {(['', ...allCategories] as string[]).map((cat) => {
+                                      const label = cat === '' ? 'All' : cat;
+                                      const isActive = (variant.category ?? '') === cat;
+                                      return (
+                                        <TouchableOpacity
+                                          key={cat}
+                                          style={[
+                                            styles.variantCategoryPill,
+                                            isActive && styles.variantCategoryPillActive,
+                                          ]}
+                                          onPress={() =>
+                                            updateVariant(vIdx, { category: cat === '' ? undefined : cat })
+                                          }
+                                          activeOpacity={0.7}
+                                        >
+                                          <Text
+                                            style={[
+                                              styles.variantCategoryPillText,
+                                              isActive && styles.variantCategoryPillTextActive,
+                                            ]}
+                                          >
+                                            {label}
+                                          </Text>
+                                        </TouchableOpacity>
+                                      );
+                                    })}
+                                  </ScrollView>
+                                )}
+                                {/* Single-line row: Style search | Color | Delete */}
                                 <View style={styles.variantPickerRow}>
 
                                   {/* Style search input */}
@@ -1768,6 +1821,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingTop: 8,
     paddingBottom: 8,
+  },
+  variantCategoryScroll: {
+    marginBottom: 6,
+  },
+  variantCategoryPillRow: {
+    flexDirection: 'row',
+    gap: 5,
+    paddingVertical: 2,
+  },
+  variantCategoryPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: '#fff',
+  },
+  variantCategoryPillActive: {
+    backgroundColor: Colors.light.tint,
+    borderColor: Colors.light.tint,
+  },
+  variantCategoryPillText: {
+    fontSize: 11,
+    fontWeight: '500' as const,
+    color: Colors.light.textSecondary,
+  },
+  variantCategoryPillTextActive: {
+    color: '#fff',
+    fontWeight: '700' as const,
   },
   variantPickerRow: {
     flexDirection: 'row',
