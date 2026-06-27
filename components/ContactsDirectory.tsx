@@ -104,7 +104,7 @@ function PersonRow({ person, onPress, isSelected, onToggleSelect, visibleCols }:
         </View>
       </TouchableOpacity>
       <View style={{ width: 48 }}>
-        <OrgAvatar name={name} size={36} shape="circle" />
+        <OrgAvatar name={name} logoUrl={person.avatarUri} size={36} shape="circle" />
       </View>
       {col('name', <Text style={styles.cellName} numberOfLines={1}>{name}</Text>)}
       {col('org', <Text style={styles.cell} numberOfLines={1}>{person.orgName}</Text>)}

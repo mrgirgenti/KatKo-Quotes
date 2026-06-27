@@ -73,21 +73,23 @@ export function toEnrichedContact(row: any): Contact {
     lastLoginAt,
     inviteSentAt,
     lastActivityAt: lastLoginAt || inviteSentAt || null,
+    avatarUri: row.avatarUri ?? undefined,
   };
 }
 
 const ENRICHED_CONTACTS_SQL = `
   SELECT c.*,
-    u.id            AS "userId",
-    u.status        AS "userStatus",
+    u.id             AS "userId",
+    u.status         AS "userStatus",
     u."passwordHash" AS "passwordHash",
-    u."lastLoginAt" AS "lastLoginAt",
-    om.id           AS "membershipId",
-    om.role         AS "membershipRole",
+    u."lastLoginAt"  AS "lastLoginAt",
+    u."avatarUri"    AS "avatarUri",
+    om.id            AS "membershipId",
+    om.role          AS "membershipRole",
     om."inviteSentAt" AS "inviteSentAt"
   FROM "Contact" c
   LEFT JOIN "User" u
-    ON u.id = c."linkedUserId" AND u."userType" = 'CLIENT'
+    ON u.id = c."linkedUserId"
   LEFT JOIN "OrganizationMembership" om
     ON om."organizationId" = c."organizationId" AND om."userId" = u.id
   WHERE c."organizationId" = $1

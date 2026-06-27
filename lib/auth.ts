@@ -55,6 +55,19 @@ async function upsertDbUser(clerkUserId: string): Promise<AuthedUser | null> {
     pool
       .query(`UPDATE "User" SET "lastLoginAt" = NOW() WHERE id = $1`, [existing.rows[0].id])
       .catch(() => {});
+    // Non-blocking: sync Clerk profile picture when avatarUri is not yet set.
+    if (!existing.rows[0].avatarUri) {
+      clerkClient.users.getUser(clerkUserId).then((cu) => {
+        if (cu.imageUrl) {
+          pool
+            .query(`UPDATE "User" SET "avatarUri" = $1 WHERE id = $2 AND "avatarUri" IS NULL`, [
+              cu.imageUrl,
+              existing.rows[0].id,
+            ])
+            .catch(() => {});
+        }
+      }).catch(() => {});
+    }
     return rowToAuthedUser(existing.rows[0]);
   }
 
@@ -62,6 +75,7 @@ async function upsertDbUser(clerkUserId: string): Promise<AuthedUser | null> {
   let email = '';
   let firstName = '';
   let lastName = '';
+  let clerkImageUrl: string | null = null;
   try {
     const cu = await clerkClient.users.getUser(clerkUserId);
     email =
@@ -70,6 +84,7 @@ async function upsertDbUser(clerkUserId: string): Promise<AuthedUser | null> {
       '';
     firstName = cu.firstName || '';
     lastName = cu.lastName || '';
+    clerkImageUrl = cu.imageUrl || null;
   } catch {
     // If the profile lookup fails we still provision a minimal row keyed by id.
   }
@@ -81,9 +96,10 @@ async function upsertDbUser(clerkUserId: string): Promise<AuthedUser | null> {
     if (byEmail.rows[0]) {
       const updated = await pool.query(
         `UPDATE "User"
-           SET "authProvider" = 'clerk', "authProviderUserId" = $1, "lastLoginAt" = NOW()
+           SET "authProvider" = 'clerk', "authProviderUserId" = $1, "lastLoginAt" = NOW(),
+               "avatarUri" = COALESCE($3, "avatarUri")
          WHERE id = $2 RETURNING *`,
-        [clerkUserId, byEmail.rows[0].id],
+        [clerkUserId, byEmail.rows[0].id, clerkImageUrl],
       );
       return rowToAuthedUser(updated.rows[0]);
     }
@@ -99,16 +115,17 @@ async function upsertDbUser(clerkUserId: string): Promise<AuthedUser | null> {
     `INSERT INTO "User" (
         id, "firstName", "lastName", email, "userType", status,
         "authProvider", "authProviderUserId", "internalRole", "lastLoginAt",
-        "createdAt", "updatedAt"
+        "createdAt", "updatedAt", "avatarUri"
      ) VALUES (
         gen_random_uuid(), $1, $2, $3, 'INTERNAL', 'ACTIVE',
-        'clerk', $4, $5::"InternalRole", NOW(), NOW(), NOW()
+        'clerk', $4, $5::"InternalRole", NOW(), NOW(), NOW(), $6
      )
      ON CONFLICT (email) DO UPDATE
         SET "authProvider" = 'clerk', "authProviderUserId" = EXCLUDED."authProviderUserId",
-            "lastLoginAt" = NOW()
+            "lastLoginAt" = NOW(),
+            "avatarUri" = COALESCE(EXCLUDED."avatarUri", "User"."avatarUri")
      RETURNING *`,
-    [firstName, lastName, safeEmail, clerkUserId, internalRole],
+    [firstName, lastName, safeEmail, clerkUserId, internalRole, clerkImageUrl],
   );
   return rowToAuthedUser(created.rows[0]);
 }

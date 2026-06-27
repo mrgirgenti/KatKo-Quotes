@@ -88,6 +88,7 @@ export interface Contact {
   lastLoginAt?: string | null;
   inviteSentAt?: string | null;
   lastActivityAt?: string | null;
+  avatarUri?: string;
   createdAt: string;
 }
 

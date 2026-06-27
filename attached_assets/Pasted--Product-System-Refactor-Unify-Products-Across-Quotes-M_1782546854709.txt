@@ -1,0 +1,478 @@
+# Product System Refactor — Unify Products Across Quotes, Mockups & Client Hubs
+
+## IMPLEMENTATION MODE
+
+Do **not** create an implementation plan.
+
+Do **not** spend credits analyzing the application.
+
+Begin implementation immediately after locating the existing product system.
+
+When complete, provide:
+
+* Files changed
+* Components changed
+* Data sources changed
+* Migration performed
+* Any remaining limitations
+
+---
+
+# GOAL
+
+The application currently has **two different product systems**, and they need to become one.
+
+The old product list (uploaded months ago) currently powers:
+
+* Backend Quote form
+* Products + Sizes
+* Mockup Designer
+
+The newer **Products page** is becoming our master catalog of products that Katalyst Ko regularly sells.
+
+The Products page should become the **single source of truth** for product selection throughout the application.
+
+The old hardcoded/preloaded product list should no longer be the primary source.
+
+---
+
+# IMPORTANT BUSINESS RULE
+
+A **Line Item is NOT a Product.**
+
+A Line Item represents:
+
+* One design
+* One decoration method
+* One artwork setup
+* One production workflow
+
+Each Line Item may contain **multiple products**.
+
+Example:
+
+Line Item
+
+Design:
+Company Logo
+
+Service:
+Screen Printing
+
+Products:
+
+* Next Level NL6210
+* Bella Canvas 3001
+* Gildan 64000
+* Gildan 8000B Youth
+
+These are intentionally grouped together because they all receive the same artwork.
+
+Do NOT redesign the system into one product per line item.
+
+The existing Add Style/Color workflow should remain.
+
+---
+
+# PRODUCT ROWS
+
+Each Product Row inside Products + Sizes represents one garment.
+
+Each Product Row should contain:
+
+* Category
+* Vendor
+* Product
+* Color
+* Size quantities
+* Total PCS
+
+Each Product Row must be independent.
+
+Each Product Row should reference one Product from the Products page.
+
+---
+
+# PRODUCTS PAGE
+
+The Products page becomes the application's master catalog.
+
+Every product should have one unique Product ID.
+
+Each product should support, where applicable:
+
+* Category
+* Vendor
+* Product Number
+* Product Name
+* Available Colors
+* Available Sizes
+* Product Image
+* Mockup Template
+* Active / Inactive
+* Favorite
+
+Future fields can be added later.
+
+The Quote system should never maintain its own disconnected product list.
+
+---
+
+# QUOTE FORM
+
+Products + Sizes should populate from the Products page.
+
+Each Product Row should allow:
+
+* Selecting Category
+* Selecting Product
+* Selecting Color
+* Entering Size Quantities
+
+The orange Add Style/Color button should continue working exactly as it does today by creating another Product Row.
+
+Pricing calculations should remain untouched.
+
+---
+
+# MOCKUP DESIGNER INTEGRATION
+
+The Mockup Designer must use the same Product source.
+
+Current issue:
+
+The Mockup Designer still defaults to the old uploaded product list.
+
+This must be replaced.
+
+## Auto Default
+
+If a Product Row contains:
+
+Vendor:
+S&S Activewear
+
+Product:
+NL6210
+
+Color:
+Black
+
+Then opening the Mockup Designer for that Product Row should automatically load:
+
+Vendor:
+S&S Activewear
+
+Product:
+NL6210
+
+Color:
+Black
+
+The user should never have to reselect the garment if it has already been selected in the Quote.
+
+---
+
+# PRODUCT SYNCHRONIZATION
+
+The Quote and Mockup Designer should stay synchronized.
+
+Example:
+
+Quote:
+
+NL6210
+
+↓
+
+Open Mockup
+
+↓
+
+Mockup automatically opens using NL6210.
+
+NOT some default garment.
+
+---
+
+If the Quote changes later:
+
+NL6210
+
+↓
+
+Independent Trading IND4000
+
+The system should detect that the mockup was built using a different garment.
+
+Prompt:
+
+"This product has changed since the mockup was created.
+
+Would you like to update the mockup to use the newly selected garment?"
+
+Buttons:
+
+* Update Mockup
+* Keep Existing Mockup
+* Cancel
+
+If Update is selected:
+
+Update:
+
+* Vendor
+* Product
+* Available Colors
+* Garment Template
+
+Retain artwork placements whenever possible.
+
+---
+
+# MULTIPLE PRODUCTS PER LINE ITEM
+
+A Line Item may contain multiple Product Rows.
+
+Each Product Row should be mockup-capable.
+
+Preferred behavior:
+
+Every Product Row has its own Mockup button.
+
+OR
+
+If the existing Line Item Mockup button is retained, then when multiple Product Rows exist the user should first be asked:
+
+"Which product would you like to create a mockup for?"
+
+Display every Product Row.
+
+Selecting one should automatically open the Mockup Designer with that Product Row's:
+
+* Vendor
+* Product
+* Color
+
+already selected.
+
+---
+
+# CLIENT HUB
+
+The Client Hub Start a Project form should use the exact same Product source.
+
+Clients should be able to select:
+
+Category
+
+↓
+
+Product
+
+↓
+
+Color
+
+↓
+
+Sizes
+
+↓
+
+Artwork
+
+No pricing should ever be visible.
+
+---
+
+# PRESERVE CUSTOMER REQUESTS
+
+The customer's original request should never be overwritten.
+
+Example:
+
+Customer requests:
+
+Lane Seven Hoodie
+
+Yellow
+
+Later, Sales changes it to:
+
+Independent Trading IND4000
+
+Gold
+
+Store BOTH.
+
+Requested Product
+
+Requested Color
+
+Approved Product
+
+Approved Color
+
+Production always uses Approved.
+
+Client history preserves Requested.
+
+---
+
+# MANUAL ENTRY MUST REMAIN
+
+This is a hard requirement.
+
+The system MUST continue allowing completely manual product entry.
+
+Reasons include:
+
+* Vendor catalog not yet updated
+* Newly released products
+* Specialty promotional items
+* Customer-supplied garments
+* One-off products
+* Samples
+* Custom manufactured items
+
+The user must always be able to manually enter:
+
+* Category
+* Vendor
+* Product Name
+* Product Number
+* Color
+
+without selecting something from the Products page.
+
+Do NOT force product selection from the catalog.
+
+Support two modes.
+
+### Catalog Product
+
+Selected from Products page.
+
+Automatically links Product ID.
+
+Loads colors.
+
+Loads vendor.
+
+Loads mockup template.
+
+### Custom Product
+
+Manual entry.
+
+Free-text fields.
+
+No Product ID required.
+
+Behaves exactly like today's manual workflow.
+
+This flexibility is mandatory.
+
+---
+
+# CLIENT HUB DATA
+
+Clients should only receive safe product information.
+
+Visible:
+
+* Product Name
+* Vendor
+* Category
+* Color
+* Sizes
+
+Never expose:
+
+* Cost
+* Price
+* Margin
+* Profit
+* Internal Notes
+
+---
+
+# REMOVE DUPLICATE PRODUCT SOURCES
+
+Locate every existing hardcoded product list.
+
+Replace those usages with the shared Product source.
+
+This includes:
+
+* Quote Form
+* Products + Sizes
+* Mockup Designer
+* Client Hub
+* Product dropdowns
+* Product selectors
+
+Do not leave multiple competing product arrays behind.
+
+---
+
+# PRESERVE EXISTING FUNCTIONALITY
+
+Do NOT change:
+
+* Pricing calculations
+* Quote engine
+* Invoice logic
+* Production workflow
+* Line Item behavior
+* Add Style/Color behavior
+* Client Hub permissions
+
+This is a product integration refactor.
+
+Not a pricing refactor.
+
+---
+
+# SUCCESS CRITERIA
+
+Implementation is complete when:
+
+✓ Products page becomes the single source of truth.
+
+✓ Backend Quotes use the Products page.
+
+✓ Mockup Designer uses the Products page.
+
+✓ Client Hubs use the Products page.
+
+✓ Multiple Product Rows remain supported.
+
+✓ Each Product Row can launch its own synchronized mockup.
+
+✓ Quote and Mockup stay synchronized.
+
+✓ Product changes prompt to update existing mockups.
+
+✓ Manual product entry remains available.
+
+✓ Requested and Approved products are stored independently.
+
+✓ Client Hubs never expose pricing.
+
+✓ Old disconnected product lists are no longer the primary source.
+
+✓ The application builds successfully.
+
+---
+
+# IMPORTANT IMPLEMENTATION REQUIREMENT
+
+This is a substantial refactor.
+
+Do NOT attempt to complete everything in one large task.
+
+Break the work into logical implementation phases (product source, quote integration, mockup integration, Client Hub integration, cleanup), verifying the application builds successfully after each phase before proceeding.
+
+Only move to the next phase after the current phase is complete and functioning.

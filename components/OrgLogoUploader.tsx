@@ -1,6 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { View, Text, Image, TouchableOpacity, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { Camera } from 'lucide-react-native';
+import { getClerkToken } from '@/lib/clerkToken';
 
 const INITIAL_COLORS = ['#FF5A00', '#7C3AED', '#0284C7', '#16A34A', '#DB2777'];
 
@@ -35,18 +36,27 @@ export function OrgLogoUploader({ orgId, orgName, currentLogoUrl, onLogoChange, 
     setPreviewUrl(objectUrl);
     setImgError(false);
     try {
+      const token = await getClerkToken();
       const fd = new FormData();
       fd.append('file', file);
       fd.append('orgId', orgId);
       fd.append('fileType', 'OTHER');
       fd.append('visibility', 'CLIENT_VISIBLE');
-      const res = await fetch('/api/files', { method: 'POST', body: fd });
-      if (!res.ok) throw new Error('Upload failed');
+      const res = await fetch('/api/files', {
+        method: 'POST',
+        body: fd,
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || `Upload failed (${res.status})`);
+      }
       const data = await res.json();
       const url = `/api/files/${data.file.id}?inline=true`;
       setPreviewUrl(url);
       onLogoChange(url);
-    } catch {
+    } catch (err) {
+      console.error('[OrgLogoUploader] upload error:', err);
       setPreviewUrl(currentLogoUrl ?? null);
     } finally {
       setUploading(false);
@@ -128,7 +138,7 @@ export function OrgLogoUploader({ orgId, orgName, currentLogoUrl, onLogoChange, 
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/png,image/jpeg,image/svg+xml,image/gif,image/webp"
+          accept="image/png,image/jpeg,image/svg+xml"
           style={{ display: 'none' }}
           onChange={handleFileChange}
         />
