@@ -8,6 +8,8 @@ import {
   Platform,
   Image,
   ScrollView,
+  Modal,
+  Pressable,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { ChevronDown, ChevronUp, Trash2, Upload, RefreshCw, X, Brush, Plus, CheckCircle } from 'lucide-react-native';
@@ -89,6 +91,10 @@ function isDarkHex(hex?: string | null): boolean {
 export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardProps) {
   const [expanded, setExpanded] = useState(true);
   const [showDesigner, setShowDesigner] = useState(false);
+  const [variantPickerVisible, setVariantPickerVisible] = useState(false);
+  const [mockupVariantIdx, setMockupVariantIdx] = useState(0);
+  const [mockupLinkedVariantIdx, setMockupLinkedVariantIdx] = useState<number | null>(null);
+  const [syncPromptVisible, setSyncPromptVisible] = useState(false);
   const [showLocation34, setShowLocation34] = useState(!!(item.location3 || item.location4));
   const [serviceDropdownOpen, setServiceDropdownOpen] = useState(false);
 
@@ -301,6 +307,9 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
       productColor: updated.length === 1 ? (updated[0]?.color || item.productColor) : 'Multiple',
       productCostEach: nextCost,
     });
+    if (item.mockupUri && mockupLinkedVariantIdx !== null && vIdx === mockupLinkedVariantIdx) {
+      setSyncPromptVisible(true);
+    }
   };
 
   // Choosing a hardcoded quick-pick or a custom free-text style clears any catalog binding.
@@ -314,6 +323,25 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
       productName: undefined,
       productSource: 'manual',
     });
+    if (item.mockupUri && mockupLinkedVariantIdx !== null && vIdx === mockupLinkedVariantIdx) {
+      setSyncPromptVisible(true);
+    }
+  };
+
+  // ── Mockup variant selection ───────────────────────────────────────────────
+  const handleDesignMockup = () => {
+    if (variants.length <= 1) {
+      setMockupVariantIdx(0);
+      setShowDesigner(true);
+    } else {
+      setVariantPickerVisible(true);
+    }
+  };
+
+  const handlePickVariantForMockup = (idx: number) => {
+    setMockupVariantIdx(idx);
+    setVariantPickerVisible(false);
+    setShowDesigner(true);
   };
 
   // Promotional flat quantity state
@@ -485,7 +513,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
               <View style={styles.mockupImageContainer}>
                 <Image source={{ uri: item.mockupUri }} style={styles.mockupImage} resizeMode="contain" />
                 <View style={styles.mockupActions}>
-                  <TouchableOpacity style={styles.mockupDesignBtn} onPress={() => setShowDesigner(true)}>
+                  <TouchableOpacity style={styles.mockupDesignBtn} onPress={handleDesignMockup}>
                     <Brush size={12} color="#fff" />
                     <Text style={styles.mockupChangeBtnText}>Edit</Text>
                   </TouchableOpacity>
@@ -507,7 +535,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                 ref={dropZoneRef}
                 style={styles.mockupPlaceholderContainer}
               >
-                <TouchableOpacity style={styles.mockupDesignBtnLarge} onPress={() => setShowDesigner(true)}>
+                <TouchableOpacity style={styles.mockupDesignBtnLarge} onPress={handleDesignMockup}>
                   <Brush size={22} color={Colors.light.tint} />
                   <Text style={styles.mockupDesignBtnTitle}>Design Mockup</Text>
                   <Text style={styles.mockupDesignBtnSub}>Select template + place artwork</Text>
@@ -531,11 +559,84 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
             onClose={() => setShowDesigner(false)}
             onSave={(uri) => {
               onChange({ ...item, mockupUri: uri });
+              setMockupLinkedVariantIdx(mockupVariantIdx);
               setShowDesigner(false);
             }}
             initialMockupUri={item.mockupUri}
             suggestedLocations={[item.location1, item.location2].filter(Boolean)}
+            initialVariant={{
+              vendor: item.apparelProvider,
+              product: variants[mockupVariantIdx]?.product,
+              color: variants[mockupVariantIdx]?.color,
+            }}
+            onRequestChangeProduct={variants.length > 1 ? () => {
+              setShowDesigner(false);
+              setVariantPickerVisible(true);
+            } : undefined}
+            onColorChange={(colorName) => {
+              if (mockupVariantIdx < variants.length) {
+                updateVariant(mockupVariantIdx, { color: colorName });
+              }
+            }}
           />
+
+          {/* Variant Picker — choose which product row to mock up */}
+          <Modal
+            visible={variantPickerVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setVariantPickerVisible(false)}
+          >
+            <Pressable style={styles.vpOverlay} onPress={() => setVariantPickerVisible(false)} />
+            <View style={styles.vpPanel}>
+              <Text style={styles.vpTitle}>Which product to mock up?</Text>
+              {variants.map((v, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={styles.vpRow}
+                  onPress={() => handlePickVariantForMockup(idx)}
+                >
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.vpProduct} numberOfLines={1}>{v.product || '(No product)'}</Text>
+                    <Text style={styles.vpColor} numberOfLines={1}>{v.color || 'No color specified'}</Text>
+                  </View>
+                  <CheckCircle size={16} color={idx === mockupVariantIdx ? Colors.light.tint : Colors.light.border} />
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity style={styles.vpCancel} onPress={() => setVariantPickerVisible(false)}>
+                <Text style={styles.vpCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </Modal>
+
+          {/* Sync Prompt — garment changed after mockup was created */}
+          <Modal
+            visible={syncPromptVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setSyncPromptVisible(false)}
+          >
+            <Pressable style={styles.vpOverlay} onPress={() => setSyncPromptVisible(false)} />
+            <View style={styles.syncPanel}>
+              <Text style={styles.syncTitle}>Garment Changed</Text>
+              <Text style={styles.syncBody}>
+                The selected garment has changed since this mockup was created. Would you like to update the mockup to use the newly selected garment?
+              </Text>
+              <TouchableOpacity
+                style={styles.syncBtnPrimary}
+                onPress={() => {
+                  setSyncPromptVisible(false);
+                  if (mockupLinkedVariantIdx !== null) setMockupVariantIdx(mockupLinkedVariantIdx);
+                  setShowDesigner(true);
+                }}
+              >
+                <Text style={styles.syncBtnPrimaryText}>Update Mockup</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.syncBtnSecondary} onPress={() => setSyncPromptVisible(false)}>
+                <Text style={styles.syncBtnSecondaryText}>Keep Existing Garment</Text>
+              </TouchableOpacity>
+            </View>
+          </Modal>
 
           {/* ── Form Fields ── */}
           <View style={styles.formFieldsSection}>
@@ -2494,4 +2595,87 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: '#fff',
   },
+
+  // Variant Picker Modal
+  vpOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  vpPanel: {
+    position: 'absolute',
+    top: '50%' as any,
+    left: '50%' as any,
+    transform: [{ translateX: '-50%' as any }, { translateY: '-50%' as any }],
+    width: 320,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    gap: 2,
+  },
+  vpTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111',
+    marginBottom: 12,
+  },
+  vpRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    marginBottom: 8,
+  },
+  vpProduct: { fontSize: 13, fontWeight: '600', color: '#111' },
+  vpColor: { fontSize: 11, color: Colors.light.textSecondary, marginTop: 2 },
+  vpCancel: {
+    marginTop: 4,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  vpCancelText: { fontSize: 13, color: Colors.light.textSecondary, fontWeight: '600' },
+
+  // Sync Prompt Modal
+  syncPanel: {
+    position: 'absolute',
+    top: '50%' as any,
+    left: '50%' as any,
+    transform: [{ translateX: '-50%' as any }, { translateY: '-50%' as any }],
+    width: 320,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    gap: 10,
+  },
+  syncTitle: { fontSize: 15, fontWeight: '700', color: '#111' },
+  syncBody: { fontSize: 13, color: Colors.light.textSecondary, lineHeight: 19 },
+  syncBtnPrimary: {
+    backgroundColor: Colors.light.tint,
+    borderRadius: 8,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  syncBtnPrimaryText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  syncBtnSecondary: {
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 8,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  syncBtnSecondaryText: { fontSize: 13, fontWeight: '600', color: '#374151' },
 });

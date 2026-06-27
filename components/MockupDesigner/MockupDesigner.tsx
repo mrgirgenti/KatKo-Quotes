@@ -43,6 +43,62 @@ import {
 import { VENDOR_CATALOG, ProductColor } from './vendorCatalog';
 import { generateId } from '@/utils/quoteCalculations';
 
+// ─── Variant → Designer resolver ─────────────────────────────────────────────
+
+interface VariantHint {
+  vendor?: string;
+  product?: string;
+  color?: string;
+}
+
+function resolveVariantForDesigner(hint?: VariantHint): {
+  vendorId: string | null;
+  styleNumber: string | null;
+  garmentType: GarmentType;
+  colorHex: string;
+  isCustom: boolean;
+} {
+  const noResult = { vendorId: null, styleNumber: null, garmentType: 'tshirt' as GarmentType, colorHex: '#FFFFFF', isCustom: false };
+  if (!hint) return noResult;
+
+  // Extract style number: "NL6210 — Next Level CVC Crew" → "NL6210"
+  const rawProduct = (hint.product ?? '').trim();
+  const styleNum = rawProduct.includes(' — ')
+    ? rawProduct.split(' — ')[0].trim()
+    : rawProduct;
+
+  if (!styleNum) return noResult;
+
+  // Fuzzy-match vendor name to VENDOR_CATALOG id (first 4 normalised chars)
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const hintVendorNorm = hint.vendor ? norm(hint.vendor) : '';
+  const preferredVendor = hintVendorNorm
+    ? (VENDOR_CATALOG.find(v => {
+        const vn = norm(v.name);
+        return vn.slice(0, 4) === hintVendorNorm.slice(0, 4) || hintVendorNorm.slice(0, 4) === vn.slice(0, 4);
+      }) ?? null)
+    : null;
+
+  const searchOrder = preferredVendor
+    ? [preferredVendor, ...VENDOR_CATALOG.filter(v => v.id !== preferredVendor!.id)]
+    : VENDOR_CATALOG;
+
+  for (const vendor of searchOrder) {
+    const style = vendor.styles.find(s => s.styleNumber === styleNum);
+    if (style) {
+      let colorHex = style.colors[0]?.hex ?? '#FFFFFF';
+      if (hint.color) {
+        const match = style.colors.find(c => c.name.toLowerCase() === hint.color!.toLowerCase().trim());
+        if (match) colorHex = match.hex;
+      }
+      return { vendorId: vendor.id, styleNumber: style.styleNumber, garmentType: style.garmentType, colorHex, isCustom: false };
+    }
+  }
+
+  // Style number not found in catalog → custom entry
+  return { vendorId: null, styleNumber: styleNum, garmentType: 'tshirt', colorHex: '#FFFFFF', isCustom: true };
+}
+
 const DISPLAY_W = 340;
 const DISPLAY_H = (CANVAS_H / CANVAS_W) * DISPLAY_W;
 const SCALE = DISPLAY_W / CANVAS_W;
@@ -69,11 +125,14 @@ interface Props {
   onSave: (finalImageUri: string) => void;
   initialMockupUri?: string;
   suggestedLocations?: string[];
+  initialVariant?: VariantHint;
+  onRequestChangeProduct?: () => void;
+  onColorChange?: (colorName: string) => void;
 }
 
 type MobileTab = 'controls' | 'canvas' | 'artwork';
 
-export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, suggestedLocations }: Props) {
+export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, suggestedLocations, initialVariant, onRequestChangeProduct, onColorChange }: Props) {
   const { isMobile } = useBreakpoint();
   const [garmentType, setGarmentType] = useState<GarmentType>('tshirt');
   const [garmentColor, setGarmentColor] = useState('#FFFFFF');
@@ -95,9 +154,12 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
 
   useEffect(() => {
     if (!visible) return;
-    setSelectedVendorId('ss-activewear');
-    setSelectedStyleNumber('NL6210');
-    setGarmentColor('#2C2C2C');
+    const resolved = resolveVariantForDesigner(initialVariant);
+    setSelectedVendorId(resolved.vendorId);
+    setSelectedStyleNumber(resolved.styleNumber);
+    setGarmentType(resolved.garmentType);
+    setGarmentColor(resolved.colorHex);
+    setIsCustomStyle(resolved.isCustom);
     setStyleSearchTerm('');
     setStyleDropdownOpen(false);
   }, [visible]);
@@ -364,9 +426,11 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
     if (!style) return;
     setSelectedStyleNumber(styleNumber);
     setIsCustomStyle(false);
-    // Template stays as-is; only color auto-selects from this style's palette
     const firstColor = style.colors[0];
-    if (firstColor) setGarmentColor(firstColor.hex);
+    if (firstColor) {
+      setGarmentColor(firstColor.hex);
+      onColorChange?.(firstColor.name);
+    }
   };
 
   const handleUseCustomStyle = (term: string) => {
@@ -655,7 +719,7 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                       garmentColor === color.hex && styles.colorSwatchSelected,
                       color.hex === '#FFFFFF' && styles.colorSwatchWhite,
                     ]}
-                    onPress={() => setGarmentColor(color.hex)}
+                    onPress={() => { setGarmentColor(color.hex); onColorChange?.(color.name); }}
                     {...(Platform.OS === 'web' ? {
                       onMouseEnter: () => setHoveredSwatchColor(color.name),
                       onMouseLeave: () => setHoveredSwatchColor(null),
@@ -808,20 +872,27 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
 
               {/* Product info bar */}
               <View style={styles.productInfoBar}>
-                {selectedStyle ? (
-                  <>
-                    <Text style={styles.productInfoName} numberOfLines={1}>
-                      {selectedStyle.name}
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  {selectedStyle ? (
+                    <>
+                      <Text style={styles.productInfoName} numberOfLines={1}>
+                        {selectedStyle.name}
+                      </Text>
+                      <Text style={styles.productInfoSub} numberOfLines={1}>
+                        {selectedStyle.styleNumber} · {selectedVendor?.name} · {activeColorName || 'Select color'}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={styles.productInfoSub}>
+                      {selectedStyleNumber ? `${selectedStyleNumber} (custom)` : 'No product selected'} · {activeColorName || 'Select color'}
                     </Text>
-                    <Text style={styles.productInfoSub} numberOfLines={1}>
-                      {selectedStyle.styleNumber} · {selectedVendor?.name} · {activeColorName || 'Select color'}
-                    </Text>
-                  </>
-                ) : (
-                  <Text style={styles.productInfoSub}>
-                    No product selected · {activeColorName || 'Select color'}
-                  </Text>
-                )}
+                  )}
+                </View>
+                {onRequestChangeProduct ? (
+                  <TouchableOpacity style={styles.changeProductBtn} onPress={onRequestChangeProduct}>
+                    <Text style={styles.changeProductBtnText}>Change Product</Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
 
               {/* Placement summary */}
@@ -1264,10 +1335,22 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     backgroundColor: 'rgba(0,0,0,0.5)',
     borderRadius: 6,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
   productInfoName: { fontSize: 12, fontWeight: '700', color: '#fff' },
   productInfoSub: { fontSize: 10, color: 'rgba(255,255,255,0.75)', marginTop: 1 },
+  changeProductBtn: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.45)',
+    flexShrink: 0,
+  },
+  changeProductBtnText: { fontSize: 10, fontWeight: '700', color: '#fff' },
 
   bodyMobile: {
     flexDirection: 'column',
