@@ -13,15 +13,13 @@ import * as ImagePicker from 'expo-image-picker';
 import { ChevronDown, ChevronUp, Trash2, Upload, RefreshCw, X, Brush, Plus, CheckCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { MockupDesigner } from './MockupDesigner/MockupDesigner';
-import { VENDOR_CATALOG, ProductColor } from './MockupDesigner/vendorCatalog';
-import { GARMENTS, GarmentType } from './MockupDesigner/garmentData';
+import type { ProductColor } from './MockupDesigner/vendorCatalog';
+import type { GarmentType } from './MockupDesigner/garmentData';
 import {
   LineItem,
   GarmentVariant,
   SERVICE_STYLES,
   EMPTY_SIZES,
-  PRODUCTS,
-  PRODUCT_COLORS,
   APPAREL_PROVIDERS,
   LOCATIONS,
   APPLICATORS,
@@ -46,83 +44,6 @@ interface LineItemCardProps {
 
 const APPAREL_SIZES = SIZE_LABELS.filter((s) => s.key !== 'flat');
 
-function normalizeVendorName(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]/g, '');
-}
-
-function getVendorForProvider(apparelProvider: string) {
-  if (!apparelProvider) return undefined;
-  const norm = normalizeVendorName(apparelProvider);
-  return VENDOR_CATALOG.find((v) => normalizeVendorName(v.name) === norm);
-}
-
-function getStyleOptionsForProvider(apparelProvider: string): string[] {
-  const vendor = getVendorForProvider(apparelProvider);
-  if (vendor) {
-    return vendor.styles.map((s) => `${s.styleNumber} — ${s.name}`);
-  }
-  const seen = new Set<string>();
-  const all: string[] = [];
-  for (const v of VENDOR_CATALOG) {
-    for (const s of v.styles) {
-      const label = `${s.styleNumber} — ${s.name}`;
-      if (!seen.has(label)) { seen.add(label); all.push(label); }
-    }
-  }
-  return all;
-}
-
-function getColorOptionsForStyle(apparelProvider: string, productValue: string): string[] {
-  const vendor = getVendorForProvider(apparelProvider);
-  if (!vendor) return [...(PRODUCT_COLORS as unknown as string[])];
-  const styleNumber = productValue.split(' — ')[0].trim();
-  const style = vendor.styles.find((s) => s.styleNumber === styleNumber);
-  if (!style) return vendor.styles[0]?.colors.map((c) => c.name) ?? [...(PRODUCT_COLORS as unknown as string[])];
-  return style.colors.map((c) => c.name);
-}
-
-const ALL_GARMENT_TYPES: GarmentType[] = ['tshirt', 'polo', 'crewneck', 'hoodie', 'longsleeve', 'hat'];
-const ALL_CATALOG_STYLES = Array.from(
-  new Map(VENDOR_CATALOG.flatMap((v) => v.styles).map((s) => [s.styleNumber, s])).values()
-);
-
-function getStyleObjectForProduct(apparelProvider: string, productValue: string) {
-  if (!productValue) return null;
-  const styleNumber = productValue.split(' — ')[0].trim();
-  const vendor = getVendorForProvider(apparelProvider);
-  const styles = vendor ? vendor.styles : ALL_CATALOG_STYLES;
-  return styles.find((s) => s.styleNumber === styleNumber) ?? null;
-}
-
-function getGarmentTypesForProvider(apparelProvider: string): GarmentType[] {
-  const vendor = getVendorForProvider(apparelProvider);
-  const styles = vendor ? vendor.styles : ALL_CATALOG_STYLES;
-  const available = new Set(styles.map((s) => s.garmentType));
-  return ALL_GARMENT_TYPES.filter((t) => available.has(t));
-}
-
-function getStylesForTypeAndProvider(apparelProvider: string, garmentType: GarmentType) {
-  const vendor = getVendorForProvider(apparelProvider);
-  const styles = vendor ? vendor.styles : ALL_CATALOG_STYLES;
-  return styles.filter((s) => s.garmentType === garmentType);
-}
-
-function getColorObjectsForStyle(apparelProvider: string, productValue: string): ProductColor[] {
-  const style = getStyleObjectForProduct(apparelProvider, productValue);
-  if (!style) return [];
-  return style.colors;
-}
-
-function getStyleObjectForProductFallback(productValue: string) {
-  if (!productValue) return null;
-  const styleNumber = productValue.split(' — ')[0].trim();
-  return ALL_CATALOG_STYLES.find((s) => s.styleNumber === styleNumber) ?? null;
-}
-
-function getGarmentTypeFromProduct(apparelProvider: string, productValue: string): GarmentType | null {
-  const style = getStyleObjectForProduct(apparelProvider, productValue);
-  return style ? style.garmentType : null;
-}
 
 function getVariantQty(variant: GarmentVariant): number {
   return APPAREL_SIZES.reduce((sum, { key }) => sum + (variant.sizes[key] || 0), 0);
@@ -203,8 +124,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   const [variants, setVariants] = useState<GarmentVariant[]>(getInitialVariants);
 
   const getInitialGarmentTypes = (): GarmentType[] => {
-    const vts = getInitialVariants();
-    return vts.map((v) => getGarmentTypeFromProduct(item.apparelProvider, v.product) ?? 'tshirt');
+    return getInitialVariants().map(() => 'tshirt' as GarmentType);
   };
   const [variantGarmentTypes, setVariantGarmentTypes] = useState<GarmentType[]>(getInitialGarmentTypes);
   const [variantSearchTerms, setVariantSearchTerms] = useState<string[]>(() =>
@@ -314,10 +234,9 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
 
   const addVariant = () => {
     if (variants.length >= 10) return;
-    const defaultStyle = 'NL6210 — Next Level CVC Crew';
-    handleVariantsChange([...variants, { product: defaultStyle, color: 'Black', sizes: { ...EMPTY_SIZES } }]);
+    handleVariantsChange([...variants, { product: '', color: '', sizes: { ...EMPTY_SIZES } }]);
     setVariantGarmentTypes((prev) => [...prev, 'tshirt']);
-    setVariantSearchTerms((prev) => [...prev, defaultStyle]);
+    setVariantSearchTerms((prev) => [...prev, '']);
     setVariantStyleFocused((prev) => [...prev, false]);
     setVariantColorOpen((prev) => [...prev, false]);
     setVariantCustomColorText((prev) => [...prev, '']);
@@ -801,50 +720,20 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                     {/* Variant rows */}
                     {variants.map((variant, vIdx) => {
                       const rowQty = getVariantQty(variant);
-                      const activeGarmentType = variantGarmentTypes[vIdx] ?? 'tshirt';
-                      const availableTypes = getGarmentTypesForProvider(item.apparelProvider);
-                      const stylesForType = getStylesForTypeAndProvider(item.apparelProvider, activeGarmentType);
                       const isCatalogVariant = !!variant.productId;
-                      const colorObjects = isCatalogVariant
+                      const colorObjects: ProductColor[] = isCatalogVariant
                         ? (dbColorsByProductId[variant.productId as string] ?? [])
-                        : getColorObjectsForStyle(item.apparelProvider, variant.product);
+                        : [];
                       return (
                         <View key={vIdx} style={[styles.variantRow, vIdx % 2 === 1 && styles.variantRowAlt]}>
                           {/* Compact single-line 3-column picker */}
                           {(() => {
                             const rawSearch = variantSearchTerms[vIdx] ?? '';
-                            const searchTerm = rawSearch.toLowerCase();
-                            const selectedLabel = variant.product?.toLowerCase() ?? '';
-                            const isShowingSelection = searchTerm === selectedLabel;
-                            const filteredStyles = (!searchTerm || isShowingSelection)
-                              ? stylesForType
-                              : stylesForType.filter(
-                                  (s) =>
-                                    s.styleNumber.toLowerCase().includes(searchTerm) ||
-                                    s.name.toLowerCase().includes(searchTerm)
-                                );
                             const selectedColorObj = colorObjects.find((c) => c.name === variant.color);
                             return (
                               <View style={styles.variantPickerSection}>
                                 {/* Single-line row: Type | Style search | Color | Delete */}
                                 <View style={styles.variantPickerRow}>
-                                  {/* Type dropdown */}
-                                  {Platform.OS === 'web' ? (
-                                    <select
-                                      value={activeGarmentType}
-                                      onChange={(e: any) => setVariantGarmentType(vIdx, e.target.value as GarmentType)}
-                                      style={{ height: 34, borderRadius: 6, border: `1px solid ${Colors.light.border}`, paddingLeft: 8, paddingRight: 4, fontSize: 12, color: Colors.light.text, backgroundColor: '#fff', minWidth: 90, maxWidth: 110, cursor: 'pointer', outline: 'none' } as any}
-                                    >
-                                      {availableTypes.map((type) => (
-                                        <option key={type} value={type}>{GARMENTS[type].label}</option>
-                                      ))}
-                                    </select>
-                                  ) : (
-                                    <TouchableOpacity style={styles.variantTypeSelectBtn}>
-                                      <Text style={styles.variantTypeBtnText} numberOfLines={1}>{GARMENTS[activeGarmentType].label}</Text>
-                                      <ChevronDown size={12} color={Colors.light.textSecondary} />
-                                    </TouchableOpacity>
-                                  )}
 
                                   {/* Style search input */}
                                   <TextInput
@@ -944,37 +833,14 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                                               </TouchableOpacity>
                                             );
                                           })}
-                                          {filteredStyles.length > 0 && (
-                                            <Text style={styles.variantDropdownSectionLabel}>Quick Picks</Text>
-                                          )}
                                         </>
                                       )}
-                                      {filteredStyles.map((style, sIdx) => {
-                                        const styleValue = `${style.styleNumber} — ${style.name}`;
-                                        const isSelected = variant.product === styleValue;
-                                        return (
-                                          <TouchableOpacity
-                                            key={style.styleNumber}
-                                            style={[
-                                              styles.variantDropdownItem,
-                                              isSelected && styles.variantDropdownItemActive,
-                                              sIdx < filteredStyles.length - 1 && styles.variantDropdownItemBorder,
-                                            ]}
-                                            onPress={() => {
-                                              markVariantManual(vIdx, styleValue);
-                                              setVariantSearchTerms((prev) => prev.map((t, i) => (i === vIdx ? styleValue : t)));
-                                              setVariantStyleFocused((prev) => prev.map((f, i) => (i === vIdx ? false : f)));
-                                            }}
-                                          >
-                                            <Text style={[styles.variantDropdownNum, isSelected && styles.variantDropdownNumActive]}>
-                                              {style.styleNumber}{style.isYouth ? ' (Y)' : ''}
-                                            </Text>
-                                            <Text style={[styles.variantDropdownName, isSelected && styles.variantDropdownNameActive]} numberOfLines={1}>
-                                              {style.name}
-                                            </Text>
-                                          </TouchableOpacity>
-                                        );
-                                      })}
+                                      {vIdx === focusedVariantIdx && rawSearch.trim().length >= 2 && (catalogSearch.isFetching || debouncedCatalogTerm.length < 2) && catalogResults.length === 0 && (
+                                        <Text style={styles.variantDropdownEmpty}>Searching…</Text>
+                                      )}
+                                      {vIdx === focusedVariantIdx && rawSearch.trim().length >= 2 && debouncedCatalogTerm.length >= 2 && !catalogSearch.isFetching && catalogResults.length === 0 && (
+                                        <Text style={styles.variantDropdownEmpty}>No catalog matches — use custom entry below.</Text>
+                                      )}
                                       {rawSearch.trim().length > 0 && (
                                         <TouchableOpacity
                                           style={styles.variantDropdownCustom}
@@ -990,8 +856,8 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                                           </Text>
                                         </TouchableOpacity>
                                       )}
-                                      {filteredStyles.length === 0 && rawSearch.trim().length === 0 && (
-                                        <Text style={styles.variantDropdownEmpty}>Type a style number or name to search.</Text>
+                                      {rawSearch.trim().length === 0 && (
+                                        <Text style={styles.variantDropdownEmpty}>Search our catalog or type a custom style name.</Text>
                                       )}
                                     </ScrollView>
                                   </View>

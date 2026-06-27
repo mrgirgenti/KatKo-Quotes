@@ -1,0 +1,282 @@
+# Product System Refactor — Phase 2
+
+## Quote ↔ Mockup Synchronization
+
+IMPLEMENTATION MODE
+
+Do not investigate further.
+
+You have already identified the required files.
+
+Do not pivot to another task.
+
+Do not create an implementation plan.
+
+Begin implementation immediately.
+
+When complete, report:
+
+* Files changed
+* Components changed
+* What behavior now works
+* Any remaining limitations
+
+Then STOP.
+
+Do not begin Client Hub integration.
+
+---
+
+# GOAL
+
+The Mockup Designer must no longer operate independently from the Quote.
+
+The Quote should become the source of truth for the selected garment.
+
+The Mockup Designer should simply display and edit that garment rather than asking the user to reselect it.
+
+---
+
+# CURRENT ISSUE
+
+The Mockup Designer currently defaults to:
+
+Vendor:
+S&S Activewear
+
+Product:
+NL6210
+
+regardless of what Product Row was selected in the Quote.
+
+This behavior must be removed.
+
+The Mockup Designer should never arbitrarily default to NL6210 again.
+
+---
+
+# PRODUCT ROW IS THE SOURCE OF TRUTH
+
+Each Product Row contains:
+
+* Category
+* Vendor
+* Product
+* Color
+* Sizes
+
+When opening the Mockup Designer from a Product Row, it should automatically receive:
+
+* Vendor
+* Product
+* Color
+
+from that Product Row.
+
+No re-selection should be required.
+
+---
+
+# OPENING THE MOCKUP
+
+When clicking Design Mockup for a Product Row:
+
+Automatically load:
+
+Vendor
+
+↓
+
+Product
+
+↓
+
+Color
+
+from the selected Product Row.
+
+Do not reset to defaults.
+
+---
+
+# MULTIPLE PRODUCT ROWS
+
+A Line Item may contain multiple Product Rows.
+
+Example:
+
+Product Row 1
+
+NL6210
+Black
+
+Product Row 2
+
+Gildan 64000
+Navy
+
+Product Row 3
+
+Youth Tee
+Royal
+
+Each Product Row should be capable of opening its own mockup.
+
+Preferred behavior:
+
+Each Product Row has its own Design Mockup button.
+
+If the existing architecture only supports one button per Line Item, then prompt:
+
+"Which product would you like to create a mockup for?"
+
+Display every Product Row.
+
+Opening one should preload that Product Row.
+
+---
+
+# PRODUCT SYNCHRONIZATION
+
+The Quote and Mockup should stay synchronized.
+
+Example:
+
+Quote
+
+Product:
+NL6210
+
+↓
+
+Open Mockup
+
+↓
+
+Mockup loads:
+
+NL6210
+
+Black
+
+Not NL6210 by coincidence.
+
+The exact Product Row selected.
+
+---
+
+# PRODUCT CHANGES
+
+If the Product Row changes after a mockup already exists:
+
+Example:
+
+NL6210
+
+↓
+
+Gildan 64000
+
+Detect the mismatch.
+
+Prompt:
+
+"This Product Row has changed since the mockup was created.
+
+Would you like to update the mockup to use the new garment?"
+
+Buttons:
+
+* Update Mockup
+* Keep Existing Mockup
+* Cancel
+
+If Update is selected:
+
+Update:
+
+* Vendor
+* Product
+* Available colors
+* Garment template
+
+Retain artwork placements whenever possible.
+
+---
+
+# COLOR SYNCHRONIZATION
+
+Color should stay synchronized.
+
+If Quote:
+
+Color
+
+↓
+
+Black
+
+Opening Mockup should automatically load:
+
+Black
+
+Changing the color inside the Mockup should update the Product Row after confirmation.
+
+Changing the color in the Quote should prompt to update the Mockup.
+
+The user should never unknowingly have different colors between Quote and Mockup.
+
+---
+
+# FALLBACK
+
+If the selected Product does not have:
+
+* Template
+* Colors
+* Vendor information
+
+Continue allowing manual selection.
+
+Do not break existing flexibility.
+
+---
+
+# DO NOT CHANGE
+
+Do not modify:
+
+* Pricing
+* Products page
+* Client Hub
+* Quote calculations
+* Invoice logic
+* Production logic
+
+Only implement Quote ↔ Mockup synchronization.
+
+---
+
+# SUCCESS CRITERIA
+
+Implementation is complete when:
+
+✓ Mockup Designer no longer defaults to NL6210.
+
+✓ Opening a Mockup from a Product Row loads the correct Vendor, Product and Color.
+
+✓ Multiple Product Rows remain supported.
+
+✓ Mockups are associated with individual Product Rows.
+
+✓ Product changes can synchronize existing mockups.
+
+✓ Color changes can synchronize existing mockups.
+
+✓ Existing artwork remains intact whenever possible.
+
+✓ Application builds successfully.
+
+STOP AFTER THIS PHASE.
+
+Do not begin Client Hub integration.

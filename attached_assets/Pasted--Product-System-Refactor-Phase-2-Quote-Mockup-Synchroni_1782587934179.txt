@@ -1,0 +1,253 @@
+# Product System Refactor — Phase 2
+
+## Quote ↔ Mockup Synchronization
+
+IMPLEMENTATION MODE
+
+Do not investigate further.
+
+You have already identified the required files.
+
+Do not pivot to another task.
+
+Do not create an implementation plan.
+
+Begin implementation immediately.
+
+When complete, report:
+
+* Files changed
+* Components changed
+* What behavior now works
+* Any remaining limitations
+
+Then STOP.
+
+Do not begin Client Hub integration.
+
+---
+
+# GOAL
+
+The Mockup Designer should no longer operate independently from the Quote.
+
+The Quote becomes the source of truth for the garment being mocked up.
+
+The Mockup Designer should automatically use the product already selected in the Quote.
+
+The Mockup remains attached to the Line Item (design), not to individual Product Rows.
+
+---
+
+# REMOVE HARDCODED DEFAULTS
+
+The Mockup Designer currently defaults to:
+
+Vendor:
+S&S Activewear
+
+Product:
+NL6210
+
+This behavior must be completely removed.
+
+The Mockup Designer should never default to a garment unless that garment is actually selected in the Quote.
+
+---
+
+# SINGLE PRODUCT ROW
+
+If the Line Item contains only one Product Row:
+
+Click:
+
+Design Mockup
+
+↓
+
+Automatically open the Mockup Designer using:
+
+* Vendor
+* Product
+* Color
+
+from that Product Row.
+
+The user should never have to reselect the garment.
+
+---
+
+# MULTIPLE PRODUCT ROWS
+
+A Line Item may contain multiple Product Rows.
+
+Example:
+
+Next Level NL6210
+
+Black
+
+Gildan 64000
+
+Navy
+
+Youth Tee
+
+Royal
+
+When Design Mockup is clicked:
+
+If multiple Product Rows exist:
+
+Prompt:
+
+"Which product would you like to mock up?"
+
+Display each Product Row.
+
+Selecting one should automatically load:
+
+* Vendor
+* Product
+* Color
+
+into the Mockup Designer.
+
+The mockup remains attached to the Line Item but remembers which garment is currently being displayed.
+
+---
+
+# CURRENT MOCKUP PRODUCT
+
+Inside the Mockup Designer display:
+
+Currently Mocking Up
+
+Vendor
+
+Product
+
+Color
+
+This should always reflect the garment currently being mocked up.
+
+---
+
+# CHANGE PRODUCT
+
+Inside the Mockup Designer provide a simple:
+
+Change Product
+
+action.
+
+Selecting another Product Row should immediately update:
+
+* Vendor
+* Product
+* Available Colors
+* Garment Template
+
+Artwork should remain.
+
+Only the garment changes.
+
+---
+
+# PRODUCT SYNCHRONIZATION
+
+If the Quote Product Row changes after a mockup already exists:
+
+Detect the change.
+
+Prompt:
+
+"The selected garment has changed since this mockup was created.
+
+Would you like to update the mockup to use the newly selected garment?"
+
+Buttons:
+
+* Update Mockup
+* Keep Existing Garment
+* Cancel
+
+If Update is selected:
+
+Update:
+
+* Vendor
+* Product
+* Available Colors
+* Garment Template
+
+Retain artwork placement whenever possible.
+
+---
+
+# COLOR SYNCHRONIZATION
+
+If the selected Product Row color changes:
+
+Prompt to update the Mockup.
+
+If the color changes inside the Mockup:
+
+Prompt to update the Quote Product Row.
+
+The user should never unknowingly have different garment colors between the Quote and Mockup.
+
+---
+
+# MANUAL PRODUCTS
+
+If the selected Product Row is a manually entered product:
+
+Continue allowing Mockup creation.
+
+Do not require the Products page.
+
+Manual products should continue functioning exactly as they do today.
+
+---
+
+# DO NOT CHANGE
+
+Do not modify:
+
+* Products page
+* Pricing
+* Quote calculations
+* Invoice logic
+* Client Hub
+* Production workflow
+
+Only implement Quote ↔ Mockup synchronization.
+
+---
+
+# SUCCESS CRITERIA
+
+Implementation is complete when:
+
+✓ Mockup Designer no longer defaults to NL6210.
+
+✓ Opening Design Mockup automatically loads the correct Vendor, Product and Color.
+
+✓ Multiple Product Rows remain fully supported.
+
+✓ If multiple Product Rows exist, the user selects which garment to mock up before opening.
+
+✓ The Mockup remains attached to the Line Item (design).
+
+✓ Product changes can synchronize the mockup.
+
+✓ Color changes can synchronize the mockup.
+
+✓ Manual products continue working.
+
+✓ Existing artwork remains intact whenever possible.
+
+✓ Application builds successfully.
+
+STOP AFTER THIS PHASE.
