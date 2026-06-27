@@ -1,0 +1,221 @@
+# Product System Refactor — Phase 3
+
+## Client Hub Product Integration
+
+IMPLEMENTATION MODE
+
+Do not investigate broadly.
+Do not create an implementation plan.
+Do not pivot to another task.
+Do not redesign the Client Hub form.
+
+Begin implementation immediately after locating the Client Hub Start a Project form files.
+
+When complete, report:
+
+* Files changed
+* Components changed
+* What behavior now works
+* Confirmation that no pricing is visible in Client Hubs
+* Any remaining limitations
+
+Then STOP.
+
+Do not begin legacy product cleanup.
+
+---
+
+# GOAL
+
+Connect the Client Hub Start a Project form to the same Products page product source used by the backend Quote form.
+
+The Client Hub should no longer rely only on free-text product entry.
+
+Clients should be able to choose products from the Products page catalog, while still retaining manual entry.
+
+---
+
+# IMPORTANT PRICING RULE
+
+Client Hubs must NEVER show pricing.
+
+Do not expose:
+
+* Cost
+* Price
+* Markup
+* Margin
+* Profit
+* Internal notes
+* Vendor cost
+* Supplier cost
+
+Client-facing product data may show only:
+
+* Category
+* Vendor
+* Product name
+* Product number/style
+* Color
+* Sizes
+* Product image, if available
+
+If needed, create a sanitized client-facing product response/helper.
+
+---
+
+# CLIENT HUB PRODUCTS + SIZES
+
+Update the Client Hub Products + Sizes section so it uses the shared Products page source.
+
+Each Product Row should support:
+
+* Category
+* Vendor
+* Product / Style
+* Color
+* Size quantities
+* Total PCS
+
+---
+
+# ADD STYLE/COLOR
+
+Preserve the orange:
+
+* Add Style/Color
+
+button.
+
+Clicking it should add another Product Row.
+
+Each Product Row should remain independent.
+
+A Client Hub request may include multiple products inside one Line Item.
+
+Do NOT redesign this into one product per line item.
+
+---
+
+# MANUAL ENTRY MUST REMAIN
+
+Manual entry is mandatory.
+
+Clients and internal users must still be able to type:
+
+* Category
+* Vendor
+* Product / Style name
+* Product number
+* Color
+
+This is needed for:
+
+* Specialty items
+* New products not yet in catalog
+* Customer-supplied garments
+* Promotional items
+* Unknown products
+* One-off requests
+
+Do not force catalog selection.
+
+Support two modes:
+
+Catalog Product
+
+* Selected from Products page
+* Links product ID
+* Loads vendor/category/colors if available
+
+Custom Product
+
+* Free-text entry
+* No product ID required
+* Works like the current form
+
+---
+
+# PRESERVE CUSTOMER REQUESTS
+
+The Client Hub form captures the customer's request.
+
+Store the selected or typed product as the requested product.
+
+Later, backend users may change it to an approved/internal product during quoting.
+
+Do not overwrite the original customer request.
+
+The system should preserve:
+
+* Requested Product
+* Requested Color
+* Requested Vendor
+* Requested Sizes
+
+Backend quote workflow can later set:
+
+* Approved Product
+* Approved Color
+* Approved Vendor
+
+---
+
+# UI REQUIREMENTS
+
+Do not redesign the full form.
+
+Keep the current Client Hub Start a Project structure.
+
+Only improve the Products + Sizes section enough to support catalog product selection.
+
+The section should continue matching the approved Katalyst OS form style:
+
+* Black PRODUCTS + SIZES header
+* White header text
+* Orange + Add Style/Color button
+* Clean Product Rows
+* Size quantity fields
+
+---
+
+# DO NOT CHANGE
+
+Do not modify:
+
+* Backend Quote form
+* Mockup Designer
+* Pricing engine
+* Invoice logic
+* Production workflow
+* Auth
+* Permissions
+* Overall Client Hub navigation
+
+This phase is Client Hub product integration only.
+
+---
+
+# SUCCESS CRITERIA
+
+Implementation is complete when:
+
+✓ Client Hub Products + Sizes pulls from the Products page source.
+
+✓ Clients can select catalog products.
+
+✓ Clients can still manually type custom products.
+
+✓ Multiple Product Rows remain supported.
+
+✓ Add Style/Color works.
+
+✓ Requested product details are preserved.
+
+✓ Pricing is never visible in Client Hubs.
+
+✓ Backend quote/mockup logic is not modified in this phase.
+
+✓ Application builds successfully.
+
+STOP AFTER THIS PHASE.
