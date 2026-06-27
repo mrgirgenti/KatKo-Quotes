@@ -1,0 +1,119 @@
+Prompt 1 — Build the New Configured Product Architecture (Highest Priority)
+
+This is the most important prompt. Everything else depends on this.
+
+You are performing a foundational architecture refactor of the Katalyst Ko OS quoting system.
+
+CRITICAL IMPLEMENTATION RULES
+Enter Implementation Mode immediately.
+Do not spend time planning or researching beyond what is required.
+Begin editing code immediately.
+Preserve existing functionality wherever possible.
+Leave the application fully functional after this phase.
+Report all modified files at completion.
+OBJECTIVE
+
+Refactor the quoting architecture so that every Quote Line Item owns exactly ONE Configured Product.
+
+The Configured Product becomes the single source of truth.
+
+This replaces duplicated product state across:
+
+Quote
+Mockup Designer
+Client Hub
+Products + Sizes
+Future Production workflow
+NEW DATA MODEL
+
+Each Line Item owns:
+
+ConfiguredProduct
+
+Containing:
+
+Product Type
+Product Style
+Vendor
+Vendor SKU
+Selected Color
+Color Hex
+Product Image
+Decoration Method
+Sizes
+Quantities
+Artwork Layers
+Print Locations
+Template Settings
+Pricing
+Mockup State
+PRODUCTS PAGE
+
+The Products page should become catalog data ONLY.
+
+It stores:
+
+Products
+Vendors
+Styles
+Colors
+Images
+Available Sizes
+Vendor Cost
+
+It should NEVER store quote-specific state.
+
+QUOTE PAGE
+
+The Quote edits the Configured Product.
+
+It owns:
+
+Product Type
+Style
+Color
+Sizes
+Quantities
+Decoration Method
+
+Every change immediately updates the Configured Product.
+
+MOCKUP DESIGNER
+
+The Mockup Designer NO LONGER owns product information.
+
+It edits the same Configured Product.
+
+When opening Mockup Designer, it automatically loads:
+
+Product Type
+Style
+Color
+Sizes
+Artwork
+Locations
+
+No duplicated state.
+
+No synchronization logic.
+
+CLIENT HUB
+
+Client Hub must use the exact same Configured Product object.
+
+No duplicate models.
+
+IMPORTANT
+
+This phase is architecture only.
+
+Do NOT redesign UI yet.
+
+Preserve the existing UI while replacing the underlying data model.
+
+Deliverables:
+
+New Configured Product architecture
+Existing functionality preserved
+Duplicate state removed
+Report modified files
