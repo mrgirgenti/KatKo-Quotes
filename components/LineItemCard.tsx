@@ -33,6 +33,7 @@ import { CurrencyInput } from './CurrencyInput';
 import { SegmentedControl } from './SegmentedControl';
 import { ComboBox } from './ComboBox';
 import { getTotalQuantity, calculateLineItemSubtotal, formatCurrency } from '@/utils/quoteCalculations';
+import { buildConfiguredProduct } from '@/utils/configuredProduct';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useQuery, useQueries } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/apiFetch';
@@ -230,12 +231,16 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
     setVariants(newVariants);
     if (isPromotional) return;
     const mergedSizes = mergeVariantSizes(newVariants);
-    onChange({
+    const updatedItem: LineItem = {
       ...item,
       garmentVariants: newVariants,
       sizes: mergedSizes,
       product: newVariants[0]?.product || item.product,
       productColor: newVariants.length === 1 ? (newVariants[0]?.color || item.productColor) : 'Multiple',
+    };
+    onChange({
+      ...updatedItem,
+      configuredProduct: buildConfiguredProduct(updatedItem),
     });
   };
 

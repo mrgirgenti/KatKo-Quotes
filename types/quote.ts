@@ -84,6 +84,13 @@ export interface LineItem {
   markupEach: number;
   mockupUri?: string;
   completedAt?: string;
+  /**
+   * ConfiguredProduct — canonical single source of truth for all product
+   * state in this line item. Populated by migration and kept in sync
+   * by LineItemCard on every save. Legacy top-level fields are kept for
+   * backward-compat until the UI migration is complete.
+   */
+  configuredProduct?: import('./configuredProduct').ConfiguredProduct;
 }
 
 export interface QuoteCalculations {
