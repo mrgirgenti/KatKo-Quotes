@@ -768,13 +768,6 @@ const s = StyleSheet.create({
     borderRadius: 8, paddingHorizontal: 10, height: 34, minWidth: 150, maxWidth: 240, flex: 1,
   },
   searchInput: { flex: 1, fontSize: 13, color: '#111', outlineStyle: 'none' as any },
-  headerBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8,
-    paddingHorizontal: 10, height: 34, backgroundColor: '#fff',
-  },
-  headerBtnActive: { borderColor: BRAND, backgroundColor: '#FFF7ED' },
-  headerBtnText: { fontSize: 13, fontWeight: '500', color: '#374151' },
   markAllBtn: { backgroundColor: BRAND, borderRadius: 8, paddingHorizontal: 12, height: 34, justifyContent: 'center' },
   markAllText: { fontSize: 13, fontWeight: '700', color: '#fff' },
   refreshBtn: { padding: 6 },
@@ -945,9 +938,6 @@ const s = StyleSheet.create({
     letterSpacing: 0.8, textTransform: 'uppercase',
   },
   drawerSecBody: { padding: 12, gap: 8 },
-  drawerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
-  drawerRowLabel: { fontSize: 11, color: '#6B7280', fontWeight: '500' },
-  drawerRowValue: { fontSize: 12, color: '#111', fontWeight: '500' },
   drawerCommentText: { fontSize: 12, color: '#374151', lineHeight: 18 },
   drawerFooter: {
     flexDirection: 'column', gap: 8, padding: 12,
