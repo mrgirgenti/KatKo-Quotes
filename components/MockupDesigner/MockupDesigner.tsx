@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -27,7 +27,10 @@ import {
   Brush,
   RotateCcw,
   Link2,
+  Wand2,
+  Move,
 } from 'lucide-react-native';
+import { useQuery } from '@tanstack/react-query';
 import Colors from '@/constants/colors';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import {
@@ -39,8 +42,22 @@ import {
   GarmentView,
   PrintLocation,
   ZoneDefinition,
+  UNITS_PER_INCH,
+  PrintTemplate,
+  DecorationMethod,
+  SnapPosition,
+  DECORATION_METHODS,
+  SNAP_POSITIONS,
+  TemplateSizingOverride,
+  resolveTemplate,
+  fitDefault,
+  computeArtRect,
+  approxEqual,
+  PLACEMENT_TYPE_TO_LOCATION,
 } from './garmentData';
 import { VENDOR_CATALOG, ProductColor } from './vendorCatalog';
+import OverlayMenu from '@/components/OverlayMenu';
+import { apiFetch } from '@/lib/apiFetch';
 import { generateId } from '@/utils/quoteCalculations';
 import { ConfiguredProductEditor } from '@/components/configured-product/ConfiguredProductEditor';
 import type { ConfiguredProduct } from '@/types/configuredProduct';
@@ -118,8 +135,24 @@ interface Placement {
   zoneId: PrintLocation;
   artworkId: string;
   artworkUri: string;
+  /** Current artwork size (inches). Kept as strings for smooth TextInput edits. */
   artWidthIn?: string;
   artHeightIn?: string;
+  /** Manual offset from the snap anchor (inches). */
+  offsetXIn: number;
+  offsetYIn: number;
+  /** Anchor within the zone's safe area. */
+  snap: SnapPosition;
+  /** Decoration method for this placement. */
+  decorationMethod: DecorationMethod;
+}
+
+/** Whether the placement matches its resolved template, or has been customised. */
+interface PlacementStatus {
+  usingTemplate: boolean;
+  customSize: boolean;
+  customPosition: boolean;
+  customMethod: boolean;
 }
 
 interface Props {
@@ -190,26 +223,58 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
     setSelectedArtworkId(newArtwork.id);
   }, []);
 
+  // ── Catalog template enhancement (Product Model Law: optional, never a gate) ──
+  // When the configured product is linked to a catalog product, pull its
+  // effective placements and use them to override the derived inch sizing only.
+  const linkedProductId = configuredProduct?.productId;
+  const { data: effectivePlacementsData } = useQuery<{ placements?: any[] }>({
+    queryKey: ['product-effective-placements', linkedProductId],
+    queryFn: () => apiFetch(`/api/products/${linkedProductId}/effective-placements`),
+    enabled: !!linkedProductId,
+  });
+
+  const dbOverrideByZone = useMemo(() => {
+    const map: Partial<Record<PrintLocation, TemplateSizingOverride>> = {};
+    const rows = effectivePlacementsData?.placements ?? [];
+    for (const row of rows) {
+      const loc = PLACEMENT_TYPE_TO_LOCATION[String(row.placementType)];
+      if (!loc) continue;
+      map[loc] = {
+        defaultWidthIn: row.defaultArtworkWidth ?? null,
+        defaultHeightIn: row.defaultArtworkHeight ?? null,
+        maxWidthIn: row.maxArtworkWidth ?? null,
+        maxHeightIn: row.maxArtworkHeight ?? null,
+      };
+    }
+    return map;
+  }, [effectivePlacementsData]);
+
+  const dbOverrideRef = useRef(dbOverrideByZone);
+  useEffect(() => { dbOverrideRef.current = dbOverrideByZone; }, [dbOverrideByZone]);
+
+  /** Resolve a zone's full template (derived defaults + optional DB sizing). */
+  const templateForZone = (zone: ZoneDefinition): PrintTemplate =>
+    resolveTemplate(zone, dbOverrideByZone[zone.id]);
+
   const placeArtworkInZone = useCallback((artworkId: string, zone: ZoneDefinition) => {
     setUploadedArtworks(prev => {
       const artwork = prev.find(a => a.id === artworkId);
       if (!artwork) return prev;
-      const zoneMaxWIn = zone.w / 25;
-      const zoneMaxHIn = zone.h / 25;
-      let autoW: string | undefined;
-      let autoH: string | undefined;
-      if (artwork.naturalW && artwork.naturalH) {
-        const ratio = artwork.naturalW / artwork.naturalH;
-        let fitW = Math.min(14, artwork.naturalW / 96);
-        let fitH = Math.min(14, artwork.naturalH / 96);
-        if (fitW > zoneMaxWIn) { fitW = zoneMaxWIn; fitH = fitW / ratio; }
-        if (fitH > zoneMaxHIn) { fitH = zoneMaxHIn; fitW = fitH * ratio; }
-        autoW = fitW.toFixed(1);
-        autoH = fitH.toFixed(1);
-      }
+      const tpl = resolveTemplate(zone, dbOverrideRef.current[zone.id]);
+      const { widthIn, heightIn } = fitDefault(tpl, artwork.naturalW, artwork.naturalH);
       setPlacements(curr => {
         const filtered = curr.filter(p => p.zoneId !== zone.id);
-        return [...filtered, { zoneId: zone.id, artworkId: artwork.id, artworkUri: artwork.uri, artWidthIn: autoW, artHeightIn: autoH }];
+        return [...filtered, {
+          zoneId: zone.id,
+          artworkId: artwork.id,
+          artworkUri: artwork.uri,
+          artWidthIn: widthIn.toFixed(2),
+          artHeightIn: heightIn.toFixed(2),
+          offsetXIn: tpl.defaultOffsetXIn,
+          offsetYIn: tpl.defaultOffsetYIn,
+          snap: tpl.snap,
+          decorationMethod: tpl.decorationMethod,
+        }];
       });
       setActiveZoneId(zone.id);
       return prev;
@@ -496,18 +561,18 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
           if (!zone) { resolve(); return; }
           const img = new window.Image();
           img.onload = () => {
-            const padding = 6;
-            const zx = zone.x + padding;
-            const zy = zone.y + padding;
-            const zw = zone.w - padding * 2;
-            const zh = zone.h - padding * 2;
-            const imgRatio = img.width / img.height;
-            const zoneRatio = zw / zh;
-            let dw = zw, dh = zh;
-            if (imgRatio > zoneRatio) { dh = zw / imgRatio; } else { dw = zh * imgRatio; }
-            const dx = zx + (zw - dw) / 2;
-            const dy = zy + (zh - dh) / 2;
-            ctx.drawImage(img, dx, dy, dw, dh);
+            const tpl = resolveTemplate(zone, dbOverrideByZone[zone.id]);
+            const widthIn = parseFloat(placement.artWidthIn || '') || tpl.defaultWidthIn;
+            const heightIn = parseFloat(placement.artHeightIn || '') || tpl.defaultHeightIn;
+            const rect = computeArtRect(zone, {
+              widthIn,
+              heightIn,
+              snap: placement.snap,
+              offsetXIn: placement.offsetXIn,
+              offsetYIn: placement.offsetYIn,
+              safeAreaIn: tpl.safeAreaIn,
+            });
+            ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h);
             resolve();
           };
           img.onerror = () => resolve();
@@ -517,7 +582,7 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
 
     await Promise.all(placementPromises);
     return canvas.toDataURL('image/png');
-  }, [svgPath, garmentColor, currentZones, placements]);
+  }, [svgPath, garmentColor, currentZones, placements, dbOverrideByZone]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -567,6 +632,86 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
 
   const placementForZone = (zoneId: PrintLocation) =>
     placements.find(p => p.zoneId === zoneId);
+
+  // ── Template actions (smart placement) ──
+  /** Restore a placement fully to its resolved template (size, position, snap, method). */
+  const resetPlacementToTemplate = (zoneId: PrintLocation) => {
+    const zone = currentZones.find(z => z.id === zoneId);
+    if (!zone) return;
+    const tpl = resolveTemplate(zone, dbOverrideByZone[zoneId]);
+    setPlacements(curr => curr.map(p => {
+      if (p.zoneId !== zoneId) return p;
+      const art = uploadedArtworks.find(a => a.id === p.artworkId);
+      const { widthIn, heightIn } = fitDefault(tpl, art?.naturalW, art?.naturalH);
+      return {
+        ...p,
+        artWidthIn: widthIn.toFixed(2),
+        artHeightIn: heightIn.toFixed(2),
+        offsetXIn: tpl.defaultOffsetXIn,
+        offsetYIn: tpl.defaultOffsetYIn,
+        snap: tpl.snap,
+        decorationMethod: tpl.decorationMethod,
+      };
+    }));
+  };
+
+  /** Derive the template-status of a placement by comparing it to its template. */
+  const getPlacementStatus = (zone: ZoneDefinition, placement: Placement): PlacementStatus => {
+    const tpl = resolveTemplate(zone, dbOverrideByZone[zone.id]);
+    const art = uploadedArtworks.find(a => a.id === placement.artworkId);
+    const def = fitDefault(tpl, art?.naturalW, art?.naturalH);
+    const w = parseFloat(placement.artWidthIn || '');
+    const h = parseFloat(placement.artHeightIn || '');
+    const customSize =
+      !Number.isFinite(w) || !Number.isFinite(h) ||
+      !approxEqual(w, def.widthIn) || !approxEqual(h, def.heightIn);
+    const customPosition =
+      placement.snap !== tpl.snap ||
+      !approxEqual(placement.offsetXIn, tpl.defaultOffsetXIn, 0.01) ||
+      !approxEqual(placement.offsetYIn, tpl.defaultOffsetYIn, 0.01);
+    const customMethod = placement.decorationMethod !== tpl.decorationMethod;
+    return {
+      usingTemplate: !customSize && !customPosition && !customMethod,
+      customSize,
+      customPosition,
+      customMethod,
+    };
+  };
+
+  /** Clamp a (width, height) inch pair to the template max, preserving aspect. */
+  const clampPairToMax = (
+    wStr: string | undefined,
+    hStr: string | undefined,
+    tpl: PrintTemplate,
+    ar: number | null,
+  ): { w: string | undefined; h: string | undefined } => {
+    let w = wStr;
+    let h = hStr;
+    const wn = parseFloat(w ?? '');
+    if (Number.isFinite(wn) && wn > tpl.maxWidthIn) {
+      w = tpl.maxWidthIn.toFixed(2);
+      if (ar) h = (tpl.maxWidthIn * ar).toFixed(2);
+    }
+    const hn = parseFloat(h ?? '');
+    if (Number.isFinite(hn) && hn > tpl.maxHeightIn) {
+      h = tpl.maxHeightIn.toFixed(2);
+      if (ar) w = (tpl.maxHeightIn / ar).toFixed(2);
+    }
+    return { w, h };
+  };
+
+  const setPlacementSnap = (zoneId: PrintLocation, snap: SnapPosition) =>
+    setPlacements(curr => curr.map(p => (p.zoneId === zoneId ? { ...p, snap } : p)));
+
+  const setPlacementDecoration = (zoneId: PrintLocation, decorationMethod: DecorationMethod) =>
+    setPlacements(curr => curr.map(p => (p.zoneId === zoneId ? { ...p, decorationMethod } : p)));
+
+  const nudgePlacement = (zoneId: PrintLocation, dx: number, dy: number) =>
+    setPlacements(curr => curr.map(p => (
+      p.zoneId === zoneId
+        ? { ...p, offsetXIn: Math.round((p.offsetXIn + dx) * 100) / 100, offsetYIn: Math.round((p.offsetYIn + dy) * 100) / 100 }
+        : p
+    )));
 
   return (
     <Modal visible={visible} animationType="fade" transparent statusBarTranslucent>
@@ -868,6 +1013,29 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                   const isSuggested = isSuggestedZone(zone.id);
                   const hasArtwork = !!placement;
 
+                  // Live geometry: resolve the zone template + current placement
+                  // into an absolute rect, then make it zone-relative for display.
+                  let artStyle: { left: number; top: number; width: number; height: number } | null = null;
+                  if (placement) {
+                    const tpl = resolveTemplate(zone, dbOverrideByZone[zone.id]);
+                    const widthIn = parseFloat(placement.artWidthIn || '') || tpl.defaultWidthIn;
+                    const heightIn = parseFloat(placement.artHeightIn || '') || tpl.defaultHeightIn;
+                    const rect = computeArtRect(zone, {
+                      widthIn,
+                      heightIn,
+                      snap: placement.snap,
+                      offsetXIn: placement.offsetXIn,
+                      offsetYIn: placement.offsetYIn,
+                      safeAreaIn: tpl.safeAreaIn,
+                    });
+                    artStyle = {
+                      left: (rect.x - zone.x) * SCALE,
+                      top: (rect.y - zone.y) * SCALE,
+                      width: rect.w * SCALE,
+                      height: rect.h * SCALE,
+                    };
+                  }
+
                   return (
                     <TouchableOpacity
                       key={zone.id}
@@ -886,11 +1054,11 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                       onPress={() => handleZonePress(zone)}
                       activeOpacity={0.7}
                     >
-                      {placement ? (
-                        <View style={styles.zoneArtworkContainer}>
+                      {placement && artStyle ? (
+                        <>
                           <Image
                             source={{ uri: placement.artworkUri }}
-                            style={styles.zoneArtworkImage}
+                            style={[styles.zoneArtworkImage, artStyle]}
                             resizeMode="contain"
                           />
                           <TouchableOpacity
@@ -899,7 +1067,7 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                           >
                             <X size={8} color="#fff" />
                           </TouchableOpacity>
-                        </View>
+                        </>
                       ) : (
                         <Text style={[
                           styles.zoneLabel,
@@ -1043,8 +1211,11 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
               <ScrollView style={styles.zoneRef} showsVerticalScrollIndicator={false}>
                 {currentZones.map(zone => {
                   const placement = placementForZone(zone.id);
-                  const zoneMaxW = zone.w / 25;
-                  const zoneMaxH = zone.h / 25;
+                  const tpl = templateForZone(zone);
+                  const zoneMaxW = tpl.maxWidthIn;
+                  const zoneMaxH = tpl.maxHeightIn;
+                  const isActive = activeZoneId === zone.id;
+                  const status = placement ? getPlacementStatus(zone, placement) : null;
                   const placedArtwork = placement ? uploadedArtworks.find(a => a.id === placement.artworkId) : null;
                   const hasNaturalDims = !!(placedArtwork?.naturalW && placedArtwork?.naturalH);
                   const aspectRatio = hasNaturalDims ? placedArtwork!.naturalH! / placedArtwork!.naturalW! : null;
@@ -1056,8 +1227,9 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                     const linkedH = (aspectRatio && !isNaN(num) && val.trim() !== '' && val !== '.')
                       ? (num * aspectRatio).toFixed(2)
                       : placement?.artHeightIn;
+                    const { w, h } = clampPairToMax(val, linkedH, tpl, aspectRatio);
                     setPlacements(prev => prev.map(p =>
-                      p.zoneId === zone.id ? { ...p, artWidthIn: val, artHeightIn: linkedH } : p
+                      p.zoneId === zone.id ? { ...p, artWidthIn: w, artHeightIn: h } : p
                     ));
                   };
 
@@ -1066,18 +1238,44 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                     const linkedW = (aspectRatio && !isNaN(num) && val.trim() !== '' && val !== '.')
                       ? (num / aspectRatio).toFixed(2)
                       : placement?.artWidthIn;
+                    const { w, h } = clampPairToMax(linkedW, val, tpl, aspectRatio);
                     setPlacements(prev => prev.map(p =>
-                      p.zoneId === zone.id ? { ...p, artWidthIn: linkedW, artHeightIn: val } : p
+                      p.zoneId === zone.id ? { ...p, artWidthIn: w, artHeightIn: h } : p
                     ));
                   };
 
+                  const statusLabel = status
+                    ? (status.usingTemplate
+                        ? 'Using Template'
+                        : status.customSize
+                          ? 'Custom Size'
+                          : status.customPosition
+                            ? 'Custom Position'
+                            : 'Custom Method')
+                    : null;
+
                   return (
-                    <View key={zone.id} style={styles.zoneRefItem}>
+                    <View key={zone.id} style={[styles.zoneRefItem, isActive && styles.zoneRefItemActive]}>
                       <View style={[styles.zoneRefDot, placement && styles.zoneRefDotFilled]} />
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.zoneRefText, placement && styles.zoneRefTextFilled]}>
-                          {zone.id}
-                        </Text>
+                        <View style={styles.zoneRefHeader}>
+                          <Text style={[styles.zoneRefText, placement && styles.zoneRefTextFilled]}>
+                            {zone.id}
+                          </Text>
+                          {status && (
+                            <View style={[
+                              styles.tplBadge,
+                              status.usingTemplate ? styles.tplBadgeOk : styles.tplBadgeCustom,
+                            ]}>
+                              <Text style={[
+                                styles.tplBadgeText,
+                                status.usingTemplate ? styles.tplBadgeTextOk : styles.tplBadgeTextCustom,
+                              ]}>
+                                {statusLabel}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
                         {placement ? (
                           <View>
                             {origW !== null && origH !== null && (
@@ -1112,10 +1310,123 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                                 />
                               </View>
                             </View>
-                            <Text style={styles.artSizeMax}>Max {zoneMaxW.toFixed(1)}&quot; × {zoneMaxH.toFixed(1)}&quot;</Text>
+                            <Text style={styles.artSizeMax}>
+                              Max {zoneMaxW.toFixed(1)}&quot; × {zoneMaxH.toFixed(1)}&quot; · Safe {tpl.safeAreaIn}&quot;
+                            </Text>
+
+                            {isActive && (
+                              <View style={styles.tplControls}>
+                                <Text style={styles.tplFieldLabel}>Decoration</Text>
+                                <OverlayMenu
+                                  menuWidth={168}
+                                  align="left"
+                                  trigger={({ open }) => (
+                                    <TouchableOpacity style={styles.tplSelect} onPress={open}>
+                                      <Text style={styles.tplSelectText} numberOfLines={1}>
+                                        {placement.decorationMethod}
+                                      </Text>
+                                      <ChevronDown size={12} color={Colors.light.textSecondary} />
+                                    </TouchableOpacity>
+                                  )}
+                                >
+                                  {({ close }) => (
+                                    <>
+                                      {DECORATION_METHODS.map(m => (
+                                        <TouchableOpacity
+                                          key={m}
+                                          style={styles.tplOption}
+                                          onPress={() => { close(); setPlacementDecoration(zone.id, m); }}
+                                        >
+                                          <Text style={[
+                                            styles.tplOptionText,
+                                            m === placement.decorationMethod && styles.tplOptionTextActive,
+                                          ]}>
+                                            {m}
+                                          </Text>
+                                          {m === placement.decorationMethod && (
+                                            <CheckCircle size={12} color={Colors.light.tint} />
+                                          )}
+                                        </TouchableOpacity>
+                                      ))}
+                                    </>
+                                  )}
+                                </OverlayMenu>
+
+                                <Text style={styles.tplFieldLabel}>Position</Text>
+                                <OverlayMenu
+                                  menuWidth={168}
+                                  align="left"
+                                  trigger={({ open }) => (
+                                    <TouchableOpacity style={styles.tplSelect} onPress={open}>
+                                      <Move size={11} color={Colors.light.textSecondary} />
+                                      <Text style={styles.tplSelectText} numberOfLines={1}>
+                                        {SNAP_POSITIONS.find(s => s.value === placement.snap)?.label ?? placement.snap}
+                                      </Text>
+                                      <ChevronDown size={12} color={Colors.light.textSecondary} />
+                                    </TouchableOpacity>
+                                  )}
+                                >
+                                  {({ close }) => (
+                                    <>
+                                      {SNAP_POSITIONS.map(s => (
+                                        <TouchableOpacity
+                                          key={s.value}
+                                          style={styles.tplOption}
+                                          onPress={() => { close(); setPlacementSnap(zone.id, s.value); }}
+                                        >
+                                          <Text style={[
+                                            styles.tplOptionText,
+                                            s.value === placement.snap && styles.tplOptionTextActive,
+                                          ]}>
+                                            {s.label}
+                                          </Text>
+                                          {s.value === placement.snap && (
+                                            <CheckCircle size={12} color={Colors.light.tint} />
+                                          )}
+                                        </TouchableOpacity>
+                                      ))}
+                                    </>
+                                  )}
+                                </OverlayMenu>
+
+                                <View style={styles.nudgeRow}>
+                                  <TouchableOpacity style={styles.nudgeBtn} onPress={() => nudgePlacement(zone.id, -0.25, 0)}>
+                                    <Text style={styles.nudgeText}>←</Text>
+                                  </TouchableOpacity>
+                                  <TouchableOpacity style={styles.nudgeBtn} onPress={() => nudgePlacement(zone.id, 0.25, 0)}>
+                                    <Text style={styles.nudgeText}>→</Text>
+                                  </TouchableOpacity>
+                                  <TouchableOpacity style={styles.nudgeBtn} onPress={() => nudgePlacement(zone.id, 0, -0.25)}>
+                                    <Text style={styles.nudgeText}>↑</Text>
+                                  </TouchableOpacity>
+                                  <TouchableOpacity style={styles.nudgeBtn} onPress={() => nudgePlacement(zone.id, 0, 0.25)}>
+                                    <Text style={styles.nudgeText}>↓</Text>
+                                  </TouchableOpacity>
+                                </View>
+
+                                <View style={styles.tplBtnRow}>
+                                  <TouchableOpacity
+                                    style={[styles.tplBtn, styles.tplBtnPrimary]}
+                                    onPress={() => resetPlacementToTemplate(zone.id)}
+                                  >
+                                    <Wand2 size={12} color="#fff" />
+                                    <Text style={styles.tplBtnPrimaryText}>Apply Template</Text>
+                                  </TouchableOpacity>
+                                  <TouchableOpacity
+                                    style={[styles.tplBtn, styles.tplBtnGhost]}
+                                    onPress={() => resetPlacementToTemplate(zone.id)}
+                                  >
+                                    <RotateCcw size={12} color={Colors.light.textSecondary} />
+                                    <Text style={styles.tplBtnGhostText}>Reset to Template</Text>
+                                  </TouchableOpacity>
+                                </View>
+                              </View>
+                            )}
                           </View>
                         ) : (
-                          <Text style={styles.artSizeMax}>Max {zoneMaxW.toFixed(1)}&quot; × {zoneMaxH.toFixed(1)}&quot;</Text>
+                          <Text style={styles.artSizeMax}>
+                            Max {zoneMaxW.toFixed(1)}&quot; × {zoneMaxH.toFixed(1)}&quot; · Safe {tpl.safeAreaIn}&quot;
+                          </Text>
                         )}
                       </View>
                     </View>
@@ -1522,7 +1833,7 @@ const styles = StyleSheet.create({
     padding: 2,
   },
   zoneArtworkContainer: { width: '100%', height: '100%', position: 'relative' },
-  zoneArtworkImage: { width: '100%', height: '100%' },
+  zoneArtworkImage: { position: 'absolute' },
   zoneRemoveBtn: {
     position: 'absolute',
     top: 2,
@@ -1659,8 +1970,10 @@ const styles = StyleSheet.create({
   },
   placingHintText: { fontSize: 10, color: '#1D4ED8', textAlign: 'center', lineHeight: 14 },
 
-  zoneRef: { maxHeight: 260 },
-  zoneRefItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, paddingVertical: 4 },
+  zoneRef: { maxHeight: 320 },
+  zoneRefItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, paddingVertical: 4, borderRadius: 6, paddingHorizontal: 4 },
+  zoneRefItemActive: { backgroundColor: '#F1F5FF' },
+  zoneRefHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   zoneRefDot: {
     width: 8, height: 8, borderRadius: 4, marginTop: 3,
     borderWidth: 1.5, borderColor: Colors.light.borderDark,
@@ -1694,6 +2007,71 @@ const styles = StyleSheet.create({
   },
   artSizeSep: { fontSize: 11, color: Colors.light.textSecondary, marginHorizontal: 1 },
   artSizeMax: { fontSize: 9, color: Colors.light.textSecondary, marginTop: 2 },
+
+  tplBadge: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 8 },
+  tplBadgeOk: { backgroundColor: '#DCFCE7' },
+  tplBadgeCustom: { backgroundColor: '#FEF3C7' },
+  tplBadgeText: { fontSize: 8, fontWeight: '700', letterSpacing: 0.2 },
+  tplBadgeTextOk: { color: '#15803D' },
+  tplBadgeTextCustom: { color: '#B45309' },
+
+  tplControls: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    gap: 4,
+  },
+  tplFieldLabel: { fontSize: 9, fontWeight: '700', color: Colors.light.textSecondary, letterSpacing: 0.3 },
+  tplSelect: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 26,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 5,
+    paddingHorizontal: 7,
+    backgroundColor: '#fff',
+  },
+  tplSelectText: { flex: 1, fontSize: 11, color: Colors.light.text },
+  tplOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  tplOptionText: { fontSize: 12, color: Colors.light.text },
+  tplOptionTextActive: { color: Colors.light.tint, fontWeight: '600' },
+
+  nudgeRow: { flexDirection: 'row', gap: 4, marginTop: 2 },
+  nudgeBtn: {
+    width: 26,
+    height: 24,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  nudgeText: { fontSize: 13, color: Colors.light.textSecondary, lineHeight: 16 },
+
+  tplBtnRow: { flexDirection: 'row', gap: 6, marginTop: 4 },
+  tplBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    height: 28,
+    borderRadius: 6,
+  },
+  tplBtnPrimary: { backgroundColor: Colors.light.tint },
+  tplBtnPrimaryText: { fontSize: 10, fontWeight: '700', color: '#fff' },
+  tplBtnGhost: { borderWidth: 1, borderColor: Colors.light.border, backgroundColor: '#fff' },
+  tplBtnGhostText: { fontSize: 10, fontWeight: '600', color: Colors.light.textSecondary },
 
   resetBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,

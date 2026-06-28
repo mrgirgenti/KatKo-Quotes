@@ -1,6 +1,9 @@
 export const CANVAS_W = 500;
 export const CANVAS_H = 600;
 
+/** Canvas units per real-world inch. Zones are authored in this 500×600 space. */
+export const UNITS_PER_INCH = 25;
+
 export type GarmentType = 'tshirt' | 'polo' | 'crewneck' | 'hoodie' | 'longsleeve' | 'hat';
 export type GarmentView = 'front' | 'back';
 export type PrintLocation =
@@ -15,6 +18,64 @@ export type PrintLocation =
   | 'Right Sleeve'
   | 'Pocket (literal)';
 
+/** Decoration / print methods a location template can recommend. */
+export type DecorationMethod =
+  | 'Screen Print'
+  | 'Embroidery'
+  | 'DTG'
+  | 'Heat Transfer'
+  | 'Vinyl'
+  | 'Sublimation';
+
+export const DECORATION_METHODS: DecorationMethod[] = [
+  'Screen Print',
+  'Embroidery',
+  'DTG',
+  'Heat Transfer',
+  'Vinyl',
+  'Sublimation',
+];
+
+/** Where artwork anchors inside a zone's safe area before any manual offset. */
+export type SnapPosition =
+  | 'center'
+  | 'top-center'
+  | 'bottom-center'
+  | 'left'
+  | 'right';
+
+export const SNAP_POSITIONS: { value: SnapPosition; label: string }[] = [
+  { value: 'center', label: 'Center' },
+  { value: 'top-center', label: 'Top' },
+  { value: 'bottom-center', label: 'Bottom' },
+  { value: 'left', label: 'Left' },
+  { value: 'right', label: 'Right' },
+];
+
+/**
+ * An intelligent preset for a single print location. This is a client-side
+ * adapter shape — NOT a parallel persisted store. Values are derived from the
+ * static garment zone and can be overridden per-zone (future per-garment
+ * presets) or by catalog DB effective-placements (inch sizing only).
+ */
+export interface PrintTemplate {
+  /** Default artwork bounding box (inches) the artwork is fitted into. */
+  defaultWidthIn: number;
+  defaultHeightIn: number;
+  /** Hard maximum the artwork may be scaled to (inches). */
+  maxWidthIn: number;
+  maxHeightIn: number;
+  /** Margin kept clear inside the zone on every side (inches). */
+  safeAreaIn: number;
+  /** Recommended decoration method for this location. */
+  decorationMethod: DecorationMethod;
+  /** Default anchor inside the safe area. */
+  snap: SnapPosition;
+  /** Default manual offset from the snap anchor (inches). */
+  defaultOffsetXIn: number;
+  defaultOffsetYIn: number;
+}
+
 export interface ZoneDefinition {
   id: PrintLocation;
   label: string;
@@ -23,6 +84,8 @@ export interface ZoneDefinition {
   w: number;
   h: number;
   view: GarmentView;
+  /** Optional explicit template override (future per-garment presets). */
+  template?: Partial<PrintTemplate>;
 }
 
 export interface GarmentDefinition {
@@ -187,3 +250,187 @@ export const BRANDS = [
   'Gildan',
   'alphabroder',
 ];
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Print Location Templates + Smart Placement
+ * ────────────────────────────────────────────────────────────────────────── */
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+/** Round to the nearest quarter inch for tidy default sizing. */
+const roundQuarter = (n: number) => Math.round(n * 4) / 4;
+
+/**
+ * Locations that read best as a small/embroidered placement. Everything else
+ * defaults to Screen Print.
+ */
+const EMBROIDERY_LOCATIONS: PrintLocation[] = [
+  'Left Chest',
+  'Right Chest',
+  'Left Sleeve',
+  'Right Sleeve',
+  'Neck Tag',
+];
+
+/** Optional sizing override fed from catalog DB effective-placements (inches). */
+export interface TemplateSizingOverride {
+  defaultWidthIn?: number | null;
+  defaultHeightIn?: number | null;
+  maxWidthIn?: number | null;
+  maxHeightIn?: number | null;
+}
+
+/**
+ * Resolve the full PrintTemplate for a zone. Priority:
+ *   1. derived sensible defaults from the static zone geometry
+ *   2. explicit per-zone `template` override (future per-garment presets)
+ *   3. catalog DB sizing override (inch sizing only, when a product is linked)
+ * Never gates on the catalog — manual/free-text products always get a template.
+ */
+export function resolveTemplate(
+  zone: ZoneDefinition,
+  dbOverride?: TemplateSizingOverride | null,
+): PrintTemplate {
+  const maxWidthInDerived = round2(zone.w / UNITS_PER_INCH);
+  const maxHeightInDerived = round2(zone.h / UNITS_PER_INCH);
+
+  // Default bounding box ≈ 80% of the printable area, tidied to a quarter inch.
+  const base: PrintTemplate = {
+    maxWidthIn: maxWidthInDerived,
+    maxHeightIn: maxHeightInDerived,
+    defaultWidthIn: Math.max(0.5, roundQuarter(maxWidthInDerived * 0.8)),
+    defaultHeightIn: Math.max(0.5, roundQuarter(maxHeightInDerived * 0.8)),
+    safeAreaIn: 0.25,
+    decorationMethod: EMBROIDERY_LOCATIONS.includes(zone.id) ? 'Embroidery' : 'Screen Print',
+    snap: zone.id === 'Neck Tag' ? 'top-center' : 'center',
+    defaultOffsetXIn: 0,
+    defaultOffsetYIn: 0,
+  };
+
+  const withZone: PrintTemplate = { ...base, ...(zone.template ?? {}) };
+
+  if (dbOverride) {
+    if (dbOverride.maxWidthIn != null) withZone.maxWidthIn = round2(dbOverride.maxWidthIn);
+    if (dbOverride.maxHeightIn != null) withZone.maxHeightIn = round2(dbOverride.maxHeightIn);
+    if (dbOverride.defaultWidthIn != null) withZone.defaultWidthIn = round2(dbOverride.defaultWidthIn);
+    if (dbOverride.defaultHeightIn != null) withZone.defaultHeightIn = round2(dbOverride.defaultHeightIn);
+  }
+
+  // Defaults can never exceed the max.
+  withZone.defaultWidthIn = Math.min(withZone.defaultWidthIn, withZone.maxWidthIn);
+  withZone.defaultHeightIn = Math.min(withZone.defaultHeightIn, withZone.maxHeightIn);
+
+  return withZone;
+}
+
+/**
+ * Fit artwork into the template's default bounding box, preserving the artwork's
+ * natural aspect ratio when known, and clamp the result to the template max.
+ * Returns inches.
+ */
+export function fitDefault(
+  tpl: PrintTemplate,
+  naturalW?: number | null,
+  naturalH?: number | null,
+): { widthIn: number; heightIn: number } {
+  let w = tpl.defaultWidthIn;
+  let h = tpl.defaultHeightIn;
+
+  if (naturalW && naturalH && naturalW > 0 && naturalH > 0) {
+    const ratio = naturalW / naturalH; // w / h
+    // Fit inside the default box.
+    h = w / ratio;
+    if (h > tpl.defaultHeightIn) {
+      h = tpl.defaultHeightIn;
+      w = h * ratio;
+    }
+    // Clamp to max, preserving ratio.
+    if (w > tpl.maxWidthIn) {
+      w = tpl.maxWidthIn;
+      h = w / ratio;
+    }
+    if (h > tpl.maxHeightIn) {
+      h = tpl.maxHeightIn;
+      w = h * ratio;
+    }
+  } else {
+    w = Math.min(w, tpl.maxWidthIn);
+    h = Math.min(h, tpl.maxHeightIn);
+  }
+
+  return { widthIn: round2(w), heightIn: round2(h) };
+}
+
+export interface ArtPlacementInput {
+  widthIn: number;
+  heightIn: number;
+  snap: SnapPosition;
+  offsetXIn: number;
+  offsetYIn: number;
+  safeAreaIn: number;
+}
+
+/**
+ * Compute the absolute artwork rectangle (canvas units) inside a zone, honoring
+ * real inch sizing, the safe-area inset, the snap anchor and any manual offset.
+ * The result is clamped to stay within the zone bounds. Used by BOTH the
+ * on-screen overlay and the export canvas so they stay pixel-identical.
+ */
+export function computeArtRect(zone: ZoneDefinition, input: ArtPlacementInput) {
+  const upi = UNITS_PER_INCH;
+  const inset = Math.max(0, input.safeAreaIn) * upi;
+  const sx = zone.x + inset;
+  const sy = zone.y + inset;
+  const sw = Math.max(1, zone.w - inset * 2);
+  const sh = Math.max(1, zone.h - inset * 2);
+
+  const aw = Math.min(Math.max(1, input.widthIn * upi), sw);
+  const ah = Math.min(Math.max(1, input.heightIn * upi), sh);
+
+  let ax: number;
+  let ay: number;
+  switch (input.snap) {
+    case 'top-center':
+      ax = sx + (sw - aw) / 2;
+      ay = sy;
+      break;
+    case 'bottom-center':
+      ax = sx + (sw - aw) / 2;
+      ay = sy + (sh - ah);
+      break;
+    case 'left':
+      ax = sx;
+      ay = sy + (sh - ah) / 2;
+      break;
+    case 'right':
+      ax = sx + (sw - aw);
+      ay = sy + (sh - ah) / 2;
+      break;
+    case 'center':
+    default:
+      ax = sx + (sw - aw) / 2;
+      ay = sy + (sh - ah) / 2;
+      break;
+  }
+
+  ax += input.offsetXIn * upi;
+  ay += input.offsetYIn * upi;
+
+  // Clamp the whole rect inside the zone.
+  ax = Math.max(zone.x, Math.min(ax, zone.x + zone.w - aw));
+  ay = Math.max(zone.y, Math.min(ay, zone.y + zone.h - ah));
+
+  return { x: ax, y: ay, w: aw, h: ah };
+}
+
+/** Map the DB PlacementType enum to the Mockup Designer's PrintLocation. */
+export const PLACEMENT_TYPE_TO_LOCATION: Record<string, PrintLocation> = {
+  LEFT_CHEST: 'Left Chest',
+  FULL_FRONT: 'Full Front',
+  FULL_BACK: 'Full Back',
+  YOKE: 'Upper Back',
+  SLEEVE_LEFT: 'Left Sleeve',
+  SLEEVE_RIGHT: 'Right Sleeve',
+};
+
+/** Approximate float comparison for template-status derivation. */
+export const approxEqual = (a: number, b: number, tol = 0.05) => Math.abs(a - b) <= tol;
