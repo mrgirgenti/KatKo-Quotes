@@ -131,21 +131,19 @@ export default function NewQuoteScreen() {
     setLineItems((prev) => [...prev, createEmptyLineItem()]);
   }, []);
 
-  const handleUpdateLineItem = useCallback((index: number, item: LineItem) => {
-    setLineItems((prev) => {
-      const updated = [...prev];
-      updated[index] = item;
-      return updated;
-    });
+  const handleUpdateLineItem = useCallback((id: string, updated: LineItem) => {
+    setLineItems((prev) => prev.map((li) => (li.id === id ? updated : li)));
   }, []);
 
-  const handleDeleteLineItem = useCallback((index: number) => {
-    if (lineItems.length === 1) {
-      Alert.alert('Cannot Delete', 'You must have at least one line item.');
-      return;
-    }
-    setLineItems((prev) => prev.filter((_, i) => i !== index));
-  }, [lineItems.length]);
+  const handleDeleteLineItem = useCallback((id: string) => {
+    setLineItems((prev) => {
+      if (prev.length === 1) {
+        Alert.alert('Cannot Delete', 'You must have at least one line item.');
+        return prev;
+      }
+      return prev.filter((li) => li.id !== id);
+    });
+  }, []);
 
   const resetForm = useCallback(() => {
     setPersonOrganization('');
@@ -520,8 +518,8 @@ export default function NewQuoteScreen() {
           key={item.id}
           item={item}
           index={index}
-          onChange={(updated) => handleUpdateLineItem(index, updated)}
-          onDelete={() => handleDeleteLineItem(index)}
+          onChangeItem={handleUpdateLineItem}
+          onDelete={handleDeleteLineItem}
         />
       ))}
     </View>

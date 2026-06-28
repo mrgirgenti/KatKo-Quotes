@@ -905,15 +905,17 @@ interface PortalLineItemCardProps {
   item: PortalLineItem;
   index: number;
   canDelete: boolean;
-  onChange: (updated: PortalLineItem) => void;
-  onDelete: () => void;
+  onChangeItem: (id: string, updated: PortalLineItem) => void;
+  onDelete: (id: string) => void;
   openDropdown: (title: string, options: readonly string[], selected: string, onSelect: (v: string) => void) => void;
   onOpenMockupBinPicker: (itemId: string) => void;
   catalogProducts: CatalogProduct[];
   orgId: string;
 }
 
-function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDropdown, onOpenMockupBinPicker, catalogProducts, orgId }: PortalLineItemCardProps) {
+function PortalLineItemCardFn({ item, index, canDelete, onChangeItem, onDelete: onDeleteProp, openDropdown, onOpenMockupBinPicker, catalogProducts, orgId }: PortalLineItemCardProps) {
+  const onChange = useCallback((updated: PortalLineItem) => onChangeItem(item.id, updated), [item.id, onChangeItem]);
+  const handleDelete = useCallback(() => onDeleteProp(item.id), [item.id, onDeleteProp]);
   const upd = useCallback((patch: Partial<PortalLineItem>) => onChange({ ...item, ...patch }), [item, onChange]);
   const liFileInputRef = useRef<any>(null);
 
@@ -961,7 +963,7 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           {canDelete && (
-            <TouchableOpacity onPress={onDelete} style={liStyles.deleteBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <TouchableOpacity onPress={handleDelete} style={liStyles.deleteBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Trash2 size={15} color="#ff6b6b" />
             </TouchableOpacity>
           )}
@@ -1179,6 +1181,8 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
     </View>
   );
 }
+
+const PortalLineItemCard = React.memo(PortalLineItemCardFn);
 
 // ────────────────────────────────────────────────────────────
 // Main Portal Component
@@ -2015,16 +2019,16 @@ export default function ClientPortal() {
 
   const normalizeStatus = (s: string) => s.toUpperCase().replace('QUOTE_SENT', 'QUOTED');
 
-  const requestProjects = orgProjects.filter(p =>
+  const requestProjects = useMemo(() => orgProjects.filter(p =>
     ['NEEDS_REVIEW', 'QUOTING'].includes(normalizeStatus(p.status))
-  );
-  const quoteProjects = orgProjects.filter(p =>
+  ), [orgProjects]);
+  const quoteProjects = useMemo(() => orgProjects.filter(p =>
     ['NEEDS_REVIEW', 'QUOTING', 'QUOTED', 'QUOTE_SENT', 'INVOICE_SENT'].includes(normalizeStatus(p.status))
-  );
-  const activeProjects = orgProjects.filter(p =>
+  ), [orgProjects]);
+  const activeProjects = useMemo(() => orgProjects.filter(p =>
     !['NEEDS_REVIEW', 'QUOTING', 'QUOTED', 'QUOTE_SENT', 'INVOICE_SENT',
       'EXPIRED', 'CANCELLED'].includes(normalizeStatus(p.status))
-  );
+  ), [orgProjects]);
 
   function formatDate(d: string | null) {
     if (!d) return '—';
@@ -3801,8 +3805,8 @@ export default function ClientPortal() {
                 item={item}
                 index={i}
                 canDelete={lineItems.length > 1}
-                onChange={updated => updateLineItem(item.id, updated)}
-                onDelete={() => removeLineItem(item.id)}
+                onChangeItem={updateLineItem}
+                onDelete={removeLineItem}
                 openDropdown={openDropdown}
                 onOpenMockupBinPicker={(itemId) => openBinPicker('mockup', itemId)}
                 catalogProducts={catalogProducts}

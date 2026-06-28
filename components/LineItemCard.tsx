@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -36,12 +36,17 @@ import { useBreakpoint } from '@/hooks/useBreakpoint';
 interface LineItemCardProps {
   item: LineItem;
   index: number;
-  onChange: (item: LineItem) => void;
-  onDelete: () => void;
+  onChangeItem: (id: string, item: LineItem) => void;
+  onDelete: (id: string) => void;
 }
 
 
-export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardProps) {
+function LineItemCardFn({ item, index, onChangeItem, onDelete: onDeleteProp }: LineItemCardProps) {
+  const itemRef = useRef(item);
+  itemRef.current = item;
+  const onChange = useCallback((updated: LineItem) => onChangeItem(item.id, updated), [item.id, onChangeItem]);
+  const handleDelete = useCallback(() => onDeleteProp(item.id), [item.id, onDeleteProp]);
+
   const [expanded, setExpanded] = useState(true);
   const [showDesigner, setShowDesigner] = useState(false);
   const [variantPickerVisible, setVariantPickerVisible] = useState(false);
@@ -69,8 +74,11 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   const isDesignWork = item.serviceStyle === 'Design Work';
   const hasSecondLocation = !!(item.location2 && item.location2.length > 0);
   // Design Work has no garment sizes; treat it the same as Promotional for qty calc.
-  const quantity = getTotalQuantity(item.sizes, isPromotional || isDesignWork);
-  const lineItemCalcs = calculateLineItemSubtotal(item);
+  const quantity = useMemo(
+    () => getTotalQuantity(item.sizes, isPromotional || isDesignWork),
+    [item.sizes, isPromotional, isDesignWork]
+  );
+  const lineItemCalcs = useMemo(() => calculateLineItemSubtotal(item), [item]);
 
   const dropZoneRef = useRef<any>(null);
 
@@ -198,8 +206,9 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   }, []);
 
   useEffect(() => {
-    if (Platform.OS !== 'web' || !dropZoneRef.current) return;
+    if (Platform.OS !== 'web') return;
     const node = dropZoneRef.current;
+    if (!node) return;
     const handleDragOver = (e: DragEvent) => { e.preventDefault(); e.stopPropagation(); };
     const handleDrop = (e: DragEvent) => {
       e.preventDefault();
@@ -208,7 +217,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
       if (file && file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = (ev: any) => {
-          if (ev.target?.result) onChange({ ...item, mockupUri: ev.target.result as string });
+          if (ev.target?.result) onChange({ ...itemRef.current, mockupUri: ev.target.result as string });
         };
         reader.readAsDataURL(file);
       }
@@ -219,7 +228,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
       node.removeEventListener('dragover', handleDragOver);
       node.removeEventListener('drop', handleDrop);
     };
-  }, [dropZoneRef.current, onChange, item.mockupUri]);
+  }, []);
 
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -257,7 +266,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
           </View>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity onPress={onDelete} style={styles.deleteBtn}>
+          <TouchableOpacity onPress={handleDelete} style={styles.deleteBtn}>
             <Trash2 size={18} color="#ff6b6b" />
           </TouchableOpacity>
           {expanded ? (
@@ -870,6 +879,8 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
     </View>
   );
 }
+
+export const LineItemCard = React.memo(LineItemCardFn);
 
 const styles = StyleSheet.create({
   container: {
