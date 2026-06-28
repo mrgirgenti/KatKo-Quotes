@@ -42,6 +42,9 @@ import {
 } from './garmentData';
 import { VENDOR_CATALOG, ProductColor } from './vendorCatalog';
 import { generateId } from '@/utils/quoteCalculations';
+import { ConfiguredProductEditor } from '@/components/configured-product/ConfiguredProductEditor';
+import type { ConfiguredProduct } from '@/types/configuredProduct';
+import { categoryToGarmentType } from '@/utils/garmentPreview';
 
 // ─── Variant → Designer resolver ─────────────────────────────────────────────
 
@@ -128,11 +131,14 @@ interface Props {
   initialVariant?: VariantHint;
   onRequestChangeProduct?: () => void;
   onColorChange?: (colorName: string) => void;
+  /** When provided, embeds a ConfiguredProductEditor toolbar + syncs garment/color. */
+  configuredProduct?: ConfiguredProduct;
+  onConfiguredProductChange?: (cp: ConfiguredProduct) => void;
 }
 
 type MobileTab = 'controls' | 'canvas' | 'artwork';
 
-export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, suggestedLocations, initialVariant, onRequestChangeProduct, onColorChange }: Props) {
+export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, suggestedLocations, initialVariant, onRequestChangeProduct, onColorChange, configuredProduct, onConfiguredProductChange }: Props) {
   const { isMobile } = useBreakpoint();
   const [garmentType, setGarmentType] = useState<GarmentType>('tshirt');
   const [garmentColor, setGarmentColor] = useState('#FFFFFF');
@@ -151,18 +157,28 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
   const [mobileTab, setMobileTab] = useState<MobileTab>('controls');
   const [artworkDragOver, setArtworkDragOver] = useState(false);
   const [draggedArtworkId, setDraggedArtworkId] = useState<string | null>(null);
+  const [mdActiveColorIdx, setMdActiveColorIdx] = useState(0);
 
   useEffect(() => {
     if (!visible) return;
     const resolved = resolveVariantForDesigner(initialVariant);
-    setSelectedVendorId(resolved.vendorId);
-    setSelectedStyleNumber(resolved.styleNumber);
-    setGarmentType(resolved.garmentType);
-    setGarmentColor(resolved.colorHex);
-    setIsCustomStyle(resolved.isCustom);
-    setStyleSearchTerm('');
-    setStyleDropdownOpen(false);
-  }, [visible]);
+    if (configuredProduct) {
+      // Sync garment type + color from the ConfiguredProduct when available
+      const gt = categoryToGarmentType(configuredProduct.category ?? configuredProduct.productType);
+      if (gt) setGarmentType(gt);
+      const activeHex = configuredProduct.colorVariants[0]?.colorHex;
+      if (activeHex) setGarmentColor(activeHex);
+      setMdActiveColorIdx(0);
+    } else {
+      setSelectedVendorId(resolved.vendorId);
+      setSelectedStyleNumber(resolved.styleNumber);
+      setGarmentType(resolved.garmentType);
+      setGarmentColor(resolved.colorHex);
+      setIsCustomStyle(resolved.isCustom);
+      setStyleSearchTerm('');
+      setStyleDropdownOpen(false);
+    }
+  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const artworkDropRef = useRef<any>(null);
   const canvasContainerRef = useRef<any>(null);
@@ -589,6 +605,31 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
             </View>
           )}
 
+          {/* ── ConfiguredProduct Toolbar (when CP prop is provided) ── */}
+          {configuredProduct && (
+            <ConfiguredProductEditor
+              value={configuredProduct}
+              onChange={(cp) => {
+                onConfiguredProductChange?.(cp);
+                const hex = cp.colorVariants[mdActiveColorIdx]?.colorHex;
+                if (hex) setGarmentColor(hex);
+                const gt = categoryToGarmentType(cp.category ?? cp.productType);
+                if (gt) setGarmentType(gt);
+              }}
+              layout="toolbar"
+              surface="mockupDesigner"
+              mode="internal"
+              showSizes={false}
+              showPreview={false}
+              activeColorIndex={mdActiveColorIdx}
+              onActiveColorChange={(idx) => {
+                setMdActiveColorIdx(idx);
+                const hex = configuredProduct.colorVariants[idx]?.colorHex;
+                if (hex) setGarmentColor(hex);
+              }}
+            />
+          )}
+
           <View style={[styles.body, isMobile && styles.bodyMobile]}>
             {/* ── Left Panel: Controls ── */}
             <ScrollView style={[styles.leftPanel, isMobile && mobileTab !== 'controls' && { display: 'none' }, isMobile && { width: '100%' }]} showsVerticalScrollIndicator={false}>
@@ -612,6 +653,7 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                   </View>
                 </View>
 
+                {!configuredProduct && (
                 <View style={styles.templateVendorCol}>
                   <Text style={styles.sectionLabel}>VENDOR</Text>
                   <View style={styles.garmentTypes}>
@@ -628,10 +670,11 @@ export function MockupDesigner({ visible, onClose, onSave, initialMockupUri, sug
                     ))}
                   </View>
                 </View>
+                )}
               </View>
 
-              {/* 3. Product Style — searchable dropdown */}
-              {selectedVendor && (
+              {/* 3. Product Style — searchable dropdown (hidden when CPE toolbar is active) */}
+              {!configuredProduct && selectedVendor && (
                 <>
                   <Text style={styles.sectionLabel}>PRODUCT STYLE</Text>
                   {styleDropdownOpen ? (

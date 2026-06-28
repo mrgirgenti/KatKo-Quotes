@@ -84,6 +84,8 @@ import OverlayMenu from '@/components/OverlayMenu';
 import { formatPhone } from '@/utils/phone';
 import { buildProjectDocumentHTML } from '@/utils/projectDocumentHtml';
 import { htmlToPdf } from '@/utils/htmlToPdf';
+import { ConfiguredProductEditor } from '@/components/configured-product/ConfiguredProductEditor';
+import type { ConfiguredProduct } from '@/types/configuredProduct';
 
 const BRAND = '#FF5A00';
 const BRAND_DARK = '#CC4700';
@@ -1014,6 +1016,46 @@ function PortalProductPicker({ product, productId, onChangeProduct, catalogProdu
 }
 
 // ────────────────────────────────────────────────────────────
+// ── Portal ↔ ConfiguredProduct adapters ──────────────────────────────────────
+
+function portalSizeRowsToCP(rows: SizeRow[]): ConfiguredProduct {
+  const primary = rows[0];
+  return {
+    productLabel: primary?.product ?? '',
+    productId: primary?.productId,
+    productSource: primary?.productId ? 'catalog' : 'manual',
+    decorationMethod: 'Screen Printing',
+    colorVariants: rows.map(r => ({
+      color: r.color,
+      colorHex: undefined,
+      sizes: { xs: r.xs, s: r.s, m: r.m, l: r.l, xl: r.xl, xxl: r.xxl, xxxl: r.xxxl, xxxxl: r.xxxxl, flat: 0 },
+    })),
+    printLocations: [],
+    artworkLayers: [],
+    templateSettings: {},
+    productCostEach: 0,
+    serviceCostEach: 0,
+    serviceFeeEach: 0,
+    markupEach: 0,
+  };
+}
+
+function cpToPortalSizeRows(cp: ConfiguredProduct, existingRows: SizeRow[]): SizeRow[] {
+  if (!cp.colorVariants.length) return existingRows.length > 0 ? existingRows : [emptyRow()];
+  return cp.colorVariants.map((cv, idx) => {
+    const existing = existingRows[idx];
+    const q = cv.sizes;
+    return {
+      id: existing?.id ?? uid(),
+      product: cp.productLabel ?? '',
+      color: cv.color,
+      productId: cp.productId,
+      xs: q.xs ?? 0, s: q.s ?? 0, m: q.m ?? 0, l: q.l ?? 0,
+      xl: q.xl ?? 0, xxl: q.xxl ?? 0, xxxl: q.xxxl ?? 0, xxxxl: q.xxxxl ?? 0,
+    };
+  });
+}
+
 // PortalLineItemCard
 // ────────────────────────────────────────────────────────────
 interface PortalLineItemCardProps {
@@ -1025,9 +1067,10 @@ interface PortalLineItemCardProps {
   openDropdown: (title: string, options: readonly string[], selected: string, onSelect: (v: string) => void) => void;
   onOpenMockupBinPicker: (itemId: string) => void;
   catalogProducts: CatalogProduct[];
+  orgId: string;
 }
 
-function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDropdown, onOpenMockupBinPicker, catalogProducts }: PortalLineItemCardProps) {
+function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDropdown, onOpenMockupBinPicker, catalogProducts, orgId }: PortalLineItemCardProps) {
   const upd = useCallback((patch: Partial<PortalLineItem>) => onChange({ ...item, ...patch }), [item, onChange]);
   const liFileInputRef = useRef<any>(null);
 
@@ -1221,92 +1264,17 @@ function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDr
           </View>
 
           {/* ── Products + Sizes ── */}
-          <View style={liStyles.sizeSection}>
-            <View style={liStyles.sizeSectionHeader}>
-              <Text style={liStyles.sizeSectionHeaderTitle}>PRODUCTS + SIZES</Text>
-              <TouchableOpacity style={liStyles.sizeSectionAddBtn} onPress={addRow}>
-                <Plus size={12} color="#fff" />
-                <Text style={liStyles.sizeSectionAddText}>Add Style/Color</Text>
-              </TouchableOpacity>
-            </View>
-
-            {item.sizeRows.map((row, rIdx) => {
-              const rt = rowTotal(row);
-              return (
-                <View key={row.id} style={[liStyles.sizeVariantRow, rIdx % 2 === 1 && liStyles.sizeVariantRowAlt]}>
-                  {/* Row A: Product + Color + Delete */}
-                  <View style={liStyles.sizePickerRow}>
-                    <PortalProductPicker
-                      product={row.product}
-                      productId={row.productId}
-                      onChangeProduct={(prod, pid) => updRow(row.id, { product: prod, productId: pid })}
-                      catalogProducts={catalogProducts}
-                      containerStyle={{ flex: 2 }}
-                    />
-                    <PortalComboCell
-                      value={row.color}
-                      onChangeText={v => updRow(row.id, { color: v })}
-                      options={
-                        row.productId
-                          ? (catalogProducts.find(p => p.id === row.productId)?.colors.map(c => c.colorName) ?? PRODUCT_COLORS)
-                          : PRODUCT_COLORS
-                      }
-                      placeholder="Color"
-                      containerStyle={{ flex: 1, marginHorizontal: 0 }}
-                    />
-                    <TouchableOpacity style={liStyles.delRowBtn} onPress={() => delRow(row.id)}>
-                      <Trash2 size={12} color="#DC2626" />
-                    </TouchableOpacity>
-                  </View>
-                  {/* Row B: Size inputs */}
-                  <View style={liStyles.sizeCellsRow}>
-                    {SIZE_KEYS.map(k => (
-                      <View key={k} style={liStyles.sizeCellCol}>
-                        <Text style={liStyles.sizeColLabel}>{SIZE_LABELS[k]}</Text>
-                        <TextInput
-                          style={liStyles.sizeColInput}
-                          value={row[k] ? String(row[k]) : ''}
-                          onChangeText={v => updRow(row.id, { [k]: parseInt(v) || 0 } as any)}
-                          placeholder="0"
-                          placeholderTextColor={TEXT_PLACEHOLDER}
-                          keyboardType="number-pad"
-                        />
-                      </View>
-                    ))}
-                    <View style={liStyles.sizeTotalCol}>
-                      <Text style={liStyles.sizeColLabel}>Total</Text>
-                      <Text style={liStyles.sizeTotalValue}>{rt > 0 ? rt : '—'}</Text>
-                    </View>
-                  </View>
-                </View>
-              );
-            })}
-
-            {/* Column totals row — only when multiple rows */}
-            {item.sizeRows.length > 1 && (
-              <View style={liStyles.sizeSumRow}>
-                <Text style={liStyles.sizeSumLabel}>Totals</Text>
-                <View style={{ flex: 1, flexDirection: 'row' }}>
-                  {SIZE_KEYS.map(k => (
-                    <View key={k} style={{ flex: 1, alignItems: 'center' }}>
-                      <Text style={liStyles.sizeSumValue}>{colTotal(item.sizeRows, k) || ''}</Text>
-                    </View>
-                  ))}
-                  <View style={{ flex: 1, alignItems: 'center' }}>
-                    <Text style={[liStyles.sizeSumValue, { color: '#15803D', fontWeight: '700' }]}>{total}</Text>
-                  </View>
-                </View>
-              </View>
-            )}
-
-
-            {total > 0 && (
-              <View style={liStyles.grandTotalRow}>
-                <Text style={liStyles.grandTotalLabel}>Grand Total</Text>
-                <Text style={liStyles.grandTotalValue}>{total} pcs</Text>
-              </View>
-            )}
-          </View>
+          <ConfiguredProductEditor
+            value={portalSizeRowsToCP(item.sizeRows)}
+            onChange={(cp) => {
+              const newRows = cpToPortalSizeRows(cp, item.sizeRows);
+              onChange({ ...item, sizeRows: newRows });
+            }}
+            mode="portal"
+            orgId={orgId}
+            surface="clientPortal"
+            showSizes
+          />
 
           {/* ── Per-Item Mockup Upload ── */}
           <View style={liStyles.artworkSection}>
@@ -4008,6 +3976,7 @@ export default function ClientPortal() {
                 openDropdown={openDropdown}
                 onOpenMockupBinPicker={(itemId) => openBinPicker('mockup', itemId)}
                 catalogProducts={catalogProducts}
+                orgId={orgId}
               />
             ))}
             <TouchableOpacity style={styles.addLineItemBtn} onPress={addLineItem}>

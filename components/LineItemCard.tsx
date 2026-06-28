@@ -33,7 +33,8 @@ import { CurrencyInput } from './CurrencyInput';
 import { SegmentedControl } from './SegmentedControl';
 import { ComboBox } from './ComboBox';
 import { getTotalQuantity, calculateLineItemSubtotal, formatCurrency } from '@/utils/quoteCalculations';
-import { buildConfiguredProduct } from '@/utils/configuredProduct';
+import { buildConfiguredProduct, getConfiguredProduct, syncLegacyFields } from '@/utils/configuredProduct';
+import { ConfiguredProductEditor } from '@/components/configured-product/ConfiguredProductEditor';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useQuery, useQueries } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/apiFetch';
@@ -588,15 +589,22 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
             suggestedLocations={[item.location1, item.location2].filter(Boolean)}
             initialVariant={{
               vendor: item.apparelProvider,
-              product: variants[mockupVariantIdx]?.product,
-              color: variants[mockupVariantIdx]?.color,
+              product: (item.garmentVariants ?? variants)[mockupVariantIdx]?.product,
+              color: (item.garmentVariants ?? variants)[mockupVariantIdx]?.color,
             }}
-            onRequestChangeProduct={variants.length > 1 ? () => {
+            configuredProduct={getConfiguredProduct(item)}
+            onConfiguredProductChange={(cp) => {
+              const updated = syncLegacyFields(item, cp);
+              setVariants(updated.garmentVariants ?? []);
+              onChange(updated);
+            }}
+            onRequestChangeProduct={(item.garmentVariants ?? variants).length > 1 ? () => {
               setShowDesigner(false);
               setVariantPickerVisible(true);
             } : undefined}
             onColorChange={(colorName) => {
-              if (mockupVariantIdx < variants.length) {
+              const gv = item.garmentVariants ?? variants;
+              if (mockupVariantIdx < gv.length) {
                 updateVariant(mockupVariantIdx, { color: colorName });
               }
             }}
@@ -612,7 +620,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
             <Pressable style={styles.vpOverlay} onPress={() => setVariantPickerVisible(false)} />
             <View style={styles.vpPanel}>
               <Text style={styles.vpTitle}>Which product to mock up?</Text>
-              {variants.map((v, idx) => (
+              {(item.garmentVariants ?? variants).map((v, idx) => (
                 <TouchableOpacity
                   key={idx}
                   style={styles.vpRow}
@@ -814,347 +822,31 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
             />
 
             {/* ── 7. Product / Size Variants ── */}
-            <View style={styles.variantSection}>
-              <View style={styles.variantHeader}>
-                <Text style={styles.variantHeaderTitle}>Products + Sizes</Text>
-                {!isPromotional && variants.length < 10 && (
-                  <TouchableOpacity style={styles.addVariantBtn} onPress={addVariant}>
-                    <Plus size={13} color="#fff" />
-                    <Text style={styles.addVariantBtnText}>Add Style/Color</Text>
-                  </TouchableOpacity>
-                )}
+            {isPromotional ? (
+              <View style={styles.promotionalQty}>
+                <Text style={styles.promotionalQtyLabel}>Flat Quantity</Text>
+                <TextInput
+                  style={styles.promotionalQtyInput}
+                  value={flatQty}
+                  onChangeText={handleFlatQtyChange}
+                  keyboardType="number-pad"
+                  placeholder="0"
+                  placeholderTextColor={Colors.light.textSecondary}
+                />
               </View>
-
-              {isPromotional ? (
-                <View style={styles.promotionalQty}>
-                  <Text style={styles.promotionalQtyLabel}>Flat Quantity</Text>
-                  <TextInput
-                    style={styles.promotionalQtyInput}
-                    value={flatQty}
-                    onChangeText={handleFlatQtyChange}
-                    keyboardType="number-pad"
-                    placeholder="0"
-                    placeholderTextColor={Colors.light.textSecondary}
-                  />
-                </View>
-              ) : (
-                <View style={styles.variantTableWrap}>
-                  <View style={styles.variantTable}>
-                    {/* Variant rows */}
-                    {variants.map((variant, vIdx) => {
-                      const rowQty = getVariantQty(variant);
-                      const isCatalogVariant = !!variant.productId;
-                      const colorObjects: ProductColor[] = isCatalogVariant
-                        ? (dbColorsByProductId[variant.productId as string] ?? [])
-                        : [];
-                      return (
-                        <View key={vIdx} style={[styles.variantRow, vIdx % 2 === 1 && styles.variantRowAlt]}>
-                          {/* Compact single-line 3-column picker */}
-                          {(() => {
-                            const rawSearch = variantSearchTerms[vIdx] ?? '';
-                            const selectedColorObj = colorObjects.find((c) => c.name === variant.color);
-                            return (
-                              <View style={styles.variantPickerSection}>
-                                {/* Category pills — All + each DB category */}
-                                {allCategories.length > 0 && (
-                                  <ScrollView
-                                    horizontal
-                                    showsHorizontalScrollIndicator={false}
-                                    style={styles.variantCategoryScroll}
-                                    contentContainerStyle={styles.variantCategoryPillRow}
-                                  >
-                                    {(['', ...allCategories] as string[]).map((cat) => {
-                                      const label = cat === '' ? 'All' : cat;
-                                      const isActive = (variant.category ?? '') === cat;
-                                      return (
-                                        <TouchableOpacity
-                                          key={cat}
-                                          style={[
-                                            styles.variantCategoryPill,
-                                            isActive && styles.variantCategoryPillActive,
-                                          ]}
-                                          onPress={() =>
-                                            updateVariant(vIdx, { category: cat === '' ? undefined : cat })
-                                          }
-                                          activeOpacity={0.7}
-                                        >
-                                          <Text
-                                            style={[
-                                              styles.variantCategoryPillText,
-                                              isActive && styles.variantCategoryPillTextActive,
-                                            ]}
-                                          >
-                                            {label}
-                                          </Text>
-                                        </TouchableOpacity>
-                                      );
-                                    })}
-                                  </ScrollView>
-                                )}
-                                {/* Single-line row: Style search | Color | Delete */}
-                                <View style={styles.variantPickerRow}>
-
-                                  {/* Style search input */}
-                                  <TextInput
-                                    style={styles.variantStyleInput}
-                                    value={variantSearchTerms[vIdx] ?? ''}
-                                    onChangeText={(v) =>
-                                      setVariantSearchTerms((prev) => prev.map((t, i) => (i === vIdx ? v : t)))
-                                    }
-                                    placeholder="Search style..."
-                                    placeholderTextColor={Colors.light.textSecondary}
-                                    onFocus={() =>
-                                      setVariantStyleFocused((prev) => prev.map((_, i) => i === vIdx))
-                                    }
-                                    onBlur={() =>
-                                      setTimeout(
-                                        () => setVariantStyleFocused((prev) => prev.map((f, i) => (i === vIdx ? false : f))),
-                                        180
-                                      )
-                                    }
-                                  />
-
-                                  {/* Color button or free-text input */}
-                                  {colorObjects.length === 0 ? (
-                                    <TextInput
-                                      style={styles.variantColorFreeInput}
-                                      value={variant.color}
-                                      onChangeText={(v) => updateVariant(vIdx, { color: v })}
-                                      placeholder="Colorway"
-                                      placeholderTextColor={Colors.light.textSecondary}
-                                    />
-                                  ) : (
-                                    <TouchableOpacity
-                                      style={styles.variantColorBtn}
-                                      onPress={() =>
-                                        setVariantColorOpen((prev) => prev.map((o, i) => (i === vIdx ? !o : o)))
-                                      }
-                                    >
-                                      <View
-                                        style={[
-                                          styles.variantColorDot,
-                                          { backgroundColor: selectedColorObj?.hex ?? '#ccc' },
-                                          !selectedColorObj && styles.variantColorDotEmpty,
-                                          selectedColorObj?.hex === '#FFFFFF' && styles.variantColorSwatchWhite,
-                                        ]}
-                                      />
-                                      <Text style={styles.variantColorBtnText} numberOfLines={1}>
-                                        {variant.color || 'Color'}
-                                      </Text>
-                                      <ChevronDown size={12} color={Colors.light.textSecondary} />
-                                    </TouchableOpacity>
-                                  )}
-
-                                  {/* Delete */}
-                                  <TouchableOpacity
-                                    style={[styles.variantDeleteBtn, variants.length <= 1 && { opacity: 0.2 }]}
-                                    onPress={() => removeVariant(vIdx)}
-                                    disabled={variants.length <= 1}
-                                  >
-                                    <X size={13} color={Colors.light.error} />
-                                  </TouchableOpacity>
-                                </View>
-
-                                {/* Style dropdown (shows when focused) */}
-                                {variantStyleFocused[vIdx] && (
-                                  <View style={styles.variantStyleDropdown}>
-                                    <ScrollView style={{ maxHeight: 240 }} nestedScrollEnabled showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                                      {vIdx === focusedVariantIdx && catalogResults.length > 0 && (
-                                        <>
-                                          <Text style={styles.variantDropdownSectionLabel}>Product Catalog</Text>
-                                          {catalogResults.map((p) => {
-                                            const isCatSelected = variant.productId === p.id;
-                                            return (
-                                              <TouchableOpacity
-                                                key={p.id}
-                                                style={[
-                                                  styles.variantDropdownItem,
-                                                  styles.variantCatalogItem,
-                                                  isCatSelected && styles.variantDropdownItemActive,
-                                                  styles.variantDropdownItemBorder,
-                                                ]}
-                                                onPress={() => handleSelectCatalogProduct(vIdx, p)}
-                                              >
-                                                <Text style={[styles.variantDropdownNum, isCatSelected && styles.variantDropdownNumActive]}>
-                                                  {p.styleNumber}
-                                                </Text>
-                                                <View style={styles.variantCatalogTextWrap}>
-                                                  <Text style={[styles.variantDropdownName, isCatSelected && styles.variantDropdownNameActive]} numberOfLines={1}>
-                                                    {p.name}
-                                                  </Text>
-                                                  {!!p.brand && (
-                                                    <Text style={styles.variantDropdownBrand} numberOfLines={1}>{p.brand}</Text>
-                                                  )}
-                                                </View>
-                                                <View style={styles.variantCatalogBadge}>
-                                                  <Text style={styles.variantCatalogBadgeText}>Catalog</Text>
-                                                </View>
-                                              </TouchableOpacity>
-                                            );
-                                          })}
-                                        </>
-                                      )}
-                                      {vIdx === focusedVariantIdx && rawSearch.trim().length >= 2 && (catalogSearch.isFetching || debouncedCatalogTerm.length < 2) && catalogResults.length === 0 && (
-                                        <Text style={styles.variantDropdownEmpty}>Searching…</Text>
-                                      )}
-                                      {vIdx === focusedVariantIdx && rawSearch.trim().length >= 2 && debouncedCatalogTerm.length >= 2 && !catalogSearch.isFetching && catalogResults.length === 0 && (
-                                        <Text style={styles.variantDropdownEmpty}>No catalog matches — use custom entry below.</Text>
-                                      )}
-                                      {rawSearch.trim().length > 0 && (
-                                        <TouchableOpacity
-                                          style={styles.variantDropdownCustom}
-                                          onPress={() => {
-                                            const customVal = rawSearch.trim();
-                                            markVariantManual(vIdx, customVal);
-                                            setVariantSearchTerms((prev) => prev.map((t, i) => (i === vIdx ? customVal : t)));
-                                            setVariantStyleFocused((prev) => prev.map((f, i) => (i === vIdx ? false : f)));
-                                          }}
-                                        >
-                                          <Text style={styles.variantDropdownCustomText}>
-                                            Use "{rawSearch.trim()}" as custom style
-                                          </Text>
-                                        </TouchableOpacity>
-                                      )}
-                                      {rawSearch.trim().length === 0 && (
-                                        <Text style={styles.variantDropdownEmpty}>Search our catalog or type a custom style name.</Text>
-                                      )}
-                                    </ScrollView>
-                                  </View>
-                                )}
-
-                                {/* Color swatches (shows when color button tapped) */}
-                                {variantColorOpen[vIdx] && colorObjects.length > 0 && (
-                                  <ScrollView style={styles.variantColorDropdown} nestedScrollEnabled showsVerticalScrollIndicator={false}>
-                                    <View style={styles.variantColorGrid}>
-                                      {colorObjects.map((color) => (
-                                        <TouchableOpacity
-                                          key={color.hex + color.name}
-                                          style={[
-                                            styles.variantColorSwatch,
-                                            { backgroundColor: color.hex },
-                                            variant.color === color.name && styles.variantColorSwatchSelected,
-                                            color.hex === '#FFFFFF' && styles.variantColorSwatchWhite,
-                                          ]}
-                                          onPress={() => {
-                                            updateVariant(vIdx, { color: color.name });
-                                            setVariantColorOpen((prev) => prev.map((o, i) => (i === vIdx ? false : o)));
-                                          }}
-                                          {...(Platform.OS === 'web' ? {
-                                            onMouseEnter: () => setVariantHoveredColors(prev => prev.map((c, i) => i === vIdx ? color.name : c)),
-                                            onMouseLeave: () => setVariantHoveredColors(prev => prev.map((c, i) => i === vIdx ? null : c)),
-                                          } : {})}
-                                        >
-                                          {variant.color === color.name && (
-                                            <CheckCircle size={12} color={color.dark ? '#fff' : '#333'} />
-                                          )}
-                                        </TouchableOpacity>
-                                      ))}
-                                    </View>
-                                    {variantHoveredColors[vIdx] && (
-                                      <Text style={styles.variantHoveredColorLabel}>{variantHoveredColors[vIdx]}</Text>
-                                    )}
-                                    {/* Custom colorway free-text entry */}
-                                    <View style={styles.variantCustomColorRow}>
-                                      <TextInput
-                                        style={styles.variantCustomColorInput}
-                                        value={variantCustomColorText[vIdx] ?? ''}
-                                        onChangeText={(v) =>
-                                          setVariantCustomColorText((prev) => prev.map((t, i) => (i === vIdx ? v : t)))
-                                        }
-                                        placeholder="Custom colorway…"
-                                        placeholderTextColor={Colors.light.textSecondary}
-                                        onSubmitEditing={() => {
-                                          const val = (variantCustomColorText[vIdx] ?? '').trim();
-                                          if (val) {
-                                            updateVariant(vIdx, { color: val });
-                                            setVariantCustomColorText((prev) => prev.map((t, i) => (i === vIdx ? '' : t)));
-                                            setVariantColorOpen((prev) => prev.map((o, i) => (i === vIdx ? false : o)));
-                                          }
-                                        }}
-                                        returnKeyType="done"
-                                      />
-                                      <TouchableOpacity
-                                        style={[
-                                          styles.variantCustomColorConfirm,
-                                          !(variantCustomColorText[vIdx] ?? '').trim() && styles.variantCustomColorConfirmDisabled,
-                                        ]}
-                                        onPress={() => {
-                                          const val = (variantCustomColorText[vIdx] ?? '').trim();
-                                          if (val) {
-                                            updateVariant(vIdx, { color: val });
-                                            setVariantCustomColorText((prev) => prev.map((t, i) => (i === vIdx ? '' : t)));
-                                            setVariantColorOpen((prev) => prev.map((o, i) => (i === vIdx ? false : o)));
-                                          }
-                                        }}
-                                        disabled={!(variantCustomColorText[vIdx] ?? '').trim()}
-                                      >
-                                        <Text style={styles.variantCustomColorConfirmText}>Use</Text>
-                                      </TouchableOpacity>
-                                    </View>
-                                  </ScrollView>
-                                )}
-
-                                {isCatalogVariant &&
-                                  (dbVendorsByProductId[variant.productId as string]?.length ?? 0) > 0 && (
-                                    <Text style={styles.variantVendorInfo} numberOfLines={2}>
-                                      Available from:{' '}
-                                      {dbVendorsByProductId[variant.productId as string]
-                                        .map((v) => (v.isPreferred ? `${v.name} ★` : v.name))
-                                        .join(', ')}
-                                    </Text>
-                                  )}
-                              </View>
-                            );
-                          })()}
-
-                          {/* Row D: Size inputs */}
-                          <View style={styles.variantSizeSubRow}>
-                            {APPAREL_SIZES.map(({ key, label }) => (
-                              <View key={key} style={styles.variantSizeLabelCell}>
-                                <Text style={styles.variantSizeColLabel}>{label}</Text>
-                                <TextInput
-                                  style={styles.variantSizeInput}
-                                  value={variant.sizes[key] > 0 ? variant.sizes[key].toString() : ''}
-                                  onChangeText={(v) => updateVariantSize(vIdx, key, v)}
-                                  keyboardType="number-pad"
-                                  placeholder=""
-                                  placeholderTextColor={Colors.light.textSecondary}
-                                  maxLength={3}
-                                />
-                              </View>
-                            ))}
-                            <View style={styles.variantTotalLabelCell}>
-                              <Text style={styles.variantSizeColLabel}>Total</Text>
-                              <Text style={styles.variantRowQty}>{rowQty > 0 ? rowQty : '—'}</Text>
-                            </View>
-                          </View>
-                        </View>
-                      );
-                    })}
-
-                    {/* Grand Total footer */}
-                    <View style={styles.variantGrandTotalRow}>
-                      <Text style={styles.variantGrandTotalLabel}>Grand Total</Text>
-                      <View style={styles.variantGrandTotalSizesRow}>
-                        {APPAREL_SIZES.map(({ key, label }) => {
-                          const colTotal = variants.reduce((s, v) => s + (v.sizes[key] || 0), 0);
-                          return (
-                            <View key={label} style={styles.variantGrandTotalCell}>
-                              <Text style={styles.variantGrandTotalSizeLabel}>{label}</Text>
-                              <Text style={styles.variantGrandTotalNum}>{colTotal > 0 ? colTotal : ''}</Text>
-                            </View>
-                          );
-                        })}
-                        <View style={styles.variantGrandTotalCell}>
-                          <Text style={styles.variantGrandTotalSizeLabel}>Total</Text>
-                          <Text style={[styles.variantGrandTotalNum, styles.variantGrandTotalBold]}>{quantity}</Text>
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              )}
-            </View>
+            ) : (
+              <ConfiguredProductEditor
+                value={getConfiguredProduct(item)}
+                onChange={(cp) => {
+                  const updated = syncLegacyFields(item, cp);
+                  setVariants(updated.garmentVariants ?? []);
+                  onChange(updated);
+                }}
+                surface="internalQuote"
+                mode="internal"
+                showSizes
+              />
+            )}
 
             {/* ── Embroidery Calculator ── */}
             {isEmbroidery && (
