@@ -670,49 +670,30 @@ export function ConfiguredProductEditor({
       {/* ── Sizes (below columns) ────────────────────────────────────────── */}
       {showSizes && (
         <View style={styles.sizesSection}>
-          <View style={styles.sizesSectionHeader}>
-            <Text style={styles.colSubLabel}>Add quantities</Text>
-          </View>
-          <View style={styles.sizeGrid}>
-            {SIZE_LABELS_ROW1.map(({ key, label }, i) => {
-              const row2 = SIZE_LABELS_ROW2[i];
-              return (
-                <View key={key} style={styles.sizeGridRow}>
-                  <Text style={styles.sizeLabel}>{label}</Text>
-                  <TextInput
-                    style={styles.sizeInput}
-                    value={activeVariant.sizes?.[key] > 0 ? String(activeVariant.sizes[key]) : ''}
-                    onChangeText={(v) => handleSizeChange(key as keyof SizeQuantities, v)}
-                    keyboardType="number-pad"
-                    placeholder="0"
-                    placeholderTextColor={Colors.light.textSecondary}
-                    editable={!readOnly}
-                    maxLength={4}
-                  />
-                  {row2 && (
-                    <>
-                      <Text style={[styles.sizeLabel, styles.sizeLabelRight]}>{row2.label}</Text>
-                      <TextInput
-                        style={styles.sizeInput}
-                        value={activeVariant.sizes?.[row2.key] > 0 ? String(activeVariant.sizes[row2.key]) : ''}
-                        onChangeText={(v) => handleSizeChange(row2.key as keyof SizeQuantities, v)}
-                        keyboardType="number-pad"
-                        placeholder="0"
-                        placeholderTextColor={Colors.light.textSecondary}
-                        editable={!readOnly}
-                        maxLength={4}
-                      />
-                    </>
-                  )}
-                </View>
-              );
-            })}
-          </View>
-          <View style={styles.variantTotalRow}>
-            <Text style={styles.variantTotalLabel}>TOTAL</Text>
-            <Text style={[styles.variantTotalNum, activeVariantTotal === 0 && styles.variantTotalZero]}>
-              {activeVariantTotal}
-            </Text>
+          {/* Single horizontal row: label above input, XS→4XL, then TOTAL */}
+          <View style={styles.sizeRow}>
+            {ALL_APPAREL_SIZES.map(({ key, label }) => (
+              <View key={key} style={styles.sizeCell}>
+                <Text style={styles.sizeCellLabel}>{label}</Text>
+                <TextInput
+                  style={styles.sizeCellInput}
+                  value={activeVariant.sizes?.[key] > 0 ? String(activeVariant.sizes[key]) : ''}
+                  onChangeText={(v) => handleSizeChange(key as keyof SizeQuantities, v)}
+                  keyboardType="number-pad"
+                  placeholder="0"
+                  placeholderTextColor={Colors.light.textSecondary}
+                  editable={!readOnly}
+                  maxLength={4}
+                />
+              </View>
+            ))}
+            {/* TOTAL */}
+            <View style={styles.sizeTotalCell}>
+              <Text style={styles.sizeCellLabel}>TOTAL</Text>
+              <Text style={[styles.sizeTotalNum, activeVariantTotal === 0 && styles.variantTotalZero]}>
+                {activeVariantTotal}
+              </Text>
+            </View>
           </View>
         </View>
       )}
@@ -1516,7 +1497,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Sizes below-columns section
+  // Sizes below-columns section — single horizontal row
   sizesSection: {
     borderTopWidth: 1,
     borderTopColor: DIVIDER,
@@ -1527,27 +1508,28 @@ const styles = StyleSheet.create({
   sizesSectionHeader: {
     marginBottom: 8,
   },
-  sizeGrid: {
-    marginTop: 4,
+  sizeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     gap: 6,
   },
-  sizeGridRow: {
-    flexDirection: 'row',
+  sizeCell: {
     alignItems: 'center',
-    gap: 4,
+    flex: 1,
+    minWidth: 44,
+    maxWidth: 64,
   },
-  sizeLabel: {
-    fontSize: 11,
-    fontWeight: '600',
+  sizeCellLabel: {
+    fontSize: 10,
+    fontWeight: '700',
     color: Colors.light.textSecondary,
-    width: 28,
+    letterSpacing: 0.3,
+    marginBottom: 4,
+    textAlign: 'center',
   },
-  sizeLabelRight: {
-    marginLeft: 6,
-  },
-  sizeInput: {
-    width: 44,
-    height: 32,
+  sizeCellInput: {
+    width: '100%',
+    height: 34,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: DIVIDER,
@@ -1558,25 +1540,18 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
     outlineWidth: 0,
   } as any,
-  variantTotalRow: {
-    flexDirection: 'row',
+  sizeTotalCell: {
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 10,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: DIVIDER,
+    paddingLeft: 8,
+    borderLeftWidth: 1,
+    borderLeftColor: DIVIDER,
+    minWidth: 52,
   },
-  variantTotalLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.light.textSecondary,
-    letterSpacing: 0.5,
-  },
-  variantTotalNum: {
-    fontSize: 16,
+  sizeTotalNum: {
+    fontSize: 18,
     fontWeight: '800',
     color: ORANGE,
+    lineHeight: 34,
   },
   variantTotalZero: {
     color: Colors.light.textSecondary,
