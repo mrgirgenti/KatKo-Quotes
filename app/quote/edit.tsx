@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.tint,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
     gap: 6,
   },
   addButtonText: {
@@ -622,7 +622,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.light.success,
+    backgroundColor: Colors.light.tint,
     paddingVertical: 14,
     borderRadius: 10,
     gap: 8,

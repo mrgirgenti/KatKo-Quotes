@@ -1740,14 +1740,15 @@ export default function QuoteDetailScreen() {
       <View style={styles.actionBar}>
         <View style={[styles.actionBarInner, isMobile && styles.actionBarInnerMobile]}>
           <TouchableOpacity style={styles.iconButton} onPress={() => setMenuVisible(true)}>
-            <MoreVertical size={20} color={Colors.light.tint} />
+            <MoreVertical size={18} color={Colors.light.tint} />
+            <Text style={styles.iconButtonLabel}>More</Text>
           </TouchableOpacity>
 
           {quote.status === 'needs_review' ? (
             <>
               <TouchableOpacity style={[styles.actionBtn, styles.actionBtnOutline, { flex: 1 }]} onPress={handleEdit}>
                 <Edit3 size={17} color={Colors.light.tint} />
-                <Text style={styles.actionBtnOutlineText}>Edit</Text>
+                <Text style={styles.actionBtnOutlineText}>Edit Quote</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1 }]} onPress={handleStartQuote}>
                 <ArrowRight size={17} color="#fff" />
@@ -1775,7 +1776,7 @@ export default function QuoteDetailScreen() {
                 <Copy size={17} color={Colors.light.tint} />
                 <Text style={styles.actionBtnOutlineText}>{quoteLinkCopied ? 'Copied!' : 'Copy Link'}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1, backgroundColor: '#16A34A' }]} onPress={handleMarkPaid}>
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSolid, { flex: 1, backgroundColor: Colors.light.success }]} onPress={handleMarkPaid}>
                 <CheckCircle size={17} color="#fff" />
                 <Text style={styles.actionBtnSolidText}>Mark as Paid</Text>
               </TouchableOpacity>
@@ -2565,12 +2566,21 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     width: 48,
-    height: 48,
+    minHeight: 48,
     borderRadius: 10,
     borderWidth: 2,
     borderColor: Colors.light.tint,
     justifyContent: 'center',
     alignItems: 'center',
+    flexDirection: 'column',
+    gap: 1,
+    paddingVertical: 6,
+  },
+  iconButtonLabel: {
+    fontSize: 9,
+    fontWeight: '700' as const,
+    color: Colors.light.tint,
+    letterSpacing: 0.5,
   },
   actionBtn: {
     flexDirection: 'row',
