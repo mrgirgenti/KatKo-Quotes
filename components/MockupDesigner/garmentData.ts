@@ -239,18 +239,6 @@ export const GARMENT_COLORS: { label: string; value: string; dark: boolean }[] =
   { label: 'Teal', value: '#00897B', dark: true },
 ];
 
-export const BRANDS = [
-  'Any Brand',
-  'SanMar',
-  'S&S Activewear',
-  'McCreary\'s',
-  'LA Apparel',
-  'Next Level',
-  'Bella+Canvas',
-  'Gildan',
-  'alphabroder',
-];
-
 /* ──────────────────────────────────────────────────────────────────────────
  * Print Location Templates + Smart Placement
  * ────────────────────────────────────────────────────────────────────────── */

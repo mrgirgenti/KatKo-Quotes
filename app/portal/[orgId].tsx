@@ -534,10 +534,6 @@ function rowTotal(r: SizeRow) {
     (r.xl || 0) + (r.xxl || 0) + (r.xxxl || 0) + (r.xxxxl || 0);
 }
 
-function colTotal(rows: SizeRow[], key: SizeKey) {
-  return rows.reduce((acc, r) => acc + (r[key] || 0), 0);
-}
-
 function grandTotal(rows: SizeRow[]) {
   return rows.reduce((acc, r) => acc + rowTotal(r), 0);
 }
@@ -861,159 +857,6 @@ function PortalComboCell({ value, onChangeText, options, placeholder, cellWidth,
   );
 }
 
-// ────────────────────────────────────────────────────────────
-// PortalProductPicker — product field with catalog browse
-// ────────────────────────────────────────────────────────────
-interface PortalProductPickerProps {
-  product: string;
-  productId: string | undefined;
-  onChangeProduct: (product: string, productId: string | undefined) => void;
-  catalogProducts: CatalogProduct[];
-  containerStyle?: any;
-}
-
-function PortalProductPicker({ product, productId, onChangeProduct, catalogProducts, containerStyle }: PortalProductPickerProps) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
-
-  const filtered = useMemo(() => {
-    if (!search.trim()) return catalogProducts;
-    const q = search.toLowerCase();
-    return catalogProducts.filter(p =>
-      p.name.toLowerCase().includes(q) ||
-      p.brand.toLowerCase().includes(q) ||
-      p.styleNumber.toLowerCase().includes(q) ||
-      (p.category || '').toLowerCase().includes(q)
-    );
-  }, [catalogProducts, search]);
-
-  const groups = useMemo(() => {
-    const map: Record<string, CatalogProduct[]> = {};
-    for (const p of filtered) {
-      const cat = p.category || 'Other';
-      if (!map[cat]) map[cat] = [];
-      map[cat].push(p);
-    }
-    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
-  }, [filtered]);
-
-  const handleSelect = (p: CatalogProduct) => {
-    onChangeProduct(`${p.brand} ${p.styleNumber}`, p.id);
-    setOpen(false);
-    setSearch('');
-  };
-
-  return (
-    <View style={[ppStyles.wrapper, containerStyle]}>
-      <View style={ppStyles.inputRow}>
-        <TextInput
-          style={ppStyles.textInput}
-          value={product}
-          onChangeText={v => onChangeProduct(v, productId)}
-          placeholder="Style / Product"
-          placeholderTextColor={TEXT_PLACEHOLDER}
-        />
-        {productId ? (
-          <View style={ppStyles.linkedChip}>
-            <Package size={9} color={BRAND} />
-            <TouchableOpacity
-              onPress={() => onChangeProduct(product, undefined)}
-              hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-            >
-              <X size={8} color="#6B7280" />
-            </TouchableOpacity>
-          </View>
-        ) : null}
-        <TouchableOpacity
-          style={ppStyles.browseBtn}
-          onPress={() => { setSearch(''); setOpen(true); }}
-          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-        >
-          <Package size={11} color={BRAND} />
-        </TouchableOpacity>
-      </View>
-
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable style={ppStyles.overlay} onPress={() => setOpen(false)}>
-          <Pressable style={ppStyles.card} onPress={() => {}}>
-            <View style={ppStyles.cardHeader}>
-              <Text style={ppStyles.cardTitle}>Choose from Catalog</Text>
-              <TouchableOpacity onPress={() => setOpen(false)}>
-                <X size={18} color={TEXT_LIGHT} />
-              </TouchableOpacity>
-            </View>
-            <View style={ppStyles.searchRow}>
-              <Search size={13} color={TEXT_LIGHT} />
-              <TextInput
-                style={ppStyles.searchInput}
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Search style, brand, or category…"
-                placeholderTextColor={TEXT_PLACEHOLDER}
-                autoFocus
-              />
-              {search ? (
-                <TouchableOpacity onPress={() => setSearch('')}>
-                  <X size={11} color={TEXT_LIGHT} />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-            <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
-              {catalogProducts.length === 0 ? (
-                <View style={ppStyles.emptyState}>
-                  <Text style={ppStyles.emptyText}>No catalog products available</Text>
-                </View>
-              ) : groups.length === 0 ? (
-                <View style={ppStyles.emptyState}>
-                  <Text style={ppStyles.emptyText}>No products match your search</Text>
-                </View>
-              ) : groups.map(([cat, prods]) => (
-                <View key={cat}>
-                  <View style={ppStyles.groupHeader}>
-                    <Text style={ppStyles.groupHeaderText}>{cat}</Text>
-                  </View>
-                  {prods.map(p => {
-                    const isSelected = productId === p.id;
-                    return (
-                      <TouchableOpacity
-                        key={p.id}
-                        style={[ppStyles.productRow, isSelected && ppStyles.productRowSel]}
-                        onPress={() => handleSelect(p)}
-                        activeOpacity={0.8}
-                      >
-                        <View style={{ flex: 1, minWidth: 0 }}>
-                          <Text style={ppStyles.productName} numberOfLines={1}>
-                            {p.brand} {p.styleNumber}
-                          </Text>
-                          {p.name && p.name !== `${p.brand} ${p.styleNumber}` ? (
-                            <Text style={ppStyles.productSub} numberOfLines={1}>{p.name}</Text>
-                          ) : null}
-                          {p.colors.length > 0 ? (
-                            <Text style={ppStyles.productColorList} numberOfLines={1}>
-                              {p.colors.slice(0, 5).map(c => c.colorName).join(', ')}{p.colors.length > 5 ? ` +${p.colors.length - 5}` : ''}
-                            </Text>
-                          ) : null}
-                        </View>
-                        {isSelected ? <Check size={14} color={BRAND} /> : null}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              ))}
-              <TouchableOpacity
-                style={ppStyles.manualOption}
-                onPress={() => { onChangeProduct(product, undefined); setOpen(false); setSearch(''); }}
-              >
-                <Edit2 size={12} color="#6B7280" />
-                <Text style={ppStyles.manualOptionText}>Enter product name manually</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
-    </View>
-  );
-}
 
 // ────────────────────────────────────────────────────────────
 // ── Portal ↔ ConfiguredProduct adapters ──────────────────────────────────────
@@ -1073,19 +916,6 @@ interface PortalLineItemCardProps {
 function PortalLineItemCard({ item, index, canDelete, onChange, onDelete, openDropdown, onOpenMockupBinPicker, catalogProducts, orgId }: PortalLineItemCardProps) {
   const upd = useCallback((patch: Partial<PortalLineItem>) => onChange({ ...item, ...patch }), [item, onChange]);
   const liFileInputRef = useRef<any>(null);
-
-  const updRow = useCallback((rowId: string, patch: Partial<SizeRow>) => {
-    onChange({ ...item, sizeRows: item.sizeRows.map(r => r.id === rowId ? { ...r, ...patch } : r) });
-  }, [item, onChange]);
-
-  const addRow = useCallback(() => {
-    onChange({ ...item, sizeRows: [...item.sizeRows, emptyRow()] });
-  }, [item, onChange]);
-
-  const delRow = useCallback((rowId: string) => {
-    const remaining = item.sizeRows.filter(r => r.id !== rowId);
-    onChange({ ...item, sizeRows: remaining.length > 0 ? remaining : [emptyRow()] });
-  }, [item, onChange]);
 
   const addMockupFile = useCallback((file: globalThis.File) => {
     const pf: PendingFile = {
@@ -5283,13 +5113,6 @@ const liStyles = StyleSheet.create({
     paddingHorizontal: 6, paddingVertical: 5, fontSize: 12, color: TEXT,
     backgroundColor: '#fff', marginHorizontal: 2, textAlign: 'center',
   },
-  delRowBtn: { width: 28, alignItems: 'center', justifyContent: 'center', paddingVertical: 6 },
-  addRowBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 12, paddingVertical: 9,
-    borderTopWidth: 1, borderTopColor: BORDER,
-  },
-  addRowText: { fontSize: 12, color: BRAND, fontWeight: '600' },
   grandTotalRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 12, paddingVertical: 8,
@@ -5431,120 +5254,6 @@ const comboCellStyles = StyleSheet.create({
   optionTextSel: { color: BRAND, fontWeight: '600' },
 });
 
-const ppStyles = StyleSheet.create({
-  wrapper: { position: 'relative' },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: BORDER,
-    borderRadius: 6,
-    minHeight: 34,
-    paddingHorizontal: 6,
-  },
-  textInput: {
-    flex: 1,
-    fontSize: 12,
-    color: TEXT,
-    paddingVertical: 4,
-    outlineStyle: 'none' as any,
-  },
-  linkedChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: '#FFF7ED',
-    borderRadius: 4,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    marginRight: 2,
-  },
-  browseBtn: {
-    padding: 4,
-    borderRadius: 4,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    width: '100%',
-    maxWidth: 500,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 4 },
-    overflow: 'hidden',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
-  },
-  cardTitle: { fontSize: 15, fontWeight: '700', color: TEXT },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 13,
-    color: TEXT,
-    outlineStyle: 'none' as any,
-  },
-  emptyState: { alignItems: 'center', paddingVertical: 32 },
-  emptyText: { fontSize: 13, color: TEXT_LIGHT },
-  groupHeader: {
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-  },
-  groupHeaderText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  productRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F9FAFB',
-  },
-  productRowSel: { backgroundColor: '#FFF7ED' },
-  productName: { fontSize: 13, fontWeight: '600', color: TEXT },
-  productSub: { fontSize: 11, color: '#6B7280', marginTop: 1 },
-  productColorList: { fontSize: 10, color: '#9CA3AF', marginTop: 2 },
-  manualOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: BORDER,
-  },
-  manualOptionText: { fontSize: 13, color: '#6B7280' },
-});
 
 const pCal = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
@@ -6513,7 +6222,6 @@ const mpStyles = StyleSheet.create({
   colOrderDate: { ...TABLE_COL.date, ...TABLE_CELL.center },
   colDueDate: { ...TABLE_COL.date, ...TABLE_CELL.center },
   colPcs: { ...TABLE_COL.numeric, ...TABLE_CELL.center },
-  colTotal: { ...TABLE_COL.numericWide, ...TABLE_CELL.center },
   colPerPcs: { ...TABLE_COL.numericWide, ...TABLE_CELL.center },
   colActions: { ...TABLE_COL.action, ...TABLE_CELL.center },
   tdCell: { justifyContent: 'center' },

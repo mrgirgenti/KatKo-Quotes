@@ -32,3 +32,12 @@ Every `LineItem` in `Project.lineItemsData` owns exactly ONE `configuredProduct:
 `handleVariantsChange` in `components/LineItemCard.tsx` calls `buildConfiguredProduct(updatedItem)` and includes it in every `onChange` call when variants change. Full bidirectional sync (for serviceStyle, locations, etc.) will be implemented when the UI wizard is rebuilt.
 
 **Why:** The `configuredProduct` must always reflect the current item state so downstream consumers (Mockup Designer, document renderer) can read a single structured object rather than reconstructing it from scattered fields.
+
+## The compat layer is LOAD-BEARING — do not delete it as "obsolete"
+`syncLegacyFields`, `buildConfiguredProduct`, `getConfiguredProduct`, the legacy top-level `LineItem` fields, and the `GarmentVariant` type are NOT removable temporary code while the UI migration is incomplete.
+
+**Why:** The display/production read surfaces still read legacy fields directly — `app/quote/[id].tsx` and `app/quote/production/[id].tsx` read `item.garmentVariants` / `item.product` / `item.productColor` / `item.sizes` (NOT `configuredProduct`). Existing DB records also rely on these. Removing the sync layer would break existing quotes AND re-introduce divergence (the opposite of the NO-PARALLEL-SYSTEMS goal).
+
+**How to apply:** Only remove the compat layer AFTER the display/production surfaces are migrated to read `configuredProduct.colorVariants`/`printLocations` directly. Sequence: migrate readers → drop legacy reads → then delete the shim.
+
+**Cleanup note:** `artworkLayers` on `ConfiguredProduct` is currently write-never/read-never — the Mockup Designer persists artwork only via the legacy base64 `mockupUri`. Wiring `artworkLayers` round-trip is a feature, not cleanup.

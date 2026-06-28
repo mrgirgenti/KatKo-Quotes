@@ -47,7 +47,6 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   const [variantPickerVisible, setVariantPickerVisible] = useState(false);
   const [mockupVariantIdx, setMockupVariantIdx] = useState(0);
   const [mockupLinkedVariantIdx, setMockupLinkedVariantIdx] = useState<number | null>(null);
-  const [syncPromptVisible, setSyncPromptVisible] = useState(false);
   const [showLocation34, setShowLocation34] = useState(!!(item.location3 || item.location4));
   const [serviceDropdownOpen, setServiceDropdownOpen] = useState(false);
 
@@ -382,35 +381,6 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
               ))}
               <TouchableOpacity style={styles.vpCancel} onPress={() => setVariantPickerVisible(false)}>
                 <Text style={styles.vpCancelText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </Modal>
-
-          {/* Sync Prompt — garment changed after mockup was created */}
-          <Modal
-            visible={syncPromptVisible}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setSyncPromptVisible(false)}
-          >
-            <Pressable style={styles.vpOverlay} onPress={() => setSyncPromptVisible(false)} />
-            <View style={styles.syncPanel}>
-              <Text style={styles.syncTitle}>Garment Changed</Text>
-              <Text style={styles.syncBody}>
-                The selected garment has changed since this mockup was created. Would you like to update the mockup to use the newly selected garment?
-              </Text>
-              <TouchableOpacity
-                style={styles.syncBtnPrimary}
-                onPress={() => {
-                  setSyncPromptVisible(false);
-                  if (mockupLinkedVariantIdx !== null) setMockupVariantIdx(mockupLinkedVariantIdx);
-                  setShowDesigner(true);
-                }}
-              >
-                <Text style={styles.syncBtnPrimaryText}>Update Mockup</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.syncBtnSecondary} onPress={() => setSyncPromptVisible(false)}>
-                <Text style={styles.syncBtnSecondaryText}>Keep Existing Garment</Text>
               </TouchableOpacity>
             </View>
           </Modal>
@@ -2163,41 +2133,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   vpCancelText: { fontSize: 13, color: Colors.light.textSecondary, fontWeight: '600' },
-
-  // Sync Prompt Modal
-  syncPanel: {
-    position: 'absolute',
-    top: '50%' as any,
-    left: '50%' as any,
-    transform: [{ translateX: '-50%' as any }, { translateY: '-50%' as any }],
-    width: 320,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 4 },
-    gap: 10,
-  },
-  syncTitle: { fontSize: 15, fontWeight: '700', color: '#111' },
-  syncBody: { fontSize: 13, color: Colors.light.textSecondary, lineHeight: 19 },
-  syncBtnPrimary: {
-    backgroundColor: Colors.light.tint,
-    borderRadius: 8,
-    height: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 4,
-  },
-  syncBtnPrimaryText: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  syncBtnSecondary: {
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: 8,
-    height: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  syncBtnSecondaryText: { fontSize: 13, fontWeight: '600', color: '#374151' },
 });

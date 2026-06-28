@@ -318,37 +318,6 @@ export const SERVICE_STYLES: ServiceStyle[] = [
 
 export const ORDER_TYPES: OrderType[] = ['New', 'Re-Order'];
 
-export const PRODUCTS = [
-  'Next Level 6210',
-  'Bella+Canvas 3001',
-  'Comfort Colors 1717',
-  'Next Level 3605',
-  'Next Level 1540',
-  'Gildan 64000',
-  'Gildan 2000 (Ultra)',
-  'Gildan 5000 (Heavy)',
-  'Gildan 8000 (Heavy)',
-  'Shaka Wear SHGD',
-  'Hats: YP Classics 6506',
-  'Hats: YP Classics 6606',
-  'Hats: Richardson 112',
-  'Hats: Otto 31-069 5 Panel Mid',
-  'Polos: ST550',
-  'Polos: LST550',
-  'Sweats: Lane Seven LS14004',
-] as const;
-
-export const PRODUCT_COLORS = [
-  'Black',
-  'Cream',
-  'Heather Grey',
-  'Sport Grey',
-  'Natural',
-  'Navy',
-  'Red',
-  'White',
-] as const;
-
 export const APPAREL_PROVIDERS = [
   "McCreary's",
   'S&S Activewear',
