@@ -1,5 +1,6 @@
 import { pool } from '@/lib/pool';
 import type { Quote, ProjectPriority } from '@/types/quote';
+import { getTotalQuantity } from '@/utils/quoteCalculations';
 import { authenticateRequest, unauthorized, forbidden } from '@/lib/auth';
 
 function dbPriorityToFrontend(p: string | null | undefined): ProjectPriority {
@@ -93,17 +94,13 @@ function frontendStatusToDbStatus(s: string) {
   }
 }
 
-function sumSizes(sizes: Record<string, number>): number {
-  return Object.values(sizes || {}).reduce((s, v) => s + (Number(v) || 0), 0);
-}
-
 async function upsertProjectItems(projectId: string, lineItems: any[]): Promise<void> {
   await pool.query(`DELETE FROM "ProjectItem" WHERE "projectId" = $1`, [projectId]);
   for (const item of lineItems) {
     const locations = [item.location1, item.location2, item.location3, item.location4].filter(Boolean);
     const qty = item.garmentVariants?.length
-      ? item.garmentVariants.reduce((s: number, v: any) => s + sumSizes(v.sizes || {}), 0)
-      : sumSizes(item.sizes || {});
+      ? item.garmentVariants.reduce((s: number, v: any) => s + getTotalQuantity(v.sizes || {}, false), 0)
+      : getTotalQuantity(item.sizes || {}, item.serviceStyle === 'Promotional');
     await pool.query(
       `INSERT INTO "ProjectItem" (
         id, "projectId", "itemName", "productCategory",

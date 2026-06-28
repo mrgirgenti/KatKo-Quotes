@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import Colors from '@/constants/colors';
 import { QuoteCalculations, LineItem } from '@/types/quote';
 import { formatCurrency, formatPercentage, calculateLineItemSubtotal } from '@/utils/quoteCalculations';
+import { ONLINE_FEE_LABEL, CARD_FEE_LABEL, SALES_TAX_LABEL } from '@/constants/fees';
 
 interface CalculationDisplayProps {
   calculations: QuoteCalculations | null;
@@ -112,7 +113,7 @@ export function CalculationDisplay({
           <Text style={styles.clientQuoteValue}>{formatCurrency(calculations.subtotal)}</Text>
         </View>
         <View style={styles.clientQuoteRow}>
-          <Text style={styles.clientQuoteLabel}>Online Fee (2.9% + $0.60)</Text>
+          <Text style={styles.clientQuoteLabel}>{`Online Fee (${ONLINE_FEE_LABEL})`}</Text>
           <Text style={styles.clientQuoteValue}>
             {formatCurrency(calculations.totalQuantity > 0 ? calculations.onlineFee / calculations.totalQuantity : 0)}
           </Text>
@@ -140,14 +141,14 @@ export function CalculationDisplay({
           <Text style={styles.feesHeaderCellRight}>Total</Text>
         </View>
         <View style={styles.feeRow}>
-          <Text style={styles.feeLabel}>Card Fee (3.75%)</Text>
+          <Text style={styles.feeLabel}>{`Card Fee (${CARD_FEE_LABEL})`}</Text>
           <Text style={styles.feeValue}>
             {formatCurrency(calculations.totalQuantity > 0 ? calculations.cardFee / calculations.totalQuantity : 0)}
           </Text>
           <Text style={styles.feeValue}>{formatCurrency(calculations.cardFee)}</Text>
         </View>
         <View style={styles.feeRow}>
-          <Text style={styles.feeLabel}>Sales Tax (8.3%)</Text>
+          <Text style={styles.feeLabel}>{`Sales Tax (${SALES_TAX_LABEL})`}</Text>
           <Text style={styles.feeValue}>
             {formatCurrency(calculations.totalQuantity > 0 ? calculations.salesTax / calculations.totalQuantity : 0)}
           </Text>

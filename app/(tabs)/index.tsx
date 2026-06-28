@@ -25,6 +25,7 @@ import { SegmentedControl } from '@/components/SegmentedControl';
 import { ToggleButton } from '@/components/ToggleButton';
 import { LineItemCard } from '@/components/LineItemCard';
 import { CalculationDisplay } from '@/components/CalculationDisplay';
+import { ONLINE_FEE_LABEL, CARD_FEE_LABEL, SALES_TAX_LABEL } from '@/constants/fees';
 import { Toast } from '@/components/Toast';
 import { OrgAutocomplete } from '@/components/OrgAutocomplete';
 import {
@@ -360,19 +361,19 @@ export default function NewQuoteScreen() {
     <View style={styles.card}>
       <ToggleButton
         label="Online Fee"
-        description="2.9% + $0.60"
+        description={ONLINE_FEE_LABEL}
         value={hasOnlineFee}
         onChange={setHasOnlineFee}
       />
       <ToggleButton
         label="Card Fee"
-        description="3.75%"
+        description={CARD_FEE_LABEL}
         value={hasCardFee}
         onChange={setHasCardFee}
       />
       <ToggleButton
         label="Sales Tax"
-        description="8.3%"
+        description={SALES_TAX_LABEL}
         value={hasSalesTax}
         onChange={setHasSalesTax}
       />

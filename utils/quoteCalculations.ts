@@ -1,4 +1,5 @@
 import { LineItem, QuoteCalculations, SizeQuantities, LineItemCalculations } from '@/types/quote';
+import { ONLINE_FEE_PCT, ONLINE_FEE_FLAT, CARD_FEE_PCT, SALES_TAX_PCT } from '@/constants/fees';
 
 export function getTotalQuantity(sizes: SizeQuantities, isPromotional: boolean): number {
   if (isPromotional) {
@@ -62,9 +63,9 @@ export function calculateQuote(
   
   const markupPercentage = cogTotal > 0 ? ((subtotal - cogTotal) / cogTotal) * 100 : 0;
 
-  const onlineFee = hasOnlineFee ? (subtotal * 0.029) + 0.60 : 0;
-  const salesTax = hasSalesTax ? subtotal * 0.083 : 0;
-  const cardFee = hasCardFee ? subtotal * 0.0375 : 0;
+  const onlineFee = hasOnlineFee ? (subtotal * ONLINE_FEE_PCT) + ONLINE_FEE_FLAT : 0;
+  const salesTax = hasSalesTax ? subtotal * SALES_TAX_PCT : 0;
+  const cardFee = hasCardFee ? subtotal * CARD_FEE_PCT : 0;
 
   const total = subtotal + onlineFee + salesTax + cardFee;
   const totalPerPiece = total / totalQuantity;

@@ -56,6 +56,7 @@ import Colors from '@/constants/colors';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { formatCurrency, calculateLineItemSubtotal, getTotalQuantity } from '@/utils/quoteCalculations';
+import { ONLINE_FEE_LABEL, CARD_FEE_LABEL, SALES_TAX_LABEL } from '@/constants/fees';
 import { formatDate } from '@/utils/textFormatting';
 import { formatPhone } from '@/utils/phone';
 import { LineItem, SIZE_LABELS, GarmentVariant, STATUS_CONFIG, QuoteStatus, OperationalProjectStatus, DeliveryMethod, OPERATIONAL_STATUSES, OPERATIONAL_STATUS_CONFIG, OPERATIONAL_NEXT, HOLD_REASONS, DELIVERY_METHODS } from '@/types/quote';
@@ -1218,21 +1219,21 @@ export default function QuoteDetailScreen() {
 
             {q.onlineFee > 0 && (
               <View style={styles.pricingRow}>
-                <Text style={styles.pricingRowLabel}>Online Fee (2.9% + $0.60)</Text>
+                <Text style={styles.pricingRowLabel}>{`Online Fee (${ONLINE_FEE_LABEL})`}</Text>
                 <Text style={styles.pricingRowValue}>{formatCurrency(perPc(q.onlineFee))}</Text>
                 <Text style={styles.pricingRowValue}>{formatCurrency(q.onlineFee)}</Text>
               </View>
             )}
             {q.cardFee > 0 && (
               <View style={styles.pricingRow}>
-                <Text style={styles.pricingRowLabel}>Card Fee (3.75%)</Text>
+                <Text style={styles.pricingRowLabel}>{`Card Fee (${CARD_FEE_LABEL})`}</Text>
                 <Text style={styles.pricingRowValue}>{formatCurrency(perPc(q.cardFee))}</Text>
                 <Text style={styles.pricingRowValue}>{formatCurrency(q.cardFee)}</Text>
               </View>
             )}
             {q.salesTax > 0 && (
               <View style={styles.pricingRow}>
-                <Text style={styles.pricingRowLabel}>Sales Tax (8.3%)</Text>
+                <Text style={styles.pricingRowLabel}>{`Sales Tax (${SALES_TAX_LABEL})`}</Text>
                 <Text style={styles.pricingRowValue}>{formatCurrency(perPc(q.salesTax))}</Text>
                 <Text style={styles.pricingRowValue}>{formatCurrency(q.salesTax)}</Text>
               </View>

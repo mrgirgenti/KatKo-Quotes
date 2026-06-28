@@ -39,7 +39,8 @@ import Colors from '@/constants/colors';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useCrm } from '@/contexts/CrmContext';
 import { useQuotes } from '@/contexts/QuotesContext';
-import { formatCurrency } from '@/utils/quoteCalculations';
+import { formatCurrency, calculateLineItemSubtotal } from '@/utils/quoteCalculations';
+import { ONLINE_FEE_LABEL, CARD_FEE_LABEL, SALES_TAX_LABEL } from '@/constants/fees';
 import { SalesData, VENDORS, APPLICATORS, LineItemActualCosts, SIZE_LABELS, LineItem } from '@/types/quote';
 import { useUser } from '@/contexts/UserContext';
 import { generateAndSharePDF } from '@/utils/pdfGenerator';
@@ -61,7 +62,7 @@ export default function SalesTrackingScreen() {
   }, [quotes, sales, id]);
 
   const getItemQuantity = useCallback((item: LineItem) => {
-    return Object.values(item.sizes ?? {}).reduce((sum, qty) => sum + (Number(qty) || 0), 0);
+    return calculateLineItemSubtotal(item).quantity;
   }, []);
 
   const getTotalSizeQuantities = useCallback((item: LineItem) => {
@@ -682,7 +683,7 @@ export default function SalesTrackingScreen() {
           <View style={styles.card}>
             <ToggleButton
               label="Online Fee"
-              description="2.9% + $0.60"
+              description={ONLINE_FEE_LABEL}
               value={hasOnlineFee}
               onChange={setHasOnlineFee}
             />
@@ -712,7 +713,7 @@ export default function SalesTrackingScreen() {
 
             <ToggleButton
               label="Card Fee"
-              description="3.75%"
+              description={CARD_FEE_LABEL}
               value={hasCardFee}
               onChange={setHasCardFee}
             />
@@ -742,7 +743,7 @@ export default function SalesTrackingScreen() {
 
             <ToggleButton
               label="Sales Tax"
-              description="8.3%"
+              description={SALES_TAX_LABEL}
               value={hasSalesTax}
               onChange={setHasSalesTax}
             />

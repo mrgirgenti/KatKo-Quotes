@@ -2,6 +2,7 @@ import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 import { Quote } from '@/types/quote';
+import { calculateLineItemSubtotal } from '@/utils/quoteCalculations';
 
 export interface ReportFilters {
   dateFrom?: string;
@@ -219,8 +220,7 @@ export function generateLineItemsCSV(quotes: Quote[]): string {
   const rows: string[][] = [];
   quotes.forEach(quote => {
     quote.lineItems.forEach((item, idx) => {
-      const qty = Object.values(item.sizes).reduce((s, q) => s + q, 0);
-      const itemTotal = (item.productCostEach + item.serviceCostEach + item.serviceFeeEach + (item.markupEach || 0)) * qty;
+      const { quantity: qty, subtotal: itemTotal } = calculateLineItemSubtotal(item);
       
       rows.push([
         escapeCSV(quote.invoiceNumber),

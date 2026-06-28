@@ -71,14 +71,6 @@ export interface DetailedLineItemRow {
   isFirstLineItem: boolean;
 }
 
-function getLineItemQuantity(item: LineItem): number {
-  const isPromotional = item.serviceStyle === 'Promotional';
-  if (isPromotional) {
-    return item.sizes.flat;
-  }
-  return item.sizes.xs + item.sizes.s + item.sizes.m + item.sizes.l + 
-         item.sizes.xl + item.sizes.xxl + item.sizes.xxxl + item.sizes.xxxxl;
-}
 
 function buildLocationNotes(item: LineItem): string {
   const locations = [item.location1, item.location2].filter(Boolean).join(', ');
@@ -97,8 +89,8 @@ function buildDetailedLineItemRows(sale: Quote): DetailedLineItemRow[] {
   
   sale.lineItems.forEach((item, index) => {
     const isFirstLineItem = index === 0;
-    const qty = getLineItemQuantity(item);
     const lineItemCalc = calculateLineItemSubtotal(item);
+    const qty = lineItemCalc.quantity;
     
     const lineItemCostData = salesDataLineItemCosts.find(c => c.lineItemId === item.id) || salesDataLineItemCosts[index];
     
@@ -192,8 +184,8 @@ export function buildQuoteExportPayload(sale: Quote): QuoteExportPayload {
   }
   
   const lineItems: ExportLineItem[] = saleLineItems.map((item, index) => {
-    const qty = getLineItemQuantity(item);
     const lineItemCalc = calculateLineItemSubtotal(item);
+    const qty = lineItemCalc.quantity;
     const lineItemCostData = salesDataLineItemCosts.find(c => c.lineItemId === item.id) || salesDataLineItemCosts[index];
     
     const applicator = lineItemCostData?.applicator || item.applicator || 'N/A';

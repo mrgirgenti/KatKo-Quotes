@@ -2,7 +2,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 import { Quote, LineItem, SIZE_LABELS } from '@/types/quote';
-import { formatCurrency } from '@/utils/quoteCalculations';
+import { formatCurrency, calculateLineItemSubtotal } from '@/utils/quoteCalculations';
 import { formatPhone } from '@/utils/phone';
 import { UserProfile } from '@/types/user';
 import { buildProjectDocumentHTML } from '@/utils/projectDocumentHtml';
@@ -22,9 +22,6 @@ function getTotalSizeQuantities(item: LineItem): string {
   return sizes.join(', ') || 'No quantities';
 }
 
-function getItemQuantity(item: LineItem): number {
-  return Object.values(item.sizes).reduce((sum, qty) => sum + qty, 0);
-}
 
 function generateQuoteHTML(quote: Quote, user?: UserProfile | null): string {
   const lineItemsHTML = quote.lineItems.map((item, index) => `
@@ -35,7 +32,7 @@ function generateQuoteHTML(quote: Quote, user?: UserProfile | null): string {
           <span class="design-name">${item.designName || 'Untitled Design'}</span>
           <span class="line-service">${item.serviceStyle}${item.applicator ? ` · ${item.applicator}` : ''}</span>
         </div>
-        <span class="line-qty">${getItemQuantity(item)} pcs</span>
+        <span class="line-qty">${calculateLineItemSubtotal(item).quantity} pcs</span>
       </div>
       <table class="details-table">
         <tr><td class="label">Product:</td><td>${item.product} — ${item.productColor}</td></tr>
@@ -292,10 +289,10 @@ function generateWorkOrderHTML(
   items: LineItem[],
   user?: UserProfile | null,
 ): string {
-  const totalQty = items.reduce((sum, i) => sum + getItemQuantity(i), 0);
+  const totalQty = items.reduce((sum, i) => sum + calculateLineItemSubtotal(i).quantity, 0);
 
   const lineItemsHTML = items.map((item, index) => {
-    const qty = getItemQuantity(item);
+    const qty = calculateLineItemSubtotal(item).quantity;
     const locations = [item.location1, item.location2, item.location3, item.location4].filter(Boolean).join(', ') || 'N/A';
 
     const variants: Array<{ product: string; color: string; sizes: typeof item.sizes }> =
@@ -304,7 +301,7 @@ function generateWorkOrderHTML(
         : [{ product: item.product, color: item.productColor, sizes: item.sizes }];
 
     const variantSectionsHTML = variants.map((v, vi) => {
-      const vQty = getItemQuantity({ ...item, sizes: v.sizes });
+      const vQty = calculateLineItemSubtotal({ ...item, sizes: v.sizes }).quantity;
       const sizeGridHTML = generateSizeGrid({ ...item, sizes: v.sizes });
       return `
         <div class="variant-card">

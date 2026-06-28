@@ -32,7 +32,7 @@ import Colors from '@/constants/colors';
 import { DS } from '@/constants/designSystem';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useQuotes } from '@/contexts/QuotesContext';
-import { formatCurrency } from '@/utils/quoteCalculations';
+import { formatCurrency, calculateLineItemSubtotal } from '@/utils/quoteCalculations';
 import {
   generateQuotesCSV,
   generateSalesCSV,
@@ -90,12 +90,7 @@ function getProfit(q: Quote): number {
 
 function getPcs(q: Quote): number {
   return (q.lineItems || []).reduce(
-    (s: number, li: any) =>
-      s +
-      Object.values(li.sizes || {}).reduce(
-        (ps: number, v: any) => ps + (Number(v) || 0),
-        0,
-      ),
+    (s: number, li: any) => s + calculateLineItemSubtotal(li).quantity,
     0,
   );
 }

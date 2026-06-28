@@ -1,6 +1,9 @@
 import { pool } from '@/lib/pool';
 import { sendEmail, buildSubmissionConfirmationEmail, buildNewRequestAdminEmail } from '@/lib/email';
 import { createAction } from '@/lib/actions';
+import { buildConfiguredProduct } from '@/utils/configuredProduct';
+import { getTotalQuantity } from '@/utils/quoteCalculations';
+import type { LineItem } from '@/types/quote';
 
 const EDIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -103,7 +106,14 @@ export async function POST(request: Request) {
       };
     });
 
-    const mappedOrderType = mapOrderType(orderType || 'New Order');
+    // Eagerly populate configuredProduct on all line items at write time so the
+  // DB always stores canonical data rather than relying on the lazy fallback.
+  const enrichedLineItems = lineItemsData.map((item: any) => ({
+    ...item,
+    configuredProduct: item.configuredProduct ?? buildConfiguredProduct(item as LineItem),
+  }));
+
+  const mappedOrderType = mapOrderType(orderType || 'New Order');
 
     const submittedOrderDate = new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
 
@@ -159,7 +169,7 @@ export async function POST(request: Request) {
         mappedOrderType,
         submittedOrderDate,
         inHandsDate || null,
-        JSON.stringify(lineItemsData),
+        JSON.stringify(enrichedLineItems),
         userId,
         notes || null,
         validReorderSourceId,
@@ -182,9 +192,8 @@ export async function POST(request: Request) {
     }
 
     // Create ProjectItem records for structured querying
-    for (const item of lineItemsData) {
-      const totalQty = Object.values(item.sizes)
-        .reduce((sum: number, v) => sum + ((v as number) || 0), 0);
+    for (const item of enrichedLineItems) {
+      const totalQty = getTotalQuantity(item.sizes || {}, item.serviceStyle === 'Promotional');
 
       const printLocations = [item.location1, item.location2, item.location3, item.location4]
         .filter(Boolean);

@@ -1,8 +1,5 @@
 import { pool } from '@/lib/pool';
-
-function sumSizes(sizes: Record<string, number>): number {
-  return Object.values(sizes || {}).reduce((s, v) => s + (Number(v) || 0), 0);
-}
+import { getTotalQuantity } from '@/utils/quoteCalculations';
 
 async function upsertProjectItems(projectId: string, lineItems: any[]): Promise<number> {
   await pool.query(`DELETE FROM "ProjectItem" WHERE "projectId" = $1`, [projectId]);
@@ -10,8 +7,8 @@ async function upsertProjectItems(projectId: string, lineItems: any[]): Promise<
   for (const item of lineItems) {
     const locations = [item.location1, item.location2, item.location3, item.location4].filter(Boolean);
     const qty = item.garmentVariants?.length
-      ? item.garmentVariants.reduce((s: number, v: any) => s + sumSizes(v.sizes || {}), 0)
-      : sumSizes(item.sizes || {});
+      ? item.garmentVariants.reduce((s: number, v: any) => s + getTotalQuantity(v.sizes || {}, false), 0)
+      : getTotalQuantity(item.sizes || {}, item.serviceStyle === 'Promotional');
     await pool.query(
       `INSERT INTO "ProjectItem" (
         id, "projectId", "itemName", "productCategory", "garmentType",

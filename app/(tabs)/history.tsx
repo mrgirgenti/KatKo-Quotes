@@ -16,7 +16,7 @@ import Colors from '@/constants/colors';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { useUser } from '@/contexts/UserContext';
 import { Quote, LineItem } from '@/types/quote';
-import { formatCurrency } from '@/utils/quoteCalculations';
+import { formatCurrency, calculateLineItemSubtotal } from '@/utils/quoteCalculations';
 import { formatDate } from '@/utils/textFormatting';
 import { generateAndSharePDF, printQuote } from '@/utils/pdfGenerator';
 
@@ -136,14 +136,7 @@ export default function HistoryScreen() {
   
 
   const getLineItemStats = (item: LineItem) => {
-    const quantity = Object.values(item.sizes).reduce((sum, val) => sum + val, 0);
-    const markupTotal = item.markupEach * quantity;
-    const productCost = item.productCostEach * quantity;
-    const serviceCost = item.serviceCostEach * quantity;
-    const serviceFee = item.serviceFeeEach * quantity;
-    const cogTotal = productCost + serviceCost + serviceFee;
-    const subtotal = cogTotal + markupTotal;
-    const perPiece = quantity > 0 ? subtotal / quantity : 0;
+    const { quantity, markupTotal, subtotal, perPiece } = calculateLineItemSubtotal(item);
     return { quantity, markupTotal, perPiece, subtotal };
   };
 
