@@ -22,7 +22,6 @@ import Colors from '@/constants/colors';
 import OverlayMenu from '@/components/OverlayMenu';
 import { useProductCatalog, type NormalizedColor, type CatalogProductLite } from '@/hooks/useProductCatalog';
 import type { ConfiguredProduct, ConfiguredColorVariant } from '@/types/configuredProduct';
-import { GARMENT_COLORS, type GarmentType } from '@/components/MockupDesigner/garmentData';
 import {
   categoryToGarmentType,
   isDarkHex,
@@ -33,6 +32,7 @@ import {
   SIZE_LABELS_ROW1,
   SIZE_LABELS_ROW2,
   EMPTY_SIZES,
+  LOCATIONS,
   type SizeQuantities,
 } from '@/types/quote';
 import { GarmentSvgPreview } from './GarmentSvgPreview';
@@ -84,6 +84,9 @@ export interface ConfiguredProductEditorProps {
   /** Fired whenever a catalog product is selected so the parent can fill costs. */
   onResolvedCatalogMeta?: (meta: ResolvedCatalogMeta) => void;
 
+  /** Show print location pickers (Location #1–4) below the size grid. Portal default: true. */
+  showLocations?: boolean;
+
   /** Extra content to render in the toolbar's trailing slot (e.g. "Done Editing"). */
   toolbarTrailing?: React.ReactNode;
 }
@@ -112,6 +115,7 @@ export function ConfiguredProductEditor({
   onActiveColorChange,
   onResolvedCatalogMeta,
   toolbarTrailing,
+  showLocations: showLocationsProp,
 }: ConfiguredProductEditorProps) {
   const isPortal = mode === 'portal' || surface === 'clientPortal';
   const effectiveMode: 'internal' | 'portal' = isPortal ? 'portal' : 'internal';
@@ -154,18 +158,8 @@ export function ConfiguredProductEditor({
     enabled: !readOnly,
   });
 
-  // ── Colors: catalog colors for linked product OR GARMENT_COLORS fallback ──
-  const catalogColors: NormalizedColor[] = catalog.colors;
-  const fallbackColors: NormalizedColor[] = useMemo(
-    () =>
-      GARMENT_COLORS.map((c) => ({
-        name: c.label,
-        hex: c.value,
-        dark: c.dark,
-      })),
-    [],
-  );
-  const displayColors: NormalizedColor[] = catalogColors.length > 0 ? catalogColors : fallbackColors;
+  // ── Colors: ONLY the linked product's catalog colors (no hardcoded fallback) ──
+  const displayColors: NormalizedColor[] = catalog.colors;
   const filteredColors = useMemo(() => {
     const q = colorSearch.trim().toLowerCase();
     if (!q) return displayColors;
@@ -300,6 +294,23 @@ export function ConfiguredProductEditor({
     [cp, onChange, activeColorIndex, setActiveColorIndex],
   );
 
+  const handleLocationChange = useCallback(
+    (idx: number, value: string) => {
+      const locs = [...(cp.printLocations ?? [])];
+      while (locs.length <= idx) locs.push('');
+      locs[idx] = value;
+      onChange({ ...cp, printLocations: locs });
+    },
+    [cp, onChange],
+  );
+
+  const handleAddLocation = useCallback(() => {
+    onChange({ ...cp, printLocations: [...(cp.printLocations ?? []), ''] });
+  }, [cp, onChange]);
+
+  const showLocations = showLocationsProp ?? (surface === 'clientPortal');
+  const printLocations = cp.printLocations ?? [];
+
   // ── Render: toolbar layout (for MockupDesigner) ────────────────────────────
 
   if (layout === 'toolbar') {
@@ -362,40 +373,7 @@ export function ConfiguredProductEditor({
 
         {/* ── Col 1: Product Type ─────────────────────────────────────── */}
         <View style={[styles.col, styles.col1]}>
-          <Text style={styles.colSubLabel}>Choose a category</Text>
-
-          <OverlayMenu
-            menuWidth={220}
-            align="left"
-            trigger={({ open, isOpen }) => (
-              <TouchableOpacity style={styles.dropdownTrigger} onPress={open} activeOpacity={0.75} disabled={readOnly}>
-                <Text style={styles.dropdownTriggerText} numberOfLines={1}>
-                  {cp.category || 'Any Category'}
-                </Text>
-                <ChevronDown size={14} color={Colors.light.textSecondary} />
-              </TouchableOpacity>
-            )}
-          >
-            {({ close }) => (
-              <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
-                {['', ...catalog.categories].map((cat) => {
-                  const label = cat === '' ? 'Any Category' : cat;
-                  const active = (cp.category ?? '') === cat;
-                  return (
-                    <TouchableOpacity
-                      key={cat}
-                      style={[styles.overlayItem, active && styles.overlayItemActive]}
-                      onPress={() => { handleSelectCategory(cat); close(); }}
-                    >
-                      <Text style={[styles.overlayItemText, active && styles.overlayItemTextActive]}>{label}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            )}
-          </OverlayMenu>
-
-          <Text style={styles.popularTypesLabel}>Popular Types</Text>
+          <Text style={styles.popularTypesLabel}>Choose a type</Text>
 
           {PRIMARY_CATEGORY_TILES.map((cat) => {
             const active = cp.category === cat;
@@ -441,13 +419,13 @@ export function ConfiguredProductEditor({
 
           <ScrollView style={styles.styleList} showsVerticalScrollIndicator={false} nestedScrollEnabled>
             {catalog.isSearching && (
-              <Text style={styles.styleListEmpty}>Searching…</Text>
+              <Text style={styles.styleListEmpty}>Loading…</Text>
             )}
-            {!catalog.isSearching && catalog.results.length === 0 && styleSearch.length >= 2 && (
+            {!catalog.isSearching && catalog.results.length === 0 && (!!cp.category || styleSearch.length >= 2) && (
               <Text style={styles.styleListEmpty}>No catalog matches.</Text>
             )}
-            {!catalog.isSearching && catalog.results.length === 0 && styleSearch.length < 2 && (
-              <Text style={styles.styleListEmpty}>Search our catalog or type a custom style name.</Text>
+            {!catalog.isSearching && catalog.results.length === 0 && !cp.category && styleSearch.length < 2 && (
+              <Text style={styles.styleListEmpty}>Select a product type or search by name.</Text>
             )}
             {catalog.results.map((p) => {
               const isSelected = cp.productId === p.id;
@@ -739,6 +717,58 @@ export function ConfiguredProductEditor({
         )}
       </View>
 
+      {/* ── Print Locations ──────────────────────────────────────────────── */}
+      {showLocations && (
+        <View style={styles.locSection}>
+          <View style={styles.locRow}>
+            <LocDropdown
+              label="Location #1"
+              value={printLocations[0] ?? ''}
+              onChange={(v) => handleLocationChange(0, v)}
+              readOnly={readOnly}
+            />
+            <LocDropdown
+              label="Location #2"
+              value={printLocations[1] ?? ''}
+              onChange={(v) => handleLocationChange(1, v)}
+              readOnly={readOnly}
+            />
+            {printLocations.length >= 3 && (
+              <LocDropdown
+                label="Location #3"
+                value={printLocations[2] ?? ''}
+                onChange={(v) => handleLocationChange(2, v)}
+                readOnly={readOnly}
+              />
+            )}
+            {printLocations.length >= 4 && (
+              <LocDropdown
+                label="Location #4"
+                value={printLocations[3] ?? ''}
+                onChange={(v) => handleLocationChange(3, v)}
+                readOnly={readOnly}
+              />
+            )}
+          </View>
+          {!readOnly && printLocations.length < 4 && (
+            <View style={styles.locAddRow}>
+              {printLocations.length < 3 && (
+                <TouchableOpacity style={styles.locAddBtn} onPress={handleAddLocation}>
+                  <Plus size={12} color={ORANGE} />
+                  <Text style={styles.locAddText}>Add Location #3</Text>
+                </TouchableOpacity>
+              )}
+              {printLocations.length === 3 && (
+                <TouchableOpacity style={styles.locAddBtn} onPress={handleAddLocation}>
+                  <Plus size={12} color={ORANGE} />
+                  <Text style={styles.locAddText}>Add Location #4</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+        </View>
+      )}
+
       {/* ── Grand Total bar ──────────────────────────────────────────────── */}
       {showSizes && (
         <View style={styles.grandTotalBar}>
@@ -759,6 +789,45 @@ export function ConfiguredProductEditor({
           </View>
         </View>
       )}
+    </View>
+  );
+}
+
+// ── LocDropdown: print location picker (reused for all 4 slots) ───────────────
+function LocDropdown({
+  label, value, onChange, readOnly,
+}: { label: string; value: string; onChange: (v: string) => void; readOnly: boolean }) {
+  return (
+    <View style={styles.locItem}>
+      <Text style={styles.locLabel}>{label}</Text>
+      <OverlayMenu
+        menuWidth={200}
+        align="left"
+        trigger={({ open }) => (
+          <TouchableOpacity style={styles.locTrigger} onPress={open} disabled={readOnly} activeOpacity={0.75}>
+            <Text style={[styles.locTriggerText, !value && styles.locTriggerPlaceholder]} numberOfLines={1}>
+              {value || 'Select…'}
+            </Text>
+            <ChevronDown size={13} color={Colors.light.textSecondary} />
+          </TouchableOpacity>
+        )}
+      >
+        {({ close }) => (
+          <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
+            {LOCATIONS.map((loc) => (
+              <TouchableOpacity
+                key={loc}
+                style={[styles.overlayItem, value === loc && styles.overlayItemActive]}
+                onPress={() => { onChange(loc); close(); }}
+              >
+                <Text style={[styles.overlayItemText, value === loc && styles.overlayItemTextActive]}>
+                  {loc}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+      </OverlayMenu>
     </View>
   );
 }
@@ -1055,6 +1124,69 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.light.textSecondary,
     letterSpacing: 0.2,
+  },
+
+  // Print locations section
+  locSection: {
+    borderTopWidth: 1,
+    borderTopColor: DIVIDER,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#FAFAFA',
+  },
+  locRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 6,
+  },
+  locItem: {
+    flex: 1,
+    minWidth: 130,
+  },
+  locLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 4,
+  },
+  locTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: INPUT_BG,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: DIVIDER,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  locTriggerText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.light.text,
+    fontWeight: '500',
+  },
+  locTriggerPlaceholder: {
+    color: Colors.light.textSecondary,
+  },
+  locAddRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 2,
+  },
+  locAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 3,
+  },
+  locAddText: {
+    fontSize: 12,
+    color: ORANGE,
+    fontWeight: '600',
   },
 
   // Column layout

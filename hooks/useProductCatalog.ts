@@ -126,7 +126,7 @@ export function useProductCatalog(params: UseProductCatalogParams): UseProductCa
       if (category) url += `&category=${encodeURIComponent(category)}`;
       return apiFetch(url);
     },
-    enabled: enabled && !isPortal && debounced.length >= 2,
+    enabled: enabled && !isPortal && (debounced.length >= 2 || !!category),
     staleTime: 30000,
   });
 
@@ -162,10 +162,12 @@ export function useProductCatalog(params: UseProductCatalogParams): UseProductCa
       return portalProducts.filter((p) => {
         if (category && (p.category || '') !== category) return false;
         if (!term) return true;
+        const styleLabel = [p.styleNumber, p.name].filter(Boolean).join(' — ').toLowerCase();
         return (
           p.styleNumber?.toLowerCase().includes(term) ||
           p.name?.toLowerCase().includes(term) ||
-          p.brand?.toLowerCase().includes(term)
+          p.brand?.toLowerCase().includes(term) ||
+          styleLabel.includes(term)
         );
       });
     }

@@ -1,0 +1,248 @@
+Prompt 10 — Complete Products + Sizes Integration (Remove Legacy Catalog Logic)
+
+The new ConfiguredProduct architecture is now in place. The remaining issues are caused by legacy catalog logic, fallback data, and inconsistent implementations between the Internal Quote and Client Hub.
+
+This task is not a redesign.
+
+It is a completion and integration pass.
+
+The goal is that both the Internal Quote and Client Hub use the exact same ConfiguredProductEditor component and the exact same data source.
+
+Product Type
+
+Remove the "Choose a Category" dropdown entirely.
+
+It currently only switches between Apparel and Headwear and provides no additional value.
+
+The clickable Product Types on the left are now the primary navigation.
+
+Example:
+
+T-Shirts
+Polos
+Crewnecks
+Hoodies
+Hats
+
+Clicking one should:
+
+highlight it
+filter the Style list
+update ConfiguredProduct.productType
+
+No duplicate filtering system.
+
+Style
+
+The Style list should ONLY display products belonging to the selected Product Type.
+
+Example:
+
+Click
+
+T-Shirts
+
+↓
+
+Only T-Shirts appear.
+
+Click
+
+Polos
+
+↓
+
+Only Polos appear.
+
+The search box should search ONLY within the currently selected Product Type.
+
+Typing
+
+"next"
+
+should return
+
+Next Level 6210
+
+Next Level V-Neck
+
+etc.
+
+If no category is selected, display all products.
+
+Product Selection
+
+Selecting a Style should NEVER create a "Custom Style" if that product already exists.
+
+Currently the Client Hub displays
+
+"No catalog matches"
+
+after selecting an actual catalog product.
+
+This is incorrect.
+
+Selecting a product from the catalog must immediately bind the selected Product record to the ConfiguredProduct.
+
+Do not fall back to custom mode unless the user manually types a style that truly does not exist.
+
+Colors
+
+This is now the highest priority issue.
+
+Remove all remaining hardcoded color sources.
+
+The only valid source of colors is:
+
+Products Page
+
+↓
+
+Selected Product
+
+↓
+
+Available Colors
+
+The color dropdown and color swatches should ONLY display colors assigned to the selected Product.
+
+No legacy color arrays.
+
+No fallback color list.
+
+No hardcoded apparel colors.
+
+If a Product has
+
+8 colors
+
+display 8.
+
+If it has
+
+43 colors
+
+display 43.
+
+The dropdown and swatches must always stay synchronized.
+
+Garment Preview
+
+The garment preview should NEVER use the generic shirt icon.
+
+Instead:
+
+Use the Product Asset attached to the selected Product in the Products database.
+
+Example:
+
+Next Level 6210
+
+↓
+
+Uses the actual uploaded NL6210 asset.
+
+Changing Color should tint or swap the garment preview using the Product's available assets.
+
+Multiple Print Locations
+
+The Products + Sizes section currently has no way to configure multiple print locations.
+
+This is required.
+
+Reintroduce support for:
+
+Location #1
+
+Location #2
+
+Add Location #3
+Add Location #4
+
+These locations should update ConfiguredProduct.printLocations and remain synchronized with Mockup Designer.
+
+Client Hub Consistency
+
+The Client Hub and Internal Quote must use identical logic.
+
+Current inconsistencies:
+
+Product highlighting differs.
+Style searching differs.
+Product selection differs.
+Width differs.
+Catalog lookup differs.
+
+These should all use the exact same ConfiguredProductEditor behavior.
+
+No separate implementations.
+
+Layout Improvements
+
+Increase the usable width of the Client Hub quote form approximately 15%.
+
+The current layout truncates product names and reduces readability.
+
+Preserve responsive behavior while allowing:
+
+longer product names
+larger garment preview
+improved spacing
+Typography
+
+Several labels and product names are being truncated unnecessarily.
+
+Review:
+
+Style names
+Color names
+Product names
+
+Improve readability without reducing functionality.
+
+Preferred solutions:
+
+slightly wider columns
+multiline labels where appropriate
+better text wrapping
+
+Do not rely on aggressive ellipsis unless absolutely necessary.
+
+Legacy Cleanup
+
+Search the codebase for every remaining reference to:
+
+hardcoded apparel colors
+legacy catalog arrays
+fallback product images
+legacy garment icons
+old variant/color systems
+
+If these are no longer required by the ConfiguredProduct architecture, remove them.
+
+There should be exactly one source of truth for:
+
+Products
+Styles
+Colors
+Product Images
+Validation
+
+Verify both:
+
+Internal Quote
+
+Client Hub
+
+produce identical behavior for:
+
+Product Type
+Style
+Product Search
+Colors
+Garment Preview
+Print Locations
+Sizes
+ConfiguredProduct updates
+
+Report every remaining inconsistency before considering the task complete.

@@ -77,7 +77,6 @@ import {
   Maximize2,
   MessageCircle,
 } from 'lucide-react-native';
-import { LOCATIONS } from '@/types/quote';
 import MediaPickerModal, { PickerMediaFile } from '@/components/MediaPickerModal';
 import MediaCard from '@/components/MediaCard';
 import OverlayMenu from '@/components/OverlayMenu';
@@ -1003,83 +1002,6 @@ function PortalLineItemCardFn({ item, index, canDelete, onChangeItem, onDelete: 
             </View>
           </View>
 
-          {/* ── Locations ── */}
-          <View style={[liStyles.twoCol, { marginBottom: 10 }]}>
-            <View style={[pFields.container, { flex: 1, marginBottom: 0 }]}>
-              <Text style={pFields.label}>Location #1</Text>
-              <TouchableOpacity
-                style={pFields.selectRow}
-                onPress={() => openDropdown('Location #1', LOCATIONS, item.location1, v => upd({ location1: v }))}
-              >
-                <Text style={[pFields.selectText, !item.location1 && pFields.selectPlaceholder]} numberOfLines={1}>
-                  {item.location1 || 'Select…'}
-                </Text>
-                <ChevronDown size={14} color={TEXT_LIGHT} />
-              </TouchableOpacity>
-            </View>
-            <View style={[pFields.container, { flex: 1, marginBottom: 0 }]}>
-              <Text style={pFields.label}>Location #2</Text>
-              <TouchableOpacity
-                style={pFields.selectRow}
-                onPress={() => openDropdown('Location #2', LOCATIONS, item.location2, v => upd({ location2: v }))}
-              >
-                <Text style={[pFields.selectText, !item.location2 && pFields.selectPlaceholder]} numberOfLines={1}>
-                  {item.location2 || 'Select…'}
-                </Text>
-                <ChevronDown size={14} color={TEXT_LIGHT} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Loc 3 / 4 */}
-          {(item.showLoc3 || item.showLoc4) && (
-            <View style={[liStyles.twoCol, { marginBottom: 10 }]}>
-              {item.showLoc3 && (
-                <View style={[pFields.container, { flex: 1, marginBottom: 0 }]}>
-                  <Text style={pFields.label}>Location #3</Text>
-                  <TouchableOpacity
-                    style={pFields.selectRow}
-                    onPress={() => openDropdown('Location #3', LOCATIONS, item.location3, v => upd({ location3: v }))}
-                  >
-                    <Text style={[pFields.selectText, !item.location3 && pFields.selectPlaceholder]} numberOfLines={1}>
-                      {item.location3 || 'Select…'}
-                    </Text>
-                    <ChevronDown size={14} color={TEXT_LIGHT} />
-                  </TouchableOpacity>
-                </View>
-              )}
-              {item.showLoc4 && (
-                <View style={[pFields.container, { flex: 1, marginBottom: 0 }]}>
-                  <Text style={pFields.label}>Location #4</Text>
-                  <TouchableOpacity
-                    style={pFields.selectRow}
-                    onPress={() => openDropdown('Location #4', LOCATIONS, item.location4, v => upd({ location4: v }))}
-                  >
-                    <Text style={[pFields.selectText, !item.location4 && pFields.selectPlaceholder]} numberOfLines={1}>
-                      {item.location4 || 'Select…'}
-                    </Text>
-                    <ChevronDown size={14} color={TEXT_LIGHT} />
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          )}
-
-          <View style={[liStyles.addLocRow, { marginTop: 0, marginBottom: 10 }]}>
-            {!item.showLoc3 && (
-              <TouchableOpacity style={liStyles.addLocBtn} onPress={() => upd({ showLoc3: true })}>
-                <Plus size={12} color={BRAND} />
-                <Text style={liStyles.addLocText}>Add Location #3</Text>
-              </TouchableOpacity>
-            )}
-            {item.showLoc3 && !item.showLoc4 && (
-              <TouchableOpacity style={liStyles.addLocBtn} onPress={() => upd({ showLoc4: true })}>
-                <Plus size={12} color={BRAND} />
-                <Text style={liStyles.addLocText}>Add Location #4</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
           {/* ── Project Notes ── */}
           <View style={[pFields.container, { marginBottom: 12 }]}>
             <Text style={pFields.label}>Project Notes</Text>
@@ -1095,12 +1017,22 @@ function PortalLineItemCardFn({ item, index, canDelete, onChangeItem, onDelete: 
             />
           </View>
 
-          {/* ── Products + Sizes ── */}
+          {/* ── Products + Sizes + Print Locations ── */}
           <ConfiguredProductEditor
-            value={portalSizeRowsToCP(item.sizeRows)}
+            value={{
+              ...portalSizeRowsToCP(item.sizeRows),
+              printLocations: [item.location1, item.location2, item.location3, item.location4].filter(Boolean) as string[],
+            }}
             onChange={(cp) => {
               const newRows = cpToPortalSizeRows(cp, item.sizeRows);
-              onChange({ ...item, sizeRows: newRows });
+              const locs = cp.printLocations ?? [];
+              upd({
+                sizeRows: newRows,
+                location1: locs[0] ?? '',
+                location2: locs[1] ?? '',
+                location3: locs[2] ?? '',
+                location4: locs[3] ?? '',
+              });
             }}
             mode="portal"
             orgId={orgId}
