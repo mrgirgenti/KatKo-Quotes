@@ -15,19 +15,27 @@ import * as ImagePicker from 'expo-image-picker';
 import Svg, { Path, Rect, Circle, Line, G } from 'react-native-svg';
 import {
   X,
-  Upload,
-  Download,
   Save,
   ChevronDown,
   Trash2,
+  Check,
   CheckCircle,
-  Brush,
+  Pencil,
   RotateCcw,
-  Link2,
-  Lock,
-  Unlock,
-  Layers as LayersIcon,
-  Target,
+  Eye,
+  EyeOff,
+  Search,
+  Plus,
+  Star,
+  MousePointer2,
+  Type as TypeIcon,
+  ImagePlus,
+  LayoutTemplate,
+  Undo2,
+  Redo2,
+  Maximize2,
+  ZoomIn,
+  Crosshair,
 } from 'lucide-react-native';
 import { useQuery } from '@tanstack/react-query';
 import Colors from '@/constants/colors';
@@ -87,6 +95,7 @@ interface Placement {
   decorationMethod: DecorationMethod;
   rotation: number;
   opacity: number;
+  hidden?: boolean;
 }
 
 interface PlacementStatus {
@@ -120,10 +129,6 @@ function SectionHeader({ title }: { title: string }) {
   );
 }
 
-function SubLabel({ title }: { title: string }) {
-  return <Text style={styles.subLabel}>{title}</Text>;
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function MockupDesigner({
   visible,
@@ -132,6 +137,7 @@ export function MockupDesigner({
   suggestedLocations,
   initialVariant,
   onColorChange,
+  onRequestChangeProduct,
   configuredProduct,
   onConfiguredProductChange,
 }: Props) {
@@ -153,6 +159,11 @@ export function MockupDesigner({
   const [draggedArtworkId, setDraggedArtworkId] = useState<string | null>(null);
   const [mdActiveColorIdx, setMdActiveColorIdx] = useState(0);
   const [lockAspectRatio, setLockAspectRatio] = useState(true);
+  const [editingProduct, setEditingProduct] = useState(true);
+  const [mediaSearch, setMediaSearch] = useState('');
+  const [tool, setTool] = useState<'select' | 'text' | 'image' | 'templates'>('select');
+  const [zoom, setZoom] = useState(1);
+  const [historyTick, setHistoryTick] = useState(0);
 
   // ── Sync garment from ConfiguredProduct on open ──
   useEffect(() => {
@@ -333,6 +344,79 @@ export function MockupDesigner({
     setSelectedArtworkId(null);
   };
 
+  const toggleLayerHidden = (zoneId: PrintLocation) =>
+    setPlacements(curr => curr.map(p => (p.zoneId === zoneId ? { ...p, hidden: !p.hidden } : p)));
+
+  // Select/toggle a zone and snap the garment view to that zone's side so the
+  // Properties / template card / crosshair stay coherent.
+  const selectZone = (zoneId: PrintLocation) => {
+    if (activeZoneId === zoneId) {
+      setActiveZoneId(null);
+      return;
+    }
+    const zone = GARMENTS[garmentType].zones.find(z => z.id === zoneId);
+    if (zone) setCurrentView(zone.view);
+    setActiveZoneId(zoneId);
+  };
+
+  // ── Undo / redo (placement history) ──
+  const historyRef = useRef<Placement[][]>([]);
+  const futureRef = useRef<Placement[][]>([]);
+  const prevPlacementsRef = useRef<Placement[]>([]);
+  const skipHistoryRef = useRef(false);
+  const historyMountedRef = useRef(false);
+
+  useEffect(() => {
+    if (!historyMountedRef.current) {
+      historyMountedRef.current = true;
+      prevPlacementsRef.current = placements;
+      return;
+    }
+    if (skipHistoryRef.current) {
+      skipHistoryRef.current = false;
+      prevPlacementsRef.current = placements;
+      return;
+    }
+    historyRef.current = [...historyRef.current, prevPlacementsRef.current].slice(-50);
+    futureRef.current = [];
+    prevPlacementsRef.current = placements;
+    setHistoryTick(t => t + 1);
+  }, [placements]);
+
+  const canUndo = historyRef.current.length > 0;
+  const canRedo = futureRef.current.length > 0;
+
+  const handleUndo = () => {
+    if (!historyRef.current.length) return;
+    const prev = historyRef.current[historyRef.current.length - 1];
+    historyRef.current = historyRef.current.slice(0, -1);
+    futureRef.current = [...futureRef.current, prevPlacementsRef.current];
+    skipHistoryRef.current = true;
+    prevPlacementsRef.current = prev;
+    setPlacements(prev);
+    setHistoryTick(t => t + 1);
+  };
+
+  const handleRedo = () => {
+    if (!futureRef.current.length) return;
+    const next = futureRef.current[futureRef.current.length - 1];
+    futureRef.current = futureRef.current.slice(0, -1);
+    historyRef.current = [...historyRef.current, prevPlacementsRef.current];
+    skipHistoryRef.current = true;
+    prevPlacementsRef.current = next;
+    setPlacements(next);
+    setHistoryTick(t => t + 1);
+  };
+
+  // ── Zoom controls ──
+  const ZOOM_STEPS = [0.75, 1, 1.25, 1.5, 2];
+  const cycleZoom = () =>
+    setZoom(z => {
+      const idx = ZOOM_STEPS.indexOf(z);
+      return ZOOM_STEPS[(idx + 1) % ZOOM_STEPS.length] ?? 1;
+    });
+  const fitZoom = () => setZoom(1);
+
   // ── Template logic ──
   const resetPlacementToTemplate = (zoneId: PrintLocation) => {
     const zone = currentZones.find(z => z.id === zoneId);
@@ -477,6 +561,48 @@ export function MockupDesigner({
   // ── Print Locations from ConfiguredProduct ──
   const cpLocations: string[] = configuredProduct?.printLocations ?? [];
 
+  // ── Dimension helper for layers / cards ──
+  const placementDims = (p: Placement): { w: number; h: number } => {
+    const zone = garment.zones.find(z => z.id === p.zoneId);
+    const tpl = zone ? resolveTemplate(zone, dbOverrideByZone[p.zoneId]) : null;
+    const w = parseFloat(p.artWidthIn || '') || tpl?.defaultWidthIn || 0;
+    const h = parseFloat(p.artHeightIn || '') || tpl?.defaultHeightIn || 0;
+    return { w, h };
+  };
+
+  // ── Header product breadcrumb ──
+  const activeColorName =
+    configuredProduct?.colorVariants[mdActiveColorIdx]?.color ?? initialVariant?.color ?? '';
+  const breadcrumbParts = [
+    configuredProduct?.styleNumber && configuredProduct?.styleName
+      ? `${configuredProduct.styleNumber} – ${configuredProduct.styleName}`
+      : configuredProduct?.styleName ?? configuredProduct?.styleNumber ?? configuredProduct?.productLabel ?? '',
+    activeColorName,
+    configuredProduct?.vendorName ?? '',
+  ].filter(Boolean);
+
+  // ── Active artwork rect on canvas (crosshair + resize handle) ──
+  let activeArtRect: { left: number; top: number; width: number; height: number } | null = null;
+  if (activePlacement && !activePlacement.hidden && activeZone) {
+    const tpl = resolveTemplate(activeZone, dbOverrideByZone[activeZone.id]);
+    const widthIn = parseFloat(activePlacement.artWidthIn || '') || tpl.defaultWidthIn;
+    const heightIn = parseFloat(activePlacement.artHeightIn || '') || tpl.defaultHeightIn;
+    const rect = computeArtRect(activeZone, {
+      widthIn,
+      heightIn,
+      snap: activePlacement.snap,
+      offsetXIn: activePlacement.offsetXIn,
+      offsetYIn: activePlacement.offsetYIn,
+      safeAreaIn: tpl.safeAreaIn,
+    });
+    activeArtRect = {
+      left: rect.x * SCALE,
+      top: (rect.y + 30) * SCALE,
+      width: rect.w * SCALE,
+      height: rect.h * SCALE,
+    };
+  }
+
   // ── Canvas composition ──
   const composeCanvas = useCallback(async (): Promise<string | null> => {
     if (Platform.OS !== 'web') return null;
@@ -499,7 +625,7 @@ export function MockupDesigner({
     ctx.stroke(garmentPath);
     const placementPromises = currentZones
       .map(zone => placements.find(p => p.zoneId === zone.id))
-      .filter(Boolean)
+      .filter((p): p is Placement => !!p && !p.hidden)
       .map(placement => new Promise<void>(resolve => {
         if (!placement) { resolve(); return; }
         const zone = currentZones.find(z => z.id === placement.zoneId);
@@ -542,23 +668,6 @@ export function MockupDesigner({
       if (uri) { onSave(uri); onClose(); }
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleDownload = async (format: 'png' | 'pdf') => {
-    if (Platform.OS !== 'web') return;
-    const uri = await composeCanvas();
-    if (!uri) return;
-    if (format === 'png') {
-      const link = document.createElement('a');
-      link.href = uri;
-      link.download = `mockup-${garmentType}-${Date.now()}.png`;
-      link.click();
-    } else {
-      const win = window.open('', '_blank');
-      if (!win) return;
-      win.document.write(`<html><head><title>Mockup</title><style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#fff;}img{max-width:100%;max-height:100vh;}</style></head><body><img src="${uri}" onload="window.print()"/></body></html>`);
-      win.document.close();
     }
   };
 
@@ -652,12 +761,33 @@ export function MockupDesigner({
           {/* ── Header ── */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <Brush size={18} color={Colors.light.tint} />
+              <Pencil size={16} color={Colors.light.tint} />
               <Text style={styles.headerTitle}>Mockup Designer</Text>
             </View>
-            <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-              <X size={20} color={Colors.light.textSecondary} />
-            </TouchableOpacity>
+            {!isMobile && breadcrumbParts.length > 0 && (
+              <View style={styles.headerCenter}>
+                <Text style={styles.headerBreadcrumb} numberOfLines={1}>
+                  {breadcrumbParts.join('   •   ')}
+                </Text>
+              </View>
+            )}
+            <View style={styles.headerRight}>
+              {configuredProduct && (
+                <TouchableOpacity
+                  style={styles.changeProductBtn}
+                  onPress={() => {
+                    if (onRequestChangeProduct) onRequestChangeProduct();
+                    else setEditingProduct(v => !v);
+                  }}
+                >
+                  <Pencil size={12} color="#fff" />
+                  <Text style={styles.changeProductText}>Change Product</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+                <X size={20} color="rgba(255,255,255,0.85)" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* ── Mobile Tab Bar ── */}
@@ -677,37 +807,47 @@ export function MockupDesigner({
             </View>
           )}
 
-          {/* ── Top Toolbar ── */}
-          <View style={styles.toolbar}>
-            {configuredProduct ? (
-              <ConfiguredProductEditor
-                value={configuredProduct}
-                onChange={(cp) => {
-                  onConfiguredProductChange?.(cp);
-                  const hex = cp.colorVariants[mdActiveColorIdx]?.colorHex;
-                  if (hex) setGarmentColor(hex);
-                  const gt = categoryToGarmentType(cp.category ?? cp.productType);
-                  if (gt) setGarmentType(gt);
-                }}
-                layout="toolbar"
-                surface="mockupDesigner"
-                mode="internal"
-                showSizes={false}
-                showPreview={false}
-                showLocations={false}
-                activeColorIndex={mdActiveColorIdx}
-                onActiveColorChange={(idx) => {
-                  setMdActiveColorIdx(idx);
-                  const hex = configuredProduct.colorVariants[idx]?.colorHex;
-                  if (hex) setGarmentColor(hex);
-                }}
-              />
-            ) : (
-              <View style={styles.toolbarEmpty}>
-                <Text style={styles.toolbarEmptyText}>No product configured</Text>
-              </View>
-            )}
-          </View>
+          {/* ── Sub-header: product editor ── */}
+          {editingProduct && (
+            <View style={styles.toolbar}>
+              {configuredProduct ? (
+                <View style={styles.toolbarRow}>
+                  <View style={styles.toolbarEditor}>
+                    <ConfiguredProductEditor
+                      value={configuredProduct}
+                      onChange={(cp) => {
+                        onConfiguredProductChange?.(cp);
+                        const hex = cp.colorVariants[mdActiveColorIdx]?.colorHex;
+                        if (hex) setGarmentColor(hex);
+                        const gt = categoryToGarmentType(cp.category ?? cp.productType);
+                        if (gt) setGarmentType(gt);
+                      }}
+                      layout="toolbar"
+                      surface="mockupDesigner"
+                      mode="internal"
+                      showSizes={false}
+                      showPreview={false}
+                      showLocations={false}
+                      activeColorIndex={mdActiveColorIdx}
+                      onActiveColorChange={(idx) => {
+                        setMdActiveColorIdx(idx);
+                        const hex = configuredProduct.colorVariants[idx]?.colorHex;
+                        if (hex) setGarmentColor(hex);
+                      }}
+                    />
+                  </View>
+                  <TouchableOpacity style={styles.doneEditingBtn} onPress={() => setEditingProduct(false)}>
+                    <Check size={13} color={Colors.light.text} />
+                    <Text style={styles.doneEditingText}>Done Editing</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.toolbarEmpty}>
+                  <Text style={styles.toolbarEmptyText}>No product configured</Text>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* ── Body ── */}
           <View style={[styles.body, isMobile && styles.bodyMobile]}>
@@ -723,48 +863,61 @@ export function MockupDesigner({
             >
               <SectionHeader title="MEDIA LIBRARY" />
 
-              <SubLabel title="COMPANY LOGOS" />
-              <TouchableOpacity style={styles.logoItem} onPress={handleAddKoLogo} activeOpacity={0.75}>
-                <Image source={{ uri: KO_LOGO_URL }} style={styles.logoItemImg} resizeMode="contain" />
-                <Text style={styles.logoItemName}>KO Logo</Text>
-              </TouchableOpacity>
+              {/* Search + add */}
+              <View style={styles.searchRow}>
+                <View style={styles.searchBox}>
+                  <Search size={13} color={Colors.light.textSecondary} />
+                  <TextInput
+                    style={styles.searchInput}
+                    value={mediaSearch}
+                    onChangeText={setMediaSearch}
+                    placeholder="Search media"
+                    placeholderTextColor="#9aa0a6"
+                  />
+                </View>
+                <TouchableOpacity style={styles.addMediaBtn} onPress={handleUploadArtwork}>
+                  <Plus size={16} color="#fff" />
+                </TouchableOpacity>
+              </View>
 
-              <SubLabel title="CLIENT ARTWORK" />
+              {/* Company Logos */}
+              <View style={styles.libSectionRow}>
+                <Text style={styles.libSectionTitle}>Company Logos</Text>
+                <TouchableOpacity onPress={handleAddKoLogo}>
+                  <Text style={styles.viewAll}>View all ›</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.tileGrid}>
+                {(!mediaSearch.trim() || 'ko logo katalyst ko.'.includes(mediaSearch.trim().toLowerCase())) ? (
+                  <TouchableOpacity style={styles.mediaTile} onPress={handleAddKoLogo} activeOpacity={0.75}>
+                    <Image source={{ uri: KO_LOGO_URL }} style={styles.mediaTileLogo} resizeMode="contain" />
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={styles.emptyNote}>No matches</Text>
+                )}
+              </View>
+
+              {/* Client Artwork */}
+              <View style={styles.libSectionRow}>
+                <Text style={styles.libSectionTitle}>Client Artwork</Text>
+                <TouchableOpacity onPress={handleUploadArtwork}>
+                  <Text style={styles.viewAll}>View all ›</Text>
+                </TouchableOpacity>
+              </View>
               <View
                 ref={artworkDropRef}
                 style={[styles.artworkSection, artworkDragOver && styles.artworkSectionDragOver]}
               >
-                {uploadedArtworks.length === 0 ? (
-                  <TouchableOpacity
-                    style={[styles.artworkUploadZone, artworkDragOver && styles.artworkUploadZoneDragOver]}
-                    onPress={handleUploadArtwork}
-                    activeOpacity={0.75}
-                  >
-                    <Upload size={20} color={artworkDragOver ? Colors.light.tint : Colors.light.borderDark} />
-                    <Text style={[styles.artworkUploadText, artworkDragOver && styles.artworkUploadTextActive]}>
-                      {artworkDragOver ? 'Drop to add' : 'Upload or Drop Image'}
-                    </Text>
-                    <Text style={styles.artworkUploadSub}>Up to 5 artworks</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <>
-                    {uploadedArtworks.length < MAX_ARTWORKS ? (
-                      <TouchableOpacity style={styles.uploadBtn} onPress={handleUploadArtwork}>
-                        <Upload size={13} color={Colors.light.tint} />
-                        <Text style={styles.uploadBtnText}>Upload / Drop Image</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <View style={styles.artworkMaxNote}>
-                        <Text style={styles.artworkMaxText}>Max 5 — delete one to add more</Text>
-                      </View>
-                    )}
-                    {uploadedArtworks.map(artwork => (
+                <View style={styles.tileGrid}>
+                  {uploadedArtworks
+                    .filter(a => a.name.toLowerCase().includes(mediaSearch.trim().toLowerCase()))
+                    .map(artwork => (
                       <TouchableOpacity
                         key={artwork.id}
                         style={[
-                          styles.artworkItem,
-                          selectedArtworkId === artwork.id && styles.artworkItemSelected,
-                          draggedArtworkId === artwork.id && styles.artworkItemDragging,
+                          styles.mediaTile,
+                          selectedArtworkId === artwork.id && styles.mediaTileSelected,
+                          draggedArtworkId === artwork.id && styles.mediaTileDragging,
                         ]}
                         onPress={() => setSelectedArtworkId(prev => prev === artwork.id ? null : artwork.id)}
                         {...(Platform.OS === 'web' ? {
@@ -777,25 +930,25 @@ export function MockupDesigner({
                           onDragEnd: () => setDraggedArtworkId(null),
                         } : {})}
                       >
-                        <Image source={{ uri: artwork.uri }} style={styles.artworkThumb} resizeMode="contain" />
-                        <View style={styles.artworkItemInfo}>
-                          <Text style={styles.artworkItemName} numberOfLines={1}>{artwork.name}</Text>
-                          {selectedArtworkId === artwork.id && (
-                            <View style={styles.artworkSelectedBadge}>
-                              <Text style={styles.artworkSelectedText}>Active</Text>
-                            </View>
-                          )}
-                        </View>
+                        <Image source={{ uri: artwork.uri }} style={styles.mediaTileImg} resizeMode="contain" />
                         <TouchableOpacity
-                          style={styles.artworkDeleteBtn}
+                          style={styles.mediaTileDelete}
                           onPress={() => handleRemoveArtwork(artwork.id)}
                         >
-                          <Trash2 size={11} color={Colors.light.error} />
+                          <X size={9} color="#fff" />
                         </TouchableOpacity>
                       </TouchableOpacity>
                     ))}
-                  </>
-                )}
+                  {uploadedArtworks.length < MAX_ARTWORKS && (
+                    <TouchableOpacity
+                      style={[styles.mediaTile, styles.mediaTileAdd, artworkDragOver && styles.mediaTileAddDragOver]}
+                      onPress={handleUploadArtwork}
+                      activeOpacity={0.75}
+                    >
+                      <Plus size={18} color={artworkDragOver ? Colors.light.tint : Colors.light.borderDark} />
+                    </TouchableOpacity>
+                  )}
+                </View>
                 {selectedArtworkId && (
                   <View style={styles.placingHint}>
                     <Text style={styles.placingHintText}>Tap a zone or drag onto the garment</Text>
@@ -803,39 +956,108 @@ export function MockupDesigner({
                 )}
               </View>
 
-              <SectionHeader title="LAYERS" />
+              {/* Layers */}
+              <View style={styles.libSectionRow}>
+                <Text style={styles.libSectionTitle}>Layers</Text>
+                <TouchableOpacity onPress={handleUploadArtwork}>
+                  <Text style={styles.addLayer}>+ Add Layer</Text>
+                </TouchableOpacity>
+              </View>
               {placements.length === 0 ? (
                 <Text style={styles.emptyNote}>No placed artwork yet</Text>
               ) : (
                 placements.map(p => {
-                  const art = uploadedArtworks.find(a => a.id === p.artworkId);
                   const isActive = activeZoneId === p.zoneId;
+                  const dims = placementDims(p);
                   return (
                     <TouchableOpacity
                       key={p.zoneId}
                       style={[styles.layerItem, isActive && styles.layerItemActive]}
-                      onPress={() => setActiveZoneId(prev => prev === p.zoneId ? null : p.zoneId)}
+                      onPress={() => selectZone(p.zoneId)}
                     >
-                      {art?.uri ? (
-                        <Image source={{ uri: art.uri }} style={styles.layerThumb} resizeMode="contain" />
-                      ) : (
-                        <View style={[styles.layerThumb, styles.layerThumbEmpty]} />
-                      )}
                       <View style={styles.layerInfo}>
-                        <Text style={styles.layerZone} numberOfLines={1}>{p.zoneId}</Text>
-                        <Text style={styles.layerArt} numberOfLines={1}>{art?.name ?? '—'}</Text>
+                        <Text style={[styles.layerZone, isActive && styles.layerZoneActive]} numberOfLines={1}>{p.zoneId}</Text>
+                        <Text style={styles.layerDims} numberOfLines={1}>
+                          {dims.w.toFixed(2)}&quot; W x {dims.h.toFixed(2)}&quot; H
+                        </Text>
                       </View>
                       <TouchableOpacity
-                        style={styles.layerDeleteBtn}
+                        style={styles.layerIconBtn}
+                        onPress={() => toggleLayerHidden(p.zoneId)}
+                      >
+                        {p.hidden
+                          ? <EyeOff size={13} color={Colors.light.textSecondary} />
+                          : <Eye size={13} color={isActive ? Colors.light.tint : Colors.light.textSecondary} />}
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.layerIconBtn}
                         onPress={() => handleRemovePlacement(p.zoneId)}
                       >
-                        <Trash2 size={10} color={Colors.light.error} />
+                        <Trash2 size={12} color={Colors.light.error} />
                       </TouchableOpacity>
                     </TouchableOpacity>
                   );
                 })
               )}
             </ScrollView>
+
+            {/* ════ VERTICAL TOOLBAR ════ */}
+            {!isMobile && (
+              <View style={styles.verticalToolbar}>
+                <TouchableOpacity
+                  style={[styles.toolBtn, tool === 'select' && styles.toolBtnActive]}
+                  onPress={() => setTool('select')}
+                >
+                  <MousePointer2 size={17} color={tool === 'select' ? Colors.light.tint : Colors.light.textSecondary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.toolBtn, tool === 'text' && styles.toolBtnActive]}
+                  onPress={() => setTool('text')}
+                >
+                  <TypeIcon size={17} color={tool === 'text' ? Colors.light.tint : Colors.light.textSecondary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.toolBtn}
+                  onPress={() => { setTool('image'); handleUploadArtwork(); }}
+                >
+                  <ImagePlus size={17} color={Colors.light.textSecondary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.toolBtn, tool === 'templates' && styles.toolBtnActive]}
+                  onPress={() => setTool('templates')}
+                >
+                  <LayoutTemplate size={17} color={tool === 'templates' ? Colors.light.tint : Colors.light.textSecondary} />
+                </TouchableOpacity>
+
+                <View style={styles.toolbarDivider} />
+
+                <TouchableOpacity
+                  style={[styles.toolBtn, !canUndo && styles.toolBtnDisabled]}
+                  onPress={handleUndo}
+                  disabled={!canUndo}
+                >
+                  <Undo2 size={17} color={canUndo ? Colors.light.textSecondary : Colors.light.border} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.toolBtn, !canRedo && styles.toolBtnDisabled]}
+                  onPress={handleRedo}
+                  disabled={!canRedo}
+                >
+                  <Redo2 size={17} color={canRedo ? Colors.light.textSecondary : Colors.light.border} />
+                </TouchableOpacity>
+
+                <View style={{ flex: 1 }} />
+
+                <TouchableOpacity style={styles.toolBtn} onPress={fitZoom}>
+                  <Maximize2 size={16} color={Colors.light.textSecondary} />
+                  <Text style={styles.toolBtnLabel}>Fit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.toolBtn} onPress={cycleZoom}>
+                  <ZoomIn size={16} color={Colors.light.textSecondary} />
+                  <Text style={styles.toolBtnLabel}>{Math.round(zoom * 100)}%</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* ════ CENTER CANVAS ════ */}
             <View style={[
@@ -864,7 +1086,10 @@ export function MockupDesigner({
               {/* Canvas */}
               <View
                 ref={canvasContainerRef}
-                style={[styles.canvasContainer, { width: DISPLAY_W, height: DISPLAY_H }]}
+                style={[
+                  styles.canvasContainer,
+                  { width: DISPLAY_W, height: DISPLAY_H, transform: [{ scale: zoom }] },
+                ]}
               >
                 {/* Garment SVG */}
                 <Svg
@@ -919,7 +1144,7 @@ export function MockupDesigner({
                   const hasArtwork = !!placement;
 
                   let artStyle: { left: number; top: number; width: number; height: number } | null = null;
-                  if (placement) {
+                  if (placement && !placement.hidden) {
                     const tpl = resolveTemplate(zone, dbOverrideByZone[zone.id]);
                     const widthIn = parseFloat(placement.artWidthIn || '') || tpl.defaultWidthIn;
                     const heightIn = parseFloat(placement.artHeightIn || '') || tpl.defaultHeightIn;
@@ -989,20 +1214,54 @@ export function MockupDesigner({
                     </TouchableOpacity>
                   );
                 })}
+
+                {/* Alignment crosshair + resize handle on active artwork */}
+                {activeArtRect && (
+                  <>
+                    <View
+                      pointerEvents="none"
+                      style={[
+                        styles.crosshairV,
+                        { left: activeArtRect.left + activeArtRect.width / 2 },
+                      ]}
+                    />
+                    <View
+                      pointerEvents="none"
+                      style={[
+                        styles.crosshairH,
+                        { top: activeArtRect.top + activeArtRect.height / 2 },
+                      ]}
+                    />
+                    <View
+                      pointerEvents="none"
+                      style={[
+                        styles.artSelectBox,
+                        {
+                          left: activeArtRect.left,
+                          top: activeArtRect.top,
+                          width: activeArtRect.width,
+                          height: activeArtRect.height,
+                        },
+                      ]}
+                    />
+                    <View
+                      pointerEvents="none"
+                      style={[
+                        styles.resizeHandle,
+                        {
+                          left: activeArtRect.left + activeArtRect.width - 5,
+                          top: activeArtRect.top + activeArtRect.height - 5,
+                        },
+                      ]}
+                    />
+                  </>
+                )}
               </View>
 
-              {/* Canvas info bar */}
-              {configuredProduct && (
-                <View style={styles.canvasInfoBar}>
-                  <Text style={styles.canvasInfoText} numberOfLines={1}>
-                    {configuredProduct.productType}
-                    {configuredProduct.colorVariants[mdActiveColorIdx]?.colorName
-                      ? ` · ${configuredProduct.colorVariants[mdActiveColorIdx].colorName}`
-                      : ''}
-                    {placements.length > 0 ? ` · ${placements.length} placement${placements.length !== 1 ? 's' : ''}` : ''}
-                  </Text>
-                </View>
-              )}
+              {/* Zoom badge */}
+              <View style={styles.zoomBadge}>
+                <Text style={styles.zoomBadgeText}>{Math.round(zoom * 100)}%</Text>
+              </View>
             </View>
 
             {/* ════ RIGHT SIDEBAR ════ */}
@@ -1020,25 +1279,61 @@ export function MockupDesigner({
                 <Text style={styles.emptyNote}>No locations configured{'\n'}Add locations via the product editor</Text>
               ) : (
                 cpLocations.map(loc => {
-                  const hasPlacement = placements.some(p => p.zoneId === loc);
+                  const hasPlacement = placements.some(p => p.zoneId === loc && !p.hidden);
                   const isActive = activeZoneId === loc;
                   return (
                     <TouchableOpacity
                       key={loc}
                       style={[styles.locRow, isActive && styles.locRowActive]}
-                      onPress={() => setActiveZoneId(prev => prev === loc as PrintLocation ? null : loc as PrintLocation)}
+                      onPress={() => selectZone(loc as PrintLocation)}
                     >
-                      <View style={[styles.locDot, hasPlacement && styles.locDotFilled]} />
+                      <Star
+                        size={13}
+                        color={isActive || hasPlacement ? Colors.light.tint : Colors.light.borderDark}
+                        fill={hasPlacement ? Colors.light.tint : 'none'}
+                      />
                       <Text style={[styles.locName, isActive && styles.locNameActive, hasPlacement && styles.locNameFilled]}>
                         {loc}
                       </Text>
+                      {hasPlacement && <View style={styles.locCheckDot} />}
                     </TouchableOpacity>
                   );
                 })
               )}
 
+              {/* Template reference card */}
+              {activeZone && activeTpl && (
+                <View style={styles.templateCard}>
+                  <View style={styles.templateThumb}>
+                    <LayoutTemplate size={22} color={Colors.light.tint} />
+                  </View>
+                  <View style={styles.templateInfo}>
+                    <Text style={styles.templateTitle} numberOfLines={1}>{activeZoneId} Template</Text>
+                    <View style={styles.templateMetaRow}>
+                      <Text style={styles.templateMetaLabel}>Default</Text>
+                      <Text style={styles.templateMetaValue}>
+                        {activeTpl.defaultWidthIn.toFixed(1)}&quot; × {activeTpl.defaultHeightIn.toFixed(1)}&quot;
+                      </Text>
+                    </View>
+                    <View style={styles.templateMetaRow}>
+                      <Text style={styles.templateMetaLabel}>Max</Text>
+                      <Text style={styles.templateMetaValue}>
+                        {activeTpl.maxWidthIn.toFixed(1)}&quot; × {activeTpl.maxHeightIn.toFixed(1)}&quot;
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
               {/* PROPERTIES */}
-              <SectionHeader title="PROPERTIES" />
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionHeaderRowText}>PROPERTIES</Text>
+                {activePlacement && (
+                  <TouchableOpacity onPress={() => activeZoneId && resetPlacementToTemplate(activeZoneId)}>
+                    <Text style={styles.resetTemplateLink}>Reset Template</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
               {!activePlacement ? (
                 <Text style={styles.emptyNote}>
                   {activeZoneId
@@ -1047,114 +1342,162 @@ export function MockupDesigner({
                 </Text>
               ) : (
                 <View style={styles.propsPanel}>
-                  {/* Width */}
-                  <View style={styles.propRow}>
-                    <Text style={styles.propLabel}>W&quot;</Text>
-                    <TextInput
-                      style={styles.propInput}
-                      value={activePlacement.artWidthIn ?? ''}
-                      onChangeText={handleActiveWChange}
-                      keyboardType="decimal-pad"
-                      placeholder={activeTpl?.maxWidthIn.toFixed(1)}
-                      placeholderTextColor="#aaa"
-                    />
+                  {/* Width / Height */}
+                  <View style={styles.propGrid}>
+                    <View style={styles.propField}>
+                      <Text style={styles.propFieldLabel}>Width</Text>
+                      <View style={styles.propInputWrap}>
+                        <TextInput
+                          style={styles.propFieldInput}
+                          value={activePlacement.artWidthIn ?? ''}
+                          onChangeText={handleActiveWChange}
+                          keyboardType="decimal-pad"
+                          placeholder={activeTpl?.defaultWidthIn.toFixed(1)}
+                          placeholderTextColor="#aaa"
+                        />
+                        <Text style={styles.propInputUnit}>&quot;</Text>
+                      </View>
+                    </View>
+                    <View style={styles.propField}>
+                      <Text style={styles.propFieldLabel}>Height</Text>
+                      <View style={styles.propInputWrap}>
+                        <TextInput
+                          style={styles.propFieldInput}
+                          value={activePlacement.artHeightIn ?? ''}
+                          onChangeText={handleActiveHChange}
+                          keyboardType="decimal-pad"
+                          placeholder={activeTpl?.defaultHeightIn.toFixed(1)}
+                          placeholderTextColor="#aaa"
+                        />
+                        <Text style={styles.propInputUnit}>&quot;</Text>
+                      </View>
+                    </View>
                   </View>
-                  {/* Height + Lock */}
-                  <View style={styles.propRow}>
-                    <Text style={styles.propLabel}>H&quot;</Text>
-                    <TextInput
-                      style={styles.propInput}
-                      value={activePlacement.artHeightIn ?? ''}
-                      onChangeText={handleActiveHChange}
-                      keyboardType="decimal-pad"
-                      placeholder={activeTpl?.maxHeightIn.toFixed(1)}
-                      placeholderTextColor="#aaa"
-                    />
-                    <TouchableOpacity
-                      style={styles.lockBtn}
-                      onPress={() => setLockAspectRatio(v => !v)}
-                    >
-                      {lockAspectRatio
-                        ? <Lock size={13} color={Colors.light.tint} />
-                        : <Unlock size={13} color={Colors.light.textSecondary} />
-                      }
-                    </TouchableOpacity>
+
+                  {/* Lock aspect ratio toggle */}
+                  <TouchableOpacity style={styles.toggleRow} onPress={() => setLockAspectRatio(v => !v)} activeOpacity={0.8}>
+                    <Text style={styles.toggleLabel}>Lock Aspect Ratio</Text>
+                    <View style={[styles.switchTrack, lockAspectRatio && styles.switchTrackOn]}>
+                      <View style={[styles.switchThumb, lockAspectRatio && styles.switchThumbOn]} />
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Position from center */}
+                  <Text style={styles.propGroupLabel}>Position (from center)</Text>
+                  <View style={styles.propGrid}>
+                    <View style={styles.propField}>
+                      <Text style={styles.propFieldLabel}>X</Text>
+                      <View style={styles.propInputWrap}>
+                        <TextInput
+                          style={styles.propFieldInput}
+                          value={(activePlacement.offsetXIn ?? 0).toFixed(2)}
+                          onChangeText={(val) => {
+                            const n = parseFloat(val);
+                            if (!isNaN(n)) setPlacements(prev => prev.map(p =>
+                              p.zoneId === activeZoneId ? { ...p, offsetXIn: n } : p
+                            ));
+                          }}
+                          keyboardType="decimal-pad"
+                          placeholder="0.00"
+                          placeholderTextColor="#aaa"
+                        />
+                        <Text style={styles.propInputUnit}>&quot;</Text>
+                      </View>
+                    </View>
+                    <View style={styles.propField}>
+                      <Text style={styles.propFieldLabel}>Y</Text>
+                      <View style={styles.propInputWrap}>
+                        <TextInput
+                          style={styles.propFieldInput}
+                          value={(activePlacement.offsetYIn ?? 0).toFixed(2)}
+                          onChangeText={(val) => {
+                            const n = parseFloat(val);
+                            if (!isNaN(n)) setPlacements(prev => prev.map(p =>
+                              p.zoneId === activeZoneId ? { ...p, offsetYIn: n } : p
+                            ));
+                          }}
+                          keyboardType="decimal-pad"
+                          placeholder="0.00"
+                          placeholderTextColor="#aaa"
+                        />
+                        <Text style={styles.propInputUnit}>&quot;</Text>
+                      </View>
+                    </View>
                   </View>
-                  {/* X */}
-                  <View style={styles.propRow}>
-                    <Text style={styles.propLabel}>X&quot;</Text>
-                    <TextInput
-                      style={styles.propInput}
-                      value={activePlacement.offsetXIn.toFixed(2)}
-                      onChangeText={(val) => {
-                        const n = parseFloat(val);
-                        if (!isNaN(n)) setPlacements(prev => prev.map(p =>
-                          p.zoneId === activeZoneId ? { ...p, offsetXIn: n } : p
-                        ));
-                      }}
-                      keyboardType="decimal-pad"
-                      placeholder="0.00"
-                      placeholderTextColor="#aaa"
-                    />
-                  </View>
-                  {/* Y */}
-                  <View style={styles.propRow}>
-                    <Text style={styles.propLabel}>Y&quot;</Text>
-                    <TextInput
-                      style={styles.propInput}
-                      value={activePlacement.offsetYIn.toFixed(2)}
-                      onChangeText={(val) => {
-                        const n = parseFloat(val);
-                        if (!isNaN(n)) setPlacements(prev => prev.map(p =>
-                          p.zoneId === activeZoneId ? { ...p, offsetYIn: n } : p
-                        ));
-                      }}
-                      keyboardType="decimal-pad"
-                      placeholder="0.00"
-                      placeholderTextColor="#aaa"
-                    />
-                  </View>
-                  {/* Rotation */}
-                  <View style={styles.propRow}>
-                    <Text style={styles.propLabel}>Rot</Text>
-                    <TextInput
-                      style={styles.propInput}
-                      value={String(activePlacement.rotation ?? 0)}
-                      onChangeText={(val) => {
-                        const n = parseFloat(val);
-                        if (!isNaN(n)) setPlacements(prev => prev.map(p =>
-                          p.zoneId === activeZoneId ? { ...p, rotation: n } : p
-                        ));
-                      }}
-                      keyboardType="decimal-pad"
-                      placeholder="0"
-                      placeholderTextColor="#aaa"
-                    />
-                    <Text style={styles.propUnit}>°</Text>
-                  </View>
-                  {/* Opacity */}
-                  <View style={styles.propRow}>
-                    <Text style={styles.propLabel}>Opa</Text>
-                    <TextInput
-                      style={styles.propInput}
-                      value={String(activePlacement.opacity ?? 100)}
-                      onChangeText={(val) => {
-                        const n = Math.min(100, Math.max(0, parseFloat(val) || 0));
-                        setPlacements(prev => prev.map(p =>
-                          p.zoneId === activeZoneId ? { ...p, opacity: n } : p
-                        ));
-                      }}
-                      keyboardType="decimal-pad"
-                      placeholder="100"
-                      placeholderTextColor="#aaa"
-                    />
-                    <Text style={styles.propUnit}>%</Text>
+                  <TouchableOpacity
+                    style={styles.centerArtBtn}
+                    onPress={() => activeZoneId && centerOnArtboard(activeZoneId)}
+                  >
+                    <Crosshair size={12} color={Colors.light.textSecondary} />
+                    <Text style={styles.centerArtText}>Center on Artboard</Text>
+                  </TouchableOpacity>
+
+                  {/* Rotation / Opacity */}
+                  <View style={styles.propGrid}>
+                    <View style={styles.propField}>
+                      <Text style={styles.propFieldLabel}>Rotation</Text>
+                      <OverlayMenu
+                        menuWidth={120}
+                        align="left"
+                        trigger={({ open }) => (
+                          <TouchableOpacity style={styles.propSelect} onPress={open}>
+                            <Text style={styles.propSelectText} numberOfLines={1}>
+                              {activePlacement.rotation ?? 0}°
+                            </Text>
+                            <ChevronDown size={12} color={Colors.light.textSecondary} />
+                          </TouchableOpacity>
+                        )}
+                      >
+                        {({ close }) => (
+                          <>
+                            {[0, 45, 90, 135, 180, 225, 270, 315].map(deg => (
+                              <TouchableOpacity
+                                key={deg}
+                                style={styles.menuOption}
+                                onPress={() => {
+                                  close();
+                                  setPlacements(prev => prev.map(p =>
+                                    p.zoneId === activeZoneId ? { ...p, rotation: deg } : p
+                                  ));
+                                }}
+                              >
+                                <Text style={[styles.menuOptionText, (activePlacement.rotation ?? 0) === deg && styles.menuOptionTextActive]}>
+                                  {deg}°
+                                </Text>
+                                {(activePlacement.rotation ?? 0) === deg && (
+                                  <CheckCircle size={12} color={Colors.light.tint} />
+                                )}
+                              </TouchableOpacity>
+                            ))}
+                          </>
+                        )}
+                      </OverlayMenu>
+                    </View>
+                    <View style={styles.propField}>
+                      <Text style={styles.propFieldLabel}>Opacity</Text>
+                      <View style={styles.propInputWrap}>
+                        <TextInput
+                          style={styles.propFieldInput}
+                          value={String(activePlacement.opacity ?? 100)}
+                          onChangeText={(val) => {
+                            const n = Math.min(100, Math.max(0, parseFloat(val) || 0));
+                            setPlacements(prev => prev.map(p =>
+                              p.zoneId === activeZoneId ? { ...p, opacity: n } : p
+                            ));
+                          }}
+                          keyboardType="decimal-pad"
+                          placeholder="100"
+                          placeholderTextColor="#aaa"
+                        />
+                        <Text style={styles.propInputUnit}>%</Text>
+                      </View>
+                    </View>
                   </View>
 
                   {/* Decoration Method */}
-                  <Text style={styles.propFieldLabel}>Decoration</Text>
+                  <Text style={styles.propGroupLabel}>Decoration Method</Text>
                   <OverlayMenu
-                    menuWidth={168}
+                    menuWidth={200}
                     align="right"
                     trigger={({ open }) => (
                       <TouchableOpacity style={styles.propSelect} onPress={open}>
@@ -1186,9 +1529,9 @@ export function MockupDesigner({
                   </OverlayMenu>
 
                   {/* Snap Position */}
-                  <Text style={styles.propFieldLabel}>Position</Text>
+                  <Text style={styles.propGroupLabel}>Snap Position</Text>
                   <OverlayMenu
-                    menuWidth={168}
+                    menuWidth={200}
                     align="right"
                     trigger={({ open }) => (
                       <TouchableOpacity style={styles.propSelect} onPress={open}>
@@ -1218,49 +1561,27 @@ export function MockupDesigner({
                       </>
                     )}
                   </OverlayMenu>
-
-                  {/* Max size hint */}
-                  {activeTpl && (
-                    <Text style={styles.propHint}>
-                      Max {activeTpl.maxWidthIn.toFixed(1)}&quot; × {activeTpl.maxHeightIn.toFixed(1)}&quot; · Safe {activeTpl.safeAreaIn}&quot;
-                    </Text>
-                  )}
-
-                  {/* Action buttons */}
-                  <TouchableOpacity
-                    style={styles.propActionBtn}
-                    onPress={() => activeZoneId && centerOnArtboard(activeZoneId)}
-                  >
-                    <Target size={12} color={Colors.light.textSecondary} />
-                    <Text style={styles.propActionText}>Center on Artboard</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.propActionBtn, styles.propActionBtnPrimary]}
-                    onPress={() => activeZoneId && resetPlacementToTemplate(activeZoneId)}
-                  >
-                    <RotateCcw size={12} color={Colors.light.tint} />
-                    <Text style={[styles.propActionText, styles.propActionTextPrimary]}>Reset to Template</Text>
-                  </TouchableOpacity>
                 </View>
               )}
 
               {/* TEMPLATE STATUS */}
-              <SectionHeader title="TEMPLATE STATUS" />
-              {!activeStatus ? (
-                <Text style={styles.emptyNote}>No active placement</Text>
-              ) : (
-                <View style={styles.statusPanel}>
-                  <View style={[styles.statusRow, activeStatus.usingTemplate && styles.statusRowOk]}>
-                    <View style={[styles.statusDot, activeStatus.usingTemplate ? styles.statusDotOk : styles.statusDotOff]} />
-                    <Text style={[styles.statusLabel, activeStatus.usingTemplate && styles.statusLabelOk]}>Using Template</Text>
+              {activeStatus && (
+                <View style={[styles.statusCard, activeStatus.usingTemplate ? styles.statusCardOk : styles.statusCardWarn]}>
+                  <View style={styles.statusHeadRow}>
+                    {activeStatus.usingTemplate
+                      ? <Check size={14} color="#16894e" />
+                      : <RotateCcw size={14} color="#b45309" />}
+                    <Text style={[styles.statusHeadText, activeStatus.usingTemplate ? styles.statusHeadTextOk : styles.statusHeadTextWarn]}>
+                      {activeStatus.usingTemplate ? 'Using Template' : 'Custom Placement'}
+                    </Text>
                   </View>
-                  <View style={[styles.statusRow, activeStatus.customSize && styles.statusRowWarn]}>
-                    <View style={[styles.statusDot, activeStatus.customSize ? styles.statusDotWarn : styles.statusDotOff]} />
-                    <Text style={[styles.statusLabel, activeStatus.customSize && styles.statusLabelWarn]}>Custom Size</Text>
+                  <View style={styles.statusMetaRow}>
+                    <Text style={styles.statusMetaLabel}>Size</Text>
+                    <Text style={styles.statusMetaValue}>{activeStatus.customSize ? 'Custom' : 'Template default'}</Text>
                   </View>
-                  <View style={[styles.statusRow, activeStatus.customPosition && styles.statusRowWarn]}>
-                    <View style={[styles.statusDot, activeStatus.customPosition ? styles.statusDotWarn : styles.statusDotOff]} />
-                    <Text style={[styles.statusLabel, activeStatus.customPosition && styles.statusLabelWarn]}>Custom Position</Text>
+                  <View style={styles.statusMetaRow}>
+                    <Text style={styles.statusMetaLabel}>Position</Text>
+                    <Text style={styles.statusMetaValue}>{activeStatus.customPosition ? 'Custom' : 'On template'}</Text>
                   </View>
                 </View>
               )}
@@ -1271,16 +1592,14 @@ export function MockupDesigner({
           <View style={styles.footer}>
             <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
               <RotateCcw size={14} color={Colors.light.textSecondary} />
-              <Text style={styles.resetBtnText}>Reset</Text>
+              <Text style={styles.resetBtnText}>Reset All</Text>
             </TouchableOpacity>
+            {!isMobile && (
+              <Text style={styles.autosaveText}>All changes are saved automatically</Text>
+            )}
             <View style={styles.footerRight}>
-              <TouchableOpacity style={styles.downloadBtn} onPress={() => handleDownload('pdf')}>
-                <Download size={14} color={Colors.light.tint} />
-                <Text style={styles.downloadBtnText}>PDF</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.downloadBtn} onPress={() => handleDownload('png')}>
-                <Download size={14} color={Colors.light.tint} />
-                <Text style={styles.downloadBtnText}>PNG</Text>
+              <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
                 {saving ? (
@@ -1288,7 +1607,7 @@ export function MockupDesigner({
                 ) : (
                   <>
                     <Save size={14} color="#fff" />
-                    <Text style={styles.saveBtnText}>Save Mockup</Text>
+                    <Text style={styles.saveBtnText}>Save Changes</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -1314,7 +1633,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 14,
     width: '100%',
-    maxWidth: 1140,
+    maxWidth: 1280,
     maxHeight: '96%',
     overflow: 'hidden',
     shadowColor: '#000',
@@ -1323,19 +1642,32 @@ const styles = StyleSheet.create({
     shadowRadius: 28,
   },
 
-  // Header
+  // Header (dark)
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 18,
-    paddingVertical: 13,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-    backgroundColor: Colors.light.surface,
+    paddingVertical: 12,
+    backgroundColor: '#0F1115',
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headerTitle: { fontSize: 15, fontWeight: '700', color: Colors.light.text },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 180 },
+  headerTitle: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  headerCenter: { flex: 1, alignItems: 'center', paddingHorizontal: 12 },
+  headerBreadcrumb: { fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: '500' },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10, minWidth: 180, justifyContent: 'flex-end' },
+  changeProductBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  changeProductText: { fontSize: 12, color: '#fff', fontWeight: '600' },
   closeBtn: { padding: 4 },
 
   // Mobile tab bar
@@ -1356,12 +1688,32 @@ const styles = StyleSheet.create({
   mobileTabText: { fontSize: 12, fontWeight: '500', color: Colors.light.textSecondary },
   mobileTabTextActive: { color: Colors.light.tint, fontWeight: '700' },
 
-  // Toolbar
+  // Sub-header toolbar
   toolbar: {
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.border,
     backgroundColor: '#F4F5F7',
   },
+  toolbarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  toolbarEditor: { flex: 1, minWidth: 0 },
+  doneEditingBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: '#fff',
+  },
+  doneEditingText: { fontSize: 12, color: Colors.light.text, fontWeight: '600' },
   toolbarEmpty: {
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -1410,7 +1762,7 @@ const styles = StyleSheet.create({
 
   // Left Sidebar
   leftSidebar: {
-    width: 210,
+    width: 224,
     borderRightWidth: 1,
     borderRightColor: Colors.light.border,
     backgroundColor: Colors.light.surface,
@@ -1418,21 +1770,92 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
 
-  // Company logo item
-  logoItem: {
+  // Search row
+  searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    backgroundColor: '#fff',
+    gap: 6,
+    marginTop: 8,
     marginBottom: 4,
   },
-  logoItemImg: { width: 56, height: 24 },
-  logoItemName: { fontSize: 11, color: Colors.light.textSecondary, fontWeight: '500', flex: 1 },
+  searchBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 32,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 8,
+    paddingHorizontal: 9,
+    backgroundColor: '#fff',
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 12,
+    color: Colors.light.text,
+    padding: 0,
+    ...(Platform.OS === 'web' ? { outlineStyle: 'none' } as any : {}),
+  },
+  addMediaBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: Colors.light.tint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Library sections
+  libSectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 14,
+    marginBottom: 7,
+  },
+  libSectionTitle: { fontSize: 12, fontWeight: '700', color: Colors.light.text },
+  viewAll: { fontSize: 10, color: Colors.light.textSecondary, fontWeight: '500' },
+  addLayer: { fontSize: 11, color: Colors.light.tint, fontWeight: '600' },
+
+  // Media tiles
+  tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  mediaTile: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: Colors.light.border,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  mediaTileSelected: { borderColor: Colors.light.tint, borderWidth: 2 },
+  mediaTileDragging: { opacity: 0.4 },
+  mediaTileLogo: { width: 48, height: 30 },
+  mediaTileImg: { width: 52, height: 52 },
+  mediaTileDelete: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mediaTileAdd: {
+    borderStyle: 'dashed',
+    borderColor: Colors.light.borderDark,
+    backgroundColor: '#FAFAFA',
+  },
+  mediaTileAddDragOver: {
+    borderColor: Colors.light.tint,
+    backgroundColor: '#FFF8F5',
+  },
 
   // Artwork section (drag target)
   artworkSection: {
@@ -1444,85 +1867,9 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.tint,
     borderStyle: 'dashed',
   },
-  artworkUploadZone: {
-    borderWidth: 1.5,
-    borderColor: Colors.light.borderDark,
-    borderStyle: 'dashed',
-    borderRadius: 9,
-    paddingVertical: 22,
-    alignItems: 'center',
-    gap: 7,
-    backgroundColor: '#FAFAFA',
-  },
-  artworkUploadZoneDragOver: {
-    borderColor: Colors.light.tint,
-    backgroundColor: '#FFF8F5',
-  },
-  artworkUploadText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.light.textSecondary,
-    textAlign: 'center',
-  },
-  artworkUploadTextActive: { color: Colors.light.tint },
-  artworkUploadSub: { fontSize: 9, color: Colors.light.textSecondary },
-
-  uploadBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    backgroundColor: '#FFF0E8',
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: Colors.light.tint,
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  uploadBtnText: { fontSize: 11, color: Colors.light.tint, fontWeight: '600' },
-
-  artworkMaxNote: {
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-    backgroundColor: '#FFF8F5',
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: '#FFD9C5',
-    marginBottom: 8,
-    alignItems: 'center',
-  },
-  artworkMaxText: { fontSize: 10, color: Colors.light.tint, fontWeight: '600', textAlign: 'center' },
-
-  artworkItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 7,
-    borderRadius: 7,
-    borderWidth: 1.5,
-    borderColor: Colors.light.border,
-    marginBottom: 5,
-    backgroundColor: '#fff',
-    gap: 7,
-  },
-  artworkItemSelected: { borderColor: Colors.light.tint, backgroundColor: '#FFF8F5' },
-  artworkItemDragging: { opacity: 0.4 },
-  artworkThumb: { width: 36, height: 36 },
-  artworkItemInfo: { flex: 1, minWidth: 0 },
-  artworkItemName: { fontSize: 10, color: Colors.light.textSecondary },
-  artworkSelectedBadge: {
-    backgroundColor: Colors.light.tint,
-    borderRadius: 6,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    alignSelf: 'flex-start',
-    marginTop: 2,
-  },
-  artworkSelectedText: { fontSize: 8, color: '#fff', fontWeight: '700' },
-  artworkDeleteBtn: { padding: 4 },
 
   placingHint: {
-    marginTop: 6,
+    marginTop: 8,
     padding: 7,
     backgroundColor: '#EFF6FF',
     borderRadius: 6,
@@ -1536,21 +1883,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
-    paddingVertical: 5,
-    paddingHorizontal: 6,
-    borderRadius: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 8,
+    borderRadius: 7,
     borderWidth: 1,
     borderColor: Colors.light.border,
-    marginBottom: 4,
+    marginBottom: 5,
     backgroundColor: '#fff',
   },
   layerItemActive: { borderColor: Colors.light.tint, backgroundColor: '#FFF8F5' },
-  layerThumb: { width: 28, height: 28 },
-  layerThumbEmpty: { backgroundColor: Colors.light.border },
   layerInfo: { flex: 1, minWidth: 0 },
-  layerZone: { fontSize: 10, fontWeight: '700', color: Colors.light.text },
-  layerArt: { fontSize: 9, color: Colors.light.textSecondary },
-  layerDeleteBtn: { padding: 3 },
+  layerZone: { fontSize: 11, fontWeight: '700', color: Colors.light.text },
+  layerZoneActive: { color: Colors.light.tint },
+  layerDims: { fontSize: 9, color: Colors.light.textSecondary, marginTop: 1 },
+  layerIconBtn: { padding: 4 },
+
+  // Vertical toolbar
+  verticalToolbar: {
+    width: 48,
+    borderRightWidth: 1,
+    borderRightColor: Colors.light.border,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    paddingVertical: 10,
+    gap: 4,
+  },
+  toolBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 1,
+  },
+  toolBtnActive: { backgroundColor: '#FFF0E8' },
+  toolBtnDisabled: { opacity: 0.4 },
+  toolbarDivider: { width: 24, height: 1, backgroundColor: Colors.light.border, marginVertical: 5 },
+  toolBtnLabel: { fontSize: 8, color: Colors.light.textSecondary, fontWeight: '600' },
 
   // Center canvas
   centerPanel: {
@@ -1559,6 +1928,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     paddingVertical: 14,
     backgroundColor: '#E8EAF0',
+    position: 'relative',
   },
   viewTabs: {
     flexDirection: 'row',
@@ -1629,14 +1999,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  canvasInfoBar: {
-    marginTop: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    backgroundColor: 'rgba(0,0,0,0.48)',
+  crosshairV: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: 'rgba(239,68,68,0.55)',
+  },
+  crosshairH: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(239,68,68,0.55)',
+  },
+  artSelectBox: {
+    position: 'absolute',
+    borderWidth: 1,
+    borderColor: Colors.light.tint,
+    borderStyle: 'dashed',
+    borderRadius: 2,
+  },
+  resizeHandle: {
+    position: 'absolute',
+    width: 10,
+    height: 10,
+    borderRadius: 2,
+    backgroundColor: Colors.light.tint,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  zoomBadge: {
+    position: 'absolute',
+    bottom: 12,
+    right: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     borderRadius: 6,
   },
-  canvasInfoText: { fontSize: 11, color: '#fff', fontWeight: '500' },
+  zoomBadgeText: { fontSize: 11, color: '#fff', fontWeight: '600' },
 
   // Right Sidebar
   rightSidebar: {
@@ -1659,106 +2061,123 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   locRowActive: { backgroundColor: '#FFF8F5' },
-  locDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: Colors.light.borderDark,
-    backgroundColor: 'transparent',
-  },
-  locDotFilled: { backgroundColor: '#22C55E', borderColor: '#22C55E' },
   locName: { fontSize: 12, color: Colors.light.textSecondary, flex: 1 },
   locNameActive: { color: Colors.light.tint, fontWeight: '600' },
-  locNameFilled: { color: '#15803D', fontWeight: '600' },
+  locNameFilled: { color: Colors.light.text, fontWeight: '600' },
+  locCheckDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#22C55E' },
+
+  // Template card
+  templateCard: {
+    flexDirection: 'row',
+    gap: 10,
+    padding: 10,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: '#fff',
+    marginTop: 10,
+  },
+  templateThumb: {
+    width: 46,
+    height: 46,
+    borderRadius: 7,
+    backgroundColor: '#FFF0E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  templateInfo: { flex: 1, minWidth: 0, gap: 3 },
+  templateTitle: { fontSize: 12, fontWeight: '700', color: Colors.light.text },
+  templateMetaRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  templateMetaLabel: { fontSize: 10, color: Colors.light.textSecondary },
+  templateMetaValue: { fontSize: 10, color: Colors.light.text, fontWeight: '600' },
+
+  // Section header row (PROPERTIES)
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1A1A1A',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    marginHorizontal: -12,
+    marginTop: 14,
+  },
+  sectionHeaderRowText: { fontSize: 10, fontWeight: '700', color: '#fff', letterSpacing: 0.9 },
+  resetTemplateLink: { fontSize: 10, color: Colors.light.tint, fontWeight: '600' },
 
   // Properties panel
-  propsPanel: {
-    paddingTop: 4,
-    gap: 4,
-  },
-  propRow: {
+  propsPanel: { paddingTop: 10, gap: 10 },
+  propGrid: { flexDirection: 'row', gap: 8 },
+  propField: { flex: 1, gap: 4 },
+  propFieldLabel: { fontSize: 10, fontWeight: '600', color: Colors.light.textSecondary },
+  propInputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    height: 28,
-  },
-  propLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: Colors.light.textSecondary,
-    width: 26,
-  },
-  propInput: {
-    flex: 1,
-    height: 26,
+    height: 32,
     borderWidth: 1,
     borderColor: Colors.light.border,
-    borderRadius: 5,
-    paddingHorizontal: 7,
+    borderRadius: 7,
+    paddingHorizontal: 8,
+    backgroundColor: '#fff',
+  },
+  propFieldInput: {
+    flex: 1,
     fontSize: 12,
     color: Colors.light.text,
-    backgroundColor: '#fff',
+    padding: 0,
+    ...(Platform.OS === 'web' ? { outlineStyle: 'none' } as any : {}),
   },
-  propUnit: {
-    fontSize: 10,
-    color: Colors.light.textSecondary,
-    width: 12,
-  },
-  lockBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  propFieldLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: Colors.light.textSecondary,
-    letterSpacing: 0.4,
-    marginTop: 8,
-    marginBottom: 3,
-  },
-  propSelect: {
+  propInputUnit: { fontSize: 11, color: Colors.light.textSecondary, marginLeft: 2 },
+  propGroupLabel: { fontSize: 10, fontWeight: '700', color: Colors.light.textSecondary, letterSpacing: 0.4 },
+
+  // Toggle (lock aspect)
+  toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    height: 26,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: 5,
-    paddingHorizontal: 7,
-    backgroundColor: '#fff',
+    justifyContent: 'space-between',
+    paddingVertical: 2,
   },
-  propSelectText: { flex: 1, fontSize: 11, color: Colors.light.text },
-  propHint: {
-    fontSize: 9,
-    color: Colors.light.textSecondary,
-    marginTop: 6,
-    fontStyle: 'italic',
+  toggleLabel: { fontSize: 12, color: Colors.light.text, fontWeight: '500' },
+  switchTrack: {
+    width: 38,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#D1D5DB',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 2,
   },
-  propActionBtn: {
+  switchTrackOn: { backgroundColor: Colors.light.tint },
+  switchThumb: { width: 18, height: 18, borderRadius: 9, backgroundColor: '#fff' },
+  switchThumbOn: { marginLeft: 16 },
+
+  // Center artboard button
+  centerArtBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-    height: 28,
-    borderRadius: 6,
+    height: 30,
+    borderRadius: 7,
     borderWidth: 1,
     borderColor: Colors.light.border,
     backgroundColor: '#fff',
-    marginTop: 6,
   },
-  propActionBtnPrimary: {
-    borderColor: Colors.light.tint,
-    backgroundColor: '#FFF0E8',
+  centerArtText: { fontSize: 11, color: Colors.light.textSecondary, fontWeight: '600' },
+
+  // Select dropdown
+  propSelect: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 32,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 7,
+    paddingHorizontal: 8,
+    backgroundColor: '#fff',
   },
-  propActionText: { fontSize: 10, fontWeight: '600', color: Colors.light.textSecondary },
-  propActionTextPrimary: { color: Colors.light.tint },
+  propSelectText: { flex: 1, fontSize: 12, color: Colors.light.text },
 
   // OverlayMenu options (shared)
   menuOption: {
@@ -1771,31 +2190,23 @@ const styles = StyleSheet.create({
   menuOptionText: { fontSize: 12, color: Colors.light.text },
   menuOptionTextActive: { color: Colors.light.tint, fontWeight: '600' },
 
-  // Template Status
-  statusPanel: { paddingTop: 6, gap: 5 },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 5,
-    paddingHorizontal: 6,
-    borderRadius: 5,
+  // Template status card
+  statusCard: {
+    padding: 11,
+    borderRadius: 9,
+    borderWidth: 1,
+    gap: 6,
+    marginTop: 14,
   },
-  statusRowOk: { backgroundColor: '#F0FDF4' },
-  statusRowWarn: { backgroundColor: '#FFFBEB' },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: Colors.light.borderDark,
-  },
-  statusDotOff: { backgroundColor: 'transparent' },
-  statusDotOk: { backgroundColor: '#22C55E', borderColor: '#22C55E' },
-  statusDotWarn: { backgroundColor: '#F59E0B', borderColor: '#F59E0B' },
-  statusLabel: { fontSize: 11, color: Colors.light.textSecondary },
-  statusLabelOk: { color: '#15803D', fontWeight: '600' },
-  statusLabelWarn: { color: '#B45309', fontWeight: '600' },
+  statusCardOk: { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' },
+  statusCardWarn: { backgroundColor: '#FFFBEB', borderColor: '#FDE68A' },
+  statusHeadRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
+  statusHeadText: { fontSize: 12, fontWeight: '700' },
+  statusHeadTextOk: { color: '#16894e' },
+  statusHeadTextWarn: { color: '#b45309' },
+  statusMetaRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  statusMetaLabel: { fontSize: 10, color: Colors.light.textSecondary },
+  statusMetaValue: { fontSize: 10, color: Colors.light.text, fontWeight: '600' },
 
   // Footer
   footer: {
@@ -1813,33 +2224,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingVertical: 7,
+    paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 7,
     borderWidth: 1,
     borderColor: Colors.light.border,
   },
   resetBtnText: { fontSize: 12, color: Colors.light.textSecondary },
-  downloadBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
+  autosaveText: { fontSize: 11, color: Colors.light.textSecondary, fontStyle: 'italic' },
+  cancelBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 7,
     borderWidth: 1,
-    borderColor: Colors.light.tint,
+    borderColor: Colors.light.border,
+    backgroundColor: '#fff',
   },
-  downloadBtnText: { fontSize: 12, color: Colors.light.tint, fontWeight: '600' },
+  cancelBtnText: { fontSize: 13, color: Colors.light.text, fontWeight: '600' },
   saveBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingVertical: 7,
+    paddingVertical: 8,
     paddingHorizontal: 18,
     backgroundColor: Colors.light.tint,
     borderRadius: 7,
-    minWidth: 120,
+    minWidth: 130,
     justifyContent: 'center',
   },
   saveBtnText: { fontSize: 13, color: '#fff', fontWeight: '700' },
