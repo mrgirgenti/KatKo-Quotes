@@ -1,0 +1,333 @@
+Mockup Designer UI Replacement (Approved Design)
+IMPLEMENTATION RULES
+Enter Implementation Mode immediately.
+Begin editing code immediately.
+Do not spend unnecessary time investigating or planning.
+Preserve application stability while implementing.
+Report all modified files at completion.
+IMPORTANT
+
+If an existing implementation conflicts with the approved design, architecture, or user experience, DELETE and REPLACE it.
+
+Do not preserve:
+
+Legacy UI
+Legacy layout
+Duplicate components
+Placeholder panels
+Parallel implementations
+Existing spacing simply because it already exists
+
+The approved design is now the source of truth.
+
+This is NOT a refinement of the current Mockup Designer.
+
+It is a replacement.
+
+Current Issue
+
+The Mockup Designer implementation that was just completed does not match the approved design.
+
+It appears the existing Mockup Designer was modified rather than replaced.
+
+This resulted in:
+
+Tiny garment preview
+Incorrect layout proportions
+Missing Properties panel
+Missing Template Status panel
+Missing artwork toolbar
+Empty Print Locations panel
+Incorrect spacing
+Wrong visual hierarchy
+Wrong toolbar layout
+
+The approved mockup is the design specification.
+
+Treat it exactly like a Figma file.
+
+OBJECTIVE
+
+Rebuild the Mockup Designer UI so it visually matches the approved mockup while preserving the new ConfiguredProduct architecture already implemented underneath.
+
+Preserve:
+
+ConfiguredProduct
+Artwork logic
+Template logic
+Save logic
+Product synchronization
+
+Replace:
+
+Everything related to layout and presentation.
+
+TOP TOOLBAR
+
+Replace the current toolbar with the approved layout.
+
+It must include:
+
+Product Type dropdown
+Style dropdown
+Color dropdown (showing the product color swatch + color name)
+Done Editing button
+
+Requirements:
+
+Light gray toolbar background
+Full width
+Consistent spacing
+Larger controls
+Match approved proportions
+
+Do not reuse the current compressed toolbar.
+
+LEFT SIDEBAR
+
+Use black section headers exactly like the rest of Katalyst Ko OS.
+
+Sections:
+
+MEDIA LIBRARY
+
+COMPANY LOGOS
+
+CLIENT ARTWORK
+
+LAYERS
+
+Requirements:
+
+Media cards should be compact.
+
+Do not leave excessive empty space.
+
+The Layers panel should display:
+
+Artwork Name
+Width × Height
+Visibility toggle
+Active layer highlight
+Add Layer button
+ARTWORK TOOLBAR
+
+Restore the vertical artwork toolbar shown in the approved design.
+
+Include:
+
+Select
+Add Text
+Add Image
+Templates
+Undo
+Redo
+Fit
+Zoom
+
+Use icons and spacing matching the approved design.
+
+CANVAS
+
+This is the primary focus.
+
+Increase the garment preview size significantly.
+
+The garment should occupy approximately 60–65% of the dialog width.
+
+Reduce surrounding whitespace.
+
+Front / Back tabs should appear above the garment.
+
+Selection guides should remain visible.
+
+Artwork should remain editable.
+
+Do not use the current small centered garment.
+
+RIGHT SIDEBAR
+
+Restore the complete sidebar.
+
+Use black section headers.
+
+PRINT LOCATIONS
+
+Display configured print locations.
+
+Example:
+
+Left Chest
+Center Chest
+Full Front
+Full Back
+Left Sleeve
+Right Sleeve
+Pocket
+
+Include:
+
+Small garment preview
+Template summary
+Default Width
+Max Width
+Max Height
+View Template Details
+
+If locations have not yet been configured, provide an obvious call-to-action that opens or focuses the quote's Print Locations configuration rather than leaving an empty placeholder.
+
+PROPERTIES
+
+Build the full Properties panel.
+
+Include:
+
+Width
+
+Height
+
+Lock Aspect Ratio
+
+X Position
+
+Y Position
+
+Center on Artboard
+
+Rotation
+
+Opacity
+
+Reset to Template
+
+Changing Width or Height must immediately resize the selected artwork.
+
+Changing X/Y must move artwork live.
+
+TEMPLATE STATUS
+
+Restore the Template Status card.
+
+Display:
+
+Using Template
+
+or
+
+Custom Size
+
+or
+
+Custom Position
+
+Show:
+
+Current Width
+
+Current Height
+
+Current Position
+
+Default Template Values
+
+Status indicators
+
+VISUAL DESIGN
+
+Match the approved mockup.
+
+Specifically:
+
+Black headers
+Light gray toolbar
+White cards
+Orange accents
+Consistent spacing
+Consistent typography
+Consistent button styling
+
+Do not improvise another layout.
+
+LAYOUT PROPORTIONS
+
+The current implementation wastes a large amount of space.
+
+Adjust proportions to approximately:
+
+Left Sidebar
+
+22%
+
+Canvas
+
+56%
+
+Right Sidebar
+
+22%
+
+The canvas should be the visual focus.
+
+REMOVE PLACEHOLDERS
+
+The following placeholder states should no longer exist:
+
+"Select a zone or layer to edit"
+
+"No locations configured"
+
+Large empty white panels
+
+Replace these with functional UI or meaningful empty states.
+
+ACCEPTANCE CHECKLIST
+
+Do not consider this task complete until every item below is true.
+
+Toolbar
+Product Type dropdown
+Style dropdown
+Color dropdown with swatch
+Done Editing button
+Left Sidebar
+Black headers
+Media Library
+Company Logos
+Client Artwork
+Layers
+Canvas
+Large garment preview
+Front / Back tabs
+Artwork toolbar
+Guides
+Right Sidebar
+Print Locations
+Properties
+Template Status
+Styling
+Matches approved mockup
+Black headers
+Gray toolbar
+Orange accents
+White cards
+Proper spacing
+Architecture
+Continues using ConfiguredProduct
+No duplicated state
+No legacy UI remaining
+FINAL REQUIREMENT
+
+Do not attempt to "improve" or reinterpret the approved design.
+
+The attached mockup is the design specification.
+
+Treat it as a pixel-accurate implementation target.
+
+If any portion of the existing Mockup Designer conflicts with the approved design, delete it and replace it rather than adapting around it.
+
+At completion, provide:
+
+Files modified
+Components rebuilt
+Legacy UI removed
+Any remaining visual differences between the implementation and the approved mockup (if any) and why they exist.

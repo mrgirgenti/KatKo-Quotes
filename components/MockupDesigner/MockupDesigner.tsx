@@ -65,11 +65,12 @@ import OverlayMenu from '@/components/OverlayMenu';
 import { apiFetch } from '@/lib/apiFetch';
 import { generateId } from '@/utils/quoteCalculations';
 import { ConfiguredProductEditor } from '@/components/configured-product/ConfiguredProductEditor';
+import { GarmentSvgPreview } from '@/components/configured-product/GarmentSvgPreview';
 import type { ConfiguredProduct } from '@/types/configuredProduct';
 import { categoryToGarmentType } from '@/utils/garmentPreview';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const DISPLAY_W = 360;
+const DISPLAY_W = 430;
 const DISPLAY_H = (CANVAS_H / CANVAS_W) * DISPLAY_W;
 const SCALE = DISPLAY_W / CANVAS_W;
 const KO_LOGO_URL = '/ko-logo-horizontal.png';
@@ -807,45 +808,38 @@ export function MockupDesigner({
             </View>
           )}
 
-          {/* ── Sub-header: product editor ── */}
-          {editingProduct && (
+          {/* ── Sub-header: product toolbar (always visible) ── */}
+          {configuredProduct ? (
+            <ConfiguredProductEditor
+              value={configuredProduct}
+              onChange={(cp) => {
+                onConfiguredProductChange?.(cp);
+                const hex = cp.colorVariants[mdActiveColorIdx]?.colorHex;
+                if (hex) setGarmentColor(hex);
+                const gt = categoryToGarmentType(cp.category ?? cp.productType);
+                if (gt) setGarmentType(gt);
+              }}
+              layout="toolbar"
+              surface="mockupDesigner"
+              mode="internal"
+              showSizes={false}
+              showPreview={false}
+              showLocations={false}
+              activeColorIndex={mdActiveColorIdx}
+              onActiveColorChange={(idx) => {
+                setMdActiveColorIdx(idx);
+                const hex = configuredProduct.colorVariants[idx]?.colorHex;
+                if (hex) setGarmentColor(hex);
+              }}
+              toolbarTrailing={
+                <TouchableOpacity style={styles.doneEditingBtn} onPress={() => setEditingProduct(false)}>
+                  <Text style={styles.doneEditingText}>Done Editing</Text>
+                </TouchableOpacity>
+              }
+            />
+          ) : (
             <View style={styles.toolbar}>
-              {configuredProduct ? (
-                <View style={styles.toolbarRow}>
-                  <View style={styles.toolbarEditor}>
-                    <ConfiguredProductEditor
-                      value={configuredProduct}
-                      onChange={(cp) => {
-                        onConfiguredProductChange?.(cp);
-                        const hex = cp.colorVariants[mdActiveColorIdx]?.colorHex;
-                        if (hex) setGarmentColor(hex);
-                        const gt = categoryToGarmentType(cp.category ?? cp.productType);
-                        if (gt) setGarmentType(gt);
-                      }}
-                      layout="toolbar"
-                      surface="mockupDesigner"
-                      mode="internal"
-                      showSizes={false}
-                      showPreview={false}
-                      showLocations={false}
-                      activeColorIndex={mdActiveColorIdx}
-                      onActiveColorChange={(idx) => {
-                        setMdActiveColorIdx(idx);
-                        const hex = configuredProduct.colorVariants[idx]?.colorHex;
-                        if (hex) setGarmentColor(hex);
-                      }}
-                    />
-                  </View>
-                  <TouchableOpacity style={styles.doneEditingBtn} onPress={() => setEditingProduct(false)}>
-                    <Check size={13} color={Colors.light.text} />
-                    <Text style={styles.doneEditingText}>Done Editing</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.toolbarEmpty}>
-                  <Text style={styles.toolbarEmptyText}>No product configured</Text>
-                </View>
-              )}
+              <Text style={styles.toolbarEmptyText}>No product configured</Text>
             </View>
           )}
 
@@ -957,10 +951,10 @@ export function MockupDesigner({
               </View>
 
               {/* Layers */}
-              <View style={styles.libSectionRow}>
-                <Text style={styles.libSectionTitle}>Layers</Text>
+              <View style={styles.layersHeader}>
+                <Text style={styles.sectionHeaderText}>LAYERS</Text>
                 <TouchableOpacity onPress={handleUploadArtwork}>
-                  <Text style={styles.addLayer}>+ Add Layer</Text>
+                  <Text style={styles.addLayerWhite}>+ Add Layer</Text>
                 </TouchableOpacity>
               </View>
               {placements.length === 0 ? (
@@ -1009,24 +1003,28 @@ export function MockupDesigner({
                   onPress={() => setTool('select')}
                 >
                   <MousePointer2 size={17} color={tool === 'select' ? Colors.light.tint : Colors.light.textSecondary} />
+                  <Text style={[styles.toolBtnLabel, tool === 'select' && styles.toolBtnLabelActive]}>Select</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.toolBtn, tool === 'text' && styles.toolBtnActive]}
                   onPress={() => setTool('text')}
                 >
                   <TypeIcon size={17} color={tool === 'text' ? Colors.light.tint : Colors.light.textSecondary} />
+                  <Text style={[styles.toolBtnLabel, tool === 'text' && styles.toolBtnLabelActive]}>Add Text</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.toolBtn}
                   onPress={() => { setTool('image'); handleUploadArtwork(); }}
                 >
                   <ImagePlus size={17} color={Colors.light.textSecondary} />
+                  <Text style={styles.toolBtnLabel}>Add Image</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.toolBtn, tool === 'templates' && styles.toolBtnActive]}
                   onPress={() => setTool('templates')}
                 >
                   <LayoutTemplate size={17} color={tool === 'templates' ? Colors.light.tint : Colors.light.textSecondary} />
+                  <Text style={[styles.toolBtnLabel, tool === 'templates' && styles.toolBtnLabelActive]}>Templates</Text>
                 </TouchableOpacity>
 
                 <View style={styles.toolbarDivider} />
@@ -1037,6 +1035,7 @@ export function MockupDesigner({
                   disabled={!canUndo}
                 >
                   <Undo2 size={17} color={canUndo ? Colors.light.textSecondary : Colors.light.border} />
+                  <Text style={styles.toolBtnLabel}>Undo</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.toolBtn, !canRedo && styles.toolBtnDisabled]}
@@ -1044,6 +1043,7 @@ export function MockupDesigner({
                   disabled={!canRedo}
                 >
                   <Redo2 size={17} color={canRedo ? Colors.light.textSecondary : Colors.light.border} />
+                  <Text style={styles.toolBtnLabel}>Redo</Text>
                 </TouchableOpacity>
 
                 <View style={{ flex: 1 }} />
@@ -1275,55 +1275,67 @@ export function MockupDesigner({
             >
               {/* PRINT LOCATIONS */}
               <SectionHeader title="PRINT LOCATIONS" />
-              {cpLocations.length === 0 ? (
-                <Text style={styles.emptyNote}>No locations configured{'\n'}Add locations via the product editor</Text>
-              ) : (
-                cpLocations.map(loc => {
-                  const hasPlacement = placements.some(p => p.zoneId === loc && !p.hidden);
-                  const isActive = activeZoneId === loc;
-                  return (
-                    <TouchableOpacity
-                      key={loc}
-                      style={[styles.locRow, isActive && styles.locRowActive]}
-                      onPress={() => selectZone(loc as PrintLocation)}
-                    >
-                      <Star
-                        size={13}
-                        color={isActive || hasPlacement ? Colors.light.tint : Colors.light.borderDark}
-                        fill={hasPlacement ? Colors.light.tint : 'none'}
-                      />
-                      <Text style={[styles.locName, isActive && styles.locNameActive, hasPlacement && styles.locNameFilled]}>
-                        {loc}
-                      </Text>
-                      {hasPlacement && <View style={styles.locCheckDot} />}
-                    </TouchableOpacity>
-                  );
-                })
-              )}
-
-              {/* Template reference card */}
-              {activeZone && activeTpl && (
-                <View style={styles.templateCard}>
-                  <View style={styles.templateThumb}>
-                    <LayoutTemplate size={22} color={Colors.light.tint} />
-                  </View>
-                  <View style={styles.templateInfo}>
-                    <Text style={styles.templateTitle} numberOfLines={1}>{activeZoneId} Template</Text>
-                    <View style={styles.templateMetaRow}>
-                      <Text style={styles.templateMetaLabel}>Default</Text>
-                      <Text style={styles.templateMetaValue}>
-                        {activeTpl.defaultWidthIn.toFixed(1)}&quot; × {activeTpl.defaultHeightIn.toFixed(1)}&quot;
-                      </Text>
-                    </View>
-                    <View style={styles.templateMetaRow}>
-                      <Text style={styles.templateMetaLabel}>Max</Text>
-                      <Text style={styles.templateMetaValue}>
-                        {activeTpl.maxWidthIn.toFixed(1)}&quot; × {activeTpl.maxHeightIn.toFixed(1)}&quot;
-                      </Text>
-                    </View>
-                  </View>
+              <View style={styles.locationsBody}>
+                {/* Location list */}
+                <View style={styles.locList}>
+                  {cpLocations.length === 0 ? (
+                    <Text style={styles.emptyNote}>No locations{'\n'}Add via editor</Text>
+                  ) : (
+                    cpLocations.map(loc => {
+                      const hasPlacement = placements.some(p => p.zoneId === loc && !p.hidden);
+                      const isActive = activeZoneId === loc;
+                      return (
+                        <TouchableOpacity
+                          key={loc}
+                          style={[styles.locRow, isActive && styles.locRowActive]}
+                          onPress={() => selectZone(loc as PrintLocation)}
+                        >
+                          <Star
+                            size={12}
+                            color={isActive || hasPlacement ? Colors.light.tint : Colors.light.borderDark}
+                            fill={hasPlacement ? Colors.light.tint : 'none'}
+                          />
+                          <Text style={[styles.locName, isActive && styles.locNameActive, hasPlacement && styles.locNameFilled]} numberOfLines={1}>
+                            {loc}
+                          </Text>
+                          {hasPlacement && <View style={styles.locCheckDot} />}
+                        </TouchableOpacity>
+                      );
+                    })
+                  )}
                 </View>
-              )}
+                {/* Right: mini garment + template details */}
+                <View style={styles.locDetailsCol}>
+                  <View style={styles.miniGarment}>
+                    <GarmentSvgPreview
+                      garmentType={garmentType}
+                      colorHex={garmentColor}
+                      view={currentView}
+                      width={90}
+                      height={108}
+                    />
+                    {activeZoneId && <View style={styles.miniZoneDot} />}
+                  </View>
+                  {activeZone && activeTpl && (
+                    <View style={styles.miniTemplateInfo}>
+                      <Text style={styles.miniTplTitle} numberOfLines={2}>{activeZoneId} Template</Text>
+                      <View style={styles.miniTplRow}>
+                        <Text style={styles.miniTplLabel}>Default Width:</Text>
+                        <Text style={styles.miniTplValue}>{activeTpl.defaultWidthIn.toFixed(1)}&quot;</Text>
+                      </View>
+                      <View style={styles.miniTplRow}>
+                        <Text style={styles.miniTplLabel}>Max Width:</Text>
+                        <Text style={styles.miniTplValue}>{activeTpl.maxWidthIn.toFixed(1)}&quot;</Text>
+                      </View>
+                      <View style={styles.miniTplRow}>
+                        <Text style={styles.miniTplLabel}>Max Height:</Text>
+                        <Text style={styles.miniTplValue}>{activeTpl.maxHeightIn.toFixed(1)}&quot;</Text>
+                      </View>
+                      <Text style={styles.miniTplLink}>View template details ›</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
 
               {/* PROPERTIES */}
               <View style={styles.sectionHeaderRow}>
@@ -1567,12 +1579,17 @@ export function MockupDesigner({
               {/* TEMPLATE STATUS */}
               {activeStatus && (
                 <View style={[styles.statusCard, activeStatus.usingTemplate ? styles.statusCardOk : styles.statusCardWarn]}>
+                  <Text style={[styles.statusCardTitle, activeStatus.usingTemplate ? styles.statusHeadTextOk : styles.statusHeadTextWarn]}>
+                    TEMPLATE STATUS
+                  </Text>
                   <View style={styles.statusHeadRow}>
                     {activeStatus.usingTemplate
                       ? <Check size={14} color="#16894e" />
                       : <RotateCcw size={14} color="#b45309" />}
                     <Text style={[styles.statusHeadText, activeStatus.usingTemplate ? styles.statusHeadTextOk : styles.statusHeadTextWarn]}>
-                      {activeStatus.usingTemplate ? 'Using Template' : 'Custom Placement'}
+                      {activeStatus.usingTemplate
+                        ? `Using ${activeZoneId ?? ''} Template`
+                        : 'Custom Placement'}
                     </Text>
                   </View>
                   <View style={styles.statusMetaRow}>
@@ -1762,7 +1779,7 @@ const styles = StyleSheet.create({
 
   // Left Sidebar
   leftSidebar: {
-    width: 224,
+    width: 232,
     borderRightWidth: 1,
     borderRightColor: Colors.light.border,
     backgroundColor: Colors.light.surface,
@@ -1898,9 +1915,22 @@ const styles = StyleSheet.create({
   layerDims: { fontSize: 9, color: Colors.light.textSecondary, marginTop: 1 },
   layerIconBtn: { padding: 4 },
 
+  // Layers header (black section header with Add Layer button)
+  layersHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1A1A1A',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    marginHorizontal: -12,
+    marginTop: 8,
+  },
+  addLayerWhite: { fontSize: 10, color: 'rgba(255,255,255,0.75)', fontWeight: '600' },
+
   // Vertical toolbar
   verticalToolbar: {
-    width: 48,
+    width: 58,
     borderRightWidth: 1,
     borderRightColor: Colors.light.border,
     backgroundColor: '#fff',
@@ -1909,17 +1939,18 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   toolBtn: {
-    width: 38,
-    height: 38,
+    width: 48,
+    height: 44,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 1,
+    gap: 2,
   },
   toolBtnActive: { backgroundColor: '#FFF0E8' },
   toolBtnDisabled: { opacity: 0.4 },
-  toolbarDivider: { width: 24, height: 1, backgroundColor: Colors.light.border, marginVertical: 5 },
+  toolbarDivider: { width: 30, height: 1, backgroundColor: Colors.light.border, marginVertical: 5 },
   toolBtnLabel: { fontSize: 8, color: Colors.light.textSecondary, fontWeight: '600' },
+  toolBtnLabelActive: { color: Colors.light.tint },
 
   // Center canvas
   centerPanel: {
@@ -2042,7 +2073,7 @@ const styles = StyleSheet.create({
 
   // Right Sidebar
   rightSidebar: {
-    width: 210,
+    width: 260,
     borderLeftWidth: 1,
     borderLeftColor: Colors.light.border,
     backgroundColor: Colors.light.surface,
@@ -2065,6 +2096,38 @@ const styles = StyleSheet.create({
   locNameActive: { color: Colors.light.tint, fontWeight: '600' },
   locNameFilled: { color: Colors.light.text, fontWeight: '600' },
   locCheckDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#22C55E' },
+
+  // Two-column locations layout
+  locationsBody: { flexDirection: 'row', gap: 8, paddingTop: 6 },
+  locList: { flex: 1 },
+  locDetailsCol: { width: 106, gap: 6 },
+  miniGarment: {
+    width: 106,
+    height: 128,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  miniZoneDot: {
+    position: 'absolute',
+    bottom: 36,
+    left: 28,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: Colors.light.tint,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  miniTemplateInfo: { gap: 3 },
+  miniTplTitle: { fontSize: 10, fontWeight: '700', color: Colors.light.text, lineHeight: 13 },
+  miniTplRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 2 },
+  miniTplLabel: { fontSize: 9, color: Colors.light.textSecondary },
+  miniTplValue: { fontSize: 9, color: Colors.light.text, fontWeight: '600' },
+  miniTplLink: { fontSize: 9, color: Colors.light.tint, fontWeight: '600', marginTop: 3 },
 
   // Template card
   templateCard: {
@@ -2201,6 +2264,7 @@ const styles = StyleSheet.create({
   statusCardOk: { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' },
   statusCardWarn: { backgroundColor: '#FFFBEB', borderColor: '#FDE68A' },
   statusHeadRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
+  statusCardTitle: { fontSize: 9, fontWeight: '700', letterSpacing: 0.8, marginBottom: 4 },
   statusHeadText: { fontSize: 12, fontWeight: '700' },
   statusHeadTextOk: { color: '#16894e' },
   statusHeadTextWarn: { color: '#b45309' },
