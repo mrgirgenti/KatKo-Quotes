@@ -77,7 +77,7 @@ import {
   Maximize2,
   MessageCircle,
 } from 'lucide-react-native';
-import { LOCATIONS, PRODUCTS, PRODUCT_COLORS } from '@/types/quote';
+import { LOCATIONS } from '@/types/quote';
 import MediaPickerModal, { PickerMediaFile } from '@/components/MediaPickerModal';
 import MediaCard from '@/components/MediaCard';
 import OverlayMenu from '@/components/OverlayMenu';

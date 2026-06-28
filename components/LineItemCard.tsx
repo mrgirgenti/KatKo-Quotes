@@ -15,17 +15,13 @@ import * as ImagePicker from 'expo-image-picker';
 import { ChevronDown, ChevronUp, Trash2, Upload, RefreshCw, X, Brush, Plus, CheckCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { MockupDesigner } from './MockupDesigner/MockupDesigner';
-import type { ProductColor } from './MockupDesigner/vendorCatalog';
-import type { GarmentType } from './MockupDesigner/garmentData';
 import {
   LineItem,
-  GarmentVariant,
   SERVICE_STYLES,
   EMPTY_SIZES,
   APPAREL_PROVIDERS,
   LOCATIONS,
   APPLICATORS,
-  SizeQuantities,
   SIZE_LABELS,
 } from '@/types/quote';
 import { FormInput } from './FormInput';
@@ -33,11 +29,9 @@ import { CurrencyInput } from './CurrencyInput';
 import { SegmentedControl } from './SegmentedControl';
 import { ComboBox } from './ComboBox';
 import { getTotalQuantity, calculateLineItemSubtotal, formatCurrency } from '@/utils/quoteCalculations';
-import { buildConfiguredProduct, getConfiguredProduct, syncLegacyFields } from '@/utils/configuredProduct';
+import { getConfiguredProduct, syncLegacyFields } from '@/utils/configuredProduct';
 import { ConfiguredProductEditor } from '@/components/configured-product/ConfiguredProductEditor';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
-import { useQuery, useQueries } from '@tanstack/react-query';
-import { apiFetch } from '@/lib/apiFetch';
 
 interface LineItemCardProps {
   item: LineItem;
@@ -46,50 +40,6 @@ interface LineItemCardProps {
   onDelete: () => void;
 }
 
-const APPAREL_SIZES = SIZE_LABELS.filter((s) => s.key !== 'flat');
-
-
-function getVariantQty(variant: GarmentVariant): number {
-  return APPAREL_SIZES.reduce((sum, { key }) => sum + (variant.sizes[key] || 0), 0);
-}
-
-function mergeVariantSizes(variants: GarmentVariant[]): SizeQuantities {
-  const merged = { ...EMPTY_SIZES };
-  for (const v of variants) {
-    for (const { key } of APPAREL_SIZES) {
-      merged[key] = (merged[key] || 0) + (v.sizes[key] || 0);
-    }
-  }
-  return merged;
-}
-
-// ── Catalog (DB Products) integration types/helpers (Phase 1) ──
-interface CatalogProduct {
-  id: string;
-  styleNumber: string;
-  brand: string;
-  name: string;
-  category?: string | null;
-  defaultBlankCost?: string | number | null;
-}
-
-interface VendorSourceInfo {
-  name: string;
-  isPreferred: boolean;
-}
-
-// Luminance check so the swatch check-icon contrasts against the color.
-function isDarkHex(hex?: string | null): boolean {
-  if (!hex) return false;
-  const m = hex.replace('#', '');
-  if (m.length !== 6) return false;
-  const r = parseInt(m.slice(0, 2), 16);
-  const g = parseInt(m.slice(2, 4), 16);
-  const b = parseInt(m.slice(4, 6), 16);
-  if ([r, g, b].some((n) => Number.isNaN(n))) return false;
-  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return lum < 0.5;
-}
 
 export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardProps) {
   const [expanded, setExpanded] = useState(true);
@@ -123,237 +73,11 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   const quantity = getTotalQuantity(item.sizes, isPromotional || isDesignWork);
   const lineItemCalcs = calculateLineItemSubtotal(item);
 
-  // ── Garment variants ──
-  const getInitialVariants = (): GarmentVariant[] => {
-    if (item.garmentVariants && item.garmentVariants.length > 0) {
-      return item.garmentVariants;
-    }
-    return [{ product: item.product, color: item.productColor, sizes: { ...item.sizes } }];
-  };
-  const [variants, setVariants] = useState<GarmentVariant[]>(getInitialVariants);
-
-  const getInitialGarmentTypes = (): GarmentType[] => {
-    return getInitialVariants().map(() => 'tshirt' as GarmentType);
-  };
-  const [variantGarmentTypes, setVariantGarmentTypes] = useState<GarmentType[]>(getInitialGarmentTypes);
-  const [variantSearchTerms, setVariantSearchTerms] = useState<string[]>(() =>
-    getInitialVariants().map((v) => v.product || '')
-  );
-  const [variantStyleFocused, setVariantStyleFocused] = useState<boolean[]>(() =>
-    getInitialVariants().map(() => false)
-  );
-  const [variantColorOpen, setVariantColorOpen] = useState<boolean[]>(() =>
-    getInitialVariants().map(() => false)
-  );
-  const [variantHoveredColors, setVariantHoveredColors] = useState<(string | null)[]>(() =>
-    getInitialVariants().map(() => null)
-  );
-  const [variantCustomColorText, setVariantCustomColorText] = useState<string[]>(() =>
-    getInitialVariants().map(() => '')
-  );
   const dropZoneRef = useRef<any>(null);
-
-  // ── Catalog (DB Products) data layer (Phase 1) ──
-  // Catalog search is driven by whichever variant style box is currently focused.
-  const focusedVariantIdx = variantStyleFocused.findIndex(Boolean);
-  const activeSearchTerm =
-    focusedVariantIdx >= 0 ? (variantSearchTerms[focusedVariantIdx] ?? '') : '';
-  const activeCategory =
-    focusedVariantIdx >= 0 ? (variants[focusedVariantIdx]?.category ?? '') : '';
-  const [debouncedCatalogTerm, setDebouncedCatalogTerm] = useState('');
-  useEffect(() => {
-    const handle = setTimeout(() => setDebouncedCatalogTerm(activeSearchTerm.trim()), 250);
-    return () => clearTimeout(handle);
-  }, [activeSearchTerm]);
-
-  const catalogSearch = useQuery({
-    queryKey: ['line-item-product-search', debouncedCatalogTerm, activeCategory],
-    queryFn: () => {
-      let url = `/api/products?q=${encodeURIComponent(debouncedCatalogTerm)}`;
-      if (activeCategory) url += `&category=${encodeURIComponent(activeCategory)}`;
-      return apiFetch(url);
-    },
-    enabled: focusedVariantIdx >= 0 && debouncedCatalogTerm.length >= 2,
-    staleTime: 30000,
-  });
-  const catalogResults: CatalogProduct[] = catalogSearch.data?.products ?? [];
-
-  // ── Fetch distinct product categories for the category pill selector ──
-  const categoriesQuery = useQuery({
-    queryKey: ['product-categories'],
-    queryFn: () => apiFetch('/api/products/categories'),
-    staleTime: 5 * 60 * 1000,
-  });
-  const allCategories: string[] = categoriesQuery.data?.categories ?? [];
-
-  // Colors / vendors / placements for every catalog-linked variant in this line item.
-  // useQueries keeps a stable single hook even as the selected-product set changes.
-  const selectedProductIds = Array.from(
-    new Set(variants.map((v) => v.productId).filter((pid): pid is string => !!pid)),
-  );
-  const colorQueries = useQueries({
-    queries: selectedProductIds.map((pid) => ({
-      queryKey: ['product-colors', pid],
-      queryFn: () => apiFetch(`/api/products/${pid}/colors`),
-      staleTime: 60000,
-    })),
-  });
-  const vendorQueries = useQueries({
-    queries: selectedProductIds.map((pid) => ({
-      queryKey: ['product-vendor-sources', pid],
-      queryFn: () => apiFetch(`/api/products/${pid}/vendor-sources`),
-      staleTime: 60000,
-    })),
-  });
-  // Effective placements are pre-fetched to warm the cache for future mockup work; no UI yet.
-  useQueries({
-    queries: selectedProductIds.map((pid) => ({
-      queryKey: ['product-effective-placements', pid],
-      queryFn: () => apiFetch(`/api/products/${pid}/effective-placements`),
-      staleTime: 60000,
-    })),
-  });
-  const dbColorsByProductId: Record<string, ProductColor[]> = {};
-  const dbVendorsByProductId: Record<string, VendorSourceInfo[]> = {};
-  selectedProductIds.forEach((pid, i) => {
-    const colorRows = (colorQueries[i]?.data as { colors?: any[] } | undefined)?.colors ?? [];
-    dbColorsByProductId[pid] = colorRows.map((c: any) => ({
-      name: c.colorName,
-      hex: c.hex || '#cccccc',
-      dark: isDarkHex(c.hex),
-    }));
-    const vendorRows = (vendorQueries[i]?.data as { sources?: any[] } | undefined)?.sources ?? [];
-    dbVendorsByProductId[pid] = vendorRows
-      .filter((s: any) => s.isActive !== false)
-      .map((s: any) => ({ name: s.vendorName as string, isPreferred: !!s.isPreferred }));
-  });
-
-  const handleVariantsChange = (newVariants: GarmentVariant[]) => {
-    setVariants(newVariants);
-    if (isPromotional) return;
-    const mergedSizes = mergeVariantSizes(newVariants);
-    const updatedItem: LineItem = {
-      ...item,
-      garmentVariants: newVariants,
-      sizes: mergedSizes,
-      product: newVariants[0]?.product || item.product,
-      productColor: newVariants.length === 1 ? (newVariants[0]?.color || item.productColor) : 'Multiple',
-    };
-    onChange({
-      ...updatedItem,
-      configuredProduct: buildConfiguredProduct(updatedItem),
-    });
-  };
-
-  const setVariantGarmentType = (vIdx: number, type: GarmentType) => {
-    setVariantGarmentTypes((prev) => prev.map((t, i) => (i === vIdx ? type : t)));
-    setVariantSearchTerms((prev) => prev.map((t, i) => (i === vIdx ? '' : t)));
-    updateVariant(vIdx, {
-      product: '',
-      color: '',
-      productId: undefined,
-      styleNumber: undefined,
-      brand: undefined,
-      productName: undefined,
-      productSource: undefined,
-      category: undefined,
-    });
-  };
-
-  const addVariant = () => {
-    if (variants.length >= 10) return;
-    handleVariantsChange([...variants, { product: '', color: '', sizes: { ...EMPTY_SIZES } }]);
-    setVariantGarmentTypes((prev) => [...prev, 'tshirt']);
-    setVariantSearchTerms((prev) => [...prev, '']);
-    setVariantStyleFocused((prev) => [...prev, false]);
-    setVariantColorOpen((prev) => [...prev, false]);
-    setVariantCustomColorText((prev) => [...prev, '']);
-  };
-
-  const removeVariant = (idx: number) => {
-    if (variants.length <= 1) return;
-    handleVariantsChange(variants.filter((_, i) => i !== idx));
-    setVariantGarmentTypes((prev) => prev.filter((_, i) => i !== idx));
-    setVariantSearchTerms((prev) => prev.filter((_, i) => i !== idx));
-    setVariantStyleFocused((prev) => prev.filter((_, i) => i !== idx));
-    setVariantColorOpen((prev) => prev.filter((_, i) => i !== idx));
-    setVariantCustomColorText((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  const updateVariant = (idx: number, partial: Partial<GarmentVariant>) => {
-    const updated = variants.map((v, i) => (i === idx ? { ...v, ...partial } : v));
-    handleVariantsChange(updated);
-  };
-
-  const updateVariantSize = (variantIdx: number, sizeKey: keyof SizeQuantities, value: string) => {
-    const num = parseInt(value) || 0;
-    const updated = variants.map((v, i) =>
-      i === variantIdx ? { ...v, sizes: { ...v.sizes, [sizeKey]: num } } : v
-    );
-    handleVariantsChange(updated);
-  };
-
-  // Bind a curated catalog product to a variant: snapshot style/brand/name + auto-fill
-  // the default cost (quote stays the source of truth — user can override afterward).
-  const handleSelectCatalogProduct = (vIdx: number, product: CatalogProduct) => {
-    const label = `${product.styleNumber} — ${product.name}`;
-    const updated = variants.map((v, i) =>
-      i === vIdx
-        ? {
-            ...v,
-            product: label,
-            color: '',
-            productId: product.id,
-            styleNumber: product.styleNumber,
-            brand: product.brand,
-            productName: product.name,
-            productSource: 'catalog' as const,
-            category: product.category ?? v.category,
-          }
-        : v,
-    );
-    setVariants(updated);
-    setVariantSearchTerms((prev) => prev.map((t, i) => (i === vIdx ? label : t)));
-    setVariantStyleFocused((prev) => prev.map((f, i) => (i === vIdx ? false : f)));
-    const rawCost = product.defaultBlankCost;
-    const parsedCost =
-      rawCost === null || rawCost === undefined || rawCost === ''
-        ? item.productCostEach
-        : Number(rawCost);
-    const nextCost = Number.isFinite(parsedCost) ? parsedCost : item.productCostEach;
-    const mergedSizes = mergeVariantSizes(updated);
-    onChange({
-      ...item,
-      garmentVariants: updated,
-      sizes: isPromotional ? item.sizes : mergedSizes,
-      product: updated[0]?.product || item.product,
-      productColor: updated.length === 1 ? (updated[0]?.color || item.productColor) : 'Multiple',
-      productCostEach: nextCost,
-    });
-    if (item.mockupUri && mockupLinkedVariantIdx !== null && vIdx === mockupLinkedVariantIdx) {
-      setSyncPromptVisible(true);
-    }
-  };
-
-  // Choosing a hardcoded quick-pick or a custom free-text style clears any catalog binding.
-  const markVariantManual = (vIdx: number, label: string) => {
-    updateVariant(vIdx, {
-      product: label,
-      color: '',
-      productId: undefined,
-      styleNumber: undefined,
-      brand: undefined,
-      productName: undefined,
-      productSource: 'manual',
-    });
-    if (item.mockupUri && mockupLinkedVariantIdx !== null && vIdx === mockupLinkedVariantIdx) {
-      setSyncPromptVisible(true);
-    }
-  };
 
   // ── Mockup variant selection ───────────────────────────────────────────────
   const handleDesignMockup = () => {
-    if (variants.length <= 1) {
+    if ((item.garmentVariants ?? []).length <= 1) {
       setMockupVariantIdx(0);
       setShowDesigner(true);
     } else {
@@ -417,15 +141,14 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
   };
 
   const handleServiceStyleChange = (style: typeof item.serviceStyle) => {
-    const updatedItem: LineItem = {
-      ...item,
-      serviceStyle: style,
-      sizes: style === 'Promotional' ? { ...EMPTY_SIZES, flat: item.sizes.flat || 0 } : item.sizes,
+    const cp = getConfiguredProduct(item);
+    const synced = syncLegacyFields(item, { ...cp, decorationMethod: style });
+    const final: LineItem = {
+      ...synced,
+      sizes: style === 'Promotional' ? { ...EMPTY_SIZES, flat: item.sizes.flat || 0 } : synced.sizes,
+      applicator: style === 'Direct to Film' && !item.applicator ? 'Katalyst Ko Printshop' : synced.applicator,
     };
-    if (style === 'Direct to Film' && !item.applicator) {
-      updatedItem.applicator = 'Katalyst Ko Printshop';
-    }
-    onChange(updatedItem);
+    onChange(final);
   };
 
   const applyDTFCost = () => {
@@ -442,6 +165,26 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
         serviceFeeEach: includeDigitization ? DIGITIZATION_FEE : 0,
       });
     }
+  };
+
+  const updateLocation = (idx: number, value: string): LineItem => {
+    const cp = getConfiguredProduct(item);
+    const locs = Array.from({ length: 4 }, (_, i) => cp.printLocations[i] ?? '');
+    locs[idx] = value;
+    while (locs.length > 0 && !locs[locs.length - 1]) locs.pop();
+    return {
+      ...item,
+      location1: locs[0] ?? '',
+      location2: locs[1] ?? '',
+      location3: locs[2],
+      location4: locs[3],
+      configuredProduct: { ...cp, printLocations: locs },
+    };
+  };
+
+  const updateLocationDetails = (value: string): LineItem => {
+    const cp = getConfiguredProduct(item);
+    return { ...item, locationDetails: value, configuredProduct: { ...cp, locationDetails: value } };
   };
 
   useEffect(() => {
@@ -589,23 +332,27 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
             suggestedLocations={[item.location1, item.location2].filter(Boolean)}
             initialVariant={{
               vendor: item.apparelProvider,
-              product: (item.garmentVariants ?? variants)[mockupVariantIdx]?.product,
-              color: (item.garmentVariants ?? variants)[mockupVariantIdx]?.color,
+              product: (item.garmentVariants ?? [])[mockupVariantIdx]?.product,
+              color: (item.garmentVariants ?? [])[mockupVariantIdx]?.color,
             }}
             configuredProduct={getConfiguredProduct(item)}
             onConfiguredProductChange={(cp) => {
-              const updated = syncLegacyFields(item, cp);
-              setVariants(updated.garmentVariants ?? []);
-              onChange(updated);
+              onChange(syncLegacyFields(item, cp));
             }}
-            onRequestChangeProduct={(item.garmentVariants ?? variants).length > 1 ? () => {
+            onRequestChangeProduct={(item.garmentVariants ?? []).length > 1 ? () => {
               setShowDesigner(false);
               setVariantPickerVisible(true);
             } : undefined}
             onColorChange={(colorName) => {
-              const gv = item.garmentVariants ?? variants;
-              if (mockupVariantIdx < gv.length) {
-                updateVariant(mockupVariantIdx, { color: colorName });
+              const cp = getConfiguredProduct(item);
+              if (mockupVariantIdx < cp.colorVariants.length) {
+                const updatedCp = {
+                  ...cp,
+                  colorVariants: cp.colorVariants.map((cv, i) =>
+                    i === mockupVariantIdx ? { ...cv, color: colorName } : cv
+                  ),
+                };
+                onChange(syncLegacyFields(item, updatedCp));
               }
             }}
           />
@@ -620,7 +367,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
             <Pressable style={styles.vpOverlay} onPress={() => setVariantPickerVisible(false)} />
             <View style={styles.vpPanel}>
               <Text style={styles.vpTitle}>Which product to mock up?</Text>
-              {(item.garmentVariants ?? variants).map((v, idx) => (
+              {(item.garmentVariants ?? []).map((v, idx) => (
                 <TouchableOpacity
                   key={idx}
                   style={styles.vpRow}
@@ -756,7 +503,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                     label="Location #1"
                     value={item.location1}
                     options={[...LOCATIONS]}
-                    onChange={(v) => onChange({ ...item, location1: v })}
+                    onChange={(v) => onChange(updateLocation(0, v))}
                     placeholder="Select location"
                     autoTitleCase
                   />
@@ -766,7 +513,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                     label="Location #2"
                     value={item.location2}
                     options={[...LOCATIONS]}
-                    onChange={(v) => onChange({ ...item, location2: v })}
+                    onChange={(v) => onChange(updateLocation(1, v))}
                     placeholder="Select location"
                     autoTitleCase
                   />
@@ -792,7 +539,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                         label="Location #3"
                         value={item.location3 || ''}
                         options={[...LOCATIONS]}
-                        onChange={(v) => onChange({ ...item, location3: v })}
+                        onChange={(v) => onChange(updateLocation(2, v))}
                         placeholder="Select location"
                         autoTitleCase
                       />
@@ -802,7 +549,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
                         label="Location #4"
                         value={item.location4 || ''}
                         options={[...LOCATIONS]}
-                        onChange={(v) => onChange({ ...item, location4: v })}
+                        onChange={(v) => onChange(updateLocation(3, v))}
                         placeholder="Select location"
                         autoTitleCase
                       />
@@ -816,7 +563,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
             <FormInput
               label="Project Notes"
               value={item.locationDetails}
-              onChangeText={(v) => onChange({ ...item, locationDetails: v })}
+              onChangeText={(v) => onChange(updateLocationDetails(v))}
               placeholder="e.g., 4x4 Logo, Size, Design specifics"
               autoTitleCase
             />
@@ -837,11 +584,7 @@ export function LineItemCard({ item, index, onChange, onDelete }: LineItemCardPr
             ) : (
               <ConfiguredProductEditor
                 value={getConfiguredProduct(item)}
-                onChange={(cp) => {
-                  const updated = syncLegacyFields(item, cp);
-                  setVariants(updated.garmentVariants ?? []);
-                  onChange(updated);
-                }}
+                onChange={(cp) => onChange(syncLegacyFields(item, cp))}
                 surface="internalQuote"
                 mode="internal"
                 showSizes
