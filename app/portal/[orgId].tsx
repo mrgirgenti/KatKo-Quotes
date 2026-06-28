@@ -3681,7 +3681,7 @@ export default function ClientPortal() {
           </View>
         ) : (
           <View style={[svStyles.formRow, isMobile && { flexDirection: 'column' as any }]}>
-            <View style={[styles.card, { flex: 1, maxWidth: 680 }]}>
+            <View style={[styles.card, { flex: 1, maxWidth: 816 }]}>
             <Text style={styles.formTitle}>{reorderSourceId ? 'Review Your Reorder' : 'Submit a Project Request'}</Text>
             {reorderSourceId ? (
               <Text style={styles.formSub}>{"We've pre-filled your previous order below. Adjust quantities, add notes, or upload new artwork, then submit."}</Text>
@@ -7073,10 +7073,10 @@ const pcStyles = StyleSheet.create({
 const svStyles = StyleSheet.create({
   formRow: {
     flexDirection: 'row', gap: 20, alignItems: 'flex-start',
-    width: '100%', maxWidth: 1040, marginHorizontal: 'auto' as any,
+    width: '100%', maxWidth: 1248, marginHorizontal: 'auto' as any,
   },
   helperCard: {
-    flexBasis: '28%' as any, flexShrink: 0, flexGrow: 0, minWidth: 200, maxWidth: 320,
+    flexBasis: '28%' as any, flexShrink: 0, flexGrow: 0, minWidth: 200, maxWidth: 384,
     backgroundColor: '#fff', borderRadius: 14, padding: 20, gap: 12,
     borderWidth: 1, borderColor: BORDER,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
