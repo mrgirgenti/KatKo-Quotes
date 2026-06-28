@@ -215,7 +215,7 @@ export function ConfiguredProductEditor({
   const handleSelectCatalogProduct = useCallback(
     (p: CatalogProductLite) => {
       const label = [p.styleNumber, p.name].filter(Boolean).join(' — ');
-      setStyleSearch(label);
+      setStyleSearch(p.styleNumber || p.name || '');
       const vendor = catalog.vendors.find((v) => v.isPreferred) ?? catalog.vendors[0];
       const rawCost = p.defaultBlankCost;
       const parsedCost = rawCost == null || rawCost === '' ? cp.productCostEach : Number(rawCost);
