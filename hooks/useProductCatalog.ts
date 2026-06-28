@@ -42,6 +42,36 @@ function normalizeColors(rows: RawColorRow[] | undefined): NormalizedColor[] {
   }));
 }
 
+/**
+ * Maps a display-tile name (e.g. "T-Shirts") to a product by inspecting
+ * product name keywords. DB uses broad categories ("Apparel", "Headwear"),
+ * not the fine-grained tile names, so we keyword-match on product name.
+ */
+function matchesCategoryTile(p: CatalogProductLite, tile: string): boolean {
+  const nameLow = (p.name ?? '').toLowerCase();
+  const catLow  = (p.category ?? '').toLowerCase();
+  switch (tile) {
+    case 'T-Shirts':
+      return nameLow.includes('tee') || nameLow.includes('t-shirt') || nameLow.includes('jersey');
+    case 'Polos':
+      return nameLow.includes('polo');
+    case 'Crewnecks':
+      return nameLow.includes('crewneck') || (nameLow.includes('crew') && !nameLow.includes('tee'));
+    case 'Hoodies':
+      return nameLow.includes('hoodie') ||
+             nameLow.includes('sweatshirt') ||
+             (nameLow.includes('pullover') && !nameLow.includes('polo')) ||
+             (nameLow.includes('zip') && !nameLow.includes('polo'));
+    case 'Hats':
+      return catLow === 'headwear' ||
+             nameLow.includes('hat') ||
+             nameLow.includes('cap') ||
+             nameLow.includes('trucker');
+    default:
+      return catLow.includes(tile.toLowerCase()) || nameLow.includes(tile.toLowerCase());
+  }
+}
+
 export interface UseProductCatalogParams {
   /** 'internal' uses the Clerk-gated /api/products; 'portal' uses the customer-safe hub endpoint. */
   mode: 'internal' | 'portal';
@@ -49,7 +79,7 @@ export interface UseProductCatalogParams {
   orgId?: string;
   /** Current style/product search query. */
   searchTerm?: string;
-  /** Optional category filter. */
+  /** Optional category filter (tile name like "T-Shirts" or actual DB category). */
   category?: string;
   /** Active product whose colors/vendors should be loaded. */
   productId?: string;
@@ -69,21 +99,24 @@ export interface UseProductCatalogResult {
 
 /**
  * Single catalog-access hook shared by the internal Quote, Client Hub, and
- * Mockup Designer surfaces. It abstracts the two very different transports:
+ * Mockup Designer surfaces.
  *
- *   internal → /api/products?q=&category= (server search) + per-id colors/vendors
- *   portal   → /api/portal/{orgId}/products (all products + embedded colors, no costs/vendors)
+ * Both modes now load ALL products once and filter client-side:
+ *   internal → /api/products (all active, Clerk-gated) + per-id colors/vendors
+ *   portal   → /api/portal/{orgId}/products (all products + embedded colors, no costs)
  *
- * Consumers always read the same normalized shape regardless of mode.
+ * Category tiles (T-Shirts, Polos, etc.) are matched by product-name keywords
+ * because the DB uses broad categories ("Apparel", "Headwear"), not the fine-
+ * grained tile names.
  */
 export function useProductCatalog(params: UseProductCatalogParams): UseProductCatalogResult {
   const { mode, orgId, searchTerm = '', category = '', productId, enabled = true } = params;
   const isPortal = mode === 'portal';
 
-  // Debounce the search term so internal server search isn't hammered per keystroke.
+  // Debounce the search term for a snappy but not-spammy client-side filter.
   const [debounced, setDebounced] = useState(searchTerm.trim());
   useEffect(() => {
-    const h = setTimeout(() => setDebounced(searchTerm.trim()), 250);
+    const h = setTimeout(() => setDebounced(searchTerm.trim()), 150);
     return () => clearTimeout(h);
   }, [searchTerm]);
 
@@ -110,25 +143,24 @@ export function useProductCatalog(params: UseProductCatalogParams): UseProductCa
     }));
   }, [portalQuery.data]);
 
-  // ── INTERNAL: distinct categories ──
-  const categoriesQuery = useQuery({
-    queryKey: ['product-categories'],
-    queryFn: () => apiFetch('/api/products/categories'),
+  // ── INTERNAL: load all active products once, filter client-side ──
+  const internalAllQuery = useQuery({
+    queryKey: ['internal-all-products'],
+    queryFn: () => apiFetch('/api/products'),
     enabled: enabled && !isPortal,
     staleTime: 5 * 60 * 1000,
   });
-
-  // ── INTERNAL: server-side product search ──
-  const searchQuery = useQuery({
-    queryKey: ['cpe-product-search', debounced, category],
-    queryFn: () => {
-      let url = `/api/products?q=${encodeURIComponent(debounced)}`;
-      if (category) url += `&category=${encodeURIComponent(category)}`;
-      return apiFetch(url);
-    },
-    enabled: enabled && !isPortal && (debounced.length >= 2 || !!category),
-    staleTime: 30000,
-  });
+  const internalAllProducts: CatalogProductLite[] = useMemo(() => {
+    const rows = (internalAllQuery.data?.products as any[] | undefined) ?? [];
+    return rows.map((p) => ({
+      id: p.id,
+      styleNumber: p.styleNumber ?? '',
+      brand: p.brand ?? '',
+      name: p.name ?? '',
+      category: p.category ?? null,
+      defaultBlankCost: p.defaultBlankCost,
+    }));
+  }, [internalAllQuery.data]);
 
   // ── INTERNAL: colors for the active product ──
   const colorsQuery = useQuery({
@@ -147,32 +179,32 @@ export function useProductCatalog(params: UseProductCatalogParams): UseProductCa
   });
 
   // ── Derive unified outputs ──
+  const allProducts = isPortal ? portalProducts : internalAllProducts;
+
   const categories: string[] = useMemo(() => {
-    if (isPortal) {
-      return Array.from(
-        new Set(portalProducts.map((p) => p.category).filter((c): c is string => !!c)),
-      ).sort();
-    }
-    return (categoriesQuery.data?.categories as string[] | undefined) ?? [];
-  }, [isPortal, portalProducts, categoriesQuery.data]);
+    return Array.from(
+      new Set(allProducts.map((p) => p.category).filter((c): c is string => !!c)),
+    ).sort();
+  }, [allProducts]);
 
   const results: CatalogProductLite[] = useMemo(() => {
-    if (isPortal) {
-      const term = debounced.toLowerCase();
-      return portalProducts.filter((p) => {
-        if (category && (p.category || '') !== category) return false;
-        if (!term) return true;
-        const styleLabel = [p.styleNumber, p.name].filter(Boolean).join(' — ').toLowerCase();
-        return (
-          p.styleNumber?.toLowerCase().includes(term) ||
-          p.name?.toLowerCase().includes(term) ||
-          p.brand?.toLowerCase().includes(term) ||
-          styleLabel.includes(term)
-        );
-      });
-    }
-    return (searchQuery.data?.products as CatalogProductLite[] | undefined) ?? [];
-  }, [isPortal, portalProducts, debounced, category, searchQuery.data]);
+    const term = debounced.toLowerCase();
+    return allProducts.filter((p) => {
+      if (category) {
+        if (isPortal) {
+          if ((p.category || '') !== category) return false;
+        } else {
+          if (!matchesCategoryTile(p, category)) return false;
+        }
+      }
+      if (!term) return true;
+      return (
+        p.styleNumber?.toLowerCase().includes(term) ||
+        p.name?.toLowerCase().includes(term) ||
+        p.brand?.toLowerCase().includes(term)
+      );
+    });
+  }, [allProducts, debounced, category, isPortal]);
 
   const colors: NormalizedColor[] = useMemo(() => {
     if (isPortal) {
@@ -190,7 +222,7 @@ export function useProductCatalog(params: UseProductCatalogParams): UseProductCa
       .map((s) => ({ name: s.vendorName as string, isPreferred: !!s.isPreferred }));
   }, [isPortal, vendorsQuery.data]);
 
-  const isSearching = isPortal ? portalQuery.isFetching : searchQuery.isFetching;
+  const isSearching = isPortal ? portalQuery.isFetching : internalAllQuery.isFetching;
 
   return { categories, results, colors, vendors, isSearching };
 }

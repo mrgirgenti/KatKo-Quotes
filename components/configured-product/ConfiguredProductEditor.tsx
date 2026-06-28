@@ -354,30 +354,22 @@ export function ConfiguredProductEditor({
         )}
       </View>
 
-      {/* ── Step indicators + 4-column content (scroll together) ──────────── */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled style={{ flex: 1 }}>
-        <View>
-          {/* Step header row */}
-          <View style={styles.stepRow}>
-            {([
-              { label: 'Product Type', minWidth: 125 },
-              { label: 'Style',        minWidth: 175 },
-              { label: 'Color',        minWidth: 290 },
-              { label: 'Sizes',        minWidth: 205 },
-            ] as const).map(({ label, minWidth }, i) => (
-              <View key={label} style={[styles.stepCell, { minWidth }]}>
-                <View style={styles.stepIndicator}>
-                  <View style={[styles.stepCircle, i < 3 && styles.stepCircleActive]}>
-                    <Text style={[styles.stepNum, i < 3 && styles.stepNumActive]}>{i + 1}</Text>
-                  </View>
-                  <Text style={styles.stepLabel}>{label}</Text>
-                </View>
+      {/* ── Step indicators ─────────────────────────────────────────────── */}
+      <View style={styles.stepRow}>
+        {(['Product Type', 'Style', 'Color', 'Sizes'] as const).map((label, i) => (
+          <View key={label} style={[styles.stepCell, i < 3 && { flex: i === 2 ? 2.5 : 1.5 }, i === 3 && { flex: 2 }]}>
+            <View style={styles.stepIndicator}>
+              <View style={[styles.stepCircle, i < 3 && styles.stepCircleActive]}>
+                <Text style={[styles.stepNum, i < 3 && styles.stepNumActive]}>{i + 1}</Text>
               </View>
-            ))}
+              <Text style={styles.stepLabel}>{label}</Text>
+            </View>
           </View>
+        ))}
+      </View>
 
-          {/* Columns */}
-          <View style={styles.columnsRow}>
+      {/* ── 4-column content ─────────────────────────────────────────────── */}
+      <View style={styles.columnsRow}>
 
 
         {/* ── Col 1: Product Type ─────────────────────────────────────── */}
@@ -724,9 +716,7 @@ export function ConfiguredProductEditor({
             </View>
           </View>
         )}
-          </View>{/* end columnsRow */}
-        </View>{/* end inner wrapper */}
-      </ScrollView>{/* end horizontal scroll */}
+      </View>
 
       {/* ── Print Locations ──────────────────────────────────────────────── */}
       {showLocations && (
@@ -1209,10 +1199,10 @@ const styles = StyleSheet.create({
     padding: 12,
     flexShrink: 0,
   },
-  col1: { minWidth: 125, flexGrow: 1 },
-  col2: { minWidth: 175, flexGrow: 1.2 },
-  col3: { minWidth: 290, flexGrow: 2.5 },
-  col4: { minWidth: 205, flexGrow: 1.5 },
+  col1: { flex: 1.5 },
+  col2: { flex: 1.5 },
+  col3: { flex: 2.5 },
+  col4: { flex: 2 },
   colDivider: {
     width: 1,
     backgroundColor: DIVIDER,
