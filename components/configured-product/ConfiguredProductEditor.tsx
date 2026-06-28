@@ -356,8 +356,8 @@ export function ConfiguredProductEditor({
 
       {/* ── Step indicators ─────────────────────────────────────────────── */}
       <View style={styles.stepRow}>
-        {(['Product Type', 'Style', 'Color', 'Sizes'] as const).map((label, i) => (
-          <View key={label} style={[styles.stepCell, i < 3 && { flex: i === 2 ? 2.5 : 1.5 }, i === 3 && { flex: 2 }]}>
+        {(['Product Type', 'Style', 'Color'] as const).map((label, i) => (
+          <View key={label} style={[styles.stepCell, { flex: i === 2 ? 2.5 : 1.5 }]}>
             <View style={styles.stepIndicator}>
               <View style={[styles.stepCircle, i < 3 && styles.stepCircleActive]}>
                 <Text style={[styles.stepNum, i < 3 && styles.stepNumActive]}>{i + 1}</Text>
@@ -665,58 +665,57 @@ export function ConfiguredProductEditor({
           </View>
         </View>
 
-        <View style={styles.colDivider} />
-
-        {/* ── Col 4: Sizes ─────────────────────────────────────────────── */}
-        {showSizes && (
-          <View style={[styles.col, styles.col4]}>
-            <Text style={styles.colSubLabel}>Add quantities</Text>
-
-            <View style={styles.sizeGrid}>
-              {SIZE_LABELS_ROW1.map(({ key, label }, i) => {
-                const row2 = SIZE_LABELS_ROW2[i];
-                return (
-                  <View key={key} style={styles.sizeGridRow}>
-                    <Text style={styles.sizeLabel}>{label}</Text>
-                    <TextInput
-                      style={styles.sizeInput}
-                      value={activeVariant.sizes?.[key] > 0 ? String(activeVariant.sizes[key]) : ''}
-                      onChangeText={(v) => handleSizeChange(key as keyof SizeQuantities, v)}
-                      keyboardType="number-pad"
-                      placeholder="0"
-                      placeholderTextColor={Colors.light.textSecondary}
-                      editable={!readOnly}
-                      maxLength={4}
-                    />
-                    {row2 && (
-                      <>
-                        <Text style={[styles.sizeLabel, styles.sizeLabelRight]}>{row2.label}</Text>
-                        <TextInput
-                          style={styles.sizeInput}
-                          value={activeVariant.sizes?.[row2.key] > 0 ? String(activeVariant.sizes[row2.key]) : ''}
-                          onChangeText={(v) => handleSizeChange(row2.key as keyof SizeQuantities, v)}
-                          keyboardType="number-pad"
-                          placeholder="0"
-                          placeholderTextColor={Colors.light.textSecondary}
-                          editable={!readOnly}
-                          maxLength={4}
-                        />
-                      </>
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-
-            <View style={styles.variantTotalRow}>
-              <Text style={styles.variantTotalLabel}>TOTAL</Text>
-              <Text style={[styles.variantTotalNum, activeVariantTotal === 0 && styles.variantTotalZero]}>
-                {activeVariantTotal}
-              </Text>
-            </View>
-          </View>
-        )}
       </View>
+
+      {/* ── Sizes (below columns) ────────────────────────────────────────── */}
+      {showSizes && (
+        <View style={styles.sizesSection}>
+          <View style={styles.sizesSectionHeader}>
+            <Text style={styles.colSubLabel}>Add quantities</Text>
+          </View>
+          <View style={styles.sizeGrid}>
+            {SIZE_LABELS_ROW1.map(({ key, label }, i) => {
+              const row2 = SIZE_LABELS_ROW2[i];
+              return (
+                <View key={key} style={styles.sizeGridRow}>
+                  <Text style={styles.sizeLabel}>{label}</Text>
+                  <TextInput
+                    style={styles.sizeInput}
+                    value={activeVariant.sizes?.[key] > 0 ? String(activeVariant.sizes[key]) : ''}
+                    onChangeText={(v) => handleSizeChange(key as keyof SizeQuantities, v)}
+                    keyboardType="number-pad"
+                    placeholder="0"
+                    placeholderTextColor={Colors.light.textSecondary}
+                    editable={!readOnly}
+                    maxLength={4}
+                  />
+                  {row2 && (
+                    <>
+                      <Text style={[styles.sizeLabel, styles.sizeLabelRight]}>{row2.label}</Text>
+                      <TextInput
+                        style={styles.sizeInput}
+                        value={activeVariant.sizes?.[row2.key] > 0 ? String(activeVariant.sizes[row2.key]) : ''}
+                        onChangeText={(v) => handleSizeChange(row2.key as keyof SizeQuantities, v)}
+                        keyboardType="number-pad"
+                        placeholder="0"
+                        placeholderTextColor={Colors.light.textSecondary}
+                        editable={!readOnly}
+                        maxLength={4}
+                      />
+                    </>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+          <View style={styles.variantTotalRow}>
+            <Text style={styles.variantTotalLabel}>TOTAL</Text>
+            <Text style={[styles.variantTotalNum, activeVariantTotal === 0 && styles.variantTotalZero]}>
+              {activeVariantTotal}
+            </Text>
+          </View>
+        </View>
+      )}
 
       {/* ── Print Locations ──────────────────────────────────────────────── */}
       {showLocations && (
@@ -1199,10 +1198,9 @@ const styles = StyleSheet.create({
     padding: 12,
     flexShrink: 0,
   },
-  col1: { flex: 1.5 },
+  col1: { flex: 1.2 },
   col2: { flex: 1.5 },
   col3: { flex: 2.5 },
-  col4: { flex: 2 },
   colDivider: {
     width: 1,
     backgroundColor: DIVIDER,
@@ -1518,7 +1516,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Sizes column
+  // Sizes below-columns section
+  sizesSection: {
+    borderTopWidth: 1,
+    borderTopColor: DIVIDER,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 12,
+  },
+  sizesSectionHeader: {
+    marginBottom: 8,
+  },
   sizeGrid: {
     marginTop: 4,
     gap: 6,
