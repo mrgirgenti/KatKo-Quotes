@@ -38,7 +38,7 @@ import {
 import { GarmentSvgPreview } from './GarmentSvgPreview';
 
 // ── Brand + palette ───────────────────────────────────────────────────────────
-const ORANGE = '#E86C1A';
+const ORANGE = '#FF5A00';
 const DARK_HDR = '#1C1C1C';
 const DIVIDER = '#E4E6EB';
 const COL_BG = '#FFFFFF';
