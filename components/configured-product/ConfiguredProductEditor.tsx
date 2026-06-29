@@ -670,29 +670,32 @@ export function ConfiguredProductEditor({
       {/* ── Sizes (below columns) ────────────────────────────────────────── */}
       {showSizes && (
         <View style={styles.sizesSection}>
-          {/* Single horizontal row: label above input, XS→4XL, then TOTAL */}
+          {/* Mirror Grand Total bar structure: spacer (= gtLabel width) + sizeInner (= gtSizes) */}
           <View style={styles.sizeRow}>
-            {ALL_APPAREL_SIZES.map(({ key, label }) => (
-              <View key={key} style={styles.sizeCell}>
-                <Text style={styles.sizeCellLabel}>{label}</Text>
-                <TextInput
-                  style={styles.sizeCellInput}
-                  value={activeVariant.sizes?.[key] > 0 ? String(activeVariant.sizes[key]) : ''}
-                  onChangeText={(v) => handleSizeChange(key as keyof SizeQuantities, v)}
-                  keyboardType="number-pad"
-                  placeholder="0"
-                  placeholderTextColor={Colors.light.textSecondary}
-                  editable={!readOnly}
-                  maxLength={4}
-                />
+            <View style={styles.sizeRowSpacer} />
+            <View style={styles.sizeInner}>
+              {ALL_APPAREL_SIZES.map(({ key, label }) => (
+                <View key={key} style={styles.sizeCell}>
+                  <Text style={styles.sizeCellLabel}>{label}</Text>
+                  <TextInput
+                    style={styles.sizeCellInput}
+                    value={activeVariant.sizes?.[key] > 0 ? String(activeVariant.sizes[key]) : ''}
+                    onChangeText={(v) => handleSizeChange(key as keyof SizeQuantities, v)}
+                    keyboardType="number-pad"
+                    placeholder="0"
+                    placeholderTextColor={Colors.light.textSecondary}
+                    editable={!readOnly}
+                    maxLength={4}
+                  />
+                </View>
+              ))}
+              {/* TOTAL */}
+              <View style={styles.sizeTotalCell}>
+                <Text style={styles.sizeCellLabel}>TOTAL</Text>
+                <Text style={[styles.sizeTotalNum, activeVariantTotal === 0 && styles.variantTotalZero]}>
+                  {activeVariantTotal}
+                </Text>
               </View>
-            ))}
-            {/* TOTAL */}
-            <View style={styles.sizeTotalCell}>
-              <Text style={styles.sizeCellLabel}>TOTAL</Text>
-              <Text style={[styles.sizeTotalNum, activeVariantTotal === 0 && styles.variantTotalZero]}>
-                {activeVariantTotal}
-              </Text>
             </View>
           </View>
         </View>
@@ -1501,7 +1504,7 @@ const styles = StyleSheet.create({
   sizesSection: {
     borderTopWidth: 1,
     borderTopColor: DIVIDER,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingTop: 10,
     paddingBottom: 12,
   },
@@ -1509,6 +1512,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   sizeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  // Mirrors gtLabel: holds empty space so size cells align with Grand Total bar columns
+  sizeRowSpacer: {
+    minWidth: 90,
+    marginRight: 16,
+  },
+  // Mirrors gtSizes: the flex container that holds the actual size cells + total
+  sizeInner: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 6,
