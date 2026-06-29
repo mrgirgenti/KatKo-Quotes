@@ -135,10 +135,9 @@ export function ConfiguredProductEditor({
   );
 
   // ── Style search state ─────────────────────────────────────────────────────
-  const [styleSearch, setStyleSearch] = useState(() => {
-    if (cp.styleNumber && cp.styleName) return `${cp.styleNumber} — ${cp.styleName}`;
-    return cp.productLabel ?? '';
-  });
+  // Use just the styleNumber (matching what handleSelectCatalogProduct sets),
+  // or fall back to productLabel for manually-entered styles.
+  const [styleSearch, setStyleSearch] = useState(() => cp.styleNumber || cp.productLabel || '');
   const [colorSearch, setColorSearch] = useState('');
 
   // ── Active color variant ───────────────────────────────────────────────────
@@ -451,7 +450,8 @@ export function ConfiguredProductEditor({
                 </TouchableOpacity>
               );
             })}
-            {styleSearch.trim().length > 0 && !readOnly && (
+            {styleSearch.trim().length > 0 && !readOnly &&
+              !catalog.results.some((p) => p.id === cp.productId) && (
               <TouchableOpacity
                 style={styles.useCustomRow}
                 onPress={() => handleUseManualStyle(styleSearch.trim())}
@@ -942,7 +942,8 @@ function ToolbarLayout({
                     </TouchableOpacity>
                   );
                 })}
-                {styleSearch.trim().length > 0 && (
+                {styleSearch.trim().length > 0 &&
+                  !catalog.results.some((p) => p.id === cp.productId) && (
                   <TouchableOpacity
                     style={tbStyles.customRow}
                     onPress={() => { handleUseManualStyle(styleSearch.trim()); close(); }}
