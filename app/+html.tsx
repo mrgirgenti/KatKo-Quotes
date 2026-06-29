@@ -29,7 +29,7 @@ const FOCUS_RESET_CSS =
 // 100% and then visibly snap down to 90% — most noticeable on the portal's
 // single centered login card ("large → small" resize flash). Declaring it here
 // removes the flash entirely.
-const APP_ZOOM_CSS = 'html{zoom:0.9;}';
+const APP_ZOOM_CSS = 'html{zoom:0.82;}';
 
 export default function Root({ children }: PropsWithChildren) {
   return (
