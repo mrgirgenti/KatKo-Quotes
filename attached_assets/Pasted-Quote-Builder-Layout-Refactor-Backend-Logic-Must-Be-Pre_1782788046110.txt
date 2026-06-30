@@ -1,0 +1,472 @@
+Quote Builder Layout Refactor (Backend Logic Must Be Preserved)
+
+This task is a complete UI/layout refactor of the Quote Builder. It is NOT a rewrite of the quoting engine.
+
+The attached redesign is now the new source of truth for the Quote Builder layout.
+
+CRITICAL
+
+If an existing implementation conflicts with the approved design or architecture, delete and replace it. Do not preserve legacy UI for backward compatibility.
+
+However:
+
+Preserve existing backend logic.
+Preserve existing APIs.
+Preserve existing calculations.
+Preserve pricing engine.
+Preserve product catalog integration.
+Preserve service calculators.
+Preserve Client Hub submission logic.
+Preserve database schema whenever possible.
+
+The objective is to reorganize the existing functionality into the new production-first workflow, not rebuild functionality that already works.
+
+Overall Design Philosophy
+
+The Quote Builder should no longer feel like a long data-entry form.
+
+Instead, every expanded Line Item should function as a complete production workspace.
+
+When a CSR expands a line item, every piece of information required to quote and produce that design should be immediately visible without opening additional accordions or nested panels.
+
+The only collapsible element should be the entire Line Item.
+
+Nothing inside an expanded Line Item should require additional expansion.
+
+Overall Page Layout
+
+Maintain the existing top project information section.
+
+Maintain the existing right Pricing Summary sidebar.
+
+Maintain the existing collapsed Line Item cards.
+
+Only redesign the expanded Line Item layout.
+
+The page should flow as:
+
+Quote Details
+Expanded Line Item Workspace
+Remaining collapsed Line Items
+Add Line Item
+Expanded Line Item Layout
+
+Use the attached redesign as the visual reference.
+
+The expanded Line Item should contain these sections:
+
+Header
+
+Black background.
+
+Orange numbered circle.
+
+Mockup thumbnail(s).
+
+Design Name.
+
+Decoration Method.
+
+Total Pieces.
+
+Action buttons:
+
+Design Mockup
+Duplicate
+Collapse
+Delete
+
+Maintain all existing functionality.
+
+Section 1 — Design Details
+
+Black header.
+
+Left side:
+
+Large Front/Back mockup previews.
+
+Change Mockup button.
+
+Right side:
+
+Design Name
+Service Style
+Product Source
+Priority
+Locations
+Additional Services
+Project Notes
+
+Increase the width of this section slightly compared to the current implementation.
+
+The mockup should remain one of the primary visual focal points.
+
+Section 2 — Products + Sizes
+
+Black header.
+
+Orange Add Product button.
+
+This replaces the current Add Style/Color concept.
+
+Each Design may contain multiple Products.
+
+This is intentional.
+
+Do NOT convert additional Products into separate Line Items.
+
+Each Product represents another garment carrying the SAME artwork.
+
+Examples:
+
+Adult Tee
+Youth Tee
+Women's Tee
+Hoodie
+
+All sharing the same design.
+
+Each Product row must contain:
+
+Product Type
+
+Dropdown.
+
+Connected to Products module.
+
+Examples:
+
+T-Shirts
+Hoodies
+Crewnecks
+Hats
+Bags
+
+This remains searchable.
+
+Product Style
+
+Searchable dropdown.
+
+Connected directly to the Products module.
+
+Uses the existing product catalog integration already implemented.
+
+Supports:
+
+catalog products
+custom typed products
+
+Preserve current custom product capability.
+
+Color
+
+Color selector tied to that product.
+
+Preserve current functionality.
+
+Sizes
+
+Each Product has its own quantity row.
+
+Always display:
+
+XS
+
+SM
+
+MD
+
+LG
+
+XL
+
+2XL
+
+3XL
+
+4XL
+
+TOTAL
+
+No hidden sizes.
+
+No accordion.
+
+No second screen.
+
+Total pieces should display at the far right.
+
+Each Product should have its own remove button.
+
+Each Product should have its own overflow menu if necessary.
+
+The Add Product button creates another Product under the SAME Line Item.
+
+NOT another Line Item.
+
+Service Calculator
+
+Below Products.
+
+Only one calculator should display.
+
+Display based on Service Style.
+
+Examples:
+
+DTF
+
+→ DTF Calculator
+
+Embroidery
+
+→ Embroidery Calculator
+
+Screen Printing
+
+→ Screen Print Calculator
+
+Promotional
+
+→ Promotional Calculator
+
+DTF Transfers
+
+→ DTF Transfer Calculator
+
+Future calculators should plug into this same location.
+
+Do NOT redesign calculator functionality.
+
+Only reposition it.
+
+Line Item Costs
+
+Rename Product Costs to:
+
+LINE ITEM COSTS
+
+This section contains:
+
+Product
+
+Service
+
+Fees
+
+Markup
+
+These values continue to populate automatically from:
+
+Products
+
+Calculator
+
+Additional Services
+
+Manual overrides
+
+CSR can still manually edit every field.
+
+Do NOT remove override capability.
+
+Line Item Subtotal
+
+Keep existing functionality.
+
+This should remain directly beside Line Item Costs.
+
+Continue calculating:
+
+Cost of Goods
+
+Fees
+
+Markup
+
+Subtotal
+
+using existing logic.
+
+Pricing Sidebar
+
+Preserve existing implementation.
+
+Do NOT redesign.
+
+Continue displaying:
+
+Pricing & Fees
+
+Quote Summary
+
+Client Quote Price
+
+Additional Fees
+
+Grand Total
+
+Sticky behavior should remain.
+
+Collapsed Line Items
+
+Maintain current architecture.
+
+Use the redesign as reference.
+
+Each collapsed Line Item should display:
+
+Mockup thumbnail
+
+Design Name
+
+Decoration Method
+
+Locations
+
+Primary Product
+
+Total Pieces
+
+Additional Services (if applicable)
+
+Line Total
+
+Expand arrow
+
+The apparel image should be the actual mockup—not a generic garment icon.
+
+Multiple Products Per Design
+
+This is one of the most important architectural changes.
+
+One Line Item may contain multiple Products.
+
+Example:
+
+Summer Event Front & Back
+
+Products:
+
+Next Level 6210 Adult
+
+Black
+
+23 pcs
+
+Gildan 5000B Youth
+
+Black
+
+12 pcs
+
+Bella Canvas Women's Tee
+
+Black
+
+8 pcs
+
+All share:
+
+Design
+
+Mockup
+
+Locations
+
+Calculator
+
+Project Notes
+
+Additional Services
+
+Pricing
+
+Do NOT duplicate these items for every Product.
+
+Only Products + Sizes changes.
+
+Client Hub Changes
+
+The Client Hub Project Submission form must adopt this exact layout philosophy.
+
+However:
+
+Clients MUST NOT see any internal pricing tools.
+
+Continue following the existing Client Hub restrictions we previously implemented.
+
+Clients should NEVER see:
+
+Cost Calculators
+Product Costs
+Line Item Costs
+Cost of Goods
+Fees
+Markup
+Pricing Sidebar
+Internal pricing calculations
+Profit calculations
+Override fields
+
+Those remain internal only.
+
+Instead, Client Hubs should display:
+
+Design Details
+
+Products + Sizes
+
+Add Product
+
+Mockup
+
+Artwork Upload
+
+Project Notes
+
+Additional Services (where appropriate)
+
+The workflow should visually mirror the backend Quote Builder while hiding every internal pricing element.
+
+Existing Integrations
+
+Do NOT replace these systems.
+
+Reuse them.
+
+Products Module
+
+Mockup Designer
+
+Product Catalog
+
+Color Data
+
+Client Hub
+
+Quote Engine
+
+Pricing Engine
+
+Service Calculators
+
+Line Item calculations
+
+Everything should continue functioning exactly as today.
+
+This task is primarily a UI/layout refactor.
+
+Success Criteria
+
+When complete:
+
+Every expanded Line Item feels like a complete production workspace.
+Multiple Products can exist under one Design without duplicating design information.
+Product selection remains connected to the Products module.
+Mockup Designer remains synchronized with the selected Product.
+Existing pricing logic continues to function.
+Client Hub mirrors the new workflow while hiding all internal pricing tools.
+The redesign matches the attached reference as closely as possible while preserving all existing functionality.
