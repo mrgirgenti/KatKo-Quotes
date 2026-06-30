@@ -63,6 +63,20 @@ export interface GarmentVariant {
   category?: string;
 }
 
+/**
+ * Per-product cost breakdown row used in LINE ITEM COSTS display.
+ * Reflects the true extended cost for each product under a design —
+ * never a weighted average. productCostTotal = Σ(extendedCost).
+ */
+export interface ProductCostRow {
+  /** Human-readable label, e.g. "NL6210 — CVC Crew Tee" or "Adult Tee" */
+  productLabel: string;
+  productCostEach: number;
+  quantity: number;
+  /** productCostEach × quantity — exact, not averaged */
+  extendedCost: number;
+}
+
 export interface LineItem {
   id: string;
   designName: string;
@@ -85,12 +99,21 @@ export interface LineItem {
   mockupUri?: string;
   completedAt?: string;
   /**
-   * ConfiguredProduct — canonical single source of truth for all product
-   * state in this line item. Populated by migration and kept in sync
-   * by LineItemCard on every save. Legacy top-level fields are kept for
-   * backward-compat until the UI migration is complete.
+   * configuredProduct — LEGACY single-product field.
+   * Still written for backward compat; read as configuredProducts[0] when
+   * configuredProducts is absent. Populated by migration and kept in sync
+   * by LineItemCard on every save.
    */
   configuredProduct?: import('./configuredProduct').ConfiguredProduct;
+  /**
+   * configuredProducts — canonical multi-product array for a Design.
+   * Each entry is a distinct garment (Adult Tee, Youth Tee, etc.) sharing
+   * the same artwork, locations, service calculator, and line-item pricing
+   * fields (service cost, fees, markup). Only productCostEach differs per
+   * product. When present, this drives ALL pricing calculations instead of
+   * the legacy blended productCostEach on the LineItem.
+   */
+  configuredProducts?: import('./configuredProduct').ConfiguredProduct[];
 }
 
 export interface QuoteCalculations {
@@ -267,7 +290,10 @@ export interface SalesCalculations {
 
 export interface LineItemCalculations {
   quantity: number;
+  /** Exact sum of (productCostEach × qty) for every product in this design. Never a weighted average. */
   productCostTotal: number;
+  /** Per-product breakdown rows when the line item has multiple products. Omitted for single-product items. */
+  productCostRows?: ProductCostRow[];
   serviceCostTotal: number;
   serviceFeeTotal: number;
   markupTotal: number;

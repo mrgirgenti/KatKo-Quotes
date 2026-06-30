@@ -72,9 +72,13 @@ export function getConfiguredProduct(item: LineItem): ConfiguredProduct {
 }
 
 /**
- * Sync legacy top-level LineItem fields FROM a ConfiguredProduct.
- * Call this whenever the ConfiguredProduct is mutated so the rest
- * of the app (which may still read legacy fields) stays consistent.
+ * Sync legacy top-level LineItem fields FROM a single ConfiguredProduct.
+ * Used for SINGLE-PRODUCT line items only. For multi-product designs, use
+ * syncMultiProductLineItem() instead so that productCostEach on the LineItem
+ * is never a blended/averaged value.
+ *
+ * Call this whenever the ConfiguredProduct is mutated so the rest of the app
+ * (which may still read legacy fields) stays consistent.
  */
 export function syncLegacyFields(item: LineItem, cp: ConfiguredProduct): LineItem {
   const primaryVariant = cp.colorVariants[0];
@@ -123,10 +127,80 @@ export function syncLegacyFields(item: LineItem, cp: ConfiguredProduct): LineIte
     location4: loc4,
     locationDetails: cp.locationDetails ?? item.locationDetails,
     mockupUri: cp.mockupUri ?? item.mockupUri,
+    // Single-product: productCostEach on the item is the product's own cost (exact, no averaging).
     productCostEach: cp.productCostEach,
-    serviceCostEach: cp.serviceCostEach,
-    serviceFeeEach: cp.serviceFeeEach,
-    markupEach: cp.markupEach,
+    // Service/fee/markup are LINE-ITEM level fields — read from the LineItem, not from cp.
+    // We sync them here only for backward compat with old call sites; prefer reading item.serviceCostEach directly.
+    serviceCostEach: cp.serviceCostEach ?? item.serviceCostEach,
+    serviceFeeEach: cp.serviceFeeEach ?? item.serviceFeeEach,
+    markupEach: cp.markupEach ?? item.markupEach,
+  };
+}
+
+/**
+ * Sync legacy top-level LineItem fields from a MULTI-PRODUCT configuredProducts[].
+ * Aggregates sizes across all products for display/shipping. Never writes a
+ * blended productCostEach — that value doesn't exist in the business model.
+ * The pricing engine reads configuredProducts[] directly for accurate cost totals.
+ */
+export function syncMultiProductLineItem(
+  item: LineItem,
+  products: ConfiguredProduct[],
+): LineItem {
+  if (products.length === 0) return item;
+
+  // Aggregate sizes across all products' all colorVariants for display/shipping
+  const mergedSizes: SizeQuantities = { ...EMPTY_SIZES };
+  const allGarmentVariants: GarmentVariant[] = [];
+
+  for (const cp of products) {
+    for (const cv of cp.colorVariants) {
+      (Object.keys(mergedSizes) as (keyof SizeQuantities)[]).forEach((k) => {
+        mergedSizes[k] = (mergedSizes[k] ?? 0) + (cv.sizes[k] ?? 0);
+      });
+      allGarmentVariants.push({
+        product: cp.productLabel || `${cp.styleNumber ?? ''} — ${cp.styleName ?? ''}`.replace(/^ — | — $/g, '').trim(),
+        color: cv.color,
+        sizes: cv.sizes,
+        productId: cp.productId,
+        styleNumber: cp.styleNumber,
+        brand: cp.brand,
+        productName: cp.styleName,
+        productSource: cp.productSource,
+        category: cp.category,
+      });
+    }
+  }
+
+  const primary = products[0];
+  const [loc1, loc2, loc3, loc4] = [
+    primary.printLocations[0] ?? '',
+    primary.printLocations[1] ?? '',
+    primary.printLocations[2],
+    primary.printLocations[3],
+  ];
+
+  return {
+    ...item,
+    configuredProducts: products,
+    // Legacy single-product field — keep the first product for backward compat with
+    // consumers that don't yet read configuredProducts[].
+    configuredProduct: primary,
+    product: primary.productLabel || `${primary.styleNumber ?? ''} — ${primary.styleName ?? ''}`.replace(/^ — | — $/g, '').trim() || item.product,
+    productColor: 'Multiple',
+    apparelProvider: primary.vendorName ?? item.apparelProvider,
+    serviceStyle: primary.decorationMethod as LineItem['serviceStyle'],
+    garmentVariants: allGarmentVariants,
+    sizes: mergedSizes,
+    location1: loc1,
+    location2: loc2,
+    location3: loc3,
+    location4: loc4,
+    locationDetails: primary.locationDetails ?? item.locationDetails,
+    mockupUri: primary.mockupUri ?? item.mockupUri,
+    // DO NOT write productCostEach — it has no meaning for multi-product line items.
+    // The pricing engine reads configuredProducts[] directly. Leave the existing
+    // item.productCostEach untouched so old consumers don't crash.
   };
 }
 

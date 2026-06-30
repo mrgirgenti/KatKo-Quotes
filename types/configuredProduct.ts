@@ -42,14 +42,23 @@ export interface PrintLocationTemplate {
 }
 
 /**
- * ConfiguredProduct — single source of truth for product state
- * within a Quote Line Item.
+ * ConfiguredProduct — one garment under a Line Item (Design).
  *
- * ARCHITECTURE RULE:
- *   - ONE ConfiguredProduct per LineItem.
- *   - Multiple colors expressed through colorVariants[].
+ * ARCHITECTURE RULES:
+ *   - A Design (LineItem) may contain ONE OR MORE ConfiguredProducts.
+ *   - Multiple ConfiguredProducts = multiple garments sharing the same artwork
+ *     (e.g. Adult Tee, Youth Tee, Hoodie all on the same design).
+ *   - Multiple colors within ONE garment → colorVariants[].
  *   - NEVER store quote-specific state on the Products catalog.
  *   - Products catalog = reference data only.
+ *
+ * PRICING RULE — NON-NEGOTIABLE:
+ *   - productCostEach belongs HERE (per garment — different garments cost differently).
+ *   - serviceCostEach, serviceFeeEach, markupEach belong on the LineItem (shared
+ *     across all garments in the design). They are stored here ONLY for legacy
+ *     single-product backward compat; new code must read them from the LineItem.
+ *   - Line Item Product Cost = Σ(product.productCostEach × product.qty).
+ *     This is an exact dollar sum — never a weighted average.
  *
  * PRODUCT MODEL LAW (per replit.md):
  *   - Quoting is never gated on the catalog. productSource='manual'
