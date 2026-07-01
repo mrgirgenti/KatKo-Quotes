@@ -4,6 +4,7 @@ import { createAction } from '@/lib/actions';
 import { buildConfiguredProduct } from '@/utils/configuredProduct';
 import { getLineItemProducts, syncLineItemFromProducts } from '@/utils/lineItemProducts';
 import { getTotalQuantity } from '@/utils/quoteCalculations';
+import { portalVariantsToProducts } from '@/utils/portalVariants';
 import type { LineItem } from '@/types/quote';
 import type { ConfiguredProduct } from '@/types/configuredProduct';
 
@@ -14,61 +15,6 @@ const EDIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 function mapOrderType(portalOrderType: string): string {
   if (portalOrderType === 'Reorder') return 'Re-Order';
   return 'New';
-}
-
-/**
- * Convert the Client Hub's variant-based line item (each "Add Another Product /
- * Color" row is a garmentVariant) into the canonical multi-product products[].
- * Rows that share a product identity (same productId, else same product label)
- * are grouped into ONE product with multiple colorVariants — exactly how the staff
- * expanded editor models a design — so no per-garment identity is lost. Pricing is
- * always zeroed; `costFor` supplies the internal blank-cost (COGS) reference only.
- */
-function portalVariantsToProducts(
-  item: any,
-  costFor: (productId?: string) => number,
-): ConfiguredProduct[] {
-  const variants: any[] = Array.isArray(item?.garmentVariants) ? item.garmentVariants : [];
-  if (variants.length === 0) return [];
-
-  const printLocations = [item?.location1, item?.location2, item?.location3, item?.location4]
-    .filter((l: any) => typeof l === 'string' && l.trim().length > 0);
-
-  const groups = new Map<string, ConfiguredProduct>();
-  for (const v of variants) {
-    const key =
-      (v?.productId && `id:${String(v.productId)}`) ||
-      `label:${String(v?.product ?? '').trim().toLowerCase()}`;
-    const color = typeof v?.color === 'string' ? v.color : '';
-    const sizes = v?.sizes ?? { ...EMPTY_SIZES };
-    const existing = groups.get(key);
-    if (existing) {
-      existing.colorVariants.push({ color, sizes });
-    } else {
-      groups.set(key, {
-        productSource: v?.productSource === 'catalog' ? 'catalog' : 'manual',
-        productId: v?.productId,
-        productLabel: v?.product || undefined,
-        styleNumber: v?.styleNumber,
-        styleName: v?.productName,
-        brand: v?.brand,
-        category: v?.category,
-        productType: v?.category,
-        decorationMethod: item?.serviceStyle || 'Screen Printing',
-        colorVariants: [{ color, sizes }],
-        printLocations,
-        locationDetails: item?.locationDetails || undefined,
-        mockupUri: item?.mockupUri || undefined,
-        artworkLayers: [],
-        templateSettings: {},
-        productCostEach: costFor(v?.productId),
-        serviceCostEach: 0,
-        serviceFeeEach: 0,
-        markupEach: 0,
-      });
-    }
-  }
-  return Array.from(groups.values());
 }
 
 export async function POST(request: Request) {
