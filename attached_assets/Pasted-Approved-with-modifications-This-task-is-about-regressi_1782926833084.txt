@@ -1,0 +1,166 @@
+Approved with modifications.
+
+This task is about regression testing only.
+
+Do NOT redesign the Quote Builder.
+
+Do NOT modify pricing calculations unless a real defect is discovered.
+
+Do NOT refactor computeSizeUpcharge() unless testing exposes a bug.
+
+====================================================
+OBJECTIVE
+====================================================
+
+Protect apparel size upcharges from drifting when serviceStyle changes.
+
+The pricing engine currently applies apparel size upcharges (2XL/3XL/4XL/etc.) through:
+
+computeSizeUpcharge()
+
+When serviceStyle changes between garment-based styles and flat-quantity styles, the size upcharge calculations must continue to produce correct totals.
+
+====================================================
+TEST COVERAGE
+====================================================
+
+Add regression tests covering:
+
+----------------------------------------------------
+Scenario 1
+
+Screen Printing
+
+↓
+
+Garment quantities
+
+↓
+
+2XL / 3XL garments
+
+↓
+
+Switch to Promotional
+
+----------------------------------------------------
+
+Verify:
+
+• Promotional (flat quantity) does NOT continue applying garment size upcharges.
+
+• Product total is recalculated correctly.
+
+• No stale upcharges remain.
+
+----------------------------------------------------
+Scenario 2
+
+Promotional
+
+↓
+
+Flat quantity
+
+↓
+
+Switch to Screen Printing
+
+↓
+
+Garment quantities include 2XL / 3XL
+
+----------------------------------------------------
+
+Verify:
+
+• Size upcharges become active again.
+
+• Only qualifying garment quantities receive upcharges.
+
+• Standard sizes remain unaffected.
+
+----------------------------------------------------
+Scenario 3
+
+Multiple Products
+
+Multiple Sizes
+
+Service Style Switch
+
+----------------------------------------------------
+
+Verify:
+
+• Blended product cost remains correct.
+
+• Size upcharges remain correct.
+
+• Total quantity remains correct.
+
+• Production Cost remains cent-exact.
+
+====================================================
+ASSERTIONS
+====================================================
+
+Verify:
+
+✓ computeSizeUpcharge() produces expected values.
+
+✓ Size upcharges only apply when appropriate for the active service style.
+
+✓ Promotional mode never inherits stale garment-size upcharges.
+
+✓ Switching back to garment-based service styles restores size upcharges correctly.
+
+✓ Blended Cost + Size Upcharges = Production Cost (cent-exact).
+
+====================================================
+FILES
+====================================================
+
+tests/pricing-drift.test.ts
+
+(or a dedicated apparel-upcharge regression test file if it improves organization)
+
+Relevant read-only logic:
+
+utils/quoteCalculations.ts
+
+utils/lineItemProducts.ts
+
+Only modify implementation if a real bug is discovered.
+
+====================================================
+DO NOT
+====================================================
+
+Do not redesign Quote Builder.
+
+Do not modify Product Pricing UI.
+
+Do not refactor pricing logic unless necessary to fix a verified defect.
+
+Do not change service style behavior.
+
+====================================================
+SUCCESS
+====================================================
+
+✓ Regression tests added.
+
+✓ Apparel size upcharges remain correct after service-style switches.
+
+✓ Blended pricing remains cent-exact.
+
+✓ All pricing regression tests pass.
+
+When complete report:
+
+- Tests added
+- Scenarios covered
+- Bugs discovered (if any)
+- Files modified
+- Test execution results
