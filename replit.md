@@ -24,6 +24,7 @@ Every implementation task follows this sequence. No exceptions.
 1. **Identify the feature category** (see Feature Classification in `docs/IMPLEMENTATION_DEFINITION_OF_DONE.md`).
 2. **Review the applicable documentation** in `/docs`:
    - Always: `docs/BUSINESS_RULES.md` and `docs/ARCHITECTURE_PRINCIPLES.md`
+   - For any new module or product direction change: `docs/ROADMAP.md`
    - For any UI change: `docs/UI_DESIGN_SYSTEM.md`
    - For scope and checklist: `docs/IMPLEMENTATION_DEFINITION_OF_DONE.md`
 3. **Identify conflicts** between the requested feature and documented standards.

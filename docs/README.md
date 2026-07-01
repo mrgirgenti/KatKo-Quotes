@@ -6,6 +6,13 @@ This folder contains the permanent engineering standards for the **Katalyst Ko Q
 
 ## Documents
 
+### [ROADMAP.md](./ROADMAP.md)
+The authoritative source for the long-term product direction of the platform. Documents the current development phase, approved future modules, deferred features, explicitly rejected ideas, and major architectural milestones. Any implementation that introduces a new module, changes product direction, or builds something listed as Deferred or Won't Build must reference this document first.
+
+Covers: Current Project Status, Current Development Phase, Phased Roadmap (Phases 1–5), Approved Modules, Deferred Features, Won't Build, Architectural Milestones, and Roadmap Maintenance rules.
+
+---
+
 ### [BUSINESS_RULES.md](./BUSINESS_RULES.md)
 Defines how the business operates. This is the authoritative source for what the application is supposed to do and why. It contains business logic only — no implementation details, no code references. Implementation must conform to business rules. When a developer or AI agent needs to understand whether a behavior is correct, this document provides the answer.
 
