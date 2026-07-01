@@ -15,6 +15,43 @@ The relationship between Products, Quotes, and Mockups is fixed and must be hono
 
 Never gate quoting or mockups on the Products catalog.
 
+## Engineering Workflow
+
+Every implementation task follows this sequence. No exceptions.
+
+### Before Writing Code
+
+1. **Identify the feature category** (see Feature Classification in `docs/IMPLEMENTATION_DEFINITION_OF_DONE.md`).
+2. **Review the applicable documentation** in `/docs`:
+   - Always: `docs/BUSINESS_RULES.md` and `docs/ARCHITECTURE_PRINCIPLES.md`
+   - For any UI change: `docs/UI_DESIGN_SYSTEM.md`
+   - For scope and checklist: `docs/IMPLEMENTATION_DEFINITION_OF_DONE.md`
+3. **Identify conflicts** between the requested feature and documented standards.
+4. **Present conflicts before implementing** — do not silently violate project standards.
+5. **Apply the Clarification Rule**: if a business decision is unspecified, stop and ask. Never invent business rules.
+
+### During Implementation
+
+- Follow the Non-Goals discipline: make the smallest architectural change that solves the stated problem.
+- Do not expand scope mid-task. Capture scope creep as a follow-up task.
+- Verify the applicable system impact checklists from `docs/IMPLEMENTATION_DEFINITION_OF_DONE.md`.
+
+### Before Marking Done
+
+Verify the Final Implementation Checklist in `docs/IMPLEMENTATION_DEFINITION_OF_DONE.md`. Every task closes with a written summary:
+
+| Item | Required |
+|---|---|
+| Files Modified | Yes |
+| Components Modified | Yes |
+| Database Changes | Yes (or "none") |
+| API Changes | Yes (or "none") |
+| Tests Added | Yes (or "none") |
+| Documentation Updated | Yes — name which `/docs` files changed, or state explicitly why none were required |
+| Remaining Work | Yes (or "none") |
+
+Documentation is part of implementation. A task that changes behavior without updating the relevant `/docs` file is not done.
+
 ## Run & Operate
 
 To run the application, use the following command:

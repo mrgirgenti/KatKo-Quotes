@@ -34,6 +34,30 @@ Covers: Clarification Rule, Feature Classification, Non-Goals, Feature Planning,
 
 ---
 
+## Engineering Workflow
+
+Every implementation task follows this three-phase sequence.
+
+**Phase 1 — Before writing code**
+1. Identify the feature category (`IMPLEMENTATION_DEFINITION_OF_DONE.md` → Feature Classification).
+2. Review the applicable documents from this folder.
+3. Identify any conflicts between the request and the documented standards.
+4. Surface conflicts before implementation begins — never implement silently against a standard.
+5. Apply the Clarification Rule: if a business decision is unspecified, stop, present options, and wait for approval.
+
+**Phase 2 — During implementation**
+- Apply the Non-Goals discipline: make the smallest change that fully solves the stated problem.
+- Verify applicable system impact checklists from `IMPLEMENTATION_DEFINITION_OF_DONE.md`.
+
+**Phase 3 — Before marking done**
+- Complete the Final Implementation Checklist in `IMPLEMENTATION_DEFINITION_OF_DONE.md`.
+- Determine whether any document in this folder requires an update.
+- Close every task with the Required Deliverable summary (Files Modified, Components Modified, Database Changes, API Changes, Tests Added, Documentation Updated, Remaining Work).
+
+"Documentation Updated" must always be answered — either name what changed or explicitly state why no update was required. Silence on documentation is not acceptable.
+
+---
+
 ## Reading Order
 
 Developers and AI agents beginning work on this codebase should read these documents in the following order:
