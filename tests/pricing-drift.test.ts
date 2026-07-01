@@ -22,10 +22,12 @@ import {
   getConfiguredProductSizes,
   aggregateSizesAcrossProducts,
   syncLineItemFromProducts,
+  updateDesignFields,
   validateProductPricingConsistency,
   checkServiceCostDivergence,
   assertNoServiceCostDivergence,
 } from '@/utils/lineItemProducts';
+import { calculateLineItemSubtotal } from '@/utils/quoteCalculations';
 import { portalVariantsToProducts } from '@/utils/portalVariants';
 import { getTotalQuantity } from '@/utils/quoteCalculations';
 import type { LineItem, SizeQuantities } from '@/types/quote';
@@ -866,5 +868,311 @@ describe('serviceStyle switching — quantity mode and blended cost invariant', 
     expect(Math.round(blendedTotal * 100)).toBe(Math.round(trueTotal * 100));
     // promoSync is used above only to confirm we did the switch; suppress unused warning
     expect(promoSync.productCostEach).toBeGreaterThan(0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mid-edit service-style change regression suite
+//
+// Changing serviceStyle (e.g. Screen Printing → Promotional) flips the
+// quantity-counting mode between garment-size aggregation and the flat field.
+// These tests verify that:
+//
+//   1. blendProductCostEach correctly re-weights when the counting mode changes
+//      (blended × totalQty == Σ(productCost × productQty), cent-exact)
+//   2. Flat counts (Promotional) and garment counts (other styles) never
+//      cross-contaminate — switching modes does not carry stale counts
+//   3. updateDesignFields (the canonical mid-edit funnel) propagates the new
+//      serviceStyle and produces correct aggregate sizes and blended cost
+//   4. calculateLineItemSubtotal reflects the new mode end-to-end after a switch
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('mid-edit serviceStyle change — blended cost correctness', () => {
+  it('Screen Printing → Promotional: blended × flat total == Σ(cost × flatQty), cent-exact', () => {
+    const tee = makeProduct(5.00, [], {
+      colorVariants: [
+        { color: 'Black', sizes: makeSizes({ s: 10, m: 20, l: 10, flat: 50 }) },
+      ],
+    });
+    const promo = makeProduct(2.50, [], {
+      colorVariants: [
+        { color: 'White', sizes: makeSizes({ flat: 100 }) },
+      ],
+    });
+
+    const teeQtyPromo = getConfiguredProductQuantity(tee, 'Promotional');     // flat=50
+    const promoQtyPromo = getConfiguredProductQuantity(promo, 'Promotional'); // flat=100
+    const totalQtyPromo = teeQtyPromo + promoQtyPromo;                        // 150
+
+    const trueTotal = tee.productCostEach * teeQtyPromo + promo.productCostEach * promoQtyPromo;
+    const blended = blendProductCostEach([tee, promo], 'Promotional');
+
+    expect(teeQtyPromo).toBe(50);
+    expect(promoQtyPromo).toBe(100);
+    expect(Math.round(blended * totalQtyPromo * 100)).toBe(Math.round(trueTotal * 100));
+  });
+
+  it('Promotional → Screen Printing: blended × garment total == Σ(cost × garmentQty), cent-exact', () => {
+    const tee = makeProduct(5.00, [], {
+      colorVariants: [
+        { color: 'Black', sizes: makeSizes({ s: 10, m: 20, l: 10, flat: 999 }) },
+      ],
+    });
+    const hoodie = makeProduct(15.00, [], {
+      colorVariants: [
+        { color: 'Navy', sizes: makeSizes({ m: 5, l: 5, flat: 999 }) },
+      ],
+    });
+
+    const teeQtySP = getConfiguredProductQuantity(tee, 'Screen Printing');     // 40
+    const hoodieQtySP = getConfiguredProductQuantity(hoodie, 'Screen Printing'); // 10
+    const totalQtySP = teeQtySP + hoodieQtySP;                                   // 50
+
+    const trueTotal = tee.productCostEach * teeQtySP + hoodie.productCostEach * hoodieQtySP;
+    const blended = blendProductCostEach([tee, hoodie], 'Screen Printing');
+
+    expect(teeQtySP).toBe(40);
+    expect(hoodieQtySP).toBe(10);
+    expect(Math.round(blended * totalQtySP * 100)).toBe(Math.round(trueTotal * 100));
+  });
+
+  it('flat and garment counts do not cross-contaminate: Promotional ignores garment sizes', () => {
+    const cp = makeProduct(3.00, [], {
+      colorVariants: [
+        { color: 'Red', sizes: makeSizes({ s: 5, m: 10, l: 5, flat: 200 }) },
+      ],
+    });
+
+    const promoQty = getConfiguredProductQuantity(cp, 'Promotional');
+    const garmentQty = getConfiguredProductQuantity(cp, 'Screen Printing');
+
+    expect(promoQty).toBe(200);
+    expect(garmentQty).toBe(20);
+    expect(promoQty).not.toBe(garmentQty);
+  });
+
+  it('garment mode ignores flat: Screen Printing does not count flat field', () => {
+    const cp = makeProduct(4.00, [], {
+      colorVariants: [
+        { color: 'Black', sizes: makeSizes({ m: 15, flat: 500 }) },
+      ],
+    });
+
+    const garmentQty = getConfiguredProductQuantity(cp, 'Screen Printing');
+    expect(garmentQty).toBe(15);
+  });
+});
+
+describe('mid-edit serviceStyle change — updateDesignFields propagation', () => {
+  it('switching Screen Printing → Promotional via updateDesignFields recomputes aggregate sizes (flat)', () => {
+    const tee = makeProduct(5.00, [], {
+      colorVariants: [
+        { color: 'Black', sizes: makeSizes({ s: 10, m: 20, l: 10, flat: 60 }) },
+      ],
+    });
+    const promo = makeProduct(2.00, [], {
+      colorVariants: [
+        { color: 'White', sizes: makeSizes({ flat: 120 }) },
+      ],
+    });
+
+    const item = makeLineItem([tee, promo], 'Screen Printing');
+    const switched = updateDesignFields(item, { serviceStyle: 'Promotional' });
+
+    expect(switched.serviceStyle).toBe('Promotional');
+    expect(switched.sizes.flat).toBe(60 + 120);
+    expect(switched.sizes.s).toBe(10);
+    expect(switched.sizes.m).toBe(20);
+  });
+
+  it('switching Promotional → Screen Printing via updateDesignFields recomputes aggregate sizes (garment)', () => {
+    const tee = makeProduct(6.00, [], {
+      colorVariants: [
+        { color: 'Black', sizes: makeSizes({ s: 5, m: 10, l: 5, flat: 999 }) },
+      ],
+    });
+    const hoodie = makeProduct(14.00, [], {
+      colorVariants: [
+        { color: 'Navy', sizes: makeSizes({ m: 8, l: 4, flat: 999 }) },
+      ],
+    });
+
+    const item = makeLineItem([tee, hoodie], 'Promotional');
+    const switched = updateDesignFields(item, { serviceStyle: 'Screen Printing' });
+
+    expect(switched.serviceStyle).toBe('Screen Printing');
+    expect(switched.sizes.s).toBe(5);
+    expect(switched.sizes.m).toBe(18);
+    expect(switched.sizes.l).toBe(9);
+  });
+
+  it('blended cost × totalQty is cent-exact after Screen Printing → Promotional switch', () => {
+    const tee = makeProduct(5.00, [], {
+      colorVariants: [
+        { color: 'Black', sizes: makeSizes({ s: 10, m: 20, flat: 60 }) },
+      ],
+    });
+    const mug = makeProduct(3.50, [], {
+      colorVariants: [
+        { color: 'White', sizes: makeSizes({ flat: 90 }) },
+      ],
+    });
+
+    const item = makeLineItem([tee, mug], 'Screen Printing');
+    const switched = updateDesignFields(item, { serviceStyle: 'Promotional' });
+
+    const teeFlat = 60;
+    const mugFlat = 90;
+    const totalFlat = teeFlat + mugFlat; // 150
+    const trueProductCostTotal = 5.00 * teeFlat + 3.50 * mugFlat; // 300 + 315 = 615
+
+    const blendedTotal = switched.productCostEach * totalFlat;
+
+    expect(switched.sizes.flat).toBe(totalFlat);
+    expect(Math.round(blendedTotal * 100)).toBe(Math.round(trueProductCostTotal * 100));
+  });
+
+  it('blended cost × totalQty is cent-exact after Promotional → Embroidery switch', () => {
+    const shirt = makeProduct(7.00, [], {
+      colorVariants: [
+        { color: 'Black', sizes: makeSizes({ s: 12, m: 24, l: 12, flat: 999 }) },
+      ],
+    });
+    const polo = makeProduct(11.50, [], {
+      colorVariants: [
+        { color: 'White', sizes: makeSizes({ m: 6, l: 6, flat: 999 }) },
+      ],
+    });
+
+    const item = makeLineItem([shirt, polo], 'Promotional');
+    const switched = updateDesignFields(item, { serviceStyle: 'Embroidery' });
+
+    const shirtQty = 12 + 24 + 12; // 48
+    const poloQty = 6 + 6;          // 12
+    const totalQty = shirtQty + poloQty; // 60
+    const trueTotal = 7.00 * shirtQty + 11.50 * poloQty; // 336 + 138 = 474
+
+    const blendedTotal = switched.productCostEach * totalQty;
+
+    expect(switched.sizes.s).toBe(12);
+    expect(switched.sizes.m).toBe(30);
+    expect(switched.sizes.l).toBe(18);
+    expect(Math.round(blendedTotal * 100)).toBe(Math.round(trueTotal * 100));
+  });
+});
+
+describe('mid-edit serviceStyle change — calculateLineItemSubtotal end-to-end', () => {
+  it('Promotional: subtotal uses flat qty; garment sizes are ignored in the total', () => {
+    const cp = makeProduct(4.00, [], {
+      colorVariants: [
+        { color: 'Black', sizes: makeSizes({ s: 5, m: 10, l: 5, flat: 200 }) },
+      ],
+    });
+
+    const item = makeLineItem([cp], 'Promotional', {
+      serviceCostEach: 1.00,
+      markupEach: 2.00,
+    });
+    const synced = updateDesignFields(item, { serviceStyle: 'Promotional' });
+    const calcs = calculateLineItemSubtotal(synced);
+
+    expect(calcs.quantity).toBe(200);
+    expect(calcs.productCostTotal).toBeCloseTo(800.00, 2);
+    expect(calcs.serviceCostTotal).toBeCloseTo(200.00, 2);
+    expect(calcs.markupTotal).toBeCloseTo(400.00, 2);
+  });
+
+  it('Screen Printing: subtotal uses garment sizes; flat field is ignored in the total', () => {
+    const cp = makeProduct(4.00, [], {
+      colorVariants: [
+        { color: 'Black', sizes: makeSizes({ s: 5, m: 10, l: 5, flat: 200 }) },
+      ],
+    });
+
+    const item = makeLineItem([cp], 'Screen Printing', {
+      serviceCostEach: 1.00,
+      markupEach: 2.00,
+    });
+    const synced = updateDesignFields(item, { serviceStyle: 'Screen Printing' });
+    const calcs = calculateLineItemSubtotal(synced);
+
+    expect(calcs.quantity).toBe(20);
+    expect(calcs.productCostTotal).toBeCloseTo(80.00, 2);
+    expect(calcs.serviceCostTotal).toBeCloseTo(20.00, 2);
+    expect(calcs.markupTotal).toBeCloseTo(40.00, 2);
+  });
+
+  it('multi-product: mid-edit switch from Screen Printing to Promotional recalculates subtotal correctly', () => {
+    const tee = makeProduct(5.00, [], {
+      colorVariants: [
+        { color: 'Black', sizes: makeSizes({ s: 10, m: 20, l: 10, flat: 50 }) },
+      ],
+    });
+    const pen = makeProduct(1.50, [], {
+      colorVariants: [
+        { color: 'Blue', sizes: makeSizes({ flat: 100 }) },
+      ],
+    });
+
+    const item = makeLineItem([tee, pen], 'Screen Printing');
+    const switched = updateDesignFields(item, { serviceStyle: 'Promotional' });
+    const calcs = calculateLineItemSubtotal(switched);
+
+    const expectedQty = 50 + 100;                           // 150
+    const expectedProductCost = 5.00 * 50 + 1.50 * 100;    // 250 + 150 = 400
+
+    expect(calcs.quantity).toBe(expectedQty);
+    expect(Math.round(calcs.productCostTotal * 100)).toBe(Math.round(expectedProductCost * 100));
+  });
+
+  it('multi-product: mid-edit switch from Promotional to DTF Transfers recalculates subtotal correctly', () => {
+    const shirt = makeProduct(6.00, [], {
+      colorVariants: [
+        { color: 'Black', sizes: makeSizes({ s: 8, m: 16, l: 8, flat: 999 }) },
+      ],
+    });
+    const hoodie = makeProduct(14.00, [], {
+      colorVariants: [
+        { color: 'Navy', sizes: makeSizes({ m: 5, l: 5, flat: 999 }) },
+      ],
+    });
+
+    const item = makeLineItem([shirt, hoodie], 'Promotional');
+    const switched = updateDesignFields(item, { serviceStyle: 'DTF Transfers' });
+    const calcs = calculateLineItemSubtotal(switched);
+
+    const shirtQty = 8 + 16 + 8;  // 32
+    const hoodieQty = 5 + 5;       // 10
+    const expectedQty = shirtQty + hoodieQty; // 42
+    const expectedProductCost = 6.00 * shirtQty + 14.00 * hoodieQty; // 192 + 140 = 332
+
+    expect(calcs.quantity).toBe(expectedQty);
+    expect(Math.round(calcs.productCostTotal * 100)).toBe(Math.round(expectedProductCost * 100));
+  });
+
+  it('switching serviceStyle twice round-trips back to the original totals', () => {
+    const tee = makeProduct(5.00, [], {
+      colorVariants: [
+        { color: 'Black', sizes: makeSizes({ s: 10, m: 20, l: 10, flat: 75 }) },
+      ],
+    });
+    const hoodie = makeProduct(15.00, [], {
+      colorVariants: [
+        { color: 'Navy', sizes: makeSizes({ m: 5, l: 5, flat: 25 }) },
+      ],
+    });
+
+    const original = makeLineItem([tee, hoodie], 'Screen Printing');
+    const switched = updateDesignFields(original, { serviceStyle: 'Promotional' });
+    const restored = updateDesignFields(switched, { serviceStyle: 'Screen Printing' });
+
+    const origCalcs = calculateLineItemSubtotal(
+      updateDesignFields(original, { serviceStyle: 'Screen Printing' }),
+    );
+    const restoredCalcs = calculateLineItemSubtotal(restored);
+
+    expect(restoredCalcs.quantity).toBe(origCalcs.quantity);
+    expect(Math.round(restoredCalcs.productCostTotal * 100))
+      .toBe(Math.round(origCalcs.productCostTotal * 100));
   });
 });
