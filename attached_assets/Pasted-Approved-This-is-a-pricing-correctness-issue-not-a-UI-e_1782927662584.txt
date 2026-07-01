@@ -1,0 +1,91 @@
+Approved.
+
+This is a pricing correctness issue, not a UI enhancement.
+
+====================================================
+OBJECTIVE
+====================================================
+
+Ensure every consumer of calculateLineItemSubtotal() produces identical totals.
+
+A line item's subtotal must always be calculated using the exact same inputs regardless of where it is displayed.
+
+There must never be different totals between:
+
+- Line Item Card
+- Calculation Display
+- Customer Portal
+- Quote Summary
+- PDFs
+- Future Invoice generation
+
+====================================================
+IMPLEMENTATION
+====================================================
+
+Audit every call to:
+
+calculateLineItemSubtotal()
+
+Ensure every call passes the required apparel size upcharges.
+
+Do not allow any call site to silently fall back to $0 upcharges when Product Pricing has size upcharges configured.
+
+If possible, eliminate duplicated calculation paths and ensure all consumers use the same calculation inputs.
+
+====================================================
+VERIFY
+====================================================
+
+Specifically verify:
+
+components/CalculationDisplay.tsx
+
+app/api/portal/[orgId]/projects/[projectId]+api.ts
+
+and any additional call sites.
+
+====================================================
+REGRESSION TEST
+====================================================
+
+Add a regression test covering:
+
+- Apparel with 2XL / 3XL quantities
+- Product Pricing size upcharges configured
+- Line Item Card subtotal
+- Calculation Display subtotal
+- Portal DTO subtotal
+
+Assert that every location returns the exact same total.
+
+Cent-exact.
+
+====================================================
+DO NOT
+====================================================
+
+Do not redesign UI.
+
+Do not modify pricing formulas.
+
+Do not change Product Pricing behavior.
+
+Only ensure all consumers use the correct calculation inputs.
+
+====================================================
+SUCCESS
+====================================================
+
+✓ Every calculateLineItemSubtotal() call receives the required upcharge data.
+
+✓ Line Item Card, Calculation Display, Portal, and future consumers produce identical totals.
+
+✓ Regression test added.
+
+Report:
+
+- Files modified
+- Call sites updated
+- Tests added
+- Any additional calculation inconsistencies discovered
