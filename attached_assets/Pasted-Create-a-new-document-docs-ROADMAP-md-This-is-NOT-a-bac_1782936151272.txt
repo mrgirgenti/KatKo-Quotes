@@ -1,0 +1,312 @@
+Create a new document:
+
+/docs/ROADMAP.md
+
+This is NOT a backlog.
+
+This is NOT a task list.
+
+This is the long-term product roadmap for the Katalyst KO platform.
+
+It should become the authoritative source for:
+
+- Current development phase
+- Major milestones
+- Approved future modules
+- Deferred features
+- Completed platform milestones
+- Product vision
+
+The roadmap should evolve alongside the software.
+
+==========================================================
+PURPOSE
+==========================================================
+
+Explain that this document exists to keep development aligned with the long-term vision of the platform.
+
+It should prevent:
+
+- Feature creep
+- Duplicate work
+- Building modules out of sequence
+- Reintroducing previously rejected ideas
+
+This document represents approved product direction.
+
+==========================================================
+CURRENT PROJECT STATUS
+==========================================================
+
+Summarize where the platform currently stands.
+
+Include major completed systems such as:
+
+- Quote Builder
+- Multi-product quoting
+- Pricing Engine
+- Cost Configuration
+- Product Pricing
+- Production Library
+- Other Charges Library
+- Service Styles
+- Taxes & Fees
+- Client Hub foundation
+- Customer Portal foundation
+
+Indicate these are actively being hardened before Beta.
+
+==========================================================
+CURRENT DEVELOPMENT PHASE
+==========================================================
+
+Create a section showing the current focus.
+
+Example:
+
+Current Phase
+
+Pricing Engine Hardening
+
+Objectives:
+
+- Complete pricing architecture
+- Eliminate pricing drift
+- Regression testing
+- Configuration integration
+- Beta readiness
+
+==========================================================
+ROADMAP
+==========================================================
+
+Organize the roadmap into logical phases.
+
+Examples:
+
+----------------------------------------------------------
+
+Phase 1
+
+Pricing Engine Hardening
+
+----------------------------------------------------------
+
+Phase 2
+
+Mockup Builder
+
+Include goals such as:
+
+- Artwork placement
+- Template system
+- Snap zones
+- Decoration locations
+- Print boundaries
+- Proof generation
+
+----------------------------------------------------------
+
+Phase 3
+
+Production Workflow
+
+Examples:
+
+Production Sheets
+
+Scheduling
+
+Artwork approvals
+
+Order status
+
+Internal production management
+
+----------------------------------------------------------
+
+Phase 4
+
+Storefronts
+
+Examples:
+
+Web Stores
+
+Fundraising
+
+Online ordering
+
+Payments
+
+Inventory visibility
+
+----------------------------------------------------------
+
+Phase 5
+
+Operations
+
+Inventory
+
+Purchasing
+
+Receiving
+
+Vendor management
+
+Accounting integrations
+
+Reporting
+
+==========================================================
+APPROVED MODULES
+==========================================================
+
+Maintain a running list of approved platform modules.
+
+Examples:
+
+Quote Builder
+
+Mockup Builder
+
+Client Hub
+
+Customer Portal
+
+Web Stores
+
+Production
+
+Inventory
+
+Reporting
+
+Accounting
+
+Scheduling
+
+CRM
+
+Organization Settings
+
+File Library
+
+==========================================================
+DEFERRED FEATURES
+==========================================================
+
+Create a section documenting features intentionally postponed.
+
+Each item should include a short explanation.
+
+Examples:
+
+Detailed pricing audit UI
+
+Reason:
+
+Not required for Beta.
+
+The pricing engine already calculates correctly.
+
+Future debugging should live in admin tools rather than the Quote Builder.
+
+----------------------------------------------------------
+
+Decoration size upcharges
+
+Reason:
+
+Current apparel size upcharges satisfy business needs.
+
+----------------------------------------------------------
+
+Any other ideas intentionally deferred during development.
+
+==========================================================
+WON'T BUILD
+==========================================================
+
+Create a section documenting ideas that have been intentionally rejected.
+
+Examples:
+
+Complex ERP-style pricing breakdowns inside Quote Builder
+
+Reason:
+
+Adds unnecessary cognitive load.
+
+Violates the application's design philosophy.
+
+These decisions should remain documented so they are not repeatedly reconsidered.
+
+==========================================================
+ARCHITECTURAL MILESTONES
+==========================================================
+
+Document major architectural accomplishments.
+
+Examples:
+
+Five-bucket pricing model
+
+Multi-product line items
+
+Service Style architecture
+
+Cost Configuration
+
+Quote Builder / Mockup Builder separation
+
+Shared pricing engine
+
+==========================================================
+ROADMAP MAINTENANCE
+==========================================================
+
+Document the following rules:
+
+Every major completed milestone should be moved to the completed section.
+
+New approved modules should be added.
+
+Deferred ideas should remain documented.
+
+Rejected ideas should remain documented.
+
+The roadmap should always reflect the current product vision.
+
+==========================================================
+IMPLEMENTATION RULE
+==========================================================
+
+Future implementation tasks should reference this roadmap.
+
+If a requested feature conflicts with the documented roadmap:
+
+Stop.
+
+Identify the conflict.
+
+Request approval before implementing.
+
+Do not silently change product direction.
+
+==========================================================
+OUTPUT
+==========================================================
+
+Commit:
+
+/docs/ROADMAP.md
+
+to source control.
+
+Populate it with meaningful content based on the current state of the project.
+
+Do not create placeholders.
+
+This document should be useful immediately and continue evolving throughout the life of the platform.

@@ -307,6 +307,37 @@ If you add a new call site for `calculateLineItemSubtotal`, it **must** appear i
 
 ---
 
+## Documentation Review
+
+Before an implementation can be considered complete, determine whether any permanent project documentation must also be updated. Documentation is part of the implementation — not an optional follow-up task.
+
+Ask the following for each document:
+
+| Document | Update required if… |
+|---|---|
+| `BUSINESS_RULES.md` | A business rule changed, was discovered, or was explicitly decided during this task |
+| `ARCHITECTURE_PRINCIPLES.md` | Module ownership changed, a new system boundary was established, a forbidden pattern was identified, or a data ownership rule was clarified |
+| `ARCHITECTURE_PRINCIPLES.md` — Approved Terminology | A new concept was named, or an existing name was officially changed |
+| `UI_DESIGN_SYSTEM.md` | A new UI pattern was introduced, a component convention was established, or a token value was added or changed |
+| `IMPLEMENTATION_DEFINITION_OF_DONE.md` | A new engineering standard, checklist item, or process rule was established |
+
+**Triggers that always require a documentation update:**
+
+- A business rule was invented or clarified during implementation (add to `BUSINESS_RULES.md`)
+- A new module or system boundary was introduced (add to `ARCHITECTURE_PRINCIPLES.md`)
+- Data ownership for an entity was established or changed (update the Data Ownership section)
+- A new forbidden pattern was discovered during implementation (add to the Forbidden Patterns table)
+- A new Settings page or AppSettings key was added (update the Settings section in both `ARCHITECTURE_PRINCIPLES.md` and `BUSINESS_RULES.md`)
+- A new pricing rule or fee type was introduced (update `BUSINESS_RULES.md` → Pricing)
+- A new UI component or interaction pattern was established (update `UI_DESIGN_SYSTEM.md`)
+- A new workflow was introduced that clients or staff interact with (update `BUSINESS_RULES.md`)
+- Terminology was coined or standardized (update Approved Terminology in `ARCHITECTURE_PRINCIPLES.md`)
+- An engineering standard was changed or a new one was established (update this document)
+
+If no documentation change is needed, state that explicitly in the Required Deliverable. "No documentation updates required" is a valid conclusion — but it must be a conscious determination, not a default.
+
+---
+
 ## Required Deliverable
 
 Every implementation task must close with a summary listing:
@@ -318,6 +349,26 @@ Every implementation task must close with a summary listing:
 | **Database changes** | Schema change + migration SQL run (or "none") |
 | **API changes** | New or changed routes and their input/output shape |
 | **Tests added** | File and describe block name for every new test |
+| **Documentation updated** | Which `/docs` files were updated and what was added (or "none required") |
 | **Remaining work** | Explicitly state any known gaps or deferred items |
 
-A task with no remaining work and all checklists verified is done. A task with unchecked items that were not explicitly scoped out is not done.
+---
+
+## Final Implementation Checklist
+
+Before marking any task complete, confirm all of the following:
+
+| | Item |
+|---|---|
+| ☐ | All applicable System Impact Review items verified or explicitly scoped out |
+| ☐ | Persistence checklist verified for any new or changed data |
+| ☐ | Pricing checklist verified if any cost, fee, or upcharge was touched |
+| ☐ | UI checklist verified if any component or screen was changed |
+| ☐ | Full test suite passes (`bun test tests/ __tests__/`) with 0 failures |
+| ☐ | Architecture review completed — no forbidden patterns introduced |
+| ☐ | Cross-module consumer chain verified for any pricing change |
+| ☐ | **Documentation reviewed** — permanent knowledge changes identified |
+| ☐ | **Documentation updated** if any business rule, architecture decision, UI pattern, or engineering standard changed |
+| ☐ | **No conflicts remain** between the implementation and any document in `/docs` |
+
+A task with all boxes checked and a complete Required Deliverable is done. A task with unchecked boxes that were not explicitly scoped out is not done.
