@@ -8,6 +8,82 @@ Every implementation task must be evaluated against this document before it is m
 
 ---
 
+## Clarification Rule
+
+> **If implementation requires making a business decision that has not been explicitly specified — STOP.**
+
+Do not guess. Do not invent business rules. Do not assume the simplest interpretation is the correct one.
+
+When a specification gap is discovered:
+1. Identify the exact decision point.
+2. Present the available options clearly.
+3. Explain the tradeoffs of each option.
+4. Wait for explicit approval before implementing.
+
+**Examples of decisions that require clarification before proceeding:**
+- Whether a new status rolls into an existing workflow bucket or creates a new one
+- Whether a pricing rule applies to all service styles or only garment-based ones
+- Whether a portal-visible field should be sanitized or passed through
+- Whether a delete operation should hard-delete or soft-delete
+- Whether a new setting is per-organization or global
+- Whether existing records should be backfilled when a new field is added
+
+The cost of stopping to ask is always lower than the cost of implementing the wrong business rule and needing to reverse it.
+
+---
+
+## Feature Classification
+
+Before implementation begins, every task must be assigned a primary feature category. This classification determines which downstream systems must be reviewed before the task is considered complete. Use the System Impact Review checklist for the identified category and any categories it touches.
+
+| Category | Description | Primary systems affected |
+|---|---|---|
+| **Pricing** | Upcharges, fee rates, calculation buckets, cost rules | Pricing Engine, Quote Builder, CalculationDisplay, Portal, PDFs, Tests |
+| **Quote Builder** | Line item creation, editing, service style, location, products | Quote Builder, LineItemCard, CalculationDisplay, Portal DTO, DB |
+| **Product Management** | Products catalog, vendor data, configured products | Products API, Quote Builder (optional link), Mockup Builder |
+| **Mockup Builder** | Artwork placement, templates, zones, export | Mockup Designer, LineItem mockupUri, Files |
+| **Client Hub** | Portal features, hub provisioning, customer-facing views | Portal API, Contact/linkedUserId, Files (CLIENT_VISIBLE) |
+| **Customer Management** | Contacts, organizations, CRM activities, leads | Org/Contact APIs, CRM UI, Activity log |
+| **Organization Settings** | Org-level config, logo, hub toggle | Organization table, logoUrl, hubEnabled |
+| **Reporting** | CSV, Sheets, PDF exports, aggregated data | Reports API, Quote/Project data, calculations JSON |
+| **Customer Portal** | Unauthenticated customer-facing pages | Portal API routes, DTO sanitization, no Clerk auth |
+| **Production** | Production tab, punch sheets, status tracking | Project status, Production API, PDF templates |
+| **File Management** | Upload, preview, visibility, storage | Files API, R2 storage, MediaCard, visibility rules |
+| **Authentication** | Login, roles, permissions | Clerk (FROZEN — do not touch unless explicitly requested) |
+| **Infrastructure** | DB schema, API routing, migrations, environment | schema.prisma, pool.ts, Expo Router, AppSettings |
+| **UI / UX** | Visual design, layout, component patterns | Design system, OverlayMenu, responsive tables |
+| **Performance** | Query optimization, bundle size, render efficiency | React Query, memoization, Metro config |
+| **Bug Fix** | Correcting incorrect behavior | Targeted fix; do not expand scope |
+| **Refactor** | Code quality improvement with no behavior change | Must have tests before and after to prove behavior is preserved |
+
+**Rule:** A task may touch multiple categories. The classification is the primary one, but every secondary category it touches must also be reviewed in the System Impact Review.
+
+---
+
+## Non-Goals
+
+Every implementation must explicitly define what is NOT changing. This section is not optional — it is a commitment to scope discipline.
+
+**Standing non-goals that apply to every task unless explicitly overridden:**
+- Do not redesign existing UI that is not part of the stated scope
+- Do not modify components that are not directly involved in the change
+- Do not refactor code outside the requested scope, even if it could be improved
+- Do not rename existing terminology — see Approved Terminology in `ARCHITECTURE_PRINCIPLES.md`
+- Do not simplify working functionality to make an implementation cleaner
+- Do not combine unrelated changes into a single task
+- Do not expand a bug fix into a feature addition
+- Do not add migration logic to a task scoped only to new records
+- Do not remove backwards-compatible fallbacks unless the task explicitly includes a migration
+
+**Per-task non-goals** must also be stated explicitly. Examples:
+- "This task adds the upcharges prop to CalculationDisplay. It does not change how upcharges are configured in Settings."
+- "This task adds a new portal endpoint. It does not change the authenticated quote API."
+- "This task fixes the 2XL upcharge calculation. It does not change the fee rate calculation."
+
+The goal is the smallest architectural change necessary that fully solves the stated problem. Scope creep discovered mid-implementation must be captured as a follow-up task, not folded in silently.
+
+---
+
 ## Feature Planning
 
 Before writing a single line of code, answer all of the following:

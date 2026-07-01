@@ -248,6 +248,52 @@ Stored as a `File` with `fileType: MOCKUP`. The URI is stored on the `LineItem` 
 
 ---
 
+## Approved Terminology
+
+Terminology consistency is part of the application's architecture. These names are the authoritative labels used in the UI, in code identifiers, in this documentation, and in all future prompts and task descriptions. Never invent alternative names for these concepts. If a concept needs to be renamed, update this document, the UI labels, and all code references in a single coordinated task.
+
+### Module and Page Names
+
+| Approved name | Definition |
+|---|---|
+| **Quote Builder** | The tool for creating and editing a job's line items, pricing, and quantities. Entry: `app/(tabs)/index.tsx`, `app/quote/edit.tsx` |
+| **Mockup Builder** | The tool for placing artwork on garment templates. Separate from Quote Builder. Entry: `components/MockupDesigner.tsx` |
+| **Client Hub** | The customer-facing portal accessible at `/portal/[orgId]`. Not "customer portal" or "client portal" — "Client Hub". |
+| **Organization Settings** | The settings page for org-level configuration. Not "Account Settings" or "Company Settings". |
+| **Cost Configuration** | The umbrella term for all pricing rules managed in Settings. Not "pricing settings" or "rate configuration". |
+| **Production Library** | The saved library of itemized Production Cost rows available to the Quote Builder. Not "production cost presets". |
+| **Other Charges Library** | The saved library of itemized Other Charge rows available to the Quote Builder. Not "other cost presets". |
+| **Service Styles** | The list of decoration methods (Screen Printing, Embroidery, DTG, Promotional, etc.). Not "service types" or "decoration types". |
+| **Taxes & Fees** | The Settings page and AppSettings key for Online Fee %, Card Fee %, and Sales Tax %. Not "fee settings" or "tax configuration". |
+| **Product Pricing** | The Settings page and AppSettings key for size upcharges. Not "size fees" or "upcharge settings". |
+
+### Data Model Terms
+
+| Approved name | Definition |
+|---|---|
+| **Line Item** | One design (decoration + products) on a quote. Corresponds to a `LineItem` object. Not "design row" or "quote item". |
+| **Line Item Costs** | The detailed cost breakdown panel for a single Line Item showing all five buckets. Not "item breakdown" or "cost details". |
+| **Line Item Subtotal** | The dollar total for a single Line Item = cogTotal + Other + Markup. Not "item total" or "design cost". |
+| **Quote Summary** | The aggregate panel (`CalculationDisplay`) showing rolled-up totals across all Line Items. Not "quote totals" or "pricing summary". |
+| **Production Cost** | The third pricing bucket — itemized setup/production fees (Design Fee, Digitizing, etc.). Not "service fee" or "setup cost". |
+| **Other Charge** | The fourth pricing bucket — indirect costs (Rush, Shipping, etc.). Not "miscellaneous" or "additional fees". |
+
+### The Five Pricing Bucket Names (Exact)
+
+These five names must be used verbatim everywhere — in the UI, in PDF templates, in code variable names, in test descriptions, and in this documentation:
+
+| # | Name | Code field |
+|---|---|---|
+| 1 | **Product** | `productCostTotal` |
+| 2 | **Service** | `serviceCostTotal` |
+| 3 | **Production** | `productionCostTotal` |
+| 4 | **Other** | `otherCostTotal` |
+| 5 | **Markup** | `markupTotal` |
+
+The aggregate of buckets 1–3 is called **Production Cost** (displayed as "Production Cost" in the Quote Summary). The aggregate of all five buckets minus fees is called the **Subtotal**.
+
+---
+
 ## Forbidden Patterns
 
 These patterns are explicitly banned. Any PR introducing them must be reverted:

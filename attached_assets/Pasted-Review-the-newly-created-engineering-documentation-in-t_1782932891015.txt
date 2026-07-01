@@ -1,0 +1,194 @@
+Review the newly created engineering documentation in the /docs folder and update it with the following additions.
+
+Do NOT remove existing content.
+
+Do NOT simplify the documents.
+
+Extend them to become the permanent engineering standards for this repository.
+
+These documents will govern every future implementation.
+
+==========================================================
+1. IMPLEMENTATION_DEFINITION_OF_DONE.md
+==========================================================
+
+Add the following new sections.
+
+----------------------------------------------------------
+FEATURE CLASSIFICATION
+----------------------------------------------------------
+
+Before implementation begins, every task must identify its primary feature category.
+
+Include examples such as:
+
+• Pricing
+• Quote Builder
+• Product Management
+• Mockup Builder
+• Client Hub
+• Customer Management
+• Organization Settings
+• Reporting
+• Customer Portal
+• Production
+• Inventory
+• File Management
+• Authentication
+• Infrastructure
+• UI / UX
+• Performance
+• Bug Fix
+• Refactor
+
+Explain that this classification determines which downstream systems must be reviewed before the implementation is considered complete.
+
+----------------------------------------------------------
+NON-GOALS
+----------------------------------------------------------
+
+Require every implementation to explicitly define what is NOT changing.
+
+Examples:
+
+• Do not redesign existing UI.
+• Do not modify unrelated components.
+• Do not refactor outside the requested scope.
+• Do not rename existing terminology.
+• Do not simplify working functionality.
+• Preserve existing workflows whenever possible.
+
+This section should reinforce that implementations should make the smallest architectural change necessary.
+
+----------------------------------------------------------
+CLARIFICATION RULE
+----------------------------------------------------------
+
+Add a permanent engineering rule:
+
+If implementation requires making a business decision that has not been explicitly specified:
+
+STOP.
+
+Do not guess.
+
+Present the available options.
+
+Explain tradeoffs.
+
+Wait for approval before implementing.
+
+Never invent business rules.
+
+==========================================================
+2. ARCHITECTURE_PRINCIPLES.md
+==========================================================
+
+Add a new section:
+
+----------------------------------------------------------
+APPROVED TERMINOLOGY
+----------------------------------------------------------
+
+Document the application's approved terminology.
+
+These names are authoritative.
+
+Future implementations should never invent alternative names for these concepts.
+
+Include (at minimum):
+
+• Cost Configuration
+• Product Pricing
+• Production Library
+• Other Charges Library
+• Service Styles
+• Taxes & Fees
+• Quote Builder
+• Mockup Builder
+• Client Hub
+• Organization Settings
+• Line Item
+• Line Item Costs
+• Line Item Subtotal
+• Quote Summary
+• Production Cost
+• Other Charge
+• Product
+• Service
+• Production
+• Other
+• Markup
+
+Explain that terminology consistency is considered part of the application's architecture.
+
+==========================================================
+3. CREATE A NEW DOCUMENT
+==========================================================
+
+Create:
+
+/docs/BUSINESS_RULES.md
+
+This document should contain business logic only.
+
+It should NOT contain implementation details.
+
+It should become the authoritative source for how the application behaves.
+
+Organize it into sections.
+
+Examples include (but are not limited to):
+
+----------------------------------------------------------
+QUOTES
+
+• Quote Builder defines the job.
+• Quotes contain one or more Line Items.
+• Line Items contain one or more Products.
+• Line Item Costs use the five pricing buckets.
+
+----------------------------------------------------------
+PRICING
+
+• Product Pricing owns apparel size upcharges.
+• Service Styles determine quantity mode.
+• Promotional products use flat quantities.
+• Apparel uses size aggregation.
+• Production Costs are directly related to production.
+• Other Charges are indirect costs associated with completing the order.
+• Quote Summary always rolls up all Line Items.
+
+----------------------------------------------------------
+MOCKUPS
+
+• Mockup Builder consumes Quote Builder data.
+• Mockups never own quote pricing.
+• Locations defined in Quote Builder become artwork locations.
+
+----------------------------------------------------------
+SETTINGS
+
+Document ownership for:
+
+• Product Pricing
+• Production Library
+• Other Charges Library
+• Service Styles
+• Taxes & Fees
+
+----------------------------------------------------------
+GENERAL BUSINESS RULES
+
+Capture important business rules discovered throughout development so they no longer live only inside implementation prompts or conversations.
+
+==========================================================
+OUTPUT
+==========================================================
+
+When complete, summarize:
+
+• Documents updated
+• New sections added
+• New Business Rules document created
+• Any architectural conflicts discovered while documenting the project
