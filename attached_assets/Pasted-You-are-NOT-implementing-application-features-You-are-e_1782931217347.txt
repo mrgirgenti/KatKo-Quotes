@@ -1,0 +1,578 @@
+You are NOT implementing application features.
+
+You are establishing permanent engineering documentation for this repository.
+
+Create a new folder if it does not already exist:
+
+/docs
+
+Inside that folder create the following three Markdown documents:
+
+• IMPLEMENTATION_DEFINITION_OF_DONE.md
+• ARCHITECTURE_PRINCIPLES.md
+• UI_DESIGN_SYSTEM.md
+
+These are permanent engineering standards for this project and should be committed to source control.
+
+Do NOT create placeholders.
+
+Each document should be comprehensive, professionally organized, and written as documentation that future developers and AI agents will follow.
+
+These documents will become required reading before every implementation task.
+
+==========================================================
+DOCUMENT 1
+IMPLEMENTATION_DEFINITION_OF_DONE.md
+==========================================================
+
+Purpose:
+
+Define what it means for a feature to be considered complete.
+
+This document should include:
+
+# Purpose
+
+Explain why this document exists.
+
+------------------------------------------------
+
+# Feature Planning
+
+Before implementation:
+
+• Define the business problem.
+
+• Identify all affected systems.
+
+• Determine data ownership.
+
+• Determine persistence requirements.
+
+------------------------------------------------
+
+# System Impact Review
+
+Every implementation must evaluate all applicable systems.
+
+Include checklists for:
+
+Quote Builder
+
+Pricing Engine
+
+Cost Configuration
+
+Customer Portal
+
+Mockup Builder
+
+Production Sheets
+
+Invoices
+
+PDFs
+
+Reporting
+
+API
+
+Database
+
+Authentication
+
+Notifications
+
+File Storage
+
+Organization Settings
+
+Client Hub
+
+------------------------------------------------
+
+# Persistence Checklist
+
+Verify:
+
+Create
+
+Read
+
+Update
+
+Delete
+
+Save
+
+Reload
+
+Migration
+
+Backwards compatibility (if applicable)
+
+------------------------------------------------
+
+# Pricing Checklist
+
+Whenever pricing changes:
+
+Verify:
+
+Product
+
+Service
+
+Production
+
+Other
+
+Markup
+
+Line Item Costs
+
+Line Item Subtotal
+
+Quote Summary
+
+Customer Portal
+
+APIs
+
+Database
+
+Tests
+
+------------------------------------------------
+
+# UI Checklist
+
+Verify:
+
+Layout consistency
+
+Typography
+
+Spacing
+
+Component reuse
+
+Responsive behavior
+
+Accessibility
+
+Dark/light mode compatibility (future)
+
+------------------------------------------------
+
+# Testing Requirements
+
+Determine when:
+
+Unit tests
+
+Integration tests
+
+Regression tests
+
+End-to-end tests
+
+should be added.
+
+------------------------------------------------
+
+# Architecture Review
+
+Ask:
+
+Is this duplicated?
+
+Can this reuse an existing component?
+
+Does this violate any architecture principles?
+
+------------------------------------------------
+
+# Cross-Module Verification
+
+Every feature must identify downstream consumers.
+
+Example:
+
+Product Pricing
+
+↓
+
+Quote Builder
+
+↓
+
+Portal
+
+↓
+
+PDF
+
+↓
+
+Invoice
+
+↓
+
+Reports
+
+↓
+
+Tests
+
+------------------------------------------------
+
+# Required Deliverable
+
+Every implementation must finish by reporting:
+
+Files modified
+
+Components modified
+
+Database changes
+
+API changes
+
+Tests added
+
+Remaining work
+
+==========================================================
+DOCUMENT 2
+ARCHITECTURE_PRINCIPLES.md
+==========================================================
+
+Purpose:
+
+Define the permanent architectural rules for the application.
+
+Document current approved architecture.
+
+Include sections covering:
+
+------------------------------------------------
+
+Quote Builder
+
+The Quote Builder defines the job.
+
+It does not visualize artwork.
+
+------------------------------------------------
+
+Mockup Builder
+
+The Mockup Builder visualizes the job.
+
+It consumes Quote Builder data.
+
+It owns:
+
+Templates
+
+Snap zones
+
+Artwork placement
+
+Safe areas
+
+Print boundaries
+
+------------------------------------------------
+
+Cost Configuration
+
+Cost Configuration owns pricing rules.
+
+The Quote Builder consumes those rules.
+
+Never duplicate pricing logic.
+
+------------------------------------------------
+
+Pricing Engine
+
+The pricing engine consists of five buckets:
+
+Product
+
+Service
+
+Production
+
+Other
+
+Markup
+
+These names are the source of truth.
+
+------------------------------------------------
+
+Line Item
+
+Document ownership.
+
+Line Item owns:
+
+Service costs
+
+Markup
+
+Pricing
+
+Configured Products
+
+Configured Products own:
+
+Product
+
+Sizes
+
+Colors
+
+Locations
+
+They do NOT own:
+
+Markup
+
+Service Cost
+
+Service Fee
+
+------------------------------------------------
+
+Data Ownership
+
+Document ownership for:
+
+Quotes
+
+Projects
+
+Organizations
+
+Customers
+
+Products
+
+Service Styles
+
+Cost Libraries
+
+Locations
+
+Mockups
+
+Files
+
+------------------------------------------------
+
+Settings
+
+Document what each Settings page owns.
+
+------------------------------------------------
+
+Future Architecture
+
+Document expected integrations with:
+
+Production
+
+Inventory
+
+Scheduling
+
+Accounting
+
+Reporting
+
+==========================================================
+DOCUMENT 3
+UI_DESIGN_SYSTEM.md
+==========================================================
+
+Purpose:
+
+Create a permanent design system.
+
+This document should include:
+
+------------------------------------------------
+
+Color Palette
+
+Document current colors.
+
+------------------------------------------------
+
+Typography
+
+Heading hierarchy
+
+Body text
+
+Tables
+
+Buttons
+
+------------------------------------------------
+
+Border Radius
+
+Cards
+
+Headers
+
+Inputs
+
+Buttons
+
+Dialogs
+
+------------------------------------------------
+
+Header Hierarchy
+
+Level 1
+
+Major black section headers
+
+Rounded top corners
+
+Level 2
+
+Light gray subsection headers
+
+Level 3
+
+Inline group labels
+
+------------------------------------------------
+
+Spacing
+
+Define consistent spacing rules.
+
+------------------------------------------------
+
+Buttons
+
+Primary
+
+Secondary
+
+Danger
+
+Outline
+
+Icon buttons
+
+------------------------------------------------
+
+Forms
+
+Input spacing
+
+Dropdowns
+
+Checkboxes
+
+Tables
+
+Validation
+
+------------------------------------------------
+
+Tables
+
+Headers
+
+Rows
+
+Hover
+
+Selection
+
+Actions
+
+------------------------------------------------
+
+Cards
+
+Section cards
+
+Summary cards
+
+Settings cards
+
+------------------------------------------------
+
+Dialogs
+
+Modals
+
+Drawers
+
+Confirmation dialogs
+
+------------------------------------------------
+
+Responsive Behavior
+
+Desktop
+
+Tablet
+
+Mobile
+
+------------------------------------------------
+
+Future Standards
+
+Document expected design philosophy.
+
+==========================================================
+IMPORTANT
+==========================================================
+
+These documents should NOT simply repeat generic software engineering advice.
+
+They should describe THIS application.
+
+Reference the architecture already implemented.
+
+Reference the Quote Builder.
+
+Reference the Pricing Engine.
+
+Reference Cost Configuration.
+
+Reference the Mockup Builder separation.
+
+Reference the existing design language.
+
+==========================================================
+OUTPUT
+==========================================================
+
+Create all three documents.
+
+Commit them to the repository.
+
+Then summarize:
+
+• Files created
+
+• Major sections
+
+• Any architectural decisions documented
+
+These documents will become permanent project standards and should be referenced before every future implementation.
