@@ -1,0 +1,66 @@
+IMPLEMENTATION MODE
+
+Do not redesign the Quote Builder.
+Do not change UI.
+Do not change pricing behavior.
+Do not refactor the pricing engine.
+Do not modify Client Hub UI.
+
+Implement only the pricing-drift guard for multi-product line items.
+
+Goal:
+Prevent silent wrong totals if a future feature introduces per-product serviceCostEach, serviceFeeEach, or markupEach that diverges from the Line Item-level values.
+
+Current rule:
+For now, serviceCostEach, serviceFeeEach, and markupEach are Line Item-level values shared across all products/garments in the Line Item.
+
+Product-level differences are NOT currently supported for:
+- serviceCostEach
+- serviceFeeEach
+- markupEach
+
+Only productCostEach may differ by product.
+
+Tasks:
+
+1. In utils/lineItemProducts.ts, add a validation utility that checks every configured product against the parent Line Item values.
+
+Validate:
+- product.serviceCostEach must match lineItem.serviceCostEach if present
+- product.serviceFeeEach must match lineItem.serviceFeeEach if present
+- product.markupEach must match lineItem.markupEach if present
+
+2. If divergence is found, fail loudly.
+
+Preferred behavior:
+Throw an explicit error with a clear message, such as:
+
+"Multi-product line items do not support per-product serviceCostEach, serviceFeeEach, or markupEach. These values must remain shared at the Line Item level."
+
+3. Document the current rule in code comments:
+
+- Products may have unique productCostEach.
+- Products share production/service/fee/markup costs at the Line Item level.
+- Per-product service/markup pricing is not supported until the pricing engine is intentionally refactored.
+
+4. Ensure syncLineItemFromProducts calls this validation before calculating or syncing totals.
+
+5. Extend tests/pricing-drift.test.ts.
+
+Add tests covering:
+- valid multi-product line item with different productCostEach values
+- invalid product with divergent serviceCostEach
+- invalid product with divergent serviceFeeEach
+- invalid product with divergent markupEach
+- confirms errors are thrown instead of silently producing totals
+
+6. Do not alter successful existing test behavior.
+
+7. After implementation, run relevant tests and type checks.
+
+Report:
+- Files changed
+- Validation utility name
+- Tests added
+- Confirmation that pricing drift is now guarded
+- Confirmation that existing pricing behavior did not change

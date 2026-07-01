@@ -22,6 +22,7 @@ import {
   getConfiguredProductSizes,
   aggregateSizesAcrossProducts,
   syncLineItemFromProducts,
+  validateProductPricingConsistency,
 } from '@/utils/lineItemProducts';
 import { portalVariantsToProducts } from '@/utils/portalVariants';
 import type { LineItem, SizeQuantities } from '@/types/quote';
@@ -360,5 +361,118 @@ describe('portalVariantsToProducts — grouping', () => {
   it('empty garmentVariants returns an empty array', () => {
     const products = portalVariantsToProducts({ garmentVariants: [] }, () => 0);
     expect(products).toHaveLength(0);
+  });
+});
+
+describe('validateProductPricingConsistency — pricing-drift guard', () => {
+  it('valid: multi-product with different productCostEach values passes (productCostEach may diverge)', () => {
+    const tee    = makeProduct(4.50, [{ color: 'Black', sizes: { m: 20 } }]);
+    const hoodie = makeProduct(14.00, [{ color: 'Navy',  sizes: { m: 10 } }]);
+    const item = makeLineItem([tee, hoodie], 'Screen Printing', {
+      serviceCostEach: 0,
+      serviceFeeEach: 0,
+      markupEach: 0,
+    });
+
+    // Must not throw — only productCostEach differs, which is allowed
+    expect(() => validateProductPricingConsistency(item, [tee, hoodie])).not.toThrow();
+  });
+
+  it('valid: single-product item is always allowed regardless of values', () => {
+    const tee = makeProduct(5.00, [{ color: 'Black', sizes: { m: 10 } }], {
+      serviceCostEach: 99,
+    });
+    const item = makeLineItem([tee], 'Screen Printing', { serviceCostEach: 1 });
+
+    // Single-product: guard is skipped
+    expect(() => validateProductPricingConsistency(item, [tee])).not.toThrow();
+  });
+
+  it('invalid: product with divergent serviceCostEach throws', () => {
+    const tee = makeProduct(4.50, [{ color: 'Black', sizes: { m: 20 } }], {
+      serviceCostEach: 3.00,
+    });
+    const hoodie = makeProduct(12.00, [{ color: 'Navy', sizes: { m: 10 } }], {
+      serviceCostEach: 3.00,
+    });
+    const item = makeLineItem([tee, hoodie], 'Screen Printing', {
+      serviceCostEach: 2.00, // line item says 2.00, products have 3.00
+    });
+
+    expect(() => validateProductPricingConsistency(item, [tee, hoodie])).toThrow(
+      /serviceCostEach/,
+    );
+  });
+
+  it('invalid: product with divergent serviceFeeEach throws', () => {
+    const tee = makeProduct(4.50, [{ color: 'Black', sizes: { m: 20 } }], {
+      serviceFeeEach: 2.50,
+    });
+    const hoodie = makeProduct(12.00, [{ color: 'Navy', sizes: { m: 10 } }], {
+      serviceFeeEach: 2.50,
+    });
+    const item = makeLineItem([tee, hoodie], 'Screen Printing', {
+      serviceFeeEach: 1.50, // diverges
+    });
+
+    expect(() => validateProductPricingConsistency(item, [tee, hoodie])).toThrow(
+      /serviceFeeEach/,
+    );
+  });
+
+  it('invalid: product with divergent markupEach throws', () => {
+    const tee = makeProduct(4.50, [{ color: 'Black', sizes: { m: 20 } }], {
+      markupEach: 3.00,
+    });
+    const hoodie = makeProduct(12.00, [{ color: 'Navy', sizes: { m: 10 } }], {
+      markupEach: 3.00,
+    });
+    const item = makeLineItem([tee, hoodie], 'Screen Printing', {
+      markupEach: 5.00, // diverges
+    });
+
+    expect(() => validateProductPricingConsistency(item, [tee, hoodie])).toThrow(
+      /markupEach/,
+    );
+  });
+
+  it('invalid: divergent values cause syncLineItemFromProducts to throw (no silent wrong total)', () => {
+    const teeWithWrongFee = makeProduct(4.50, [{ color: 'Black', sizes: { m: 20 } }], {
+      serviceFeeEach: 9.99, // deliberately wrong
+    });
+    const hoodie = makeProduct(12.00, [{ color: 'Navy', sizes: { m: 10 } }], {
+      serviceFeeEach: 9.99, // same wrong value
+    });
+    const item = makeLineItem([teeWithWrongFee, hoodie], 'Screen Printing', {
+      serviceFeeEach: 1.00, // line item is 1.00 — products say 9.99
+    });
+
+    // syncLineItemFromProducts must throw, not silently proceed with wrong totals
+    expect(() => syncLineItemFromProducts(item, [teeWithWrongFee, hoodie])).toThrow(
+      /Multi-product line items do not support per-product/,
+    );
+  });
+
+  it('error message identifies the diverging field and both values', () => {
+    const tee = makeProduct(4.50, [{ color: 'Black', sizes: { m: 10 } }], {
+      serviceCostEach: 5.00,
+    });
+    const hoodie = makeProduct(12.00, [{ color: 'Navy', sizes: { m: 5 } }], {
+      serviceCostEach: 5.00,
+    });
+    const item = makeLineItem([tee, hoodie], 'Screen Printing', {
+      serviceCostEach: 2.00,
+    });
+
+    let message = '';
+    try {
+      validateProductPricingConsistency(item, [tee, hoodie]);
+    } catch (e) {
+      message = (e as Error).message;
+    }
+
+    expect(message).toMatch(/serviceCostEach/);
+    expect(message).toMatch(/5/);   // product value
+    expect(message).toMatch(/2/);   // line item value
   });
 });

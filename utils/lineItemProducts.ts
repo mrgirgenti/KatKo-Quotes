@@ -112,6 +112,79 @@ export function blendProductCostEach(
 // '@/utils/lineItemProducts' keep working unchanged.
 export { getLineItemProducts };
 
+// ─── PRICING CONSISTENCY INVARIANT ──────────────────────────────────────────
+//
+// For multi-product Line Items, serviceCostEach, serviceFeeEach, and markupEach
+// are LINE ITEM-LEVEL values shared across every product in the design:
+//
+//   ✅  Products MAY have unique productCostEach  (garment cost varies by style)
+//   ❌  Products MUST NOT have divergent serviceCostEach — owned by the Line Item
+//   ❌  Products MUST NOT have divergent serviceFeeEach  — owned by the Line Item
+//   ❌  Products MUST NOT have divergent markupEach      — owned by the Line Item
+//
+// Per-product service/markup pricing is intentionally unsupported until the
+// pricing engine (utils/quoteCalculations.ts) is refactored to read those
+// values per-product. Until then, per-product divergence would produce silently
+// wrong quote totals: the engine reads serviceCostEach/serviceFeeEach/markupEach
+// from the LINE ITEM, not from individual ConfiguredProducts.
+//
+// If you need per-product service or markup pricing:
+//   1. Refactor the pricing engine to read per-product values.
+//   2. Update or remove this guard accordingly.
+//   3. Add regression tests for the new pricing path.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Validate that no product in a multi-product Line Item carries a
+ * serviceCostEach, serviceFeeEach, or markupEach that diverges from the
+ * parent Line Item values.
+ *
+ * Throws with a descriptive message identifying the offending product and field
+ * so the error is actionable. Single-product items are always considered valid
+ * (normalization handles the snapshot; no cross-product totaling is at risk).
+ *
+ * Call this BEFORE the blending/normalization step in syncLineItemFromProducts.
+ */
+export function validateProductPricingConsistency(
+  item: LineItem,
+  products: ConfiguredProduct[],
+): void {
+  if (products.length <= 1) return;
+
+  const itemServiceCost = item.serviceCostEach ?? 0;
+  const itemServiceFee  = item.serviceFeeEach  ?? 0;
+  const itemMarkup      = item.markupEach      ?? 0;
+
+  for (const cp of products) {
+    const label = cp.productLabel ?? cp.styleNumber ?? cp.styleName ?? 'unknown';
+
+    if (cp.serviceCostEach !== itemServiceCost) {
+      throw new Error(
+        `Multi-product line items do not support per-product serviceCostEach, ` +
+        `serviceFeeEach, or markupEach. These values must remain shared at the ` +
+        `Line Item level. Product "${label}" has serviceCostEach=${cp.serviceCostEach} ` +
+        `but the Line Item is ${itemServiceCost}.`,
+      );
+    }
+    if (cp.serviceFeeEach !== itemServiceFee) {
+      throw new Error(
+        `Multi-product line items do not support per-product serviceCostEach, ` +
+        `serviceFeeEach, or markupEach. These values must remain shared at the ` +
+        `Line Item level. Product "${label}" has serviceFeeEach=${cp.serviceFeeEach} ` +
+        `but the Line Item is ${itemServiceFee}.`,
+      );
+    }
+    if (cp.markupEach !== itemMarkup) {
+      throw new Error(
+        `Multi-product line items do not support per-product serviceCostEach, ` +
+        `serviceFeeEach, or markupEach. These values must remain shared at the ` +
+        `Line Item level. Product "${label}" has markupEach=${cp.markupEach} ` +
+        `but the Line Item is ${itemMarkup}.`,
+      );
+    }
+  }
+}
+
 function productLabelOf(cp: ConfiguredProduct): string {
   if (cp.productLabel) return cp.productLabel;
   return `${cp.styleNumber ?? ''} — ${cp.styleName ?? ''}`.replace(/^ — | — $/g, '').trim();
@@ -130,6 +203,10 @@ function productLabelOf(cp: ConfiguredProduct): string {
  */
 export function syncLineItemFromProducts(item: LineItem, products: ConfiguredProduct[]): LineItem {
   const list = products.length > 0 ? products : [getConfiguredProduct(item)];
+
+  // Guard against per-product service/fee/markup divergence before any blending.
+  validateProductPricingConsistency(item, list);
+
   const primary = list[0];
 
   // Design-level fields are OWNED BY THE LINE ITEM — that is where the editor's
