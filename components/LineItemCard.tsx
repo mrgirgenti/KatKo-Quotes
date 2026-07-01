@@ -12,7 +12,19 @@ import {
   Pressable,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { ChevronDown, ChevronUp, Trash2, Upload, RefreshCw, X, Brush, Plus, CheckCircle } from 'lucide-react-native';
+import {
+  ChevronDown,
+  ChevronUp,
+  ChevronRight,
+  Trash2,
+  X,
+  Brush,
+  Plus,
+  CheckCircle,
+  Copy,
+  MoreVertical,
+  Search,
+} from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { MockupDesigner } from './MockupDesigner/MockupDesigner';
 import {
@@ -22,50 +34,772 @@ import {
   APPAREL_PROVIDERS,
   LOCATIONS,
   APPLICATORS,
-  SIZE_LABELS,
+  PROJECT_PRIORITIES,
+  type SizeQuantities,
 } from '@/types/quote';
-import { FormInput } from './FormInput';
+import type { ConfiguredProduct } from '@/types/configuredProduct';
 import { CurrencyInput } from './CurrencyInput';
-import { SegmentedControl } from './SegmentedControl';
-import { ComboBox } from './ComboBox';
+import { formatCents, parseCents } from '@/utils/posDecimalInput';
+import OverlayMenu from '@/components/OverlayMenu';
+import { QuoteAdjustmentsTable } from '@/components/QuoteAdjustmentsTable';
+import type { QuoteAdjustment } from '@/types/quote';
 import { getTotalQuantity, calculateLineItemSubtotal, formatCurrency } from '@/utils/quoteCalculations';
-import { getConfiguredProduct, syncLegacyFields } from '@/utils/configuredProduct';
-import { ConfiguredProductEditor } from '@/components/configured-product/ConfiguredProductEditor';
+import { useProductPricing } from '@/lib/useProductPricing';
+import {
+  getLineItemProducts,
+  getConfiguredProductQuantity,
+  updateProductAt,
+  addProduct,
+  removeProductAt,
+  duplicateProductAt,
+  setUniformProductCost,
+  updateDesignFields,
+} from '@/utils/lineItemProducts';
+import { useProductCatalog, type CatalogProductLite, type NormalizedColor } from '@/hooks/useProductCatalog';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { useQuery } from '@tanstack/react-query';
+import { useEnabledServiceStyles } from '@/lib/useServiceStyles';
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const QUOTE_PRODUCT_TYPES = [
+  'T-Shirts', 'Polos', 'Crewnecks', 'Hoodies', 'Hats', 'Bags', 'Accessories', 'Other',
+];
+
+// 8 standard apparel sizes shown in the size grid (XS–4XL)
+const QUOTE_SIZES = [
+  { key: 'xs',    label: 'XS'  },
+  { key: 's',     label: 'SM'  },
+  { key: 'm',     label: 'MD'  },
+  { key: 'l',     label: 'LG'  },
+  { key: 'xl',    label: 'XL'  },
+  { key: 'xxl',   label: '2XL' },
+  { key: 'xxxl',  label: '3XL' },
+  { key: 'xxxxl', label: '4XL' },
+] as const;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function filterByProductType(products: CatalogProductLite[], type: string): CatalogProductLite[] {
+  if (!type || type === 'Other' || type === 'Accessories') return products;
+  return products.filter((p) => {
+    const n = (p.name ?? '').toLowerCase();
+    const c = (p.category ?? '').toLowerCase();
+    switch (type) {
+      case 'T-Shirts':  return n.includes('tee') || n.includes('t-shirt') || n.includes('jersey');
+      case 'Polos':     return n.includes('polo');
+      case 'Crewnecks': return n.includes('crewneck') || (n.includes('crew') && !n.includes('tee'));
+      case 'Hoodies':   return n.includes('hoodie') || n.includes('sweatshirt') || n.includes('pullover');
+      case 'Hats':      return c === 'headwear' || n.includes('hat') || n.includes('cap');
+      case 'Bags':      return n.includes('bag') || n.includes('tote');
+      default:          return c.includes(type.toLowerCase()) || n.includes(type.toLowerCase());
+    }
+  });
+}
+
+function resolveColorHex(name: string, catalogColors: NormalizedColor[]): string {
+  if (!name) return '#cccccc';
+  const match = catalogColors.find((c) => c.name.toLowerCase() === name.toLowerCase());
+  if (match?.hex) return match.hex;
+  const n = name.toLowerCase();
+  if (n.includes('black'))   return '#111111';
+  if (n.includes('white'))   return '#f5f5f5';
+  if (n.includes('navy') || n.includes('night')) return '#1a3a6e';
+  if (n.includes('red') || n.includes('cardinal')) return '#b81c1c';
+  if (n.includes('royal'))   return '#3e4ab8';
+  if (n.includes('blue') || n.includes('sky')) return '#1a5fa8';
+  if (n.includes('green') || n.includes('forest')) return '#1a6e2a';
+  if (n.includes('grey') || n.includes('gray')) return '#888888';
+  if (n.includes('sand') || n.includes('natural') || n.includes('tan')) return '#c8b07a';
+  return '#cccccc';
+}
+
+// ── QuoteProductRow ───────────────────────────────────────────────────────────
+// Compact inline product editor for the Quote Builder workspace.
+// Replaces ConfiguredProductEditor — no category browser, no wizard.
+// Each product: Type | Style (searchable) | Color | Sizes grid
+
+interface QuoteProductRowProps {
+  cp: ConfiguredProduct;
+  idx: number;
+  onChange: (cp: ConfiguredProduct) => void;
+  onDuplicate: () => void;
+  onRemove: () => void;
+  onUseForMockup: () => void;
+  canRemove: boolean;
+  allProducts: CatalogProductLite[];
+}
+
+function QuoteProductRow({
+  cp,
+  idx,
+  onChange,
+  onDuplicate,
+  onRemove,
+  onUseForMockup,
+  canRemove,
+  allProducts,
+}: QuoteProductRowProps) {
+  const [styleSearch, setStyleSearch] = useState('');
+
+  // Fetch colors for the linked catalog product (cached by React Query)
+  const { colors: catalogColors } = useProductCatalog({
+    mode: 'internal',
+    productId: cp.productId ?? undefined,
+    enabled: !!cp.productId,
+  });
+
+  const sizes = cp.colorVariants?.[0]?.sizes ?? EMPTY_SIZES;
+  const color = cp.colorVariants?.[0]?.color ?? '';
+  const productType = cp.category ?? cp.productType ?? 'T-Shirts';
+
+  const styleLabel = useMemo(() => {
+    if (cp.productId) return [cp.styleNumber, cp.styleName].filter(Boolean).join(' ');
+    return cp.productLabel || cp.styleNumber || cp.styleName || '';
+  }, [cp.productId, cp.styleNumber, cp.styleName, cp.productLabel]);
+
+  const filteredProducts = useMemo(() => {
+    const byType = filterByProductType(allProducts, productType);
+    if (!styleSearch.trim()) return byType.slice(0, 25);
+    const q = styleSearch.toLowerCase();
+    return byType
+      .filter(
+        (p) =>
+          p.styleNumber?.toLowerCase().includes(q) ||
+          p.name?.toLowerCase().includes(q) ||
+          p.brand?.toLowerCase().includes(q),
+      )
+      .slice(0, 20);
+  }, [allProducts, productType, styleSearch]);
+
+  const productRowTotal = useMemo(
+    () => QUOTE_SIZES.reduce((sum, { key }) => sum + (((sizes as any)[key]) || 0), 0),
+    [sizes],
+  );
+
+  const handleSizeChange = useCallback(
+    (key: string, val: string) => {
+      const num = parseInt(val, 10);
+      const safe = isNaN(num) || num < 0 ? 0 : num;
+      onChange({
+        ...cp,
+        colorVariants: [
+          { color, sizes: { ...(cp.colorVariants?.[0]?.sizes ?? EMPTY_SIZES), [key]: safe } },
+          ...(cp.colorVariants?.slice(1) ?? []),
+        ],
+      });
+    },
+    [cp, color, onChange],
+  );
+
+  const handleColorChange = useCallback(
+    (newColor: string) => {
+      onChange({
+        ...cp,
+        colorVariants: [
+          { color: newColor, sizes: cp.colorVariants?.[0]?.sizes ?? EMPTY_SIZES },
+          ...(cp.colorVariants?.slice(1) ?? []),
+        ],
+      });
+    },
+    [cp, onChange],
+  );
+
+  const handleSelectCatalogProduct = useCallback(
+    (p: CatalogProductLite, closeFn: () => void) => {
+      closeFn();
+      setStyleSearch('');
+      onChange({
+        ...cp,
+        productId: p.id,
+        styleNumber: p.styleNumber,
+        styleName: p.name,
+        brand: p.brand,
+        category: p.category ?? productType,
+        productType: p.category ?? productType,
+        productLabel: `${p.styleNumber} ${p.name}`.trim(),
+      });
+    },
+    [cp, onChange, productType],
+  );
+
+  const handleCustomStyle = useCallback(
+    (text: string, closeFn: () => void) => {
+      closeFn();
+      setStyleSearch('');
+      onChange({
+        ...cp,
+        productId: undefined,
+        styleNumber: '',
+        styleName: text,
+        productLabel: text,
+      });
+    },
+    [cp, onChange],
+  );
+
+  const colorHex = resolveColorHex(color, catalogColors);
+  const isLightColor =
+    colorHex.toLowerCase() === '#f5f5f5' || colorHex.toLowerCase() === '#ffffff';
+
+  return (
+    <View style={pStyles.row}>
+      {/* Controls: Badge | Type | Style | Color | Kebab */}
+      <View style={pStyles.controls}>
+        <View style={pStyles.badge}>
+          <Text style={pStyles.badgeText}>{idx + 1}</Text>
+        </View>
+
+        {/* Product Type */}
+        <View style={pStyles.typeCol}>
+          <Text style={pStyles.colLabel}>PRODUCT TYPE</Text>
+          <OverlayMenu
+            menuWidth={170}
+            align="left"
+            trigger={({ open }) => (
+              <TouchableOpacity style={pStyles.dropBtn} onPress={open} activeOpacity={0.7}>
+                <Text style={pStyles.dropBtnText} numberOfLines={1}>{productType}</Text>
+                <ChevronDown size={11} color={Colors.light.textSecondary} />
+              </TouchableOpacity>
+            )}
+          >
+            {({ close }) => (
+              <>
+                {QUOTE_PRODUCT_TYPES.map((t) => (
+                  <TouchableOpacity
+                    key={t}
+                    style={pStyles.menuItem}
+                    onPress={() => { close(); onChange({ ...cp, category: t, productType: t }); }}
+                  >
+                    <Text style={[pStyles.menuItemText, productType === t && pStyles.menuItemActive]}>
+                      {t}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </>
+            )}
+          </OverlayMenu>
+        </View>
+
+        {/* Product Style (searchable) */}
+        <View style={pStyles.styleCol}>
+          <Text style={pStyles.colLabel}>PRODUCT STYLE</Text>
+          <OverlayMenu
+            menuWidth={300}
+            align="left"
+            trigger={({ open }) => (
+              <TouchableOpacity style={pStyles.dropBtn} onPress={open} activeOpacity={0.7}>
+                <Text style={pStyles.dropBtnText} numberOfLines={1}>
+                  {styleLabel || 'Select style...'}
+                </Text>
+                <ChevronDown size={11} color={Colors.light.textSecondary} />
+              </TouchableOpacity>
+            )}
+          >
+            {({ close }) => (
+              <View>
+                <View style={pStyles.searchRow}>
+                  <Search size={13} color={Colors.light.textSecondary} />
+                  <TextInput
+                    style={pStyles.searchInput}
+                    value={styleSearch}
+                    onChangeText={setStyleSearch}
+                    placeholder="Search styles..."
+                    placeholderTextColor={Colors.light.textSecondary}
+                    autoFocus
+                  />
+                </View>
+                <ScrollView style={pStyles.searchResults} keyboardShouldPersistTaps="handled">
+                  {filteredProducts.map((p) => (
+                    <TouchableOpacity
+                      key={p.id}
+                      style={[pStyles.menuItem, cp.productId === p.id && pStyles.menuItemSelectedBg]}
+                      onPress={() => handleSelectCatalogProduct(p, close)}
+                    >
+                      <Text style={pStyles.catalogNum}>{p.styleNumber}</Text>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={pStyles.catalogName} numberOfLines={1}>{p.name}</Text>
+                        <Text style={pStyles.catalogBrand}>{p.brand}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                  {styleSearch.trim().length > 0 && filteredProducts.length === 0 && (
+                    <TouchableOpacity
+                      style={pStyles.customOption}
+                      onPress={() => handleCustomStyle(styleSearch.trim(), close)}
+                    >
+                      <Text style={pStyles.customOptionText}>
+                        Use "{styleSearch.trim()}" as custom style
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  {styleSearch.trim().length > 0 && filteredProducts.length > 0 && (
+                    <TouchableOpacity
+                      style={pStyles.customOption}
+                      onPress={() => handleCustomStyle(styleSearch.trim(), close)}
+                    >
+                      <Text style={pStyles.customOptionText}>
+                        Use "{styleSearch.trim()}" as custom style
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  {!styleSearch.trim() && allProducts.length === 0 && (
+                    <Text style={pStyles.emptyHint}>Loading catalog...</Text>
+                  )}
+                  {!styleSearch.trim() && allProducts.length > 0 && filteredProducts.length === 0 && (
+                    <Text style={pStyles.emptyHint}>No products in this category</Text>
+                  )}
+                </ScrollView>
+              </View>
+            )}
+          </OverlayMenu>
+        </View>
+
+        {/* Color */}
+        <View style={pStyles.colorCol}>
+          <Text style={pStyles.colLabel}>COLOR</Text>
+          <OverlayMenu
+            menuWidth={200}
+            align="right"
+            trigger={({ open }) => (
+              <TouchableOpacity style={pStyles.colorBtn} onPress={open} activeOpacity={0.7}>
+                <View
+                  style={[
+                    pStyles.colorDot,
+                    { backgroundColor: colorHex },
+                    isLightColor && pStyles.colorDotBorder,
+                  ]}
+                />
+                <Text style={pStyles.dropBtnText} numberOfLines={1}>{color || 'Color'}</Text>
+                <ChevronDown size={11} color={Colors.light.textSecondary} />
+              </TouchableOpacity>
+            )}
+          >
+            {({ close }) => (
+              <View>
+                {catalogColors.length > 0 ? (
+                  <ScrollView style={{ maxHeight: 200 }} keyboardShouldPersistTaps="handled">
+                    {catalogColors.map((c) => (
+                      <TouchableOpacity
+                        key={c.name}
+                        style={[pStyles.colorItem, color === c.name && pStyles.menuItemSelectedBg]}
+                        onPress={() => { close(); handleColorChange(c.name); }}
+                      >
+                        <View style={[pStyles.colorDot, { backgroundColor: c.hex || '#888' }]} />
+                        <Text style={pStyles.menuItemText}>{c.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                ) : (
+                  <View style={pStyles.colorFreeEntry}>
+                    <Text style={pStyles.colorFreeLabel}>Enter color name:</Text>
+                    <TextInput
+                      style={pStyles.colorFreeInput}
+                      value={color}
+                      onChangeText={handleColorChange}
+                      placeholder="e.g. Black"
+                      placeholderTextColor={Colors.light.textSecondary}
+                      returnKeyType="done"
+                      onSubmitEditing={close}
+                    />
+                  </View>
+                )}
+              </View>
+            )}
+          </OverlayMenu>
+        </View>
+        <OverlayMenu
+          menuWidth={185}
+          align="right"
+          trigger={({ open }) => (
+            <TouchableOpacity
+              onPress={open}
+              style={pStyles.kebabBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MoreVertical size={15} color={Colors.light.textSecondary} />
+            </TouchableOpacity>
+          )}
+        >
+          {({ close }) => (
+            <>
+              <TouchableOpacity
+                style={pStyles.menuItem}
+                onPress={() => { close(); onDuplicate(); }}
+              >
+                <Copy size={13} color={Colors.light.text} />
+                <Text style={pStyles.menuItemText}>Duplicate Product</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={pStyles.menuItem}
+                onPress={() => { close(); onUseForMockup(); }}
+              >
+                <Brush size={13} color={Colors.light.text} />
+                <Text style={pStyles.menuItemText}>Use for Mockup</Text>
+              </TouchableOpacity>
+              {canRemove && (
+                <TouchableOpacity
+                  style={pStyles.menuItem}
+                  onPress={() => { close(); onRemove(); }}
+                >
+                  <Trash2 size={13} color={Colors.light.error} />
+                  <Text style={[pStyles.menuItemText, { color: Colors.light.error }]}>
+                    Remove Product
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
+        </OverlayMenu>
+      </View>
+
+      {/* Sizes grid: XS SM MD LG XL 2XL 3XL 4XL | TOTAL */}
+      <View style={pStyles.sizesRow}>
+        {QUOTE_SIZES.map(({ key, label }) => (
+          <View key={key} style={pStyles.sizeCell}>
+            <Text style={pStyles.sizeLabel}>{label}</Text>
+            <TextInput
+              style={pStyles.sizeInput}
+              value={(sizes as any)[key] > 0 ? String((sizes as any)[key]) : ''}
+              onChangeText={(v) => handleSizeChange(key, v)}
+              keyboardType="number-pad"
+              placeholder="0"
+              placeholderTextColor={Colors.light.border}
+              maxLength={4}
+              selectTextOnFocus
+            />
+          </View>
+        ))}
+        <View style={pStyles.totalCell}>
+          <Text style={pStyles.sizeLabel}>TOTAL</Text>
+          <Text style={pStyles.totalValue}>{productRowTotal}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const pStyles = StyleSheet.create({
+  row: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    paddingTop: 14,
+    paddingBottom: 10,
+  },
+  controls: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-end' as const,
+    gap: 6,
+    paddingHorizontal: 14,
+    marginBottom: 8,
+  },
+  badge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Colors.light.tint,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    flexShrink: 0,
+    marginBottom: 4,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700' as const,
+  },
+  colLabel: {
+    fontSize: 9,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.4,
+    marginBottom: 4,
+  },
+  typeCol: { width: 110, flexShrink: 0 },
+  styleCol: { flex: 1, minWidth: 0 },
+  colorCol: { width: 110, flexShrink: 0 },
+  dropBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+    height: 34,
+  },
+  dropBtnText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.light.text,
+  },
+  colorBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 5,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+    height: 34,
+  },
+  colorDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    flexShrink: 0,
+  },
+  colorDotBorder: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
+  kebabBtn: {
+    width: 28,
+    height: 30,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    flexShrink: 0,
+  },
+  productHeader: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.light.border,
+    backgroundColor: Colors.light.background,
+  },
+  productNameDisplay: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: Colors.light.text,
+    flex: 1,
+    minWidth: 0,
+  },
+  headerColorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    flexShrink: 0,
+  },
+  headerColorName: {
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+    fontWeight: '500' as const,
+    maxWidth: 110,
+    flexShrink: 1,
+  },
+  searchRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.light.text,
+    paddingVertical: 0,
+  },
+  searchResults: { maxHeight: 220 },
+  menuItem: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.light.border,
+  },
+  menuItemText: {
+    fontSize: 13,
+    color: Colors.light.text,
+    flex: 1,
+  },
+  menuItemActive: {
+    color: Colors.light.tint,
+    fontWeight: '700' as const,
+  },
+  menuItemSelectedBg: {
+    backgroundColor: Colors.light.highlightBg,
+  },
+  catalogNum: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: Colors.light.tint,
+    width: 46,
+    flexShrink: 0,
+  },
+  catalogName: {
+    fontSize: 12,
+    color: Colors.light.text,
+  },
+  catalogBrand: {
+    fontSize: 10,
+    color: Colors.light.textSecondary,
+  },
+  customOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    backgroundColor: '#FFF8F5',
+  },
+  customOptionText: {
+    fontSize: 12,
+    color: Colors.light.tint,
+    fontStyle: 'italic' as const,
+  },
+  emptyHint: {
+    padding: 12,
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    fontStyle: 'italic' as const,
+  },
+  colorItem: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.light.border,
+  },
+  colorFreeEntry: { padding: 12 },
+  colorFreeLabel: {
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+    marginBottom: 6,
+  },
+  colorFreeInput: {
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    fontSize: 13,
+    color: Colors.light.text,
+    backgroundColor: Colors.light.surface,
+  },
+  sizesRow: {
+    flexDirection: 'row' as const,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 6,
+    alignItems: 'flex-end' as const,
+  },
+  sizeCell: {
+    flex: 1,
+    alignItems: 'center' as const,
+  },
+  sizeLabel: {
+    fontSize: 9,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase' as const,
+    marginBottom: 4,
+    letterSpacing: 0.3,
+    textAlign: 'center' as const,
+  },
+  sizeInput: {
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 5,
+    alignSelf: 'stretch' as const,
+    height: 36,
+    textAlign: 'center' as const,
+    fontSize: 14,
+    color: Colors.light.text,
+    fontWeight: '500' as const,
+  },
+  totalCell: {
+    flex: 1,
+    alignItems: 'center' as const,
+  },
+  totalValue: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: Colors.light.tint,
+    textAlign: 'center' as const,
+    height: 36,
+    lineHeight: 36,
+  },
+});
+
+// ── LineItemCard ──────────────────────────────────────────────────────────────
 
 interface LineItemCardProps {
   item: LineItem;
   index: number;
   onChangeItem: (id: string, item: LineItem) => void;
   onDelete: (id: string) => void;
+  /** Optional: duplicate this entire line item. */
+  onDuplicate?: () => void;
 }
 
-
-function LineItemCardFn({ item, index, onChangeItem, onDelete: onDeleteProp }: LineItemCardProps) {
+function LineItemCardFn({
+  item,
+  index,
+  onChangeItem,
+  onDelete: onDeleteProp,
+  onDuplicate,
+}: LineItemCardProps) {
   const itemRef = useRef(item);
   itemRef.current = item;
-  const onChange = useCallback((updated: LineItem) => onChangeItem(item.id, updated), [item.id, onChangeItem]);
+  const onChange = useCallback(
+    (updated: LineItem) => onChangeItem(item.id, updated),
+    [item.id, onChangeItem],
+  );
   const handleDelete = useCallback(() => onDeleteProp(item.id), [item.id, onDeleteProp]);
 
   const [expanded, setExpanded] = useState(true);
   const [showDesigner, setShowDesigner] = useState(false);
   const [variantPickerVisible, setVariantPickerVisible] = useState(false);
-  const [mockupVariantIdx, setMockupVariantIdx] = useState(0);
-  const [mockupLinkedVariantIdx, setMockupLinkedVariantIdx] = useState<number | null>(null);
-  const [showLocation34, setShowLocation34] = useState(!!(item.location3 || item.location4));
-  const [serviceDropdownOpen, setServiceDropdownOpen] = useState(false);
+  const [selectedProductIndex, setSelectedProductIndex] = useState(0);
+  const [locationRowCount, setLocationRowCount] = useState(1);
 
   const [dtfWidth1, setDtfWidth1] = useState('');
   const [dtfHeight1, setDtfHeight1] = useState('');
   const [dtfWidth2, setDtfWidth2] = useState('');
   const [dtfHeight2, setDtfHeight2] = useState('');
-  const [dtfRate, setDtfRate] = useState('0.03');
+  const [dtfRate, setDtfRate] = useState('003');
+  const [focusedDtfField, setFocusedDtfField] = useState<string | null>(null);
   const [embStitchCount1, setEmbStitchCount1] = useState('');
   const [embStitchCount2, setEmbStitchCount2] = useState('');
-  const [includeDigitization, setIncludeDigitization] = useState(false);
+  const DIGITIZATION_ROW_ID = '__digitization_fee__';
+  const [includeDigitization, setIncludeDigitizationState] = useState(
+    () => (item.productionCosts ?? []).some((r) => r.id === DIGITIZATION_ROW_ID),
+  );
 
   const { isMobile } = useBreakpoint();
   const useSideBySide = Platform.OS === 'web' && !isMobile;
+  const { upcharges } = useProductPricing();
+
+  const dbServiceStyles = useEnabledServiceStyles();
+  const { data: costLibrary = [] } = useQuery<any[]>({
+    queryKey: ['cost-library', 'production'],
+    queryFn: async () => {
+      const r = await fetch('/api/cost-library?category=production');
+      if (!r.ok) throw new Error('Failed to load');
+      return r.json();
+    },
+    networkMode: 'always',
+    staleTime: 60_000,
+  });
+
+  const serviceStyleList: string[] = dbServiceStyles.length > 0
+    ? dbServiceStyles.map((s) => s.name)
+    : (SERVICE_STYLES as readonly string[]).slice();
 
   const isPromotional = item.serviceStyle === 'Promotional';
   const isDTF = item.serviceStyle === 'Direct to Film';
@@ -73,37 +807,98 @@ function LineItemCardFn({ item, index, onChangeItem, onDelete: onDeleteProp }: L
   const isDTFTransfers = item.serviceStyle === 'DTF Transfers';
   const isDesignWork = item.serviceStyle === 'Design Work';
   const hasSecondLocation = !!(item.location2 && item.location2.length > 0);
-  // Design Work has no garment sizes; treat it the same as Promotional for qty calc.
+  const hasCalculator = isDTF || isDTFTransfers || isEmbroidery;
+
   const quantity = useMemo(
     () => getTotalQuantity(item.sizes, isPromotional || isDesignWork),
-    [item.sizes, isPromotional, isDesignWork]
+    [item.sizes, isPromotional, isDesignWork],
   );
-  const lineItemCalcs = useMemo(() => calculateLineItemSubtotal(item), [item]);
+  const lineItemCalcs = useMemo(() => calculateLineItemSubtotal(item, upcharges), [item, upcharges]);
+
+  // ── Multi-product model ───────────────────────────────────────────────────
+  const products = useMemo(() => getLineItemProducts(item), [item]);
+  const productCount = products.length;
+  const safeProductIndex = Math.min(selectedProductIndex, Math.max(0, productCount - 1));
+
+  // ── Catalog for product rows (fetched once, passed down) ──────────────────
+  const { results: catalogProducts } = useProductCatalog({ mode: 'internal' });
+
+  // ── Location slots (fixed 4, dropdown-per-row) ────────────────────────────
+  const locationSlots = useMemo(
+    () =>
+      [item.location1, item.location2, item.location3, item.location4].map(
+        (l) => l ?? '',
+      ),
+    [item.location1, item.location2, item.location3, item.location4],
+  );
 
   const dropZoneRef = useRef<any>(null);
 
-  // ── Mockup variant selection ───────────────────────────────────────────────
+  const productLabel = useCallback(
+    (cp: ConfiguredProduct, idx: number): string => {
+      if (cp.productLabel) return cp.productLabel;
+      const composed = `${cp.styleNumber ?? ''} ${cp.styleName ?? ''}`.trim();
+      return composed || `Product ${idx + 1}`;
+    },
+    [],
+  );
+
+  // ── Mockup product selection ──────────────────────────────────────────────
   const handleDesignMockup = () => {
-    if ((item.garmentVariants ?? []).length <= 1) {
-      setMockupVariantIdx(0);
+    if (productCount <= 1) {
+      setSelectedProductIndex(0);
       setShowDesigner(true);
     } else {
       setVariantPickerVisible(true);
     }
   };
 
-  const handlePickVariantForMockup = (idx: number) => {
-    setMockupVariantIdx(idx);
+  const handlePickProductForMockup = (idx: number) => {
+    setSelectedProductIndex(idx);
     setVariantPickerVisible(false);
     setShowDesigner(true);
   };
 
-  // Promotional flat quantity state
+  // ── Product CRUD ──────────────────────────────────────────────────────────
+  const handleProductChange = useCallback(
+    (idx: number, cp: ConfiguredProduct) =>
+      onChange(updateProductAt(itemRef.current, idx, cp)),
+    [onChange],
+  );
+  const handleAddProduct = useCallback(
+    () => onChange(addProduct(itemRef.current)),
+    [onChange],
+  );
+  const handleDuplicateProduct = useCallback(
+    (idx: number) => onChange(duplicateProductAt(itemRef.current, idx)),
+    [onChange],
+  );
+  const handleRemoveProduct = useCallback(
+    (idx: number) => {
+      onChange(removeProductAt(itemRef.current, idx));
+      setSelectedProductIndex((cur) => (cur >= idx && cur > 0 ? cur - 1 : cur));
+    },
+    [onChange],
+  );
+
+  // ── Promotional flat quantity ─────────────────────────────────────────────
   const [flatQty, setFlatQty] = useState(item.sizes.flat > 0 ? item.sizes.flat.toString() : '');
   const handleFlatQtyChange = (val: string) => {
     const num = parseInt(val) || 0;
     setFlatQty(val);
-    onChange({ ...item, sizes: { ...item.sizes, flat: num } });
+    const base = itemRef.current;
+    const prods = getLineItemProducts(base);
+    const p0 = prods[0];
+    const cv0 = p0.colorVariants?.[0] ?? { color: '', sizes: { ...EMPTY_SIZES } };
+    onChange(
+      updateProductAt(base, 0, {
+        ...p0,
+        colorVariants: [
+          { ...cv0, sizes: { ...cv0.sizes, flat: num } },
+          ...(p0.colorVariants?.slice(1) ?? []),
+        ],
+      }),
+    );
   };
 
   const parseNumber = (value: string): number => {
@@ -123,12 +918,37 @@ function LineItemCardFn({ item, index, onChangeItem, onDelete: onDeleteProp }: L
   const dtfHeight1Num = parseNumber(dtfHeight1);
   const dtfWidth2Num = parseNumber(dtfWidth2);
   const dtfHeight2Num = parseNumber(dtfHeight2);
-  const dtfRateNum = parseNumber(dtfRate);
+  const dtfRateNum = parseCents(dtfRate);
   const dtfSquareInches1 = dtfWidth1Num * dtfHeight1Num;
   const dtfCalculatedCost1 = Math.round(dtfSquareInches1 * dtfRateNum * 100) / 100;
   const dtfSquareInches2 = dtfWidth2Num * dtfHeight2Num;
   const dtfCalculatedCost2 = Math.round(dtfSquareInches2 * dtfRateNum * 100) / 100;
   const dtfTotalCalculatedCost = dtfCalculatedCost1 + dtfCalculatedCost2;
+
+  // RATE: POS / banking style entry — every digit fills from the hundredths
+  // place and shifts left (e.g. "3" -> 0.03). parseInt collapses leading zeros
+  // so backspace shifts right cleanly and select-all-then-type starts fresh.
+  const applyPosEdit = (text: string): string => {
+    const n = parseInt(text.replace(/\D/g, ''), 10);
+    return Number.isNaN(n) || n === 0 ? '' : String(n);
+  };
+  const dtfFieldVal = (id: string, raw: string) =>
+    focusedDtfField === id && raw === '' ? '' : formatCents(raw);
+
+  // WIDTH / HEIGHT: whole-number-first decimal entry — typed digits are whole
+  // inches ("12" -> 12.00, never 0.12). Quarter-inch values are typed with a
+  // dot ("12.25"). Raw text is stored, shown as-is while focused, and formatted
+  // to two decimals once blurred.
+  const normalizeDim = (raw: string): string => {
+    const n = parseFloat(raw);
+    return Number.isNaN(n) || n === 0 ? '' : String(n);
+  };
+  const dimFieldVal = (id: string, raw: string): string => {
+    if (focusedDtfField === id) return raw;
+    if (raw === '') return '';
+    const n = parseFloat(raw);
+    return Number.isNaN(n) ? '' : n.toFixed(2);
+  };
 
   const EMB_RATE_PER_1000 = 2.0;
   const EMB_MIN_STITCHES = 3000;
@@ -148,51 +968,119 @@ function LineItemCardFn({ item, index, onChangeItem, onDelete: onDeleteProp }: L
   };
 
   const handleServiceStyleChange = (style: typeof item.serviceStyle) => {
-    const cp = getConfiguredProduct(item);
-    const synced = syncLegacyFields(item, { ...cp, decorationMethod: style });
-    const final: LineItem = {
-      ...synced,
-      sizes: style === 'Promotional' ? { ...EMPTY_SIZES, flat: item.sizes.flat || 0 } : synced.sizes,
-      applicator: style === 'Direct to Film' && !item.applicator ? 'Katalyst Ko Printshop' : synced.applicator,
+    const base = itemRef.current;
+    const dbStyle = dbServiceStyles.find((s) => s.name === style);
+    const updates: Parameters<typeof updateDesignFields>[1] = {
+      serviceStyle: style,
+      applicator:
+        style === 'Direct to Film' && !base.applicator
+          ? 'Katalyst Ko Printshop'
+          : base.applicator,
     };
-    onChange(final);
+    if (dbStyle?.defaultMargin != null) {
+      updates.markupEach = dbStyle.defaultMargin;
+    }
+    const updated = updateDesignFields(base, updates);
+    if (dbStyle && dbStyle.defaultProductionCosts.length > 0) {
+      const newCosts: QuoteAdjustment[] = dbStyle.defaultProductionCosts
+        .map((costId) => {
+          const entry = costLibrary.find((e: any) => e.id === costId && e.enabled);
+          if (!entry) return null;
+          return {
+            id: `ss_${costId}_${Date.now()}`,
+            name: entry.name,
+            type: entry.calculationType as QuoteAdjustment['type'],
+            rate: entry.rate,
+            quantity: 1,
+          } satisfies QuoteAdjustment;
+        })
+        .filter(Boolean) as QuoteAdjustment[];
+      if (newCosts.length > 0) {
+        onChange({ ...updated, productionCosts: newCosts });
+        return;
+      }
+    }
+    onChange(updated);
   };
 
   const applyDTFCost = () => {
     if (dtfTotalCalculatedCost > 0) {
-      onChange({ ...item, serviceCostEach: dtfTotalCalculatedCost });
+      onChange(
+        updateDesignFields(itemRef.current, { serviceCostEach: dtfTotalCalculatedCost }),
+      );
     }
   };
 
   const applyEmbroideryCost = () => {
     if (embTotalCost > 0) {
-      onChange({
-        ...item,
-        serviceCostEach: embTotalCost,
-        serviceFeeEach: includeDigitization ? DIGITIZATION_FEE : 0,
-      });
+      onChange(
+        updateDesignFields(itemRef.current, {
+          serviceCostEach: embTotalCost,
+          serviceFeeEach: 0,
+        }),
+      );
     }
   };
 
   const updateLocation = (idx: number, value: string): LineItem => {
-    const cp = getConfiguredProduct(item);
-    const locs = Array.from({ length: 4 }, (_, i) => cp.printLocations[i] ?? '');
+    const base = itemRef.current;
+    const locs = [base.location1, base.location2, base.location3, base.location4].map(
+      (l) => l ?? '',
+    );
     locs[idx] = value;
     while (locs.length > 0 && !locs[locs.length - 1]) locs.pop();
-    return {
-      ...item,
+    return updateDesignFields(base, {
       location1: locs[0] ?? '',
       location2: locs[1] ?? '',
       location3: locs[2],
       location4: locs[3],
-      configuredProduct: { ...cp, printLocations: locs },
-    };
+    });
   };
 
-  const updateLocationDetails = (value: string): LineItem => {
-    const cp = getConfiguredProduct(item);
-    return { ...item, locationDetails: value, configuredProduct: { ...cp, locationDetails: value } };
-  };
+  const highestFilledLocation = locationSlots.reduce(
+    (m, l, i) => (l ? i : m),
+    -1,
+  );
+  const visibleLocationCount = Math.min(
+    4,
+    Math.max(1, highestFilledLocation + 1, locationRowCount),
+  );
+  const handleAddLocationRow = () =>
+    setLocationRowCount(
+      Math.min(4, Math.max(locationRowCount, highestFilledLocation + 1) + 1),
+    );
+
+  const updateLocationDetails = (value: string): LineItem =>
+    updateDesignFields(itemRef.current, { locationDetails: value });
+
+  // ── PRODUCTION COSTS / OTHER CHARGES itemized tables ──────────────────────
+  const productionCosts = item.productionCosts ?? [];
+  const otherCharges = item.otherCharges ?? [];
+  const updateProductionCosts = useCallback(
+    (rows: QuoteAdjustment[]) =>
+      onChange(updateDesignFields(itemRef.current, { productionCosts: rows })),
+    [onChange],
+  );
+  const updateOtherCharges = useCallback(
+    (rows: QuoteAdjustment[]) =>
+      onChange(updateDesignFields(itemRef.current, { otherCharges: rows })),
+    [onChange],
+  );
+
+  const handleDigitizationToggle = useCallback(() => {
+    const checked = !includeDigitization;
+    setIncludeDigitizationState(checked);
+    const current = itemRef.current.productionCosts ?? [];
+    const next: QuoteAdjustment[] = checked
+      ? current.some((r) => r.id === DIGITIZATION_ROW_ID)
+        ? current
+        : [...current, { id: DIGITIZATION_ROW_ID, name: 'Digitization Fee', type: 'flat' as const, rate: DIGITIZATION_FEE, quantity: 1 }]
+      : current.filter((r) => r.id !== DIGITIZATION_ROW_ID);
+    onChange(updateDesignFields(itemRef.current, {
+      productionCosts: next,
+      ...(checked ? {} : { serviceFeeEach: 0 }),
+    }));
+  }, [includeDigitization, onChange]);
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
@@ -217,7 +1105,8 @@ function LineItemCardFn({ item, index, onChangeItem, onDelete: onDeleteProp }: L
       if (file && file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = (ev: any) => {
-          if (ev.target?.result) onChange({ ...itemRef.current, mockupUri: ev.target.result as string });
+          if (ev.target?.result)
+            onChange(updateDesignFields(itemRef.current, { mockupUri: ev.target.result as string }));
         };
         reader.readAsDataURL(file);
       }
@@ -230,650 +1119,1000 @@ function LineItemCardFn({ item, index, onChangeItem, onDelete: onDeleteProp }: L
     };
   }, []);
 
-  const handlePickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false,
-      quality: 0.5,
-      base64: true,
-    });
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      const mimeType = asset.mimeType || 'image/jpeg';
-      const uri = asset.base64 ? `data:${mimeType};base64,${asset.base64}` : asset.uri;
-      onChange({ ...item, mockupUri: uri });
-    }
-  };
-
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      {/* ── Card Header ── */}
-      <TouchableOpacity style={styles.header} onPress={() => setExpanded(!expanded)}>
-        <View style={styles.headerLeft}>
+
+      {/* ── Header (always visible) ── */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.headerLeftPress}
+          onPress={() => setExpanded(!expanded)}
+          activeOpacity={0.8}
+        >
           <View style={styles.indexBadge}>
             <Text style={styles.indexText}>{index + 1}</Text>
           </View>
-          {item.mockupUri && !expanded && (
-            <Image source={{ uri: item.mockupUri }} style={styles.headerThumbnail} resizeMode="cover" />
+          {item.mockupUri && (
+            <Image
+              source={{ uri: item.mockupUri }}
+              style={styles.headerThumbnail}
+              resizeMode="cover"
+            />
           )}
           <View style={styles.headerTextWrap}>
             <Text style={styles.title} numberOfLines={1}>
               {item.designName || 'Untitled Design'}
             </Text>
             <Text style={styles.subtitle}>
-              {item.serviceStyle} • {quantity} pcs
+              {item.serviceStyle}
+              {productCount > 1 ? ` • ${productCount} Products` : ''} • {quantity} pcs
             </Text>
           </View>
-        </View>
+        </TouchableOpacity>
+
         <View style={styles.headerRight}>
-          <TouchableOpacity onPress={handleDelete} style={styles.deleteBtn}>
-            <Trash2 size={18} color="#ff6b6b" />
-          </TouchableOpacity>
-          {expanded ? (
-            <ChevronUp size={20} color="rgba(255,255,255,0.7)" />
-          ) : (
-            <ChevronDown size={20} color="rgba(255,255,255,0.7)" />
-          )}
-        </View>
-      </TouchableOpacity>
-
-      {expanded && (
-        <View style={[styles.content, useSideBySide && styles.contentWeb, isMobile && styles.contentMobile]}>
-
-          {/* ── Mockup Panel ── */}
-          <View style={[styles.mockupPanel, useSideBySide && styles.mockupPanelWeb, isMobile && styles.mockupPanelMobile]}>
-            <Text style={styles.mockupLabel}>MOCKUP</Text>
-            {item.mockupUri ? (
-              <View style={styles.mockupImageContainer}>
-                <Image source={{ uri: item.mockupUri }} style={styles.mockupImage} resizeMode="contain" />
-                <View style={styles.mockupActions}>
-                  <TouchableOpacity style={styles.mockupDesignBtn} onPress={handleDesignMockup}>
-                    <Brush size={12} color="#fff" />
-                    <Text style={styles.mockupChangeBtnText}>Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.mockupChangeBtn} onPress={handlePickImage}>
-                    <RefreshCw size={12} color="#fff" />
-                    <Text style={styles.mockupChangeBtnText}>Upload</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.mockupRemoveBtn}
-                    onPress={() => onChange({ ...item, mockupUri: undefined })}
-                  >
-                    <X size={12} color={Colors.light.error} />
-                    <Text style={styles.mockupRemoveBtnText}>Remove</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              <View
-                ref={dropZoneRef}
-                style={styles.mockupPlaceholderContainer}
-              >
-                <TouchableOpacity style={styles.mockupDesignBtnLarge} onPress={handleDesignMockup}>
-                  <Brush size={22} color={Colors.light.tint} />
-                  <Text style={styles.mockupDesignBtnTitle}>Design Mockup</Text>
-                  <Text style={styles.mockupDesignBtnSub}>Select template + place artwork</Text>
-                </TouchableOpacity>
-                <View style={styles.mockupDivider}>
-                  <View style={styles.mockupDividerLine} />
-                  <Text style={styles.mockupDividerText}>or</Text>
-                  <View style={styles.mockupDividerLine} />
-                </View>
-                <TouchableOpacity style={styles.mockupUploadBtn} onPress={handlePickImage}>
-                  <Upload size={15} color={Colors.light.textSecondary} />
-                  <Text style={styles.mockupUploadBtnText}>Upload or Drop Image</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-
-          {/* Mockup Designer Modal */}
-          <MockupDesigner
-            visible={showDesigner}
-            onClose={() => setShowDesigner(false)}
-            onSave={(uri) => {
-              onChange({ ...item, mockupUri: uri });
-              setMockupLinkedVariantIdx(mockupVariantIdx);
-              setShowDesigner(false);
-            }}
-            initialMockupUri={item.mockupUri}
-            suggestedLocations={[item.location1, item.location2].filter(Boolean)}
-            initialVariant={{
-              vendor: item.apparelProvider,
-              product: (item.garmentVariants ?? [])[mockupVariantIdx]?.product,
-              color: (item.garmentVariants ?? [])[mockupVariantIdx]?.color,
-            }}
-            configuredProduct={getConfiguredProduct(item)}
-            onConfiguredProductChange={(cp) => {
-              onChange(syncLegacyFields(item, cp));
-            }}
-            onRequestChangeProduct={(item.garmentVariants ?? []).length > 1 ? () => {
-              setShowDesigner(false);
-              setVariantPickerVisible(true);
-            } : undefined}
-            onColorChange={(colorName) => {
-              const cp = getConfiguredProduct(item);
-              if (mockupVariantIdx < cp.colorVariants.length) {
-                const updatedCp = {
-                  ...cp,
-                  colorVariants: cp.colorVariants.map((cv, i) =>
-                    i === mockupVariantIdx ? { ...cv, color: colorName } : cv
-                  ),
-                };
-                onChange(syncLegacyFields(item, updatedCp));
-              }
-            }}
-          />
-
-          {/* Variant Picker — choose which product row to mock up */}
-          <Modal
-            visible={variantPickerVisible}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setVariantPickerVisible(false)}
+          <TouchableOpacity
+            style={styles.chevronBtn}
+            onPress={() => setExpanded(!expanded)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Pressable style={styles.vpOverlay} onPress={() => setVariantPickerVisible(false)} />
-            <View style={styles.vpPanel}>
-              <Text style={styles.vpTitle}>Which product to mock up?</Text>
-              {(item.garmentVariants ?? []).map((v, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  style={styles.vpRow}
-                  onPress={() => handlePickVariantForMockup(idx)}
-                >
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={styles.vpProduct} numberOfLines={1}>{v.product || '(No product)'}</Text>
-                    <Text style={styles.vpColor} numberOfLines={1}>{v.color || 'No color specified'}</Text>
-                  </View>
-                  <CheckCircle size={16} color={idx === mockupVariantIdx ? Colors.light.tint : Colors.light.border} />
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity style={styles.vpCancel} onPress={() => setVariantPickerVisible(false)}>
-                <Text style={styles.vpCancelText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </Modal>
-
-          {/* ── Form Fields ── */}
-          <View style={styles.formFieldsSection}>
-
-            {/* 1. Design Name */}
-            <FormInput
-              label="Design Name"
-              value={item.designName}
-              onChangeText={(v) => onChange({ ...item, designName: v })}
-              placeholder="Enter design name"
-              autoTitleCase
-            />
-
-            {/* 2. Service Style */}
-            {isMobile ? (
-              <View style={styles.serviceDropdownWrap}>
-                <Text style={styles.serviceDropdownLabel}>SERVICE STYLE</Text>
-                <TouchableOpacity
-                  style={styles.serviceDropdownBtn}
-                  onPress={() => setServiceDropdownOpen(v => !v)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.serviceDropdownValue}>{item.serviceStyle || 'Select style'}</Text>
-                  <ChevronDown size={14} color={Colors.light.textSecondary} />
-                </TouchableOpacity>
-                {serviceDropdownOpen && (
-                  <View style={styles.serviceDropdownList}>
-                    {(SERVICE_STYLES as readonly string[]).map((style) => {
-                      const active = item.serviceStyle === style;
-                      return (
-                        <TouchableOpacity
-                          key={style}
-                          style={[styles.serviceDropdownItem, active && styles.serviceDropdownItemActive]}
-                          onPress={() => {
-                            handleServiceStyleChange(style as typeof item.serviceStyle);
-                            setServiceDropdownOpen(false);
-                          }}
-                        >
-                          <Text style={[styles.serviceDropdownItemText, active && styles.serviceDropdownItemTextActive]}>
-                            {style}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                )}
-              </View>
+            {expanded ? (
+              <ChevronUp size={18} color="rgba(255,255,255,0.7)" />
             ) : (
-              <SegmentedControl
-                label="Service Style"
-                options={SERVICE_STYLES}
-                value={item.serviceStyle}
-                onChange={handleServiceStyleChange}
-                centered
-              />
+              <ChevronDown size={18} color="rgba(255,255,255,0.7)" />
             )}
-
-            {/* 3. Service Applicator + Product Source */}
-            <View style={[styles.row, isMobile && styles.rowMobile]}>
-              <View style={styles.halfField}>
-                <ComboBox
-                  label="Service Applicator"
-                  value={item.applicator}
-                  options={APPLICATORS}
-                  onChange={(v) => onChange({ ...item, applicator: v })}
-                  placeholder="Select applicator"
-                  autoTitleCase
-                />
-              </View>
-              <View style={styles.halfField}>
-                <ComboBox
-                  label="Product Source"
-                  value={item.apparelProvider}
-                  options={APPAREL_PROVIDERS}
-                  onChange={(v) => onChange({ ...item, apparelProvider: v })}
-                  placeholder="Select provider"
-                  autoTitleCase
-                />
-              </View>
-            </View>
-
-            {/* 4. Location #1 + #2 */}
-            {!isPromotional && (
-              <View style={[styles.row, isMobile && styles.rowMobile]}>
-                <View style={styles.halfField}>
-                  <ComboBox
-                    label="Location #1"
-                    value={item.location1}
-                    options={[...LOCATIONS]}
-                    onChange={(v) => onChange(updateLocation(0, v))}
-                    placeholder="Select location"
-                    autoTitleCase
-                  />
-                </View>
-                <View style={styles.halfField}>
-                  <ComboBox
-                    label="Location #2"
-                    value={item.location2}
-                    options={[...LOCATIONS]}
-                    onChange={(v) => onChange(updateLocation(1, v))}
-                    placeholder="Select location"
-                    autoTitleCase
-                  />
-                </View>
-              </View>
+          </TouchableOpacity>
+          <OverlayMenu
+            menuWidth={195}
+            align="right"
+            trigger={({ open }) => (
+              <TouchableOpacity
+                onPress={open}
+                style={styles.headerKebabBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+              >
+                <MoreVertical size={18} color="rgba(255,255,255,0.7)" />
+              </TouchableOpacity>
             )}
-
-            {/* 5. Expandable Location #3 + #4 */}
-            {!isPromotional && (
+          >
+            {({ close }) => (
               <>
-                {!showLocation34 ? (
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => { close(); handleDesignMockup(); }}
+                >
+                  <Brush size={14} color={Colors.light.tint} />
+                  <Text style={styles.menuItemText}>Design Mockup</Text>
+                </TouchableOpacity>
+                {onDuplicate && (
                   <TouchableOpacity
-                    style={styles.addLocationBtn}
-                    onPress={() => setShowLocation34(true)}
+                    style={styles.menuItem}
+                    onPress={() => { close(); onDuplicate(); }}
                   >
-                    <Plus size={13} color={Colors.light.tint} />
-                    <Text style={styles.addLocationBtnText}>Add Location #3 / #4</Text>
+                    <Copy size={14} color={Colors.light.textSecondary} />
+                    <Text style={styles.menuItemText}>Duplicate Line Item</Text>
                   </TouchableOpacity>
-                ) : (
-                  <View style={[styles.row, isMobile && styles.rowMobile]}>
-                    <View style={styles.halfField}>
-                      <ComboBox
-                        label="Location #3"
-                        value={item.location3 || ''}
-                        options={[...LOCATIONS]}
-                        onChange={(v) => onChange(updateLocation(2, v))}
-                        placeholder="Select location"
-                        autoTitleCase
-                      />
-                    </View>
-                    <View style={styles.halfField}>
-                      <ComboBox
-                        label="Location #4"
-                        value={item.location4 || ''}
-                        options={[...LOCATIONS]}
-                        onChange={(v) => onChange(updateLocation(3, v))}
-                        placeholder="Select location"
-                        autoTitleCase
-                      />
-                    </View>
-                  </View>
                 )}
+                <View style={styles.menuDivider} />
+                <TouchableOpacity
+                  style={styles.menuItemDanger}
+                  onPress={() => { close(); handleDelete(); }}
+                >
+                  <Trash2 size={14} color={Colors.light.error} />
+                  <Text style={styles.menuItemDangerText}>Delete Line Item</Text>
+                </TouchableOpacity>
               </>
             )}
+          </OverlayMenu>
+        </View>
+      </View>
 
-            {/* 6. Project Notes */}
-            <FormInput
-              label="Project Notes"
-              value={item.locationDetails}
-              onChangeText={(v) => onChange(updateLocationDetails(v))}
-              placeholder="e.g., 4x4 Logo, Size, Design specifics"
-              autoTitleCase
-            />
+      {/* ── MockupDesigner modal ── */}
+      <MockupDesigner
+        visible={showDesigner}
+        onClose={() => setShowDesigner(false)}
+        onSave={(uri) => {
+          onChange(updateDesignFields(itemRef.current, { mockupUri: uri }));
+          setShowDesigner(false);
+        }}
+        initialMockupUri={item.mockupUri}
+        suggestedLocations={[item.location1, item.location2].filter(Boolean)}
+        initialVariant={{
+          vendor: item.apparelProvider,
+          product: productLabel(products[safeProductIndex] ?? products[0], safeProductIndex),
+          color: (products[safeProductIndex] ?? products[0])?.colorVariants?.[0]?.color,
+        }}
+        configuredProduct={products[safeProductIndex] ?? products[0]}
+        onConfiguredProductChange={(cp) => {
+          handleProductChange(safeProductIndex, cp);
+        }}
+        onRequestChangeProduct={
+          productCount > 1
+            ? () => {
+                setShowDesigner(false);
+                setVariantPickerVisible(true);
+              }
+            : undefined
+        }
+        onColorChange={(colorName) => {
+          const cp = products[safeProductIndex] ?? products[0];
+          if (!cp) return;
+          const updatedCp: ConfiguredProduct = {
+            ...cp,
+            colorVariants: cp.colorVariants.length
+              ? cp.colorVariants.map((cv, i) =>
+                  i === 0 ? { ...cv, color: colorName } : cv,
+                )
+              : [{ color: colorName, sizes: { ...EMPTY_SIZES } }],
+          };
+          handleProductChange(safeProductIndex, updatedCp);
+        }}
+      />
 
-            {/* ── 7. Product / Size Variants ── */}
-            {isPromotional ? (
-              <View style={styles.promotionalQty}>
-                <Text style={styles.promotionalQtyLabel}>Flat Quantity</Text>
-                <TextInput
-                  style={styles.promotionalQtyInput}
-                  value={flatQty}
-                  onChangeText={handleFlatQtyChange}
-                  keyboardType="number-pad"
-                  placeholder="0"
-                  placeholderTextColor={Colors.light.textSecondary}
+      {/* ── Product picker modal ── */}
+      <Modal
+        visible={variantPickerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setVariantPickerVisible(false)}
+      >
+        <Pressable
+          style={styles.vpOverlay}
+          onPress={() => setVariantPickerVisible(false)}
+        />
+        <View style={styles.vpPanel}>
+          <Text style={styles.vpTitle}>Use this garment for the mockup?</Text>
+          {products.map((cp, idx) => {
+            const colorSummary = (cp.colorVariants ?? [])
+              .map((cv) => cv.color)
+              .filter(Boolean)
+              .join(', ');
+            return (
+              <TouchableOpacity
+                key={idx}
+                style={styles.vpRow}
+                onPress={() => handlePickProductForMockup(idx)}
+              >
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.vpProduct} numberOfLines={1}>
+                    Product #{idx + 1} — {productLabel(cp, idx)}
+                  </Text>
+                  <Text style={styles.vpColor} numberOfLines={1}>
+                    {colorSummary || 'No color specified'}
+                  </Text>
+                </View>
+                <CheckCircle
+                  size={16}
+                  color={idx === safeProductIndex ? Colors.light.tint : Colors.light.border}
                 />
+              </TouchableOpacity>
+            );
+          })}
+          <TouchableOpacity
+            style={styles.vpCancel}
+            onPress={() => setVariantPickerVisible(false)}
+          >
+            <Text style={styles.vpCancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+
+      {/* ── Expanded body ── */}
+      {expanded && (
+        <View style={styles.expandedBody}>
+
+          {/* ── Row 1: Design Details | Products + Sizes ── */}
+          <View style={[styles.twoColRow, useSideBySide && styles.twoColRowWeb]}>
+
+            {/* LEFT: Design Details panel */}
+            <View style={[styles.panel, useSideBySide && styles.designPanelWeb]}>
+              <View style={styles.panelHeader}>
+                <Text style={styles.panelTitle}>DESIGN DETAILS</Text>
               </View>
-            ) : (
-              <ConfiguredProductEditor
-                value={getConfiguredProduct(item)}
-                onChange={(cp) => onChange(syncLegacyFields(item, cp))}
-                surface="internalQuote"
-                mode="internal"
-                showSizes
-              />
-            )}
 
-            {/* ── Embroidery Calculator ── */}
-            {isEmbroidery && (
-              <View style={styles.embCalcSection}>
-                <Text style={styles.embCalcTitle}>Embroidery Cost Calculator</Text>
-                <Text style={styles.embCalcSubtitle}>Rate: $2.00 per 1,000 stitches (min 3,000)</Text>
-
-                <Text style={styles.embLocationLabel}>Location #1 {item.location1 ? `(${item.location1})` : ''}</Text>
-                <View style={styles.embInputRow}>
-                  <View style={styles.embInputGroup}>
-                    <Text style={styles.embInputLabel}>Stitch Count</Text>
-                    <View style={styles.embInputWrapper}>
-                      <TextInput
-                        style={styles.embInput}
-                        value={embStitchCount1}
-                        onChangeText={(text) => handleStitchCountChange(text, setEmbStitchCount1)}
-                        keyboardType="number-pad"
-                        placeholder="e.g. 5000"
-                        placeholderTextColor={Colors.light.textSecondary}
-                        maxLength={5}
+              <View style={[styles.designBody, useSideBySide && styles.designBodyRow]}>
+                {/* Mockup thumbnails sub-column (web only) */}
+                {useSideBySide && (
+                  <View style={styles.mockupThumbs}>
+                    <Text style={styles.mockupViewLabel}>FRONT</Text>
+                    {item.mockupUri ? (
+                      <Image
+                        source={{ uri: item.mockupUri }}
+                        style={styles.mockupThumb}
+                        resizeMode="contain"
                       />
-                      {embStitchCount1 !== '' ? <Text style={styles.embInputSuffix}>stitches</Text> : null}
-                    </View>
-                  </View>
-                  <View style={styles.embCostDisplay}>
-                    <Text style={styles.embCostLabel}>Cost</Text>
-                    <Text style={styles.embCostValue}>${embCost1.toFixed(2)}</Text>
-                  </View>
-                </View>
-                {embStitchCount1Num > 0 && embStitchCount1Num < EMB_MIN_STITCHES && (
-                  <Text style={styles.embMinNote}>Below minimum of 3,000 stitches</Text>
-                )}
-
-                {hasSecondLocation && (
-                  <>
-                    <View style={styles.embLocationDivider} />
-                    <Text style={styles.embLocationLabel}>Location #2 ({item.location2})</Text>
-                    <View style={styles.embInputRow}>
-                      <View style={styles.embInputGroup}>
-                        <Text style={styles.embInputLabel}>Stitch Count</Text>
-                        <View style={styles.embInputWrapper}>
-                          <TextInput
-                            style={styles.embInput}
-                            value={embStitchCount2}
-                            onChangeText={(text) => handleStitchCountChange(text, setEmbStitchCount2)}
-                            keyboardType="number-pad"
-                            placeholder="e.g. 5000"
-                            placeholderTextColor={Colors.light.textSecondary}
-                            maxLength={5}
-                          />
-                          {embStitchCount2 !== '' ? <Text style={styles.embInputSuffix}>stitches</Text> : null}
-                        </View>
+                    ) : (
+                      <View style={styles.mockupThumbEmpty}>
+                        <Brush size={18} color={Colors.light.border} />
                       </View>
-                      <View style={styles.embCostDisplay}>
-                        <Text style={styles.embCostLabel}>Cost</Text>
-                        <Text style={styles.embCostValue}>${embCost2.toFixed(2)}</Text>
-                      </View>
-                    </View>
-                    {embStitchCount2Num > 0 && embStitchCount2Num < EMB_MIN_STITCHES && (
-                      <Text style={styles.embMinNote}>Below minimum of 3,000 stitches</Text>
                     )}
-                  </>
-                )}
-
-                <View style={styles.embDigitizationRow}>
-                  <TouchableOpacity
-                    style={styles.embCheckbox}
-                    onPress={() => setIncludeDigitization(!includeDigitization)}
-                  >
-                    <View style={[styles.embCheckboxBox, includeDigitization && styles.embCheckboxChecked]}>
-                      {includeDigitization ? <Text style={styles.embCheckmark}>✓</Text> : null}
-                    </View>
-                    <Text style={styles.embCheckboxLabel}>Include Digitization Fee (+$50.00)</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.embResultRow}>
-                  <View style={styles.embResultInfo}>
-                    <Text style={styles.embResultLabel}>Service Total: </Text>
-                    <Text style={styles.embResultValue}>${embTotalCost.toFixed(2)}</Text>
-                    {includeDigitization && (
-                      <Text style={styles.embDigitizationNote}> + $50 digitization</Text>
-                    )}
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.embApplyButton, embTotalCost === 0 && styles.embApplyButtonDisabled]}
-                    onPress={applyEmbroideryCost}
-                    disabled={embTotalCost === 0}
-                  >
-                    <Text style={styles.embApplyText}>Apply</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-
-            {/* ── Costs (Per Piece) ── */}
-            <View style={styles.costsSection}>
-              <Text style={styles.costsTitle}>
-                <Text>COSTS (Per Piece)  </Text>
-                <Text style={styles.costsNote}>*Fees = flat per line item</Text>
-              </Text>
-
-              {isDTF && (
-                <View style={styles.dtfCalcSection}>
-                  <Text style={styles.dtfCalcTitle}>DTF Cost Calculator</Text>
-
-                  <Text style={styles.dtfLocationLabel}>Location #1 {item.location1 ? `(${item.location1})` : ''}</Text>
-                  {isMobile ? (
-                    <>
-                      <View style={styles.dtfCalcRowMobile}>
-                        <View style={styles.dtfInputGroup}>
-                          <Text style={styles.dtfInputLabel}>Width</Text>
-                          <View style={styles.dtfInputWrapper}>
-                            <TextInput style={styles.dtfInput} value={dtfWidth1} onChangeText={t => setDtfWidth1(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={Colors.light.textSecondary} />
-                            {dtfWidth1 !== '' ? <Text style={styles.dtfInputSuffix}>in</Text> : null}
-                          </View>
-                        </View>
-                        <Text style={styles.dtfOperatorCenter}>×</Text>
-                        <View style={styles.dtfInputGroup}>
-                          <Text style={styles.dtfInputLabel}>Height</Text>
-                          <View style={styles.dtfInputWrapper}>
-                            <TextInput style={styles.dtfInput} value={dtfHeight1} onChangeText={t => setDtfHeight1(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={Colors.light.textSecondary} />
-                            {dtfHeight1 !== '' ? <Text style={styles.dtfInputSuffix}>in</Text> : null}
-                          </View>
-                        </View>
-                      </View>
-                      <View style={[styles.dtfCalcRowMobile, { marginTop: 6 }]}>
-                        <Text style={styles.dtfRateLabel}>Rate: $</Text>
-                        <View style={[styles.dtfInputWrapper, { flex: 1 }]}>
-                          <TextInput style={styles.dtfRateInputInline} value={dtfRate} onChangeText={t => setDtfRate(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.03" placeholderTextColor={Colors.light.textSecondary} />
-                        </View>
-                        <Text style={styles.dtfRateLabel}>/sq in</Text>
-                      </View>
-                    </>
-                  ) : (
-                    <View style={styles.dtfCalcRow}>
-                      <View style={styles.dtfInputGroup}>
-                        <Text style={styles.dtfInputLabel}>Width</Text>
-                        <View style={styles.dtfInputWrapper}>
-                          <TextInput style={styles.dtfInput} value={dtfWidth1} onChangeText={t => setDtfWidth1(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.00 in" placeholderTextColor={Colors.light.textSecondary} />
-                          {dtfWidth1 !== '' ? <Text style={styles.dtfInputSuffix}>in</Text> : null}
-                        </View>
-                      </View>
-                      <Text style={styles.dtfOperator}>x</Text>
-                      <View style={styles.dtfInputGroup}>
-                        <Text style={styles.dtfInputLabel}>Height</Text>
-                        <View style={styles.dtfInputWrapper}>
-                          <TextInput style={styles.dtfInput} value={dtfHeight1} onChangeText={t => setDtfHeight1(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.00 in" placeholderTextColor={Colors.light.textSecondary} />
-                          {dtfHeight1 !== '' ? <Text style={styles.dtfInputSuffix}>in</Text> : null}
-                        </View>
-                      </View>
-                      <Text style={styles.dtfOperator}>x</Text>
-                      <View style={styles.dtfInputGroup}>
-                        <Text style={styles.dtfInputLabel}>Rate</Text>
-                        <View style={styles.dtfInputWrapper}>
-                          <Text style={styles.dtfDollar}>$</Text>
-                          <TextInput style={styles.dtfRateInputInline} value={dtfRate} onChangeText={t => setDtfRate(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.03" placeholderTextColor={Colors.light.textSecondary} />
-                        </View>
-                      </View>
-                    </View>
-                  )}
-                  <View style={styles.dtfResultRowInline}>
-                    <Text style={styles.dtfResultLabel}>
-                      {dtfSquareInches1.toFixed(2)} sq in = ${dtfCalculatedCost1.toFixed(2)}
-                    </Text>
-                  </View>
-
-                  {hasSecondLocation && (
-                    <>
-                      <View style={styles.dtfLocationDivider} />
-                      <Text style={styles.dtfLocationLabel}>Location #2 ({item.location2})</Text>
-                      {isMobile ? (
-                        <>
-                          <View style={styles.dtfCalcRowMobile}>
-                            <View style={styles.dtfInputGroup}>
-                              <Text style={styles.dtfInputLabel}>Width</Text>
-                              <View style={styles.dtfInputWrapper}>
-                                <TextInput style={styles.dtfInput} value={dtfWidth2} onChangeText={t => setDtfWidth2(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={Colors.light.textSecondary} />
-                                {dtfWidth2 !== '' ? <Text style={styles.dtfInputSuffix}>in</Text> : null}
-                              </View>
-                            </View>
-                            <Text style={styles.dtfOperatorCenter}>×</Text>
-                            <View style={styles.dtfInputGroup}>
-                              <Text style={styles.dtfInputLabel}>Height</Text>
-                              <View style={styles.dtfInputWrapper}>
-                                <TextInput style={styles.dtfInput} value={dtfHeight2} onChangeText={t => setDtfHeight2(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={Colors.light.textSecondary} />
-                                {dtfHeight2 !== '' ? <Text style={styles.dtfInputSuffix}>in</Text> : null}
-                              </View>
-                            </View>
-                          </View>
-                          <View style={[styles.dtfCalcRowMobile, { marginTop: 6 }]}>
-                            <Text style={styles.dtfRateLabel}>Rate: $</Text>
-                            <View style={[styles.dtfInputWrapper, { flex: 1 }]}>
-                              <TextInput style={styles.dtfRateInputInline} value={dtfRate} editable={false} keyboardType="decimal-pad" placeholder="0.03" placeholderTextColor={Colors.light.textSecondary} />
-                            </View>
-                            <Text style={styles.dtfRateLabel}>/sq in</Text>
-                          </View>
-                        </>
-                      ) : (
-                        <View style={styles.dtfCalcRow}>
-                          <View style={styles.dtfInputGroup}>
-                            <Text style={styles.dtfInputLabel}>Width</Text>
-                            <View style={styles.dtfInputWrapper}>
-                              <TextInput style={styles.dtfInput} value={dtfWidth2} onChangeText={t => setDtfWidth2(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.00 in" placeholderTextColor={Colors.light.textSecondary} />
-                              {dtfWidth2 !== '' ? <Text style={styles.dtfInputSuffix}>in</Text> : null}
-                            </View>
-                          </View>
-                          <Text style={styles.dtfOperator}>x</Text>
-                          <View style={styles.dtfInputGroup}>
-                            <Text style={styles.dtfInputLabel}>Height</Text>
-                            <View style={styles.dtfInputWrapper}>
-                              <TextInput style={styles.dtfInput} value={dtfHeight2} onChangeText={t => setDtfHeight2(formatDecimalInput(t))} keyboardType="decimal-pad" placeholder="0.00 in" placeholderTextColor={Colors.light.textSecondary} />
-                              {dtfHeight2 !== '' ? <Text style={styles.dtfInputSuffix}>in</Text> : null}
-                            </View>
-                          </View>
-                          <Text style={styles.dtfOperator}>x</Text>
-                          <View style={styles.dtfInputGroup}>
-                            <Text style={styles.dtfInputLabel}>Rate</Text>
-                            <View style={styles.dtfInputWrapper}>
-                              <Text style={styles.dtfDollar}>$</Text>
-                              <TextInput style={styles.dtfRateInputInline} value={dtfRate} editable={false} keyboardType="decimal-pad" placeholder="0.03" placeholderTextColor={Colors.light.textSecondary} />
-                            </View>
-                          </View>
-                        </View>
-                      )}
-                      <View style={styles.dtfResultRowInline}>
-                        <Text style={styles.dtfResultLabel}>
-                          {dtfSquareInches2.toFixed(2)} sq in = ${dtfCalculatedCost2.toFixed(2)}
-                        </Text>
-                      </View>
-                    </>
-                  )}
-
-                  <View style={styles.dtfResultRow}>
-                    <View style={styles.dtfResultInfo}>
-                      <Text style={styles.dtfResultLabel}>Total: </Text>
-                      <Text style={styles.dtfResultValue}>${dtfTotalCalculatedCost.toFixed(2)}</Text>
-                    </View>
+                    <Text style={[styles.mockupViewLabel, { marginTop: 8 }]}>BACK</Text>
+                    <View style={styles.mockupThumbEmpty} />
                     <TouchableOpacity
-                      style={[styles.dtfApplyButton, dtfTotalCalculatedCost === 0 && styles.dtfApplyButtonDisabled]}
-                      onPress={applyDTFCost}
-                      disabled={dtfTotalCalculatedCost === 0}
+                      style={styles.changeMockupBtn}
+                      onPress={handleDesignMockup}
+                      activeOpacity={0.7}
                     >
-                      <Text style={styles.dtfApplyText}>Apply</Text>
+                      <Text style={styles.changeMockupText}>Change Mockup</Text>
                     </TouchableOpacity>
                   </View>
-                </View>
-              )}
+                )}
 
-              <View style={[styles.costsRow, isMobile && styles.costsRowMobile]}>
-                <View style={[styles.costField, isMobile && styles.costFieldMobile]}>
-                  <CurrencyInput label="Product" value={item.productCostEach} onChange={(v) => onChange({ ...item, productCostEach: v })} />
-                </View>
-                <View style={[styles.costField, isMobile && styles.costFieldMobile]}>
-                  <CurrencyInput label="Service" value={item.serviceCostEach} onChange={(v) => onChange({ ...item, serviceCostEach: v })} />
-                </View>
-                <View style={[styles.costField, isMobile && styles.costFieldMobile]}>
-                  <CurrencyInput label="Fees*" value={item.serviceFeeEach} onChange={(v) => onChange({ ...item, serviceFeeEach: v })} />
-                </View>
-                <View style={[styles.costField, isMobile && styles.costFieldMobile]}>
-                  <CurrencyInput label="Markup" value={item.markupEach || 0} onChange={(v) => onChange({ ...item, markupEach: v })} />
-                </View>
-              </View>
+                {/* Form fields column */}
+                <View style={styles.fieldsCol}>
+                  {/* Mobile: compact mockup trigger */}
+                  {!useSideBySide && (
+                    <TouchableOpacity
+                      style={styles.mobileChangeMockup}
+                      onPress={handleDesignMockup}
+                      activeOpacity={0.7}
+                    >
+                      {item.mockupUri && (
+                        <Image
+                          source={{ uri: item.mockupUri }}
+                          style={styles.mobileThumb}
+                          resizeMode="contain"
+                        />
+                      )}
+                      <Brush size={14} color={Colors.light.tint} />
+                      <Text style={styles.mobileChangeMockupText}>
+                        {item.mockupUri ? 'Change Mockup' : 'Design Mockup'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
 
-              {/* Subtotal */}
-              <View style={styles.subtotalSection}>
-                <View style={styles.subtotalHeader}>
-                  <Text style={styles.subtotalTitle}>LINE ITEM SUBTOTAL</Text>
-                </View>
-                <View style={styles.subtotalContent}>
-                  <View style={styles.tableHeader}>
-                    <Text style={styles.tableHeaderCell} />
-                    <Text style={styles.tableHeaderCellRight}>Each</Text>
-                    <Text style={styles.tableHeaderCellRight}>Total</Text>
+                  {/* ── DESIGN ── */}
+                  <Text style={[styles.fieldGroupLabel, { marginTop: 8 }]}>DESIGN</Text>
+
+                  <View style={styles.fieldRow}>
+                    <Text style={styles.fieldLabel}>Design Name</Text>
+                    <TextInput
+                      style={styles.designNameInput}
+                      value={item.designName}
+                      onChangeText={(v) => onChange({ ...item, designName: v })}
+                      placeholder="Untitled Design"
+                      placeholderTextColor={Colors.light.textSecondary}
+                    />
                   </View>
-                  <View style={styles.tableRow}>
-                    <Text style={styles.tableCell}>Cost of Goods</Text>
-                    <Text style={styles.tableCellRight}>
-                      {formatCurrency(lineItemCalcs.quantity > 0 ? lineItemCalcs.cogTotal / lineItemCalcs.quantity : 0)}
-                    </Text>
-                    <Text style={styles.tableCellRight}>{formatCurrency(lineItemCalcs.cogTotal)}</Text>
+
+                  <View style={[styles.fieldRow, { alignItems: 'flex-start' }]}>
+                    <Text style={[styles.fieldLabel, { marginTop: 6 }]}>Project Notes</Text>
+                    <TextInput
+                      style={styles.notesInput}
+                      value={item.locationDetails}
+                      onChangeText={(v) => onChange(updateLocationDetails(v))}
+                      placeholder="Add notes here..."
+                      placeholderTextColor={Colors.light.textSecondary}
+                      multiline
+                      numberOfLines={2}
+                    />
                   </View>
-                  <View style={styles.tableRow}>
-                    <Text style={styles.tableCell}>Fees</Text>
-                    <Text style={styles.tableCellRight}>
-                      {formatCurrency(lineItemCalcs.quantity > 0 ? lineItemCalcs.serviceFeeTotal / lineItemCalcs.quantity : 0)}
-                    </Text>
-                    <Text style={styles.tableCellRight}>{formatCurrency(lineItemCalcs.serviceFeeTotal)}</Text>
+
+                  {/* ── PRODUCTION ── */}
+                  <Text style={styles.fieldGroupLabel}>PRODUCTION</Text>
+
+                  <View style={styles.fieldRow}>
+                    <Text style={styles.fieldLabel}>Service Style</Text>
+                    <OverlayMenu
+                      menuWidth={210}
+                      align="right"
+                      trigger={({ open }) => (
+                        <TouchableOpacity
+                          style={styles.fieldDropBtn}
+                          onPress={open}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.fieldDropValue} numberOfLines={1}>
+                            {item.serviceStyle || 'Select'}
+                          </Text>
+                          <ChevronDown size={11} color={Colors.light.textSecondary} />
+                        </TouchableOpacity>
+                      )}
+                    >
+                      {({ close }) => (
+                        <>
+                          {serviceStyleList.map((s) => (
+                            <TouchableOpacity
+                              key={s}
+                              style={styles.menuItem}
+                              onPress={() => {
+                                close();
+                                handleServiceStyleChange(s as typeof item.serviceStyle);
+                              }}
+                            >
+                              <Text
+                                style={[
+                                  styles.menuItemText,
+                                  item.serviceStyle === s && styles.menuItemActive,
+                                ]}
+                              >
+                                {s}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </>
+                      )}
+                    </OverlayMenu>
                   </View>
-                  <View style={styles.tableRow}>
-                    <Text style={styles.tableCell}>Markup</Text>
-                    <Text style={styles.tableCellRight}>{formatCurrency(item.markupEach || 0)}</Text>
-                    <Text style={styles.tableCellRight}>{formatCurrency(lineItemCalcs.markupTotal)}</Text>
+
+                  <View style={styles.fieldRow}>
+                    <Text style={styles.fieldLabel}>Product Source</Text>
+                    <OverlayMenu
+                      menuWidth={220}
+                      align="right"
+                      trigger={({ open }) => (
+                        <TouchableOpacity
+                          style={styles.fieldDropBtn}
+                          onPress={open}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.fieldDropValue} numberOfLines={1}>
+                            {item.apparelProvider || 'Select'}
+                          </Text>
+                          <ChevronDown size={11} color={Colors.light.textSecondary} />
+                        </TouchableOpacity>
+                      )}
+                    >
+                      {({ close }) => (
+                        <>
+                          {APPAREL_PROVIDERS.map((p) => (
+                            <TouchableOpacity
+                              key={p}
+                              style={styles.menuItem}
+                              onPress={() => {
+                                close();
+                                onChange(
+                                  updateDesignFields(itemRef.current, { apparelProvider: p }),
+                                );
+                              }}
+                            >
+                              <Text
+                                style={[
+                                  styles.menuItemText,
+                                  item.apparelProvider === p && styles.menuItemActive,
+                                ]}
+                              >
+                                {p}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </>
+                      )}
+                    </OverlayMenu>
                   </View>
-                  <View style={styles.subtotalDivider} />
-                  <View style={styles.subtotalTableRow}>
-                    <Text style={styles.subtotalTotalLabel}>Subtotal ({lineItemCalcs.quantity} pcs)</Text>
-                    <Text style={styles.subtotalTableCellRight}>{formatCurrency(lineItemCalcs.perPiece)}</Text>
-                    <Text style={styles.subtotalTableCellRightBold}>{formatCurrency(lineItemCalcs.subtotal)}</Text>
+
+                  <View style={styles.fieldRow}>
+                    <Text style={styles.fieldLabel}>Priority</Text>
+                    <OverlayMenu
+                      menuWidth={160}
+                      align="right"
+                      trigger={({ open }) => (
+                        <TouchableOpacity
+                          style={styles.fieldDropBtn}
+                          onPress={open}
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            style={[
+                              styles.fieldDropValue,
+                              item.priority &&
+                                item.priority !== 'Normal' &&
+                                styles.priorityHighlight,
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {item.priority || 'Normal'}
+                          </Text>
+                          <ChevronDown size={11} color={Colors.light.textSecondary} />
+                        </TouchableOpacity>
+                      )}
+                    >
+                      {({ close }) => (
+                        <>
+                          {PROJECT_PRIORITIES.map((p) => (
+                            <TouchableOpacity
+                              key={p}
+                              style={styles.menuItem}
+                              onPress={() => {
+                                close();
+                                onChange(
+                                  updateDesignFields(itemRef.current, { priority: p }),
+                                );
+                              }}
+                            >
+                              <Text
+                                style={[
+                                  styles.menuItemText,
+                                  (item.priority || 'Normal') === p && styles.menuItemActive,
+                                ]}
+                              >
+                                {p}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </>
+                      )}
+                    </OverlayMenu>
                   </View>
+
+                  {/* ── LOCATIONS ── */}
+                  {!isPromotional && (
+                    <>
+                      <Text style={styles.fieldGroupLabel}>LOCATIONS</Text>
+                      {Array.from({ length: visibleLocationCount }).map((_, i) => {
+                        const locVal = locationSlots[i] ?? '';
+                        return (
+                          <View style={styles.fieldRow} key={i}>
+                            <Text style={styles.fieldLabel}>Location #{i + 1}</Text>
+                            <OverlayMenu
+                              menuWidth={210}
+                              align="right"
+                              trigger={({ open }) => (
+                                <TouchableOpacity
+                                  style={styles.fieldDropBtn}
+                                  onPress={open}
+                                  activeOpacity={0.7}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.fieldDropValue,
+                                      !locVal && styles.fieldDropPlaceholder,
+                                    ]}
+                                    numberOfLines={1}
+                                  >
+                                    {locVal || 'Select Location'}
+                                  </Text>
+                                  <ChevronDown size={11} color={Colors.light.textSecondary} />
+                                </TouchableOpacity>
+                              )}
+                            >
+                              {({ close }) => (
+                                <>
+                                  {LOCATIONS.map((loc) => (
+                                    <TouchableOpacity
+                                      key={loc}
+                                      style={styles.menuItem}
+                                      onPress={() => { close(); onChange(updateLocation(i, loc)); }}
+                                    >
+                                      <Text
+                                        style={[
+                                          styles.menuItemText,
+                                          locVal === loc && styles.menuItemActive,
+                                        ]}
+                                      >
+                                        {loc}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  ))}
+                                </>
+                              )}
+                            </OverlayMenu>
+                          </View>
+                        );
+                      })}
+                      {visibleLocationCount < 4 && (
+                        <TouchableOpacity
+                          style={styles.addLocationBtn}
+                          onPress={handleAddLocationRow}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.addLocationText}>+ Add Location</Text>
+                        </TouchableOpacity>
+                      )}
+                    </>
+                  )}
+
                 </View>
               </View>
             </View>
 
-          </View>{/* closes formFieldsSection */}
+            {/* RIGHT: Products + Sizes panel */}
+            <View style={[styles.panel, useSideBySide && styles.productsPanelWeb]}>
+              <View style={styles.panelHeader}>
+                <Text style={styles.panelTitle}>
+                  PRODUCTS + SIZES ({productCount})
+                </Text>
+                {!isPromotional && (
+                  <TouchableOpacity
+                    style={styles.addProductHdrBtn}
+                    onPress={handleAddProduct}
+                    activeOpacity={0.85}
+                  >
+                    <Plus size={12} color="#fff" />
+                    <Text style={styles.addProductHdrBtnText}>Add Product</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {isPromotional ? (
+                <View style={styles.promotionalQtyWrap}>
+                  <Text style={styles.promotionalQtyLabel}>Flat Quantity</Text>
+                  <TextInput
+                    style={styles.promotionalQtyInput}
+                    value={flatQty}
+                    onChangeText={handleFlatQtyChange}
+                    keyboardType="number-pad"
+                    placeholder="0"
+                    placeholderTextColor={Colors.light.textSecondary}
+                  />
+                </View>
+              ) : (
+                <>
+                  {products.map((cp, idx) => (
+                    <QuoteProductRow
+                      key={idx}
+                      cp={cp}
+                      idx={idx}
+                      onChange={(next) => handleProductChange(idx, next)}
+                      onDuplicate={() => handleDuplicateProduct(idx)}
+                      onRemove={() => handleRemoveProduct(idx)}
+                      onUseForMockup={() => handlePickProductForMockup(idx)}
+                      canRemove={productCount > 1}
+                      allProducts={catalogProducts}
+                    />
+                  ))}
+                  <TouchableOpacity
+                    style={styles.addProductFooterBtn}
+                    onPress={handleAddProduct}
+                    activeOpacity={0.8}
+                  >
+                    <Plus size={13} color={Colors.light.tint} />
+                    <Text style={styles.addProductFooterText}>Add Product</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+              {/* ── Calculator: stacked below Products+Sizes in right column ── */}
+              {hasCalculator && (
+              <View style={styles.calcPanel}>
+                <View style={styles.panelHeader}>
+                  <Text style={styles.panelTitle}>
+                    {isEmbroidery ? 'EMBROIDERY COST CALCULATOR' : 'DTF COST CALCULATOR'}
+                  </Text>
+                </View>
+                <View style={styles.calcBody}>
+
+                  {/* DTF Calculator */}
+                  {(isDTF || isDTFTransfers) && (
+                    <View>
+                      <Text style={styles.calcLocationLabel}>
+                        Location #1 {item.location1 ? `(${item.location1})` : ''}
+                      </Text>
+                      <View style={styles.dtfCalcRow}>
+                        <View style={styles.dtfInputGroupFixed}>
+                          <Text style={styles.dtfInputLabel}>WIDTH</Text>
+                          <View style={styles.dtfInputWrapper}>
+                            <TextInput
+                              style={styles.dtfInput}
+                              value={dimFieldVal('w1', dtfWidth1)}
+                              onChangeText={(t) => setDtfWidth1(formatDecimalInput(t))}
+                              onFocus={() => setFocusedDtfField('w1')}
+                              onBlur={() => { setDtfWidth1(normalizeDim(dtfWidth1)); setFocusedDtfField(null); }}
+                              keyboardType="decimal-pad"
+                              placeholder="0.00"
+                              placeholderTextColor={Colors.light.textSecondary}
+                              selectTextOnFocus
+                            />
+                            <Text style={styles.dtfInputSuffix}>in</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.dtfOperator}>×</Text>
+                        <View style={styles.dtfInputGroupFixed}>
+                          <Text style={styles.dtfInputLabel}>HEIGHT</Text>
+                          <View style={styles.dtfInputWrapper}>
+                            <TextInput
+                              style={styles.dtfInput}
+                              value={dimFieldVal('h1', dtfHeight1)}
+                              onChangeText={(t) => setDtfHeight1(formatDecimalInput(t))}
+                              onFocus={() => setFocusedDtfField('h1')}
+                              onBlur={() => { setDtfHeight1(normalizeDim(dtfHeight1)); setFocusedDtfField(null); }}
+                              keyboardType="decimal-pad"
+                              placeholder="0.00"
+                              placeholderTextColor={Colors.light.textSecondary}
+                              selectTextOnFocus
+                            />
+                            <Text style={styles.dtfInputSuffix}>in</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.dtfOperator}>=</Text>
+                        <View style={styles.dtfSqftCol}>
+                          <Text style={styles.dtfInputLabel}>TOTAL SQ IN</Text>
+                          <View style={styles.dtfSqftBox}>
+                            <Text style={styles.dtfSqftValue}>{dtfSquareInches1.toFixed(2)} sq in</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.dtfOperator}>×</Text>
+                        <View style={styles.dtfRateGroup}>
+                          <Text style={styles.dtfInputLabel}>RATE PER INCH</Text>
+                          <View style={styles.dtfInputWrapper}>
+                            <Text style={styles.dtfDollar}>$</Text>
+                            <TextInput
+                              style={styles.dtfRateInput}
+                              value={dtfFieldVal('r1', dtfRate)}
+                              onChangeText={(t) => setDtfRate(applyPosEdit(t))}
+                              onFocus={() => setFocusedDtfField('r1')}
+                              onBlur={() => setFocusedDtfField(null)}
+                              keyboardType="number-pad"
+                              placeholder="0.00"
+                              placeholderTextColor={Colors.light.textSecondary}
+                              selectTextOnFocus
+                            />
+                          </View>
+                        </View>
+                        <Text style={styles.dtfOperator}>=</Text>
+                        <View style={styles.dtfTotalCol}>
+                          <Text style={styles.dtfInputLabel}>TOTAL</Text>
+                          <View style={styles.dtfDisplayBox}>
+                            <Text style={styles.dtfTotalColVal}>${dtfCalculatedCost1.toFixed(2)}</Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      {hasSecondLocation && (
+                        <>
+                          <View style={styles.dtfLocationDivider} />
+                          <Text style={styles.calcLocationLabel}>
+                            Location #2 ({item.location2})
+                          </Text>
+                          <View style={styles.dtfCalcRow}>
+                            <View style={styles.dtfInputGroupFixed}>
+                              <Text style={styles.dtfInputLabel}>WIDTH</Text>
+                              <View style={styles.dtfInputWrapper}>
+                                <TextInput
+                                  style={styles.dtfInput}
+                                  value={dimFieldVal('w2', dtfWidth2)}
+                                  onChangeText={(t) => setDtfWidth2(formatDecimalInput(t))}
+                                  onFocus={() => setFocusedDtfField('w2')}
+                                  onBlur={() => { setDtfWidth2(normalizeDim(dtfWidth2)); setFocusedDtfField(null); }}
+                                  keyboardType="decimal-pad"
+                                  placeholder="0.00"
+                                  placeholderTextColor={Colors.light.textSecondary}
+                                  selectTextOnFocus
+                                />
+                                <Text style={styles.dtfInputSuffix}>in</Text>
+                              </View>
+                            </View>
+                            <Text style={styles.dtfOperator}>×</Text>
+                            <View style={styles.dtfInputGroupFixed}>
+                              <Text style={styles.dtfInputLabel}>HEIGHT</Text>
+                              <View style={styles.dtfInputWrapper}>
+                                <TextInput
+                                  style={styles.dtfInput}
+                                  value={dimFieldVal('h2', dtfHeight2)}
+                                  onChangeText={(t) => setDtfHeight2(formatDecimalInput(t))}
+                                  onFocus={() => setFocusedDtfField('h2')}
+                                  onBlur={() => { setDtfHeight2(normalizeDim(dtfHeight2)); setFocusedDtfField(null); }}
+                                  keyboardType="decimal-pad"
+                                  placeholder="0.00"
+                                  placeholderTextColor={Colors.light.textSecondary}
+                                  selectTextOnFocus
+                                />
+                                <Text style={styles.dtfInputSuffix}>in</Text>
+                              </View>
+                            </View>
+                            <Text style={styles.dtfOperator}>=</Text>
+                            <View style={styles.dtfSqftCol}>
+                              <Text style={styles.dtfInputLabel}>TOTAL SQ IN</Text>
+                              <View style={styles.dtfSqftBox}>
+                                <Text style={styles.dtfSqftValue}>{dtfSquareInches2.toFixed(2)} sq in</Text>
+                              </View>
+                            </View>
+                            <Text style={styles.dtfOperator}>×</Text>
+                            <View style={styles.dtfRateGroup}>
+                              <Text style={styles.dtfInputLabel}>RATE PER INCH</Text>
+                              <View style={styles.dtfInputWrapper}>
+                                <Text style={styles.dtfDollar}>$</Text>
+                                <TextInput
+                                  style={styles.dtfRateInput}
+                                  value={formatCents(dtfRate)}
+                                  editable={false}
+                                  keyboardType="number-pad"
+                                  placeholderTextColor={Colors.light.textSecondary}
+                                />
+                              </View>
+                            </View>
+                            <Text style={styles.dtfOperator}>=</Text>
+                            <View style={styles.dtfTotalCol}>
+                              <Text style={styles.dtfInputLabel}>TOTAL</Text>
+                              <View style={styles.dtfDisplayBox}>
+                                <Text style={styles.dtfTotalColVal}>${dtfCalculatedCost2.toFixed(2)}</Text>
+                              </View>
+                            </View>
+                          </View>
+                        </>
+                      )}
+
+                      <View style={styles.dtfTotalRow}>
+                        <Text style={styles.dtfTotalLabel}>
+                          TOTAL:{' '}
+                          <Text style={styles.dtfTotalValue}>
+                            ${dtfTotalCalculatedCost.toFixed(2)}
+                          </Text>
+                        </Text>
+                        <TouchableOpacity
+                          style={[
+                            styles.applyBtn,
+                            dtfTotalCalculatedCost === 0 && styles.applyBtnDisabled,
+                          ]}
+                          onPress={applyDTFCost}
+                          disabled={dtfTotalCalculatedCost === 0}
+                        >
+                          <Text style={styles.applyBtnText}>Apply</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Embroidery Calculator */}
+                  {isEmbroidery && (
+                    <View>
+                      <Text style={styles.calcSubtitle}>
+                        $2.00 per 1,000 stitches (min 3,000)
+                      </Text>
+                      <Text style={styles.calcLocationLabel}>
+                        Location #1 {item.location1 ? `(${item.location1})` : ''}
+                      </Text>
+                      <View style={styles.embInputRow}>
+                        <View style={styles.embInputGroup}>
+                          <Text style={styles.dtfInputLabel}>STITCH COUNT</Text>
+                          <View style={styles.embInputWrapper}>
+                            <TextInput
+                              style={styles.embInput}
+                              value={embStitchCount1}
+                              onChangeText={(t) =>
+                                handleStitchCountChange(t, setEmbStitchCount1)
+                              }
+                              keyboardType="number-pad"
+                              placeholder="e.g. 5000"
+                              placeholderTextColor={Colors.light.textSecondary}
+                              maxLength={5}
+                            />
+                            {embStitchCount1 !== '' && (
+                              <Text style={styles.dtfInputSuffix}>stitches</Text>
+                            )}
+                          </View>
+                        </View>
+                        <View style={styles.embCostDisplay}>
+                          <Text style={styles.dtfInputLabel}>COST</Text>
+                          <Text style={styles.embCostValue}>${embCost1.toFixed(2)}</Text>
+                        </View>
+                      </View>
+                      {embStitchCount1Num > 0 && embStitchCount1Num < EMB_MIN_STITCHES && (
+                        <Text style={styles.embMinNote}>Below minimum of 3,000 stitches</Text>
+                      )}
+
+                      {hasSecondLocation && (
+                        <>
+                          <View style={styles.dtfLocationDivider} />
+                          <Text style={styles.calcLocationLabel}>
+                            Location #2 ({item.location2})
+                          </Text>
+                          <View style={styles.embInputRow}>
+                            <View style={styles.embInputGroup}>
+                              <Text style={styles.dtfInputLabel}>STITCH COUNT</Text>
+                              <View style={styles.embInputWrapper}>
+                                <TextInput
+                                  style={styles.embInput}
+                                  value={embStitchCount2}
+                                  onChangeText={(t) =>
+                                    handleStitchCountChange(t, setEmbStitchCount2)
+                                  }
+                                  keyboardType="number-pad"
+                                  placeholder="e.g. 5000"
+                                  placeholderTextColor={Colors.light.textSecondary}
+                                  maxLength={5}
+                                />
+                                {embStitchCount2 !== '' && (
+                                  <Text style={styles.dtfInputSuffix}>stitches</Text>
+                                )}
+                              </View>
+                            </View>
+                            <View style={styles.embCostDisplay}>
+                              <Text style={styles.dtfInputLabel}>COST</Text>
+                              <Text style={styles.embCostValue}>${embCost2.toFixed(2)}</Text>
+                            </View>
+                          </View>
+                          {embStitchCount2Num > 0 && embStitchCount2Num < EMB_MIN_STITCHES && (
+                            <Text style={styles.embMinNote}>Below minimum of 3,000 stitches</Text>
+                          )}
+                        </>
+                      )}
+
+                      <View style={styles.embDigitizationRow}>
+                        <TouchableOpacity
+                          style={styles.embCheckbox}
+                          onPress={handleDigitizationToggle}
+                        >
+                          <View
+                            style={[
+                              styles.embCheckboxBox,
+                              includeDigitization && styles.embCheckboxChecked,
+                            ]}
+                          >
+                            {includeDigitization ? (
+                              <Text style={styles.embCheckmark}>✓</Text>
+                            ) : null}
+                          </View>
+                          <Text style={styles.embCheckboxLabel}>
+                            Include Digitization Fee (+$50.00)
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[
+                            styles.applyBtn,
+                            embTotalCost === 0 && styles.applyBtnDisabled,
+                          ]}
+                          onPress={applyEmbroideryCost}
+                          disabled={embTotalCost === 0}
+                        >
+                          <Text style={styles.applyBtnText}>Apply</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              </View>
+              )}
+            </View>
+          </View>
+
+          {/* ── Bottom row: Pricing Adjustments (left) + Line Item Costs (right) ── */}
+          <View style={[styles.bottomTwoCol, useSideBySide && styles.bottomTwoColWeb]}>
+
+            {/* LEFT: Pricing Adjustments */}
+            {!isPromotional && (
+              <View style={[styles.adjustmentsCol, useSideBySide && styles.adjustmentsColWeb]}>
+                <View style={styles.panelHeader}>
+                  <Text style={styles.panelTitle}>PRICING ADJUSTMENTS</Text>
+                </View>
+                <QuoteAdjustmentsTable
+                  title="PRODUCTION COSTS"
+                  addLabel="Add Production Cost"
+                  libraryKind="production"
+                  rows={productionCosts}
+                  baseAmount={lineItemCalcs.adjustmentBase}
+                  onChange={updateProductionCosts}
+                />
+                <QuoteAdjustmentsTable
+                  title="OTHER CHARGES"
+                  addLabel="Add Other Charge"
+                  libraryKind="other"
+                  rows={otherCharges}
+                  baseAmount={lineItemCalcs.adjustmentBase}
+                  onChange={updateOtherCharges}
+                />
+                <TouchableOpacity style={styles.adjLibraryRow} activeOpacity={0.7}>
+                  <ChevronRight size={12} color={Colors.light.textSecondary} />
+                  <Text style={styles.adjLibraryLabel}>ADJUSTMENT LIBRARY</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* RIGHT: Line Item Costs + Subtotal */}
+            <View
+              style={[
+                styles.costsPanel,
+                useSideBySide && !isPromotional && styles.costsPanelRight,
+              ]}
+            >
+              <View style={styles.panelHeader}>
+                <Text style={styles.panelTitle}>LINE ITEM COSTS</Text>
+              </View>
+              <View style={styles.costsFieldsRow}>
+                <View style={styles.costFieldWrap}>
+                  {products.length > 1 ? (
+                    <View>
+                      <Text style={styles.costLabel}>PRODUCT</Text>
+                      <View style={styles.blendedCostBox}>
+                        <Text style={styles.blendedCostValue}>
+                          {formatCurrency(item.productCostEach || 0)}
+                        </Text>
+                      </View>
+                      <Text style={styles.blendedHint}>Auto Calculated</Text>
+                    </View>
+                  ) : (
+                    <CurrencyInput
+                      label="PRODUCT"
+                      value={item.productCostEach}
+                      onChange={(v) => onChange(setUniformProductCost(itemRef.current, v))}
+                    />
+                  )}
+                </View>
+                <View style={styles.costFieldWrap}>
+                  <CurrencyInput
+                    label="SERVICE"
+                    value={item.serviceCostEach}
+                    onChange={(v) =>
+                      onChange(updateDesignFields(itemRef.current, { serviceCostEach: v }))
+                    }
+                  />
+                </View>
+                <View style={styles.costFieldWrap}>
+                  <CurrencyInput
+                    label="PRODUCTION"
+                    value={item.serviceFeeEach}
+                    onChange={(v) =>
+                      onChange(updateDesignFields(itemRef.current, { serviceFeeEach: v }))
+                    }
+                  />
+                </View>
+                <View style={styles.costFieldWrap}>
+                  <CurrencyInput
+                    label="OTHER"
+                    value={item.otherCostEach ?? 0}
+                    onChange={(v) =>
+                      onChange(updateDesignFields(itemRef.current, { otherCostEach: v }))
+                    }
+                  />
+                </View>
+                <View style={styles.costFieldWrap}>
+                  <CurrencyInput
+                    label="MARKUP"
+                    value={item.markupEach || 0}
+                    onChange={(v) =>
+                      onChange(updateDesignFields(itemRef.current, { markupEach: v }))
+                    }
+                  />
+                </View>
+              </View>
+              {/* ── Inline subtotal (merged into costs panel) ── */}
+              <View style={[styles.panelHeader, { paddingRight: 16 }]}>
+                <Text style={[styles.panelTitle, { flex: 1 }]}>LINE ITEM SUBTOTAL</Text>
+                <Text style={[styles.panelTitle, { width: 72, textAlign: 'right', fontSize: 10 }]}>EACH</Text>
+                <Text style={[styles.panelTitle, { width: 72, textAlign: 'right', fontSize: 10 }]}>TOTAL</Text>
+              </View>
+              <View style={styles.costsSubtotalContent}>
+                <View style={styles.subtotalRow}>
+                  <Text style={styles.subtotalCellMain}>Production Cost</Text>
+                  <Text style={styles.subtotalCellRight}>
+                    {formatCurrency(
+                      lineItemCalcs.quantity > 0
+                        ? lineItemCalcs.cogTotal / lineItemCalcs.quantity
+                        : 0,
+                    )}
+                  </Text>
+                  <Text style={styles.subtotalCellRight}>
+                    {formatCurrency(lineItemCalcs.cogTotal)}
+                  </Text>
+                </View>
+                <View style={styles.subtotalRow}>
+                  <Text style={styles.subtotalCellMain}>Other Charges</Text>
+                  <Text style={styles.subtotalCellRight}>
+                    {formatCurrency(
+                      lineItemCalcs.quantity > 0
+                        ? lineItemCalcs.otherCostTotal / lineItemCalcs.quantity
+                        : 0,
+                    )}
+                  </Text>
+                  <Text style={styles.subtotalCellRight}>
+                    {formatCurrency(lineItemCalcs.otherCostTotal)}
+                  </Text>
+                </View>
+                <View style={styles.subtotalRow}>
+                  <Text style={styles.subtotalCellMain}>Markup</Text>
+                  <Text style={styles.subtotalCellRight}>
+                    {formatCurrency(item.markupEach || 0)}
+                  </Text>
+                  <Text style={styles.subtotalCellRight}>
+                    {formatCurrency(lineItemCalcs.markupTotal)}
+                  </Text>
+                </View>
+                <View style={styles.subtotalDivider} />
+                <View style={styles.subtotalTotalRow}>
+                  <Text style={styles.subtotalTotalLabel}>
+                    Subtotal ({lineItemCalcs.quantity} pcs)
+                  </Text>
+                  <Text style={styles.subtotalTotalEach}>
+                    {formatCurrency(lineItemCalcs.perPiece)}
+                  </Text>
+                  <Text style={styles.subtotalTotalValue}>
+                    {formatCurrency(lineItemCalcs.subtotal)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
         </View>
       )}
     </View>
@@ -882,6 +2121,7 @@ function LineItemCardFn({ item, index, onChangeItem, onDelete: onDeleteProp }: L
 
 export const LineItemCard = React.memo(LineItemCardFn);
 
+// ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     backgroundColor: Colors.light.surface,
@@ -891,17 +2131,21 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     overflow: 'hidden',
   },
+
+  // ── Header ──
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     backgroundColor: '#000000',
   },
-  headerLeft: {
+  headerLeftPress: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    minWidth: 0,
   },
   headerTextWrap: {
     flex: 1,
@@ -914,7 +2158,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.tint,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
     flexShrink: 0,
   },
   indexText: {
@@ -922,11 +2166,19 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: '#fff',
   },
+  headerThumbnail: {
+    width: 38,
+    height: 38,
+    borderRadius: 6,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    flexShrink: 0,
+  },
   title: {
     fontSize: 15,
     fontWeight: '600' as const,
     color: '#fff',
-    maxWidth: 220,
   },
   subtitle: {
     fontSize: 12,
@@ -936,718 +2188,392 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
+    marginLeft: 10,
+    flexShrink: 0,
+  },
+  designMockupBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.light.tint,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 7,
+  },
+  designMockupBtnText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#fff',
+  },
+  duplicateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 7,
+  },
+  duplicateBtnText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: 'rgba(255,255,255,0.85)',
+  },
+  chevronBtn: {
+    padding: 2,
+  },
+  headerKebabBtn: {
+    padding: 2,
   },
   deleteBtn: {
     padding: 4,
   },
-  headerThumbnail: {
+  menuItemDanger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  menuItemDangerText: {
+    fontSize: 13,
+    color: Colors.light.error,
+    fontWeight: '600' as const,
+  },
+
+  // ── Expanded body ──
+  expandedBody: {
+    backgroundColor: Colors.light.background,
+    paddingTop: 16,
+  },
+
+  // ── Two-column row ──
+  twoColRow: {
+    flexDirection: 'column',
+  },
+  twoColRowWeb: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+
+  // ── Shared panel ──
+  panel: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+    backgroundColor: Colors.light.surface,
+  },
+  designPanelWeb: {
+    flex: 4,
+    borderRightWidth: 1,
+    borderRightColor: Colors.light.border,
+    borderBottomWidth: 0,
+  },
+  productsPanelWeb: {
+    flex: 5,
+    borderBottomWidth: 0,
+  },
+
+  panelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#000000',
+    paddingHorizontal: 16,
+    height: 32,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+  },
+  panelTitle: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: '#fff',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase' as const,
+  },
+  panelSubtitle: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.5)',
+    fontStyle: 'italic' as const,
+  },
+
+  // ── Design Details ──
+  designBody: {
+    padding: 16,
+  },
+  designBodyRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+
+  // Mockup thumbnail sub-column (desktop)
+  mockupThumbs: {
+    width: 176,
+    flexShrink: 0,
+    alignItems: 'center',
+  },
+  mockupViewLabel: {
+    fontSize: 9,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  mockupThumb: {
+    width: 160,
+    height: 160,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: Colors.light.background,
+  },
+  mockupThumbEmpty: {
+    width: 160,
+    height: 160,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderStyle: 'dashed' as const,
+    backgroundColor: Colors.light.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  changeMockupBtn: {
+    marginTop: 10,
+    paddingVertical: 5,
+  },
+  changeMockupText: {
+    fontSize: 12,
+    color: Colors.light.tint,
+    fontWeight: '600' as const,
+    textAlign: 'center',
+  },
+
+  // Mobile mockup trigger
+  mobileChangeMockup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    marginBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+  },
+  mobileThumb: {
     width: 40,
     height: 40,
     borderRadius: 6,
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  content: {
-    padding: 14,
-  },
-  contentWeb: {
-    flexDirection: 'row' as const,
-    alignItems: 'flex-start' as const,
-    gap: 16,
-  },
-  contentMobile: {
-    padding: 10,
-  },
-  mockupPanel: {
-    marginBottom: 14,
-  },
-  mockupPanelWeb: {
-    width: 280,
-    flexShrink: 0,
-    marginBottom: 0,
-  },
-  mockupPanelMobile: {
-    marginBottom: 16,
-    width: '100%' as any,
-  },
-  mockupLabel: {
-    fontSize: 11,
-    fontWeight: '700' as const,
-    color: Colors.light.textSecondary,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase' as const,
-    marginBottom: 8,
-  },
-  mockupImageContainer: {
-    borderRadius: 10,
-    overflow: 'hidden' as const,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    backgroundColor: Colors.light.background,
-  },
-  mockupImage: {
-    width: '100%' as any,
-    height: 200,
-    backgroundColor: Colors.light.background,
-  },
-  mockupActions: {
-    flexDirection: 'row' as const,
-    gap: 6,
-    padding: 8,
-    backgroundColor: Colors.light.surface,
-  },
-  mockupChangeBtn: {
-    flex: 1,
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: 4,
-    backgroundColor: Colors.light.tint,
-    paddingVertical: 7,
-    borderRadius: 6,
-  },
-  mockupChangeBtnText: {
-    fontSize: 11,
-    fontWeight: '600' as const,
-    color: '#fff',
-  },
-  mockupRemoveBtn: {
-    flex: 1,
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: 4,
-    paddingVertical: 7,
-    borderRadius: 6,
     borderWidth: 1,
     borderColor: Colors.light.border,
   },
-  mockupRemoveBtnText: {
-    fontSize: 11,
-    fontWeight: '600' as const,
-    color: Colors.light.error,
-  },
-  mockupDesignBtn: {
-    flex: 1,
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: 4,
-    backgroundColor: '#0D1B2A',
-    paddingVertical: 7,
-    borderRadius: 6,
-  },
-  mockupPlaceholderContainer: {
-    borderWidth: 2,
-    borderStyle: 'dashed' as const,
-    borderColor: Colors.light.border,
-    borderRadius: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    backgroundColor: Colors.light.background,
-    gap: 10,
-  },
-  mockupDesignBtnLarge: {
-    alignItems: 'center' as const,
-    paddingVertical: 14,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: Colors.light.tint,
-    backgroundColor: '#FFF8F5',
-    gap: 4,
-  },
-  mockupDesignBtnTitle: {
+  mobileChangeMockupText: {
     fontSize: 13,
-    fontWeight: '700' as const,
-    color: Colors.light.tint,
-  },
-  mockupDesignBtnSub: {
-    fontSize: 10,
-    color: Colors.light.textSecondary,
-    textAlign: 'center' as const,
-  },
-  mockupDivider: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 8,
-  },
-  mockupDividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.light.border,
-  },
-  mockupDividerText: {
-    fontSize: 12,
-    color: Colors.light.textSecondary,
-  },
-  mockupUploadBtn: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: 8,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    backgroundColor: Colors.light.surface,
-  },
-  mockupUploadBtnText: {
-    fontSize: 12,
-    color: Colors.light.textSecondary,
-    fontWeight: '500' as const,
-  },
-  formFieldsSection: {
-    flex: 1,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  rowMobile: {
-    flexDirection: 'column',
-    gap: 0,
-  },
-  halfField: {
-    flex: 1,
-  },
-  // ── Service Style mobile dropdown ──
-  serviceDropdownWrap: {
-    gap: 4,
-    marginBottom: 2,
-  },
-  serviceDropdownLabel: {
-    fontSize: 10,
-    fontWeight: '700' as const,
-    color: Colors.light.textSecondary,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase' as const,
-  },
-  serviceDropdownBtn: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
-    backgroundColor: Colors.light.surface,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  serviceDropdownValue: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.light.text,
-    flex: 1,
-  },
-  serviceDropdownList: {
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: 8,
-    overflow: 'hidden' as const,
-    backgroundColor: Colors.light.surface,
-  },
-  serviceDropdownItem: {
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-  },
-  serviceDropdownItemActive: {
-    backgroundColor: Colors.light.tint + '12',
-  },
-  serviceDropdownItemText: {
-    fontSize: 14,
-    color: Colors.light.text,
-  },
-  serviceDropdownItemTextActive: {
-    color: Colors.light.tint,
-    fontWeight: '700' as const,
-  },
-  // Location expand button
-  addLocationBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    marginBottom: 10,
-  },
-  addLocationBtnText: {
-    fontSize: 12,
     color: Colors.light.tint,
     fontWeight: '600' as const,
-  },
-  // ── Garment Variants ──
-  variantSection: {
-    marginBottom: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    overflow: 'hidden',
-  },
-  variantHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#1a1a1a',
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  variantHeaderTitle: {
-    fontSize: 11,
-    fontWeight: '700' as const,
-    color: '#fff',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase' as const,
-  },
-  addVariantBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: Colors.light.tint,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-  },
-  addVariantBtnText: {
-    fontSize: 11,
-    fontWeight: '700' as const,
-    color: '#fff',
-  },
-  variantTableWrap: {
-    backgroundColor: Colors.light.background,
-  },
-  variantTable: {
-    width: '100%' as any,
-  },
-  variantRow: {
-    flexDirection: 'column',
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-    backgroundColor: Colors.light.background,
-  },
-  variantRowAlt: {
-    backgroundColor: '#fafafa',
-  },
-  variantTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingTop: 8,
-    paddingBottom: 4,
-  },
-  variantPickerSection: {
-    paddingHorizontal: 10,
-    paddingTop: 8,
-    paddingBottom: 8,
-  },
-  variantCategoryScroll: {
-    marginBottom: 6,
-  },
-  variantCategoryPillRow: {
-    flexDirection: 'row',
-    gap: 5,
-    paddingVertical: 2,
-  },
-  variantCategoryPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    backgroundColor: '#fff',
-  },
-  variantCategoryPillActive: {
-    backgroundColor: Colors.light.tint,
-    borderColor: Colors.light.tint,
-  },
-  variantCategoryPillText: {
-    fontSize: 11,
-    fontWeight: '500' as const,
-    color: Colors.light.textSecondary,
-  },
-  variantCategoryPillTextActive: {
-    color: '#fff',
-    fontWeight: '700' as const,
-  },
-  variantPickerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  variantTypeSelectBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 34,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    backgroundColor: '#fff',
-    paddingHorizontal: 8,
-    gap: 4,
-    minWidth: 90,
-  },
-  variantTypeBtnText: {
-    fontSize: 12,
-    color: Colors.light.text,
-    fontWeight: '500' as const,
     flex: 1,
   },
-  variantStyleInput: {
+
+  // ── Form fields column ──
+  fieldsCol: {
     flex: 1,
-    height: 34,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    paddingHorizontal: 10,
-    fontSize: 12,
-    color: Colors.light.text,
-    backgroundColor: '#fff',
     minWidth: 0,
   },
-  variantColorBtn: {
+  fieldGroupLabel: {
+    fontSize: 9,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 1,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  fieldRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 34,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    backgroundColor: '#fff',
-    paddingHorizontal: 8,
-    gap: 5,
-    minWidth: 90,
-    maxWidth: 130,
-  },
-  variantColorDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    flexShrink: 0,
-  },
-  variantColorDotEmpty: {
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-  },
-  variantColorBtnText: {
-    flex: 1,
-    fontSize: 12,
-    color: Colors.light.text,
-  },
-  variantStyleDropdown: {
-    marginTop: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    backgroundColor: '#fff',
-    overflow: 'hidden' as const,
-  },
-  variantDropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    marginBottom: 8,
     gap: 8,
   },
-  variantDropdownItemActive: {
-    backgroundColor: '#FFF0E8',
-  },
-  variantDropdownItemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-  },
-  variantDropdownNum: {
+  fieldLabel: {
     fontSize: 11,
-    fontWeight: '700' as const,
-    color: Colors.light.tint,
-    minWidth: 48,
-  },
-  variantDropdownNumActive: {
-    color: Colors.light.tint,
-  },
-  variantDropdownName: {
-    flex: 1,
-    fontSize: 11,
-    color: Colors.light.textSecondary,
-  },
-  variantDropdownNameActive: {
-    color: Colors.light.text,
-  },
-  variantDropdownEmpty: {
-    padding: 10,
-    fontSize: 12,
-    color: Colors.light.textSecondary,
-  },
-  variantDropdownSectionLabel: {
-    paddingHorizontal: 10,
-    paddingTop: 8,
-    paddingBottom: 4,
-    fontSize: 10,
-    fontWeight: '700' as const,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase' as const,
-    color: Colors.light.textSecondary,
-    backgroundColor: '#F7F7F7',
-  },
-  variantCatalogItem: {
-    alignItems: 'center',
-  },
-  variantCatalogTextWrap: {
-    flex: 1,
-    marginLeft: 6,
-  },
-  variantDropdownBrand: {
-    fontSize: 10,
-    color: Colors.light.textSecondary,
-  },
-  variantCatalogBadge: {
-    marginLeft: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    backgroundColor: Colors.light.tint,
-  },
-  variantCatalogBadgeText: {
-    fontSize: 9,
-    fontWeight: '700' as const,
-    color: '#fff',
-  },
-  variantVendorInfo: {
-    marginTop: 4,
-    paddingHorizontal: 2,
-    fontSize: 10,
-    fontStyle: 'italic' as const,
-    color: Colors.light.textSecondary,
-  },
-  variantDropdownCustom: {
-    paddingVertical: 9,
-    paddingHorizontal: 10,
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.border,
-    backgroundColor: '#FFF8F5',
-  },
-  variantDropdownCustomText: {
-    fontSize: 11,
-    color: Colors.light.tint,
     fontWeight: '600' as const,
-    fontStyle: 'italic' as const,
-  },
-  variantColorFreeInput: {
-    height: 34,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    backgroundColor: '#fff',
-    paddingHorizontal: 8,
-    fontSize: 12,
-    color: Colors.light.text,
-    minWidth: 90,
-    maxWidth: 130,
-  },
-  variantColorDropdown: {
-    marginTop: 6,
-    maxHeight: 120,
-  },
-  variantStyleList: {
-    gap: 4,
-  },
-  variantStyleBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    backgroundColor: '#fff',
-  },
-  variantStyleBtnActive: {
-    backgroundColor: '#FFF0E8',
-    borderColor: Colors.light.tint,
-  },
-  variantStyleNumber: {
-    fontSize: 11,
-    fontWeight: '700' as const,
-    color: Colors.light.tint,
-  },
-  variantStyleNumberActive: {
-    color: Colors.light.tint,
-  },
-  variantStyleName: {
-    fontSize: 11,
     color: Colors.light.textSecondary,
-    lineHeight: 14,
-    marginTop: 1,
-  },
-  variantStyleNameActive: {
-    color: Colors.light.text,
-  },
-  variantColorGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 7,
-    padding: 8,
-  },
-  variantColorSwatch: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  variantColorSwatchWhite: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  variantColorSwatchSelected: {
-    borderWidth: 2.5,
-    borderColor: Colors.light.tint,
-  },
-  variantColorLabel: {
-    fontSize: 11,
-    color: Colors.light.textSecondary,
-    marginTop: 4,
-  },
-  variantHoveredColorLabel: {
-    fontSize: 11,
-    color: Colors.light.textSecondary,
-    marginTop: 6,
-    textAlign: 'right',
-    paddingHorizontal: 4,
-  },
-  variantCustomColorRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 6,
-    marginTop: 8,
-    paddingHorizontal: 4,
-    paddingBottom: 4,
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.border,
-    paddingTop: 8,
-  },
-  variantCustomColorInput: {
-    flex: 1,
-    backgroundColor: Colors.light.surface,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    fontSize: 12,
-    color: Colors.light.text,
-  },
-  variantCustomColorConfirm: {
-    backgroundColor: Colors.light.tint,
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-  variantCustomColorConfirmDisabled: {
-    backgroundColor: Colors.light.border,
-  },
-  variantCustomColorConfirmText: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-    color: '#fff',
-  },
-  variantDeleteBtn: {
-    width: 28,
-    height: 28,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
+    width: 96,
     flexShrink: 0,
   },
-  variantSizeSubRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 10,
-    paddingBottom: 8,
-    gap: 4,
-  },
-  variantSizeLabelCell: {
+  designNameInput: {
     flex: 1,
-    alignItems: 'center' as const,
-  },
-  variantSizeColLabel: {
-    fontSize: 9,
-    fontWeight: '700' as const,
-    color: Colors.light.textSecondary,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.3,
-    marginBottom: 3,
-  },
-  variantTotalLabelCell: {
-    flex: 1,
-    alignItems: 'center' as const,
-    justifyContent: 'flex-end' as const,
-  },
-  variantSizeInput: {
+    fontSize: 14,
+    fontWeight: '500' as const,
+    color: Colors.light.text,
     backgroundColor: Colors.light.surface,
     borderWidth: 1,
     borderColor: Colors.light.border,
-    borderRadius: 4,
-    width: '100%' as any,
+    borderRadius: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
     height: 32,
-    textAlign: 'center',
+  },
+  fieldDropBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    height: 32,
+  },
+  fieldDropValue: {
+    flex: 1,
     fontSize: 13,
     color: Colors.light.text,
   },
-  variantRowQty: {
-    fontSize: 13,
-    fontWeight: '700' as const,
+  fieldDropPlaceholder: {
+    color: Colors.light.textSecondary,
+  },
+  addLocationBtn: {
+    marginLeft: 104,
+    paddingVertical: 2,
+    marginBottom: 4,
+    alignSelf: 'flex-start',
+  },
+  addLocationText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
     color: Colors.light.tint,
-    textAlign: 'center' as const,
-    paddingTop: 6,
   },
-  variantGrandTotalRow: {
-    backgroundColor: '#1a1a1a',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+  priorityHighlight: {
+    color: '#E67E00',
+    fontWeight: '600' as const,
   },
-  variantGrandTotalLabel: {
-    fontSize: 10,
-    fontWeight: '800' as const,
-    color: 'rgba(255,255,255,0.6)',
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  variantGrandTotalSizesRow: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  variantGrandTotalCell: {
+  notesInput: {
     flex: 1,
-    alignItems: 'center' as const,
-  },
-  variantGrandTotalSizeLabel: {
-    fontSize: 9,
-    fontWeight: '700' as const,
-    color: 'rgba(255,255,255,0.5)',
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.3,
-    marginBottom: 3,
-    textAlign: 'center' as const,
-  },
-  variantGrandTotalNum: {
     fontSize: 13,
+    color: Colors.light.text,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    minHeight: 52,
+    textAlignVertical: 'top',
+  },
+
+  // Shared menu items (used by all OverlayMenus in main component)
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.light.border,
+  },
+  menuItemText: {
+    fontSize: 13,
+    color: Colors.light.text,
+    flex: 1,
+  },
+  menuDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: Colors.light.border,
+    marginHorizontal: 12,
+    marginVertical: 4,
+  },
+  menuItemActive: {
+    color: Colors.light.tint,
+    fontWeight: '700' as const,
+  },
+
+  // ── Pill chips ──
+  pillsWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 5,
+    alignItems: 'center',
+  },
+  locationPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.light.tint,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  servicePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E67E00',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  pillText: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: '#fff',
+  },
+  addPillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    borderWidth: 1,
+    borderColor: Colors.light.tint,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  addPillText: {
+    fontSize: 11,
+    color: Colors.light.tint,
+    fontWeight: '600' as const,
+  },
+
+  // ── Products panel ──
+  addProductHdrBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.light.tint,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  addProductHdrBtnText: {
+    fontSize: 11,
     fontWeight: '700' as const,
     color: '#fff',
-    textAlign: 'center' as const,
   },
-  variantGrandTotalBold: {
+  addProductFooterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+  },
+  addProductFooterText: {
+    fontSize: 13,
     color: Colors.light.tint,
-    fontSize: 15,
-    fontWeight: '800' as const,
+    fontWeight: '600' as const,
   },
-  // Promotional
-  promotionalQty: {
+
+  // Promotional flat qty
+  promotionalQtyWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    padding: 12,
-    backgroundColor: Colors.light.background,
+    padding: 14,
   },
   promotionalQtyLabel: {
     fontSize: 14,
@@ -1665,356 +2591,322 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.light.text,
   },
-  // ── Costs ──
-  costsSection: {
-    marginTop: 8,
-    paddingTop: 12,
+
+  // ── Calculator ──
+  calcPanel: {
+    backgroundColor: Colors.light.surface,
     borderTopWidth: 1,
     borderTopColor: Colors.light.border,
   },
-  costsTitle: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    color: Colors.light.text,
-    marginBottom: 8,
-    letterSpacing: 0.5,
+
+  // ── Bottom two-column row: Pricing Adjustments | Line Item Costs ──
+  bottomTwoCol: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
   },
-  costsNote: {
-    fontSize: 10,
-    fontWeight: '400' as const,
-    color: Colors.light.textSecondary,
-    fontStyle: 'italic' as const,
-  },
-  costsRow: {
+  bottomTwoColWeb: {
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'stretch',
   },
-  costsRowMobile: {
-    flexWrap: 'wrap',
+  adjustmentsCol: {
+    backgroundColor: Colors.light.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
   },
-  costField: {
-    flex: 1,
+  adjustmentsColWeb: {
+    flex: 6,
+    borderRightWidth: 1,
+    borderRightColor: Colors.light.border,
+    borderBottomWidth: 0,
   },
-  costFieldMobile: {
-    flexBasis: '47%',
-    flexGrow: 1,
+  adjLibraryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.light.border,
   },
-  // DTF
-  dtfCalcSection: {
-    backgroundColor: Colors.light.highlightBg,
-    borderRadius: 10,
-    padding: 8,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: Colors.light.tint,
-  },
-  dtfCalcTitle: {
-    fontSize: 12,
-    fontWeight: '700' as const,
-    color: Colors.light.tint,
-    marginBottom: 6,
+  adjLibraryLabel: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: Colors.light.textSecondary,
     textTransform: 'uppercase' as const,
     letterSpacing: 0.5,
   },
-  dtfLocationLabel: {
+  costsPanelRight: {
+    flex: 4,
+  },
+  calcBody: {
+    padding: 16,
+  },
+  calcLocationLabel: {
     fontSize: 11,
     fontWeight: '600' as const,
-    color: Colors.light.text,
-    marginBottom: 4,
-    marginTop: 2,
+    color: Colors.light.tint,
+    marginBottom: 6,
+    marginTop: 4,
   },
-  dtfLocationDivider: {
-    height: 1,
+  calcSubtitle: {
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+    marginBottom: 8,
+  },
+  costsPanel: {
+    flex: 1,
+    backgroundColor: Colors.light.surface,
+  },
+  costsPanelSplit: {
+    flex: 4,
+  },
+  costsFieldsRow: {
+    flexDirection: 'row',
+    padding: 16,
+    paddingBottom: 12,
+    gap: 12,
+  },
+  costsDivider: {
+    height: StyleSheet.hairlineWidth,
     backgroundColor: Colors.light.border,
-    marginVertical: 10,
+    marginHorizontal: 16,
   },
+  costsSubtotalContent: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 14,
+  },
+  costFieldWrap: {
+    flex: 1,
+  },
+  costLabel: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  blendedCostBox: {
+    height: 40,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: Colors.light.highlightBg,
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  blendedCostValue: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.light.textSecondary,
+  },
+  blendedHint: {
+    fontSize: 10,
+    color: Colors.light.textSecondary,
+    marginTop: 3,
+    fontStyle: 'italic' as const,
+  },
+
+  // DTF Calculator
   dtfCalcRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'flex-end' as const,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     gap: 6,
-  },
-  dtfCalcRowMobile: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 8,
-  },
-  dtfOperatorCenter: {
-    fontSize: 18,
-    fontWeight: '600' as const,
-    color: Colors.light.textSecondary,
-  },
-  dtfRateLabel: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-    color: Colors.light.textSecondary,
+    marginBottom: 4,
   },
   dtfInputGroup: {
     flex: 1,
   },
-  dtfInputLabel: {
-    fontSize: 10,
-    fontWeight: '600' as const,
-    color: Colors.light.textSecondary,
-    marginBottom: 4,
-    textTransform: 'uppercase' as const,
+  dtfInputGroupFixed: {
+    flex: 1,
   },
-  dtfInputWrapper: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
+  dtfRateGroup: {
+    flex: 1,
+  },
+  dtfSqftCol: {
+    flex: 1,
+  },
+  dtfSqftValue: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.light.tint,
+    textAlign: 'center' as const,
+  },
+  dtfTotalCol: {
+    flex: 1,
+  },
+  dtfDisplayBox: {
+    height: 30,
+    justifyContent: 'center' as const,
+  },
+  dtfSqftBox: {
+    height: 30,
+    justifyContent: 'center' as const,
     backgroundColor: Colors.light.surface,
     borderWidth: 1,
     borderColor: Colors.light.border,
     borderRadius: 6,
     paddingHorizontal: 6,
-    height: 32,
+  },
+  dtfTotalColLabel: {
+    fontSize: 9,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.4,
+    marginBottom: 3,
+  },
+  dtfTotalColVal: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.light.tint,
+    textAlign: 'center' as const,
+  },
+  dtfInputLabel: {
+    fontSize: 9,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.4,
+    marginBottom: 3,
+  },
+  dtfInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    height: 30,
   },
   dtfInput: {
     flex: 1,
-    fontSize: 14,
+    minWidth: 0,
+    fontSize: 13,
     fontWeight: '600' as const,
     color: Colors.light.text,
-    textAlign: 'center' as const,
+    textAlign: 'center',
     paddingVertical: 0,
+    paddingHorizontal: 0,
+  },
+  dtfRateInput: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: Colors.light.text,
+    textAlign: 'center',
+    paddingVertical: 0,
+    paddingHorizontal: 0,
   },
   dtfInputSuffix: {
-    fontSize: 12,
-    fontWeight: '500' as const,
+    fontSize: 10,
     color: Colors.light.textSecondary,
     marginLeft: 2,
   },
-  dtfOperator: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: Colors.light.textSecondary,
-    paddingBottom: 14,
-  },
   dtfDollar: {
     fontSize: 12,
-    fontWeight: '600' as const,
     color: Colors.light.textSecondary,
   },
-  dtfRateInputInline: {
-    flex: 1,
+  dtfOperator: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: Colors.light.text,
-    textAlign: 'center' as const,
-    paddingVertical: 0,
+    color: Colors.light.textSecondary,
+    paddingBottom: 6,
   },
-  dtfResultRow: {
-    flexDirection: 'row' as const,
-    justifyContent: 'space-between' as const,
-    alignItems: 'center' as const,
-    marginTop: 6,
-    paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.border,
+  dtfResultInline: {
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: 2,
+    flexShrink: 0,
   },
-  dtfResultRowInline: {
-    marginTop: 6,
-  },
-  dtfResultInfo: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-  },
-  dtfResultLabel: {
-    fontSize: 13,
+  dtfResultEq: {
+    fontSize: 11,
     color: Colors.light.textSecondary,
   },
-  dtfResultValue: {
-    fontSize: 16,
+  dtfResultVal: {
+    fontSize: 14,
     fontWeight: '700' as const,
     color: Colors.light.tint,
   },
-  dtfApplyButton: {
-    backgroundColor: Colors.light.tint,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  dtfApplyButtonDisabled: {
-    backgroundColor: Colors.light.border,
-  },
-  dtfApplyText: {
-    fontSize: 13,
-    fontWeight: '700' as const,
-    color: '#fff',
-  },
-  // Subtotal
-  subtotalSection: {
-    marginTop: 16,
-    borderRadius: 10,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Colors.light.tint,
-  },
-  subtotalHeader: {
-    backgroundColor: Colors.light.tint,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  subtotalTitle: {
-    fontSize: 11,
-    fontWeight: '700' as const,
-    color: '#fff',
-    letterSpacing: 0.5,
-  },
-  subtotalContent: {
-    backgroundColor: Colors.light.highlightBg,
-    padding: 12,
-  },
-  tableHeader: {
-    flexDirection: 'row' as const,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-    marginBottom: 4,
-  },
-  tableHeaderCell: {
-    flex: 1,
-    fontSize: 11,
-    fontWeight: '600' as const,
+  dtfResultSqIn: {
+    fontSize: 9,
     color: Colors.light.textSecondary,
-    textTransform: 'uppercase' as const,
   },
-  tableHeaderCellRight: {
-    width: 70,
-    fontSize: 11,
-    fontWeight: '600' as const,
-    color: Colors.light.textSecondary,
-    textAlign: 'right' as const,
-    textTransform: 'uppercase' as const,
-  },
-  tableRow: {
-    flexDirection: 'row' as const,
-    paddingVertical: 5,
-  },
-  tableCell: {
-    flex: 1,
-    fontSize: 13,
-    color: Colors.light.text,
-  },
-  tableCellRight: {
-    width: 70,
-    fontSize: 13,
-    color: Colors.light.text,
-    textAlign: 'right' as const,
-  },
-  subtotalDivider: {
+  dtfLocationDivider: {
     height: 1,
     backgroundColor: Colors.light.border,
     marginVertical: 8,
   },
-  subtotalTableRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    paddingVertical: 4,
+  dtfTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
   },
-  subtotalTotalLabel: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '700' as const,
-    color: Colors.light.text,
-  },
-  subtotalTableCellRight: {
-    width: 70,
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.light.text,
-    textAlign: 'right' as const,
-  },
-  subtotalTableCellRightBold: {
-    width: 70,
-    fontSize: 14,
-    fontWeight: '700' as const,
-    color: Colors.light.tint,
-    textAlign: 'right' as const,
-  },
-  // Embroidery
-  embCalcSection: {
-    backgroundColor: Colors.light.highlightBg,
-    borderRadius: 10,
-    padding: 12,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: Colors.light.tint,
-  },
-  embCalcTitle: {
+  dtfTotalLabel: {
     fontSize: 12,
     fontWeight: '700' as const,
-    color: Colors.light.tint,
-    marginBottom: 2,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.5,
-  },
-  embCalcSubtitle: {
-    fontSize: 11,
-    color: Colors.light.textSecondary,
-    marginBottom: 10,
-  },
-  embLocationLabel: {
-    fontSize: 11,
-    fontWeight: '600' as const,
     color: Colors.light.text,
-    marginBottom: 6,
-    marginTop: 4,
   },
-  embLocationDivider: {
-    height: 1,
+  dtfTotalValue: {
+    color: Colors.light.tint,
+    fontSize: 15,
+    fontWeight: '700' as const,
+  },
+  applyBtn: {
+    backgroundColor: Colors.light.tint,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 6,
+  },
+  applyBtnDisabled: {
     backgroundColor: Colors.light.border,
-    marginVertical: 10,
   },
+  applyBtnText: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: '#fff',
+  },
+
+  // Embroidery Calculator
   embInputRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'flex-end' as const,
-    gap: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 10,
+    marginBottom: 4,
   },
   embInputGroup: {
     flex: 1,
   },
-  embInputLabel: {
-    fontSize: 10,
-    fontWeight: '600' as const,
-    color: Colors.light.textSecondary,
-    marginBottom: 4,
-    textTransform: 'uppercase' as const,
-  },
   embInputWrapper: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: Colors.light.surface,
     borderWidth: 1,
     borderColor: Colors.light.border,
     borderRadius: 6,
     paddingHorizontal: 10,
-    height: 42,
+    height: 38,
   },
   embInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600' as const,
     color: Colors.light.text,
     paddingVertical: 0,
   },
-  embInputSuffix: {
-    fontSize: 11,
-    fontWeight: '500' as const,
-    color: Colors.light.textSecondary,
-    marginLeft: 4,
-  },
   embCostDisplay: {
-    alignItems: 'center' as const,
-    minWidth: 70,
-  },
-  embCostLabel: {
-    fontSize: 10,
-    fontWeight: '600' as const,
-    color: Colors.light.textSecondary,
-    marginBottom: 4,
-    textTransform: 'uppercase' as const,
+    alignItems: 'center',
+    minWidth: 60,
   },
   embCostValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700' as const,
     color: Colors.light.tint,
   },
@@ -2022,17 +2914,20 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: Colors.light.tint,
     fontStyle: 'italic' as const,
-    marginTop: 4,
+    marginBottom: 4,
   },
   embDigitizationRow: {
-    marginTop: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: Colors.light.border,
   },
   embCheckbox: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   embCheckboxBox: {
     width: 20,
@@ -2041,8 +2936,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.tint,
     borderRadius: 4,
     marginRight: 8,
-    justifyContent: 'center' as const,
-    alignItems: 'center' as const,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   embCheckboxChecked: {
     backgroundColor: Colors.light.tint,
@@ -2056,50 +2951,85 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.light.text,
   },
-  embResultRow: {
-    flexDirection: 'row' as const,
-    justifyContent: 'space-between' as const,
-    alignItems: 'center' as const,
-    marginTop: 10,
-    paddingTop: 10,
+  // ── LINE ITEM SUBTOTAL ──
+  subtotalSection: {
+    borderRadius: 0,
+    overflow: 'hidden',
     borderTopWidth: 1,
-    borderTopColor: Colors.light.border,
+    borderTopColor: Colors.light.tint,
   },
-  embResultInfo: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    flexWrap: 'wrap' as const,
-    flex: 1,
-  },
-  embResultLabel: {
-    fontSize: 13,
-    color: Colors.light.textSecondary,
-  },
-  embResultValue: {
-    fontSize: 16,
-    fontWeight: '700' as const,
-    color: Colors.light.tint,
-  },
-  embDigitizationNote: {
-    fontSize: 12,
-    color: Colors.light.textSecondary,
-  },
-  embApplyButton: {
+  subtotalHeader: {
     backgroundColor: Colors.light.tint,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
+    paddingVertical: 11,
+    paddingHorizontal: 18,
   },
-  embApplyButtonDisabled: {
-    backgroundColor: Colors.light.border,
-  },
-  embApplyText: {
-    fontSize: 13,
+  subtotalTitle: {
+    fontSize: 11,
     fontWeight: '700' as const,
     color: '#fff',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase' as const,
+  },
+  subtotalContent: {
+    backgroundColor: Colors.light.highlightBg,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+  },
+  subtotalTableHeader: {
+    flexDirection: 'row',
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+    marginBottom: 2,
+  },
+  subtotalRow: {
+    flexDirection: 'row',
+    paddingVertical: 4,
+  },
+  subtotalCellMain: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.light.text,
+    fontWeight: '500' as const,
+  },
+  subtotalCellRight: {
+    width: 72,
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+    textAlign: 'right',
+    fontWeight: '500' as const,
+  },
+  subtotalDivider: {
+    height: 1,
+    backgroundColor: Colors.light.border,
+    marginVertical: 6,
+  },
+  subtotalTotalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  subtotalTotalLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: Colors.light.text,
+  },
+  subtotalTotalEach: {
+    width: 72,
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.light.text,
+    textAlign: 'right',
+  },
+  subtotalTotalValue: {
+    width: 72,
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: Colors.light.tint,
+    textAlign: 'right',
   },
 
-  // Variant Picker Modal
+  // ── Variant picker modal ──
   vpOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -2143,5 +3073,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     alignItems: 'center',
   },
-  vpCancelText: { fontSize: 13, color: Colors.light.textSecondary, fontWeight: '600' },
+  vpCancelText: {
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+    fontWeight: '600',
+  },
 });

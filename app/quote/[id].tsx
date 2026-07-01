@@ -59,7 +59,7 @@ import { formatCurrency, calculateLineItemSubtotal, getTotalQuantity } from '@/u
 import { ONLINE_FEE_LABEL, CARD_FEE_LABEL, SALES_TAX_LABEL } from '@/constants/fees';
 import { formatDate } from '@/utils/textFormatting';
 import { formatPhone } from '@/utils/phone';
-import { LineItem, SIZE_LABELS, GarmentVariant, STATUS_CONFIG, QuoteStatus, OperationalProjectStatus, DeliveryMethod, OPERATIONAL_STATUSES, OPERATIONAL_STATUS_CONFIG, OPERATIONAL_NEXT, HOLD_REASONS, DELIVERY_METHODS } from '@/types/quote';
+import { LineItem, LineItemActualCosts, SIZE_LABELS, GarmentVariant, STATUS_CONFIG, QuoteStatus, OperationalProjectStatus, DeliveryMethod, OPERATIONAL_STATUSES, OPERATIONAL_STATUS_CONFIG, OPERATIONAL_NEXT, HOLD_REASONS, DELIVERY_METHODS } from '@/types/quote';
 import { useUser } from '@/contexts/UserContext';
 import { useCrm } from '@/contexts/CrmContext';
 import { printQuote, generateWorkOrderPDFs, generateProjectDocumentPDF } from '@/utils/pdfGenerator';
@@ -862,13 +862,13 @@ export default function QuoteDetailScreen() {
   };
 
   const renderLineItems = () => {
-    const totalItems = quote.lineItems.reduce((sum, item) => sum + getItemQuantity(item), 0);
+    const totalItems = quote.lineItems.reduce((sum: number, item: LineItem) => sum + getItemQuantity(item), 0);
     return (
       <View style={styles.section}>
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Line Items ({quote.lineItems.length})</Text>
         </View>
-        {quote.lineItems.map((item, index) => {
+        {quote.lineItems.map((item: LineItem, index: number) => {
           const isExpanded = expandedItems[item.id] !== false;
           const qty = getItemQuantity(item);
           const calcs = calculateLineItemSubtotal(item);
@@ -1256,10 +1256,10 @@ export default function QuoteDetailScreen() {
     if ((quote.status !== 'active' && quote.status !== 'completed') || !quote.salesData) return null;
     const calc = getSalesCalculations();
     const uniqueVendors = quote.salesData.lineItemCosts
-      ? [...new Set(quote.salesData.lineItemCosts.map(c => c.productVendor))]
+      ? [...new Set(quote.salesData.lineItemCosts.map((c: LineItemActualCosts) => c.productVendor))]
       : quote.salesData.productVendors || [];
     const uniqueApplicators = quote.salesData.lineItemCosts
-      ? [...new Set(quote.salesData.lineItemCosts.map(c => c.applicator))]
+      ? [...new Set(quote.salesData.lineItemCosts.map((c: LineItemActualCosts) => c.applicator))]
       : quote.salesData.applicator ? [quote.salesData.applicator] : [];
     return (
       <View style={styles.section}>

@@ -72,6 +72,24 @@ export function getConfiguredProduct(item: LineItem): ConfiguredProduct {
 }
 
 /**
+ * Return the canonical products array for a Line Item.
+ *
+ * `products` (the multi-product array) is the source of truth; otherwise fall
+ * back to a one-element array derived from the singular `configuredProduct` (or,
+ * for the oldest records, the legacy flat fields via `buildConfiguredProduct`).
+ *
+ * This is THE single canonical read path. Both the pricing engine
+ * (`utils/quoteCalculations.ts`) and the multi-product adapter
+ * (`utils/lineItemProducts.ts`) import it from here, so a multi-product design
+ * is never undercounted to just its primary product. It lives in this module
+ * (which only depends on types) so neither consumer creates a circular import.
+ */
+export function getLineItemProducts(item: LineItem): ConfiguredProduct[] {
+  if (item.products && item.products.length > 0) return item.products;
+  return [getConfiguredProduct(item)];
+}
+
+/**
  * Sync legacy top-level LineItem fields FROM a single ConfiguredProduct.
  * Used for SINGLE-PRODUCT line items only. For multi-product designs, use
  * syncMultiProductLineItem() instead so that productCostEach on the LineItem
@@ -138,10 +156,10 @@ export function syncLegacyFields(item: LineItem, cp: ConfiguredProduct): LineIte
 }
 
 /**
- * Sync legacy top-level LineItem fields from a MULTI-PRODUCT configuredProducts[].
+ * Sync legacy top-level LineItem fields from a MULTI-PRODUCT products[].
  * Aggregates sizes across all products for display/shipping. Never writes a
  * blended productCostEach — that value doesn't exist in the business model.
- * The pricing engine reads configuredProducts[] directly for accurate cost totals.
+ * The pricing engine reads products[] directly for accurate cost totals.
  */
 export function syncMultiProductLineItem(
   item: LineItem,
@@ -182,9 +200,9 @@ export function syncMultiProductLineItem(
 
   return {
     ...item,
-    configuredProducts: products,
+    products,
     // Legacy single-product field — keep the first product for backward compat with
-    // consumers that don't yet read configuredProducts[].
+    // consumers that don't yet read products[].
     configuredProduct: primary,
     product: primary.productLabel || `${primary.styleNumber ?? ''} — ${primary.styleName ?? ''}`.replace(/^ — | — $/g, '').trim() || item.product,
     productColor: 'Multiple',
@@ -199,7 +217,7 @@ export function syncMultiProductLineItem(
     locationDetails: primary.locationDetails ?? item.locationDetails,
     mockupUri: primary.mockupUri ?? item.mockupUri,
     // DO NOT write productCostEach — it has no meaning for multi-product line items.
-    // The pricing engine reads configuredProducts[] directly. Leave the existing
+    // The pricing engine reads products[] directly. Leave the existing
     // item.productCostEach untouched so old consumers don't crash.
   };
 }

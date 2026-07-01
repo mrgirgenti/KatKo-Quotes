@@ -25,7 +25,8 @@ import { SegmentedControl } from '@/components/SegmentedControl';
 import { ToggleButton } from '@/components/ToggleButton';
 import { LineItemCard } from '@/components/LineItemCard';
 import { CalculationDisplay } from '@/components/CalculationDisplay';
-import { ONLINE_FEE_LABEL, CARD_FEE_LABEL, SALES_TAX_LABEL } from '@/constants/fees';
+import { useFeeRates, useFeeLabels } from '@/lib/useTaxesFees';
+import { useProductPricing } from '@/lib/useProductPricing';
 import { Toast } from '@/components/Toast';
 import { OrgAutocomplete } from '@/components/OrgAutocomplete';
 import {
@@ -97,6 +98,10 @@ export default function NewQuoteScreen() {
   const isNative = Platform.OS !== 'web';
   const params = useLocalSearchParams<{ orgName?: string; orgId?: string }>();
 
+  const feeRates = useFeeRates();
+  const { onlineFeeLabel, cardFeeLabel, salesTaxLabel } = useFeeLabels();
+  const { upcharges } = useProductPricing();
+
   const [personOrganization, setPersonOrganization] = useState('');
   const [linkedOrg, setLinkedOrg] = useState<Organization | null>(null);
   const [projectName, setProjectName] = useState('');
@@ -124,8 +129,8 @@ export default function NewQuoteScreen() {
   }, [params.orgName]);
 
   const calculations = useMemo(
-    () => calculateQuote(lineItems, hasOnlineFee, hasSalesTax, hasCardFee),
-    [lineItems, hasOnlineFee, hasSalesTax, hasCardFee]
+    () => calculateQuote(lineItems, hasOnlineFee, hasSalesTax, hasCardFee, feeRates, upcharges),
+    [lineItems, hasOnlineFee, hasSalesTax, hasCardFee, feeRates, upcharges]
   );
 
   const handleAddLineItem = useCallback(() => {
@@ -361,19 +366,19 @@ export default function NewQuoteScreen() {
     <View style={styles.card}>
       <ToggleButton
         label="Online Fee"
-        description={ONLINE_FEE_LABEL}
+        description={onlineFeeLabel}
         value={hasOnlineFee}
         onChange={setHasOnlineFee}
       />
       <ToggleButton
         label="Card Fee"
-        description={CARD_FEE_LABEL}
+        description={cardFeeLabel}
         value={hasCardFee}
         onChange={setHasCardFee}
       />
       <ToggleButton
         label="Sales Tax"
-        description={SALES_TAX_LABEL}
+        description={salesTaxLabel}
         value={hasSalesTax}
         onChange={setHasSalesTax}
       />
@@ -422,39 +427,74 @@ export default function NewQuoteScreen() {
 
   const orderForm = (
     <View style={[styles.card, { zIndex: 10 }]}>
-      {/* Person/Org + Project Name + Invoice on one row for tablet/desktop */}
       {!isMobile && !isNative ? (
-        <View style={[styles.threeColRow, { alignItems: 'flex-start', zIndex: 10 }]}>
-          <View style={[styles.thirdField, { zIndex: 10 }]}>
-            <OrgAutocomplete
-              value={personOrganization}
-              onChangeText={setPersonOrganization}
-              onSelectOrg={setLinkedOrg}
-              linkedOrg={linkedOrg}
-              onAddEditClient={handleOpenCrmModal}
-            />
+        <>
+          {/* Row 1: ORDER TYPE | PERSON/ORG | PROJECT NAME */}
+          <View style={[styles.threeColRow, { alignItems: 'flex-start', zIndex: 10 }]}>
+            <View style={styles.thirdField}>
+              <SegmentedControl
+                label="Order Type"
+                options={ORDER_TYPES}
+                value={orderType}
+                onChange={setOrderType}
+              />
+            </View>
+            <View style={[styles.thirdField, { zIndex: 10 }]}>
+              <OrgAutocomplete
+                value={personOrganization}
+                onChangeText={setPersonOrganization}
+                onSelectOrg={setLinkedOrg}
+                linkedOrg={linkedOrg}
+                onAddEditClient={handleOpenCrmModal}
+              />
+            </View>
+            <View style={styles.thirdField}>
+              <FormInput
+                label="Project Name"
+                value={projectName}
+                onChangeText={setProjectName}
+                placeholder="e.g., Summer Event T-Shirts"
+                autoTitleCase
+              />
+            </View>
           </View>
-          <View style={styles.thirdField}>
-            <FormInput
-              label="Project Name"
-              value={projectName}
-              onChangeText={setProjectName}
-              placeholder="e.g., Summer Event T-Shirts"
-              autoTitleCase
-            />
+          {/* Row 2: ORDER DATE | IN-HANDS DATE | INVOICE NUMBER */}
+          <View style={styles.threeColRow}>
+            <View style={styles.thirdField}>
+              <FormInput
+                label="Order Date"
+                value={orderDate}
+                onChangeText={() => {}}
+                editable={false}
+                style={{ backgroundColor: '#F3F4F6', color: '#9CA3AF' }}
+              />
+            </View>
+            <View style={styles.thirdField}>
+              <DateInput
+                label="In-Hands Date"
+                value={inHandsDate}
+                onChangeText={setInHandsDate}
+              />
+            </View>
+            <View style={styles.thirdField}>
+              <FormInput
+                label="Invoice Number"
+                value={invoiceNumber}
+                onChangeText={setInvoiceNumber}
+                placeholder=""
+                autoTitleCase
+              />
+            </View>
           </View>
-          <View style={styles.thirdField}>
-            <FormInput
-              label="Invoice Number"
-              value={invoiceNumber}
-              onChangeText={setInvoiceNumber}
-              placeholder=""
-              autoTitleCase
-            />
-          </View>
-        </View>
+        </>
       ) : (
         <>
+          <SegmentedControl
+            label="Order Type"
+            options={ORDER_TYPES}
+            value={orderType}
+            onChange={setOrderType}
+          />
           <OrgAutocomplete
             value={personOrganization}
             onChangeText={setPersonOrganization}
@@ -470,6 +510,18 @@ export default function NewQuoteScreen() {
             autoTitleCase
           />
           <FormInput
+            label="Order Date"
+            value={orderDate}
+            onChangeText={() => {}}
+            editable={false}
+            style={{ backgroundColor: '#F3F4F6', color: '#9CA3AF' }}
+          />
+          <DateInput
+            label="In-Hands Date"
+            value={inHandsDate}
+            onChangeText={setInHandsDate}
+          />
+          <FormInput
             label="Invoice Number"
             value={invoiceNumber}
             onChangeText={setInvoiceNumber}
@@ -478,30 +530,6 @@ export default function NewQuoteScreen() {
           />
         </>
       )}
-      <SegmentedControl
-        label="Order Type"
-        options={ORDER_TYPES}
-        value={orderType}
-        onChange={setOrderType}
-      />
-      <View style={styles.row}>
-        <View style={styles.halfField}>
-          <FormInput
-            label="Order Date"
-            value={orderDate}
-            onChangeText={() => {}}
-            editable={false}
-            style={{ backgroundColor: '#F3F4F6', color: '#9CA3AF' }}
-          />
-        </View>
-        <View style={styles.halfField}>
-          <DateInput
-            label="In-Hands Date"
-            value={inHandsDate}
-            onChangeText={setInHandsDate}
-          />
-        </View>
-      </View>
     </View>
   );
 

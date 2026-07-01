@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
 import Colors from '@/constants/colors';
 
@@ -9,49 +9,54 @@ interface CurrencyInputProps {
   placeholder?: string;
 }
 
-const formatCurrencyDisplay = (value: number): string => {
-  return `$${value.toFixed(2)}`;
-};
-
-export function CurrencyInput({ label, value, onChange, placeholder = '$0.00' }: CurrencyInputProps) {
+export function CurrencyInput({ label, value, onChange, placeholder = '0.00' }: CurrencyInputProps) {
+  const [text, setText] = useState(() => (value > 0 ? value.toFixed(2) : ''));
   const [isFocused, setIsFocused] = useState(false);
-  const [inputValue, setInputValue] = useState(value > 0 ? value.toString() : '');
+
+  useEffect(() => {
+    if (!isFocused) {
+      setText(value > 0 ? value.toFixed(2) : '');
+    }
+  }, [value, isFocused]);
 
   const handleFocus = useCallback(() => {
     setIsFocused(true);
-    setInputValue(value !== 0 ? value.toString() : '');
-  }, [value]);
+  }, []);
 
   const handleBlur = useCallback(() => {
     setIsFocused(false);
-    const parsed = parseFloat(inputValue) || 0;
-    onChange(parsed);
-  }, [inputValue, onChange]);
+    const num = parseFloat(text) || 0;
+    const formatted = num > 0 ? num.toFixed(2) : '';
+    setText(formatted);
+    onChange(num);
+  }, [text, onChange]);
 
-  const handleChangeText = useCallback((text: string) => {
-    const cleaned = text.replace(/[^0-9.]/g, '');
-    const parts = cleaned.split('.');
-    const formatted = parts.length > 2 
-      ? parts[0] + '.' + parts.slice(1).join('')
-      : cleaned;
-    setInputValue(formatted);
-    onChange(parseFloat(formatted) || 0);
+  const handleChangeText = useCallback((t: string) => {
+    const cleaned = t.replace(/[^0-9.]/g, '');
+    const firstDot = cleaned.indexOf('.');
+    const sanitized =
+      firstDot === -1
+        ? cleaned
+        : cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, '');
+    setText(sanitized);
+    onChange(parseFloat(sanitized) || 0);
   }, [onChange]);
 
-  const displayValue = isFocused ? inputValue : formatCurrencyDisplay(value);
+  const displayValue = isFocused ? text : (text ? `$${text}` : '');
 
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, isFocused && styles.inputFocused]}
         value={displayValue}
         onChangeText={handleChangeText}
         onFocus={handleFocus}
         onBlur={handleBlur}
         keyboardType="decimal-pad"
-        placeholder={placeholder}
+        placeholder={`$${placeholder}`}
         placeholderTextColor={Colors.light.textSecondary}
+        selectTextOnFocus
       />
     </View>
   );
@@ -59,24 +64,29 @@ export function CurrencyInput({ label, value, onChange, placeholder = '$0.00' }:
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 12,
+    flex: 1,
   },
   label: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    color: Colors.light.text,
-    marginBottom: 6,
-    textTransform: 'uppercase',
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase' as const,
     letterSpacing: 0.5,
+    marginBottom: 4,
   },
   input: {
     backgroundColor: Colors.light.surface,
     borderWidth: 1,
     borderColor: Colors.light.border,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 15,
+    paddingHorizontal: 10,
+    height: 40,
+    fontSize: 14,
+    fontWeight: '600' as const,
     color: Colors.light.text,
+    textAlign: 'right' as const,
+  },
+  inputFocused: {
+    borderColor: Colors.light.tint,
   },
 });

@@ -163,7 +163,7 @@ export function OrgAutocomplete({ label = 'Person / Organization', value, onChan
 
 const styles = StyleSheet.create({
   wrapper: { marginBottom: 8, zIndex: 999 },
-  label: { fontSize: 11, fontWeight: '600', color: Colors.light.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 },
+  label: { fontSize: 13, fontWeight: '600', color: Colors.light.text, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
   inputRow: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: Colors.light.background,

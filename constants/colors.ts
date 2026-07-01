@@ -16,9 +16,9 @@ const Colors = {
     tabIconDefault: "#8a8a8a",
     tabIconSelected: "#FF5A00",
     highlight: "#FF5A00",
-    highlightBg: "#F3F4F6",
+    highlightBg: "#E5E7EB",
     highlightOrange: "#FF5A00",
-    highlightOrangeBg: "#F3F4F6",
+    highlightOrangeBg: "#E5E7EB",
     headerBg: "#000000",
   },
 };

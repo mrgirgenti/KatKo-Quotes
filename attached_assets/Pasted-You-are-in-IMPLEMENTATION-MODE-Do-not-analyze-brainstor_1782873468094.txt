@@ -1,0 +1,484 @@
+You are in IMPLEMENTATION MODE.
+
+Do not analyze, brainstorm, propose alternatives, or create a plan. Begin editing the application immediately.
+
+If an existing implementation conflicts with the approved design or architecture, DELETE AND REPLACE IT. Do not preserve legacy UI for backwards compatibility.
+
+Work only on the Pricing Architecture and Cost Configuration changes described below. Do not modify unrelated functionality.
+
+Timebox investigation to 5 minutes maximum. If something is unclear, make the most reasonable implementation decision that aligns with the architecture below.
+
+At the end, report:
+- Files changed
+- Components changed
+- Database/schema changes
+- New models created
+- Remaining TODOs
+
+==========================================================
+OBJECTIVE
+==========================================================
+
+Implement the new Pricing Architecture for the Quote Builder.
+
+This is NOT simply a UI rename.
+
+The pricing engine, quote builder, line item subtotal, quote summary, and settings must all use the same terminology and architecture.
+
+The goal is to establish one consistent pricing model throughout the application.
+
+==========================================================
+NEW PRICING ENGINE
+==========================================================
+
+There are now FIVE pricing buckets.
+
+1. Product
+2. Service
+3. Production
+4. Other
+5. Markup
+
+These are the ONLY pricing buckets used throughout the Quote Builder.
+
+Every cost in the application belongs to exactly one of these buckets.
+
+==========================================================
+REMOVE OLD TERMINOLOGY
+==========================================================
+
+Remove all references to:
+
+- Cost Adjustments
+- Adjustments
+- Adjustment Library
+- Adjustment Defaults
+- Cost of Goods (within Quote Builder)
+- COGS (within Quote Builder)
+
+Replace them with the new architecture below.
+
+==========================================================
+QUOTE BUILDER
+==========================================================
+
+The current Cost Adjustments section must be redesigned.
+
+Rename:
+
+COST ADJUSTMENTS
+
+to
+
+PRODUCTION COSTS
+
+This section ONLY contains production-related costs.
+
+Examples:
+
+- Design Fee
+- Digitizing
+- Artwork Cleanup
+- Screen Setup
+- Film Charges
+- PMS Match
+- Color Change
+- Specialty Ink
+- Bagging & Tagging
+- Folding
+- Numbering
+- etc.
+
+Remove the "Adjustment Library" section completely.
+
+Replace
+
++ Add Adjustment
+
+with
+
++ Add Production
+
+This button should open a picker sourced ONLY from the Production Library in Settings.
+
+==========================================================
+OTHER CHARGES
+==========================================================
+
+Immediately below Production Costs create a second section.
+
+Title:
+
+OTHER CHARGES
+
+This section is completely separate from Production.
+
+Examples:
+
+- Rush
+- Shipping
+- Delivery
+- Fulfillment
+- Plus Size Apparel
+- Oversized Print
+- Restocking
+- Discount
+- Credit
+- Miscellaneous
+
+Provide
+
++ Add Other Charge
+
+This picker should ONLY load items from the Other Charges Library.
+
+Production items should NEVER appear here.
+
+Other Charges should NEVER appear in Production.
+
+==========================================================
+LINE ITEM COSTS
+==========================================================
+
+Update the cost buckets.
+
+Current:
+
+Product
+Service
+Adjustments
+Markup
+
+Replace with:
+
+Product
+Service
+Production
+Other
+Markup
+
+These five values are live calculated totals.
+
+Maintain existing styling and behavior.
+
+==========================================================
+LINE ITEM SUBTOTAL
+==========================================================
+
+Replace the current breakdown.
+
+New layout:
+
+LINE ITEM SUBTOTAL
+
+Production Cost
+
+Other Charges
+
+Markup (xx%)
+
+-----------------------
+
+Subtotal (xx pcs)
+
+Where
+
+Production Cost
+
+equals
+
+Product
++
+Service
++
+Production
+
+Other Charges is its own row.
+
+Markup is calculated after those costs.
+
+Remove ALL references to:
+
+Cost of Goods
+
+Adjustments
+
+==========================================================
+QUOTE SUMMARY
+==========================================================
+
+This is a QUOTE ROLLUP.
+
+It is NOT a copy of the Line Item Subtotal.
+
+Every value shown here is the cumulative total across ALL line items.
+
+Do NOT begin with Subtotal anymore.
+
+Instead restructure it to mirror the pricing engine.
+
+Example hierarchy:
+
+QUOTE SUMMARY
+
+Product
+
+Service
+
+Production
+
+--------------------
+
+Production Cost
+
+Other Charges
+
+Markup
+
+--------------------
+
+CLIENT QUOTE PRICE
+
+Subtotal
+
+Online Fee
+
+--------------------
+
+Quote Total
+
+ADDITIONAL FEES
+
+Card Fee
+
+Sales Tax
+
+====================
+
+Grand Total
+
+Each value should represent the SUM across every Line Item.
+
+For example:
+
+If
+
+Line Item 1
+
+Production Cost = $150
+
+Line Item 2
+
+Production Cost = $112
+
+Then
+
+Quote Summary
+
+Production Cost
+
+must display
+
+$262 total
+
+and the correct calculated "each" value.
+
+The Quote Summary is an aggregate of every Line Item.
+
+==========================================================
+SETTINGS
+==========================================================
+
+Rename
+
+Pricing Defaults
+
+to
+
+Cost Configuration
+
+Replace the existing pricing pages with:
+
+• Product Pricing
+• Production Library
+• Other Charges Library
+• Service Styles
+• Taxes & Fees
+
+==========================================================
+PRODUCT PRICING
+==========================================================
+
+Contains:
+
+Apparel Size Upcharges
+
+Product Overrides
+
+No Decoration Size Upcharges.
+
+Remove that concept entirely.
+
+==========================================================
+PRODUCTION LIBRARY
+==========================================================
+
+Replace Adjustment Defaults.
+
+This page manages reusable Production items.
+
+Each Production item supports:
+
+- Name
+- Calculation Type
+- Rate
+- Minimum
+- Increment
+- Scope
+- Taxable
+- Enabled
+
+Examples:
+
+Design Fee
+
+Digitizing
+
+Artwork Cleanup
+
+Screen Setup
+
+Film Charges
+
+Color Change
+
+PMS Match
+
+etc.
+
+==========================================================
+OTHER CHARGES LIBRARY
+==========================================================
+
+Create a new page.
+
+This manages reusable Other Charges.
+
+Examples:
+
+Rush
+
+Shipping
+
+Fulfillment
+
+Plus Size Apparel
+
+Oversized Print
+
+Restocking
+
+Discount
+
+Credit
+
+Miscellaneous
+
+Each supports:
+
+- Name
+- Calculation Type
+- Rate
+- Minimum
+- Increment
+- Scope
+- Taxable
+- Enabled
+
+==========================================================
+SERVICE STYLES
+==========================================================
+
+Leave existing layout.
+
+Only update any references necessary to support the new pricing architecture.
+
+==========================================================
+TAXES & FEES
+==========================================================
+
+Keep existing behavior.
+
+Only update naming where necessary.
+
+==========================================================
+IMPORTANT ARCHITECTURAL RULES
+==========================================================
+
+Settings define reusable libraries.
+
+The Quote Builder CONSUMES those libraries.
+
+The Quote Builder should never contain library management functionality.
+
+The Pricing Engine must use the same terminology everywhere.
+
+Product
+
+Service
+
+Production
+
+Other
+
+Markup
+
+These names must remain consistent across:
+
+- Settings
+- Quote Builder
+- Line Item Costs
+- Line Item Subtotal
+- Quote Summary
+
+==========================================================
+DO NOT
+==========================================================
+
+Do not redesign the Quote Builder layout.
+
+Do not redesign Design Details.
+
+Do not redesign Products + Sizes.
+
+Do not redesign calculators.
+
+Do not redesign Mockup Builder.
+
+Do not change unrelated styling.
+
+Do not introduce new workflows.
+
+Maintain the existing UI as much as possible while implementing the new pricing architecture.
+
+==========================================================
+SUCCESS CRITERIA
+==========================================================
+
+The Quote Builder should feel visually almost identical to today.
+
+However:
+
+✓ Production and Other are separated.
+
+✓ Line Item Costs uses the five pricing buckets.
+
+✓ Line Item Subtotal reflects the new pricing model.
+
+✓ Quote Summary becomes a true rollup of every line item.
+
+✓ Settings provide Production Library and Other Charges Library.
+
+✓ Old "Adjustments" terminology is completely removed.
+
+Focus on functionality first. Visual polish can follow once the architecture is working correctly.

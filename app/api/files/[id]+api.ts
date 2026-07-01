@@ -3,10 +3,11 @@ import { authenticateRequest, unauthorized } from '@/lib/auth';
 import { readUpload, deleteUpload } from '@/lib/files';
 
 export async function GET(request: Request, { id }: { id: string }) {
-  const authedUser = await authenticateRequest(request);
-  if (!authedUser) return unauthorized();
-
   if (!id) return new Response('Not found', { status: 404 });
+
+  const url = new URL(request.url);
+  const inline = url.searchParams.get('inline') === 'true';
+
   const client = await pool.connect();
   try {
     const result = await client.query(
@@ -17,12 +18,20 @@ export async function GET(request: Request, { id }: { id: string }) {
       return new Response('Not found', { status: 404 });
     }
     const file = result.rows[0];
+
+    // CLIENT_VISIBLE files (org logos, approved assets) are accessible inline
+    // without auth — browsers can't send Bearer tokens in <Image src> tags.
+    // Non-inline requests (downloads) and non-CLIENT_VISIBLE files still require auth.
+    const isClientVisible = file.visibility === 'CLIENT_VISIBLE';
+    if (!inline || !isClientVisible) {
+      const authedUser = await authenticateRequest(request);
+      if (!authedUser) return unauthorized();
+    }
+
     const buffer = await readUpload(file.storageKey);
     if (!buffer) {
       return new Response('File not found on server', { status: 404 });
     }
-    const url = new URL(request.url);
-    const inline = url.searchParams.get('inline') === 'true';
     const disposition = inline ? 'inline' : `attachment; filename="${file.originalName}"`;
     return new Response(buffer, {
       status: 200,
@@ -30,7 +39,7 @@ export async function GET(request: Request, { id }: { id: string }) {
         'Content-Type': file.mimeType || 'application/octet-stream',
         'Content-Disposition': disposition,
         'Content-Length': String(buffer.length),
-        'Cache-Control': 'private, max-age=3600',
+        'Cache-Control': isClientVisible && inline ? 'public, max-age=86400' : 'private, max-age=3600',
       },
     });
   } finally {

@@ -1,0 +1,276 @@
+The implementation is moving in the right direction. This is significantly closer to the approved direction than the previous iteration. The architecture now generally reflects the intended workflow.
+
+However, before continuing, I want to refine the UI so it matches the approved production workspace more closely.
+
+IMPORTANT
+
+The attached mockup remains the approved UI specification.
+
+Do not redesign the Quote Builder.
+
+Do not invent new layouts.
+
+Do not optimize for component reuse at the expense of the user experience.
+
+Your goal is to faithfully implement the approved design while improving spacing, hierarchy, and usability.
+
+==================================================
+OVERALL GOAL
+==================================================
+
+The expanded Line Item should feel like a production workspace.
+
+It should NOT feel like a dense form.
+
+It should NOT feel like several unrelated components stacked together.
+
+The CSR should naturally work through the page in this order:
+
+1. Review the mockup
+2. Confirm design details
+3. Select products
+4. Enter quantities
+5. Run production calculator
+6. Review pricing
+7. Submit quote
+
+The interface should visually reinforce this workflow.
+
+==================================================
+1. RESTORE THE VISUAL HIERARCHY
+==================================================
+
+The current implementation feels compressed.
+
+The approved mockup has significantly better spacing and breathing room.
+
+Increase whitespace throughout the expanded Line Item.
+
+Avoid making the workspace feel cramped simply to fit more controls.
+
+The expanded Line Item is the primary working area of the application and should feel comfortable to work inside for long periods.
+
+==================================================
+2. MOCKUP AREA
+==================================================
+
+The mockup is currently too small and visually weak.
+
+It currently feels like a simple upload placeholder.
+
+The mockup is one of the most important parts of a production job.
+
+Increase its visual prominence.
+
+Increase its size approximately 40–50%.
+
+When a mockup exists, it should immediately communicate:
+
+"This is what we are producing."
+
+The mockup should remain the visual anchor of the Design Details section.
+
+==================================================
+3. DESIGN DETAILS
+==================================================
+
+Keep the overall structure exactly as approved.
+
+However:
+
+Improve spacing between logical groups.
+
+Reduce the "form" feeling.
+
+The fields should feel grouped naturally:
+
+Design Information
+
+Service Information
+
+Production Information
+
+Notes
+
+Maintain the existing field order.
+
+==================================================
+4. PRODUCTS + SIZES
+==================================================
+
+The architecture is now much closer.
+
+However each Product should feel like its own clearly defined object.
+
+Each Product should have subtle visual separation.
+
+Use spacing and light borders instead of adding unnecessary UI.
+
+Avoid making the Products section feel like an embedded Product Catalog.
+
+This is still a Quote Builder.
+
+==================================================
+5. SIZE INPUTS
+==================================================
+
+Increase the width and visual weight of the size fields.
+
+The CSR will interact with these constantly.
+
+They should be optimized for speed.
+
+The fields should remain:
+
+XS
+SM
+MD
+LG
+XL
+2XL
+3XL
+4XL
+
+Total
+
+Maintain all sizes on one row.
+
+==================================================
+6. SECTION HEADERS
+==================================================
+
+Increase the visual strength of the black section headers.
+
+Slightly increase height and padding.
+
+Maintain consistency across:
+
+Design Details
+
+Products + Sizes
+
+DTF Cost Calculator
+
+Line Item Costs
+
+Line Item Subtotal
+
+These headers should clearly separate major sections.
+
+==================================================
+7. ADD PRODUCT BUTTON
+==================================================
+
+Keep the Add Product button integrated into the Products + Sizes section header.
+
+Do not allow it to feel like a floating action button.
+
+It belongs to that section.
+
+==================================================
+8. PRODUCTS SHOULD SUPPORT THE WORKFLOW
+==================================================
+
+Do not redesign the product selection experience.
+
+The Product Style field should remain a searchable dropdown.
+
+Do NOT introduce:
+
+large category browsers
+
+wizard layouts
+
+embedded catalog pages
+
+full-screen product pickers
+
+The searchable catalog should only appear when selecting Product Style.
+
+==================================================
+9. KEEP THE CURRENT ARCHITECTURE
+==================================================
+
+Continue using:
+
+Quote
+
+↓
+
+Line Item (Production Run)
+
+↓
+
+Products
+
+Products within the Line Item continue sharing:
+
+artwork
+
+mockup
+
+production calculator
+
+service style
+
+locations
+
+additional services
+
+production notes
+
+Only garment-specific information belongs to each Product.
+
+==================================================
+10. DO NOT OVERCOMPLICATE THE UI
+==================================================
+
+The complexity belongs in the engine.
+
+Not on the screen.
+
+Do not add:
+
+additional pricing tables
+
+per-product accounting panels
+
+complex inherited/shared cost explanations
+
+multi-card pricing summaries
+
+Keep the UI clean and focused on production.
+
+==================================================
+11. VISUAL CONSISTENCY
+==================================================
+
+Review the approved mockup carefully.
+
+Pay close attention to:
+
+spacing
+
+alignment
+
+proportions
+
+padding
+
+section balance
+
+visual hierarchy
+
+This should feel like one cohesive production workspace—not a collection of individual components placed next to one another.
+
+==================================================
+FINAL OBJECTIVE
+==================================================
+
+Do not think of this task as building individual React components.
+
+Think of it as designing the primary workspace where a CSR spends most of their day.
+
+The goal is that an experienced CSR can open a quote, understand the entire production job in seconds, make changes quickly, and move through the workflow naturally without feeling like they're navigating multiple disconnected interfaces.
+
+Focus this iteration on polish, spacing, hierarchy, readability, and workflow—not on adding new functionality.

@@ -1,6 +1,33 @@
-import { LineItem, QuoteCalculations, SizeQuantities, LineItemCalculations, ProductCostRow } from '@/types/quote';
+import { LineItem, QuoteCalculations, SizeQuantities, LineItemCalculations, ProductCostRow, QuoteAdjustment } from '@/types/quote';
 import type { ConfiguredProduct } from '@/types/configuredProduct';
+import { getLineItemProducts } from '@/utils/configuredProduct';
 import { ONLINE_FEE_PCT, ONLINE_FEE_FLAT, CARD_FEE_PCT, SALES_TAX_PCT } from '@/constants/fees';
+
+/**
+ * Fee rate overrides for the calculation engine.
+ * All values are in decimal form (e.g. 0.083 for 8.3%).
+ * When not provided, the compile-time constants from constants/fees.ts are used.
+ */
+export interface FeeRates {
+  salesTaxPct:   number;
+  cardFeePct:    number;
+  onlineFeePct:  number;
+  onlineFeeFlat: number;
+}
+
+/** Compute extra cost from size upcharges for one product's colorVariants. */
+function computeSizeUpcharge(
+  colorVariants: Array<{ sizes: SizeQuantities }>,
+  upcharges: Record<string, number>,
+): number {
+  let total = 0;
+  for (const cv of colorVariants) {
+    total += (upcharges['2XL'] ?? 0) * (cv.sizes.xxl   ?? 0);
+    total += (upcharges['3XL'] ?? 0) * (cv.sizes.xxxl  ?? 0);
+    total += (upcharges['4XL'] ?? 0) * (cv.sizes.xxxxl ?? 0);
+  }
+  return total;
+}
 
 export function getTotalQuantity(sizes: SizeQuantities, isPromotional: boolean): number {
   if (isPromotional) {
@@ -22,24 +49,6 @@ function getProductQty(cp: ConfiguredProduct, isPromotional: boolean): number {
 }
 
 /**
- * Returns the canonical products array for a line item.
- *
- * Priority:
- *  1. configuredProducts[] (multi-product canonical form)
- *  2. configuredProduct  (legacy single-product)
- *  3. [] — empty; callers fall back to flat legacy fields
- */
-function getLineItemProducts(item: LineItem): ConfiguredProduct[] {
-  if (item.configuredProducts && item.configuredProducts.length > 0) {
-    return item.configuredProducts;
-  }
-  if (item.configuredProduct) {
-    return [item.configuredProduct];
-  }
-  return [];
-}
-
-/**
  * Builds a ProductCostRow label from a ConfiguredProduct.
  * Prefers styleNumber + styleName; falls back to productLabel or productType.
  */
@@ -49,65 +58,130 @@ function productLabel(cp: ConfiguredProduct): string {
   return cp.productLabel || cp.productType || cp.category || 'Product';
 }
 
-export function calculateLineItemTotals(lineItems: LineItem[]): {
+/**
+ * Derive one adjustment row's dollar value from its inputs.
+ *   flat        → rate
+ *   hourly      → rate × quantity (hours)
+ *   per_unit    → rate × quantity (units/pieces)
+ *   percentage  → rate% × base
+ *
+ * Shared by the pricing engine AND the Quote Builder's PRODUCTION COSTS /
+ * OTHER CHARGES tables + Add dialog, so the on-screen "Calculated" value always
+ * equals the engine's contribution.
+ */
+export function calcAdjustmentAmount(
+  adj: Pick<QuoteAdjustment, 'type' | 'rate' | 'quantity'>,
+  base: number,
+): number {
+  switch (adj.type) {
+    case 'flat':
+      return adj.rate || 0;
+    case 'hourly':
+    case 'per_unit':
+      return (adj.rate || 0) * (adj.quantity || 0);
+    case 'percentage':
+      return ((adj.rate || 0) / 100) * (base || 0);
+    default:
+      return 0;
+  }
+}
+
+/** Σ of every adjustment row in a list, evaluated against `base`. */
+function sumAdjustments(list: QuoteAdjustment[] | undefined, base: number): number {
+  if (!list || list.length === 0) return 0;
+  return list.reduce((sum, adj) => sum + calcAdjustmentAmount(adj, base), 0);
+}
+
+export function calculateLineItemTotals(
+  lineItems: LineItem[],
+  upcharges?: Record<string, number>,
+): {
   totalQuantity: number;
   productCostTotal: number;
   serviceCostTotal: number;
+  productionCostTotal: number;
+  otherCostTotal: number;
   serviceFeeTotal: number;
   markupTotal: number;
 } {
   let totalQuantity = 0;
   let productCostTotal = 0;
   let serviceCostTotal = 0;
-  let serviceFeeTotal = 0;
+  let productionCostTotal = 0;
+  let otherCostTotal = 0;
   let markupTotal = 0;
 
   for (const item of lineItems) {
-    const calcs = calculateLineItemSubtotal(item);
+    const calcs = calculateLineItemSubtotal(item, upcharges);
     totalQuantity += calcs.quantity;
     productCostTotal += calcs.productCostTotal;
     serviceCostTotal += calcs.serviceCostTotal;
-    serviceFeeTotal += calcs.serviceFeeTotal;
+    productionCostTotal += calcs.productionCostTotal;
+    otherCostTotal += calcs.otherCostTotal;
     markupTotal += calcs.markupTotal;
   }
 
-  return { totalQuantity, productCostTotal, serviceCostTotal, serviceFeeTotal, markupTotal };
+  return {
+    totalQuantity,
+    productCostTotal,
+    serviceCostTotal,
+    productionCostTotal,
+    otherCostTotal,
+    serviceFeeTotal: productionCostTotal,
+    markupTotal,
+  };
 }
 
 export function calculateQuote(
   lineItems: LineItem[],
   hasOnlineFee: boolean,
   hasSalesTax: boolean,
-  hasCardFee: boolean
+  hasCardFee: boolean,
+  feeRates?: Partial<FeeRates>,
+  upcharges?: Record<string, number>,
 ): QuoteCalculations | null {
   if (lineItems.length === 0) {
     return null;
   }
 
-  const { totalQuantity, productCostTotal, serviceCostTotal, serviceFeeTotal, markupTotal } = 
-    calculateLineItemTotals(lineItems);
+  const {
+    totalQuantity,
+    productCostTotal,
+    serviceCostTotal,
+    productionCostTotal,
+    otherCostTotal,
+    markupTotal,
+  } = calculateLineItemTotals(lineItems, upcharges);
 
   if (totalQuantity === 0) {
     return null;
   }
 
-  // These per-each values are display-only summary averages across the full quote.
-  // They are never used to drive further calculations — productCostTotal is the source of truth.
+  // Per-each display-only averages across the full quote.
   const productCostEach = productCostTotal / totalQuantity;
   const serviceCostEach = serviceCostTotal / totalQuantity;
-  const serviceFeeEach = serviceFeeTotal / totalQuantity;
+  const productionCostEach = totalQuantity > 0 ? productionCostTotal / totalQuantity : 0;
+  const otherCostEach = totalQuantity > 0 ? otherCostTotal / totalQuantity : 0;
 
-  const cogTotal = productCostTotal + serviceCostTotal + serviceFeeTotal;
+  // Production Cost base = Product + Service + Production
+  const cogTotal = productCostTotal + serviceCostTotal + productionCostTotal;
   const cogEach = cogTotal / totalQuantity;
 
   const markupAmount = markupTotal;
-  const subtotal = cogTotal + markupAmount;
-  
-  const markupPercentage = cogTotal > 0 ? ((subtotal - cogTotal) / cogTotal) * 100 : 0;
+  // Markup percentage is calculated over the production cost base (excludes Other Charges)
+  const markupPercentage = cogTotal > 0 ? (markupAmount / cogTotal) * 100 : 0;
 
-  const onlineFee = hasOnlineFee ? (subtotal * ONLINE_FEE_PCT) + ONLINE_FEE_FLAT : 0;
-  const salesTax = hasSalesTax ? subtotal * SALES_TAX_PCT : 0;
-  const cardFee = hasCardFee ? subtotal * CARD_FEE_PCT : 0;
+  // Subtotal includes all five buckets
+  const subtotal = cogTotal + otherCostTotal + markupAmount;
+
+  const _onlineFeePct  = feeRates?.onlineFeePct  ?? ONLINE_FEE_PCT;
+  const _onlineFeeFlat = feeRates?.onlineFeeFlat ?? ONLINE_FEE_FLAT;
+  const _salesTaxPct   = feeRates?.salesTaxPct   ?? SALES_TAX_PCT;
+  const _cardFeePct    = feeRates?.cardFeePct     ?? CARD_FEE_PCT;
+
+  const onlineFee = hasOnlineFee ? (subtotal * _onlineFeePct) + _onlineFeeFlat : 0;
+  const salesTax  = hasSalesTax  ? subtotal * _salesTaxPct : 0;
+  const cardFee   = hasCardFee   ? subtotal * _cardFeePct  : 0;
 
   const total = subtotal + onlineFee + salesTax + cardFee;
   const totalPerPiece = total / totalQuantity;
@@ -118,8 +192,12 @@ export function calculateQuote(
     productCostTotal,
     serviceCostEach,
     serviceCostTotal,
-    serviceFeeEach,
-    serviceFeeTotal,
+    serviceFeeEach: productionCostEach,
+    serviceFeeTotal: productionCostTotal,
+    productionCostEach,
+    productionCostTotal,
+    otherCostEach,
+    otherCostTotal,
     cogEach,
     cogTotal,
     markupAmount,
@@ -157,11 +235,19 @@ export function generateId(): string {
 /**
  * Calculate the true cost breakdown for one line item (one Design).
  *
- * PRICING MODEL:
- *   productCostTotal = Σ (product.productCostEach × product.qty) for every product
- *   serviceCostTotal = item.serviceCostEach × totalQty   (shared service, per piece)
- *   serviceFeeTotal  = item.serviceFeeEach               (flat design/setup fee)
- *   markupTotal      = item.markupEach × totalQty        (shared markup, per piece)
+ * PRICING MODEL (5 buckets):
+ *   productCostTotal    = Σ (product.productCostEach × product.qty) for every product
+ *   serviceCostTotal    = item.serviceCostEach × totalQty   (shared service, per piece)
+ *   productionCostTotal = Σ item.productionCosts[]          (itemized PRODUCTION COSTS — Design Fee, Digitizing, etc.)
+ *   otherCostTotal      = Σ item.otherCharges[]             (itemized OTHER CHARGES — Rush, Shipping, etc.)
+ *   markupTotal         = item.markupEach × totalQty        (shared markup, per piece)
+ *
+ * Production / Other buckets are the sum of their itemized adjustment rows.
+ * Legacy quotes with no itemized rows fall back to the flat scalar fields
+ * (item.serviceFeeEach / item.otherCostEach) so old data still prices correctly.
+ *
+ * Production Cost base  = productCostTotal + serviceCostTotal + productionCostTotal
+ * Subtotal              = Production Cost base + otherCostTotal + markupTotal
  *
  * There is no weighted average of product cost. Each product's extended cost
  * is computed independently. productCostTotal is the exact dollar sum.
@@ -169,7 +255,10 @@ export function generateId(): string {
  * When the line item has multiple products, productCostRows contains the
  * per-product breakdown for display in the LINE ITEM COSTS panel.
  */
-export function calculateLineItemSubtotal(item: LineItem): LineItemCalculations {
+export function calculateLineItemSubtotal(
+  item: LineItem,
+  upcharges?: Record<string, number>,
+): LineItemCalculations {
   const isPromotional = item.serviceStyle === 'Promotional';
 
   const products = getLineItemProducts(item);
@@ -181,7 +270,12 @@ export function calculateLineItemSubtotal(item: LineItem): LineItemCalculations 
   if (products.length > 0) {
     for (const cp of products) {
       const cpQty = getProductQty(cp, isPromotional);
-      const extendedCost = cp.productCostEach * cpQty;
+      const baseCost = cp.productCostEach * cpQty;
+      const upchargeAmt =
+        upcharges && cp.colorVariants?.length
+          ? computeSizeUpcharge(cp.colorVariants as Array<{ sizes: SizeQuantities }>, upcharges)
+          : 0;
+      const extendedCost = baseCost + upchargeAmt;
       productCostTotal += extendedCost;
       quantity += cpQty;
       rows.push({
@@ -198,23 +292,43 @@ export function calculateLineItemSubtotal(item: LineItem): LineItemCalculations 
   }
 
   const serviceCostTotal = item.serviceCostEach * quantity;
-  const serviceFeeTotal = item.serviceFeeEach;
   const markupTotal = (item.markupEach || 0) * quantity;
 
-  const cogTotal = productCostTotal + serviceCostTotal + serviceFeeTotal;
-  const subtotal = cogTotal + markupTotal;
+  // Percentage adjustments are evaluated against the line subtotal BEFORE
+  // adjustments (Product + Service + Markup). This base is stable and avoids a
+  // circular dependency (subtotal → adjustment → subtotal). The Quote Builder
+  // adjustment tables/dialog are handed this exact value so their on-screen
+  // "Calculated" column matches the engine's contribution.
+  const adjustmentBase = productCostTotal + serviceCostTotal + markupTotal;
+
+  // Production bucket = Σ itemized PRODUCTION COSTS rows.
+  // Other Charges bucket = Σ itemized OTHER CHARGES rows.
+  // Fall back to the legacy flat scalar fields when a line item has no rows.
+  const productionCostTotal =
+    item.productionCosts && item.productionCosts.length > 0
+      ? sumAdjustments(item.productionCosts, adjustmentBase)
+      : item.serviceFeeEach ?? 0;
+  const otherCostTotal =
+    item.otherCharges && item.otherCharges.length > 0
+      ? sumAdjustments(item.otherCharges, adjustmentBase)
+      : item.otherCostEach ?? 0;
+
+  // Production Cost base = Product + Service + Production
+  const cogTotal = productCostTotal + serviceCostTotal + productionCostTotal;
+  const subtotal = cogTotal + otherCostTotal + markupTotal;
   const perPiece = quantity > 0 ? subtotal / quantity : 0;
 
   return {
     quantity,
     productCostTotal,
-    // Only surface the breakdown when there are multiple products — single-product
-    // items don't need a breakdown row.
     productCostRows: rows.length > 1 ? rows : undefined,
     serviceCostTotal,
-    serviceFeeTotal,
+    productionCostTotal,
+    otherCostTotal,
+    serviceFeeTotal: productionCostTotal,
     markupTotal,
     cogTotal,
+    adjustmentBase,
     subtotal,
     perPiece,
   };

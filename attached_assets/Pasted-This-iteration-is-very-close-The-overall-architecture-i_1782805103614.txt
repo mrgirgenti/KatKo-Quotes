@@ -1,0 +1,180 @@
+This iteration is very close. The overall architecture is now correct and the Quote Builder is finally beginning to feel like a production workspace instead of a collection of unrelated forms.
+
+From this point forward, focus ONLY on refinement and polish. Do not redesign the layout or introduce new concepts. The approved mockup remains the source of truth.
+
+IMPORTANT
+
+If any existing implementation conflicts with the approved design or architecture, delete and replace it. Do not preserve legacy UI for backward compatibility.
+
+==================================================
+1. MERGE THE PRICING PANELS
+==================================================
+
+Merge the current "Line Item Costs" and "Line Item Subtotal" into a single pricing panel.
+
+Keep the existing black "Line Item Costs" header.
+
+Retain the existing editable fields at the top:
+
+• Product
+• Service
+• Fees
+• Markup
+
+Then add a simple divider beneath those fields.
+
+Below the divider, create a "Line Item Subtotal" subsection.
+
+Remove the large orange "Line Item Subtotal" section entirely.
+
+The entire pricing area for a line item should exist as one compact card aligned beside the production calculator, matching the proportions shown in the approved mockup.
+
+This will:
+
+• reduce vertical space
+• improve readability
+• keep all pricing for the line item together
+• visually connect pricing to the production calculator
+
+The pricing panel should feel like ONE cohesive component instead of two stacked widgets.
+
+==================================================
+2. KEEP THE QUOTE SUMMARY CLEAN
+==================================================
+
+The Quote Summary sidebar is working well.
+
+Keep the new "Line Item Subtotals" section.
+
+It provides a quick financial overview of every production run and helps users immediately identify expensive jobs without expanding each line item.
+
+Maintain this section.
+
+==================================================
+3. IMPROVE PRODUCT HIERARCHY
+==================================================
+
+The Product rows are much improved, but they still blend together visually.
+
+Increase the separation slightly using spacing and subtle borders.
+
+Do NOT redesign them.
+
+Do NOT make them into large cards.
+
+Simply make each Product feel like its own clearly identifiable object.
+
+==================================================
+4. PRODUCT LABELING
+==================================================
+
+The Product itself should be the primary visual identifier.
+
+The CSR should immediately recognize which product they are editing.
+
+Strengthen the visual emphasis on the selected Product Style rather than the supporting controls.
+
+==================================================
+5. REMOVE THE "2 PRODUCTS" HELPER
+==================================================
+
+Under the Product pricing field there is currently a small helper that says something similar to:
+
+"2 products"
+
+Remove it.
+
+It does not provide meaningful information because the user can already see exactly how many Products exist.
+
+If a helper is necessary, use something much simpler like:
+
+"Auto Calculated"
+
+Otherwise remove it entirely.
+
+==================================================
+6. MOCKUP AREA
+==================================================
+
+Increase the size of the mockup approximately 25–40%.
+
+The mockup should remain the visual anchor of the Design Details section.
+
+It should immediately communicate:
+
+"This is what we're producing."
+
+Avoid making it feel like a simple upload placeholder.
+
+==================================================
+7. DESIGN DETAILS SPACING
+==================================================
+
+Improve vertical spacing inside Design Details.
+
+Fields currently feel slightly compressed.
+
+Increase spacing between logical groups:
+
+Design Information
+
+Service Information
+
+Production Information
+
+Notes
+
+No structural changes are needed.
+
+This is simply a visual polish pass.
+
+==================================================
+8. PRODUCT ROW SPACING
+==================================================
+
+Increase the width of the quantity inputs slightly.
+
+Increase padding around the Product rows slightly.
+
+The CSR will interact with these controls constantly.
+
+Optimize them for speed and readability.
+
+==================================================
+9. DO NOT REDESIGN ANYTHING
+==================================================
+
+Do NOT redesign the Quote Builder.
+
+Do NOT move major sections.
+
+Do NOT create new layouts.
+
+Do NOT introduce additional pricing tables.
+
+Do NOT create product-level accounting cards.
+
+Do NOT expose implementation complexity.
+
+The complexity belongs in the engine—not on the screen.
+
+==================================================
+10. FINAL POLISH
+==================================================
+
+Treat this as a UI polish pass.
+
+Focus on:
+
+• spacing
+• alignment
+• proportions
+• typography
+• section balance
+• visual hierarchy
+
+The goal is for the expanded Line Item to feel like a polished production workspace used all day by a CSR—not a dense form made from individual UI components.
+
+The architecture is now correct.
+
+This iteration should focus entirely on refinement, consistency, and making the approved design feel finished.

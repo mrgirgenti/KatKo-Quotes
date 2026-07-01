@@ -4563,7 +4563,13 @@ export default function ClientPortal() {
           <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
               <View style={styles.card}>
-                <View style={styles.cardIcon}><FileText size={28} color={BRAND} /></View>
+                {logoSrc ? (
+                  <View style={styles.cardIcon}>
+                    <Image source={{ uri: logoSrc }} style={{ width: 48, height: 48 }} resizeMode="contain" />
+                  </View>
+                ) : (
+                  <View style={styles.cardIcon}><FileText size={28} color={BRAND} /></View>
+                )}
                 <Text style={styles.cardTitle}>Client Hub Access</Text>
                 <Text style={styles.cardSub}>
                   Enter the email address associated with your account to access your organization's portal.

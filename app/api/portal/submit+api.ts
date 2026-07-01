@@ -2,14 +2,73 @@ import { pool } from '@/lib/pool';
 import { sendEmail, buildSubmissionConfirmationEmail, buildNewRequestAdminEmail } from '@/lib/email';
 import { createAction } from '@/lib/actions';
 import { buildConfiguredProduct } from '@/utils/configuredProduct';
+import { getLineItemProducts, syncLineItemFromProducts } from '@/utils/lineItemProducts';
 import { getTotalQuantity } from '@/utils/quoteCalculations';
 import type { LineItem } from '@/types/quote';
+import type { ConfiguredProduct } from '@/types/configuredProduct';
+
+const EMPTY_SIZES = { xs: 0, s: 0, m: 0, l: 0, xl: 0, xxl: 0, xxxl: 0, xxxxl: 0, flat: 0 };
 
 const EDIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
 function mapOrderType(portalOrderType: string): string {
   if (portalOrderType === 'Reorder') return 'Re-Order';
   return 'New';
+}
+
+/**
+ * Convert the Client Hub's variant-based line item (each "Add Another Product /
+ * Color" row is a garmentVariant) into the canonical multi-product products[].
+ * Rows that share a product identity (same productId, else same product label)
+ * are grouped into ONE product with multiple colorVariants — exactly how the staff
+ * expanded editor models a design — so no per-garment identity is lost. Pricing is
+ * always zeroed; `costFor` supplies the internal blank-cost (COGS) reference only.
+ */
+function portalVariantsToProducts(
+  item: any,
+  costFor: (productId?: string) => number,
+): ConfiguredProduct[] {
+  const variants: any[] = Array.isArray(item?.garmentVariants) ? item.garmentVariants : [];
+  if (variants.length === 0) return [];
+
+  const printLocations = [item?.location1, item?.location2, item?.location3, item?.location4]
+    .filter((l: any) => typeof l === 'string' && l.trim().length > 0);
+
+  const groups = new Map<string, ConfiguredProduct>();
+  for (const v of variants) {
+    const key =
+      (v?.productId && `id:${String(v.productId)}`) ||
+      `label:${String(v?.product ?? '').trim().toLowerCase()}`;
+    const color = typeof v?.color === 'string' ? v.color : '';
+    const sizes = v?.sizes ?? { ...EMPTY_SIZES };
+    const existing = groups.get(key);
+    if (existing) {
+      existing.colorVariants.push({ color, sizes });
+    } else {
+      groups.set(key, {
+        productSource: v?.productSource === 'catalog' ? 'catalog' : 'manual',
+        productId: v?.productId,
+        productLabel: v?.product || undefined,
+        styleNumber: v?.styleNumber,
+        styleName: v?.productName,
+        brand: v?.brand,
+        category: v?.category,
+        productType: v?.category,
+        decorationMethod: item?.serviceStyle || 'Screen Printing',
+        colorVariants: [{ color, sizes }],
+        printLocations,
+        locationDetails: item?.locationDetails || undefined,
+        mockupUri: item?.mockupUri || undefined,
+        artworkLayers: [],
+        templateSettings: {},
+        productCostEach: costFor(v?.productId),
+        serviceCostEach: 0,
+        serviceFeeEach: 0,
+        markupEach: 0,
+      });
+    }
+  }
+  return Array.from(groups.values());
 }
 
 export async function POST(request: Request) {
@@ -65,6 +124,9 @@ export async function POST(request: Request) {
       for (const v of (item.garmentVariants || [])) {
         if (v?.productId) productIdSet.add(v.productId);
       }
+      for (const p of (item.products || [])) {
+        if (p?.productId) productIdSet.add(p.productId);
+      }
     }
     const productCostMap: Record<string, number> = {};
     if (productIdSet.size > 0) {
@@ -79,11 +141,10 @@ export async function POST(request: Request) {
     }
 
     const lineItemsData = lineItemsArr.map((item: any, i: number) => {
-      const firstProductId = (item.garmentVariants || []).find((v: any) => v?.productId)?.productId;
-      const resolvedCost = firstProductId != null && productCostMap[firstProductId] != null
-        ? productCostMap[firstProductId]
-        : 0;
-      return {
+      // Base line item: customer-supplied design data with EVERY customer-settable
+      // price forced to zero. Clients can never set pricing — that is staff-only and
+      // applied later during quoting.
+      const baseItem: any = {
         id: item.id || `intake_${Date.now()}_${i}`,
         designName: item.designName || `Item ${i + 1}`,
         serviceStyle: item.serviceStyle || 'Screen Printing',
@@ -96,14 +157,52 @@ export async function POST(request: Request) {
         location3: item.location3 || '',
         location4: item.location4 || '',
         locationDetails: item.locationDetails || '',
-        sizes: item.sizes || { xs: 0, s: 0, m: 0, l: 0, xl: 0, xxl: 0, xxxl: 0, xxxxl: 0, flat: 0 },
+        sizes: item.sizes || { ...EMPTY_SIZES },
         garmentVariants: item.garmentVariants || [],
+        products: Array.isArray(item.products) && item.products.length > 0 ? item.products : undefined,
+        configuredProduct: item.configuredProduct,
         mockupUri: item.mockupUri || null,
-        productCostEach: resolvedCost,
+        productCostEach: 0,
         serviceCostEach: 0,
         serviceFeeEach: 0,
         markupEach: 0,
       };
+
+      // Resolve a product's blank cost from the catalog default. This is an internal
+      // COGS reference only (stripped from every customer-facing DTO); all
+      // customer-settable prices stay zero.
+      const costFor = (pid?: string) =>
+        pid != null && productCostMap[pid] != null ? productCostMap[pid] : 0;
+
+      // Build the canonical products[] for this design. Prefer an explicit products[]
+      // payload; otherwise group the portal's garmentVariants by product identity;
+      // finally fall back to the legacy single-product adapter.
+      let products: ConfiguredProduct[];
+      if (Array.isArray(item.products) && item.products.length > 0) {
+        products = (item.products as ConfiguredProduct[]).map((cp) => ({
+          ...cp,
+          productCostEach: costFor(cp.productId),
+          serviceCostEach: 0,
+          serviceFeeEach: 0,
+          markupEach: 0,
+        }));
+      } else {
+        products = portalVariantsToProducts(baseItem, costFor);
+      }
+      if (products.length === 0) {
+        products = getLineItemProducts(baseItem as LineItem).map((cp) => ({
+          ...cp,
+          productCostEach: costFor(cp.productId),
+          serviceCostEach: 0,
+          serviceFeeEach: 0,
+          markupEach: 0,
+        }));
+      }
+
+      // Normalize through the single adapter: derive aggregate sizes, flattened
+      // garmentVariants, blended cost basis, configuredProduct and canonical products[].
+      const synced = syncLineItemFromProducts(baseItem as LineItem, products);
+      return { ...synced, serviceCostEach: 0, serviceFeeEach: 0, markupEach: 0 };
     });
 
     // Eagerly populate configuredProduct on all line items at write time so the

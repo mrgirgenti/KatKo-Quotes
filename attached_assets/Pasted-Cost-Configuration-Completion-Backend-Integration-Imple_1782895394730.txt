@@ -1,0 +1,392 @@
+Cost Configuration Completion + Backend Integration
+
+Implementation Mode. Do not analyze or redesign. Begin implementing immediately.
+
+IMPORTANT:
+
+Do NOT redesign the Cost Configuration page.
+Do NOT simplify existing functionality.
+Do NOT remove any existing fields.
+Do NOT modify layouts that are already working.
+If an existing implementation conflicts with the approved design or architecture, delete and replace it. Do not preserve legacy UI for backward compatibility.
+Preserve the existing UI and only add or restore the missing functionality described below.
+
+The current UI is close to the approved design. This task is about completing the backend model, persistence, and quote engine integration—not redesigning screens.
+
+PRIMARY OBJECTIVE
+
+Finish building the pricing engine that powers the Quote Builder.
+
+Every value configured inside Cost Configuration must:
+
+Save correctly
+Persist after refresh
+Be editable
+Be reusable across quotes
+Automatically populate the Quote Builder
+Calculate correctly
+Feed reports and financials later
+
+These are configuration libraries—not static UI tables.
+
+1. Restore Missing Production Library Fields
+
+The current Production Library has regressed.
+
+Restore these editable fields:
+
+Name
+Category
+Calculation Type
+Rate
+Minimum
+Increment
+Scope
+Taxable
+Enabled
+Display Order (backend only if not yet exposed)
+
+Do NOT remove any of these.
+
+Minimum and Increment are required.
+
+Examples:
+
+Design Fee
+
+Hourly
+Rate $75/hr
+Minimum 0.5
+Increment 0.5
+
+Digitizing
+
+Per Design
+Rate $35
+Minimum 1
+Increment 1
+
+Screen Setup
+
+Flat Rate
+Rate $25
+Minimum 1
+
+These fields must all persist.
+
+2. Restore Missing Other Charges Library Fields
+
+Restore the same pricing engine fields.
+
+Each Other Charge requires:
+
+Name
+Category
+Calculation Type
+Rate
+Minimum
+Increment
+Scope
+Taxable
+Enabled
+Display Order (backend)
+
+These values must save and populate Quote Builder.
+
+3. Category Must Become Locked
+
+Every Cost Library record must belong to exactly ONE category.
+
+Either:
+
+Production
+
+OR
+
+Other Charge
+
+Never both.
+
+This category determines:
+
+where it appears in Quote Builder
+reporting
+financials
+calculations
+
+After creation:
+
+Changing Category requires:
+
+Edit
+Warning Modal
+Confirmation
+
+Changing category is a destructive operation.
+
+Do NOT allow accidental switching.
+
+4. Fix Saving
+
+Currently edits do NOT save.
+
+Fix persistence for:
+
+Production Library
+
+Add
+Edit
+Delete
+Enable
+Disable
+Rate
+Minimum
+Increment
+Scope
+Taxable
+
+Other Charges Library
+
+Add
+Edit
+Delete
+Enable
+Disable
+Rate
+Minimum
+Increment
+Scope
+Taxable
+
+Everything must persist after refresh.
+
+5. Quote Builder Integration
+
+Production Library feeds ONLY:
+
+Pricing Adjustments
+
+→ Production Costs
+
+Other Charges Library feeds ONLY:
+
+Pricing Adjustments
+
+→ Other Charges
+
+Never mix the two.
+
+The Quote Builder should automatically populate its "Add Production Cost" and "Add Other Charge" dialogs from these libraries.
+
+No hardcoded items.
+
+6. Honor Minimums & Increments
+
+These are required.
+
+Examples:
+
+Hourly
+
+Rate = $75/hr
+
+Minimum = 0.5
+
+Increment = 0.5
+
+Possible values:
+
+0.5
+
+1.0
+
+1.5
+
+2.0
+
+etc.
+
+Per Design
+
+Minimum = 1
+
+Increment = 1
+
+Possible:
+
+1
+
+2
+
+3
+
+4
+
+Per Piece
+
+Minimum = 25
+
+Increment = 5
+
+Possible:
+
+25
+
+30
+
+35
+
+40
+
+etc.
+
+The Quote Builder should automatically respect these rules.
+
+7. Product Pricing
+
+Do NOT redesign this page.
+
+The current direction is acceptable.
+
+Finish implementing:
+
+Apparel Size Upcharges
+
+Persist values.
+
+Automatically apply when qualifying apparel sizes exist.
+
+Product Overrides
+
+Allow overrides by:
+
+Vendor
+
+Brand
+
+Product
+
+Size
+
+Override Amount
+
+Override replaces default size upcharge.
+
+8. Service Styles
+
+Do NOT leave this page mostly empty.
+
+This page should become the operational defaults for each decoration method.
+
+Each Service Style should support configurable defaults such as:
+
+Name
+Supplier
+Default Margin
+Production Days
+Enabled
+
+Future fields should be supported by the data model even if not all are exposed yet.
+
+The goal is that choosing a Service Style inside the Quote Builder automatically loads its defaults.
+
+9. Taxes & Fees
+
+Finish implementing this page.
+
+Support editable defaults for:
+
+Sales Tax
+
+Card Fee
+
+Online Fee
+
+Minimum Order
+
+Round Pricing
+
+Deposit %
+
+Late Fee
+
+All values should save and be available throughout the quote engine.
+
+10. Backend Architecture
+
+Do NOT build these pages as isolated UI.
+
+Create reusable models.
+
+Production Library Item
+
+id
+name
+category
+calculationType
+rate
+minimum
+increment
+scope
+taxable
+enabled
+displayOrder
+
+Other Charge Item
+
+Same model.
+
+Service Style
+
+Own model.
+
+Product Pricing
+
+Own model.
+
+Taxes & Fees
+
+Own model.
+
+The Quote Builder must read from these models rather than hardcoded values.
+
+11. Do NOT Regress Existing Functionality
+
+Do NOT change:
+
+Quote Builder layout
+
+Pricing Adjustments layout
+
+Line Item Costs
+
+Quote Summary
+
+DTF Calculator
+
+Design Details
+
+Products + Sizes
+
+Only connect them to the completed pricing engine.
+
+12. Deliverable
+
+When complete:
+
+All Cost Configuration pages are functional.
+Every value saves correctly.
+Every value persists after refresh.
+Quote Builder reads from these configuration libraries.
+No hardcoded production costs or other charges remain.
+The pricing engine is reusable, scalable, and ready for future reporting and financial modules.
+
+Before marking complete, provide a summary of:
+
+Backend models created or updated
+Database schema changes
+Files modified
+Quote Builder integrations completed
+Any remaining work that is intentionally deferred (do not defer anything listed above without explaining why)
+
+This keeps the implementation focused on building the underlying pricing engine and integrating it into the Quote Builder, rather than repeatedly redesigning screens or regressing completed work.

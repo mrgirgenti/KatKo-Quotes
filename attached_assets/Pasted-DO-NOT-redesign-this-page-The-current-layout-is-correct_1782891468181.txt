@@ -1,0 +1,126 @@
+DO NOT redesign this page.
+
+The current layout is correct. The DTF Cost Calculator stays EXACTLY where it is.
+
+Do NOT move the calculator.
+
+Do NOT move Design Details.
+
+Do NOT move Products + Sizes.
+
+The ONLY layout change is below the DTF Cost Calculator.
+
+====================================================
+CURRENT
+====================================================
+
+The bottom section currently has:
+
+LEFT
+- Pricing Adjustments
+
+RIGHT
+- Line Item Costs
+- Line Item Subtotal
+
+This is close, but needs one improvement.
+
+====================================================
+CHANGE
+====================================================
+
+Keep the DTF Cost Calculator spanning the full width directly beneath Products + Sizes exactly as it is today.
+
+Immediately BELOW the DTF Cost Calculator, create a two-column layout.
+
+LEFT COLUMN (~60%)
+
+Pricing Adjustments
+
+- Production Costs
+- Other Charges
+- Adjustment Library (collapsed)
+
+RIGHT COLUMN (~40%)
+
+Line Item Costs
+
+Line Item Subtotal
+
+These should become one unified financial summary column.
+
+====================================================
+WHY
+====================================================
+
+The workflow should become:
+
+Products
+
+↓
+
+Decoration Calculator
+
+↓
+
+Pricing Adjustments
+
+↓
+
+Financial Summary
+
+The user first calculates the decoration.
+
+Then adds production costs and other charges.
+
+Then immediately sees how those values affect the financial summary.
+
+This keeps all pricing decisions together while preserving the existing calculator workflow.
+
+====================================================
+DO NOT CHANGE
+====================================================
+
+Do NOT move the DTF Cost Calculator.
+
+Do NOT move Locations.
+
+Do NOT merge Locations into the calculator.
+
+Do NOT move Design Details.
+
+Do NOT move Products + Sizes.
+
+Do NOT redesign the Quote Summary.
+
+Do NOT redesign the right sidebar.
+
+Do NOT redesign the Line Item header.
+
+Everything above the DTF Cost Calculator remains exactly as it currently exists.
+
+====================================================
+VISUAL GOAL
+====================================================
+
+The bottom portion of the line item should read visually like this:
+
+----------------------------------------------------------
+
+DTF COST CALCULATOR
+(full width)
+
+----------------------------------------------------------
+
+Pricing Adjustments              Line Item Costs
+                                 Line Item Subtotal
+
+----------------------------------------------------------
+
+Only reorganize these sections.
+
+Do not redesign them.
+
+Maintain the existing styling, spacing, typography, colors, and component appearance.
+
+This is a layout refinement only.

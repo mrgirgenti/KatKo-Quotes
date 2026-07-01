@@ -1,0 +1,124 @@
+==================================================
+13. GLOBAL NUMERIC INPUT BEHAVIOR
+==================================================
+
+Implement a consistent numeric entry experience throughout the Quote Builder and Client Hub wherever currency, dimensions, quantities, or measurements are entered.
+
+Users should not need to manually format values.
+
+The application should intelligently format values while typing.
+
+--------------------------------------------------
+Measurement Fields
+--------------------------------------------------
+
+Examples:
+
+User types:
+2
+
+Displays:
+2.00
+
+User types:
+25
+
+Displays:
+25.00
+
+User types:
+234
+
+Displays:
+2.34
+
+User types:
+1250
+
+Displays:
+12.50
+
+Maintain two decimal places at all times.
+
+Apply this behavior to:
+
+• Width
+• Height
+• Any future measurement fields
+
+--------------------------------------------------
+Currency Fields
+--------------------------------------------------
+
+Product
+
+Service
+
+Fees
+
+Markup
+
+Rate
+
+Any future currency inputs
+
+Should all:
+
+• display two decimal places
+• automatically format while typing
+• never require the user to type "$" or decimal points
+• always maintain valid currency formatting
+
+Examples:
+
+2
+→ $2.00
+
+250
+→ $2.50
+
+2500
+→ $25.00
+
+--------------------------------------------------
+Quantity Fields
+--------------------------------------------------
+
+Size quantity inputs should remain whole numbers only.
+
+Do NOT auto-format with decimals.
+
+Allow only integers.
+
+--------------------------------------------------
+Visual Consistency
+--------------------------------------------------
+
+All numeric fields throughout the Quote Builder should share:
+
+• identical input heights
+• identical padding
+• identical font sizing
+• right-aligned numeric values where appropriate
+• consistent keyboard behavior
+• consistent focus styling
+
+The application should feel like one cohesive professional quoting system rather than individual forms built independently.
+
+==================================================
+14. FUTURE STANDARD
+==================================================
+
+These formatting rules should become the standard input behavior for all future calculators and pricing tools added to the application, including:
+
+• DTF Calculator
+• Embroidery Calculator
+• Screen Print Calculator
+• Promotional Calculator
+• Laser Calculator
+• Shipping Calculator
+• Any future pricing modules
+
+Do not reimplement formatting logic independently in each calculator.
+
+Create reusable numeric input components so the formatting behavior remains identical across the entire application.

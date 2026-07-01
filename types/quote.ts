@@ -77,6 +77,39 @@ export interface ProductCostRow {
   extendedCost: number;
 }
 
+/**
+ * Calculation type for an itemized adjustment (Production Cost / Other Charge).
+ * Drives how the row's "Calculated" value is derived from its detail inputs.
+ */
+export type AdjustmentCalcType = 'flat' | 'hourly' | 'per_unit' | 'per_design' | 'percentage' | 'custom';
+
+export const ADJUSTMENT_CALC_TYPES: { value: AdjustmentCalcType; label: string }[] = [
+  { value: 'flat', label: 'Flat Rate' },
+  { value: 'hourly', label: 'Hourly' },
+  { value: 'per_unit', label: 'Per Unit' },
+  { value: 'per_design', label: 'Per Design' },
+  { value: 'percentage', label: 'Percentage' },
+  { value: 'custom', label: 'Custom' },
+];
+
+/**
+ * A single itemized adjustment row shown in the Quote Builder's PRODUCTION COSTS
+ * and OTHER CHARGES tables. Each row's value is derived via calcAdjustmentAmount
+ * (utils/quoteCalculations.ts). The rows ARE summed into the pricing engine:
+ * PRODUCTION COSTS → the Production bucket, OTHER CHARGES → the Other Charges
+ * bucket, both flowing into the line subtotal, Quote Summary, and Grand Total.
+ */
+export interface QuoteAdjustment {
+  id: string;
+  /** Free-text label, e.g. "Design Fee", "Rush", "Shipping". */
+  name: string;
+  type: AdjustmentCalcType;
+  /** Flat amount ($), hourly rate ($/hr), per-unit rate ($/unit), or percent value. */
+  rate: number;
+  /** Hours or units — used by hourly / per_unit only. */
+  quantity: number;
+}
+
 export interface LineItem {
   id: string;
   designName: string;
@@ -100,20 +133,54 @@ export interface LineItem {
   completedAt?: string;
   /**
    * configuredProduct — LEGACY single-product field.
-   * Still written for backward compat; read as configuredProducts[0] when
-   * configuredProducts is absent. Populated by migration and kept in sync
+   * Still written for backward compat; read as products[0] when
+   * products[] is absent. Populated by migration and kept in sync
    * by LineItemCard on every save.
    */
   configuredProduct?: import('./configuredProduct').ConfiguredProduct;
   /**
-   * configuredProducts — canonical multi-product array for a Design.
-   * Each entry is a distinct garment (Adult Tee, Youth Tee, etc.) sharing
-   * the same artwork, locations, service calculator, and line-item pricing
-   * fields (service cost, fees, markup). Only productCostEach differs per
-   * product. When present, this drives ALL pricing calculations instead of
-   * the legacy blended productCostEach on the LineItem.
+   * products[] — multi-product array. A single Line Item ("Design") may hold
+   * MULTIPLE distinct garments (Products) that share the same artwork/mockup,
+   * locations, calculator, notes, services, fees and markup. This is the new
+   * canonical UI source. `configuredProduct` (singular) stays populated as the
+   * PRIMARY product (products[0]) for backward compatibility; old quotes with no
+   * `products` array read as a one-element array. All sync/aggregation/blend
+   * logic lives in `utils/lineItemProducts.ts`. The flat aggregate `sizes` and
+   * flat per-each pricing fields are derived from this array on every edit so
+   * the pricing engine stays untouched.
    */
-  configuredProducts?: import('./configuredProduct').ConfiguredProduct[];
+  products?: import('./configuredProduct').ConfiguredProduct[];
+  /**
+   * Per-line-item priority — mirrors the project-level priority but scoped to
+   * the design so that individual designs within a project can be flagged
+   * independently. Synced to the project-level field on save.
+   */
+  priority?: ProjectPriority | null;
+  /**
+   * Rush flag for this design — drives the "Rush Service" chip in Additional
+   * Services and adds a rush fee when the calculator is applied.
+   */
+  rush?: boolean;
+  /**
+   * Other Charges — flat dollar amount for charges outside the production cost
+   * base (e.g. Rush, Shipping, Delivery, Fulfillment, Discounts).
+   * Not multiplied by quantity; treated as a flat line-item total.
+   */
+  otherCostEach?: number;
+  /**
+   * PRODUCTION COSTS — itemized production-related adjustments shown in the Quote
+   * Builder's "PRODUCTION COSTS" table (e.g. Design Fee, Digitizing, Screen Setup).
+   * Summed into the pricing engine's Production bucket. When present it supersedes
+   * the legacy flat `serviceFeeEach` scalar; old quotes without rows fall back to it.
+   */
+  productionCosts?: QuoteAdjustment[];
+  /**
+   * OTHER CHARGES — itemized non-production adjustments shown in the Quote
+   * Builder's "OTHER CHARGES" table (e.g. Rush, Shipping, Restocking, Discount).
+   * Summed into the pricing engine's Other Charges bucket. When present it supersedes
+   * the legacy flat `otherCostEach` scalar; old quotes without rows fall back to it.
+   */
+  otherCharges?: QuoteAdjustment[];
 }
 
 export interface QuoteCalculations {
@@ -122,9 +189,21 @@ export interface QuoteCalculations {
   productCostTotal: number;
   serviceCostEach: number;
   serviceCostTotal: number;
+  /** @deprecated Use productionCostEach — same value, new terminology */
   serviceFeeEach: number;
+  /** @deprecated Use productionCostTotal — same value, new terminology */
   serviceFeeTotal: number;
+  /** Production bucket (was: Service Fees) each — flat fee ÷ totalQuantity for display */
+  productionCostEach: number;
+  /** Production bucket (was: Service Fees) total — sum of all line item production costs */
+  productionCostTotal: number;
+  /** Other Charges bucket each — otherCostTotal ÷ totalQuantity for display */
+  otherCostEach: number;
+  /** Other Charges bucket total — sum of all line item other charges */
+  otherCostTotal: number;
+  /** Production Cost base (Product + Service + Production) each */
   cogEach: number;
+  /** Production Cost base (Product + Service + Production) total */
   cogTotal: number;
   markupAmount: number;
   markupPercentage: number;
@@ -295,9 +374,21 @@ export interface LineItemCalculations {
   /** Per-product breakdown rows when the line item has multiple products. Omitted for single-product items. */
   productCostRows?: ProductCostRow[];
   serviceCostTotal: number;
+  /** Production bucket total (was: serviceFeeTotal) — flat production costs (Design Fee, Digitizing, etc.) */
+  productionCostTotal: number;
+  /** Other Charges bucket total — flat other charges (Rush, Shipping, etc.) */
+  otherCostTotal: number;
+  /** @deprecated Use productionCostTotal */
   serviceFeeTotal: number;
   markupTotal: number;
+  /** Production Cost base = productCostTotal + serviceCostTotal + productionCostTotal */
   cogTotal: number;
+  /**
+   * Base for percentage-type adjustments = productCostTotal + serviceCostTotal + markupTotal
+   * (the line subtotal BEFORE Production/Other adjustments). Stable and non-circular;
+   * the Quote Builder adjustment tables pass this so their "Calculated" column matches the engine.
+   */
+  adjustmentBase: number;
   subtotal: number;
   perPiece: number;
 }

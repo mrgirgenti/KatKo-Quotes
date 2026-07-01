@@ -87,6 +87,11 @@ export interface ConfiguredProductEditorProps {
   /** Show print location pickers (Location #1–4) below the size grid. Portal default: true. */
   showLocations?: boolean;
 
+  /** Chrome seam: hide the inner "Product / Garment" section header (parent owns it). */
+  hideSectionTitle?: boolean;
+  /** Chrome seam: hide the inner per-product grand-total bar (parent owns the design total). */
+  hideGrandTotal?: boolean;
+
   /** Extra content to render in the toolbar's trailing slot (e.g. "Done Editing"). */
   toolbarTrailing?: React.ReactNode;
 }
@@ -116,6 +121,8 @@ export function ConfiguredProductEditor({
   onResolvedCatalogMeta,
   toolbarTrailing,
   showLocations: showLocationsProp,
+  hideSectionTitle = false,
+  hideGrandTotal = false,
 }: ConfiguredProductEditorProps) {
   const isPortal = mode === 'portal' || surface === 'clientPortal';
   const effectiveMode: 'internal' | 'portal' = isPortal ? 'portal' : 'internal';
@@ -343,8 +350,8 @@ export function ConfiguredProductEditor({
   return (
     <View style={styles.wrapper}>
       {/* ── Section header ──────────────────────────────────────────────── */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>PRODUCTS + SIZES</Text>
+      <View style={[styles.sectionHeader, hideSectionTitle && styles.sectionHeaderSeam]}>
+        {!hideSectionTitle && <Text style={styles.sectionTitle}>PRODUCTS + SIZES</Text>}
         {!readOnly && cp.colorVariants.length < 10 && (
           <TouchableOpacity style={styles.addColorBtn} onPress={handleAddColorVariant} activeOpacity={0.75}>
             <Plus size={13} color="#fff" />
@@ -754,7 +761,7 @@ export function ConfiguredProductEditor({
       )}
 
       {/* ── Grand Total bar ──────────────────────────────────────────────── */}
-      {showSizes && (
+      {showSizes && !hideGrandTotal && (
         <View style={styles.grandTotalBar}>
           <Text style={styles.gtLabel}>GRAND TOTAL</Text>
           <View style={styles.gtSizes}>
@@ -1046,6 +1053,12 @@ const styles = StyleSheet.create({
     backgroundColor: DARK_HDR,
     paddingHorizontal: 16,
     paddingVertical: 10,
+  },
+  sectionHeaderSeam: {
+    backgroundColor: 'transparent',
+    justifyContent: 'flex-end',
+    paddingVertical: 6,
+    paddingHorizontal: 0,
   },
   sectionTitle: {
     color: '#fff',

@@ -1,0 +1,344 @@
+This is a UI POLISH and LAYOUT REFINEMENT pass ONLY.
+
+DO NOT redesign the Quote Builder.
+
+DO NOT reinterpret the approved mockup.
+
+DO NOT introduce new UI patterns.
+
+DO NOT optimize for component reuse over usability.
+
+The current implementation is close architecturally, but visually it has drifted away from the approved design. This task is to bring it back in line.
+
+If an existing implementation conflicts with the approved design or architecture, delete and replace it. Do not preserve legacy UI for backward compatibility.
+
+====================================================
+OVERALL OBJECTIVE
+====================================================
+
+The expanded Line Item should feel like one cohesive production workspace.
+
+It should NOT feel like four separate cards stacked together.
+
+The goal is to make the UI feel calmer, cleaner, more premium, and significantly easier to scan during all-day quoting.
+
+No functionality changes are required unless specifically listed below.
+
+====================================================
+1. DESIGN DETAILS
+====================================================
+
+The Design Details section currently feels cramped and compressed.
+
+Adjust the internal layout to improve readability.
+
+Specifically:
+
+• Increase the usable width of text inputs wherever possible.
+• Use whitespace to create logical groups instead of making every field feel equally important.
+• Increase spacing between groups of related fields.
+
+Group the section visually into:
+
+DESIGN
+- Design Name
+- Project Notes
+
+PRODUCTION
+- Service Style
+- Product Source
+- Priority
+
+LOCATIONS
+- Decoration Locations
+
+ADDITIONAL SERVICES
+- Additional Services
+
+Do NOT add new cards or accordions.
+
+Simply improve spacing and organization.
+
+----------------------------------------------------
+
+Move "Additional Services" below Locations instead of trying to fit it beside other fields.
+
+This section should stack vertically.
+
+Doing this frees additional horizontal room for the rest of the Design Details inputs.
+
+====================================================
+2. SECTION SPACING
+====================================================
+
+The page currently feels boxed-in.
+
+Every section begins immediately underneath the previous one.
+
+Increase vertical spacing between every major section.
+
+Specifically add approximately:
+
+• 16px above each black section header
+• 12px below each black section header
+
+Apply consistently to:
+
+• Design Details
+• Products + Sizes
+• DTF Cost Calculator
+• Line Item Costs
+
+The interface should breathe.
+
+====================================================
+3. SECTION HEADERS
+====================================================
+
+Standardize ALL black section headers.
+
+Every header should use:
+
+• identical height
+• identical padding
+• identical typography
+• identical border radius
+• true black background (#000)
+
+Currently some headers appear darker, thinner or shorter than others.
+
+They should all match exactly.
+
+====================================================
+4. MOCKUP AREA
+====================================================
+
+Reduce the mockup preview size approximately 15-20%.
+
+The current preview occupies too much vertical space.
+
+The mockup should remain visually important but should no longer dominate the Design Details section.
+
+Use the recovered space to improve spacing within Design Details.
+
+====================================================
+5. PRODUCTS + SIZES
+====================================================
+
+The overall layout is correct.
+
+Do NOT redesign it.
+
+However:
+
+• Slightly tighten vertical spacing inside each Product.
+• Make the Product title slightly more visually prominent.
+• Add subtle separation between Products using spacing and a light divider.
+
+Do NOT add heavy borders.
+
+Do NOT turn them into large cards.
+
+====================================================
+6. PRODUCT ROWS
+====================================================
+
+Keep the current layout.
+
+However:
+
+Reduce unnecessary white space between:
+
+Product title
+
+↓
+
+Dropdown row
+
+↓
+
+Size inputs
+
+These should feel connected.
+
+====================================================
+7. DTF COST CALCULATOR
+====================================================
+
+The DTF Calculator still looks like a prototype compared to the rest of the Quote Builder.
+
+Polish this section.
+
+Width, Height and Rate should use compact input widths.
+
+TOTAL should receive significantly more horizontal space.
+
+Replace "=" with:
+
+TOTAL
+
+Display:
+
+• Total Square Inches
+• Calculated Price
+
+using identical font sizing.
+
+Neither value should dominate.
+
+Example:
+
+TOTAL
+
+16.00 sq in
+
+$0.48
+
+Maintain perfect alignment for every row.
+
+----------------------------------------------------
+
+Width and Height inputs should display:
+
+in
+
+after each input to indicate inches.
+
+----------------------------------------------------
+
+Default values:
+
+Width = 0.00
+
+Height = 0.00
+
+Always display two decimal places.
+
+----------------------------------------------------
+
+Implement automatic decimal formatting.
+
+Examples:
+
+2
+→ 2.00
+
+25
+→ 25.00
+
+234
+→ 2.34
+
+1250
+→ 12.50
+
+Users should not manually type decimal points.
+
+====================================================
+8. LINE ITEM COSTS
+====================================================
+
+Merge Line Item Costs and Line Item Subtotal into ONE pricing panel.
+
+Keep the existing black Line Item Costs header.
+
+Keep the editable fields:
+
+• Product
+• Service
+• Fees
+• Markup
+
+Below those fields:
+
+Add a divider.
+
+Then create a Line Item Subtotal subsection.
+
+Remove the large standalone orange Line Item Subtotal section entirely.
+
+Everything related to pricing for a Line Item should exist inside one compact pricing card.
+
+----------------------------------------------------
+
+Ensure Product, Service, Fees and Markup all use identical:
+
+• font size
+• input height
+• input width
+• padding
+• alignment
+
+Currently the Product field does not visually match the others.
+
+====================================================
+9. SPACING SYSTEM
+====================================================
+
+Adopt a consistent spacing scale throughout this screen.
+
+Use an 8px spacing system.
+
+Margins and padding should follow consistent increments:
+
+8
+
+16
+
+24
+
+32
+
+Avoid arbitrary spacing values.
+
+This alone will make the interface feel significantly more polished.
+
+====================================================
+10. DO NOT CHANGE
+====================================================
+
+Do NOT redesign:
+
+• Quote Header
+• Overall page layout
+• Pricing Summary sidebar
+• Products architecture
+• Line Item architecture
+• Client Hub logic
+• Product integration
+• Calculators
+• Quote functionality
+
+This task is a visual refinement pass.
+
+====================================================
+SUCCESS CRITERIA
+====================================================
+
+When complete, the Quote Builder should no longer feel like multiple individual cards placed beside one another.
+
+Instead, it should feel like one cohesive production workspace where the user's eye naturally flows:
+
+Quote Information
+
+↓
+
+Design Details
+
+↓
+
+Products + Sizes
+
+↓
+
+Production Calculator
+
+↓
+
+Pricing
+
+↓
+
+Next Line Item
+
+The finished screen should look intentional, spacious, and production-focused while remaining extremely efficient for experienced CSRs who use it all day.

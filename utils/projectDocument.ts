@@ -15,6 +15,8 @@
 
 import { LineItem, SIZE_LABELS } from '@/types/quote';
 import { calculateLineItemSubtotal } from '@/utils/quoteCalculations';
+import { getLineItemProducts } from '@/utils/lineItemProducts';
+import type { ConfiguredProduct } from '@/types/configuredProduct';
 
 export type DocumentMode = 'QUOTE' | 'INVOICE' | 'PRODUCTION' | 'ORDER_DETAIL';
 
@@ -256,6 +258,41 @@ function pickNum(...vals: unknown[]): number | null {
   return null;
 }
 
+/**
+ * Build the human-readable product label for a document line item by iterating
+ * EVERY product in the design (multi-product aware), listing each garment and its
+ * colors. Falls back through the adapter for legacy single-product line items so
+ * the output is byte-identical for existing quotes. Reads only labels/colors —
+ * never any cost field — so it cannot leak pricing into customer documents.
+ */
+function buildProductLabel(li: any): string {
+  let products: ConfiguredProduct[];
+  try {
+    products = getLineItemProducts(li as LineItem);
+  } catch {
+    products = [];
+  }
+  const parts = products
+    .map((cp) => {
+      const label =
+        (cp.productLabel && cp.productLabel.trim()) ||
+        `${cp.styleNumber ?? ''} ${cp.styleName ?? ''}`.trim();
+      const colors = (cp.colorVariants ?? [])
+        .map((cv) => (typeof cv.color === 'string' ? cv.color.trim() : ''))
+        .filter(Boolean);
+      const colorStr = colors.join(', ');
+      if (label && colorStr) return `${label} - ${colorStr}`;
+      return label || colorStr;
+    })
+    .filter(Boolean);
+  if (parts.length > 0) return parts.join(' · ');
+  // Last-resort legacy fallback (no products resolvable).
+  const legacy = [li?.product, li?.productColor]
+    .map((p) => (typeof p === 'string' ? p.trim() : ''))
+    .filter(Boolean);
+  return legacy.join(' - ') || '—';
+}
+
 function buildLineItem(li: any, index: number): DocLineItem {
   const calc = calculateLineItemSubtotal(li as LineItem);
   const isPromotional = li?.serviceStyle === 'Promotional';
@@ -281,10 +318,6 @@ function buildLineItem(li: any, index: number): DocLineItem {
     .map((l) => (typeof l === 'string' ? l.trim() : ''))
     .filter(Boolean);
 
-  const productParts = [li?.product, li?.productColor]
-    .map((p) => (typeof p === 'string' ? p.trim() : ''))
-    .filter(Boolean);
-
   // Customer-safe explicit prices win over cost-derived calc. A sanitized portal
   // payload strips every cost/markup input, so calculateLineItemSubtotal would
   // return 0 there; the server hands us the already-bundled customer price
@@ -295,7 +328,7 @@ function buildLineItem(li: any, index: number): DocLineItem {
   return {
     number: index + 1,
     name: (li?.designName && String(li.designName).trim()) || 'Untitled Design',
-    product: productParts.join(' - ') || '—',
+    product: buildProductLabel(li),
     decoration: (li?.serviceStyle && String(li.serviceStyle)) || '—',
     locations: locations.length ? locations : ['N/A'],
     notes: (li?.locationDetails && String(li.locationDetails).trim()) || 'N/A',

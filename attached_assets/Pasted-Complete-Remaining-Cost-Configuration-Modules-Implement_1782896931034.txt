@@ -1,0 +1,175 @@
+Complete Remaining Cost Configuration Modules
+
+Implementation Mode. Do not redesign the page. Complete the missing functionality.
+
+The navigation for Production Library, Other Charges Library, and Service Styles now exists, but these pages are still mostly placeholders. The underlying functionality and editable configuration have not been implemented.
+
+Do NOT redesign the layout. Preserve the existing page structure and styling. Implement the missing functionality only.
+
+If an existing implementation conflicts with the approved design or architecture, delete and replace it. Do not preserve legacy UI for backward compatibility.
+
+1. Production Library
+
+The Production Library should become the master configuration for all production-related costs used by the Quote Builder.
+
+Each Production Cost must support:
+
+Name
+Category (Production - locked after creation)
+Calculation Type
+Flat Rate
+Hourly
+Per Piece
+Per Design
+Percentage
+Custom
+Default Rate
+Minimum
+Increment
+Scope
+Per Piece
+Per Line Item
+Per Order
+Taxable
+Enabled
+Display Order
+
+All fields must be editable.
+
+All changes must save.
+
+All changes must persist after refresh.
+
+Production Library records should populate the Add Production Cost dialog inside the Quote Builder.
+
+2. Other Charges Library
+
+The Other Charges Library is the master configuration for non-production adjustments.
+
+Each Other Charge supports the exact same pricing engine fields:
+
+Name
+Category (Other Charge - locked after creation)
+Calculation Type
+Default Rate
+Minimum
+Increment
+Scope
+Taxable
+Enabled
+Display Order
+
+Changes must save.
+
+Changes must persist.
+
+Records populate the Quote Builder's Add Other Charge dialog.
+
+3. Category Lock
+
+Production Costs and Other Charges are separate financial categories.
+
+Changing the category affects reporting and calculations.
+
+Once created:
+
+Category should not be editable directly.
+
+If changing Category is ever allowed:
+
+Display a confirmation modal explaining the consequences before allowing the change.
+
+4. Service Styles
+
+This page is currently almost empty.
+
+It should become the default operational profile for each decoration method.
+
+Each Service Style should support:
+
+Service Name
+Enabled
+Default Supplier
+Default Markup %
+Default Production Days
+Default Production Cost(s)
+Default Artwork Requirements
+Default Tax Behavior
+Display Order
+
+The Quote Builder should automatically inherit these defaults whenever that Service Style is selected.
+
+For example:
+
+Direct to Film
+
+Supplier
+Production Days
+Default Margin
+Default Production Costs
+
+Embroidery
+
+Supplier
+Production Days
+Default Margin
+Default Production Costs
+Digitizing defaults
+
+Screen Printing
+
+Supplier
+Production Days
+Default Margin
+Screen setup defaults
+PMS defaults
+
+Do not hardcode these values.
+
+Read them from this configuration.
+
+5. Backend Integration
+
+These pages are configuration libraries.
+
+Every value configured here must:
+
+Save
+Persist
+Load correctly
+Be available throughout the Quote Builder
+Be reusable
+Never be hardcoded
+
+The Quote Builder should consume these configuration records instead of static values.
+
+6. Preserve Existing UI
+
+Do not redesign:
+
+Quote Builder
+Pricing Adjustments
+Product Pricing
+Taxes & Fees
+DTF Calculator
+Quote Summary
+
+Only complete the missing functionality behind these configuration pages.
+
+Deliverable
+
+Before marking this task complete, verify that:
+
+Production Library is fully functional.
+Other Charges Library is fully functional.
+Service Styles is fully functional.
+All edits persist after refresh.
+Quote Builder reads from these configuration libraries.
+No placeholder content remains.
+Summarize:
+Files modified
+Database/schema changes
+Configuration models completed
+Quote Builder integrations completed
+
+This prompt isolates the unfinished work and should prevent Replit from revisiting parts of the Cost Configuration system that are already in good shape.

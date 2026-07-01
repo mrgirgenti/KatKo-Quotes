@@ -249,10 +249,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600' as const,
     color: Colors.light.text,
     marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   inputRow: {
     flexDirection: 'row',

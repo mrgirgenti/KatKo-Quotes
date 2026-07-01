@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 
 const INITIAL_COLORS = ['#FF5A00', '#7C3AED', '#0284C7', '#16A34A', '#DB2777'];
@@ -17,6 +17,7 @@ interface OrgAvatarProps {
 
 export function OrgAvatar({ name, logoUrl, size = 40, shape = 'square' }: OrgAvatarProps) {
   const [imgError, setImgError] = useState(false);
+  useEffect(() => { setImgError(false); }, [logoUrl]);
   const borderRadius = shape === 'circle' ? size / 2 : Math.max(8, size * 0.18);
   const initial = (name?.[0] ?? '?').toUpperCase();
   const bg = colorForName(name);

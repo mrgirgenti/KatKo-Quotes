@@ -752,3 +752,47 @@ model ProjectFavorite {
   @@index([organizationId, userId])
   @@index([projectId])
 }
+
+// ─── Cost Configuration ───────────────────────────────────────────────────────
+
+model CostEntry {
+  id              String   @id @default(uuid())
+  name            String
+  category        String
+  calculationType String   @default("flat")
+  rate            Decimal  @default(0) @db.Decimal(12, 4)
+  minimum         Decimal  @default(0) @db.Decimal(12, 4)
+  increment       Decimal  @default(0) @db.Decimal(12, 4)
+  scope           String   @default("per_piece")
+  taxable         Boolean  @default(true)
+  enabled         Boolean  @default(true)
+  description     String?
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([category])
+  @@index([enabled])
+}
+
+model ServiceStyle {
+  id                          String   @id @default(uuid())
+  name                        String   @unique
+  supplier                    String?
+  defaultMargin               Decimal? @db.Decimal(5, 2)
+  defaultProductionDays       Int?
+  defaultProductionCosts      Json     @default("[]")
+  defaultArtworkRequirements  String?
+  defaultTaxBehavior          String   @default("taxable")
+  description                 String?
+  enabled                     Boolean  @default(true)
+  sortOrder                   Int      @default(0)
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+}
+
+model AppSettings {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}

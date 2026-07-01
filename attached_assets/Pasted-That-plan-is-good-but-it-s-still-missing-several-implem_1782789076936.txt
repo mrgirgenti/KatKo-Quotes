@@ -1,0 +1,269 @@
+That plan is good, but it's still missing several implementation details that will save you from ending up with a "looks right but behaves wrong" result. I'd have Replit amend the plan before it starts writing code.
+
+Add these implementation requirements
+1. Preserve the data model
+
+Do not convert every Product into its own Line Item.
+
+The architecture should become:
+
+Quote
+ ├── Line Item (Design)
+ │     ├── Design Details
+ │     ├── Product #1
+ │     ├── Product #2
+ │     ├── Product #3
+ │     ├── Calculator
+ │     ├── Costs
+ │     └── Subtotal
+ │
+ ├── Line Item
+ │     ├── Product #1
+ │     └── Product #2
+
+A Line Item represents a design, not a garment.
+
+2. Product synchronization
+
+Every Product inside a Line Item must stay synchronized with the rest of the workspace.
+
+Selecting or changing:
+
+Product Type
+Product Style
+Product Color
+
+must automatically update:
+
+available colors
+available sizes
+product image (if available)
+Product Source
+Mockup Designer default garment
+
+No duplicate product state should exist.
+
+There should be a single source of truth.
+
+3. Mockup synchronization
+
+The Mockup Designer must always inherit the currently selected Product.
+
+Example:
+
+Product
+
+Next Level 6210
+
+↓
+
+Open Mockup
+
+↓
+
+Mockup opens
+
+Vendor:
+S&S
+
+Category:
+T-Shirts
+
+Style:
+NL6210
+
+Color:
+Black
+
+If the user changes the garment inside the Mockup Designer:
+
+Ask:
+
+Use this garment for Product #1?
+
+[Yes]
+[No]
+
+If Yes:
+
+Update the Product.
+
+Do not allow Quote and Mockup to drift apart.
+
+4. Multiple Product totals
+
+Each Product calculates independently.
+
+Adult
+
+23 pcs
+
+Youth
+
+12 pcs
+
+Women's
+
+8 pcs
+
+The Line Item subtotal becomes
+
+23
+
++
+
+12
+
++
+
+8
+
+=
+
+43 pcs
+
+The calculator, pricing, and sidebar all use the combined quantity.
+
+5. Product-specific pricing
+
+Each Product may have
+
+different
+
+garment cost
+available colors
+available sizes
+
+But they all contribute to the same Line Item subtotal.
+
+Do not average costs.
+
+Do not duplicate subtotals.
+
+6. Additional Services stay at Design level
+
+Keep these shared.
+
+Rush
+
+Digitizing
+
+Artwork
+
+Vectorization
+
+Special Packaging
+
+Those apply to the Design.
+
+Not to each Product.
+
+7. Decoration Locations stay at Design level
+
+Front
+
+Back
+
+Sleeve
+
+etc.
+
+Those belong to the artwork.
+
+Not the garment.
+
+8. Calculators stay at Design level
+
+There is only one
+
+DTF calculator
+
+Embroidery calculator
+
+etc.
+
+Even if five garments are attached.
+
+9. Collapsed cards
+
+The collapsed card should summarize
+
+Summer Event Front + Back
+
+DTF Transfers
+
+4 Products
+
+86 pcs
+
+$742.81
+
+NOT
+
+Next Level
+
+Gildan
+
+Bella
+
+Lane Seven
+
+The expanded view is where Products live.
+
+10. Performance
+
+This is important.
+
+When adding Products:
+
+Do not duplicate React state.
+
+Each Product should be an object inside
+
+lineItem.products[]
+
+not
+
+lineItem1
+
+lineItem2
+
+lineItem3
+
+The Products section should simply map over
+
+lineItem.products
+
+This will make adding Product #15 just as fast as Product #2.
+
+One additional feature I'd build now
+
+I think you'll want this almost immediately.
+
+Each Product should have
+
+Duplicate Product
+
+instead of making users rebuild it.
+
+Example:
+
+Adult Tee
+
+↓
+
+Duplicate
+
+↓
+
+Youth Tee
+
+↓
+
+Change Style
+
+↓
+
+Done
+
+That'll save a lot of repetitive work.

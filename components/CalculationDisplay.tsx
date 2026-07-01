@@ -13,12 +13,12 @@ interface CalculationDisplayProps {
   hasCardFee: boolean;
 }
 
-export function CalculationDisplay({ 
+export function CalculationDisplay({
   calculations,
   lineItems = [],
-  hasOnlineFee, 
-  hasSalesTax, 
-  hasCardFee 
+  hasOnlineFee,
+  hasSalesTax,
+  hasCardFee,
 }: CalculationDisplayProps) {
   if (!calculations) {
     return (
@@ -31,46 +31,65 @@ export function CalculationDisplay({
     );
   }
 
+  const qty = calculations.totalQuantity;
+
   return (
     <View style={styles.container}>
-      <View style={styles.table}>
-        <View style={styles.tableHeader}>
-          <Text style={styles.headerCell}></Text>
-          <Text style={styles.headerCellRight}>Each</Text>
-          <Text style={styles.headerCellRight}>Total</Text>
-        </View>
 
-        <View style={styles.tableRow}>
-          <Text style={styles.cell}>Product Cost</Text>
-          <Text style={styles.cellRight}>{formatCurrency(calculations.productCostEach)}</Text>
-          <Text style={styles.cellRight}>{formatCurrency(calculations.productCostTotal)}</Text>
-        </View>
+      {/* ── QUOTE SUMMARY header ── */}
+      <Text style={styles.sectionTitle}>QUOTE SUMMARY</Text>
 
-        <View style={styles.tableRow}>
-          <Text style={styles.cell}>Service Cost</Text>
-          <Text style={styles.cellRight}>{formatCurrency(calculations.serviceCostEach)}</Text>
-          <Text style={styles.cellRight}>{formatCurrency(calculations.serviceCostTotal)}</Text>
-        </View>
-
-        <View style={styles.tableRow}>
-          <Text style={styles.cell}>Service Fees</Text>
-          <Text style={styles.cellRight}>{formatCurrency(calculations.serviceFeeEach)}</Text>
-          <Text style={styles.cellRight}>{formatCurrency(calculations.serviceFeeTotal)}</Text>
-        </View>
-
-        <View style={[styles.tableRow, styles.cogRow]}>
-          <Text style={styles.cogCell}>Cost of Goods</Text>
-          <Text style={styles.cogCellRight}>{formatCurrency(calculations.cogEach)}</Text>
-          <Text style={styles.cogCellRight}>{formatCurrency(calculations.cogTotal)}</Text>
-        </View>
-
-        <View style={[styles.tableRow, styles.markupRow]}>
-          <Text style={styles.markupCell}>Markup ({formatPercentage(calculations.markupPercentage)})</Text>
-          <Text style={styles.markupCellRight}>{formatCurrency(calculations.totalQuantity > 0 ? calculations.markupAmount / calculations.totalQuantity : 0)}</Text>
-          <Text style={styles.markupCellRight}>{formatCurrency(calculations.markupAmount)}</Text>
-        </View>
+      {/* ── Cost breakdown: Product / Service / Production ── */}
+      <View style={styles.tableHeader}>
+        <Text style={styles.headerCell} />
+        <Text style={styles.headerCellRight}>Each</Text>
+        <Text style={styles.headerCellRight}>Total</Text>
       </View>
 
+      <View style={styles.tableRow}>
+        <Text style={styles.cell}>Product</Text>
+        <Text style={styles.cellRight}>{formatCurrency(calculations.productCostEach)}</Text>
+        <Text style={styles.cellRight}>{formatCurrency(calculations.productCostTotal)}</Text>
+      </View>
+
+      <View style={styles.tableRow}>
+        <Text style={styles.cell}>Service</Text>
+        <Text style={styles.cellRight}>{formatCurrency(calculations.serviceCostEach)}</Text>
+        <Text style={styles.cellRight}>{formatCurrency(calculations.serviceCostTotal)}</Text>
+      </View>
+
+      <View style={styles.tableRow}>
+        <Text style={styles.cell}>Production</Text>
+        <Text style={styles.cellRight}>{formatCurrency(calculations.productionCostEach)}</Text>
+        <Text style={styles.cellRight}>{formatCurrency(calculations.productionCostTotal)}</Text>
+      </View>
+
+      <View style={styles.divider} />
+
+      {/* ── Aggregated buckets ── */}
+      <View style={[styles.tableRow, styles.cogRow]}>
+        <Text style={styles.cogCell}>Production Cost</Text>
+        <Text style={styles.cogCellRight}>{formatCurrency(calculations.cogEach)}</Text>
+        <Text style={styles.cogCellRight}>{formatCurrency(calculations.cogTotal)}</Text>
+      </View>
+
+      <View style={styles.tableRow}>
+        <Text style={styles.cell}>Other Charges</Text>
+        <Text style={styles.cellRight}>{formatCurrency(calculations.otherCostEach)}</Text>
+        <Text style={styles.cellRight}>{formatCurrency(calculations.otherCostTotal)}</Text>
+      </View>
+
+      <View style={[styles.tableRow, styles.markupRow]}>
+        <Text style={styles.markupCell}>
+          Markup ({formatPercentage(calculations.markupPercentage)})
+        </Text>
+        <Text style={styles.markupCellRight}>
+          {formatCurrency(qty > 0 ? calculations.markupAmount / qty : 0)}
+        </Text>
+        <Text style={styles.markupCellRight}>{formatCurrency(calculations.markupAmount)}</Text>
+      </View>
+
+      {/* ── Per-line-item subtotals (multi-design quotes) ── */}
       {lineItems.length > 1 && (
         <>
           <View style={styles.divider} />
@@ -97,32 +116,32 @@ export function CalculationDisplay({
 
       <View style={styles.divider} />
 
-      {/* Client Quote Section - What you quote to clients */}
+      {/* ── CLIENT QUOTE PRICE ── */}
       <View style={styles.clientQuoteSection}>
         <Text style={styles.clientQuoteSectionTitle}>Client Quote Price</Text>
         <View style={styles.clientQuoteTableHeader}>
-          <Text style={styles.clientQuoteHeaderCell}></Text>
+          <Text style={styles.clientQuoteHeaderCell} />
           <Text style={styles.clientQuoteHeaderCellRight}>Each</Text>
           <Text style={styles.clientQuoteHeaderCellRight}>Total</Text>
         </View>
         <View style={styles.clientQuoteRow}>
           <Text style={styles.clientQuoteLabel}>Subtotal</Text>
           <Text style={styles.clientQuoteValue}>
-            {formatCurrency(calculations.totalQuantity > 0 ? calculations.subtotal / calculations.totalQuantity : 0)}
+            {formatCurrency(qty > 0 ? calculations.subtotal / qty : 0)}
           </Text>
           <Text style={styles.clientQuoteValue}>{formatCurrency(calculations.subtotal)}</Text>
         </View>
         <View style={styles.clientQuoteRow}>
           <Text style={styles.clientQuoteLabel}>{`Online Fee (${ONLINE_FEE_LABEL})`}</Text>
           <Text style={styles.clientQuoteValue}>
-            {formatCurrency(calculations.totalQuantity > 0 ? calculations.onlineFee / calculations.totalQuantity : 0)}
+            {formatCurrency(qty > 0 ? calculations.onlineFee / qty : 0)}
           </Text>
           <Text style={styles.clientQuoteValue}>{formatCurrency(calculations.onlineFee)}</Text>
         </View>
-        <View style={[styles.clientQuoteTotalRow]}>
+        <View style={styles.clientQuoteTotalRow}>
           <Text style={styles.clientQuoteTotalLabel}>Quote Total</Text>
           <Text style={styles.clientQuoteTotalValue}>
-            {formatCurrency(calculations.totalQuantity > 0 ? (calculations.subtotal + calculations.onlineFee) / calculations.totalQuantity : 0)}
+            {formatCurrency(qty > 0 ? (calculations.subtotal + calculations.onlineFee) / qty : 0)}
           </Text>
           <Text style={styles.clientQuoteTotalValue}>
             {formatCurrency(calculations.subtotal + calculations.onlineFee)}
@@ -132,30 +151,31 @@ export function CalculationDisplay({
 
       <View style={styles.divider} />
 
-      {/* Additional Fees Section - Added when applicable */}
+      {/* ── ADDITIONAL FEES ── */}
       <View style={styles.feesSection}>
         <Text style={styles.feesSectionTitle}>Additional Fees (when applicable)</Text>
         <View style={styles.feesTableHeader}>
-          <Text style={styles.feesHeaderCell}></Text>
+          <Text style={styles.feesHeaderCell} />
           <Text style={styles.feesHeaderCellRight}>Each</Text>
           <Text style={styles.feesHeaderCellRight}>Total</Text>
         </View>
         <View style={styles.feeRow}>
           <Text style={styles.feeLabel}>{`Card Fee (${CARD_FEE_LABEL})`}</Text>
           <Text style={styles.feeValue}>
-            {formatCurrency(calculations.totalQuantity > 0 ? calculations.cardFee / calculations.totalQuantity : 0)}
+            {formatCurrency(qty > 0 ? calculations.cardFee / qty : 0)}
           </Text>
           <Text style={styles.feeValue}>{formatCurrency(calculations.cardFee)}</Text>
         </View>
         <View style={styles.feeRow}>
           <Text style={styles.feeLabel}>{`Sales Tax (${SALES_TAX_LABEL})`}</Text>
           <Text style={styles.feeValue}>
-            {formatCurrency(calculations.totalQuantity > 0 ? calculations.salesTax / calculations.totalQuantity : 0)}
+            {formatCurrency(qty > 0 ? calculations.salesTax / qty : 0)}
           </Text>
           <Text style={styles.feeValue}>{formatCurrency(calculations.salesTax)}</Text>
         </View>
       </View>
 
+      {/* ── Grand Total ── */}
       <View style={styles.totalSection}>
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>TOTAL</Text>
@@ -181,12 +201,12 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.border,
   },
   errorContainer: {
-    backgroundColor: '#fef2f2',
+    backgroundColor: Colors.light.highlightBg,
     borderRadius: 12,
     padding: 20,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#fecaca',
+    borderColor: Colors.light.border,
   },
   errorText: {
     fontSize: 16,
@@ -200,13 +220,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '700' as const,
     color: Colors.light.text,
-    marginBottom: 12,
-  },
-  table: {
-    gap: 0,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+    marginBottom: 10,
   },
   tableHeader: {
     flexDirection: 'row',
@@ -219,15 +238,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600' as const,
     color: Colors.light.textSecondary,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
   },
   headerCellRight: {
     width: 80,
     fontSize: 12,
     fontWeight: '600' as const,
     color: Colors.light.textSecondary,
-    textAlign: 'right',
-    textTransform: 'uppercase',
+    textAlign: 'right' as const,
+    textTransform: 'uppercase' as const,
   },
   tableRow: {
     flexDirection: 'row',
@@ -242,7 +261,12 @@ const styles = StyleSheet.create({
     width: 80,
     fontSize: 14,
     color: Colors.light.text,
-    textAlign: 'right',
+    textAlign: 'right' as const,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: Colors.light.border,
+    marginVertical: 12,
   },
   cogRow: {
     backgroundColor: Colors.light.highlightBg,
@@ -263,15 +287,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700' as const,
     color: Colors.light.tint,
-    textAlign: 'right',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.light.border,
-    marginVertical: 12,
-  },
-  markupSection: {
-    gap: 8,
+    textAlign: 'right' as const,
   },
   markupRow: {
     backgroundColor: Colors.light.highlightBg,
@@ -291,45 +307,55 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700' as const,
     color: Colors.light.tint,
-    textAlign: 'right',
+    textAlign: 'right' as const,
   },
-  subtotalTableHeader: {
-    flexDirection: 'row',
-    paddingBottom: 6,
+  lineItemsSubtotalsSection: {
+    gap: 8,
+  },
+  lineItemsSubtotalsTitle: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.light.text,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
     marginBottom: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
   },
-  subtotalHeaderCell: {
+  lineItemSubtotalRow: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: Colors.light.highlightBg,
+    borderRadius: 6,
+  },
+  lineItemSubtotalInfo: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
     flex: 1,
-    fontSize: 11,
-    fontWeight: '600' as const,
-    color: Colors.light.textSecondary,
-    textTransform: 'uppercase' as const,
+    marginRight: 12,
   },
-  subtotalHeaderCellRight: {
-    width: 70,
-    fontSize: 11,
-    fontWeight: '600' as const,
-    color: Colors.light.textSecondary,
-    textAlign: 'right' as const,
-    textTransform: 'uppercase' as const,
+  lineItemSubtotalIndex: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.light.tint,
+    marginRight: 6,
   },
-  subtotalRow: {
-    flexDirection: 'row',
-  },
-  subtotalLabel: {
+  lineItemSubtotalName: {
+    fontSize: 13,
+    fontWeight: '500' as const,
+    color: Colors.light.text,
     flex: 1,
-    fontSize: 15,
-    fontWeight: '600' as const,
-    color: Colors.light.text,
   },
-  subtotalValue: {
-    width: 70,
-    fontSize: 15,
-    fontWeight: '600' as const,
-    color: Colors.light.text,
-    textAlign: 'right' as const,
+  lineItemSubtotalQty: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    marginLeft: 6,
+  },
+  lineItemSubtotalValue: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: Colors.light.tint,
   },
   clientQuoteSection: {
     gap: 0,
@@ -339,7 +365,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#ffcca6',
+    borderColor: Colors.light.border,
   },
   clientQuoteSectionTitle: {
     fontSize: 13,
@@ -354,7 +380,7 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
     marginBottom: 4,
     borderBottomWidth: 1,
-    borderBottomColor: '#ffcca6',
+    borderBottomColor: Colors.light.border,
   },
   clientQuoteHeaderCell: {
     flex: 1,
@@ -391,7 +417,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     marginTop: 4,
     borderTopWidth: 1,
-    borderTopColor: '#ffcca6',
+    borderTopColor: Colors.light.border,
   },
   clientQuoteTotalLabel: {
     flex: 1,
@@ -496,53 +522,5 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700' as const,
     color: '#fff',
-  },
-  lineItemsSubtotalsSection: {
-    gap: 8,
-  },
-  lineItemsSubtotalsTitle: {
-    fontSize: 13,
-    fontWeight: '700' as const,
-    color: Colors.light.text,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  lineItemSubtotalRow: {
-    flexDirection: 'row' as const,
-    justifyContent: 'space-between' as const,
-    alignItems: 'center' as const,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    backgroundColor: Colors.light.highlightBg,
-    borderRadius: 6,
-  },
-  lineItemSubtotalInfo: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    flex: 1,
-    marginRight: 12,
-  },
-  lineItemSubtotalIndex: {
-    fontSize: 13,
-    fontWeight: '700' as const,
-    color: Colors.light.tint,
-    marginRight: 6,
-  },
-  lineItemSubtotalName: {
-    fontSize: 13,
-    fontWeight: '500' as const,
-    color: Colors.light.text,
-    flex: 1,
-  },
-  lineItemSubtotalQty: {
-    fontSize: 12,
-    color: Colors.light.textSecondary,
-    marginLeft: 6,
-  },
-  lineItemSubtotalValue: {
-    fontSize: 14,
-    fontWeight: '700' as const,
-    color: Colors.light.tint,
   },
 });

@@ -1,0 +1,188 @@
+==================================================
+11. DTF COST CALCULATOR POLISH
+==================================================
+
+The DTF Cost Calculator needs several UI and UX refinements.
+
+This is primarily a usability polish pass.
+
+--------------------------------------------------
+Default Values
+--------------------------------------------------
+
+For every new Location added to the calculator:
+
+Width should always default to:
+
+0.00
+
+Height should always default to:
+
+0.00
+
+Always display two decimal places.
+
+Never display:
+
+0
+
+Instead always display:
+
+0.00
+
+--------------------------------------------------
+Automatic Decimal Formatting
+--------------------------------------------------
+
+The Width and Height fields should intelligently format numeric input.
+
+Examples:
+
+User types:
+
+2
+
+Result becomes:
+
+2.00
+
+User types:
+
+25
+
+Result becomes:
+
+25.00
+
+User types:
+
+234
+
+Result becomes:
+
+2.34
+
+User types:
+
+1250
+
+Result becomes:
+
+12.50
+
+User types:
+
+12345
+
+Result becomes:
+
+123.45
+
+This should behave similarly to POS/payment terminals where the decimal is automatically maintained as the user types.
+
+Users should never need to manually enter the decimal point.
+
+The field should always display a properly formatted inch measurement.
+
+--------------------------------------------------
+Units
+--------------------------------------------------
+
+The Width and Height input fields should visibly include:
+
+in
+
+to indicate inches.
+
+For example:
+
+Width
+[ 4.00 ] in
+
+Height
+[ 3.50 ] in
+
+This makes the units immediately obvious.
+
+--------------------------------------------------
+Calculator Layout
+--------------------------------------------------
+
+Reduce the width of the following fields:
+
+• Width
+• Height
+• Rate
+
+These should only be large enough for their intended values.
+
+The additional horizontal space should instead be allocated to the TOTAL column.
+
+--------------------------------------------------
+TOTAL Column
+--------------------------------------------------
+
+Replace the "=" heading with:
+
+TOTAL
+
+The TOTAL column should become the visual destination of each calculator row.
+
+Inside that column display BOTH:
+
+Total Square Inches
+
+and
+
+Calculated Price
+
+Use the SAME font size for both values.
+
+Neither value should dominate the other.
+
+For example:
+
+TOTAL
+
+16.00 sq in
+
+$0.48
+
+This creates a much cleaner visual hierarchy.
+
+--------------------------------------------------
+Consistency
+--------------------------------------------------
+
+Ensure all calculator rows remain perfectly aligned regardless of how many locations exist.
+
+Maintain consistent spacing, field widths, typography, and alignment throughout the calculator.
+
+==================================================
+12. LINE ITEM COSTS CONSISTENCY
+==================================================
+
+In the Line Item Costs panel, the Product field currently does not match the other pricing fields.
+
+Ensure that:
+
+• Product
+• Service
+• Fees
+• Markup
+
+all use identical:
+
+• font size
+• label size
+• input height
+• input width
+• padding
+• border styling
+• alignment
+
+They should appear as one consistent set of pricing inputs.
+
+The Product field should not visually stand out simply because its label or input sizing differs.
+
+Maintain complete visual consistency across all four pricing inputs.

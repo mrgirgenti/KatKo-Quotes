@@ -1,7 +1,27 @@
 import { pool } from '@/lib/pool';
 import type { Quote, ProjectPriority } from '@/types/quote';
 import { getTotalQuantity } from '@/utils/quoteCalculations';
+import { getLineItemProducts, syncLineItemFromProducts } from '@/utils/lineItemProducts';
 import { authenticateRequest, unauthorized, forbidden } from '@/lib/auth';
+
+/**
+ * Normalize every line item through the single multi-product adapter before it is
+ * persisted. This guarantees the canonical products[] array, the aggregate
+ * `sizes`, the blended `productCostEach`, and the flattened `garmentVariants` can
+ * never drift apart at the persistence boundary — even if a client sends a
+ * partially-synced payload. It is idempotent for single-product items (round-trips
+ * cent-exact) so existing quotes are unaffected.
+ */
+function normalizeLineItems(items: any[]): any[] {
+  if (!Array.isArray(items)) return [];
+  return items.map((item) => {
+    try {
+      return syncLineItemFromProducts(item, getLineItemProducts(item));
+    } catch {
+      return item;
+    }
+  });
+}
 
 function dbPriorityToFrontend(p: string | null | undefined): ProjectPriority {
   switch (p) {
@@ -235,6 +255,8 @@ export async function PUT(request: Request, { id }: { id: string }) {
       ? `, "quoteResponse" = NULL, "quoteRespondedAt" = NULL, "quoteResponseBy" = NULL, "quoteResponseByUserId" = NULL, "quoteResponseIp" = NULL, "quoteResponseNote" = NULL, "quoteViewedAt" = NULL`
       : '';
 
+    const normalizedLineItems = normalizeLineItems(body.lineItems ?? []);
+
     const result = await pool.query(
       `UPDATE "Project" SET
         title = $1, "clientName" = $2, "organizationId" = $3, "orderType" = $4,
@@ -264,7 +286,7 @@ export async function PUT(request: Request, { id }: { id: string }) {
         body.hasCardFee,
         JSON.stringify(body.calculations ?? null),
         JSON.stringify(body.salesData ?? null),
-        JSON.stringify(body.lineItems ?? []),
+        JSON.stringify(normalizedLineItems),
         body.status,
         frontendStatusToDbStatus(body.status),
         (body as any).activeDate ?? null,
@@ -348,8 +370,8 @@ export async function PUT(request: Request, { id }: { id: string }) {
       }
     }
 
-    if (body.lineItems?.length) {
-      await upsertProjectItems(id, body.lineItems).catch((err) =>
+    if (normalizedLineItems.length) {
+      await upsertProjectItems(id, normalizedLineItems).catch((err) =>
         console.error('[PUT /api/projects/:id] ProjectItem upsert failed (non-fatal):', err),
       );
     }

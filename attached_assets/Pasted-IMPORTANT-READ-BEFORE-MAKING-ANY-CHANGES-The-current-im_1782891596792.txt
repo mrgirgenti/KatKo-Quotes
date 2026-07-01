@@ -1,0 +1,68 @@
+IMPORTANT — READ BEFORE MAKING ANY CHANGES
+
+The current implementation is NOT a prototype anymore.
+
+Treat the existing Quote Builder as the approved foundation.
+
+The attached mockup represents the target UI. Your objective is NOT to redesign it.
+
+Your objective is to preserve as much of the existing implementation as possible while making ONLY the specific changes requested below.
+
+==================================================
+IMPLEMENTATION RULES
+==================================================
+
+1. Do NOT redesign the page.
+
+2. Do NOT reorganize sections unless explicitly instructed.
+
+3. Do NOT replace working components simply because you think there is a better approach.
+
+4. If an existing component already satisfies the design intent, LEAVE IT ALONE.
+
+5. Make the SMALLEST architectural change necessary to implement the requested functionality.
+
+6. Prefer modifying existing components over creating new ones.
+
+7. Preserve:
+   • spacing
+   • sizing
+   • typography
+   • styling
+   • colors
+   • component hierarchy
+   • existing user workflow
+
+8. The attached mockup is the source of truth.
+
+Replicate it as closely as possible.
+
+If there is any conflict between previous implementations and the mockup, follow the mockup.
+
+9. Do NOT make unrelated improvements.
+
+Do not "clean up" code that is outside the requested scope.
+
+Do not redesign UI that was not requested.
+
+Do not rename components unless required.
+
+Do not refactor unrelated files.
+
+10. Before changing any layout, verify that the requested change cannot be accomplished by modifying the existing component.
+
+Only replace components when absolutely necessary.
+
+==================================================
+SUCCESS CRITERIA
+==================================================
+
+If I compare the application against the attached mockup, they should appear nearly identical.
+
+The only visual differences should be the specific features requested in this prompt.
+
+Everything else should remain unchanged.
+
+When complete, stop.
+
+Do not continue making additional improvements beyond the requested scope.

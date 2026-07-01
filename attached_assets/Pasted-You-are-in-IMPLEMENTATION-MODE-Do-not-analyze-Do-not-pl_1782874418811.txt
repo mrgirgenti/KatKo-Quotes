@@ -1,0 +1,133 @@
+You are in IMPLEMENTATION MODE.
+
+Do not analyze.
+Do not plan.
+Begin editing code immediately.
+
+If any existing implementation conflicts with this specification, DELETE AND REPLACE IT. Do not preserve legacy UI.
+
+Limit this implementation ONLY to the Quote Builder UI. Do NOT modify Settings, Quote Summary, or calculations in this prompt.
+
+======================================================
+OBJECTIVE
+======================================================
+
+Replace the existing "Additional Services" functionality with the new pricing architecture.
+
+======================================================
+REMOVE
+======================================================
+
+Remove the existing:
+
+Additional Services
+
++ Add
+
+This feature no longer exists.
+
+======================================================
+ADD
+======================================================
+
+Replace it with TWO sections.
+
+-----------------------------------
+
+PRODUCTION COSTS
+
+-----------------------------------
+
+This section contains ONLY production-related items.
+
+Examples:
+
+• Design Fee
+• Digitizing
+• Artwork Cleanup
+• Screen Setup
+• Film Charges
+• Color Change
+• PMS Match
+• Specialty Ink
+• Bagging & Tagging
+
+Display these in a clean table similar to the existing mockup.
+
+Columns:
+
+Name
+
+Type
+
+Details
+
+Calculated
+
+Delete
+
+Provide:
+
++ Add Production
+
+Do NOT hardcode values.
+
+This should support multiple Production items.
+
+-----------------------------------
+
+OTHER CHARGES
+
+-----------------------------------
+
+Immediately below Production Costs create:
+
+OTHER CHARGES
+
+Examples:
+
+• Rush
+
+• Shipping
+
+• Delivery
+
+• Fulfillment
+
+• Plus Size Apparel
+
+• Oversized Print
+
+• Restocking
+
+• Discount
+
+• Credit
+
+• Miscellaneous
+
+Same table layout.
+
+Provide
+
++ Add Other Charge
+
+Again support multiple entries.
+
+======================================================
+DO NOT
+======================================================
+
+Do not implement Settings.
+
+Do not implement libraries.
+
+Do not redesign Quote Summary.
+
+Do not redesign calculations.
+
+Do not redesign Products.
+
+Keep the page visually identical except for replacing Additional Services with these two sections.
+
+Focus ONLY on building the UI structure and state management.

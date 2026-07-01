@@ -23,7 +23,8 @@ import { SegmentedControl } from '@/components/SegmentedControl';
 import { ToggleButton } from '@/components/ToggleButton';
 import { LineItemCard } from '@/components/LineItemCard';
 import { CalculationDisplay } from '@/components/CalculationDisplay';
-import { ONLINE_FEE_LABEL, CARD_FEE_LABEL, SALES_TAX_LABEL } from '@/constants/fees';
+import { useFeeRates, useFeeLabels } from '@/lib/useTaxesFees';
+import { useProductPricing } from '@/lib/useProductPricing';
 import { Toast } from '@/components/Toast';
 import {
   Quote,
@@ -76,6 +77,9 @@ export default function EditQuoteScreen() {
   }, [originalQuote?.id]);
 
   const isCompleted = originalQuote?.status === 'completed';
+  const feeRates = useFeeRates();
+  const { onlineFeeLabel, cardFeeLabel, salesTaxLabel } = useFeeLabels();
+  const { upcharges } = useProductPricing();
 
   const [personOrganization, setPersonOrganization] = useState('');
   const [projectName, setProjectName] = useState('');
@@ -131,9 +135,9 @@ export default function EditQuoteScreen() {
   // Recalculate from current form state; fall back to saved calculations so we
   // never block a save just because quantities happen to total zero.
   const calculations = useMemo(
-    () => calculateQuote(lineItems, hasOnlineFee, hasSalesTax, hasCardFee)
+    () => calculateQuote(lineItems, hasOnlineFee, hasSalesTax, hasCardFee, feeRates, upcharges)
          ?? (isLoaded ? originalQuote?.calculations ?? null : null),
-    [lineItems, hasOnlineFee, hasSalesTax, hasCardFee, isLoaded, originalQuote?.calculations]
+    [lineItems, hasOnlineFee, hasSalesTax, hasCardFee, feeRates, upcharges, isLoaded, originalQuote?.calculations]
   );
 
   const handleAddLineItem = useCallback(() => {
@@ -311,26 +315,36 @@ export default function EditQuoteScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Order Information</Text>
           <View style={styles.card}>
-            <FormInput
-              label="Person / Organization"
-              value={personOrganization}
-              onChangeText={setPersonOrganization}
-              placeholder="Client name or company"
-              autoTitleCase
-            />
-            <FormInput
-              label="Project Name"
-              value={projectName}
-              onChangeText={setProjectName}
-              placeholder="e.g., Summer Event T-Shirts"
-              autoTitleCase
-            />
-            <SegmentedControl
-              label="Order Type"
-              options={ORDER_TYPES}
-              value={orderType}
-              onChange={setOrderType}
-            />
+            {/* Row 1: ORDER TYPE | PERSON/ORG | PROJECT NAME */}
+            <View style={[styles.row, isMobile && styles.rowMobile]}>
+              <View style={styles.halfField}>
+                <SegmentedControl
+                  label="Order Type"
+                  options={ORDER_TYPES}
+                  value={orderType}
+                  onChange={setOrderType}
+                />
+              </View>
+              <View style={styles.halfField}>
+                <FormInput
+                  label="Person / Organization"
+                  value={personOrganization}
+                  onChangeText={setPersonOrganization}
+                  placeholder="Client name or company"
+                  autoTitleCase
+                />
+              </View>
+              <View style={styles.halfField}>
+                <FormInput
+                  label="Project Name"
+                  value={projectName}
+                  onChangeText={setProjectName}
+                  placeholder="e.g., Summer Event T-Shirts"
+                  autoTitleCase
+                />
+              </View>
+            </View>
+            {/* Row 2: ORDER DATE | IN-HANDS DATE | INVOICE NUMBER */}
             <View style={[styles.row, isMobile && styles.rowMobile]}>
               <View style={styles.halfField}>
                 <FormInput
@@ -348,13 +362,15 @@ export default function EditQuoteScreen() {
                   onChangeText={setInHandsDate}
                 />
               </View>
+              <View style={styles.halfField}>
+                <FormInput
+                  label="Invoice Number"
+                  value={invoiceNumber}
+                  onChangeText={setInvoiceNumber}
+                  placeholder=""
+                />
+              </View>
             </View>
-            <FormInput
-              label="Invoice Number"
-              value={invoiceNumber}
-              onChangeText={setInvoiceNumber}
-              placeholder=""
-            />
           </View>
         </View>
 
@@ -382,19 +398,19 @@ export default function EditQuoteScreen() {
           <View style={styles.card}>
             <ToggleButton
               label="Online Fee"
-              description={ONLINE_FEE_LABEL}
+              description={onlineFeeLabel}
               value={hasOnlineFee}
               onChange={setHasOnlineFee}
             />
             <ToggleButton
               label="Card Fee"
-              description={CARD_FEE_LABEL}
+              description={cardFeeLabel}
               value={hasCardFee}
               onChange={setHasCardFee}
             />
             <ToggleButton
               label="Sales Tax"
-              description={SALES_TAX_LABEL}
+              description={salesTaxLabel}
               value={hasSalesTax}
               onChange={setHasSalesTax}
             />

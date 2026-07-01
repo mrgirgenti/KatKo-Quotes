@@ -1,0 +1,516 @@
+You are in IMPLEMENTATION MODE.
+
+Do not analyze.
+Do not brainstorm.
+Do not redesign unrelated areas.
+
+Begin implementing immediately.
+
+If any existing implementation conflicts with this specification, DELETE AND REPLACE IT. Do not preserve legacy UI for backwards compatibility.
+
+Work ONLY on the Cost Configuration system and the Production / Other Cost architecture.
+
+Complete this feature before moving on to anything else.
+
+At the end, STOP and report:
+
+- Files changed
+- Components changed
+- Database/schema changes
+- Remaining TODOs
+
+==========================================================
+OBJECTIVE
+==========================================================
+
+The Pricing Engine architecture is approved.
+
+This task is to complete the implementation of the Cost Configuration system so it is production-ready.
+
+Focus on:
+
+• Persistence
+• Editing workflow
+• Reusable components
+• Completing unfinished settings pages
+• Keeping terminology consistent throughout the application
+
+This is NOT a visual redesign.
+
+==========================================================
+KEEP THE CURRENT NAVIGATION
+==========================================================
+
+Keep the existing Cost Configuration navigation exactly as follows:
+
+• Product Pricing
+• Production Library
+• Other Charges Library
+• Service Styles
+• Taxes & Fees
+
+DO NOT merge these pages into a single navigation item.
+
+==========================================================
+BUILD ONE REUSABLE COMPONENT
+==========================================================
+
+Although Production Library and Other Charges Library remain separate pages, they should NOT be separate implementations.
+
+Build ONE reusable component.
+
+Example:
+
+<CostLibraryTable />
+
+The Production Library page should render:
+
+CostLibraryTable(category="production")
+
+The Other Charges Library page should render:
+
+CostLibraryTable(category="other")
+
+Both pages must share:
+
+• identical UI
+• identical edit drawer
+• identical validation
+• identical CRUD
+• identical save logic
+• identical filtering
+• identical search
+• identical table behavior
+
+Only the category filter should differ.
+
+==========================================================
+COST RECORD MODEL
+==========================================================
+
+Every Cost record should contain:
+
+• Name
+• Category
+• Calculation Type
+• Default Rate
+• Minimum
+• Increment
+• Scope
+• Taxable
+• Enabled
+• Description (optional)
+
+Category values:
+
+Production
+
+Other
+
+The Category field must always exist in the data model even if the page already filters records.
+
+==========================================================
+TABLE
+==========================================================
+
+Simplify the table.
+
+Only display:
+
+Name
+
+Category
+
+Calculation Type
+
+Rate
+
+Scope
+
+Enabled
+
+Actions
+
+Move these fields into the edit drawer:
+
+Minimum
+
+Increment
+
+Taxable
+
+Description
+
+==========================================================
+EDIT DRAWER
+==========================================================
+
+Replace inline editing.
+
+Editing a row should open a right-side drawer.
+
+Drawer layout:
+
+--------------------------------
+
+Basic Information
+
+Name
+
+Category
+
+Calculation Type
+
+--------------------------------
+
+Pricing
+
+Default Rate
+
+Minimum
+
+Increment
+
+--------------------------------
+
+Behavior
+
+Scope
+
+Taxable
+
+Enabled
+
+--------------------------------
+
+Description
+
+(Optional)
+
+--------------------------------
+
+Save
+
+Cancel
+
+==========================================================
+CATEGORY COLUMN
+==========================================================
+
+Add a visible Category column.
+
+Examples:
+
+Design Fee
+
+Production
+
+Rush Fee
+
+Other
+
+Shipping
+
+Other
+
+This column should always be visible.
+
+==========================================================
+CATEGORY CHANGES
+==========================================================
+
+Changing a category is a high-impact action.
+
+Do NOT allow simple dropdown editing.
+
+Instead:
+
+Click
+
+Change Category
+
+↓
+
+Display confirmation dialog.
+
+Example:
+
+--------------------------------
+
+Changing Cost Category
+
+This item is currently classified as:
+
+Production
+
+Changing it to:
+
+Other
+
+may affect:
+
+• Existing Quotes
+
+• Pricing Calculations
+
+• Reporting
+
+• Financial History
+
+• Future Quotes
+
+Only continue if this item was originally created incorrectly.
+
+Cancel
+
+Continue
+
+--------------------------------
+
+Only after confirmation should the category be changed.
+
+Build this in a way that future role-based permissions can restrict this action.
+
+==========================================================
+SAVE FUNCTIONALITY
+==========================================================
+
+Currently edits do NOT persist.
+
+Fix persistence.
+
+Everything below must save correctly:
+
+Name
+
+Category
+
+Calculation Type
+
+Rate
+
+Minimum
+
+Increment
+
+Scope
+
+Taxable
+
+Enabled
+
+Description
+
+Support:
+
+Create
+
+Edit
+
+Delete
+
+Enable
+
+Disable
+
+Reload page
+
+Data must persist correctly.
+
+==========================================================
+QUOTE BUILDER
+==========================================================
+
+Do NOT redesign the Quote Builder.
+
+However:
+
+"+ Add Production Cost"
+
+must ONLY display
+
+Category = Production
+
+"+ Add Other Charge"
+
+must ONLY display
+
+Category = Other
+
+Both dialogs should load from the same reusable CostLibraryTable data model.
+
+==========================================================
+REMOVE INVALID DEFAULTS
+==========================================================
+
+Remove these from Production Library:
+
+DTF Transfer
+
+Embroidery Stitch Run
+
+These belong inside their decoration calculators.
+
+They are NOT Production Costs.
+
+==========================================================
+BUTTON TEXT
+==========================================================
+
+Rename:
+
++ Add Production
+
+to
+
++ Add Production Cost
+
+Leave:
+
++ Add Other Charge
+
+unchanged.
+
+==========================================================
+PRODUCT PRICING
+==========================================================
+
+Complete this page.
+
+Implement:
+
+--------------------------------
+
+Apparel Size Upcharges
+
+2XL
+
+3XL
+
+4XL
+
+etc.
+
+--------------------------------
+
+Product Overrides
+
+Specific Product
+
+Specific Size
+
+Override Amount
+
+--------------------------------
+
+These values must persist.
+
+Do NOT implement Decoration Size Upcharges.
+
+That concept has been removed.
+
+==========================================================
+SERVICE STYLES
+==========================================================
+
+This page is currently incomplete.
+
+Complete it.
+
+Each Service Style should support:
+
+Name
+
+Supplier
+
+Default Margin
+
+Default Production Time
+
+Description
+
+This page should persist all edits.
+
+==========================================================
+TAXES & FEES
+==========================================================
+
+Complete this page.
+
+Support:
+
+Sales Tax
+
+Card Fee
+
+Online Fee
+
+Minimum Order
+
+Deposit %
+
+Round Pricing
+
+Late Fee (placeholder)
+
+Persist all values.
+
+==========================================================
+SCOPE VALUES
+==========================================================
+
+Retain ONLY:
+
+Per Piece
+
+Per Line Item
+
+Per Order
+
+These satisfy current business requirements.
+
+==========================================================
+DO NOT
+==========================================================
+
+Do NOT redesign the Quote Builder.
+
+Do NOT redesign Design Details.
+
+Do NOT redesign Products.
+
+Do NOT redesign Calculators.
+
+Do NOT redesign Mockup Builder.
+
+Do NOT modify unrelated functionality.
+
+Maintain the existing styling.
+
+==========================================================
+SUCCESS CRITERIA
+==========================================================
+
+✓ Production Library and Other Charges Library share one reusable component.
+
+✓ Category column exists.
+
+✓ Category confirmation dialog exists.
+
+✓ Edit drawer replaces inline editing.
+
+✓ All CRUD operations persist.
+
+✓ Product Pricing page is complete.
+
+✓ Service Styles page is complete.
+
+✓ Taxes & Fees page is complete.
+
+✓ Quote Builder pulls Production Costs and Other Charges from the same underlying data model.
+
+✓ Production and Other remain separate for quoting, reporting, and calculations.
+
+When complete, STOP.
+
+Do not continue into unrelated features.

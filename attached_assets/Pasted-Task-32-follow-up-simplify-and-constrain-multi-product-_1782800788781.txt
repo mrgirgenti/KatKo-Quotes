@@ -1,0 +1,135 @@
+Task #32 follow-up — simplify and constrain multi-product line items
+
+The multi-product Line Item work is moving in the right direction, but we need to constrain the architecture before continuing.
+
+IMPORTANT BUSINESS RULE
+
+A Line Item represents a production run/design.
+
+Additional products inside that Line Item are allowed only when they share:
+
+* same artwork/mockup
+* same service style
+* same print/decoration locations
+* same production calculator
+* same production notes
+* same production setup
+
+This is primarily for cases like:
+
+* same shirt style, multiple colors
+* same design across closely related garment variants
+* same production run
+
+If the garment/product needs materially different pricing, notes, setup, customer-facing pricing, production handling, or purchasing treatment, it should be duplicated into a separate Line Item.
+
+Do not overbuild complex multi-product pricing UI.
+
+---
+
+KEEP THE UI SIMPLE
+
+Do not add product-level pricing tables.
+
+Do not add per-product cost breakdown cards.
+
+Do not expose complex shared/inherited production logic to the CSR.
+
+The visible Quote Builder should stay close to the approved mockup:
+
+* Design Details
+* Products + Sizes
+* Service-specific calculator
+* Line Item Costs
+* Line Item Subtotal
+* Pricing Summary sidebar
+
+---
+
+LINE ITEM COSTS
+
+Keep the Line Item Costs section simple:
+
+* Product
+* Service
+* Fees
+* Markup
+
+This remains the editable override layer.
+
+If multiple products exist, Product may be auto-calculated behind the scenes, but the CSR should not be forced into a product-level accounting table.
+
+Show only a subtle indicator if needed:
+
+“Auto-calculated from 2 products”
+
+or
+
+“2 products”
+
+Do not redesign this section.
+
+---
+
+CRITICAL: DO NOT USE BLENDED COST AS BUSINESS TRUTH
+
+The current adapter uses:
+
+blended productCostEach = Σ(cost × qty) / totalQty
+
+This is acceptable only as a temporary compatibility adapter for the existing single-cost pricing engine.
+
+It must not become the permanent source of truth for:
+
+* reports
+* purchasing
+* profitability
+* project documents
+* inventory
+* vendor ordering
+* accounting
+* future product-level pricing
+
+Each ConfiguredProduct must continue retaining its own true product cost, quantity, style, color, and size run.
+
+The blended value may only be used internally to keep legacy calculations working until deeper pricing work is intentionally scoped later.
+
+Add code comments documenting this clearly in utils/lineItemProducts.ts.
+
+---
+
+DO NOT PROCEED WITH DEEP PRICING REFACTOR
+
+Do not refactor the pricing engine right now.
+
+Do not create product-level sell price tables.
+
+Do not change database schema.
+
+Do not change quote submission logic.
+
+Do not change Client Hub pricing visibility.
+
+This follow-up is only to:
+
+1. Confirm products[] remains additive/backward compatible.
+2. Prevent blended cost from becoming business truth.
+3. Keep the UI simple.
+4. Ensure the approved Quote Builder layout remains intact.
+5. Ensure Client Hub still hides all cost/pricing/internal calculation fields.
+
+---
+
+VERIFY
+
+Please verify:
+
+* Single-product line items still work.
+* Multi-product line items save and reload.
+* Client Hub submissions still hide all pricing.
+* PDFs/documents list product details without leaking costs.
+* The Line Item Costs UI remains simple.
+* No new product-level pricing table was introduced.
+* Blended product cost is documented as a compatibility adapter only, not a true product cost.
+
+Stop after verification and any needed cleanup.

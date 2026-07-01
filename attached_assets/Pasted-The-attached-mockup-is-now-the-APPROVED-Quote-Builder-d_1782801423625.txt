@@ -1,0 +1,402 @@
+The attached mockup is now the APPROVED Quote Builder design and should be treated as the canonical UI specification moving forward.
+
+DO NOT redesign it.
+
+DO NOT reinterpret it.
+
+DO NOT replace it with another layout.
+
+Your job is to faithfully implement this design while preserving the functionality we've already built.
+
+IMPORTANT
+
+If any existing implementation conflicts with this approved design or architecture, delete and replace it. Do not preserve legacy UI for backward compatibility.
+
+==================================================
+CORE ARCHITECTURE
+==================================================
+
+The architecture of this system is now officially defined as follows:
+
+Quote
+    ↓
+Line Item (Production Run / Design)
+    ↓
+Products
+
+A Quote is a collection of production jobs.
+
+A Line Item represents ONE production run (one design).
+
+Products are individual garments/items that participate in that production run.
+
+Products inside a Line Item share:
+
+• artwork
+• mockup
+• decoration method
+• decoration locations
+• production calculator
+• additional services
+• production notes
+• service cost
+• production setup
+
+Products differ only by:
+
+• Product Type
+• Product Style
+• Color
+• Size quantities
+• Wholesale garment cost
+• Product-specific selling price (future)
+
+Examples:
+
+40 Next Level 6210
+10 Comfort Colors 1717
+
+Same artwork.
+
+Same screen print.
+
+Same front/back locations.
+
+Same production setup.
+
+Same calculator.
+
+Same production cost.
+
+This is ONE Line Item.
+
+However:
+
+Design A
+
+and
+
+Design B
+
+are TWO different production runs.
+
+Therefore they are TWO Line Items.
+
+==================================================
+THE ATTACHED MOCKUP IS THE DESIGN SPEC
+==================================================
+
+The Quote Builder should visually match the attached mockup as closely as possible.
+
+The visual hierarchy should remain:
+
+Quote Information
+
+↓
+
+Line Item
+
+↓
+
+Design Details
+
++
+
+Products & Sizes
+
+↓
+
+Production Calculator
+
+↓
+
+Line Item Costs
+
+↓
+
+Collapsed Line Items
+
+↓
+
+Pricing Summary
+
+Nothing should move unless absolutely required for technical reasons.
+
+==================================================
+DO NOT REDESIGN THE PRODUCT SELECTION EXPERIENCE
+==================================================
+
+One major issue with the current implementation is that the Products section was redesigned into what feels like a miniature Product Catalog application.
+
+That is NOT the goal.
+
+The Quote Builder should remain the primary workspace.
+
+Product selection should simply support quoting.
+
+The Product selector should NOT become the primary UI.
+
+==================================================
+PRODUCTS + SIZES
+==================================================
+
+Keep the Products + Sizes section visually very close to the approved mockup.
+
+Each Product should simply contain:
+
+Product Type
+(dropdown)
+
+Product Style
+(searchable dropdown pulling from Products page)
+
+Color
+(dropdown populated from selected product)
+
+Sizes
+XS
+SM
+MD
+LG
+XL
+2XL
+3XL
+4XL
+
+Total
+
+Nothing more.
+
+No giant left-side category browser.
+
+No embedded product catalog.
+
+No wizard.
+
+No full-screen search interface.
+
+The searchable catalog should only appear when interacting with the Product Style dropdown.
+
+Exactly like Shopify or other modern searchable select controls.
+
+==================================================
+ADDING PRODUCTS
+==================================================
+
+The Add Product button should simply create another Product inside the same Line Item.
+
+Product 1
+
+Product 2
+
+Product 3
+
+Each remains compact.
+
+Each contains:
+
+Type
+
+Style
+
+Color
+
+Sizes
+
+That's it.
+
+==================================================
+DESIGN DETAILS
+==================================================
+
+Leave this section almost exactly as shown in the approved mockup.
+
+Mockup
+
+Design Name
+
+Service Style
+
+Product Source
+
+Priority
+
+Locations
+
+Additional Services
+
+Project Notes
+
+No redesign needed.
+
+==================================================
+PRODUCTION CALCULATOR
+==================================================
+
+Leave the calculator where it is.
+
+This belongs to the production run.
+
+NOT to individual products.
+
+Different service styles should continue swapping in their respective calculators:
+
+DTF Calculator
+
+Embroidery Calculator
+
+Screen Print Calculator (future)
+
+Promotional Calculator (future)
+
+Laser Calculator (future)
+
+The calculator remains shared by the entire Line Item.
+
+==================================================
+LINE ITEM COSTS
+==================================================
+
+Keep this section visually SIMPLE.
+
+Do NOT introduce:
+
+multiple pricing cards
+
+pricing matrices
+
+per-product accounting tables
+
+shared/inherited breakdowns
+
+The current simple fields are acceptable:
+
+Product
+
+Service
+
+Fees
+
+Markup
+
+This remains the editable pricing layer.
+
+==================================================
+IMPORTANT PRICING NOTE
+==================================================
+
+The current adapter uses a blended product cost.
+
+This MUST NOT become permanent business logic.
+
+Each Product must continue retaining its own:
+
+product cost
+
+style
+
+color
+
+size breakdown
+
+quantity
+
+future sell price
+
+future purchasing data
+
+future profitability
+
+future inventory information
+
+If a temporary blended value is required to preserve compatibility with the existing pricing engine, that is acceptable ONLY as a temporary compatibility adapter.
+
+It must NEVER become the source of truth.
+
+Add comments documenting this clearly.
+
+==================================================
+THE UI MUST STAY SIMPLE
+==================================================
+
+Do NOT expose implementation complexity to the CSR.
+
+The CSR should only think about:
+
+What design?
+
+What garments?
+
+How many?
+
+How are we decorating them?
+
+Everything else should happen automatically.
+
+==================================================
+DO NOT CHANGE
+==================================================
+
+Keep the following exactly as designed:
+
+Top Quote Information section
+
+Pricing Summary sidebar
+
+Collapsed Line Item appearance
+
+Black section headers
+
+Orange accents
+
+Mockup priority on the left
+
+Design Details on the left
+
+Products + Sizes beside it
+
+Calculator below
+
+Line Item Costs below
+
+Pricing Summary pinned to the right
+
+==================================================
+CLIENT HUB
+==================================================
+
+The Client Hub Order Form must follow this same redesign.
+
+Clients should receive the same workflow and layout where appropriate.
+
+However, they must NEVER see:
+
+Product Costs
+
+Service Costs
+
+Fees
+
+Markup
+
+Production Calculators
+
+Internal Pricing
+
+Line Item Costs
+
+Internal Quote Summary
+
+The Client Hub continues hiding all internal business information while sharing the same underlying architecture.
+
+==================================================
+GOAL
+==================================================
+
+The goal is NOT to redesign the Quote Builder.
+
+The attached mockup IS the Quote Builder.
+
+The goal is to faithfully implement this layout while wiring it into the new Product architecture and preserving all existing functionality.
+
+Before making changes, review the approved mockup in detail and ensure your implementation matches it as closely as possible.
