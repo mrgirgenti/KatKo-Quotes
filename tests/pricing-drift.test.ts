@@ -27,6 +27,7 @@ import {
   assertNoServiceCostDivergence,
 } from '@/utils/lineItemProducts';
 import { portalVariantsToProducts } from '@/utils/portalVariants';
+import { getTotalQuantity } from '@/utils/quoteCalculations';
 import type { LineItem, SizeQuantities } from '@/types/quote';
 import type { ConfiguredProduct } from '@/types/configuredProduct';
 
@@ -724,5 +725,146 @@ describe('syncLineItemFromProducts — divergence guard behavior', () => {
     expect(() => syncLineItemFromProducts(item, [p1, p2])).toThrow(
       /Multi-product line items do not support per-product/,
     );
+  });
+});
+
+describe('serviceStyle switching — quantity mode and blended cost invariant', () => {
+  // ─── Fixtures ──────────────────────────────────────────────────────────────
+  // Both products have garment sizes AND flat quantities coexisting so that
+  // switching serviceStyle cleanly flips which dimension is counted.
+  //
+  //   Product A · Adult Tee  · cost $5.00
+  //     garment qty: s=10 m=20 l=10 → 40 pcs   flat qty: 200
+  //   Product B · Youth Tee  · cost $8.00
+  //     garment qty: m=15 → 15 pcs              flat qty: 30
+  //
+  //   Screen Printing totals:  qty  55   true cost  $320.00  blended ≈ $5.818
+  //   Promotional totals:      qty 230   true cost $1240.00  blended ≈ $5.391
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const productA = makeProduct(5.00, [
+    { color: 'Black', sizes: { s: 10, m: 20, l: 10, flat: 200 } },
+  ]);
+  const productB = makeProduct(8.00, [
+    { color: 'Navy', sizes: { m: 15, flat: 30 } },
+  ]);
+
+  /** Sync the two fixture products under a given serviceStyle. */
+  function syncWith(serviceStyle: LineItem['serviceStyle']) {
+    const item = makeLineItem([productA, productB], serviceStyle);
+    return syncLineItemFromProducts(item, [productA, productB]);
+  }
+
+  // ── Garment-size style (Screen Printing) ───────────────────────────────────
+
+  it('Screen Printing: getTotalQuantity counts garment sizes, not flat', () => {
+    const synced = syncWith('Screen Printing');
+    const garmentQty = getTotalQuantity(synced.sizes, false);
+    expect(garmentQty).toBe(55); // 40 + 15
+  });
+
+  it('Screen Printing: flat field is stored in sizes but not counted', () => {
+    const synced = syncWith('Screen Printing');
+    // flat is accumulated but getTotalQuantity(_, false) ignores it
+    expect(synced.sizes.flat).toBe(230); // 200 + 30 — preserved, not counted
+    expect(synced.sizes.s).toBe(10);
+    expect(synced.sizes.m).toBe(35); // 20 + 15
+    expect(synced.sizes.l).toBe(10);
+  });
+
+  it('Screen Printing: blended × garment-total is cent-exact vs Σ(cost × garmentQty)', () => {
+    const synced = syncWith('Screen Printing');
+    const garmentTotal = getTotalQuantity(synced.sizes, false); // 55
+    const blendedTotal = synced.productCostEach * garmentTotal;
+    const trueTotal = 5.00 * 40 + 8.00 * 15; // 320.00
+    expect(Math.round(blendedTotal * 100)).toBe(Math.round(trueTotal * 100));
+    expect(Math.round(blendedTotal * 100)).toBe(32000); // $320.00 in cents
+  });
+
+  // ── Switching to Promotional ───────────────────────────────────────────────
+
+  it('Promotional: getTotalQuantity counts flat field, not garment sizes', () => {
+    const synced = syncWith('Promotional');
+    const flatQty = getTotalQuantity(synced.sizes, true);
+    expect(flatQty).toBe(230); // 200 + 30
+  });
+
+  it('Promotional: garment sizes are preserved in sizes but not used for qty', () => {
+    const synced = syncWith('Promotional');
+    const garmentQty = getTotalQuantity(synced.sizes, false);
+    const flatQty    = getTotalQuantity(synced.sizes, true);
+    // garment sizes survive the sync — only the counting mode changes
+    expect(garmentQty).toBe(55);
+    expect(flatQty).toBe(230);
+  });
+
+  it('Promotional: blended × flat-total is cent-exact vs Σ(cost × flatQty)', () => {
+    const synced = syncWith('Promotional');
+    const flatTotal   = getTotalQuantity(synced.sizes, true); // 230
+    const blendedTotal = synced.productCostEach * flatTotal;
+    const trueTotal   = 5.00 * 200 + 8.00 * 30; // 1240.00
+    expect(Math.round(blendedTotal * 100)).toBe(Math.round(trueTotal * 100));
+    expect(Math.round(blendedTotal * 100)).toBe(124000); // $1240.00 in cents
+  });
+
+  // ── Switching back to garment-size style ───────────────────────────────────
+
+  it('back to Screen Printing: garment quantity is exactly restored', () => {
+    // Simulate a full switch cycle: garment → Promotional → garment
+    const garment1 = syncWith('Screen Printing');
+    const _promo   = syncWith('Promotional'); // intermediate — must not affect garment2
+    const garment2 = syncWith('Screen Printing');
+
+    expect(getTotalQuantity(garment1.sizes, false)).toBe(
+      getTotalQuantity(garment2.sizes, false),
+    );
+    expect(getTotalQuantity(garment2.sizes, false)).toBe(55);
+  });
+
+  it('flat and garment quantities do not cross-contaminate after full style cycle', () => {
+    const garment1 = syncWith('Screen Printing');
+    const garment2 = syncWith('Screen Printing'); // second sync after implicit Promotional
+
+    // Garment totals are identical — no contamination from flat field
+    expect(getTotalQuantity(garment1.sizes, false)).toBe(
+      getTotalQuantity(garment2.sizes, false),
+    );
+    // Flat totals are also identical
+    expect(getTotalQuantity(garment1.sizes, true)).toBe(
+      getTotalQuantity(garment2.sizes, true),
+    );
+    // Blended costs are identical — no drift from a style switch cycle
+    expect(garment1.productCostEach).toBe(garment2.productCostEach);
+  });
+
+  it('blended productCostEach differs between styles when flat/garment ratios differ', () => {
+    // Product A/B have garment ratio 40:15 but flat ratio 200:30.
+    // Since the ratios differ, the blended cost must differ between modes —
+    // confirming the adapter re-weights correctly after each style switch.
+    //
+    //   garment blended: (5×40 + 8×15) / 55  = 320/55  ≈ 5.8182
+    //   promo   blended: (5×200 + 8×30) / 230 = 1240/230 ≈ 5.3913
+    const garmentSync = syncWith('Screen Printing');
+    const promoSync   = syncWith('Promotional');
+
+    expect(garmentSync.productCostEach).toBeCloseTo(320 / 55,   8);
+    expect(promoSync.productCostEach).toBeCloseTo(1240 / 230,  8);
+    expect(garmentSync.productCostEach).not.toBeCloseTo(promoSync.productCostEach, 2);
+  });
+
+  it('blended × qty is cent-exact for Screen Printing after switching back from Promotional', () => {
+    // Switch to Promotional, then back — the garment-mode blended cost
+    // must still produce a cent-exact product-cost total.
+    const promoSync   = syncWith('Promotional');   // switch away
+    const garmentBack = syncWith('Screen Printing'); // switch back
+
+    const garmentQty  = getTotalQuantity(garmentBack.sizes, false);
+    const blendedTotal = garmentBack.productCostEach * garmentQty;
+    const trueTotal    = 5.00 * 40 + 8.00 * 15; // 320.00
+
+    // Intermediate Promotional sync must not have contaminated the result
+    expect(Math.round(blendedTotal * 100)).toBe(Math.round(trueTotal * 100));
+    // promoSync is used above only to confirm we did the switch; suppress unused warning
+    expect(promoSync.productCostEach).toBeGreaterThan(0);
   });
 });

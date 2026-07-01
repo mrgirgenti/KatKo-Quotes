@@ -1,0 +1,69 @@
+Approved, but keep this tightly scoped.
+
+Implement task #39 as regression-test coverage only.
+
+Do not refactor the pricing engine.
+Do not modify Quote Builder UI.
+Do not change service style behavior unless the test exposes a real bug.
+Do not edit utils/quoteCalculations.ts unless absolutely necessary and explain why.
+
+Add tests to:
+
+tests/pricing-drift.test.ts
+
+====================================================
+TEST COVERAGE REQUIRED
+====================================================
+
+Add coverage for changing serviceStyle mid-edit on an existing multi-product line item.
+
+The test should simulate:
+
+1. A multi-product apparel/garment line item using size-based quantities.
+2. Syncing/blending product costs through the adapter.
+3. Changing serviceStyle to a flat-quantity style such as Promotional.
+4. Verifying the recalculated total quantity uses the flat/promotional quantity and does not keep stale garment-size totals.
+5. Changing back to a garment-size style.
+6. Verifying the recalculated total quantity uses aggregate garment sizes again and does not keep stale flat quantity.
+7. Verifying blended cost × total qty remains cent-exact after each switch.
+
+====================================================
+ASSERTIONS
+====================================================
+
+Verify:
+
+- blended cost × total quantity equals sum(product cost × product quantity), cent-exact.
+- Promotional / flat quantity mode uses the flat quantity field.
+- Garment-based service styles use aggregate size quantities.
+- Flat quantities and garment quantities do not cross-contaminate after switching serviceStyle.
+- syncLineItemFromProducts recomputes the relevant quantity data after serviceStyle changes.
+
+====================================================
+FILES
+====================================================
+
+Test file:
+
+tests/pricing-drift.test.ts
+
+Relevant utilities:
+
+utils/lineItemProducts.ts
+utils/quoteCalculations.ts
+
+Prefer using existing test fixtures/helpers from task #33 if available.
+
+====================================================
+DELIVERABLE
+====================================================
+
+When complete, report:
+
+- Tests added
+- Scenarios covered
+- Whether any implementation bug was discovered
+- Files changed
+- How to run the tests
+
+This task is done only when the new regression tests pass and can be run from the committed test suite.
