@@ -5,12 +5,29 @@ import { getLineItemProducts, syncLineItemFromProducts } from '@/utils/lineItemP
 import { authenticateRequest, unauthorized, forbidden } from '@/lib/auth';
 
 /**
- * Normalize every line item through the single multi-product adapter before it is
- * persisted. This guarantees the canonical products[] array, the aggregate
- * `sizes`, the blended `productCostEach`, and the flattened `garmentVariants` can
- * never drift apart at the persistence boundary — even if a client sends a
- * partially-synced payload. It is idempotent for single-product items (round-trips
- * cent-exact) so existing quotes are unaffected.
+ * IMPORTANT — PERSISTENCE BOUNDARY CONTRACT
+ *
+ * This function MUST be called on every line item before lineItemsData is written
+ * to the database. It guarantees that the persisted record reflects the CURRENT
+ * serviceStyle and CURRENT blended pricing with no stale values.
+ *
+ * Write order enforced here:
+ *   1. Client applies edits (serviceStyle, products, sizes, costs) — arrives in body
+ *   2. syncLineItemFromProducts reads item.serviceStyle from the payload (current)
+ *   3. blendProductCostEach is re-computed using that current serviceStyle
+ *   4. Aggregate sizes are re-computed using that current serviceStyle
+ *   5. Synchronized line item is persisted to lineItemsData
+ *
+ * Never persist lineItemsData without passing through this function first.
+ * Skipping it allows a stale blended productCostEach (computed under the OLD
+ * serviceStyle) to survive the save, causing incorrect totals in:
+ *   - Quote Builder / Quote Summary
+ *   - Customer Portal
+ *   - PDFs and Invoices
+ *   - Production Punch Sheets
+ *
+ * It is idempotent for single-product items (round-trips cent-exact) so existing
+ * quotes saved without a serviceStyle change are unaffected.
  */
 function normalizeLineItems(items: any[]): any[] {
   if (!Array.isArray(items)) return [];

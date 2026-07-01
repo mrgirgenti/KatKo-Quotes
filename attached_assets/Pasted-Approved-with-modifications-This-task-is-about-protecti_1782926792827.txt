@@ -1,0 +1,175 @@
+Approved with modifications.
+
+This task is about protecting the persistence layer and preventing stale pricing from being written to the database.
+
+Do NOT redesign the Quote Builder.
+
+Do NOT refactor the pricing engine unless a real bug is discovered.
+
+====================================================
+OBJECTIVE
+====================================================
+
+Guarantee that whenever a Quote is saved, the persisted Line Item data reflects the CURRENT serviceStyle and CURRENT blended pricing.
+
+No stale blended costs should ever be written to the database.
+
+====================================================
+VERIFY THE SAVE PIPELINE
+====================================================
+
+Review the Quote save path.
+
+Examples:
+
+app/api/quotes/[id]+api.ts
+
+(or equivalent save endpoint)
+
+Verify that BEFORE lineItemsData is persisted:
+
+syncLineItemFromProducts()
+
+is executed using the CURRENT serviceStyle.
+
+The write order should be:
+
+1. Apply edits
+2. Apply current serviceStyle
+3. Recalculate quantities
+4. Recalculate blended product costs
+5. Synchronize line item
+6. Persist to database
+
+Never persist stale blended values.
+
+====================================================
+INTEGRATION TEST
+====================================================
+
+Add an integration-level test covering:
+
+Existing Quote
+
+↓
+
+Multiple Products
+
+↓
+
+Garment-based Service Style
+
+↓
+
+Change Service Style
+
+↓
+
+Save Quote
+
+↓
+
+Reload Quote
+
+↓
+
+Verify:
+
+• serviceStyle persisted correctly
+
+• blended productCostEach persisted correctly
+
+• total quantity persisted correctly
+
+• Production Cost matches in-memory calculations
+
+• Quote Summary matches expected values
+
+====================================================
+VERIFY ROUND TRIP
+====================================================
+
+The following values after reload must exactly match the values before save:
+
+- serviceStyle
+
+- productCostEach
+
+- totalQuantity
+
+- blended cost
+
+- Production Cost
+
+- Quote Total
+
+- Grand Total
+
+No recalculation drift is permitted.
+
+====================================================
+DOCUMENTATION
+====================================================
+
+Document the save pipeline near the persistence layer.
+
+Example:
+
+------------------------------------------------
+
+IMPORTANT
+
+Before persisting lineItemsData, all product synchronization must be completed.
+
+Always call:
+
+syncLineItemFromProducts()
+
+using the current serviceStyle.
+
+Persisting stale blended values can cause incorrect totals throughout:
+
+• Quote Builder
+
+• Quote Summary
+
+• Customer Portal
+
+• PDFs
+
+• Invoices
+
+------------------------------------------------
+
+====================================================
+DO NOT
+====================================================
+
+Do not redesign Quote Builder.
+
+Do not modify UI.
+
+Do not change pricing formulas unless a real defect is discovered.
+
+Do not refactor unrelated persistence logic.
+
+====================================================
+SUCCESS
+====================================================
+
+✓ Save path verified.
+
+✓ syncLineItemFromProducts executes before persistence.
+
+✓ Integration test passes.
+
+✓ Save → Reload produces identical totals.
+
+✓ Documentation added to the persistence layer.
+
+When complete report:
+
+- Files modified
+- Save path verified
+- Tests added
+- Any bugs discovered

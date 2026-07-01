@@ -26,6 +26,7 @@ import {
   validateProductPricingConsistency,
   checkServiceCostDivergence,
   assertNoServiceCostDivergence,
+  getLineItemProducts,
 } from '@/utils/lineItemProducts';
 import { calculateLineItemSubtotal } from '@/utils/quoteCalculations';
 import { portalVariantsToProducts } from '@/utils/portalVariants';
@@ -1174,5 +1175,180 @@ describe('mid-edit serviceStyle change — calculateLineItemSubtotal end-to-end'
     expect(restoredCalcs.quantity).toBe(origCalcs.quantity);
     expect(Math.round(restoredCalcs.productCostTotal * 100))
       .toBe(Math.round(origCalcs.productCostTotal * 100));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// serviceStyle switch → save → reload round-trip (no drift)
+//
+// These tests mirror the API persistence boundary: normalizeLineItems() calls
+// syncLineItemFromProducts(item, getLineItemProducts(item)) — i.e. the item's
+// CURRENT serviceStyle is used to re-blend costs before the record is written.
+// After a JSON serialize/deserialize (DB round-trip), the reloaded item must
+// produce identical totals to the in-memory switched item.
+//
+// Verified invariants per reload:
+//   • serviceStyle persisted correctly
+//   • blended productCostEach persisted correctly (cent-exact)
+//   • totalQuantity persisted correctly
+//   • Production Cost (productCostTotal) matches in-memory calculation
+//   • Quote Summary (serviceCostTotal, markupTotal) matches in-memory calculation
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Simulate the API persistence boundary then a DB round-trip:
+ *   1. syncLineItemFromProducts with CURRENT item (what normalizeLineItems does)
+ *   2. JSON.stringify → JSON.parse  (what the DB + JSON.parse on reload does)
+ * The result is what downstream consumers (portal, PDF, summary) would read.
+ */
+function simulateSaveReload(item: LineItem): LineItem {
+  const normalized = syncLineItemFromProducts(item, getLineItemProducts(item));
+  return JSON.parse(JSON.stringify(normalized)) as LineItem;
+}
+
+describe('serviceStyle switch → save → reload round-trip (no drift)', () => {
+  it('Screen Printing → Promotional: reloaded totals match in-memory totals exactly', () => {
+    const tee = makeProduct(5.00, [], {
+      colorVariants: [
+        { color: 'Black', sizes: makeSizes({ s: 10, m: 20, l: 10, flat: 75 }) },
+      ],
+    });
+    const pen = makeProduct(1.50, [], {
+      colorVariants: [
+        { color: 'Blue', sizes: makeSizes({ flat: 100 }) },
+      ],
+    });
+
+    const original = makeLineItem([tee, pen], 'Screen Printing');
+    const switched = updateDesignFields(original, { serviceStyle: 'Promotional' });
+    const inMemoryCalcs = calculateLineItemSubtotal(switched);
+
+    const reloaded = simulateSaveReload(switched);
+    const reloadedCalcs = calculateLineItemSubtotal(reloaded);
+
+    expect(reloaded.serviceStyle).toBe('Promotional');
+    expect(Math.round(reloaded.productCostEach * 1e10)).toBe(Math.round(switched.productCostEach * 1e10));
+    expect(reloadedCalcs.quantity).toBe(inMemoryCalcs.quantity);
+    expect(Math.round(reloadedCalcs.productCostTotal * 100)).toBe(Math.round(inMemoryCalcs.productCostTotal * 100));
+    expect(Math.round(reloadedCalcs.serviceCostTotal * 100)).toBe(Math.round(inMemoryCalcs.serviceCostTotal * 100));
+    expect(Math.round(reloadedCalcs.markupTotal * 100)).toBe(Math.round(inMemoryCalcs.markupTotal * 100));
+  });
+
+  it('Promotional → Embroidery: reloaded totals match in-memory totals exactly', () => {
+    const shirt = makeProduct(7.00, [], {
+      colorVariants: [
+        { color: 'Black', sizes: makeSizes({ s: 12, m: 24, l: 12, flat: 999 }) },
+      ],
+    });
+    const polo = makeProduct(11.50, [], {
+      colorVariants: [
+        { color: 'White', sizes: makeSizes({ m: 6, l: 6, flat: 999 }) },
+      ],
+    });
+
+    const original = makeLineItem([shirt, polo], 'Promotional');
+    const switched = updateDesignFields(original, { serviceStyle: 'Embroidery' });
+    const inMemoryCalcs = calculateLineItemSubtotal(switched);
+
+    const reloaded = simulateSaveReload(switched);
+    const reloadedCalcs = calculateLineItemSubtotal(reloaded);
+
+    expect(reloaded.serviceStyle).toBe('Embroidery');
+    expect(Math.round(reloaded.productCostEach * 1e10)).toBe(Math.round(switched.productCostEach * 1e10));
+    expect(reloadedCalcs.quantity).toBe(inMemoryCalcs.quantity);
+    expect(Math.round(reloadedCalcs.productCostTotal * 100)).toBe(Math.round(inMemoryCalcs.productCostTotal * 100));
+    expect(Math.round(reloadedCalcs.serviceCostTotal * 100)).toBe(Math.round(inMemoryCalcs.serviceCostTotal * 100));
+    expect(Math.round(reloadedCalcs.markupTotal * 100)).toBe(Math.round(inMemoryCalcs.markupTotal * 100));
+  });
+
+  it('Screen Printing → DTF Transfers: single-product reloads without drift', () => {
+    const shirt = makeProduct(8.50, [
+      { color: 'Black', sizes: { s: 5, m: 10, l: 5 } },
+    ], {
+      serviceCostEach: 2.00,
+      markupEach: 3.00,
+    });
+
+    const original = makeLineItem([shirt], 'Screen Printing', {
+      serviceCostEach: 2.00,
+      markupEach: 3.00,
+    });
+    const switched = updateDesignFields(original, { serviceStyle: 'DTF Transfers' });
+    const inMemoryCalcs = calculateLineItemSubtotal(switched);
+
+    const reloaded = simulateSaveReload(switched);
+    const reloadedCalcs = calculateLineItemSubtotal(reloaded);
+
+    expect(reloaded.serviceStyle).toBe('DTF Transfers');
+    expect(reloaded.productCostEach).toBe(switched.productCostEach);
+    expect(reloadedCalcs.quantity).toBe(inMemoryCalcs.quantity);
+    expect(Math.round(reloadedCalcs.productCostTotal * 100)).toBe(Math.round(inMemoryCalcs.productCostTotal * 100));
+    expect(Math.round(reloadedCalcs.serviceCostTotal * 100)).toBe(Math.round(inMemoryCalcs.serviceCostTotal * 100));
+    expect(Math.round(reloadedCalcs.markupTotal * 100)).toBe(Math.round(inMemoryCalcs.markupTotal * 100));
+  });
+
+  it('multi-product: save uses new serviceStyle blended cost, not the pre-switch stale value', () => {
+    const tee = makeProduct(5.00, [], {
+      colorVariants: [
+        { color: 'Black', sizes: makeSizes({ s: 10, m: 20, l: 10, flat: 60 }) },
+      ],
+    });
+    const mug = makeProduct(3.50, [], {
+      colorVariants: [
+        { color: 'White', sizes: makeSizes({ flat: 90 }) },
+      ],
+    });
+
+    const screenPrintingItem = makeLineItem([tee, mug], 'Screen Printing');
+    const screenPrintingCalcs = calculateLineItemSubtotal(
+      syncLineItemFromProducts(screenPrintingItem, getLineItemProducts(screenPrintingItem)),
+    );
+
+    const promoSwitched = updateDesignFields(screenPrintingItem, { serviceStyle: 'Promotional' });
+    const promoCalcs = calculateLineItemSubtotal(promoSwitched);
+
+    // Blended cost and qty must differ between the two serviceStyles
+    expect(promoCalcs.quantity).not.toBe(screenPrintingCalcs.quantity);
+
+    // After save → reload, totals must match the in-memory Promotional values, not the old Screen Printing ones
+    const reloaded = simulateSaveReload(promoSwitched);
+    const reloadedCalcs = calculateLineItemSubtotal(reloaded);
+
+    expect(reloaded.serviceStyle).toBe('Promotional');
+    expect(reloadedCalcs.quantity).toBe(promoCalcs.quantity);
+    expect(Math.round(reloadedCalcs.productCostTotal * 100)).toBe(Math.round(promoCalcs.productCostTotal * 100));
+
+    // Specifically must NOT match the stale Screen Printing totals
+    expect(reloadedCalcs.quantity).not.toBe(screenPrintingCalcs.quantity);
+    expect(Math.round(reloadedCalcs.productCostTotal * 100)).not.toBe(Math.round(screenPrintingCalcs.productCostTotal * 100));
+  });
+
+  it('save → reload → re-save produces identical totals (idempotent)', () => {
+    const hoodie = makeProduct(18.00, [], {
+      colorVariants: [
+        { color: 'Navy', sizes: makeSizes({ m: 10, l: 10, xl: 5 }) },
+      ],
+    });
+    const tee = makeProduct(6.00, [], {
+      colorVariants: [
+        { color: 'White', sizes: makeSizes({ s: 20, m: 30 }) },
+      ],
+    });
+
+    const original = makeLineItem([hoodie, tee], 'Screen Printing');
+    const switched = updateDesignFields(original, { serviceStyle: 'Embroidery' });
+
+    const firstReload = simulateSaveReload(switched);
+    const secondReload = simulateSaveReload(firstReload);
+
+    const firstCalcs = calculateLineItemSubtotal(firstReload);
+    const secondCalcs = calculateLineItemSubtotal(secondReload);
+
+    expect(secondReload.serviceStyle).toBe('Embroidery');
+    expect(secondReload.productCostEach).toBe(firstReload.productCostEach);
+    expect(secondCalcs.quantity).toBe(firstCalcs.quantity);
+    expect(Math.round(secondCalcs.productCostTotal * 100)).toBe(Math.round(firstCalcs.productCostTotal * 100));
+    expect(Math.round(secondCalcs.serviceCostTotal * 100)).toBe(Math.round(firstCalcs.serviceCostTotal * 100));
+    expect(Math.round(secondCalcs.markupTotal * 100)).toBe(Math.round(firstCalcs.markupTotal * 100));
   });
 });
