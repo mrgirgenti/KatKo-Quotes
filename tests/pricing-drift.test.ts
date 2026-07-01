@@ -23,6 +23,8 @@ import {
   aggregateSizesAcrossProducts,
   syncLineItemFromProducts,
   validateProductPricingConsistency,
+  checkServiceCostDivergence,
+  assertNoServiceCostDivergence,
 } from '@/utils/lineItemProducts';
 import { portalVariantsToProducts } from '@/utils/portalVariants';
 import type { LineItem, SizeQuantities } from '@/types/quote';
@@ -474,5 +476,253 @@ describe('validateProductPricingConsistency — pricing-drift guard', () => {
     expect(message).toMatch(/serviceCostEach/);
     expect(message).toMatch(/5/);   // product value
     expect(message).toMatch(/2/);   // line item value
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Service-cost / markup divergence guard
+//
+// The LINE ITEM always wins: syncLineItemFromProducts overwrites per-product
+// serviceCostEach / serviceFeeEach / markupEach with the line-item values.
+// These tests verify that divergence is correctly detected by the guard
+// utilities so a future per-product editor cannot silently produce wrong totals.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('checkServiceCostDivergence', () => {
+  it('returns empty array when all products match the line item exactly', () => {
+    const item = makeLineItem([], undefined, {
+      serviceCostEach: 3.00,
+      serviceFeeEach: 0.50,
+      markupEach: 2.00,
+    });
+    const products = [
+      makeProduct(5.00, [{ color: 'Black', sizes: { m: 10 } }], {
+        serviceCostEach: 3.00,
+        serviceFeeEach: 0.50,
+        markupEach: 2.00,
+      }),
+      makeProduct(8.00, [{ color: 'Navy', sizes: { m: 5 } }], {
+        serviceCostEach: 3.00,
+        serviceFeeEach: 0.50,
+        markupEach: 2.00,
+      }),
+    ];
+    expect(checkServiceCostDivergence(item, products)).toHaveLength(0);
+  });
+
+  it('detects a single field divergence on one product', () => {
+    const item = makeLineItem([], undefined, {
+      serviceCostEach: 3.00,
+      serviceFeeEach: 0.50,
+      markupEach: 2.00,
+    });
+    const products = [
+      makeProduct(5.00, [{ color: 'Black', sizes: { m: 10 } }], {
+        serviceCostEach: 9.99, // diverges — should be 3.00
+        serviceFeeEach: 0.50,
+        markupEach: 2.00,
+      }),
+    ];
+    const divergences = checkServiceCostDivergence(item, products);
+    expect(divergences).toHaveLength(1);
+    expect(divergences[0].field).toBe('serviceCostEach');
+    expect(divergences[0].lineItemValue).toBe(3.00);
+    expect(divergences[0].productValue).toBe(9.99);
+    expect(divergences[0].productIndex).toBe(0);
+  });
+
+  it('detects all three field divergences simultaneously', () => {
+    const item = makeLineItem([], undefined, {
+      serviceCostEach: 3.00,
+      serviceFeeEach: 0.50,
+      markupEach: 2.00,
+    });
+    const products = [
+      makeProduct(5.00, [{ color: 'Black', sizes: { m: 10 } }], {
+        serviceCostEach: 1.00,
+        serviceFeeEach: 0.10,
+        markupEach: 0.50,
+      }),
+    ];
+    const divergences = checkServiceCostDivergence(item, products);
+    expect(divergences).toHaveLength(3);
+    const fields = divergences.map((d) => d.field);
+    expect(fields).toContain('serviceCostEach');
+    expect(fields).toContain('serviceFeeEach');
+    expect(fields).toContain('markupEach');
+  });
+
+  it('detects divergence across multiple products independently', () => {
+    const item = makeLineItem([], undefined, {
+      serviceCostEach: 4.00,
+      serviceFeeEach: 0.00,
+      markupEach: 1.50,
+    });
+    const products = [
+      // product 0: markupEach diverges
+      makeProduct(5.00, [{ color: 'Black', sizes: { m: 10 } }], {
+        serviceCostEach: 4.00,
+        serviceFeeEach: 0.00,
+        markupEach: 0.00, // stale
+      }),
+      // product 1: consistent
+      makeProduct(8.00, [{ color: 'Navy', sizes: { m: 5 } }], {
+        serviceCostEach: 4.00,
+        serviceFeeEach: 0.00,
+        markupEach: 1.50,
+      }),
+      // product 2: serviceCostEach diverges
+      makeProduct(12.00, [{ color: 'Red', sizes: { m: 3 } }], {
+        serviceCostEach: 99.00, // stale
+        serviceFeeEach: 0.00,
+        markupEach: 1.50,
+      }),
+    ];
+    const divergences = checkServiceCostDivergence(item, products);
+    expect(divergences).toHaveLength(2);
+    expect(divergences.find((d) => d.productIndex === 0)?.field).toBe('markupEach');
+    expect(divergences.find((d) => d.productIndex === 2)?.field).toBe('serviceCostEach');
+  });
+
+  it('treats undefined product fields as 0 for comparison', () => {
+    const item = makeLineItem([], undefined, {
+      serviceCostEach: 0,
+      serviceFeeEach: 0,
+      markupEach: 0,
+    });
+    // makeProduct defaults all service cost fields to 0, so no divergence
+    const products = [makeProduct(5.00, [{ color: 'Black', sizes: { m: 10 } }])];
+    expect(checkServiceCostDivergence(item, products)).toHaveLength(0);
+  });
+});
+
+describe('assertNoServiceCostDivergence', () => {
+  it('does not throw when products are consistent with the line item', () => {
+    const item = makeLineItem([], undefined, {
+      serviceCostEach: 2.50,
+      serviceFeeEach: 0.25,
+      markupEach: 1.00,
+    });
+    const products = [
+      makeProduct(5.00, [{ color: 'Black', sizes: { m: 10 } }], {
+        serviceCostEach: 2.50,
+        serviceFeeEach: 0.25,
+        markupEach: 1.00,
+      }),
+    ];
+    expect(() => assertNoServiceCostDivergence(item, products)).not.toThrow();
+  });
+
+  it('throws when any product diverges from the line item', () => {
+    const item = makeLineItem([], undefined, {
+      serviceCostEach: 2.50,
+      serviceFeeEach: 0.25,
+      markupEach: 1.00,
+    });
+    const products = [
+      makeProduct(5.00, [{ color: 'Black', sizes: { m: 10 } }], {
+        serviceCostEach: 99.00, // stale — diverges
+        serviceFeeEach: 0.25,
+        markupEach: 1.00,
+      }),
+    ];
+    expect(() => assertNoServiceCostDivergence(item, products)).toThrow(
+      /service-cost.*markup divergence/i,
+    );
+  });
+
+  it('thrown error message names the diverging field and both values', () => {
+    const item = makeLineItem([], undefined, {
+      serviceCostEach: 3.00,
+      serviceFeeEach: 0.00,
+      markupEach: 0.00,
+    });
+    const products = [
+      makeProduct(5.00, [{ color: 'Black', sizes: { m: 10 } }], {
+        serviceCostEach: 7.77,
+        serviceFeeEach: 0.00,
+        markupEach: 0.00,
+      }),
+    ];
+    let msg = '';
+    try {
+      assertNoServiceCostDivergence(item, products);
+    } catch (e: unknown) {
+      msg = (e as Error).message;
+    }
+    expect(msg).toContain('serviceCostEach');
+    expect(msg).toContain('7.77');
+    expect(msg).toContain('3');
+  });
+});
+
+describe('syncLineItemFromProducts — divergence guard behavior', () => {
+  // NOTE: The merged codebase uses validateProductPricingConsistency (from the
+  // main branch) which THROWS on multi-product divergence, and checkServiceCostDivergence
+  // / assertNoServiceCostDivergence (from task-36) which provide detection utilities.
+  // For single-product items the guard is skipped and the line item value wins.
+
+  it('single product with stale serviceCostEach — line item value overwrites (no throw)', () => {
+    // validateProductPricingConsistency skips single-product items.
+    // syncLineItemFromProducts still mirrors the line item value onto the product.
+    const staleProduct = makeProduct(5.00, [{ color: 'Black', sizes: { m: 10 } }], {
+      serviceCostEach: 999.00, // stale snapshot
+      serviceFeeEach: 0.00,
+      markupEach: 0.00,
+    });
+    const item = makeLineItem([staleProduct], 'Screen Printing', {
+      serviceCostEach: 3.00, // authoritative
+      serviceFeeEach: 0.00,
+      markupEach: 0.00,
+    });
+
+    const synced = syncLineItemFromProducts(item, [staleProduct]);
+
+    expect(synced.serviceCostEach).toBe(3.00);
+    expect(synced.products?.[0]?.serviceCostEach).toBe(3.00);
+  });
+
+  it('single product with stale markupEach — line item value overwrites (no throw)', () => {
+    const staleProduct = makeProduct(8.00, [{ color: 'Navy', sizes: { m: 5, l: 5 } }], {
+      serviceCostEach: 2.00,
+      serviceFeeEach: 0.50,
+      markupEach: 50.00, // stale — must not leak into totals
+    });
+    const item = makeLineItem([staleProduct], 'Screen Printing', {
+      serviceCostEach: 2.00,
+      serviceFeeEach: 0.50,
+      markupEach: 5.00, // authoritative
+    });
+
+    const synced = syncLineItemFromProducts(item, [staleProduct]);
+
+    expect(synced.markupEach).toBe(5.00);
+    expect(synced.products?.[0]?.markupEach).toBe(5.00);
+    expect(synced.productCostEach).toBe(8.00);
+  });
+
+  it('multi-product items with divergent service costs THROW — no silent wrong total', () => {
+    // validateProductPricingConsistency is called inside syncLineItemFromProducts.
+    // Multi-product items with stale per-product service costs must be rejected
+    // loudly rather than silently producing wrong totals.
+    const p1 = makeProduct(5.00, [{ color: 'Black', sizes: { m: 10 } }], {
+      serviceCostEach: 1.00, // stale — diverges from line item
+      serviceFeeEach: 0.00,
+      markupEach: 0.00,
+    });
+    const p2 = makeProduct(12.00, [{ color: 'White', sizes: { m: 5 } }], {
+      serviceCostEach: 1.00, // same stale value as p1
+      serviceFeeEach: 0.00,
+      markupEach: 0.00,
+    });
+    const item = makeLineItem([p1, p2], 'Screen Printing', {
+      serviceCostEach: 3.50, // authoritative — diverges from product snapshots
+      serviceFeeEach: 0.00,
+      markupEach: 0.00,
+    });
+
+    expect(() => syncLineItemFromProducts(item, [p1, p2])).toThrow(
+      /Multi-product line items do not support per-product/,
+    );
   });
 });

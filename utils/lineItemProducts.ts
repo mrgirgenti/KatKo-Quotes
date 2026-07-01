@@ -371,6 +371,136 @@ export function setUniformProductCost(item: LineItem, cost: number): LineItem {
   return syncLineItemFromProducts(item, products);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Service-cost / markup divergence guard
+//
+// CONTEXT: serviceCostEach, serviceFeeEach, and markupEach are DESIGN-LEVEL
+// fields owned by the Line Item. They are mirrored onto each ConfiguredProduct
+// only as a read snapshot. `syncLineItemFromProducts` always overwrites the
+// product-level copies with the Line Item values — so the Line Item wins and
+// totals stay correct.
+//
+// The danger arises if a future editor feature writes per-product service costs
+// or markups BEFORE calling syncLineItemFromProducts, without first updating
+// the Line Item level fields. In that scenario the divergence is silently
+// overwritten and the editor state the user saw never makes it into the total.
+//
+// These utilities make the invariant testable and detectable:
+//   - checkServiceCostDivergence  — returns all diverging products + fields
+//   - assertNoServiceCostDivergence — throws if any divergence is found (use in
+//     editor mutation code paths to catch the mismatch early)
+//   - warnOnServiceCostDivergence  — console.warn wrapper used inside
+//     syncLineItemFromProducts during development
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SERVICE_COST_FIELDS = ['serviceCostEach', 'serviceFeeEach', 'markupEach'] as const;
+type ServiceCostField = (typeof SERVICE_COST_FIELDS)[number];
+
+/** One detected divergence between a product's snapshot and the Line Item level. */
+export interface ServiceCostDivergence {
+  /** Zero-based index in the products array. */
+  productIndex: number;
+  /** Human-readable label for the diverging product. */
+  productLabel: string;
+  /** Which field diverges. */
+  field: ServiceCostField;
+  /** The authoritative value from the Line Item. */
+  lineItemValue: number;
+  /** The stale/incorrect value stored on the product. */
+  productValue: number;
+}
+
+/**
+ * Check whether any product carries service-cost / markup values that differ
+ * from the Line Item level fields.
+ *
+ * Returns an empty array when everything is consistent (the normal state after
+ * any call to `syncLineItemFromProducts`). Returns one entry per (product ×
+ * field) mismatch when stale snapshots are detected.
+ *
+ * The LINE ITEM always wins: any diverging product value will be overwritten
+ * by the next call to `syncLineItemFromProducts`. This utility surfaces the
+ * divergence so calling code can decide whether to warn, throw, or migrate.
+ */
+export function checkServiceCostDivergence(
+  item: Pick<LineItem, 'serviceCostEach' | 'serviceFeeEach' | 'markupEach'>,
+  products: ConfiguredProduct[],
+): ServiceCostDivergence[] {
+  const divergences: ServiceCostDivergence[] = [];
+  const lineItemValues: Record<ServiceCostField, number> = {
+    serviceCostEach: item.serviceCostEach ?? 0,
+    serviceFeeEach: item.serviceFeeEach ?? 0,
+    markupEach: item.markupEach ?? 0,
+  };
+
+  for (let i = 0; i < products.length; i++) {
+    const cp = products[i];
+    const derived = (cp.productLabel
+      ?? `${cp.styleNumber ?? ''} — ${cp.styleName ?? ''}`.replace(/^ — | — $/g, '').trim());
+    const label = derived || `product[${i}]`;
+    for (const field of SERVICE_COST_FIELDS) {
+      const lineItemValue = lineItemValues[field];
+      const productValue = cp[field] ?? 0;
+      if (productValue !== lineItemValue) {
+        divergences.push({ productIndex: i, productLabel: label, field, lineItemValue, productValue });
+      }
+    }
+  }
+  return divergences;
+}
+
+/**
+ * Throw an error if any product carries service-cost / markup values that
+ * diverge from the Line Item level. Use this in editor mutation paths where
+ * you want to catch the mismatch at the source rather than having it silently
+ * overwritten by `syncLineItemFromProducts`.
+ *
+ * Always call `syncLineItemFromProducts` (or `updateDesignFields`) to resolve
+ * the Line Item before asserting — the assert is a dev-time correctness check,
+ * not a runtime gate on rendering.
+ */
+export function assertNoServiceCostDivergence(
+  item: Pick<LineItem, 'serviceCostEach' | 'serviceFeeEach' | 'markupEach'>,
+  products: ConfiguredProduct[],
+): void {
+  const divergences = checkServiceCostDivergence(item, products);
+  if (divergences.length === 0) return;
+
+  const summary = divergences
+    .map(
+      (d) =>
+        `  • ${d.productLabel} [${d.field}]: product=${d.productValue} vs lineItem=${d.lineItemValue}`,
+    )
+    .join('\n');
+
+  throw new Error(
+    `[lineItemProducts] Service-cost / markup divergence detected between Line Item and products.\n` +
+      `The Line Item always wins — call syncLineItemFromProducts before asserting.\n` +
+      `Divergences:\n${summary}`,
+  );
+}
+
+/** Internal: log a dev warning when syncLineItemFromProducts detects stale snapshots. */
+function warnOnServiceCostDivergence(
+  item: Pick<LineItem, 'serviceCostEach' | 'serviceFeeEach' | 'markupEach'>,
+  products: ConfiguredProduct[],
+): void {
+  if (typeof __DEV__ === 'undefined' || !__DEV__) return;
+  const divergences = checkServiceCostDivergence(item, products);
+  if (divergences.length === 0) return;
+  const summary = divergences
+    .map(
+      (d) =>
+        `  • ${d.productLabel} [${d.field}]: product=${d.productValue} → overriding with lineItem=${d.lineItemValue}`,
+    )
+    .join('\n');
+  console.warn(
+    `[lineItemProducts] syncLineItemFromProducts: per-product service-cost / markup snapshot` +
+      ` is stale and will be overwritten by Line Item values.\n${summary}\n` +
+      `To fix: write service costs / markups to the Line Item, then call syncLineItemFromProducts.`,
+  );
+}
+
 export interface LineItemProductsSummary {
   products: ConfiguredProduct[];
   productCount: number;
