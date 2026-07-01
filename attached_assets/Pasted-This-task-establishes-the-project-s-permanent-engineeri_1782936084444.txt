@@ -1,0 +1,85 @@
+This task establishes the project's permanent engineering workflow.
+
+Review all engineering documentation in the /docs folder.
+
+Do not modify the existing standards unless necessary for consistency.
+
+Instead, establish a permanent project convention.
+
+==========================================================
+PROJECT ENGINEERING RULE
+==========================================================
+
+Every future implementation should begin by reviewing the applicable engineering documentation.
+
+At minimum:
+
+• BUSINESS_RULES.md
+
+• ARCHITECTURE_PRINCIPLES.md
+
+• UI_DESIGN_SYSTEM.md
+
+• IMPLEMENTATION_DEFINITION_OF_DONE.md
+
+The applicable documents depend on the feature being implemented.
+
+==========================================================
+IMPLEMENTATION REQUIREMENTS
+==========================================================
+
+Before implementation:
+
+1. Identify the feature category.
+
+2. Review the applicable documentation.
+
+3. Identify any conflicts between the requested feature and the documented standards.
+
+4. Present conflicts before implementation.
+
+Do not silently violate project standards.
+
+==========================================================
+AFTER IMPLEMENTATION
+==========================================================
+
+Before considering a task complete:
+
+• Verify the Definition of Done.
+
+• Update documentation if permanent project knowledge changed.
+
+• Report documentation updates in the implementation summary.
+
+==========================================================
+IMPLEMENTATION SUMMARY
+==========================================================
+
+Every implementation should end with a summary containing:
+
+Files Modified
+
+Components Modified
+
+Database Changes
+
+API Changes
+
+Tests Added
+
+Documentation Updated
+
+Remaining Work
+
+If no documentation updates were required, explicitly state why.
+
+==========================================================
+OUTPUT
+==========================================================
+
+Do not implement application features.
+
+Only establish this engineering workflow and update project documentation where appropriate.
+
+Commit all documentation updates.
