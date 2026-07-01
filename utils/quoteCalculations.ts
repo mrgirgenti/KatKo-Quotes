@@ -272,7 +272,7 @@ export function calculateLineItemSubtotal(
       const cpQty = getProductQty(cp, isPromotional);
       const baseCost = cp.productCostEach * cpQty;
       const upchargeAmt =
-        upcharges && cp.colorVariants?.length
+        upcharges && cp.colorVariants?.length && !isPromotional
           ? computeSizeUpcharge(cp.colorVariants as Array<{ sizes: SizeQuantities }>, upcharges)
           : 0;
       const extendedCost = baseCost + upchargeAmt;
