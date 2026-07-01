@@ -18,7 +18,12 @@ import {
   Plus,
   Trash2,
   Save,
+  Settings2,
 } from 'lucide-react-native';
+import LibraryManagementMenu, {
+  type ImportMode,
+  type LibraryImportPreview,
+} from '@/components/LibraryManagementMenu';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Colors from '@/constants/colors';
 import { CostLibraryTable } from '@/components/CostLibraryTable';
@@ -47,6 +52,37 @@ const TABS: { id: CostTab; label: string; Icon: typeof Tag }[] = [
   { id: 'service_styles', label: 'Service Styles', Icon: Shapes },
   { id: 'taxes_fees', label: 'Taxes & Fees', Icon: Percent },
 ];
+
+// ── Settings page CSV helpers ─────────────────────────────────────────────────
+
+function stSplitCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let cur = '';
+  let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQ && line[i + 1] === '"') { cur += '"'; i++; } else { inQ = !inQ; }
+    } else if (ch === ',' && !inQ) { result.push(cur); cur = ''; }
+    else { cur += ch; }
+  }
+  result.push(cur);
+  return result;
+}
+
+function stParseCsv(text: string): Record<string, string>[] {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = stSplitCsvLine(lines[0]).map(h => h.trim().replace(/^"|"$/g, ''));
+  return lines.slice(1).filter(l => l.trim()).map(l => {
+    const vals = stSplitCsvLine(l);
+    return Object.fromEntries(headers.map((h, i) => [h, (vals[i] ?? '').trim().replace(/^"|"$/g, '')]));
+  });
+}
+
+function stCsvCell(v: unknown): string {
+  return `"${String(v ?? '').replace(/"/g, '""')}"`;
+}
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
@@ -272,6 +308,92 @@ function ProductPricingPage() {
     setDirty(true);
   }
 
+  // ── Library management ───────────────────────────────────────────────────────
+
+  function ppParseImport(content: string, format: 'csv' | 'json'): LibraryImportPreview {
+    const errors: string[] = [];
+    let parsedUpcharges: Record<string, number> = {};
+    let parsedOverrides: Omit<ProductOverride, 'id'>[] = [];
+
+    if (format === 'json') {
+      try {
+        const obj = JSON.parse(content);
+        if (obj && typeof obj === 'object') {
+          if (obj.upcharges && typeof obj.upcharges === 'object') {
+            for (const [k, v] of Object.entries(obj.upcharges)) {
+              if (Number.isFinite(Number(v))) parsedUpcharges[k] = Number(v);
+            }
+          }
+          if (Array.isArray(obj.overrides)) {
+            parsedOverrides = obj.overrides.map((o: Record<string, unknown>) => ({
+              product: String(o.product ?? ''),
+              size: String(o.size ?? ''),
+              amount: Number(o.amount) || 0,
+            }));
+          }
+        }
+      } catch {
+        return { validCount: 0, invalidCount: 0, duplicateCount: 0, errors: ['Invalid JSON file.'], rows: [] };
+      }
+    } else {
+      const rawRows = stParseCsv(content);
+      rawRows.forEach((row, idx) => {
+        const size = String(row.size ?? '').trim();
+        const amount = parseFloat(String(row.amount ?? ''));
+        if (!size) { errors.push(`Row ${idx + 2}: "size" required`); return; }
+        if (!Number.isFinite(amount)) { errors.push(`Row ${idx + 2}: invalid amount`); return; }
+        parsedUpcharges[size] = amount;
+      });
+    }
+
+    const allKeys = Object.keys(parsedUpcharges);
+    const existingKeys = new Set(Object.keys(upcharges));
+    const duplicateCount = allKeys.filter(k => existingKeys.has(k)).length;
+    const totalValid = allKeys.length + parsedOverrides.length;
+
+    return {
+      validCount: totalValid,
+      invalidCount: errors.length,
+      duplicateCount,
+      errors,
+      rows: [{ upcharges: parsedUpcharges, overrides: parsedOverrides }],
+    };
+  }
+
+  async function ppConfirmImport(rows: unknown[], mode: ImportMode) {
+    const data = rows[0] as { upcharges: Record<string, number>; overrides: Omit<ProductOverride, 'id'>[] };
+    setUpcharges((prev) => ({ ...prev, ...data.upcharges }));
+    if (data.overrides.length > 0) {
+      const stamp = Date.now();
+      const stamped = data.overrides.map((o, i) => ({ ...o, id: `ov_import_${stamp}_${i}` }));
+      if (mode === 'replace') {
+        setOverrides(stamped);
+      } else if (mode === 'append') {
+        setOverrides((prev) => [...prev, ...stamped]);
+      }
+    }
+    setDirty(true);
+  }
+
+  function ppGetExportData(format: 'csv' | 'json'): string {
+    if (format === 'json') {
+      return JSON.stringify(
+        { upcharges, overrides: overrides.map(({ id: _id, ...rest }) => rest) },
+        null,
+        2
+      );
+    }
+    const header = [stCsvCell('size'), stCsvCell('amount')].join(',');
+    const body = Object.entries(upcharges).map(([size, amt]) => [stCsvCell(size), stCsvCell(amt)].join(','));
+    return [header, ...body].join('\n');
+  }
+
+  function ppGetTemplateData(): string {
+    const header = 'size,amount';
+    const rows = SIZE_UPCHARGE_SIZES.map((s) => `${s},0`);
+    return [header, ...rows].join('\n');
+  }
+
   if (isLoading) {
     return (
       <View style={s.centered}>
@@ -282,6 +404,18 @@ function ProductPricingPage() {
 
   return (
     <View>
+      <View style={s.libHeader}>
+        <Settings2 size={13} color="#fff" />
+        <Text style={s.libHeaderTitle}>Product Pricing</Text>
+        <LibraryManagementMenu
+          libraryName="Product Pricing"
+          variant="dark"
+          onParseImport={ppParseImport}
+          onConfirmImport={ppConfirmImport}
+          getExportData={ppGetExportData}
+          getTemplateData={ppGetTemplateData}
+        />
+      </View>
       <SaveBar dirty={dirty} saving={saveMutation.isPending} onSave={() => saveMutation.mutate()} />
 
       <Text style={s.pageSection}>Apparel Size Upcharges</Text>
@@ -446,6 +580,69 @@ function TaxesFeesPage() {
     setDirty(true);
   }
 
+  // ── Library management ───────────────────────────────────────────────────────
+
+  const TF_KEYS: (keyof TaxesFeesData)[] = [
+    'salesTaxPct', 'cardFeePct', 'onlineFeePct', 'onlineFeeFlat',
+    'minimumOrder', 'depositPct', 'roundPricing',
+    'lateFeeEnabled', 'lateFeeType', 'lateFeePct', 'lateFeeFlat', 'lateFeeDaysGrace',
+  ];
+
+  function tfParseImport(content: string, format: 'csv' | 'json'): LibraryImportPreview {
+    const errors: string[] = [];
+    let parsed: Partial<TaxesFeesData> = {};
+
+    if (format === 'json') {
+      try {
+        parsed = JSON.parse(content) as Partial<TaxesFeesData>;
+      } catch {
+        return { validCount: 0, invalidCount: 0, duplicateCount: 0, errors: ['Invalid JSON file.'], rows: [] };
+      }
+    } else {
+      const rawRows = stParseCsv(content);
+      rawRows.forEach((row) => {
+        const key = row.setting as keyof TaxesFeesData;
+        if (!TF_KEYS.includes(key)) return;
+        const raw = row.value ?? '';
+        if (raw === 'true' || raw === 'false') {
+          (parsed as Record<string, unknown>)[key] = raw === 'true';
+        } else if (Number.isFinite(parseFloat(raw))) {
+          (parsed as Record<string, unknown>)[key] = parseFloat(raw);
+        } else {
+          (parsed as Record<string, unknown>)[key] = raw;
+        }
+      });
+    }
+
+    const importedKeys = TF_KEYS.filter(k => parsed[k] !== undefined);
+    if (importedKeys.length === 0) {
+      errors.push('No recognised settings found in this file.');
+    }
+    const validCount = importedKeys.length;
+    const duplicateCount = importedKeys.filter(k => form[k] !== undefined).length;
+
+    return { validCount, invalidCount: errors.length, duplicateCount, errors, rows: [parsed] };
+  }
+
+  async function tfConfirmImport(rows: unknown[], _mode: ImportMode) {
+    const patch = rows[0] as Partial<TaxesFeesData>;
+    setForm((prev) => ({ ...prev, ...patch }));
+    setDirty(true);
+  }
+
+  function tfGetExportData(format: 'csv' | 'json'): string {
+    if (format === 'json') return JSON.stringify(form, null, 2);
+    const header = [stCsvCell('setting'), stCsvCell('value')].join(',');
+    const body = TF_KEYS.map(k => [stCsvCell(k), stCsvCell(form[k])].join(','));
+    return [header, ...body].join('\n');
+  }
+
+  function tfGetTemplateData(): string {
+    const header = 'setting,value';
+    const body = TF_KEYS.map(k => `${k},${TAXES_DEFAULTS[k]}`);
+    return [header, ...body].join('\n');
+  }
+
   if (isLoading) {
     return (
       <View style={s.centered}>
@@ -456,6 +653,18 @@ function TaxesFeesPage() {
 
   return (
     <View>
+      <View style={s.libHeader}>
+        <Settings2 size={13} color="#fff" />
+        <Text style={s.libHeaderTitle}>Taxes &amp; Fees</Text>
+        <LibraryManagementMenu
+          libraryName="Taxes & Fees"
+          variant="dark"
+          onParseImport={tfParseImport}
+          onConfirmImport={tfConfirmImport}
+          getExportData={tfGetExportData}
+          getTemplateData={tfGetTemplateData}
+        />
+      </View>
       <SaveBar dirty={dirty} saving={saveMutation.isPending} onSave={() => saveMutation.mutate()} />
 
       <Text style={s.pageSection}>Tax Rates</Text>
@@ -677,6 +886,9 @@ const s = StyleSheet.create({
   bodyContent: { paddingHorizontal: 20, paddingVertical: 16, paddingBottom: 48 },
 
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
+
+  libHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#000', paddingHorizontal: 14, height: 36, borderRadius: 8, marginBottom: 12 },
+  libHeaderTitle: { flex: 1, fontSize: 11, fontWeight: '700' as const, color: '#fff', letterSpacing: 0.6, textTransform: 'uppercase' as const },
 
   pageSection: { fontSize: 13, fontWeight: '700' as const, color: TEXT, marginBottom: 6, marginTop: 4 },
   pageSectionHint: { fontSize: 12, color: TEXT_LIGHT, marginBottom: 10, lineHeight: 17 },

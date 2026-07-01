@@ -13,6 +13,10 @@ import { Plus, Pencil, Trash2, ChevronDown, X, AlertTriangle } from 'lucide-reac
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Colors from '@/constants/colors';
 import OverlayMenu from '@/components/OverlayMenu';
+import LibraryManagementMenu, {
+  type ImportMode,
+  type LibraryImportPreview,
+} from '@/components/LibraryManagementMenu';
 import { ADJUSTMENT_CALC_TYPES, type AdjustmentCalcType } from '@/types/quote';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -30,6 +34,56 @@ export const COST_CATEGORIES: { value: CostCategory; label: string }[] = [
   { value: 'production', label: 'Production' },
   { value: 'other', label: 'Other' },
 ];
+
+// ── CSV helpers ───────────────────────────────────────────────────────────────
+
+const COST_LIBRARY_CSV_HEADERS = [
+  'name', 'category', 'calculationType', 'rate', 'minimum',
+  'increment', 'scope', 'taxable', 'enabled', 'description',
+] as const;
+
+const VALID_COST_CATEGORIES: CostCategory[] = ['production', 'other'];
+const VALID_CALC_TYPES = ['flat', 'hourly', 'per_unit', 'per_design', 'percentage', 'custom'];
+const VALID_COST_SCOPES: CostScope[] = ['per_piece', 'per_line', 'per_order'];
+
+function splitCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let cur = '';
+  let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQ && line[i + 1] === '"') { cur += '"'; i++; } else { inQ = !inQ; }
+    } else if (ch === ',' && !inQ) { result.push(cur); cur = ''; }
+    else { cur += ch; }
+  }
+  result.push(cur);
+  return result;
+}
+
+function parseCsvText(text: string): Array<Record<string, string>> {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = splitCsvLine(lines[0]).map(h => h.trim().replace(/^"|"$/g, ''));
+  return lines.slice(1).filter(l => l.trim()).map(l => {
+    const vals = splitCsvLine(l);
+    return Object.fromEntries(headers.map((h, i) => [h, (vals[i] ?? '').trim().replace(/^"|"$/g, '')]));
+  });
+}
+
+function csvCell(v: unknown): string {
+  return `"${String(v ?? '').replace(/"/g, '""')}"`;
+}
+
+function serializeToCsv(rows: Record<string, unknown>[], headers: readonly string[]): string {
+  return [headers.map(csvCell).join(','), ...rows.map(r => headers.map(h => csvCell(r[h])).join(','))].join('\n');
+}
+
+function parseBoolField(v: unknown): boolean {
+  if (typeof v === 'boolean') return v;
+  const s = String(v ?? '').toLowerCase();
+  return s === 'true' || s === '1' || s === 'yes';
+}
 
 export interface CostLibraryEntry {
   id: string;
@@ -705,16 +759,137 @@ export function CostLibraryTable({
     updateMutation.mutate({ id: row.id, enabled: !row.enabled });
   }
 
+  // ── Library management: import / export / template ──────────────────────────
+
+  function handleParseImport(content: string, format: 'csv' | 'json'): LibraryImportPreview {
+    let rawRows: Record<string, unknown>[] = [];
+    const errors: string[] = [];
+
+    if (format === 'json') {
+      try {
+        const parsed = JSON.parse(content);
+        rawRows = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return { validCount: 0, invalidCount: 0, duplicateCount: 0, errors: ['Invalid JSON file.'], rows: [] };
+      }
+    } else {
+      rawRows = parseCsvText(content) as Record<string, unknown>[];
+    }
+
+    const validRows: Omit<CostLibraryEntry, 'id'>[] = [];
+    let invalidCount = 0;
+
+    rawRows.forEach((raw, idx) => {
+      const rowNum = idx + 2;
+      const rowErrors: string[] = [];
+
+      const name = String(raw.name ?? '').trim();
+      if (!name) rowErrors.push(`Row ${rowNum}: "name" is required`);
+
+      const cat = String(raw.category ?? category).trim() as CostCategory;
+      const resolvedCat: CostCategory = VALID_COST_CATEGORIES.includes(cat) ? cat : category;
+
+      const calcType = String(raw.calculationType ?? 'flat').trim();
+      if (!VALID_CALC_TYPES.includes(calcType)) {
+        rowErrors.push(`Row ${rowNum}: unknown calculationType "${calcType}"`);
+      }
+
+      const scope = String(raw.scope ?? 'per_order').trim();
+      if (!VALID_COST_SCOPES.includes(scope as CostScope)) {
+        rowErrors.push(`Row ${rowNum}: unknown scope "${scope}"`);
+      }
+
+      if (rowErrors.length > 0) {
+        if (errors.length < 10) errors.push(...rowErrors);
+        invalidCount++;
+        return;
+      }
+
+      validRows.push({
+        name,
+        category: resolvedCat,
+        calculationType: calcType as AdjustmentCalcType,
+        rate: parseFloat(String(raw.rate ?? 0)) || 0,
+        minimum: parseFloat(String(raw.minimum ?? 0)) || 0,
+        increment: parseFloat(String(raw.increment ?? 0)) || 0,
+        scope: scope as CostScope,
+        taxable: parseBoolField(raw.taxable ?? 'true'),
+        enabled: parseBoolField(raw.enabled ?? 'true'),
+        description: String(raw.description ?? '').trim(),
+        sortOrder: parseInt(String(raw.sortOrder ?? 0)) || 0,
+      });
+    });
+
+    const existingNames = new Set(rows.map(r => r.name.toLowerCase()));
+    const duplicateCount = validRows.filter(r => existingNames.has(r.name.toLowerCase())).length;
+    return { validCount: validRows.length, invalidCount, duplicateCount, errors, rows: validRows };
+  }
+
+  async function handleConfirmImport(importRows: unknown[], mode: ImportMode) {
+    const typedRows = importRows as Omit<CostLibraryEntry, 'id'>[];
+    const existingByName = new Map(rows.map(r => [r.name.toLowerCase(), r.id]));
+
+    for (const row of typedRows) {
+      const existingId = existingByName.get(row.name.toLowerCase());
+      if (mode === 'skip' && existingId) continue;
+      if (mode === 'replace' && existingId) {
+        await fetch(`/api/cost-library/${existingId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(row),
+        });
+      } else {
+        await fetch('/api/cost-library', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(row),
+        });
+      }
+    }
+    invalidate();
+  }
+
+  function getExportData(format: 'csv' | 'json'): string {
+    const exportRows = rows.map(({ id: _id, sortOrder: _so, ...rest }) => rest);
+    if (format === 'json') return JSON.stringify(exportRows, null, 2);
+    return serializeToCsv(exportRows as Record<string, unknown>[], COST_LIBRARY_CSV_HEADERS);
+  }
+
+  function getTemplateData(): string {
+    const example = {
+      name: 'Screen Print Setup',
+      category,
+      calculationType: 'flat',
+      rate: 25,
+      minimum: 0,
+      increment: 0,
+      scope: 'per_order',
+      taxable: true,
+      enabled: true,
+      description: 'Example production cost',
+    };
+    return serializeToCsv([example] as Record<string, unknown>[], COST_LIBRARY_CSV_HEADERS);
+  }
+
   return (
     <>
       <View style={styles.section}>
         {/* Table header bar */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>{title}</Text>
-          <TouchableOpacity style={styles.addHdrBtn} onPress={openNew} activeOpacity={0.85}>
-            <Plus size={12} color="#fff" />
-            <Text style={styles.addHdrBtnText}>{addLabel}</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.addHdrBtn} onPress={openNew} activeOpacity={0.85}>
+              <Plus size={12} color="#fff" />
+              <Text style={styles.addHdrBtnText}>{addLabel}</Text>
+            </TouchableOpacity>
+            <LibraryManagementMenu
+              libraryName={title}
+              onParseImport={handleParseImport}
+              onConfirmImport={handleConfirmImport}
+              getExportData={getExportData}
+              getTemplateData={getTemplateData}
+            />
+          </View>
         </View>
 
         {isLoading ? (
@@ -818,6 +993,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     letterSpacing: 0.6,
     textTransform: 'uppercase' as const,
+  },
+  headerActions: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
   },
   addHdrBtn: {
     flexDirection: 'row',

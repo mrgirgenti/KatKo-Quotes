@@ -1,0 +1,258 @@
+You are implementing a feature for the Katalyst KO platform.
+
+Before writing code:
+
+1. Read and follow all applicable project documentation under /docs.
+2. Identify the feature category.
+3. Review the applicable engineering standards.
+4. Identify any conflicts before implementation.
+5. Implement only the requested scope.
+6. Preserve existing architecture and UI whenever possible.
+7. Update documentation if permanent project knowledge changes.
+8. Complete the Definition of Done before considering the task finished.
+
+Do not recommend follow-up tasks that belong within the requested implementation.
+
+Think in systems, not files.
+
+Optimize for extending the existing platform—not replacing it.
+
+==========================================================
+FEATURE
+==========================================================
+
+Library Management Menu
+
+==========================================================
+OBJECTIVE
+==========================================================
+
+Every configurable library inside Cost Configuration should support importing, exporting, backing up, and restoring data.
+
+Do NOT create separate buttons.
+
+Instead, create a reusable overflow menu that will appear in the upper-right corner of each library page beside the primary orange action button.
+
+This should become the standard pattern for all configurable libraries throughout the application.
+
+==========================================================
+APPLIES TO
+==========================================================
+
+Implement this menu on:
+
+• Product Pricing
+• Production Library
+• Other Charges Library
+• Service Styles
+• Taxes & Fees
+
+Future pages should be able to reuse this component.
+
+==========================================================
+UI
+==========================================================
+
+Current:
+
++ Add Production Cost
+
+Replace with:
+
++ Add Production Cost          ⋮
+
+The three-dot overflow button should open a reusable dropdown menu.
+
+Use the application's existing menu components and styling.
+
+==========================================================
+MENU OPTIONS
+==========================================================
+
+Implement the following menu items.
+
+----------------------------------------------------------
+Import Library...
+----------------------------------------------------------
+
+Allows importing configuration data.
+
+Support:
+
+CSV
+
+JSON
+
+The importer should validate:
+
+Required columns
+
+Duplicate records
+
+Invalid values
+
+Unknown calculation types
+
+Unknown scopes
+
+Show a validation summary before importing.
+
+Do not overwrite existing records without confirmation.
+
+----------------------------------------------------------
+Export Library...
+----------------------------------------------------------
+
+Export the current library.
+
+Support:
+
+CSV
+
+JSON
+
+Export should include all configurable fields.
+
+----------------------------------------------------------
+Download Import Template
+----------------------------------------------------------
+
+Downloads a blank template matching the expected import format.
+
+One template per library.
+
+==========================================================
+PLACEHOLDER OPTIONS
+==========================================================
+
+Include these menu items as disabled placeholders for future implementation:
+
+Restore Factory Defaults
+
+Duplicate Library
+
+Reset Library
+
+These should appear disabled with a "Coming Soon" tooltip.
+
+This prevents future UI redesign while communicating planned functionality.
+
+==========================================================
+IMPORT BEHAVIOR
+==========================================================
+
+Imports should support:
+
+Append
+
+Replace Existing
+
+Skip Duplicates
+
+Prompt the user before destructive operations.
+
+==========================================================
+EXPORT BEHAVIOR
+==========================================================
+
+Export exactly what exists in the library.
+
+Do not export hidden or system-only fields unless required for future re-import.
+
+==========================================================
+REUSABLE COMPONENT
+==========================================================
+
+Build a reusable component.
+
+Example:
+
+<LibraryManagementMenu />
+
+It should accept configuration for:
+
+Library Name
+
+Import Handler
+
+Export Handler
+
+Template Handler
+
+Future Actions
+
+Do NOT create five separate implementations.
+
+==========================================================
+ARCHITECTURE
+==========================================================
+
+The menu should be reusable by future modules including:
+
+Inventory
+
+CRM
+
+Vendors
+
+Production
+
+Scheduling
+
+Reporting
+
+Any configurable library.
+
+==========================================================
+DO NOT
+==========================================================
+
+Do not redesign the Cost Configuration pages.
+
+Do not move buttons.
+
+Do not change layouts.
+
+Do not modify Quote Builder.
+
+Only add the new overflow menu and associated functionality.
+
+==========================================================
+SUCCESS CRITERIA
+==========================================================
+
+✓ Every Cost Configuration page has a consistent Library Management overflow menu.
+
+✓ CSV import works.
+
+✓ JSON import works.
+
+✓ CSV export works.
+
+✓ JSON export works.
+
+✓ Download Template works.
+
+✓ Future menu items exist as disabled placeholders.
+
+✓ All pages use one reusable LibraryManagementMenu component.
+
+==========================================================
+IMPLEMENTATION SUMMARY
+==========================================================
+
+Report:
+
+• Files modified
+
+• Components created
+
+• APIs added
+
+• Import formats supported
+
+• Export formats supported
+
+• Documentation updated
+
+• Any remaining work

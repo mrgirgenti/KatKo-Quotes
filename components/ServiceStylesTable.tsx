@@ -13,6 +13,10 @@ import { Plus, Pencil, Trash2, X, ChevronDown } from 'lucide-react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Colors from '@/constants/colors';
 import OverlayMenu from '@/components/OverlayMenu';
+import LibraryManagementMenu, {
+  type ImportMode,
+  type LibraryImportPreview,
+} from '@/components/LibraryManagementMenu';
 import type { CostLibraryEntry } from '@/components/CostLibraryTable';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -36,6 +40,54 @@ const TAX_BEHAVIOR_OPTIONS = [
   { value: 'non_taxable', label: 'Non-Taxable' },
   { value: 'exempt', label: 'Tax Exempt' },
 ];
+
+// ── CSV helpers ───────────────────────────────────────────────────────────────
+
+const SERVICE_STYLE_CSV_HEADERS = [
+  'name', 'supplier', 'defaultMargin', 'defaultProductionDays',
+  'defaultArtworkRequirements', 'defaultTaxBehavior', 'description', 'enabled',
+] as const;
+
+const VALID_TAX_BEHAVIORS = ['taxable', 'non_taxable', 'exempt'];
+
+function ssSplitCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let cur = '';
+  let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQ && line[i + 1] === '"') { cur += '"'; i++; } else { inQ = !inQ; }
+    } else if (ch === ',' && !inQ) { result.push(cur); cur = ''; }
+    else { cur += ch; }
+  }
+  result.push(cur);
+  return result;
+}
+
+function ssParseCsvText(text: string): Array<Record<string, string>> {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = ssSplitCsvLine(lines[0]).map(h => h.trim().replace(/^"|"$/g, ''));
+  return lines.slice(1).filter(l => l.trim()).map(l => {
+    const vals = ssSplitCsvLine(l);
+    return Object.fromEntries(headers.map((h, i) => [h, (vals[i] ?? '').trim().replace(/^"|"$/g, '')]));
+  });
+}
+
+function ssCsvCell(v: unknown): string {
+  return `"${String(v ?? '').replace(/"/g, '""')}"`;
+}
+
+function ssSerializeToCsv(rows: Record<string, unknown>[], headers: readonly string[]): string {
+  return [headers.map(ssCsvCell).join(','), ...rows.map(r => headers.map(h => ssCsvCell(r[h])).join(','))].join('\n');
+}
+
+function ssParseBool(v: unknown): boolean {
+  if (typeof v === 'boolean') return v;
+  const s = String(v ?? '').toLowerCase();
+  return s === 'true' || s === '1' || s === 'yes';
+}
 
 function taxBehaviorLabel(v: string) {
   return TAX_BEHAVIOR_OPTIONS.find((o) => o.value === v)?.label ?? 'Taxable';
@@ -542,15 +594,132 @@ export function ServiceStylesTable() {
     setDrawerEntry(undefined);
   }
 
+  // ── Library management: import / export / template ──────────────────────────
+
+  function handleParseImport(content: string, format: 'csv' | 'json'): LibraryImportPreview {
+    let rawRows: Record<string, unknown>[] = [];
+    const errors: string[] = [];
+
+    if (format === 'json') {
+      try {
+        const parsed = JSON.parse(content);
+        rawRows = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return { validCount: 0, invalidCount: 0, duplicateCount: 0, errors: ['Invalid JSON file.'], rows: [] };
+      }
+    } else {
+      rawRows = ssParseCsvText(content) as Record<string, unknown>[];
+    }
+
+    const validRows: Omit<ServiceStyleEntry, 'id'>[] = [];
+    let invalidCount = 0;
+
+    rawRows.forEach((raw, idx) => {
+      const rowNum = idx + 2;
+      const rowErrors: string[] = [];
+
+      const name = String(raw.name ?? '').trim();
+      if (!name) rowErrors.push(`Row ${rowNum}: "name" is required`);
+
+      const taxBehavior = String(raw.defaultTaxBehavior ?? 'taxable').trim();
+      if (!VALID_TAX_BEHAVIORS.includes(taxBehavior)) {
+        rowErrors.push(`Row ${rowNum}: unknown defaultTaxBehavior "${taxBehavior}"`);
+      }
+
+      if (rowErrors.length > 0) {
+        if (errors.length < 10) errors.push(...rowErrors);
+        invalidCount++;
+        return;
+      }
+
+      const margin = raw.defaultMargin !== undefined && String(raw.defaultMargin).trim() !== ''
+        ? parseFloat(String(raw.defaultMargin))
+        : undefined;
+      const days = raw.defaultProductionDays !== undefined && String(raw.defaultProductionDays).trim() !== ''
+        ? parseInt(String(raw.defaultProductionDays))
+        : undefined;
+
+      validRows.push({
+        name,
+        supplier: String(raw.supplier ?? '').trim() || undefined,
+        defaultMargin: Number.isFinite(margin) ? margin : undefined,
+        defaultProductionDays: Number.isFinite(days) ? days : undefined,
+        defaultProductionCosts: [],
+        defaultArtworkRequirements: String(raw.defaultArtworkRequirements ?? '').trim() || undefined,
+        defaultTaxBehavior: VALID_TAX_BEHAVIORS.includes(taxBehavior) ? taxBehavior : 'taxable',
+        description: String(raw.description ?? '').trim() || undefined,
+        enabled: ssParseBool(raw.enabled ?? 'true'),
+        sortOrder: parseInt(String(raw.sortOrder ?? 0)) || 0,
+      });
+    });
+
+    const existingNames = new Set(rows.map(r => r.name.toLowerCase()));
+    const duplicateCount = validRows.filter(r => existingNames.has(r.name.toLowerCase())).length;
+    return { validCount: validRows.length, invalidCount, duplicateCount, errors, rows: validRows };
+  }
+
+  async function handleConfirmImport(importRows: unknown[], mode: ImportMode) {
+    const typedRows = importRows as Omit<ServiceStyleEntry, 'id'>[];
+    const existingByName = new Map(rows.map(r => [r.name.toLowerCase(), r.id]));
+
+    for (const row of typedRows) {
+      const existingId = existingByName.get(row.name.toLowerCase());
+      if (mode === 'skip' && existingId) continue;
+      if (mode === 'replace' && existingId) {
+        await fetch(`/api/service-styles/${existingId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(row),
+        });
+      } else {
+        await fetch('/api/service-styles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(row),
+        });
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ['service-styles'] });
+  }
+
+  function getExportData(format: 'csv' | 'json'): string {
+    const exportRows = rows.map(({ id: _id, defaultProductionCosts: _dpc, sortOrder: _so, ...rest }) => rest);
+    if (format === 'json') return JSON.stringify(exportRows, null, 2);
+    return ssSerializeToCsv(exportRows as Record<string, unknown>[], SERVICE_STYLE_CSV_HEADERS);
+  }
+
+  function getTemplateData(): string {
+    const example = {
+      name: 'Screen Printing',
+      supplier: 'SanMar',
+      defaultMargin: 45,
+      defaultProductionDays: 7,
+      defaultArtworkRequirements: 'Vector art required at 300dpi',
+      defaultTaxBehavior: 'taxable',
+      description: 'Standard screen print service',
+      enabled: true,
+    };
+    return ssSerializeToCsv([example] as Record<string, unknown>[], SERVICE_STYLE_CSV_HEADERS);
+  }
+
   return (
     <>
       <View style={styles.section}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Service Styles</Text>
-          <TouchableOpacity style={styles.addBtn} onPress={() => setDrawerEntry(null)} activeOpacity={0.85}>
-            <Plus size={12} color="#fff" />
-            <Text style={styles.addBtnText}>Add Service Style</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.addBtn} onPress={() => setDrawerEntry(null)} activeOpacity={0.85}>
+              <Plus size={12} color="#fff" />
+              <Text style={styles.addBtnText}>Add Service Style</Text>
+            </TouchableOpacity>
+            <LibraryManagementMenu
+              libraryName="Service Styles"
+              onParseImport={handleParseImport}
+              onConfirmImport={handleConfirmImport}
+              getExportData={getExportData}
+              getTemplateData={getTemplateData}
+            />
+          </View>
         </View>
 
         {isLoading ? (
@@ -632,6 +801,7 @@ const styles = StyleSheet.create({
   section: { borderWidth: 1, borderColor: Colors.light.border, borderRadius: 8, backgroundColor: Colors.light.surface, overflow: 'hidden', marginTop: 12 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#000', paddingHorizontal: 16, height: 36 },
   headerTitle: { fontSize: 11, fontWeight: '700' as const, color: '#fff', letterSpacing: 0.6, textTransform: 'uppercase' as const },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   addBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.light.tint, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
   addBtnText: { fontSize: 11, fontWeight: '700' as const, color: '#fff' },
   hScroll: { backgroundColor: Colors.light.surface },
