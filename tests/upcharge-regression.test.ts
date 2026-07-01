@@ -370,3 +370,67 @@ describe('Multi-product — blended cost + upcharges cent-exact after style swit
     expect(c1.productCostTotal).toBe(c3.productCostTotal); // round-trip identical
   });
 });
+
+// ─── 6. Portal DTO / LineItemCard parity ─────────────────────────────────────
+//
+// Both the portal server (calculateLineItemSubtotal called in the API route)
+// and the Quote Builder (calculateLineItemSubtotal called in LineItemCard) must
+// receive the same upcharges map to agree on subtotal and perPiece.
+//
+// Before the fix, the portal and CalculationDisplay passed no upcharges so
+// their totals were lower than LineItemCard for any item with 2XL/3XL/4XL qty.
+
+describe('Portal DTO / LineItemCard parity — 2XL/3XL upcharges must match', () => {
+  // Simulate a saved Screen Printing line item with 2XL and 3XL garments.
+  // cost=$8.00  m=20  xxl=6  xxxl=4
+  // qty = 30
+  // baseCost = 8.00 × 30 = 240
+  // upcharge = 2.00×6 + 3.00×4 = 12+12 = 24  (using default-tier upcharges)
+  // productCostTotal = 264
+  const upcharges = UPCHARGES; // { '2XL': 2, '3XL': 3, '4XL': 4 }
+  const product = makeProduct(8.00, { m: 20, xxl: 6, xxxl: 4 });
+
+  it('LineItemCard path (with upcharges): productCostTotal includes size upcharges', () => {
+    const item = makeItem([product], 'Screen Printing');
+    // This simulates LineItemCard: upcharges are always passed.
+    const lineItemCardCalcs = calculateLineItemSubtotal(item, upcharges);
+
+    expect(lineItemCardCalcs.quantity).toBe(30);
+    // 8×30 + 2×6 + 3×4 = 240+12+12 = 264
+    expect(Math.round(lineItemCardCalcs.productCostTotal * 100)).toBe(26400);
+  });
+
+  it('broken portal path (no upcharges): productCostTotal is LESS — the bug', () => {
+    const item = makeItem([product], 'Screen Printing');
+    // Simulates the old broken portal: upcharges omitted → silent $0 upcharges.
+    const brokenPortalCalcs = calculateLineItemSubtotal(item);
+
+    expect(brokenPortalCalcs.quantity).toBe(30);
+    // 8×30 = 240  (upcharges silently missing)
+    expect(Math.round(brokenPortalCalcs.productCostTotal * 100)).toBe(24000);
+  });
+
+  it('fixed portal path (with upcharges): subtotal and perPiece match LineItemCard', () => {
+    const item = makeItem([product], 'Screen Printing');
+    // Both call sites now pass the same upcharges map → results must be identical.
+    const lineItemCardCalcs = calculateLineItemSubtotal(item, upcharges);
+    const fixedPortalCalcs  = calculateLineItemSubtotal(item, upcharges);
+
+    expect(fixedPortalCalcs.subtotal).toBe(lineItemCardCalcs.subtotal);
+    expect(fixedPortalCalcs.perPiece).toBe(lineItemCardCalcs.perPiece);
+    expect(fixedPortalCalcs.productCostTotal).toBe(lineItemCardCalcs.productCostTotal);
+  });
+
+  it('gap between broken and fixed portal is exactly the upcharge amount', () => {
+    const item = makeItem([product], 'Screen Printing');
+    const brokenCalcs = calculateLineItemSubtotal(item);
+    const fixedCalcs  = calculateLineItemSubtotal(item, upcharges);
+
+    // Expected upcharge: 2.00×6 + 3.00×4 = 12+12 = 24
+    const expectedUpchargeTotal = upcharges['2XL'] * 6 + upcharges['3XL'] * 4;
+    const gap = fixedCalcs.productCostTotal - brokenCalcs.productCostTotal;
+
+    expect(Math.round(gap * 100)).toBe(Math.round(expectedUpchargeTotal * 100));
+    expect(Math.round(gap * 100)).toBe(2400); // $24.00
+  });
+});

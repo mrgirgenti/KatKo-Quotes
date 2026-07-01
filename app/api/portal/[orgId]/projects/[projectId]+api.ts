@@ -2,6 +2,24 @@ import { pool } from '@/lib/pool';
 import { calculateLineItemSubtotal } from '@/utils/quoteCalculations';
 import { resolveMockups } from '@/utils/mockupService';
 
+const DEFAULT_UPCHARGES: Record<string, number> = { '2XL': 2, '3XL': 4, '4XL': 6, '5XL': 8, '6XL': 10 };
+
+async function loadUpcharges(): Promise<Record<string, number>> {
+  try {
+    const r = await pool.query(
+      `SELECT value FROM "AppSettings" WHERE key = $1`,
+      ['product_pricing'],
+    );
+    const val = r.rows[0]?.value;
+    if (val?.upcharges && typeof val.upcharges === 'object') {
+      return val.upcharges as Record<string, number>;
+    }
+  } catch {
+    /* fall through to defaults */
+  }
+  return DEFAULT_UPCHARGES;
+}
+
 export async function GET(
   _req: Request,
   { orgId, projectId }: { orgId: string; projectId: string }
@@ -86,6 +104,10 @@ export async function GET(
     // whitelist only the keys the customer view renders.
     const { lineItemsData, calculations, ...rest } = result.rows[0] as any;
 
+    // Load upcharges so 2XL/3XL/4XL size upcharges are included in the
+    // customer-facing per-piece and line totals (falls back to defaults).
+    const upcharges = await loadUpcharges();
+
     const safeLineItems = (Array.isArray(lineItemsData) ? lineItemsData : []).map((li: any) => {
       // Bundled customer price ONLY — computed server-side from the raw item. We
       // surface the per-piece and line totals the customer pays, never the cost /
@@ -93,7 +115,7 @@ export async function GET(
       let customerUnitPrice = 0;
       let customerLineTotal = 0;
       try {
-        const c = calculateLineItemSubtotal(li);
+        const c = calculateLineItemSubtotal(li, upcharges);
         customerUnitPrice = c.perPiece;
         customerLineTotal = c.subtotal;
       } catch {

@@ -425,6 +425,7 @@ export default function EditQuoteScreen() {
               hasOnlineFee={hasOnlineFee}
               hasSalesTax={hasSalesTax}
               hasCardFee={hasCardFee}
+              upcharges={upcharges}
             />
           </View>
         )}

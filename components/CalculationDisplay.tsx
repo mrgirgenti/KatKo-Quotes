@@ -11,6 +11,7 @@ interface CalculationDisplayProps {
   hasOnlineFee: boolean;
   hasSalesTax: boolean;
   hasCardFee: boolean;
+  upcharges?: Record<string, number>;
 }
 
 export function CalculationDisplay({
@@ -19,6 +20,7 @@ export function CalculationDisplay({
   hasOnlineFee,
   hasSalesTax,
   hasCardFee,
+  upcharges,
 }: CalculationDisplayProps) {
   if (!calculations) {
     return (
@@ -96,7 +98,7 @@ export function CalculationDisplay({
           <View style={styles.lineItemsSubtotalsSection}>
             <Text style={styles.lineItemsSubtotalsTitle}>Line Item Subtotals</Text>
             {lineItems.map((item, index) => {
-              const itemCalcs = calculateLineItemSubtotal(item);
+              const itemCalcs = calculateLineItemSubtotal(item, upcharges);
               return (
                 <View key={item.id} style={styles.lineItemSubtotalRow}>
                   <View style={styles.lineItemSubtotalInfo}>
