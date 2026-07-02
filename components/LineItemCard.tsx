@@ -757,6 +757,34 @@ const SP_PRINT_LOCATIONS = [
   'Left Sleeve', 'Right Sleeve', 'Tag', 'Collar', 'Hood', 'Other',
 ];
 
+const EMB_VENDORS = ['Stitch Zone', 'EmbroidMe', 'In-House', 'Other'];
+const EMB_LOCATIONS = [
+  'Left Chest', 'Full Back', 'Right Chest', 'Center Chest',
+  'Hat Front', 'Hat Side', 'Sleeve', 'Collar', 'Cuff', 'Other',
+];
+const EMB_PRESETS = ['Left Chest Standard', 'Hat Logo', 'Full Back', 'Large Jacket Back', 'Custom'];
+
+/** Vendor-specific embroidery pricing formula shape. Inject entries to activate pricing. */
+interface EmbVendorFormula {
+  computeCost: (stitchCount: number, quantity: number) => number;
+}
+/**
+ * Registry: add vendor entries here to unlock per-vendor cost without redesigning the calculator.
+ * Example entry (commented — not active):
+ *   'Stitch Zone': { computeCost: (s, q) => Math.max(6.00, (s / 1000) * 2.00) * q }
+ */
+const EMB_VENDOR_FORMULAS: Record<string, EmbVendorFormula> = {};
+
+const computeEmbServiceCost = (
+  vendor: string,
+  stitchCount: number,
+  quantity: number,
+): number => {
+  const formula = EMB_VENDOR_FORMULAS[vendor];
+  if (!formula || stitchCount <= 0 || quantity <= 0) return 0;
+  return formula.computeCost(stitchCount, quantity);
+};
+
 function LineItemCardFn({
   item,
   index,
@@ -808,12 +836,14 @@ function LineItemCardFn({
     [],
   );
 
-  const [embStitchCount1, setEmbStitchCount1] = useState('');
-  const [embStitchCount2, setEmbStitchCount2] = useState('');
-  const DIGITIZATION_ROW_ID = '__digitization_fee__';
-  const [includeDigitization, setIncludeDigitizationState] = useState(
-    () => (item.productionCosts ?? []).some((r) => r.id === DIGITIZATION_ROW_ID),
-  );
+  // ── Embroidery Calculator state ───────────────────────────────────────────
+  const [embVendor, setEmbVendor] = useState('');
+  const [embLocation, setEmbLocation] = useState('');
+  const [embPreset, setEmbPreset] = useState('');
+  const [embStitchCount, setEmbStitchCount] = useState('');
+  const [embQuantity, setEmbQuantity] = useState('');
+  const [embSuggestedPrice, setEmbSuggestedPrice] = useState('');
+  const [focusedEmbSuggested, setFocusedEmbSuggested] = useState(false);
 
   const { isMobile } = useBreakpoint();
   const useSideBySide = Platform.OS === 'web' && !isMobile;
@@ -985,22 +1015,9 @@ function LineItemCardFn({
     return Number.isNaN(n) ? '' : n.toFixed(2);
   };
 
-  const EMB_RATE_PER_1000 = 2.0;
-  const EMB_MIN_STITCHES = 3000;
-  const EMB_MAX_STITCHES = 20000;
-  const DIGITIZATION_FEE = 50.0;
-
-  const embStitchCount1Num = parseNumber(embStitchCount1);
-  const embStitchCount2Num = parseNumber(embStitchCount2);
-  const embCost1 = Math.round(EMB_RATE_PER_1000 * (embStitchCount1Num / 1000) * 100) / 100;
-  const embCost2 = Math.round(EMB_RATE_PER_1000 * (embStitchCount2Num / 1000) * 100) / 100;
-  const embTotalCost = embCost1 + embCost2;
-
-  const handleStitchCountChange = (text: string, setter: (val: string) => void) => {
-    const cleaned = text.replace(/[^0-9]/g, '');
-    const num = parseInt(cleaned, 10);
-    if (cleaned === '' || (num >= 0 && num <= EMB_MAX_STITCHES)) setter(cleaned);
-  };
+  const embStitchCountNum = parseInt(embStitchCount || '0', 10);
+  const embQuantityNum = parseInt(embQuantity || '0', 10);
+  const embServiceCost = computeEmbServiceCost(embVendor, embStitchCountNum, embQuantityNum);
 
   const handleServiceStyleChange = (style: typeof item.serviceStyle) => {
     const base = itemRef.current;
@@ -1046,16 +1063,6 @@ function LineItemCardFn({
     }
   };
 
-  const applyEmbroideryCost = () => {
-    if (embTotalCost > 0) {
-      onChange(
-        updateDesignFields(itemRef.current, {
-          serviceCostEach: embTotalCost,
-          serviceFeeEach: 0,
-        }),
-      );
-    }
-  };
 
   const updateLocation = (idx: number, value: string): LineItem => {
     const base = itemRef.current;
@@ -1102,20 +1109,6 @@ function LineItemCardFn({
     [onChange],
   );
 
-  const handleDigitizationToggle = useCallback(() => {
-    const checked = !includeDigitization;
-    setIncludeDigitizationState(checked);
-    const current = itemRef.current.productionCosts ?? [];
-    const next: QuoteAdjustment[] = checked
-      ? current.some((r) => r.id === DIGITIZATION_ROW_ID)
-        ? current
-        : [...current, { id: DIGITIZATION_ROW_ID, name: 'Digitization Fee', type: 'flat' as const, rate: DIGITIZATION_FEE, quantity: 1 }]
-      : current.filter((r) => r.id !== DIGITIZATION_ROW_ID);
-    onChange(updateDesignFields(itemRef.current, {
-      productionCosts: next,
-      ...(checked ? {} : { serviceFeeEach: 0 }),
-    }));
-  }, [includeDigitization, onChange]);
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
@@ -1963,108 +1956,172 @@ function LineItemCardFn({
                   {/* Embroidery Calculator */}
                   {isEmbroidery && (
                     <View>
-                      <Text style={styles.calcSubtitle}>
-                        $2.00 per 1,000 stitches (min 3,000)
-                      </Text>
-                      <Text style={styles.calcLocationLabel}>
-                        Location #1 {item.location1 ? `(${item.location1})` : ''}
-                      </Text>
-                      <View style={styles.embInputRow}>
-                        <View style={styles.embInputGroup}>
-                          <Text style={styles.dtfInputLabel}>STITCH COUNT</Text>
-                          <View style={styles.embInputWrapper}>
+
+                      {/* ── Controls: Vendor | Location | Preset | Suggested Sell ── */}
+                      <View style={styles.dtfControlsRow}>
+
+                        <OverlayMenu menuWidth={180} align="left"
+                          trigger={({ open }) => (
+                            <TouchableOpacity style={styles.dtfControlChip} onPress={open} activeOpacity={0.75}>
+                              <Text style={styles.dtfControlChipLabel}>VENDOR</Text>
+                              <View style={styles.dtfControlChipValueRow}>
+                                <Text style={styles.dtfControlChipValue} numberOfLines={1}>
+                                  {embVendor || 'Select…'}
+                                </Text>
+                                <ChevronDown size={9} color={Colors.light.textSecondary} />
+                              </View>
+                            </TouchableOpacity>
+                          )}
+                        >
+                          {({ close }) => (
+                            <>
+                              {EMB_VENDORS.map((v) => (
+                                <TouchableOpacity key={v} style={styles.dtfMenuRow}
+                                  onPress={() => { setEmbVendor(v); close(); }}>
+                                  <Text style={[styles.dtfMenuRowText, embVendor === v && styles.dtfMenuRowActive]}>
+                                    {v}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </>
+                          )}
+                        </OverlayMenu>
+
+                        <OverlayMenu menuWidth={190} align="left"
+                          trigger={({ open }) => (
+                            <TouchableOpacity style={styles.dtfControlChip} onPress={open} activeOpacity={0.75}>
+                              <Text style={styles.dtfControlChipLabel}>LOCATION</Text>
+                              <View style={styles.dtfControlChipValueRow}>
+                                <Text style={styles.dtfControlChipValue} numberOfLines={1}>
+                                  {embLocation || 'Select…'}
+                                </Text>
+                                <ChevronDown size={9} color={Colors.light.textSecondary} />
+                              </View>
+                            </TouchableOpacity>
+                          )}
+                        >
+                          {({ close }) => (
+                            <>
+                              {EMB_LOCATIONS.map((loc) => (
+                                <TouchableOpacity key={loc} style={styles.dtfMenuRow}
+                                  onPress={() => { setEmbLocation(loc); close(); }}>
+                                  <Text style={[styles.dtfMenuRowText, embLocation === loc && styles.dtfMenuRowActive]}>
+                                    {loc}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </>
+                          )}
+                        </OverlayMenu>
+
+                        <OverlayMenu menuWidth={200} align="left"
+                          trigger={({ open }) => (
+                            <TouchableOpacity style={styles.dtfControlChip} onPress={open} activeOpacity={0.75}>
+                              <Text style={styles.dtfControlChipLabel}>PRICING PRESET</Text>
+                              <View style={styles.dtfControlChipValueRow}>
+                                <Text style={styles.dtfControlChipValue} numberOfLines={1}>
+                                  {embPreset || 'Select…'}
+                                </Text>
+                                <ChevronDown size={9} color={Colors.light.textSecondary} />
+                              </View>
+                            </TouchableOpacity>
+                          )}
+                        >
+                          {({ close }) => (
+                            <>
+                              {EMB_PRESETS.map((p) => (
+                                <TouchableOpacity key={p} style={styles.dtfMenuRow}
+                                  onPress={() => { setEmbPreset(p); close(); }}>
+                                  <Text style={[styles.dtfMenuRowText, embPreset === p && styles.dtfMenuRowActive]}>
+                                    {p}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </>
+                          )}
+                        </OverlayMenu>
+
+                        <View style={styles.dtfSuggestedGroup}>
+                          <Text style={styles.dtfControlChipLabel}>SUGGESTED SELL</Text>
+                          <View style={styles.dtfInputWrapper}>
+                            <Text style={styles.dtfDollar}>$</Text>
                             <TextInput
-                              style={styles.embInput}
-                              value={embStitchCount1}
-                              onChangeText={(t) =>
-                                handleStitchCountChange(t, setEmbStitchCount1)
-                              }
+                              style={styles.dtfRateInput}
+                              value={formatCents(embSuggestedPrice)}
+                              onChangeText={(t) => setEmbSuggestedPrice(t.replace(/\D/g, ''))}
+                              onFocus={() => setFocusedEmbSuggested(true)}
+                              onBlur={() => setFocusedEmbSuggested(false)}
+                              keyboardType="number-pad"
+                              placeholder="0.00"
+                              placeholderTextColor={Colors.light.textSecondary}
+                              selectTextOnFocus
+                            />
+                          </View>
+                        </View>
+
+                      </View>
+
+                      {/* ── Quantity + Stitch Count ── */}
+                      <View style={styles.embInputsRow}>
+                        <View style={styles.embQtyGroup}>
+                          <Text style={styles.dtfInputLabel}>QUANTITY</Text>
+                          <View style={styles.dtfInputWrapper}>
+                            <TextInput
+                              style={[styles.dtfRateInput, { flex: 1 }]}
+                              value={embQuantity}
+                              onChangeText={(t) => setEmbQuantity(t.replace(/\D/g, ''))}
+                              keyboardType="number-pad"
+                              placeholder="0"
+                              placeholderTextColor={Colors.light.textSecondary}
+                              selectTextOnFocus
+                            />
+                            <Text style={styles.dtfInputSuffix}>pcs</Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.embStitchGroup}>
+                          <Text style={styles.dtfInputLabel}>STITCH COUNT</Text>
+                          <View style={styles.embStitchWrapper}>
+                            <TextInput
+                              style={styles.embStitchInput}
+                              value={embStitchCount}
+                              onChangeText={(t) => setEmbStitchCount(t.replace(/\D/g, ''))}
                               keyboardType="number-pad"
                               placeholder="e.g. 5000"
                               placeholderTextColor={Colors.light.textSecondary}
-                              maxLength={5}
+                              selectTextOnFocus
                             />
-                            {embStitchCount1 !== '' && (
-                              <Text style={styles.dtfInputSuffix}>stitches</Text>
+                            {embStitchCount !== '' && (
+                              <Text style={styles.embStitchSuffix}>stitches</Text>
                             )}
                           </View>
                         </View>
-                        <View style={styles.embCostDisplay}>
-                          <Text style={styles.dtfInputLabel}>COST</Text>
-                          <Text style={styles.embCostValue}>${embCost1.toFixed(2)}</Text>
-                        </View>
                       </View>
-                      {embStitchCount1Num > 0 && embStitchCount1Num < EMB_MIN_STITCHES && (
-                        <Text style={styles.embMinNote}>Below minimum of 3,000 stitches</Text>
-                      )}
 
-                      {hasSecondLocation && (
-                        <>
-                          <View style={styles.dtfLocationDivider} />
-                          <Text style={styles.calcLocationLabel}>
-                            Location #2 ({item.location2})
-                          </Text>
-                          <View style={styles.embInputRow}>
-                            <View style={styles.embInputGroup}>
-                              <Text style={styles.dtfInputLabel}>STITCH COUNT</Text>
-                              <View style={styles.embInputWrapper}>
-                                <TextInput
-                                  style={styles.embInput}
-                                  value={embStitchCount2}
-                                  onChangeText={(t) =>
-                                    handleStitchCountChange(t, setEmbStitchCount2)
-                                  }
-                                  keyboardType="number-pad"
-                                  placeholder="e.g. 5000"
-                                  placeholderTextColor={Colors.light.textSecondary}
-                                  maxLength={5}
-                                />
-                                {embStitchCount2 !== '' && (
-                                  <Text style={styles.dtfInputSuffix}>stitches</Text>
-                                )}
-                              </View>
-                            </View>
-                            <View style={styles.embCostDisplay}>
-                              <Text style={styles.dtfInputLabel}>COST</Text>
-                              <Text style={styles.embCostValue}>${embCost2.toFixed(2)}</Text>
-                            </View>
-                          </View>
-                          {embStitchCount2Num > 0 && embStitchCount2Num < EMB_MIN_STITCHES && (
-                            <Text style={styles.embMinNote}>Below minimum of 3,000 stitches</Text>
-                          )}
-                        </>
-                      )}
+                      {/* ── Specialty Options (reserved — no logic) ── */}
+                      <View style={styles.spAdditionalOptions}>
+                        <Text style={styles.spAdditionalOptionsLabel}>SPECIALTY OPTIONS</Text>
+                        <Text style={styles.spAdditionalOptionsHint}>
+                          3D puff, appliqué, metallic thread, special backing, rush — coming soon.
+                        </Text>
+                      </View>
 
-                      <View style={styles.embDigitizationRow}>
-                        <TouchableOpacity
-                          style={styles.embCheckbox}
-                          onPress={handleDigitizationToggle}
-                        >
-                          <View
-                            style={[
-                              styles.embCheckboxBox,
-                              includeDigitization && styles.embCheckboxChecked,
-                            ]}
-                          >
-                            {includeDigitization ? (
-                              <Text style={styles.embCheckmark}>✓</Text>
-                            ) : null}
-                          </View>
-                          <Text style={styles.embCheckboxLabel}>
-                            Include Digitization Fee (+$50.00)
+                      {/* ── Service Cost footer ── */}
+                      <View style={styles.dtfServiceCostRow}>
+                        <View style={styles.dtfServiceCostBlock}>
+                          <Text style={styles.dtfServiceCostLabel}>SERVICE COST</Text>
+                          <Text style={styles.dtfServiceCostValue}>
+                            ${embServiceCost.toFixed(2)}
                           </Text>
-                        </TouchableOpacity>
+                        </View>
                         <TouchableOpacity
-                          style={[
-                            styles.applyBtn,
-                            embTotalCost === 0 && styles.applyBtnDisabled,
-                          ]}
-                          onPress={applyEmbroideryCost}
-                          disabled={embTotalCost === 0}
+                          style={[styles.applyBtn, embServiceCost === 0 && styles.applyBtnDisabled]}
+                          disabled={embServiceCost === 0}
                         >
                           <Text style={styles.applyBtnText}>Apply</Text>
                         </TouchableOpacity>
                       </View>
+
                     </View>
                   )}
 
@@ -3373,6 +3430,44 @@ const styles = StyleSheet.create({
   embCheckboxLabel: {
     fontSize: 13,
     color: Colors.light.text,
+  },
+  // ── EMBROIDERY CALCULATOR (new) ───────────────────────────────────────────
+  embInputsRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-end' as const,
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+  },
+  embQtyGroup: {
+    width: 90,
+  },
+  embStitchGroup: {
+    flex: 1,
+  },
+  embStitchWrapper: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    borderWidth: 1.5,
+    borderColor: Colors.light.tint,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    height: 40,
+    backgroundColor: Colors.light.background,
+  },
+  embStitchInput: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: Colors.light.text,
+  },
+  embStitchSuffix: {
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+    marginLeft: 4,
   },
   // ── SCREEN PRINTING CALCULATOR ────────────────────────────────────────────
   spLocationCountRow: {
