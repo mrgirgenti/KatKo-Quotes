@@ -19,7 +19,12 @@ import {
   Trash2,
   Save,
   Settings2,
+  Package,
+  Truck,
+  Sliders,
+  ChevronRight,
 } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import LibraryManagementMenu, {
   type ImportMode,
   type LibraryImportPreview,
@@ -39,6 +44,7 @@ const SURFACE = Colors.light.surface;
 const ERROR = Colors.light.error;
 
 type CostTab =
+  | 'production'
   | 'product_pricing'
   | 'production_library'
   | 'other_charges_library'
@@ -46,12 +52,116 @@ type CostTab =
   | 'taxes_fees';
 
 const TABS: { id: CostTab; label: string; Icon: typeof Tag }[] = [
-  { id: 'product_pricing', label: 'Product Pricing', Icon: Tag },
-  { id: 'production_library', label: 'Production Library', Icon: Factory },
+  { id: 'production',            label: 'Production',           Icon: Package  },
+  { id: 'product_pricing',       label: 'Product Pricing',      Icon: Tag      },
+  { id: 'production_library',    label: 'Production Library',   Icon: Factory  },
   { id: 'other_charges_library', label: 'Other Charges Library', Icon: Receipt },
-  { id: 'service_styles', label: 'Service Styles', Icon: Shapes },
-  { id: 'taxes_fees', label: 'Taxes & Fees', Icon: Percent },
+  { id: 'service_styles',        label: 'Service Styles',       Icon: Shapes   },
+  { id: 'taxes_fees',            label: 'Taxes & Fees',         Icon: Percent  },
 ];
+
+// ── Production Settings Landing Page ──────────────────────────────────────────
+
+interface ProductionModule {
+  id: string;
+  title: string;
+  description: string;
+  Icon: typeof Tag;
+  route: string;
+}
+
+const PRODUCTION_MODULES: ProductionModule[] = [
+  {
+    id: 'vendors',
+    title: 'Production Vendors',
+    description:
+      'Manage screen printers, embroiderers, DTF shops, and other production service providers used during quoting and production.',
+    Icon: Truck,
+    route: '/production-settings/vendors',
+  },
+  {
+    id: 'presets',
+    title: 'Pricing Presets',
+    description:
+      'Define standard selling prices for DTF, screen printing, embroidery, and other production services. Future calculators will reference these presets.',
+    Icon: Tag,
+    route: '/production-settings/presets',
+  },
+  {
+    id: 'calculators',
+    title: 'Service Calculators',
+    description:
+      'Configure default settings and behaviors for each service type calculator. DTF, Screen Printing, Embroidery, and more.',
+    Icon: Sliders,
+    route: '/production-settings/calculators',
+  },
+];
+
+function ProductionLandingPage() {
+  const router = useRouter();
+
+  return (
+    <View>
+      <View style={s.libHeader}>
+        <Package size={13} color="#fff" />
+        <Text style={s.libHeaderTitle}>Production Settings</Text>
+      </View>
+
+      <Text style={s.pageSection}>Production Management</Text>
+      <Text style={s.pageSectionHint}>
+        Central configuration for all production vendors, pricing presets, and service calculators. Future quote builder integrations will read from these modules.
+      </Text>
+
+      {PRODUCTION_MODULES.map((mod) => (
+        <TouchableOpacity
+          key={mod.id}
+          style={sp.moduleCard}
+          onPress={() => router.push(mod.route as never)}
+          activeOpacity={0.85}
+        >
+          <View style={sp.moduleIcon}>
+            <mod.Icon size={20} color={BRAND} />
+          </View>
+          <View style={sp.moduleBody}>
+            <Text style={sp.moduleTitle}>{mod.title}</Text>
+            <Text style={sp.moduleDesc}>{mod.description}</Text>
+          </View>
+          <ChevronRight size={18} color={TEXT_LIGHT} />
+        </TouchableOpacity>
+      ))}
+
+      <View style={sp.futureNote}>
+        <Text style={sp.futureNoteTitle}>Architecture Note</Text>
+        <Text style={sp.futureNoteBody}>
+          All production configuration lives here, not inside the Quote Builder. Future calculators will consume vendor lists, pricing presets, and calculator defaults from these modules — keeping the Quote Builder as a consumer, not a configuration tool.
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+const sp = StyleSheet.create({
+  moduleCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    borderWidth: 1, borderColor: BORDER, borderRadius: 10,
+    backgroundColor: SURFACE, padding: 16, marginBottom: 10,
+  },
+  moduleIcon: {
+    width: 44, height: 44, borderRadius: 10,
+    backgroundColor: BG, borderWidth: 1, borderColor: BORDER,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  moduleBody: { flex: 1 },
+  moduleTitle: { fontSize: 14, fontWeight: '700' as const, color: TEXT, marginBottom: 3 },
+  moduleDesc:  { fontSize: 12, color: TEXT_LIGHT, lineHeight: 17 },
+
+  futureNote: {
+    borderWidth: 1, borderColor: '#FDE68A', borderRadius: 8,
+    backgroundColor: '#FFFBEB', padding: 14, marginTop: 8,
+  },
+  futureNoteTitle: { fontSize: 12, fontWeight: '700' as const, color: '#92400E', marginBottom: 4 },
+  futureNoteBody:  { fontSize: 12, color: '#78350F', lineHeight: 18 },
+});
 
 // ── Settings page CSV helpers ─────────────────────────────────────────────────
 
@@ -841,6 +951,8 @@ export default function SettingsScreen() {
 
       {/* Tab content */}
       <ScrollView style={s.body} contentContainerStyle={s.bodyContent}>
+        {tab === 'production' && <ProductionLandingPage />}
+
         {tab === 'product_pricing' && <ProductPricingPage />}
 
         {tab === 'production_library' && (

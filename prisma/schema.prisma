@@ -791,6 +791,27 @@ model ServiceStyle {
   updatedAt                   DateTime @updatedAt
 }
 
+model ProductionPricingPreset {
+  id                   String   @id @default(uuid())
+  name                 String
+  serviceType          String
+  suggestedSellPrice   Decimal? @db.Decimal(10, 2)
+  status               String   @default("Active")
+  maxWidth             Decimal? @db.Decimal(6, 2)
+  maxHeight            Decimal? @db.Decimal(6, 2)
+  defaultLocation      String?
+  defaultLocations     String?
+  defaultColorCount    Int?
+  suggestedStitchRange String?
+  notes                String?
+  sortOrder            Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([serviceType])
+  @@index([status])
+}
+
 model AppSettings {
   key       String   @id
   value     Json
