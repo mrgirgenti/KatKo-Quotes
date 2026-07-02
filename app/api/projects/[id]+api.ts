@@ -110,6 +110,7 @@ function toFrontendQuote(p: any): Quote {
     proofApproved: p.proofApproved ?? false,
     priority: dbPriorityToFrontend(p.priority),
     assignedToUserId: p.assignedToUserId ?? null,
+    discountData: (p.discountData as Quote['discountData'] | null) ?? undefined,
   } as Quote;
 }
 
@@ -287,7 +288,8 @@ export async function PUT(request: Request, { id }: { id: string }) {
         "operationalStatus" = $24, "holdReason" = $25, "holdNotes" = $26,
         "holdPlacedAt" = $27, "holdPlacedBy" = $28, "deliveryMethod" = $29,
         "paymentReceived" = $30, "artworkReceived" = $31, "proofApproved" = $32,
-        priority = $33::"PriorityLevel", "assignedToUserId" = $34${requoteReset},
+        priority = $33::"PriorityLevel", "assignedToUserId" = $34,
+        "discountData" = $35::jsonb${requoteReset},
         "updatedAt" = NOW()
       WHERE id = $23 RETURNING *`,
       [
@@ -325,6 +327,7 @@ export async function PUT(request: Request, { id }: { id: string }) {
         proofApproved,
         priority,
         assignedToUserId,
+        JSON.stringify((body as any).discountData ?? null),
       ],
     );
     if (!result.rows[0]) return Response.json({ error: 'Not found' }, { status: 404 });

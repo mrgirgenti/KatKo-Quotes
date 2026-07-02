@@ -1,0 +1,233 @@
+IMPLEMENTATION AUDIT MODE
+
+You are NOT implementing new features during this task.
+
+You are acting as the Lead QA Engineer and Senior Code Reviewer for Katalyst KO OS.
+
+Your objective is NOT to tell me what is working.
+
+Your objective is to aggressively identify EVERYTHING that was missed, partially implemented, incorrectly implemented, inconsistent with the approved design, architecturally weak, visually inconsistent, technically incomplete, or likely to become technical debt.
+
+Assume every implementation completed so far is potentially incomplete until you prove otherwise.
+
+====================================================
+REFERENCE MATERIAL
+====================================================
+
+Use ALL project documentation as the source of truth, including:
+
+• Implementation Definition of Done
+• Architecture Principles
+• Business Rules
+• UI Design System
+• README
+• Roadmap
+• All previously implemented Quote Builder redesign tasks
+• The approved Quote Builder mockup attached to this task
+
+The approved mockup takes precedence over the current implementation.
+
+If the implementation differs from the approved mockup, it should be considered a defect unless there is a documented architectural reason.
+
+====================================================
+SCOPE
+====================================================
+
+Review the ENTIRE Quote Builder redesign including:
+
+• Overall layout
+• Line Item header
+• Design Details
+• Products + Sizes
+• Service Calculators
+• Pricing Adjustments
+• Line Item Costs
+• Line Item Subtotal
+• Quote Summary
+• Mobile responsiveness
+• Accessibility
+• Existing business rules
+• Existing architecture
+• Existing calculations
+• Existing integrations
+• Existing styling consistency
+
+Do NOT limit your review only to files modified recently.
+
+====================================================
+AUDIT OBJECTIVES
+====================================================
+
+Review for:
+
+Visual inconsistencies
+
+Spacing inconsistencies
+
+Alignment issues
+
+Incorrect typography
+
+Incorrect sizing
+
+Missing functionality
+
+Placeholder functionality
+
+Broken workflows
+
+Duplicate functionality
+
+Dead code
+
+Unused components
+
+Legacy UI left behind
+
+Incorrect architecture
+
+Business rule violations
+
+Performance concerns
+
+Accessibility concerns
+
+Responsiveness issues
+
+State management problems
+
+Future technical debt
+
+Potential merge conflicts
+
+Opportunities for component reuse
+
+Anything inconsistent with the rest of the application
+
+Anything inconsistent with the approved Quote Builder redesign
+
+====================================================
+VERIFY EVERY REQUIREMENT
+====================================================
+
+For every Quote Builder redesign task completed so far, verify:
+
+Implemented exactly
+
+Partially implemented
+
+Not implemented
+
+Implemented differently than requested
+
+For every deviation explain WHY.
+
+====================================================
+DO NOT FIX
+====================================================
+
+This is NOT an implementation task.
+
+Do NOT modify code.
+
+Do NOT refactor.
+
+Do NOT make assumptions.
+
+Do NOT automatically fix issues.
+
+Instead produce a complete engineering audit.
+
+====================================================
+OUTPUT FORMAT
+====================================================
+
+Organize findings by severity.
+
+------------------------------------
+
+CRITICAL
+
+Must be fixed before production.
+
+------------------------------------
+
+HIGH
+
+Strongly recommended before beta.
+
+------------------------------------
+
+MEDIUM
+
+Should be addressed.
+
+------------------------------------
+
+LOW
+
+Minor polish.
+
+------------------------------------
+
+For EVERY issue include:
+
+• Description
+
+• Why it matters
+
+• Files involved
+
+• Recommended solution
+
+• Estimated implementation effort
+
+====================================================
+FINAL REPORT
+====================================================
+
+Conclude with:
+
+Overall Completion Percentage
+
+Example:
+
+Layout
+98%
+
+Design Details
+100%
+
+Products + Sizes
+95%
+
+Service Calculators
+82%
+
+Pricing Adjustments
+70%
+
+Line Item Costs
+97%
+
+Quote Summary
+92%
+
+Overall Quote Builder
+91%
+
+Then include:
+
+Top 10 highest priority remaining tasks before the Quote Builder should be considered feature complete.
+
+Finally answer ONE question:
+
+"If you were inheriting this codebase as a Senior Staff Engineer, what concerns would you address before approving this for production?"
+
+Do not be polite.
+
+Do not assume previous implementation decisions were correct.
+
+Be critical.
+
+Look for reasons to reject the implementation until it satisfies the approved architecture.

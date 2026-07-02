@@ -22,7 +22,7 @@ import { DateInput } from '@/components/DateInput';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { ToggleButton } from '@/components/ToggleButton';
 import { LineItemCard } from '@/components/LineItemCard';
-import { CalculationDisplay } from '@/components/CalculationDisplay';
+import { CalculationDisplay, DiscountEntry } from '@/components/CalculationDisplay';
 import { useFeeRates, useFeeLabels } from '@/lib/useTaxesFees';
 import { useProductPricing } from '@/lib/useProductPricing';
 import { Toast } from '@/components/Toast';
@@ -97,6 +97,7 @@ export default function EditQuoteScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [completedModalVisible, setCompletedModalVisible] = useState(false);
   const [editingUnlocked, setEditingUnlocked] = useState(false);
+  const [discountEntry, setDiscountEntry] = useState<DiscountEntry | null>(null);
 
   // Show the confirmation modal whenever a completed project finishes loading
   useEffect(() => {
@@ -110,6 +111,7 @@ export default function EditQuoteScreen() {
     setIsLoaded(false);
     setEditingUnlocked(false);
     setCompletedModalVisible(false);
+    setDiscountEntry(null);
   }, [id]);
 
   useEffect(() => {
@@ -128,17 +130,34 @@ export default function EditQuoteScreen() {
       setHasOnlineFee(originalQuote.hasOnlineFee);
       setHasSalesTax(originalQuote.hasSalesTax);
       setHasCardFee(originalQuote.hasCardFee);
+      setDiscountEntry(
+        originalQuote.discountData
+          ? {
+              type: originalQuote.discountData.type,
+              value: String(originalQuote.discountData.value || ''),
+              reason: originalQuote.discountData.reason || '',
+              customReason: originalQuote.discountData.customReason || '',
+            }
+          : null
+      );
       setIsLoaded(true);
     }
   }, [originalQuote, isLoaded]);
 
   // Recalculate from current form state; fall back to saved calculations so we
   // never block a save just because quantities happen to total zero.
-  const calculations = useMemo(
-    () => calculateQuote(lineItems, hasOnlineFee, hasSalesTax, hasCardFee, feeRates, upcharges)
-         ?? (isLoaded ? originalQuote?.calculations ?? null : null),
-    [lineItems, hasOnlineFee, hasSalesTax, hasCardFee, feeRates, upcharges, isLoaded, originalQuote?.calculations]
-  );
+  const calculations = useMemo(() => {
+    const parsedDiscount = (() => {
+      if (!discountEntry?.value) return null;
+      const num = parseFloat(discountEntry.value);
+      if (isNaN(num) || num <= 0) return null;
+      return { type: discountEntry.type, value: num };
+    })();
+    return (
+      calculateQuote(lineItems, hasOnlineFee, hasSalesTax, hasCardFee, feeRates, upcharges, parsedDiscount)
+      ?? (isLoaded ? originalQuote?.calculations ?? null : null)
+    );
+  }, [lineItems, hasOnlineFee, hasSalesTax, hasCardFee, feeRates, upcharges, isLoaded, originalQuote?.calculations, discountEntry]);
 
   const handleAddLineItem = useCallback(() => {
     setLineItems((prev) => [...prev, createEmptyLineItem()]);
@@ -164,6 +183,9 @@ export default function EditQuoteScreen() {
       return;
     }
 
+    const parsedDiscountValue = discountEntry?.value ? parseFloat(discountEntry.value) : NaN;
+    const hasValidDiscount = discountEntry && !isNaN(parsedDiscountValue) && parsedDiscountValue > 0;
+
     const updatedQuote: Quote = {
       ...originalQuote,
       personOrganization: personOrganization.trim(),
@@ -177,6 +199,17 @@ export default function EditQuoteScreen() {
       hasSalesTax,
       hasCardFee,
       calculations: calculations ?? originalQuote.calculations,
+      discountData: hasValidDiscount
+        ? {
+            type: discountEntry!.type,
+            value: parsedDiscountValue,
+            reason: discountEntry!.reason,
+            customReason: discountEntry!.customReason || undefined,
+            createdBy: currentUserId || undefined,
+            createdAt: originalQuote.discountData?.createdAt ?? new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+        : undefined,
     };
 
     setIsSaving(true);
@@ -196,6 +229,7 @@ export default function EditQuoteScreen() {
     personOrganization, projectName, orderType, orderDate, inHandsDate,
     invoiceNumber, lineItems, hasOnlineFee, hasSalesTax, hasCardFee,
     calculations, originalQuote, updateQuoteAsync, router,
+    discountEntry, currentUserId,
   ]);
 
   const handleSave = useCallback(() => {
@@ -422,10 +456,13 @@ export default function EditQuoteScreen() {
             <Text style={styles.sectionTitle}>Quote Summary</Text>
             <CalculationDisplay
               calculations={calculations}
+              lineItems={lineItems}
               hasOnlineFee={hasOnlineFee}
               hasSalesTax={hasSalesTax}
               hasCardFee={hasCardFee}
               upcharges={upcharges}
+              discountEntry={discountEntry}
+              onDiscountChange={setDiscountEntry}
             />
           </View>
         )}

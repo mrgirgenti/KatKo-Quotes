@@ -139,6 +139,7 @@ export function calculateQuote(
   hasCardFee: boolean,
   feeRates?: Partial<FeeRates>,
   upcharges?: Record<string, number>,
+  discount?: { type: 'percentage' | 'dollar'; value: number } | null,
 ): QuoteCalculations | null {
   if (lineItems.length === 0) {
     return null;
@@ -179,11 +180,18 @@ export function calculateQuote(
   const _salesTaxPct   = feeRates?.salesTaxPct   ?? SALES_TAX_PCT;
   const _cardFeePct    = feeRates?.cardFeePct     ?? CARD_FEE_PCT;
 
-  const onlineFee = hasOnlineFee ? (subtotal * _onlineFeePct) + _onlineFeeFlat : 0;
-  const salesTax  = hasSalesTax  ? subtotal * _salesTaxPct : 0;
-  const cardFee   = hasCardFee   ? subtotal * _cardFeePct  : 0;
+  const discountAmount = discount
+    ? discount.type === 'percentage'
+      ? subtotal * Math.max(0, Math.min(discount.value, 100)) / 100
+      : Math.max(0, Math.min(discount.value, subtotal))
+    : 0;
+  const discountedSubtotal = subtotal - discountAmount;
 
-  const total = subtotal + onlineFee + salesTax + cardFee;
+  const onlineFee = hasOnlineFee ? (discountedSubtotal * _onlineFeePct) + _onlineFeeFlat : 0;
+  const salesTax  = hasSalesTax  ? discountedSubtotal * _salesTaxPct : 0;
+  const cardFee   = hasCardFee   ? discountedSubtotal * _cardFeePct  : 0;
+
+  const total = discountedSubtotal + onlineFee + salesTax + cardFee;
   const totalPerPiece = total / totalQuantity;
 
   return {
@@ -203,6 +211,10 @@ export function calculateQuote(
     markupAmount,
     markupPercentage,
     subtotal,
+    discountAmount,
+    discountedSubtotal,
+    discountType: discount?.type,
+    discountValue: discount?.value,
     onlineFee,
     salesTax,
     cardFee,

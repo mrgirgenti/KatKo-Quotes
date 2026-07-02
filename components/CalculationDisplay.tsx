@@ -1,9 +1,37 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import Colors from '@/constants/colors';
 import { QuoteCalculations, LineItem } from '@/types/quote';
 import { formatCurrency, formatPercentage, calculateLineItemSubtotal } from '@/utils/quoteCalculations';
 import { ONLINE_FEE_LABEL, CARD_FEE_LABEL, SALES_TAX_LABEL } from '@/constants/fees';
+import OverlayMenu from '@/components/OverlayMenu';
+
+export const DISCOUNT_REASONS = [
+  { key: 'repeat_customer', label: 'Repeat Customer' },
+  { key: 'nonprofit', label: 'Nonprofit' },
+  { key: 'church', label: 'Church' },
+  { key: 'school', label: 'School' },
+  { key: 'employee', label: 'Employee' },
+  { key: 'family', label: 'Family' },
+  { key: 'marketing_promotion', label: 'Marketing Promotion' },
+  { key: 'price_match', label: 'Price Match' },
+  { key: 'sales_adjustment', label: 'Sales Adjustment' },
+  { key: 'customer_service', label: 'Customer Service' },
+  { key: 'other', label: 'Other' },
+  { key: 'custom', label: 'Custom…' },
+];
+
+export function discountReasonLabel(key: string, customReason?: string): string {
+  if (key === 'custom') return customReason || 'Custom';
+  return DISCOUNT_REASONS.find(r => r.key === key)?.label ?? key;
+}
+
+export interface DiscountEntry {
+  type: 'percentage' | 'dollar';
+  value: string;
+  reason: string;
+  customReason: string;
+}
 
 interface CalculationDisplayProps {
   calculations: QuoteCalculations | null;
@@ -12,6 +40,8 @@ interface CalculationDisplayProps {
   hasSalesTax: boolean;
   hasCardFee: boolean;
   upcharges?: Record<string, number>;
+  discountEntry?: DiscountEntry | null;
+  onDiscountChange?: (entry: DiscountEntry | null) => void;
 }
 
 export function CalculationDisplay({
@@ -21,6 +51,8 @@ export function CalculationDisplay({
   hasSalesTax,
   hasCardFee,
   upcharges,
+  discountEntry,
+  onDiscountChange,
 }: CalculationDisplayProps) {
   if (!calculations) {
     return (
@@ -34,14 +66,23 @@ export function CalculationDisplay({
   }
 
   const qty = calculations.totalQuantity;
+  const isInteractive = !!onDiscountChange;
+  const hasDiscount = (calculations.discountAmount ?? 0) > 0;
+  const discountedSub = calculations.discountedSubtotal ?? calculations.subtotal;
+
+  const discountDisplayLabel = calculations.discountType === 'percentage'
+    ? `Discount (${(calculations.discountValue ?? 0).toFixed(1)}%)`
+    : `Discount ($${(calculations.discountValue ?? 0).toFixed(2)})`;
+
+  const selectedReasonLabel = discountEntry?.reason
+    ? discountReasonLabel(discountEntry.reason, discountEntry.customReason)
+    : '';
 
   return (
     <View style={styles.container}>
 
-      {/* ── QUOTE SUMMARY header ── */}
       <Text style={styles.sectionTitle}>QUOTE SUMMARY</Text>
 
-      {/* ── Cost breakdown: Product / Service / Production ── */}
       <View style={styles.tableHeader}>
         <Text style={styles.headerCell} />
         <Text style={styles.headerCellRight}>Each</Text>
@@ -68,7 +109,6 @@ export function CalculationDisplay({
 
       <View style={styles.divider} />
 
-      {/* ── Aggregated buckets ── */}
       <View style={[styles.tableRow, styles.cogRow]}>
         <Text style={styles.cogCell}>Production Cost</Text>
         <Text style={styles.cogCellRight}>{formatCurrency(calculations.cogEach)}</Text>
@@ -91,7 +131,6 @@ export function CalculationDisplay({
         <Text style={styles.markupCellRight}>{formatCurrency(calculations.markupAmount)}</Text>
       </View>
 
-      {/* ── Per-line-item subtotals (multi-design quotes) ── */}
       {lineItems.length > 1 && (
         <>
           <View style={styles.divider} />
@@ -118,7 +157,7 @@ export function CalculationDisplay({
 
       <View style={styles.divider} />
 
-      {/* ── CLIENT QUOTE PRICE ── */}
+      {/* CLIENT QUOTE PRICE */}
       <View style={styles.clientQuoteSection}>
         <Text style={styles.clientQuoteSectionTitle}>Client Quote Price</Text>
         <View style={styles.clientQuoteTableHeader}>
@@ -126,6 +165,8 @@ export function CalculationDisplay({
           <Text style={styles.clientQuoteHeaderCellRight}>Each</Text>
           <Text style={styles.clientQuoteHeaderCellRight}>Total</Text>
         </View>
+
+        {/* Subtotal row */}
         <View style={styles.clientQuoteRow}>
           <Text style={styles.clientQuoteLabel}>Subtotal</Text>
           <Text style={styles.clientQuoteValue}>
@@ -133,6 +174,130 @@ export function CalculationDisplay({
           </Text>
           <Text style={styles.clientQuoteValue}>{formatCurrency(calculations.subtotal)}</Text>
         </View>
+
+        {/* Discount — add button (interactive, no discount yet) */}
+        {isInteractive && !discountEntry && (
+          <TouchableOpacity
+            style={styles.addDiscountBtn}
+            onPress={() => onDiscountChange!({ type: 'percentage', value: '', reason: '', customReason: '' })}
+          >
+            <Text style={styles.addDiscountBtnText}>+ Add Discount</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Discount — interactive controls */}
+        {isInteractive && discountEntry && (
+          <View style={styles.discountSection}>
+            <Text style={styles.discountSectionLabel}>DISCOUNT</Text>
+
+            {/* Type toggle + value input + remove */}
+            <View style={styles.discountInputRow}>
+              <View style={styles.discountTypeToggle}>
+                <TouchableOpacity
+                  style={[styles.discountTypeBtn, discountEntry.type === 'percentage' && styles.discountTypeBtnActive]}
+                  onPress={() => onDiscountChange!({ ...discountEntry, type: 'percentage' })}
+                >
+                  <Text style={[styles.discountTypeBtnText, discountEntry.type === 'percentage' && styles.discountTypeBtnTextActive]}>%</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.discountTypeBtn, discountEntry.type === 'dollar' && styles.discountTypeBtnActive]}
+                  onPress={() => onDiscountChange!({ ...discountEntry, type: 'dollar' })}
+                >
+                  <Text style={[styles.discountTypeBtnText, discountEntry.type === 'dollar' && styles.discountTypeBtnTextActive]}>$</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TextInput
+                style={styles.discountValueInput}
+                value={discountEntry.value}
+                onChangeText={v => onDiscountChange!({ ...discountEntry, value: v.replace(/[^0-9.]/g, '') })}
+                placeholder={discountEntry.type === 'percentage' ? 'e.g. 10' : 'e.g. 50.00'}
+                keyboardType="decimal-pad"
+                placeholderTextColor={Colors.light.textSecondary}
+              />
+
+              <TouchableOpacity style={styles.discountRemoveBtn} onPress={() => onDiscountChange!(null)}>
+                <Text style={styles.discountRemoveText}>×</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Reason selector */}
+            <View style={styles.discountReasonRow}>
+              <Text style={styles.discountReasonLabel}>Reason</Text>
+              <OverlayMenu
+                menuWidth={230}
+                align="right"
+                trigger={({ open }) => (
+                  <TouchableOpacity style={styles.discountReasonTrigger} onPress={open}>
+                    <Text
+                      style={[styles.discountReasonTriggerText, !discountEntry.reason && styles.discountReasonPlaceholder]}
+                      numberOfLines={1}
+                    >
+                      {discountEntry.reason ? selectedReasonLabel : 'Select reason…'}
+                    </Text>
+                    <Text style={styles.discountReasonChevron}>▾</Text>
+                  </TouchableOpacity>
+                )}
+              >
+                {({ close }) => (
+                  <>
+                    {DISCOUNT_REASONS.map(r => (
+                      <TouchableOpacity
+                        key={r.key}
+                        style={[
+                          styles.discountReasonItem,
+                          discountEntry.reason === r.key && styles.discountReasonItemActive,
+                        ]}
+                        onPress={() => {
+                          close();
+                          onDiscountChange!({
+                            ...discountEntry,
+                            reason: r.key,
+                            customReason: r.key !== 'custom' ? '' : discountEntry.customReason,
+                          });
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.discountReasonItemText,
+                            discountEntry.reason === r.key && styles.discountReasonItemTextActive,
+                          ]}
+                        >
+                          {r.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </>
+                )}
+              </OverlayMenu>
+            </View>
+
+            {/* Custom reason text input */}
+            {discountEntry.reason === 'custom' && (
+              <TextInput
+                style={styles.discountCustomInput}
+                value={discountEntry.customReason}
+                onChangeText={v => onDiscountChange!({ ...discountEntry, customReason: v })}
+                placeholder="Describe the reason…"
+                placeholderTextColor={Colors.light.textSecondary}
+                maxLength={120}
+              />
+            )}
+          </View>
+        )}
+
+        {/* Discount display row (shows whenever a discount is computed) */}
+        {hasDiscount && (
+          <View style={styles.discountDisplayRow}>
+            <Text style={styles.discountDisplayLabel}>{discountDisplayLabel}</Text>
+            <Text style={styles.discountDisplayValue}>
+              {qty > 0 ? `−${formatCurrency((calculations.discountAmount ?? 0) / qty)}` : '—'}
+            </Text>
+            <Text style={styles.discountDisplayValue}>{`−${formatCurrency(calculations.discountAmount ?? 0)}`}</Text>
+          </View>
+        )}
+
+        {/* Online fee */}
         <View style={styles.clientQuoteRow}>
           <Text style={styles.clientQuoteLabel}>{`Online Fee (${ONLINE_FEE_LABEL})`}</Text>
           <Text style={styles.clientQuoteValue}>
@@ -140,20 +305,22 @@ export function CalculationDisplay({
           </Text>
           <Text style={styles.clientQuoteValue}>{formatCurrency(calculations.onlineFee)}</Text>
         </View>
+
+        {/* Quote total (discounted subtotal + online fee) */}
         <View style={styles.clientQuoteTotalRow}>
           <Text style={styles.clientQuoteTotalLabel}>Quote Total</Text>
           <Text style={styles.clientQuoteTotalValue}>
-            {formatCurrency(qty > 0 ? (calculations.subtotal + calculations.onlineFee) / qty : 0)}
+            {formatCurrency(qty > 0 ? (discountedSub + calculations.onlineFee) / qty : 0)}
           </Text>
           <Text style={styles.clientQuoteTotalValue}>
-            {formatCurrency(calculations.subtotal + calculations.onlineFee)}
+            {formatCurrency(discountedSub + calculations.onlineFee)}
           </Text>
         </View>
       </View>
 
       <View style={styles.divider} />
 
-      {/* ── ADDITIONAL FEES ── */}
+      {/* ADDITIONAL FEES */}
       <View style={styles.feesSection}>
         <Text style={styles.feesSectionTitle}>Additional Fees (when applicable)</Text>
         <View style={styles.feesTableHeader}>
@@ -177,7 +344,7 @@ export function CalculationDisplay({
         </View>
       </View>
 
-      {/* ── Grand Total ── */}
+      {/* Grand Total */}
       <View style={styles.totalSection}>
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>TOTAL</Text>
@@ -360,7 +527,6 @@ const styles = StyleSheet.create({
     color: Colors.light.tint,
   },
   clientQuoteSection: {
-    gap: 0,
     backgroundColor: Colors.light.highlightBg,
     marginHorizontal: -16,
     paddingHorizontal: 16,
@@ -434,6 +600,168 @@ const styles = StyleSheet.create({
     color: Colors.light.highlight,
     textAlign: 'right' as const,
   },
+  /* ── Discount interactive section ── */
+  addDiscountBtn: {
+    paddingVertical: 8,
+    paddingTop: 6,
+    alignSelf: 'flex-start' as const,
+  },
+  addDiscountBtnText: {
+    fontSize: 13,
+    color: Colors.light.tint,
+    fontWeight: '600' as const,
+  },
+  discountSection: {
+    marginTop: 8,
+    marginBottom: 4,
+    gap: 8,
+    backgroundColor: '#FFF8F2',
+    marginHorizontal: -16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#FFE0C0',
+  },
+  discountSectionLabel: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: '#B45309',
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.4,
+    marginBottom: 2,
+  },
+  discountInputRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+  },
+  discountTypeToggle: {
+    flexDirection: 'row' as const,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    overflow: 'hidden' as const,
+  },
+  discountTypeBtn: {
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    backgroundColor: '#fff',
+  },
+  discountTypeBtnActive: {
+    backgroundColor: Colors.light.tint,
+  },
+  discountTypeBtnText: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+  },
+  discountTypeBtnTextActive: {
+    color: '#fff',
+  },
+  discountValueInput: {
+    flex: 1,
+    height: 34,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    fontSize: 14,
+    color: Colors.light.text,
+    backgroundColor: '#fff',
+  },
+  discountRemoveBtn: {
+    width: 28,
+    height: 28,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  discountRemoveText: {
+    fontSize: 22,
+    lineHeight: 22,
+    color: Colors.light.textSecondary,
+  },
+  discountReasonRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+  },
+  discountReasonLabel: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    fontWeight: '600' as const,
+    width: 50,
+  },
+  discountReasonTrigger: {
+    flex: 1,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    height: 34,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    backgroundColor: '#fff',
+  },
+  discountReasonTriggerText: {
+    fontSize: 13,
+    color: Colors.light.text,
+    flex: 1,
+  },
+  discountReasonPlaceholder: {
+    color: Colors.light.textSecondary,
+  },
+  discountReasonChevron: {
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+    marginLeft: 4,
+  },
+  discountReasonItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  discountReasonItemActive: {
+    backgroundColor: Colors.light.highlightBg,
+  },
+  discountReasonItemText: {
+    fontSize: 14,
+    color: Colors.light.text,
+  },
+  discountReasonItemTextActive: {
+    color: Colors.light.tint,
+    fontWeight: '600' as const,
+  },
+  discountCustomInput: {
+    height: 34,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    fontSize: 14,
+    color: Colors.light.text,
+    backgroundColor: '#fff',
+  },
+  /* ── Discount display row ── */
+  discountDisplayRow: {
+    flexDirection: 'row' as const,
+    paddingVertical: 5,
+    marginTop: 2,
+  },
+  discountDisplayLabel: {
+    flex: 1,
+    fontSize: 13,
+    color: '#DC2626',
+    fontWeight: '600' as const,
+  },
+  discountDisplayValue: {
+    width: 70,
+    fontSize: 13,
+    color: '#DC2626',
+    textAlign: 'right' as const,
+    fontWeight: '600' as const,
+  },
+  /* ── Additional fees ── */
   feesSection: {
     gap: 0,
   },
@@ -482,6 +810,7 @@ const styles = StyleSheet.create({
     color: Colors.light.textSecondary,
     textAlign: 'right' as const,
   },
+  /* ── Grand total ── */
   totalSection: {
     backgroundColor: Colors.light.tint,
     marginHorizontal: -16,

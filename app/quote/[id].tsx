@@ -1217,6 +1217,41 @@ export default function QuoteDetailScreen() {
               <Text style={styles.pricingRowValueBold}>{formatCurrency(q.subtotal)}</Text>
             </View>
 
+            {(q.discountAmount ?? 0) > 0 && (
+              <>
+                <View style={[styles.pricingRow, styles.pricingRowDiscount]}>
+                  <Text style={styles.pricingRowLabelDiscount}>
+                    {q.discountType === 'percentage'
+                      ? `Discount (${(q.discountValue ?? 0).toFixed(1)}%)`
+                      : `Discount ($${(q.discountValue ?? 0).toFixed(2)})`}
+                  </Text>
+                  <Text style={styles.pricingRowValueDiscount}>{`−${formatCurrency(perPc(q.discountAmount ?? 0))}`}</Text>
+                  <Text style={styles.pricingRowValueDiscount}>{`−${formatCurrency(q.discountAmount ?? 0)}`}</Text>
+                </View>
+                {quote.discountData?.reason && (
+                  <View style={styles.pricingDiscountReasonRow}>
+                    <Text style={styles.pricingDiscountReasonText}>
+                      {`Reason: ${quote.discountData.reason === 'custom'
+                        ? (quote.discountData.customReason || 'Custom')
+                        : (({
+                            repeat_customer: 'Repeat Customer',
+                            nonprofit: 'Nonprofit',
+                            church: 'Church',
+                            school: 'School',
+                            employee: 'Employee',
+                            family: 'Family',
+                            marketing_promotion: 'Marketing Promotion',
+                            price_match: 'Price Match',
+                            sales_adjustment: 'Sales Adjustment',
+                            customer_service: 'Customer Service',
+                            other: 'Other',
+                          } as Record<string, string>)[quote.discountData.reason] ?? quote.discountData.reason)}`}
+                    </Text>
+                  </View>
+                )}
+              </>
+            )}
+
             {q.onlineFee > 0 && (
               <View style={styles.pricingRow}>
                 <Text style={styles.pricingRowLabel}>{`Online Fee (${ONLINE_FEE_LABEL})`}</Text>
@@ -2484,6 +2519,33 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: Colors.light.text,
     textAlign: 'right' as const,
+  },
+  pricingRowDiscount: {
+    backgroundColor: '#FFF5F5',
+    marginHorizontal: -16,
+    paddingHorizontal: 16,
+  },
+  pricingRowLabelDiscount: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#DC2626',
+  },
+  pricingRowValueDiscount: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#DC2626',
+    textAlign: 'right' as const,
+  },
+  pricingDiscountReasonRow: {
+    paddingVertical: 4,
+    paddingHorizontal: 0,
+  },
+  pricingDiscountReasonText: {
+    fontSize: 12,
+    color: '#B45309',
+    fontStyle: 'italic' as const,
   },
   totalDoubleValue: {
     flexDirection: 'row',

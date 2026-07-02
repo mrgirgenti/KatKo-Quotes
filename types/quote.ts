@@ -183,6 +183,16 @@ export interface LineItem {
   otherCharges?: QuoteAdjustment[];
 }
 
+export interface DiscountData {
+  type: 'percentage' | 'dollar';
+  value: number;
+  reason: string;
+  customReason?: string;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface QuoteCalculations {
   totalQuantity: number;
   productCostEach: number;
@@ -208,6 +218,14 @@ export interface QuoteCalculations {
   markupAmount: number;
   markupPercentage: number;
   subtotal: number;
+  /** Dollar amount discounted off the gross subtotal (0 when no discount). */
+  discountAmount?: number;
+  /** Subtotal after discount is applied — the basis for all fee/tax calculations. */
+  discountedSubtotal?: number;
+  /** The type of discount applied ('percentage' or 'dollar'). */
+  discountType?: 'percentage' | 'dollar';
+  /** The raw input value (e.g. 10 for "10%", 50 for "$50"). */
+  discountValue?: number;
   onlineFee: number;
   salesTax: number;
   cardFee: number;
@@ -256,6 +274,7 @@ export interface Quote {
   priority?: ProjectPriority | null;
   assignedToUserId?: string | null;
   rush?: boolean;
+  discountData?: DiscountData;
   // Computed mockup DTO fields — populated by API, consumed by all display surfaces.
   // Never independently derived in components; always read from the project object.
   primaryMockup?: string | null;

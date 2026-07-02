@@ -256,6 +256,7 @@ model Project {
   calculations     Json?
   salesData        Json?
   lineItemsData    Json?
+  discountData     Json?
   frontendStatus   String        @default("quoted")
   activeDate       String?
   isLocked         Boolean       @default(false)
