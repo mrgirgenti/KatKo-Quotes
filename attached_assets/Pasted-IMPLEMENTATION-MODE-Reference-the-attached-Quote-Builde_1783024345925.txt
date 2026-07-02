@@ -1,0 +1,207 @@
+IMPLEMENTATION MODE
+
+Reference the attached Quote Builder mockup. It is the approved design specification. If the existing implementation differs from the mockup, replace the implementation with the approved design. Do not preserve legacy UI for backwards compatibility.
+
+Follow all existing project documentation including the Implementation Definition of Done, Architecture Principles, Business Rules, UI Design System, README and Roadmap.
+
+This task is intentionally LIMITED IN SCOPE.
+
+Only redesign and implement the DTF Service Calculator.
+
+Do not redesign Design Details.
+
+Do not redesign Products + Sizes.
+
+Do not redesign Pricing Adjustments.
+
+Do not redesign Line Item Costs.
+
+Do not redesign Quote Summary.
+
+Do not modify APIs.
+
+Do not modify the database.
+
+Do not change Client Hub.
+
+--------------------------------------------------
+
+OBJECTIVE
+
+The DTF Calculator exists ONLY to calculate SERVICE COST.
+
+It does NOT calculate:
+
+• Product Cost
+
+• Quote Total
+
+• Discounts
+
+• Markup
+
+• Taxes
+
+• Shipping
+
+Those belong elsewhere.
+
+--------------------------------------------------
+
+LAYOUT
+
+Maintain the current calculator style shown in the approved mockup.
+
+Do NOT replace it with a generic form.
+
+The calculator should continue reading like an equation.
+
+Width × Height = Square Inches × Rate = Service Cost
+
+--------------------------------------------------
+
+INPUTS
+
+Width
+
+Height
+
+Vendor
+
+Rate
+
+Locations
+
+Pricing Preset
+
+Suggested Sell Price
+
+Apply
+
+--------------------------------------------------
+
+WIDTH / HEIGHT
+
+Defaults
+
+0.00
+
+Always display two decimal places.
+
+Auto formatting:
+
+2
+
+→ 2.00
+
+25
+
+→ 25.00
+
+234
+
+→ 2.34
+
+1250
+
+→ 12.50
+
+Display "in"
+
+after both Width and Height.
+
+--------------------------------------------------
+
+VENDOR
+
+Add Vendor dropdown.
+
+Future architecture:
+
+Vendor changes default rate.
+
+Do NOT implement vendor pricing.
+
+--------------------------------------------------
+
+RATE
+
+Editable.
+
+Small input.
+
+Displayed as
+
+$/sq in
+
+--------------------------------------------------
+
+LAYOUT
+
+Reduce Width, Height and Rate input widths.
+
+Increase the visual emphasis of:
+
+Service Cost
+
+This should be the largest number in the calculator.
+
+--------------------------------------------------
+
+PRICING PRESET
+
+Reserve a Pricing Preset dropdown.
+
+Examples:
+
+Pocket Print
+
+Center Chest
+
+Large Front
+
+Large Back
+
+Oversized
+
+Custom
+
+Do NOT implement preset functionality.
+
+--------------------------------------------------
+
+SUGGESTED SELL PRICE
+
+Editable currency field.
+
+Future presets populate this automatically.
+
+Do NOT implement.
+
+--------------------------------------------------
+
+APPLY
+
+Do NOT implement Pricing Adjustment creation.
+
+Simply preserve architecture.
+
+--------------------------------------------------
+
+SUCCESS CRITERIA
+
+The DTF Calculator should feel like a production worksheet.
+
+The calculation should be understandable without explanation.
+
+No pricing logic outside DTF changes.
+
+Provide:
+
+• Files changed
+
+• Screenshot
+
+• Confirmation no APIs changed
+
+• Confirmation no DB changes

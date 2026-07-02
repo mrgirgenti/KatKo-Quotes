@@ -747,6 +747,9 @@ interface LineItemCardProps {
   onDuplicate?: () => void;
 }
 
+const DTF_VENDORS = ['Siser', 'ColDesi', 'Transfers Express', 'RhinoTech', 'DPG', 'Other'];
+const DTF_PRESETS = ['Pocket Print', 'Center Chest', 'Large Front', 'Large Back', 'Oversized', 'Custom'];
+
 function LineItemCardFn({
   item,
   index,
@@ -774,6 +777,10 @@ function LineItemCardFn({
   const [dtfHeight2, setDtfHeight2] = useState('');
   const [dtfRate, setDtfRate] = useState('003');
   const [focusedDtfField, setFocusedDtfField] = useState<string | null>(null);
+  const [dtfVendor, setDtfVendor] = useState('');
+  const [dtfPreset, setDtfPreset] = useState('');
+  const [dtfSuggestedPrice, setDtfSuggestedPrice] = useState('');
+  const [focusedSuggestedPrice, setFocusedSuggestedPrice] = useState(false);
   const [embStitchCount1, setEmbStitchCount1] = useState('');
   const [embStitchCount2, setEmbStitchCount2] = useState('');
   const DIGITIZATION_ROW_ID = '__digitization_fee__';
@@ -1672,9 +1679,85 @@ function LineItemCardFn({
                 </View>
                 <View style={styles.calcBody}>
 
-                  {/* DTF Calculator */}
+                  {/* DTF Service Calculator */}
                   {(isDTF || isDTFTransfers) && (
                     <View>
+
+                      {/* ── Controls: Vendor | Preset | Suggested Sell | Locations ── */}
+                      <View style={styles.dtfControlsRow}>
+                        <OverlayMenu menuWidth={180} align="left"
+                          trigger={({ open }) => (
+                            <TouchableOpacity style={styles.dtfControlChip} onPress={open} activeOpacity={0.75}>
+                              <Text style={styles.dtfControlChipLabel}>VENDOR</Text>
+                              <View style={styles.dtfControlChipValueRow}>
+                                <Text style={styles.dtfControlChipValue} numberOfLines={1}>
+                                  {dtfVendor || 'Select…'}
+                                </Text>
+                                <ChevronDown size={9} color={Colors.light.textSecondary} />
+                              </View>
+                            </TouchableOpacity>
+                          )}
+                        >
+                          {({ close }) => (
+                            <>
+                              {DTF_VENDORS.map((v) => (
+                                <TouchableOpacity key={v} style={styles.dtfMenuRow} onPress={() => { setDtfVendor(v); close(); }}>
+                                  <Text style={[styles.dtfMenuRowText, dtfVendor === v && styles.dtfMenuRowActive]}>{v}</Text>
+                                </TouchableOpacity>
+                              ))}
+                            </>
+                          )}
+                        </OverlayMenu>
+
+                        <OverlayMenu menuWidth={210} align="left"
+                          trigger={({ open }) => (
+                            <TouchableOpacity style={styles.dtfControlChip} onPress={open} activeOpacity={0.75}>
+                              <Text style={styles.dtfControlChipLabel}>PRICING PRESET</Text>
+                              <View style={styles.dtfControlChipValueRow}>
+                                <Text style={styles.dtfControlChipValue} numberOfLines={1}>
+                                  {dtfPreset || 'Select…'}
+                                </Text>
+                                <ChevronDown size={9} color={Colors.light.textSecondary} />
+                              </View>
+                            </TouchableOpacity>
+                          )}
+                        >
+                          {({ close }) => (
+                            <>
+                              {DTF_PRESETS.map((p) => (
+                                <TouchableOpacity key={p} style={styles.dtfMenuRow} onPress={() => { setDtfPreset(p); close(); }}>
+                                  <Text style={[styles.dtfMenuRowText, dtfPreset === p && styles.dtfMenuRowActive]}>{p}</Text>
+                                </TouchableOpacity>
+                              ))}
+                            </>
+                          )}
+                        </OverlayMenu>
+
+                        <View style={styles.dtfSuggestedGroup}>
+                          <Text style={styles.dtfControlChipLabel}>SUGGESTED SELL</Text>
+                          <View style={styles.dtfInputWrapper}>
+                            <Text style={styles.dtfDollar}>$</Text>
+                            <TextInput
+                              style={styles.dtfRateInput}
+                              value={focusedSuggestedPrice && dtfSuggestedPrice === '' ? '' : formatCents(dtfSuggestedPrice)}
+                              onChangeText={(t) => setDtfSuggestedPrice(applyPosEdit(t))}
+                              onFocus={() => setFocusedSuggestedPrice(true)}
+                              onBlur={() => setFocusedSuggestedPrice(false)}
+                              keyboardType="number-pad"
+                              placeholder="0.00"
+                              placeholderTextColor={Colors.light.textSecondary}
+                              selectTextOnFocus
+                            />
+                          </View>
+                        </View>
+
+                        <View style={styles.dtfLocationsGroup}>
+                          <Text style={styles.dtfControlChipLabel}>LOCATIONS</Text>
+                          <Text style={styles.dtfLocationsValue}>{hasSecondLocation ? '2' : '1'}</Text>
+                        </View>
+                      </View>
+
+                      {/* ── Location #1 equation: W × H = sq in × Rate = Subtotal ── */}
                       <Text style={styles.calcLocationLabel}>
                         Location #1 {item.location1 ? `(${item.location1})` : ''}
                       </Text>
@@ -1716,14 +1799,14 @@ function LineItemCardFn({
                         </View>
                         <Text style={styles.dtfOperator}>=</Text>
                         <View style={styles.dtfSqftCol}>
-                          <Text style={styles.dtfInputLabel}>TOTAL SQ IN</Text>
+                          <Text style={styles.dtfInputLabel}>SQ IN</Text>
                           <View style={styles.dtfSqftBox}>
-                            <Text style={styles.dtfSqftValue}>{dtfSquareInches1.toFixed(2)} sq in</Text>
+                            <Text style={styles.dtfSqftValue}>{dtfSquareInches1.toFixed(2)}</Text>
                           </View>
                         </View>
                         <Text style={styles.dtfOperator}>×</Text>
                         <View style={styles.dtfRateGroup}>
-                          <Text style={styles.dtfInputLabel}>RATE PER INCH</Text>
+                          <Text style={styles.dtfInputLabel}>RATE</Text>
                           <View style={styles.dtfInputWrapper}>
                             <Text style={styles.dtfDollar}>$</Text>
                             <TextInput
@@ -1737,17 +1820,19 @@ function LineItemCardFn({
                               placeholderTextColor={Colors.light.textSecondary}
                               selectTextOnFocus
                             />
+                            <Text style={styles.dtfInputSuffix}>/sq in</Text>
                           </View>
                         </View>
                         <Text style={styles.dtfOperator}>=</Text>
                         <View style={styles.dtfTotalCol}>
-                          <Text style={styles.dtfInputLabel}>TOTAL</Text>
+                          <Text style={styles.dtfInputLabel}>SUBTOTAL</Text>
                           <View style={styles.dtfDisplayBox}>
                             <Text style={styles.dtfTotalColVal}>${dtfCalculatedCost1.toFixed(2)}</Text>
                           </View>
                         </View>
                       </View>
 
+                      {/* ── Location #2 equation (only when hasSecondLocation) ── */}
                       {hasSecondLocation && (
                         <>
                           <View style={styles.dtfLocationDivider} />
@@ -1792,14 +1877,14 @@ function LineItemCardFn({
                             </View>
                             <Text style={styles.dtfOperator}>=</Text>
                             <View style={styles.dtfSqftCol}>
-                              <Text style={styles.dtfInputLabel}>TOTAL SQ IN</Text>
+                              <Text style={styles.dtfInputLabel}>SQ IN</Text>
                               <View style={styles.dtfSqftBox}>
-                                <Text style={styles.dtfSqftValue}>{dtfSquareInches2.toFixed(2)} sq in</Text>
+                                <Text style={styles.dtfSqftValue}>{dtfSquareInches2.toFixed(2)}</Text>
                               </View>
                             </View>
                             <Text style={styles.dtfOperator}>×</Text>
                             <View style={styles.dtfRateGroup}>
-                              <Text style={styles.dtfInputLabel}>RATE PER INCH</Text>
+                              <Text style={styles.dtfInputLabel}>RATE</Text>
                               <View style={styles.dtfInputWrapper}>
                                 <Text style={styles.dtfDollar}>$</Text>
                                 <TextInput
@@ -1809,11 +1894,12 @@ function LineItemCardFn({
                                   keyboardType="number-pad"
                                   placeholderTextColor={Colors.light.textSecondary}
                                 />
+                                <Text style={styles.dtfInputSuffix}>/sq in</Text>
                               </View>
                             </View>
                             <Text style={styles.dtfOperator}>=</Text>
                             <View style={styles.dtfTotalCol}>
-                              <Text style={styles.dtfInputLabel}>TOTAL</Text>
+                              <Text style={styles.dtfInputLabel}>SUBTOTAL</Text>
                               <View style={styles.dtfDisplayBox}>
                                 <Text style={styles.dtfTotalColVal}>${dtfCalculatedCost2.toFixed(2)}</Text>
                               </View>
@@ -1822,13 +1908,12 @@ function LineItemCardFn({
                         </>
                       )}
 
-                      <View style={styles.dtfTotalRow}>
-                        <Text style={styles.dtfTotalLabel}>
-                          TOTAL:{' '}
-                          <Text style={styles.dtfTotalValue}>
-                            ${dtfTotalCalculatedCost.toFixed(2)}
-                          </Text>
-                        </Text>
+                      {/* ── Service Cost footer ── */}
+                      <View style={styles.dtfServiceCostRow}>
+                        <View style={styles.dtfServiceCostBlock}>
+                          <Text style={styles.dtfServiceCostLabel}>SERVICE COST</Text>
+                          <Text style={styles.dtfServiceCostValue}>${dtfTotalCalculatedCost.toFixed(2)}</Text>
+                        </View>
                         <TouchableOpacity
                           style={[
                             styles.applyBtn,
@@ -2719,13 +2804,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dtfInputGroupFixed: {
-    flex: 1,
+    width: 72,
   },
   dtfRateGroup: {
-    flex: 1,
+    width: 98,
   },
   dtfSqftCol: {
     flex: 1,
+    minWidth: 62,
   },
   dtfSqftValue: {
     fontSize: 13,
@@ -2735,6 +2821,7 @@ const styles = StyleSheet.create({
   },
   dtfTotalCol: {
     flex: 1,
+    minWidth: 68,
   },
   dtfDisplayBox: {
     height: 30,
@@ -2872,6 +2959,99 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700' as const,
     color: '#fff',
+  },
+
+  // DTF Controls row
+  dtfControlsRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-end' as const,
+    gap: 8,
+    marginBottom: 12,
+    flexWrap: 'wrap' as const,
+  },
+  dtfControlChip: {
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    minWidth: 110,
+    backgroundColor: Colors.light.surface,
+  },
+  dtfControlChipLabel: {
+    fontSize: 8,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+    marginBottom: 3,
+  },
+  dtfControlChipValueRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+  },
+  dtfControlChipValue: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.light.text,
+  },
+  dtfSuggestedGroup: {
+    minWidth: 110,
+  },
+  dtfLocationsGroup: {
+    alignItems: 'center' as const,
+    justifyContent: 'flex-end' as const,
+  },
+  dtfLocationsValue: {
+    fontSize: 22,
+    fontWeight: '800' as const,
+    color: Colors.light.text,
+    lineHeight: 30,
+  },
+
+  // DTF menu rows (inside OverlayMenu)
+  dtfMenuRow: {
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.light.border,
+  },
+  dtfMenuRowText: {
+    fontSize: 13,
+    color: Colors.light.text,
+  },
+  dtfMenuRowActive: {
+    color: Colors.light.tint,
+    fontWeight: '700' as const,
+  },
+
+  // DTF Service Cost footer
+  dtfServiceCostRow: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+  },
+  dtfServiceCostBlock: {
+    gap: 2,
+  },
+  dtfServiceCostLabel: {
+    fontSize: 9,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.6,
+  },
+  dtfServiceCostValue: {
+    fontSize: 30,
+    fontWeight: '800' as const,
+    color: Colors.light.tint,
+    lineHeight: 36,
   },
 
   // Embroidery Calculator

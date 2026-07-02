@@ -1,0 +1,325 @@
+IMPLEMENTATION MODE
+
+Reference the attached Quote Builder mockup throughout this task.
+
+The attached mockup is the approved design specification.
+
+Do NOT use the current implementation as the design reference.
+
+If the implementation conflicts with the approved mockup, delete and replace it.
+
+Do not preserve legacy UI for backward compatibility.
+
+This task is intentionally LIMITED IN SCOPE.
+
+Modify ONLY the Design Details section.
+
+Do not modify Products + Sizes.
+
+Do not modify Service Calculators.
+
+Do not modify Pricing Adjustments.
+
+Do not modify Line Item Costs.
+
+Do not modify Quote Summary.
+
+Do not modify business logic.
+
+Do not modify APIs.
+
+Do not modify database schema.
+
+====================================================
+OBJECTIVE
+====================================================
+
+The Design Details section should function as the "production specification" for a Line Item.
+
+This is NOT simply another form.
+
+It should communicate everything someone needs to know about the design before they ever look at pricing.
+
+The section should feel organized, spacious, and easy to scan.
+
+Every field should have a clear purpose.
+
+Whitespace should be used to group information rather than relying on additional borders or cards.
+
+====================================================
+SECTION LAYOUT
+====================================================
+
+Maintain the same overall footprint shown in the approved mockup.
+
+Do NOT redesign the overall card.
+
+Instead, improve the organization INSIDE the card.
+
+Group the content into four visual sections.
+
+-----------------------------------
+
+DESIGN
+
+-----------------------------------
+
+Design Name
+
+Project Notes
+
+-----------------------------------
+
+PRODUCTION
+
+-----------------------------------
+
+Service Style
+
+Product Source
+
+Priority
+
+-----------------------------------
+
+LOCATIONS
+
+-----------------------------------
+
+Decoration Locations
+
+-----------------------------------
+
+ADDITIONAL SERVICES
+
+-----------------------------------
+
+Additional Services
+
+====================================================
+MOCKUP PREVIEW
+====================================================
+
+Retain the Front and Back mockup previews.
+
+Reduce their visual footprint approximately 15%.
+
+The mockup previews should remain important but should not dominate the Design Details section.
+
+Use the reclaimed space to improve spacing throughout the form.
+
+The mockup previews should remain:
+
+• Clickable
+
+• Easy to recognize
+
+• Properly aligned
+
+Do NOT change their functionality.
+
+====================================================
+DESIGN SECTION
+====================================================
+
+Design Name
+
+Remains a standard text input.
+
+Project Notes
+
+Remains a multiline text area.
+
+Increase usable width where possible.
+
+These two fields should feel visually connected.
+
+====================================================
+PRODUCTION SECTION
+====================================================
+
+Fields:
+
+Service Style
+
+Product Source
+
+Priority
+
+All three controls should:
+
+• Share identical heights
+
+• Share identical widths where practical
+
+• Align perfectly
+
+• Use consistent spacing
+
+Do NOT introduce additional controls.
+
+Do NOT rename fields.
+
+====================================================
+DECORATION LOCATIONS
+====================================================
+
+Retain the current chip/tag style.
+
+Examples:
+
+Front
+
+Back
+
+Left Chest
+
+Right Sleeve
+
+Neck Label
+
+Etc.
+
+Maintain support for multiple locations.
+
+Do NOT redesign the chip interaction.
+
+Simply improve spacing.
+
+====================================================
+ADDITIONAL SERVICES
+====================================================
+
+Move this section BELOW Decoration Locations.
+
+Do NOT attempt to fit it beside other fields.
+
+It should occupy its own horizontal row.
+
+Maintain the current functionality.
+
+Support multiple services.
+
+Retain the existing interaction.
+
+Simply reorganize the layout.
+
+====================================================
+FIELD WIDTHS
+====================================================
+
+One weakness of the current implementation is that many fields feel unnecessarily narrow.
+
+Increase usable widths wherever possible.
+
+Design Name
+
+Project Notes
+
+Product Source
+
+should all benefit from the reclaimed space.
+
+====================================================
+WHITESPACE
+====================================================
+
+This is the primary focus of this task.
+
+Use whitespace to create hierarchy.
+
+Do NOT use more borders.
+
+Do NOT create additional cards.
+
+Do NOT create accordions.
+
+The eye should naturally scan:
+
+Mockups
+
+↓
+
+Design
+
+↓
+
+Production
+
+↓
+
+Locations
+
+↓
+
+Additional Services
+
+====================================================
+VISUAL CONSISTENCY
+====================================================
+
+Maintain:
+
+consistent margins
+
+consistent field spacing
+
+consistent label spacing
+
+consistent input heights
+
+consistent alignment
+
+No field should appear randomly offset.
+
+====================================================
+DO NOT CHANGE
+====================================================
+
+Do NOT redesign:
+
+Products + Sizes
+
+Service Calculator
+
+Pricing Adjustments
+
+Line Item Costs
+
+Quote Summary
+
+Business Logic
+
+Calculations
+
+Data Model
+
+Database
+
+APIs
+
+====================================================
+SUCCESS CRITERIA
+====================================================
+
+The Design Details section should now feel like a professional production specification panel.
+
+It should be immediately scannable.
+
+The user should understand the hierarchy without reading every label.
+
+No functionality should change.
+
+When complete provide:
+
+• Files changed
+
+• Components modified
+
+• Screenshot
+
+• Confirmation that only Design Details was modified
+
+• Confirmation that no business logic changed
+
+• Confirmation that no APIs changed

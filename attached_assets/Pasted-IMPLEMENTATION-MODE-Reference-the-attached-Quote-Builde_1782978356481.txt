@@ -1,0 +1,315 @@
+IMPLEMENTATION MODE
+
+Reference the attached Quote Builder mockup throughout this task.
+
+The attached mockup is the approved design specification.
+
+Do NOT use the existing implementation as the design reference.
+
+If the existing implementation conflicts with the mockup, delete and replace it.
+
+Do not preserve legacy UI for backwards compatibility.
+
+This task is intentionally LIMITED IN SCOPE.
+
+Only implement the layout and visual structure described below.
+
+Do not redesign calculators.
+
+Do not redesign pricing.
+
+Do not redesign products.
+
+Do not change business logic.
+
+Do not modify APIs.
+
+Do not modify database schema.
+
+Do not create placeholder UI that differs from the approved design.
+
+====================================================
+OBJECTIVE
+====================================================
+
+Rebuild the Quote Builder layout so it matches the approved mockup as closely as possible.
+
+The goal is to make every expanded Line Item feel like one cohesive production workspace instead of several unrelated cards.
+
+Everything should feel intentional, balanced, and consistent.
+
+This task is purely about layout, hierarchy, spacing, alignment, and visual consistency.
+
+====================================================
+LINE ITEM STRUCTURE
+====================================================
+
+Each expanded Line Item should contain exactly five primary sections in this order:
+
+1. Design Details
+
+2. Products + Sizes
+
+3. Service Calculator
+
+4. Pricing Adjustments
+
+5. Line Item Costs
+
+Do not add additional sections.
+
+Do not remove any sections.
+
+Do not move Quote Summary.
+
+Quote Summary remains pinned on the right side exactly as it currently is.
+
+====================================================
+LINE ITEM HEADER
+====================================================
+
+Match the approved mockup.
+
+Include:
+
+• Black header background
+
+• Orange numbered circle
+
+• Real mockup thumbnail
+
+(NOT generic apparel icon)
+
+• Design Name
+
+• Service Style
+
+• Total Quantity
+
+• Design Mockup button
+
+• Duplicate button
+
+• Collapse button
+
+• Delete button
+
+Maintain spacing exactly like the mockup.
+
+The header should feel dense but easy to scan.
+
+====================================================
+SECTION HEADERS
+====================================================
+
+Every section header should be visually identical.
+
+Requirements:
+
+• True black background
+
+• White uppercase text
+
+• Same font
+
+• Same height
+
+• Same border radius
+
+• Same padding
+
+• Same spacing above and below
+
+Sections:
+
+Design Details
+
+Products + Sizes
+
+Service Calculator
+
+Pricing Adjustments
+
+Line Item Costs
+
+There should never be slight differences between headers.
+
+====================================================
+LAYOUT GRID
+====================================================
+
+Use the proportions shown in the approved mockup.
+
+Do NOT redesign.
+
+Do NOT invent a new layout.
+
+Top Row
+
+Design Details
+
+Products + Sizes
+
+Bottom Row
+
+Service Calculator
+
+Pricing Adjustments
+
+Line Item Costs
+
+Cards should align naturally.
+
+Cards that share a row should visually balance one another.
+
+====================================================
+SPACING
+====================================================
+
+The current implementation feels cramped.
+
+Improve whitespace.
+
+Use a consistent spacing system.
+
+8px
+
+16px
+
+24px
+
+32px
+
+Avoid arbitrary spacing.
+
+Increase spacing:
+
+• Between section headers and content
+
+• Between adjacent cards
+
+• Between groups of related fields
+
+Maintain a professional SaaS appearance similar to Stripe Dashboard, QuickBooks Online or Linear.
+
+====================================================
+FORM CONTROLS
+====================================================
+
+Every dropdown
+
+Input
+
+Currency field
+
+Textarea
+
+Button
+
+Should use consistent sizing.
+
+Input heights should match.
+
+Buttons should match.
+
+Dropdowns should match.
+
+No field should feel noticeably larger or smaller than others without purpose.
+
+====================================================
+TYPOGRAPHY
+====================================================
+
+Use consistent hierarchy.
+
+Section Header
+
+↓
+
+Field Label
+
+↓
+
+Input
+
+↓
+
+Supporting text
+
+↓
+
+Totals
+
+Avoid oversized labels.
+
+Avoid tiny labels.
+
+Everything should read naturally.
+
+====================================================
+VISUAL CONSISTENCY
+====================================================
+
+The current implementation feels like separate cards placed beside one another.
+
+The goal is for the user to perceive one unified production workspace.
+
+Use:
+
+consistent margins
+
+consistent padding
+
+consistent alignment
+
+consistent spacing
+
+instead of adding additional borders.
+
+====================================================
+DO NOT CHANGE
+====================================================
+
+Do NOT redesign:
+
+Products
+
+Calculators
+
+Pricing logic
+
+Quote Summary
+
+Business logic
+
+Client Hub
+
+Line Item architecture
+
+Database
+
+APIs
+
+This task is layout only.
+
+====================================================
+SUCCESS CRITERIA
+====================================================
+
+The finished Quote Builder should visually resemble the approved mockup almost one-for-one.
+
+Another developer should be able to compare the mockup beside the implementation and immediately recognize them as the same design.
+
+When complete provide:
+
+• Files changed
+
+• Components modified
+
+• Screenshot
+
+• Confirmation no business logic changed
+
+• Confirmation no APIs changed
+
+• Confirmation no pricing logic changed

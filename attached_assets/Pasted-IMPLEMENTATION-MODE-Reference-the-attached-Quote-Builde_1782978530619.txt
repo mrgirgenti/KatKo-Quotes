@@ -1,0 +1,336 @@
+IMPLEMENTATION MODE
+
+Reference the attached Quote Builder mockup throughout this task.
+
+The attached mockup is the approved design specification.
+
+Do NOT use the existing implementation as the design reference.
+
+If the existing implementation conflicts with the approved mockup, delete and replace it.
+
+Do not preserve legacy UI for backward compatibility.
+
+This task is intentionally LIMITED IN SCOPE.
+
+Only modify the Products + Sizes section.
+
+Do NOT modify Design Details.
+
+Do NOT modify Service Calculators.
+
+Do NOT modify Pricing Adjustments.
+
+Do NOT modify Line Item Costs.
+
+Do NOT modify Quote Summary.
+
+Do NOT modify pricing logic.
+
+Do NOT modify APIs.
+
+Do NOT modify database schema.
+
+====================================================
+OBJECTIVE
+====================================================
+
+The Products + Sizes section should become the definitive workspace for defining WHAT is being decorated.
+
+This section is NOT responsible for pricing.
+
+This section is NOT responsible for production costs.
+
+This section is NOT responsible for decoration.
+
+Its only responsibility is defining the products participating in this production run.
+
+The section should feel fast, organized, scalable, and easy to scan.
+
+====================================================
+ARCHITECTURE
+====================================================
+
+Maintain the current business rule.
+
+One Line Item represents ONE production run.
+
+Multiple Products may exist within a Line Item ONLY when they share:
+
+• artwork
+• decoration method
+• decoration locations
+• production setup
+• production calculator
+• production pricing
+
+Products inside the Line Item may differ ONLY by:
+
+• Product Type
+• Product Style
+• Product Color
+• Size Quantities
+
+Do NOT change this architecture.
+
+====================================================
+PRODUCT ROWS
+====================================================
+
+Each Product should appear as its own compact row.
+
+Maintain the visual style shown in the approved mockup.
+
+Each Product contains:
+
+Product Header
+
+↓
+
+Product Information
+
+↓
+
+Size Matrix
+
+Do NOT wrap Products in heavy bordered cards.
+
+Use subtle spacing and dividers instead.
+
+====================================================
+PRODUCT HEADER
+====================================================
+
+Each Product should begin with:
+
+Product 1
+
+Product 2
+
+etc.
+
+Include:
+
+• Product label
+• Remove Product button
+• Duplicate Product button (future-ready if already available)
+• Add Product button at the bottom of the list
+
+Headers should remain compact.
+
+====================================================
+PRODUCT INFORMATION
+====================================================
+
+Each Product contains exactly three primary controls.
+
+Product Type
+
+Dropdown
+
+Examples:
+
+T-Shirt
+
+Polo
+
+Hat
+
+Hoodie
+
+Sticker
+
+Banner
+
+Bottle
+
+Etc.
+
+----------------------------------------------------
+
+Product Style
+
+Searchable product selector.
+
+Continue using the existing Product Catalog integration.
+
+DO NOT revert to manual typing.
+
+The searchable Product Catalog remains the source of truth.
+
+----------------------------------------------------
+
+Product Color
+
+Dropdown.
+
+Continue pulling available colors from the selected Product.
+
+Maintain current functionality.
+
+====================================================
+SIZE MATRIX
+====================================================
+
+Retain the horizontal size layout.
+
+Visible sizes:
+
+XS
+
+S
+
+M
+
+L
+
+XL
+
+2XL
+
+3XL
+
+4XL
+
+No hidden sizes.
+
+No accordion.
+
+No popup.
+
+Everything should remain visible.
+
+Maintain compact input widths.
+
+====================================================
+QUANTITY
+====================================================
+
+Retain the automatic total quantity calculation.
+
+Do not require users to manually enter total quantity.
+
+Total quantity should continue updating automatically.
+
+====================================================
+PRODUCT ADDITION
+====================================================
+
+Retain the existing Add Product functionality.
+
+Do NOT redesign it.
+
+The Add Product button should remain obvious but secondary to the Product rows.
+
+====================================================
+FUTURE ARCHITECTURE
+====================================================
+
+Do NOT implement this now.
+
+However, preserve the architecture to support future automatic product pricing.
+
+Eventually:
+
+Selecting a Product Style will automatically populate the Product bucket in Line Item Costs.
+
+This task should NOT implement that functionality.
+
+Simply ensure the UI does not prevent that future workflow.
+
+====================================================
+VISUAL HIERARCHY
+====================================================
+
+The Product Style selector should receive the greatest visual emphasis.
+
+Product Type
+
+Product Style
+
+Product Color
+
+should read naturally from left to right.
+
+Size quantities should immediately follow.
+
+====================================================
+SPACING
+====================================================
+
+Reduce unnecessary whitespace between:
+
+Product Header
+
+↓
+
+Product Information
+
+↓
+
+Size Matrix
+
+Increase whitespace BETWEEN Products.
+
+The eye should clearly distinguish Product 1 from Product 2.
+
+====================================================
+DO NOT CHANGE
+====================================================
+
+Do NOT redesign:
+
+Design Details
+
+Service Calculator
+
+Pricing Adjustments
+
+Line Item Costs
+
+Quote Summary
+
+Pricing Logic
+
+Business Logic
+
+Client Hub
+
+Database
+
+APIs
+
+====================================================
+SUCCESS CRITERIA
+====================================================
+
+The Products + Sizes section should now feel like a dedicated product configuration workspace rather than a generic form.
+
+The user should immediately understand:
+
+What products are included
+
+Which styles are selected
+
+Which colors are selected
+
+How many of each size are required
+
+No pricing should appear in this section.
+
+No production costs should appear in this section.
+
+No business logic should change.
+
+When complete provide:
+
+• Files changed
+
+• Components modified
+
+• Screenshot
+
+• Confirmation that only Products + Sizes was modified
+
+• Confirmation that Product Catalog integration remains intact
+
+• Confirmation that no pricing logic changed

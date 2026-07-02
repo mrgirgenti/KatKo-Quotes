@@ -1,0 +1,285 @@
+IMPLEMENTATION MODE
+
+Reference the attached Quote Builder mockup throughout this task.
+
+The attached mockup is the approved design specification.
+
+If the current implementation conflicts with the approved mockup, delete and replace it.
+
+Do not preserve legacy UI for backwards compatibility.
+
+Follow the project's Architecture Principles, Business Rules, UI Design System, Implementation Definition of Done, README, and Roadmap.
+
+This task is intentionally LIMITED IN SCOPE.
+
+Only implement the Screen Printing Service Calculator.
+
+Do NOT modify Design Details.
+
+Do NOT modify Products + Sizes.
+
+Do NOT modify Pricing Adjustments.
+
+Do NOT modify Line Item Costs.
+
+Do NOT modify Quote Summary.
+
+Do NOT modify APIs.
+
+Do NOT modify database schema.
+
+====================================================
+OBJECTIVE
+====================================================
+
+The Screen Printing Calculator exists ONLY to calculate SERVICE COST.
+
+It is NOT responsible for:
+
+• Product Cost
+• Product Pricing
+• Markup
+• Discounts
+• Taxes
+• Shipping
+• Quote Totals
+
+Those belong elsewhere.
+
+The calculator should behave like a production worksheet.
+
+====================================================
+GENERAL LAYOUT
+====================================================
+
+Match the visual style established by the DTF calculator.
+
+Maintain:
+
+• identical header
+• identical spacing
+• identical card styling
+• identical typography
+• identical footer
+
+Only the calculator inputs should differ.
+
+====================================================
+DECORATOR
+====================================================
+
+Add:
+
+Decorator / Applicator
+
+Dropdown
+
+Future:
+
+This dropdown will load pricing matrices based on the selected decorator.
+
+Do NOT implement pricing lookup.
+
+Simply preserve the architecture.
+
+====================================================
+QUANTITY
+====================================================
+
+Editable Quantity field.
+
+Future:
+
+Automatically populated from Products + Sizes.
+
+Do NOT implement that functionality now.
+
+====================================================
+PRINT LOCATIONS
+====================================================
+
+Support:
+
+1
+
+2
+
+3
+
+4
+
+print locations.
+
+No accordion.
+
+Everything remains visible.
+
+====================================================
+FOR EACH LOCATION
+====================================================
+
+Every location should contain:
+
+Location
+
+Dropdown
+
+Examples:
+
+Front
+
+Back
+
+Left Chest
+
+Sleeve
+
+Tag
+
+Etc.
+
+----------------------------------------------------
+
+Number of Colors
+
+Editable Number
+
+----------------------------------------------------
+
+Number of Screens
+
+Editable Number
+
+----------------------------------------------------
+
+Notes
+
+Optional
+
+====================================================
+LOCATION LAYOUT
+====================================================
+
+Locations should stack vertically.
+
+Example
+
+Location 1
+
+Location 2
+
+Location 3
+
+Location 4
+
+The user should never lose context.
+
+====================================================
+ADDITIONAL OPTIONS
+====================================================
+
+Reserve space for future production options.
+
+Do NOT implement logic.
+
+Future examples:
+
+Metallic Ink
+
+PMS Match
+
+Fold & Bag
+
+Names
+
+Numbers
+
+Long Sleeves
+
+Specialty Ink
+
+Rush
+
+These are NOT checkboxes yet.
+
+They will eventually integrate with Pricing Adjustments.
+
+====================================================
+SERVICE COST
+====================================================
+
+Reserve a calculated Service Cost display.
+
+Large.
+
+Prominent.
+
+This represents ONLY the screen printing service.
+
+Nothing else.
+
+====================================================
+PRICING PRESET
+====================================================
+
+Reserve:
+
+Pricing Preset
+
+Dropdown
+
+Future examples:
+
+1 Color Front
+
+2 Color Front
+
+Front + Back
+
+Pocket + Back
+
+Custom
+
+Do NOT implement logic.
+
+====================================================
+SUGGESTED SELL PRICE
+====================================================
+
+Reserve editable field.
+
+Future presets populate this.
+
+Do NOT implement.
+
+====================================================
+APPLY
+====================================================
+
+Retain Apply button.
+
+Future:
+
+Creates Pricing Adjustment rows.
+
+Do NOT implement.
+
+====================================================
+SUCCESS CRITERIA
+====================================================
+
+The Screen Printing Calculator should feel like software written specifically for commercial apparel decorators.
+
+It should NOT resemble a generic form.
+
+Provide:
+
+• Files changed
+
+• Screenshot
+
+• Confirmation no pricing engine added
+
+• Confirmation no API changes
+
+• Confirmation no DB changes

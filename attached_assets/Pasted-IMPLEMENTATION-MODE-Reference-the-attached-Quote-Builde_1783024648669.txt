@@ -1,0 +1,229 @@
+IMPLEMENTATION MODE
+
+Reference the attached Quote Builder mockup.
+
+The attached mockup is the approved design specification.
+
+If the implementation conflicts with the mockup, replace it.
+
+Do not preserve legacy UI.
+
+Follow all project architecture and implementation documentation.
+
+Only implement the Embroidery Calculator.
+
+Nothing else.
+
+====================================================
+OBJECTIVE
+====================================================
+
+The Embroidery Calculator exists ONLY to calculate SERVICE COST.
+
+It does NOT calculate:
+
+Product Cost
+
+Quote Total
+
+Markup
+
+Taxes
+
+Discounts
+
+Shipping
+
+====================================================
+IMPORTANT
+====================================================
+
+Unlike DTF or Screen Printing, embroidery pricing is driven primarily by:
+
+Vendor
+
+Stitch Count
+
+Quantity
+
+Decoration Location
+
+Specialty Services
+
+The calculator should be optimized for this workflow.
+
+====================================================
+LAYOUT
+====================================================
+
+Maintain the same visual hierarchy as every other Service Calculator.
+
+Only the fields change.
+
+====================================================
+VENDOR
+====================================================
+
+Dropdown
+
+Future:
+
+Loads vendor pricing formula.
+
+Do NOT implement.
+
+====================================================
+LOCATION
+====================================================
+
+Dropdown
+
+Examples
+
+Left Chest
+
+Full Back
+
+Sleeve
+
+Hat Front
+
+Hat Side
+
+Etc.
+
+====================================================
+QUANTITY
+====================================================
+
+Editable
+
+Future:
+
+Auto populated from Products + Sizes.
+
+Do NOT implement.
+
+====================================================
+STITCH COUNT
+====================================================
+
+Editable Number.
+
+Large input.
+
+One of the most important fields.
+
+====================================================
+SPECIALTY OPTIONS
+====================================================
+
+Reserve space.
+
+Future examples
+
+Digitizing
+
+3D Puff
+
+Applique
+
+Metallic Thread
+
+Special Backing
+
+Rush
+
+Do NOT implement pricing.
+
+====================================================
+SERVICE COST
+====================================================
+
+Large calculated Service Cost.
+
+This represents ONLY embroidery service.
+
+====================================================
+PRICING PRESET
+====================================================
+
+Reserve Pricing Preset dropdown.
+
+Examples
+
+Left Chest Standard
+
+Hat Logo
+
+Full Back
+
+Large Jacket Back
+
+Custom
+
+No logic.
+
+====================================================
+SUGGESTED SELL PRICE
+====================================================
+
+Editable currency.
+
+Future presets populate automatically.
+
+====================================================
+APPLY
+====================================================
+
+Retain architecture.
+
+Future creates Pricing Adjustment rows.
+
+====================================================
+VERY IMPORTANT
+====================================================
+
+This calculator should be architected to support future vendor pricing formulas.
+
+Example
+
+Vendor A
+
+Minimum
+
+$6.00
+
+First 3,000 stitches
+
+Included
+
+Each additional 1,000 stitches
+
+$2.00
+
+Different vendors will eventually have different formulas.
+
+Design the component so vendor-specific pricing logic can be injected later without redesigning the calculator.
+
+Do NOT implement vendor formulas during this task.
+
+Simply preserve the architecture.
+
+====================================================
+SUCCESS CRITERIA
+====================================================
+
+The Embroidery Calculator should feel purpose-built for embroidery production.
+
+Provide:
+
+• Files changed
+
+• Screenshot
+
+• Confirmation no pricing logic added
+
+• Confirmation no API changes
+
+• Confirmation no DB changes
