@@ -1,0 +1,219 @@
+IMPLEMENTATION MODE
+
+Reference the approved project architecture.
+
+This task is intentionally LIMITED IN SCOPE.
+
+Create the Production Pricing Presets module.
+
+Do NOT implement calculator integration.
+
+Do NOT implement pricing automation.
+
+Do NOT redesign Quote Builder.
+
+====================================================
+OBJECTIVE
+====================================================
+
+Create a new Settings page.
+
+Settings
+
+↓
+
+Production Pricing Presets
+
+This page stores Katalyst KO's STANDARD selling prices for production services.
+
+These are NOT vendor costs.
+
+These are NOT wholesale prices.
+
+These are suggested production sell prices.
+
+Future Service Calculators will reference these presets.
+
+====================================================
+LAYOUT
+====================================================
+
+Display presets grouped by Service Style.
+
+DTF
+
+Screen Printing
+
+Embroidery
+
+Promotional
+
+Laser
+
+UV Printing
+
+Each group should be collapsible.
+
+====================================================
+DTF EXAMPLES
+====================================================
+
+Pocket Print
+
+Center Chest
+
+Large Front
+
+Large Back
+
+Oversized
+
+Custom
+
+Fields:
+
+Preset Name
+
+Suggested Sell Price
+
+Maximum Width
+
+Maximum Height
+
+Default Location
+
+Status
+
+====================================================
+SCREEN PRINT EXAMPLES
+====================================================
+
+1 Color Front
+
+2 Color Front
+
+Front + Back
+
+Pocket + Back
+
+Custom
+
+Fields:
+
+Preset Name
+
+Suggested Sell Price
+
+Default Locations
+
+Default Color Count
+
+Status
+
+====================================================
+EMBROIDERY EXAMPLES
+====================================================
+
+Left Chest
+
+Hat Front
+
+Hat Side
+
+Large Jacket Back
+
+Custom
+
+Fields:
+
+Preset Name
+
+Suggested Sell Price
+
+Suggested Stitch Range
+
+Default Location
+
+Status
+
+====================================================
+PROMOTIONAL
+====================================================
+
+Allow future expansion.
+
+Do not implement business logic.
+
+====================================================
+CRUD
+====================================================
+
+Support:
+
+Create
+
+Edit
+
+Archive
+
+Delete
+
+Search
+
+Sort
+
+Filtering
+
+====================================================
+FUTURE INTEGRATION
+====================================================
+
+Future calculators will:
+
+Select a preset
+
+↓
+
+Populate Suggested Sell Price
+
+↓
+
+Allow manual override
+
+Do NOT implement this.
+
+Only preserve the architecture.
+
+====================================================
+DO NOT CHANGE
+====================================================
+
+Quote Builder
+
+Products
+
+Calculators
+
+Pricing Adjustments
+
+Database logic
+
+Business Rules
+
+====================================================
+SUCCESS CRITERIA
+====================================================
+
+Production Pricing Presets should function as a reusable settings module.
+
+The UI should match every other Settings page in the application.
+
+Provide:
+
+• Files changed
+
+• Screenshot
+
+• Confirmation no calculator functionality changed
+
+• Confirmation no pricing engine added

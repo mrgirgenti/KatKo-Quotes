@@ -1,0 +1,281 @@
+IMPLEMENTATION MODE
+
+Reference the project's approved architecture, UI Design System, Business Rules, and Implementation Definition of Done.
+
+This task is intentionally LIMITED IN SCOPE.
+
+Implement Quote-Level Discounts.
+
+Do NOT implement Line Item discounts.
+
+Do NOT redesign the Quote Builder.
+
+Do NOT redesign Line Item Costs.
+
+Do NOT redesign Service Calculators.
+
+Do NOT redesign Pricing Adjustments.
+
+Do NOT modify Products.
+
+Do NOT modify Client Hub.
+
+====================================================
+OBJECTIVE
+====================================================
+
+Implement a Quote-Level Discount feature.
+
+This applies ONLY to the Quote Summary.
+
+The discount should affect the ENTIRE quote.
+
+Never an individual Line Item.
+
+====================================================
+LOCATION
+====================================================
+
+The Discount section belongs inside the Quote Summary.
+
+Place it after the Quote Subtotal.
+
+Before Tax.
+
+Before Grand Total.
+
+The flow should become:
+
+Subtotal
+
+↓
+
+Discount
+
+↓
+
+Tax
+
+↓
+
+Grand Total
+
+====================================================
+DISCOUNT TYPES
+====================================================
+
+Support two discount types.
+
+Percentage
+
+Dollar Amount
+
+User chooses via dropdown.
+
+Examples:
+
+10%
+
+15%
+
+20%
+
+$50
+
+$100
+
+$250
+
+====================================================
+CUSTOM VALUES
+====================================================
+
+Allow custom entry.
+
+Users are NOT restricted to preset values.
+
+====================================================
+DISCOUNT BASIS
+====================================================
+
+The discount is applied against the Gross Quote Subtotal.
+
+NOT Net.
+
+NOT Product Cost.
+
+NOT Service Cost.
+
+NOT Profit.
+
+Simply reduce the customer selling price.
+
+====================================================
+DISCOUNT REASON
+====================================================
+
+Every discount requires a reason.
+
+Support both:
+
+Preset Reasons
+
+AND
+
+Custom Reasons.
+
+====================================================
+DEFAULT REASONS
+====================================================
+
+Examples:
+
+Repeat Customer
+
+Nonprofit
+
+Church
+
+School
+
+Employee
+
+Family
+
+Marketing Promotion
+
+Price Match
+
+Sales Adjustment
+
+Customer Service
+
+Other
+
+Users may also type a custom reason.
+
+====================================================
+DATA STORED
+====================================================
+
+Store:
+
+Discount Type
+
+Discount Amount
+
+Calculated Discount
+
+Reason
+
+Custom Reason (if applicable)
+
+Created By
+
+Created Date
+
+Last Modified
+
+====================================================
+UI
+====================================================
+
+Maintain the clean styling used throughout the Quote Summary.
+
+Do NOT create a popup.
+
+Do NOT create a modal.
+
+Everything should remain visible.
+
+Compact.
+
+Professional.
+
+====================================================
+CALCULATIONS
+====================================================
+
+Discount updates immediately.
+
+Quote Summary updates immediately.
+
+Tax recalculates after discount.
+
+Grand Total updates immediately.
+
+====================================================
+CLIENT HUB
+====================================================
+
+Clients never create discounts.
+
+Discounts remain internal.
+
+Client-facing Quotes simply reflect the discounted total.
+
+====================================================
+REPORTING
+====================================================
+
+Preserve architecture for future reporting.
+
+Example:
+
+Total Discounts Given
+
+Discounts by Salesperson
+
+Discount Reasons
+
+Average Discount %
+
+Do NOT implement reports.
+
+Simply preserve the data.
+
+====================================================
+DO NOT CHANGE
+====================================================
+
+Line Item Costs
+
+Service Calculators
+
+Pricing Adjustments
+
+Products
+
+Database Architecture
+
+Client Hub Workflow
+
+====================================================
+SUCCESS CRITERIA
+====================================================
+
+The Quote Summary supports Quote-Level Discounts.
+
+Discounts can be:
+
+Percentage
+
+Dollar
+
+Preset Reason
+
+Custom Reason
+
+Everything recalculates automatically.
+
+Provide:
+
+• Files changed
+
+• Screenshot
+
+• Confirmation no Line Item pricing changed
+
+• Confirmation discounts remain Quote-level only
+
+• Confirmation Client Hub cannot create discounts

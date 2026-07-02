@@ -1,0 +1,183 @@
+IMPLEMENTATION MODE
+
+Reference the project's approved architecture documentation.
+
+This task is intentionally LIMITED IN SCOPE.
+
+Build the foundational Production Vendors module that future Service Calculators will reference.
+
+This is NOT a purchasing module.
+
+This is NOT vendor management software.
+
+This is NOT inventory management.
+
+It is simply a centralized location for maintaining production vendors that Katalyst KO uses during quoting and production.
+
+Do not redesign the Quote Builder.
+
+Do not modify Service Calculators.
+
+Do not modify Pricing Adjustments.
+
+Do not modify Products.
+
+Do not modify Client Hub.
+
+Do not implement vendor pricing matrices yet.
+
+====================================================
+OBJECTIVE
+====================================================
+
+Create a new Settings page:
+
+Settings
+
+↓
+
+Production Vendors
+
+This page will become the single source of truth for all production vendors used throughout the application.
+
+Future calculators will reference this data.
+
+====================================================
+TABLE
+====================================================
+
+Display vendors in a clean SaaS table.
+
+Columns:
+
+Vendor Name
+
+Vendor Type
+
+Primary Contact
+
+Phone
+
+Email
+
+Lead Time
+
+Status
+
+Actions
+
+====================================================
+SUPPORTED TYPES
+====================================================
+
+Examples:
+
+Screen Printer
+
+Embroidery
+
+DTF
+
+Promotional
+
+Laser
+
+UV Printing
+
+Sewing
+
+Finishing
+
+Other
+
+Store Vendor Type as structured data.
+
+====================================================
+DETAIL PAGE
+====================================================
+
+Each Vendor should have a detail page.
+
+General Information
+
+Business Name
+
+Vendor Type
+
+Website
+
+Primary Contact
+
+Phone
+
+Email
+
+Address
+
+Notes
+
+Status
+
+====================================================
+FUTURE SECTIONS
+====================================================
+
+Reserve empty sections only.
+
+Do NOT implement functionality.
+
+Pricing Matrices
+
+Pricing Presets
+
+Default Charges
+
+Rush Rules
+
+Shipping Rules
+
+Lead Time Rules
+
+====================================================
+INTEGRATION
+====================================================
+
+Future calculators will populate their Vendor dropdowns from this module.
+
+Do NOT implement those integrations.
+
+Simply preserve the architecture.
+
+====================================================
+DO NOT CHANGE
+====================================================
+
+Quote Builder
+
+Products
+
+Pricing
+
+Calculators
+
+Client Hub
+
+Database Architecture
+
+====================================================
+SUCCESS CRITERIA
+====================================================
+
+Production Vendors should exist as a standalone Settings module.
+
+The page should feel like every other Settings page in the application.
+
+Provide:
+
+• Files changed
+
+• Screenshot
+
+• Confirmation no calculator functionality changed
+
+• Confirmation no pricing functionality changed
