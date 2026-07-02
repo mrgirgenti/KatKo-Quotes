@@ -750,6 +750,13 @@ interface LineItemCardProps {
 const DTF_VENDORS = ['Siser', 'ColDesi', 'Transfers Express', 'RhinoTech', 'DPG', 'Other'];
 const DTF_PRESETS = ['Pocket Print', 'Center Chest', 'Large Front', 'Large Back', 'Oversized', 'Custom'];
 
+const SP_DECORATORS = ['Screenprint Co.', 'In-House', 'Local Shop', 'Other'];
+const SP_PRESETS = ['1 Color Front', '2 Color Front', 'Front + Back', 'Pocket + Back', 'Left Chest + Back', 'Custom'];
+const SP_PRINT_LOCATIONS = [
+  'Front', 'Back', 'Left Chest', 'Right Chest',
+  'Left Sleeve', 'Right Sleeve', 'Tag', 'Collar', 'Hood', 'Other',
+];
+
 function LineItemCardFn({
   item,
   index,
@@ -781,6 +788,26 @@ function LineItemCardFn({
   const [dtfPreset, setDtfPreset] = useState('');
   const [dtfSuggestedPrice, setDtfSuggestedPrice] = useState('');
   const [focusedSuggestedPrice, setFocusedSuggestedPrice] = useState(false);
+
+  // ── Screen Printing Calculator state ──────────────────────────────────────
+  const [spDecorator, setSpDecorator] = useState('');
+  const [spPreset, setSpPreset] = useState('');
+  const [spQuantity, setSpQuantity] = useState('');
+  const [spSuggestedPrice, setSpSuggestedPrice] = useState('');
+  const [focusedSpSuggested, setFocusedSpSuggested] = useState(false);
+  const [spLocationCount, setSpLocationCount] = useState(1);
+  const [spLocations, setSpLocations] = useState([
+    { name: '', colors: '', screens: '', notes: '' },
+    { name: '', colors: '', screens: '', notes: '' },
+    { name: '', colors: '', screens: '', notes: '' },
+    { name: '', colors: '', screens: '', notes: '' },
+  ]);
+  const updateSpLocation = useCallback(
+    (idx: number, field: 'name' | 'colors' | 'screens' | 'notes', val: string) =>
+      setSpLocations((prev) => prev.map((loc, i) => (i === idx ? { ...loc, [field]: val } : loc))),
+    [],
+  );
+
   const [embStitchCount1, setEmbStitchCount1] = useState('');
   const [embStitchCount2, setEmbStitchCount2] = useState('');
   const DIGITIZATION_ROW_ID = '__digitization_fee__';
@@ -813,8 +840,9 @@ function LineItemCardFn({
   const isEmbroidery = item.serviceStyle === 'Embroidery';
   const isDTFTransfers = item.serviceStyle === 'DTF Transfers';
   const isDesignWork = item.serviceStyle === 'Design Work';
+  const isScreenPrinting = item.serviceStyle === 'Screen Printing';
   const hasSecondLocation = !!(item.location2 && item.location2.length > 0);
-  const hasCalculator = isDTF || isDTFTransfers || isEmbroidery;
+  const hasCalculator = isDTF || isDTFTransfers || isEmbroidery || isScreenPrinting;
 
   const quantity = useMemo(
     () => getTotalQuantity(item.sizes, isPromotional || isDesignWork),
@@ -1674,7 +1702,11 @@ function LineItemCardFn({
               <View style={styles.calcPanel}>
                 <View style={styles.panelHeader}>
                   <Text style={styles.panelTitle}>
-                    {isEmbroidery ? 'EMBROIDERY COST CALCULATOR' : 'DTF COST CALCULATOR'}
+                    {isEmbroidery
+                      ? 'EMBROIDERY COST CALCULATOR'
+                      : isScreenPrinting
+                        ? 'SCREEN PRINTING CALCULATOR'
+                        : 'DTF COST CALCULATOR'}
                   </Text>
                 </View>
                 <View style={styles.calcBody}>
@@ -2033,6 +2065,217 @@ function LineItemCardFn({
                           <Text style={styles.applyBtnText}>Apply</Text>
                         </TouchableOpacity>
                       </View>
+                    </View>
+                  )}
+
+                  {/* ── Screen Printing Calculator ── */}
+                  {isScreenPrinting && (
+                    <View>
+
+                      {/* ── Controls: Decorator | Preset | Suggested Sell | Quantity ── */}
+                      <View style={styles.dtfControlsRow}>
+
+                        <OverlayMenu menuWidth={200} align="left"
+                          trigger={({ open }) => (
+                            <TouchableOpacity style={styles.dtfControlChip} onPress={open} activeOpacity={0.75}>
+                              <Text style={styles.dtfControlChipLabel}>DECORATOR</Text>
+                              <View style={styles.dtfControlChipValueRow}>
+                                <Text style={styles.dtfControlChipValue} numberOfLines={1}>
+                                  {spDecorator || 'Select…'}
+                                </Text>
+                                <ChevronDown size={9} color={Colors.light.textSecondary} />
+                              </View>
+                            </TouchableOpacity>
+                          )}
+                        >
+                          {({ close }) => (
+                            <>
+                              {SP_DECORATORS.map((d) => (
+                                <TouchableOpacity key={d} style={styles.dtfMenuRow}
+                                  onPress={() => { setSpDecorator(d); close(); }}>
+                                  <Text style={[styles.dtfMenuRowText, spDecorator === d && styles.dtfMenuRowActive]}>
+                                    {d}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </>
+                          )}
+                        </OverlayMenu>
+
+                        <OverlayMenu menuWidth={210} align="left"
+                          trigger={({ open }) => (
+                            <TouchableOpacity style={styles.dtfControlChip} onPress={open} activeOpacity={0.75}>
+                              <Text style={styles.dtfControlChipLabel}>PRICING PRESET</Text>
+                              <View style={styles.dtfControlChipValueRow}>
+                                <Text style={styles.dtfControlChipValue} numberOfLines={1}>
+                                  {spPreset || 'Select…'}
+                                </Text>
+                                <ChevronDown size={9} color={Colors.light.textSecondary} />
+                              </View>
+                            </TouchableOpacity>
+                          )}
+                        >
+                          {({ close }) => (
+                            <>
+                              {SP_PRESETS.map((p) => (
+                                <TouchableOpacity key={p} style={styles.dtfMenuRow}
+                                  onPress={() => { setSpPreset(p); close(); }}>
+                                  <Text style={[styles.dtfMenuRowText, spPreset === p && styles.dtfMenuRowActive]}>
+                                    {p}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </>
+                          )}
+                        </OverlayMenu>
+
+                        <View style={styles.dtfSuggestedGroup}>
+                          <Text style={styles.dtfControlChipLabel}>SUGGESTED SELL</Text>
+                          <View style={styles.dtfInputWrapper}>
+                            <Text style={styles.dtfDollar}>$</Text>
+                            <TextInput
+                              style={styles.dtfRateInput}
+                              value={formatCents(spSuggestedPrice)}
+                              onChangeText={(t) => setSpSuggestedPrice(t.replace(/\D/g, ''))}
+                              onFocus={() => setFocusedSpSuggested(true)}
+                              onBlur={() => setFocusedSpSuggested(false)}
+                              keyboardType="number-pad"
+                              placeholder="0.00"
+                              placeholderTextColor={Colors.light.textSecondary}
+                              selectTextOnFocus
+                            />
+                          </View>
+                        </View>
+
+                        <View style={styles.dtfSuggestedGroup}>
+                          <Text style={styles.dtfControlChipLabel}>QUANTITY</Text>
+                          <View style={styles.dtfInputWrapper}>
+                            <TextInput
+                              style={[styles.dtfRateInput, { flex: 1 }]}
+                              value={spQuantity}
+                              onChangeText={(t) => setSpQuantity(t.replace(/\D/g, ''))}
+                              keyboardType="number-pad"
+                              placeholder="0"
+                              placeholderTextColor={Colors.light.textSecondary}
+                              selectTextOnFocus
+                            />
+                            <Text style={styles.dtfInputSuffix}>pcs</Text>
+                          </View>
+                        </View>
+
+                      </View>
+
+                      {/* ── Print Locations Count Picker ── */}
+                      <View style={styles.spLocationCountRow}>
+                        <Text style={styles.spLocationCountLabel}>PRINT LOCATIONS</Text>
+                        <View style={styles.spLocationCountPicker}>
+                          {([1, 2, 3, 4] as const).map((n) => (
+                            <TouchableOpacity
+                              key={n}
+                              style={[styles.spCountChip, spLocationCount === n && styles.spCountChipActive]}
+                              onPress={() => setSpLocationCount(n)}
+                              activeOpacity={0.75}
+                            >
+                              <Text style={[styles.spCountChipText, spLocationCount === n && styles.spCountChipTextActive]}>
+                                {n}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+
+                      {/* ── Location Cards ── */}
+                      {([0, 1, 2, 3] as const).slice(0, spLocationCount).map((idx) => (
+                        <View key={idx} style={styles.spLocationCard}>
+                          <Text style={styles.spLocationCardTitle}>Location {idx + 1}</Text>
+                          <View style={styles.spLocationInputsRow}>
+                            <OverlayMenu menuWidth={200} align="left"
+                              trigger={({ open }) => (
+                                <TouchableOpacity style={styles.spLocNameChip} onPress={open} activeOpacity={0.75}>
+                                  <Text style={styles.dtfControlChipLabel}>LOCATION</Text>
+                                  <View style={styles.dtfControlChipValueRow}>
+                                    <Text style={styles.dtfControlChipValue} numberOfLines={1}>
+                                      {spLocations[idx].name || 'Select…'}
+                                    </Text>
+                                    <ChevronDown size={9} color={Colors.light.textSecondary} />
+                                  </View>
+                                </TouchableOpacity>
+                              )}
+                            >
+                              {({ close }) => (
+                                <>
+                                  {SP_PRINT_LOCATIONS.map((loc) => (
+                                    <TouchableOpacity key={loc} style={styles.dtfMenuRow}
+                                      onPress={() => { updateSpLocation(idx, 'name', loc); close(); }}>
+                                      <Text style={[styles.dtfMenuRowText, spLocations[idx].name === loc && styles.dtfMenuRowActive]}>
+                                        {loc}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  ))}
+                                </>
+                              )}
+                            </OverlayMenu>
+
+                            <View style={styles.spInputGroup}>
+                              <Text style={styles.dtfInputLabel}>COLORS</Text>
+                              <View style={styles.spNumInputWrapper}>
+                                <TextInput
+                                  style={styles.spNumInputField}
+                                  value={spLocations[idx].colors}
+                                  onChangeText={(t) => updateSpLocation(idx, 'colors', t.replace(/\D/g, ''))}
+                                  keyboardType="number-pad"
+                                  placeholder="0"
+                                  placeholderTextColor={Colors.light.textSecondary}
+                                  selectTextOnFocus
+                                />
+                              </View>
+                            </View>
+
+                            <View style={styles.spInputGroup}>
+                              <Text style={styles.dtfInputLabel}>SCREENS</Text>
+                              <View style={styles.spNumInputWrapper}>
+                                <TextInput
+                                  style={styles.spNumInputField}
+                                  value={spLocations[idx].screens}
+                                  onChangeText={(t) => updateSpLocation(idx, 'screens', t.replace(/\D/g, ''))}
+                                  keyboardType="number-pad"
+                                  placeholder="0"
+                                  placeholderTextColor={Colors.light.textSecondary}
+                                  selectTextOnFocus
+                                />
+                              </View>
+                            </View>
+                          </View>
+
+                          <TextInput
+                            style={styles.spNotesInput}
+                            value={spLocations[idx].notes}
+                            onChangeText={(t) => updateSpLocation(idx, 'notes', t)}
+                            placeholder="Notes (optional)"
+                            placeholderTextColor={Colors.light.textSecondary}
+                          />
+                        </View>
+                      ))}
+
+                      {/* ── Additional Options (reserved — no logic) ── */}
+                      <View style={styles.spAdditionalOptions}>
+                        <Text style={styles.spAdditionalOptionsLabel}>ADDITIONAL OPTIONS</Text>
+                        <Text style={styles.spAdditionalOptionsHint}>
+                          Specialty ink, PMS match, rush, fold & bag, names & numbers — coming soon.
+                        </Text>
+                      </View>
+
+                      {/* ── Service Cost footer ── */}
+                      <View style={styles.dtfServiceCostRow}>
+                        <View style={styles.dtfServiceCostBlock}>
+                          <Text style={styles.dtfServiceCostLabel}>SERVICE COST</Text>
+                          <Text style={styles.dtfServiceCostValue}>$0.00</Text>
+                        </View>
+                        <TouchableOpacity style={[styles.applyBtn, styles.applyBtnDisabled]} disabled>
+                          <Text style={styles.applyBtnText}>Apply</Text>
+                        </TouchableOpacity>
+                      </View>
+
                     </View>
                   )}
                 </View>
@@ -3130,6 +3373,141 @@ const styles = StyleSheet.create({
   embCheckboxLabel: {
     fontSize: 13,
     color: Colors.light.text,
+  },
+  // ── SCREEN PRINTING CALCULATOR ────────────────────────────────────────────
+  spLocationCountRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    gap: 12,
+  },
+  spLocationCountLabel: {
+    fontSize: 10,
+    fontWeight: '600' as const,
+    color: Colors.light.textSecondary,
+    letterSpacing: 0.5,
+    flex: 1,
+  },
+  spLocationCountPicker: {
+    flexDirection: 'row' as const,
+    gap: 6,
+  },
+  spCountChip: {
+    width: 30,
+    height: 26,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: Colors.light.surface,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
+  spCountChipActive: {
+    backgroundColor: Colors.light.tint,
+    borderColor: Colors.light.tint,
+  },
+  spCountChipText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.light.textSecondary,
+  },
+  spCountChipTextActive: {
+    color: '#fff',
+  },
+  spLocationCard: {
+    marginHorizontal: 12,
+    marginTop: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: Colors.light.background,
+    overflow: 'hidden' as const,
+  },
+  spLocationCardTitle: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: Colors.light.text,
+    letterSpacing: 0.3,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+    backgroundColor: Colors.light.surface,
+  },
+  spLocationInputsRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-end' as const,
+    gap: 8,
+    padding: 10,
+    paddingBottom: 6,
+  },
+  spLocNameChip: {
+    flex: 1,
+    minWidth: 110,
+    backgroundColor: Colors.light.background,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  spInputGroup: {
+    alignItems: 'center' as const,
+    minWidth: 52,
+  },
+  spNumInputWrapper: {
+    width: 52,
+    height: 28,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 5,
+    backgroundColor: Colors.light.background,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    paddingHorizontal: 4,
+  },
+  spNumInputField: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: Colors.light.text,
+    textAlign: 'center' as const,
+    width: '100%',
+    height: '100%',
+  },
+  spNotesInput: {
+    fontSize: 12,
+    color: Colors.light.text,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    backgroundColor: Colors.light.background,
+  },
+  spAdditionalOptions: {
+    marginHorizontal: 12,
+    marginTop: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderStyle: 'dashed' as const,
+    padding: 12,
+    backgroundColor: Colors.light.surface,
+  },
+  spAdditionalOptionsLabel: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: Colors.light.textSecondary,
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  spAdditionalOptionsHint: {
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+    fontStyle: 'italic' as const,
+    lineHeight: 15,
   },
   // ── LINE ITEM SUBTOTAL ──
   subtotalSection: {
