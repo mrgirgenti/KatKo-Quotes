@@ -1,0 +1,249 @@
+IMPLEMENTATION MODE
+
+Reference the project's Implementation Definition of Done, Architecture Principles, Business Rules, UI Design System, README, and Roadmap.
+
+This task is intentionally LIMITED IN SCOPE.
+
+This task establishes the long-term architecture for all production-related settings.
+
+Do NOT implement business logic.
+
+Do NOT implement pricing engines.
+
+Do NOT implement vendor pricing.
+
+Do NOT redesign the Quote Builder.
+
+Do NOT redesign Products.
+
+Do NOT redesign Client Hub.
+
+Do NOT modify APIs.
+
+Do NOT modify database schema beyond what is necessary to support these Settings pages.
+
+====================================================
+OBJECTIVE
+====================================================
+
+The application is evolving beyond a simple Quote Builder into a complete Production Management platform.
+
+The existing Settings navigation should be reorganized to support this growth.
+
+Create a new top-level Settings category named:
+
+Production
+
+This category will become the central location for configuring everything related to production, pricing, vendors, calculators, and production defaults.
+
+====================================================
+NEW SETTINGS STRUCTURE
+====================================================
+
+Settings
+
+Production
+
+    Production Vendors
+
+    Pricing Presets
+
+    Service Calculators
+
+Products
+
+Clients
+
+Taxes
+
+Users
+
+Retain all existing Settings functionality.
+
+Only reorganize navigation where necessary.
+
+====================================================
+PRODUCTION SETTINGS LANDING PAGE
+====================================================
+
+Create a Production Settings landing page.
+
+This page should function similarly to other Settings landing pages.
+
+Display cards for each module.
+
+Production Vendors
+
+Pricing Presets
+
+Service Calculators
+
+Cards should include:
+
+Title
+
+Short Description
+
+Button
+
+Future modules should be easy to add.
+
+====================================================
+PRODUCTION VENDORS
+====================================================
+
+Create placeholder navigation only.
+
+Do NOT implement functionality.
+
+Future responsibility:
+
+Maintain production vendors used by calculators.
+
+====================================================
+PRICING PRESETS
+====================================================
+
+Create placeholder navigation only.
+
+Do NOT implement functionality.
+
+Future responsibility:
+
+Maintain Katalyst KO standard selling prices.
+
+====================================================
+SERVICE CALCULATORS
+====================================================
+
+Create placeholder navigation only.
+
+Future child pages:
+
+DTF
+
+Screen Printing
+
+Embroidery
+
+Promotional
+
+Laser
+
+UV Printing
+
+Each calculator should eventually have its own Settings page.
+
+Do NOT implement these pages yet.
+
+Simply establish the architecture.
+
+====================================================
+ARCHITECTURE GOALS
+====================================================
+
+The purpose of this task is to separate application configuration from application usage.
+
+The Quote Builder should consume Production Settings.
+
+It should never contain configuration logic itself.
+
+Examples:
+
+Vendor lists
+
+Pricing presets
+
+Default rates
+
+Default calculator behavior
+
+Rush defaults
+
+Future pricing matrices
+
+All belong inside Production Settings.
+
+====================================================
+FUTURE MODULES
+====================================================
+
+Preserve architecture for future additions including:
+
+Vendor Pricing Matrices
+
+Vendor Shipping Rules
+
+Vendor Lead Times
+
+Rush Rules
+
+Calculator Defaults
+
+Production Defaults
+
+Decoration Location Defaults
+
+Do NOT implement these.
+
+Simply ensure the navigation structure is scalable.
+
+====================================================
+UI
+====================================================
+
+Match the existing Settings design language.
+
+Do not introduce a different UI style.
+
+Cards should feel consistent with the rest of the application.
+
+====================================================
+DO NOT CHANGE
+====================================================
+
+Quote Builder
+
+Products
+
+Client Hub
+
+Pricing Logic
+
+Business Rules
+
+Service Calculators
+
+Production Vendors functionality
+
+Pricing Presets functionality
+
+====================================================
+SUCCESS CRITERIA
+====================================================
+
+A new Production section exists inside Settings.
+
+It contains:
+
+Production Vendors
+
+Pricing Presets
+
+Service Calculators
+
+Each module has its own landing page placeholder.
+
+The architecture is now prepared for future implementation.
+
+Provide:
+
+• Files changed
+
+• Navigation changes
+
+• Screenshot
+
+• Confirmation no Quote Builder functionality changed
+
+• Confirmation no pricing logic changed
