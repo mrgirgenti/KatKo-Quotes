@@ -31,8 +31,7 @@ const SERVICE_TYPES = [
   'Screen Printing',
   'Embroidery',
   'Promotional',
-  'Laser',
-  'UV Printing',
+  'Engraving',
 ] as const;
 type ServiceType = typeof SERVICE_TYPES[number];
 

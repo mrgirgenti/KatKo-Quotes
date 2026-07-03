@@ -444,7 +444,7 @@ const SERVICE_COLORS: Record<string, string> = {
   'Promotional': '#0891B2',
   'DTF Transfers': '#EA580C',
   'Design Work': '#16A34A',
-  'Laser Engraving': '#D97706',
+  'Engraving': '#D97706',
   'Embroidery Patches': '#BE185D',
   'Unknown': '#6B7280',
 };

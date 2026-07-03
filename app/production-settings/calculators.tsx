@@ -17,8 +17,7 @@ const CALCULATOR_TYPES = [
   { label: 'Screen Printing', desc: 'Screen print setup fees, color count defaults, and location rules.' },
   { label: 'Embroidery',    desc: 'Stitch count tiers, digitizing fees, and machine rate defaults.' },
   { label: 'Promotional',   desc: 'Promotional product pricing defaults and vendor configurations.' },
-  { label: 'Laser',         desc: 'Laser engraving and cutting pricing defaults.' },
-  { label: 'UV Printing',   desc: 'UV flatbed print pricing defaults and material configurations.' },
+  { label: 'Engraving',     desc: 'Engraving pricing defaults and location configurations.' },
 ];
 
 export default function ServiceCalculatorsPage() {
