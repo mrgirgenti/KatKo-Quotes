@@ -24,7 +24,7 @@ import { DateInput } from '@/components/DateInput';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { ToggleButton } from '@/components/ToggleButton';
 import { LineItemCard } from '@/components/LineItemCard';
-import { CalculationDisplay } from '@/components/CalculationDisplay';
+import { CalculationDisplay, DiscountEntry } from '@/components/CalculationDisplay';
 import { useFeeRates, useFeeLabels } from '@/lib/useTaxesFees';
 import { useProductPricing } from '@/lib/useProductPricing';
 import { Toast } from '@/components/Toast';
@@ -113,6 +113,7 @@ export default function NewQuoteScreen() {
   const [hasOnlineFee, setHasOnlineFee] = useState(true);
   const [hasSalesTax, setHasSalesTax] = useState(false);
   const [hasCardFee, setHasCardFee] = useState(true);
+  const [discountEntry, setDiscountEntry] = useState<DiscountEntry | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
@@ -128,9 +129,16 @@ export default function NewQuoteScreen() {
     }
   }, [params.orgName]);
 
+  const parsedDiscount = useMemo(() => {
+    if (!discountEntry?.value) return null;
+    const num = parseFloat(discountEntry.value);
+    if (isNaN(num) || num <= 0) return null;
+    return { type: discountEntry.type, value: num };
+  }, [discountEntry]);
+
   const calculations = useMemo(
-    () => calculateQuote(lineItems, hasOnlineFee, hasSalesTax, hasCardFee, feeRates, upcharges),
-    [lineItems, hasOnlineFee, hasSalesTax, hasCardFee, feeRates, upcharges]
+    () => calculateQuote(lineItems, hasOnlineFee, hasSalesTax, hasCardFee, feeRates, upcharges, parsedDiscount),
+    [lineItems, hasOnlineFee, hasSalesTax, hasCardFee, feeRates, upcharges, parsedDiscount]
   );
 
   const handleAddLineItem = useCallback(() => {
@@ -163,6 +171,7 @@ export default function NewQuoteScreen() {
     setHasOnlineFee(true);
     setHasSalesTax(false);
     setHasCardFee(true);
+    setDiscountEntry(null);
   }, []);
 
   const handleSubmit = useCallback(() => {
@@ -207,6 +216,15 @@ export default function NewQuoteScreen() {
       hasSalesTax,
       hasCardFee,
       calculations,
+      discountData: parsedDiscount
+        ? {
+            type: discountEntry!.type,
+            value: parsedDiscount.value,
+            reason: discountEntry!.reason,
+            customReason: discountEntry!.customReason || undefined,
+            updatedAt: new Date().toISOString(),
+          }
+        : undefined,
       createdAt: new Date().toISOString(),
       status: 'quoting',
     };
@@ -232,6 +250,8 @@ export default function NewQuoteScreen() {
     hasSalesTax,
     hasCardFee,
     calculations,
+    discountEntry,
+    parsedDiscount,
     addQuote,
     linkedOrg,
     router,
@@ -396,6 +416,8 @@ export default function NewQuoteScreen() {
           hasSalesTax={hasSalesTax}
           hasCardFee={hasCardFee}
           upcharges={upcharges}
+          discountEntry={discountEntry}
+          onDiscountChange={setDiscountEntry}
         />
       </View>
 

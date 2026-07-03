@@ -1,0 +1,91 @@
+IMPLEMENTATION MODE
+
+Fix ONLY the CRITICAL discount issues from the attached P10 audit.
+
+Do not redesign Quote Builder.
+Do not change calculator logic.
+Do not change Line Item pricing architecture.
+Do not modify unrelated UI.
+
+SCOPE
+
+Fix:
+1. C1 — PDF Template Shows Incorrect Subtotal When Discount Is Applied
+2. C2 — New Quote Flow Has Zero Discount Support
+3. C3 — No Test Coverage for New Discount Pricing Path
+
+REFERENCE
+
+Use the attached implementation audit as the source of truth.
+
+CRITICAL FIX 1 — PDF DISCOUNT ACCURACY
+
+In utils/pdfGenerator.ts:
+
+Add a visible discount row when quote.calculations.discountAmount > 0.
+
+The PDF should show:
+
+Subtotal
+Discount
+Subtotal after Discount
+Online Fee
+Sales Tax
+Card Fee
+Grand Total
+
+Do NOT show a discounted total without explaining the discount.
+
+Use discountedSubtotal when discount exists.
+
+The PDF must be mathematically truthful and customer-readable.
+
+CRITICAL FIX 2 — NEW QUOTE DISCOUNT SUPPORT
+
+In app/(tabs)/index.tsx:
+
+Add discountEntry state matching the existing app/quote/edit.tsx pattern.
+
+Pass discountEntry into calculateQuote.
+
+Pass discountEntry and onDiscountChange into CalculationDisplay.
+
+The Add Discount button must appear in the New Quote flow exactly like it does in Edit Quote.
+
+Discounts must recalculate immediately before save.
+
+CRITICAL FIX 3 — DISCOUNT TEST COVERAGE
+
+Add tests for discount calculation behavior.
+
+Required tests:
+
+- percentage discount calculates discountAmount correctly
+- dollar discount calculates discountAmount correctly
+- percentage discount clamps at 100%
+- dollar discount clamps at subtotal
+- no discount preserves existing subtotal behavior
+- discount + online fee + sales tax + card fee calculates correct final total
+- calculateQuote without discount argument remains backward compatible
+
+Update:
+- __tests__/pricing.test.ts
+- tests/pricing-drift.test.ts if applicable
+
+DO NOT skip tests.
+
+SUCCESS CRITERIA
+
+- Discounted PDFs show correct math path.
+- New Quote screen supports discounts.
+- Discount tests exist and pass.
+- Existing pricing tests still pass.
+- No unrelated files changed unless necessary.
+
+REPORT BACK
+
+- Files changed
+- Tests added
+- Test results
+- Screenshot or confirmation of New Quote discount UI
+- Confirmation PDF math now shows discount row

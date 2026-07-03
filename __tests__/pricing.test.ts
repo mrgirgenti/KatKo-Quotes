@@ -20,6 +20,7 @@ import {
   calculateLineItemTotals,
   getTotalQuantity,
   calcAdjustmentAmount,
+  calculateQuote,
 } from '../utils/quoteCalculations';
 import {
   blendProductCostEach,
@@ -593,5 +594,89 @@ describe('calcAdjustmentAmount', () => {
 
   test('zero base for percentage yields zero', () => {
     expect(calcAdjustmentAmount({ type: 'percentage', rate: 10, quantity: 0 }, 0)).toBe(0);
+  });
+});
+
+// ─── 7. calculateQuote — discount ────────────────────────────────────────────
+//
+// Base item: qty=20, productCostEach=$10 → productCostTotal=$200
+//            markupEach=$5 → markupAmount=$100
+//            subtotal = $300
+//
+// Default fee constants (from constants/fees.ts):
+//   onlineFeePct=0.029, onlineFeeFlat=$0.60, salesTaxPct=0.083, cardFeePct=0.0375
+
+describe('calculateQuote — discount', () => {
+  const item = makeLegacyItem({ productCostEach: 10, markupEach: 5, sizes: { m: 20 } });
+
+  test('no discount: discountAmount is 0 and discountedSubtotal equals subtotal', () => {
+    const r = calculateQuote([item], false, false, false);
+    expect(r).not.toBeNull();
+    expect(toCents(r!.discountAmount ?? 0)).toBe(0);
+    expect(toCents(r!.discountedSubtotal ?? r!.subtotal)).toBe(toCents(300));
+    expect(toCents(r!.total)).toBe(toCents(300));
+  });
+
+  test('calculateQuote without discount argument is backward compatible', () => {
+    const withoutArg = calculateQuote([item], false, false, false);
+    const withUndefined = calculateQuote([item], false, false, false, undefined, undefined, undefined);
+    const withNull = calculateQuote([item], false, false, false, undefined, undefined, null);
+    expect(withoutArg).not.toBeNull();
+    expect(toCents(withoutArg!.total)).toBe(toCents(withUndefined!.total));
+    expect(toCents(withoutArg!.total)).toBe(toCents(withNull!.total));
+    expect(toCents(withoutArg!.subtotal)).toBe(toCents(300));
+  });
+
+  test('percentage discount: discountAmount = subtotal × pct / 100', () => {
+    const r = calculateQuote([item], false, false, false, undefined, undefined, { type: 'percentage', value: 10 });
+    expect(r).not.toBeNull();
+    // 10% of $300 = $30
+    expect(toCents(r!.discountAmount!)).toBe(toCents(30));
+    expect(toCents(r!.discountedSubtotal!)).toBe(toCents(270));
+    expect(toCents(r!.total)).toBe(toCents(270));
+  });
+
+  test('dollar discount: discountAmount = value, discountedSubtotal = subtotal − value', () => {
+    const r = calculateQuote([item], false, false, false, undefined, undefined, { type: 'dollar', value: 50 });
+    expect(r).not.toBeNull();
+    expect(toCents(r!.discountAmount!)).toBe(toCents(50));
+    expect(toCents(r!.discountedSubtotal!)).toBe(toCents(250));
+    expect(toCents(r!.total)).toBe(toCents(250));
+  });
+
+  test('percentage discount clamps at 100%: discountAmount = subtotal, total = 0', () => {
+    const r = calculateQuote([item], false, false, false, undefined, undefined, { type: 'percentage', value: 150 });
+    expect(r).not.toBeNull();
+    // 150% clamped to 100% → full discount
+    expect(toCents(r!.discountAmount!)).toBe(toCents(300));
+    expect(toCents(r!.discountedSubtotal!)).toBe(0);
+    expect(toCents(r!.total)).toBe(0);
+  });
+
+  test('dollar discount clamps at subtotal: discountAmount ≤ subtotal, total ≥ 0', () => {
+    const r = calculateQuote([item], false, false, false, undefined, undefined, { type: 'dollar', value: 9999 });
+    expect(r).not.toBeNull();
+    // $9999 clamped to subtotal $300
+    expect(toCents(r!.discountAmount!)).toBe(toCents(300));
+    expect(toCents(r!.discountedSubtotal!)).toBe(0);
+    expect(toCents(r!.total)).toBe(0);
+  });
+
+  test('discount + online fee + sales tax + card fee: all fees apply to discountedSubtotal', () => {
+    // subtotal=$300, 10% discount → discountedSubtotal=$270
+    // online fee = 270 × 0.029 + 0.60 = 7.83 + 0.60 = 8.43
+    // sales tax  = 270 × 0.083       = 22.41
+    // card fee   = 270 × 0.0375      = 10.125
+    // total      = 270 + 8.43 + 22.41 + 10.125 = 310.965
+    const feeRates = { onlineFeePct: 0.029, onlineFeeFlat: 0.60, salesTaxPct: 0.083, cardFeePct: 0.0375 };
+    const r = calculateQuote([item], true, true, true, feeRates, undefined, { type: 'percentage', value: 10 });
+    expect(r).not.toBeNull();
+    const ds = 270;
+    expect(toCents(r!.discountedSubtotal!)).toBe(toCents(ds));
+    expect(toCents(r!.onlineFee)).toBe(toCents(ds * 0.029 + 0.60));
+    expect(toCents(r!.salesTax)).toBe(toCents(ds * 0.083));
+    expect(toCents(r!.cardFee)).toBe(toCents(ds * 0.0375));
+    const expectedTotal = ds + (ds * 0.029 + 0.60) + (ds * 0.083) + (ds * 0.0375);
+    expect(toCents(r!.total)).toBe(toCents(expectedTotal));
   });
 });
