@@ -1606,7 +1606,7 @@ function LineItemCardFn({
                   </View>
 
                   {/* ── LOCATIONS ── */}
-                  {!isPromotional && (
+                  {!isPromotional && !isDTFTransfers && (
                     <>
                       <Text style={styles.fieldGroupLabel}>LOCATIONS</Text>
                       {Array.from({ length: visibleLocationCount }).map((_, i) => {
@@ -1678,57 +1678,61 @@ function LineItemCardFn({
 
             {/* RIGHT: Products + Sizes panel */}
             <View style={[styles.panel, useSideBySide && styles.productsPanelWeb]}>
-              <View style={styles.panelHeader}>
-                <Text style={styles.panelTitle}>
-                  PRODUCTS + SIZES ({productCount})
-                </Text>
-                {!isPromotional && (
-                  <TouchableOpacity
-                    style={styles.addProductHdrBtn}
-                    onPress={handleAddProduct}
-                    activeOpacity={0.85}
-                  >
-                    <Plus size={12} color="#fff" />
-                    <Text style={styles.addProductHdrBtnText}>Add Product</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {isPromotional ? (
-                <View style={styles.promotionalQtyWrap}>
-                  <Text style={styles.promotionalQtyLabel}>Flat Quantity</Text>
-                  <TextInput
-                    style={styles.promotionalQtyInput}
-                    value={flatQty}
-                    onChangeText={handleFlatQtyChange}
-                    keyboardType="number-pad"
-                    placeholder="0"
-                    placeholderTextColor={Colors.light.textSecondary}
-                  />
-                </View>
-              ) : (
+              {!isDTFTransfers && (
                 <>
-                  {products.map((cp, idx) => (
-                    <QuoteProductRow
-                      key={idx}
-                      cp={cp}
-                      idx={idx}
-                      onChange={(next) => handleProductChange(idx, next)}
-                      onDuplicate={() => handleDuplicateProduct(idx)}
-                      onRemove={() => handleRemoveProduct(idx)}
-                      onUseForMockup={() => handlePickProductForMockup(idx)}
-                      canRemove={productCount > 1}
-                      allProducts={catalogProducts}
-                    />
-                  ))}
-                  <TouchableOpacity
-                    style={styles.addProductFooterBtn}
-                    onPress={handleAddProduct}
-                    activeOpacity={0.8}
-                  >
-                    <Plus size={13} color={Colors.light.tint} />
-                    <Text style={styles.addProductFooterText}>Add Product</Text>
-                  </TouchableOpacity>
+                  <View style={styles.panelHeader}>
+                    <Text style={styles.panelTitle}>
+                      PRODUCTS + SIZES ({productCount})
+                    </Text>
+                    {!isPromotional && (
+                      <TouchableOpacity
+                        style={styles.addProductHdrBtn}
+                        onPress={handleAddProduct}
+                        activeOpacity={0.85}
+                      >
+                        <Plus size={12} color="#fff" />
+                        <Text style={styles.addProductHdrBtnText}>Add Product</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {isPromotional ? (
+                    <View style={styles.promotionalQtyWrap}>
+                      <Text style={styles.promotionalQtyLabel}>Flat Quantity</Text>
+                      <TextInput
+                        style={styles.promotionalQtyInput}
+                        value={flatQty}
+                        onChangeText={handleFlatQtyChange}
+                        keyboardType="number-pad"
+                        placeholder="0"
+                        placeholderTextColor={Colors.light.textSecondary}
+                      />
+                    </View>
+                  ) : (
+                    <>
+                      {products.map((cp, idx) => (
+                        <QuoteProductRow
+                          key={idx}
+                          cp={cp}
+                          idx={idx}
+                          onChange={(next) => handleProductChange(idx, next)}
+                          onDuplicate={() => handleDuplicateProduct(idx)}
+                          onRemove={() => handleRemoveProduct(idx)}
+                          onUseForMockup={() => handlePickProductForMockup(idx)}
+                          canRemove={productCount > 1}
+                          allProducts={catalogProducts}
+                        />
+                      ))}
+                      <TouchableOpacity
+                        style={styles.addProductFooterBtn}
+                        onPress={handleAddProduct}
+                        activeOpacity={0.8}
+                      >
+                        <Plus size={13} color={Colors.light.tint} />
+                        <Text style={styles.addProductFooterText}>Add Product</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
                 </>
               )}
               {/* ── Calculator: stacked below Products+Sizes in right column ── */}
