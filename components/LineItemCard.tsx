@@ -747,43 +747,6 @@ interface LineItemCardProps {
   onDuplicate?: () => void;
 }
 
-const DTF_VENDORS = ['Siser', 'ColDesi', 'Transfers Express', 'RhinoTech', 'DPG', 'Other'];
-const DTF_PRESETS = ['Pocket Print', 'Center Chest', 'Large Front', 'Large Back', 'Oversized', 'Custom'];
-
-const SP_DECORATORS = ['Screenprint Co.', 'In-House', 'Local Shop', 'Other'];
-const SP_PRESETS = ['1 Color Front', '2 Color Front', 'Front + Back', 'Pocket + Back', 'Left Chest + Back', 'Custom'];
-const SP_PRINT_LOCATIONS = [
-  'Front', 'Back', 'Left Chest', 'Right Chest',
-  'Left Sleeve', 'Right Sleeve', 'Tag', 'Collar', 'Hood', 'Other',
-];
-
-const EMB_VENDORS = ['Stitch Zone', 'EmbroidMe', 'In-House', 'Other'];
-const EMB_LOCATIONS = [
-  'Left Chest', 'Full Back', 'Right Chest', 'Center Chest',
-  'Hat Front', 'Hat Side', 'Sleeve', 'Collar', 'Cuff', 'Other',
-];
-const EMB_PRESETS = ['Left Chest Standard', 'Hat Logo', 'Full Back', 'Large Jacket Back', 'Custom'];
-
-/** Vendor-specific embroidery pricing formula shape. Inject entries to activate pricing. */
-interface EmbVendorFormula {
-  computeCost: (stitchCount: number, quantity: number) => number;
-}
-/**
- * Registry: add vendor entries here to unlock per-vendor cost without redesigning the calculator.
- * Example entry (commented — not active):
- *   'Stitch Zone': { computeCost: (s, q) => Math.max(6.00, (s / 1000) * 2.00) * q }
- */
-const EMB_VENDOR_FORMULAS: Record<string, EmbVendorFormula> = {};
-
-const computeEmbServiceCost = (
-  vendor: string,
-  stitchCount: number,
-  quantity: number,
-): number => {
-  const formula = EMB_VENDOR_FORMULAS[vendor];
-  if (!formula || stitchCount <= 0 || quantity <= 0) return 0;
-  return formula.computeCost(stitchCount, quantity);
-};
 
 function LineItemCardFn({
   item,
@@ -818,32 +781,51 @@ function LineItemCardFn({
   const [focusedSuggestedPrice, setFocusedSuggestedPrice] = useState(false);
 
   // ── Screen Printing Calculator state ──────────────────────────────────────
-  const [spDecorator, setSpDecorator] = useState('');
   const [spPreset, setSpPreset] = useState('');
-  const [spQuantity, setSpQuantity] = useState('');
   const [spSuggestedPrice, setSpSuggestedPrice] = useState('');
   const [focusedSpSuggested, setFocusedSpSuggested] = useState(false);
-  const [spLocationCount, setSpLocationCount] = useState(1);
   const [spLocations, setSpLocations] = useState([
-    { name: '', colors: '', screens: '', notes: '' },
-    { name: '', colors: '', screens: '', notes: '' },
-    { name: '', colors: '', screens: '', notes: '' },
-    { name: '', colors: '', screens: '', notes: '' },
+    { colors: '', screens: '', vendorCost: '', sellPrice: '' },
+    { colors: '', screens: '', vendorCost: '', sellPrice: '' },
+    { colors: '', screens: '', vendorCost: '', sellPrice: '' },
+    { colors: '', screens: '', vendorCost: '', sellPrice: '' },
   ]);
   const updateSpLocation = useCallback(
-    (idx: number, field: 'name' | 'colors' | 'screens' | 'notes', val: string) =>
+    (idx: number, field: 'colors' | 'screens' | 'vendorCost' | 'sellPrice', val: string) =>
       setSpLocations((prev) => prev.map((loc, i) => (i === idx ? { ...loc, [field]: val } : loc))),
     [],
   );
 
   // ── Embroidery Calculator state ───────────────────────────────────────────
   const [embVendor, setEmbVendor] = useState('');
-  const [embLocation, setEmbLocation] = useState('');
   const [embPreset, setEmbPreset] = useState('');
-  const [embStitchCount, setEmbStitchCount] = useState('');
-  const [embQuantity, setEmbQuantity] = useState('');
   const [embSuggestedPrice, setEmbSuggestedPrice] = useState('');
   const [focusedEmbSuggested, setFocusedEmbSuggested] = useState(false);
+  const [embLocations, setEmbLocations] = useState([
+    { stitchCount: '', vendorCost: '', sellPrice: '' },
+    { stitchCount: '', vendorCost: '', sellPrice: '' },
+    { stitchCount: '', vendorCost: '', sellPrice: '' },
+    { stitchCount: '', vendorCost: '', sellPrice: '' },
+  ]);
+  const updateEmbLocation = useCallback(
+    (idx: number, field: 'stitchCount' | 'vendorCost' | 'sellPrice', val: string) =>
+      setEmbLocations((prev) => prev.map((loc, i) => (i === idx ? { ...loc, [field]: val } : loc))),
+    [],
+  );
+
+  // ── DTF Transfers (Wholesale) Calculator state ────────────────────────────
+  const [dtfTGangWidth, setDtfTGangWidth] = useState<'22' | '24' | '30' | 'custom'>('30');
+  const [dtfTCustomWidth, setDtfTCustomWidth] = useState('');
+  const [dtfTWholesaleCost, setDtfTWholesaleCost] = useState('');
+  const [dtfTMarkupPct, setDtfTMarkupPct] = useState('100');
+  const [focusedDtfTField, setFocusedDtfTField] = useState<string | null>(null);
+
+  // ── Promotional Products Calculator state ─────────────────────────────────
+  const [promoProductCost, setPromoProductCost] = useState('');
+  const [promoFreight, setPromoFreight] = useState('');
+  const [promoHandling, setPromoHandling] = useState('');
+  const [promoMarkupPct, setPromoMarkupPct] = useState('100');
+  const [focusedPromoField, setFocusedPromoField] = useState<string | null>(null);
 
   const { isMobile } = useBreakpoint();
   const useSideBySide = Platform.OS === 'web' && !isMobile;
@@ -861,6 +843,19 @@ function LineItemCardFn({
     staleTime: 60_000,
   });
 
+  const { data: productionPresets = [] } = useQuery<any[]>({
+    queryKey: ['production-presets', item.serviceStyle],
+    queryFn: async () => {
+      const r = await fetch(`/api/production-presets?serviceType=${encodeURIComponent(item.serviceStyle ?? '')}&status=Active`);
+      if (!r.ok) return [];
+      const data = await r.json();
+      return data.presets ?? [];
+    },
+    networkMode: 'always',
+    staleTime: 120_000,
+    enabled: !!item.serviceStyle,
+  });
+
   const serviceStyleList: string[] = dbServiceStyles.length > 0
     ? dbServiceStyles.map((s) => s.name)
     : (SERVICE_STYLES as readonly string[]).slice();
@@ -872,7 +867,7 @@ function LineItemCardFn({
   const isDesignWork = item.serviceStyle === 'Design Work';
   const isScreenPrinting = item.serviceStyle === 'Screen Printing';
   const hasSecondLocation = !!(item.location2 && item.location2.length > 0);
-  const hasCalculator = isDTF || isDTFTransfers || isEmbroidery || isScreenPrinting;
+  const hasCalculator = isDTF || isDTFTransfers || isEmbroidery || isScreenPrinting || isPromotional;
 
   const quantity = useMemo(
     () => getTotalQuantity(item.sizes, isPromotional || isDesignWork),
@@ -1015,9 +1010,32 @@ function LineItemCardFn({
     return Number.isNaN(n) ? '' : n.toFixed(2);
   };
 
-  const embStitchCountNum = parseInt(embStitchCount || '0', 10);
-  const embQuantityNum = parseInt(embQuantity || '0', 10);
-  const embServiceCost = computeEmbServiceCost(embVendor, embStitchCountNum, embQuantityNum);
+  // ── DTF Transfers computed values ─────────────────────────────────────────
+  const dtfTWholesaleCostNum = parseFloat(dtfTWholesaleCost) || 0;
+  const dtfTMarkupPctNum = parseFloat(dtfTMarkupPct) || 0;
+  const dtfTSuggestedSell = dtfTWholesaleCostNum * (1 + dtfTMarkupPctNum / 100);
+
+  // ── Screen Printing computed values ───────────────────────────────────────
+  const spVendorCostTotal = locationSlots.reduce((sum, loc, idx) => {
+    if (!loc) return sum;
+    return sum + (parseFloat(spLocations[idx]?.vendorCost || '0') || 0);
+  }, 0);
+  const spSuggestedSellTotal = parseCents(spSuggestedPrice);
+
+  // ── Embroidery computed values ────────────────────────────────────────────
+  const embVendorCostTotal = locationSlots.reduce((sum, loc, idx) => {
+    if (!loc) return sum;
+    return sum + (parseFloat(embLocations[idx]?.vendorCost || '0') || 0);
+  }, 0);
+  const embSuggestedSellTotal = parseCents(embSuggestedPrice);
+
+  // ── Promotional Products computed values ──────────────────────────────────
+  const promoProductCostNum = parseFloat(promoProductCost) || 0;
+  const promoFreightNum = parseFloat(promoFreight) || 0;
+  const promoHandlingNum = parseFloat(promoHandling) || 0;
+  const promoVendorCost = promoProductCostNum + promoFreightNum + promoHandlingNum;
+  const promoMarkupPctNum = parseFloat(promoMarkupPct) || 0;
+  const promoSuggestedSell = promoVendorCost * (1 + promoMarkupPctNum / 100);
 
   const handleServiceStyleChange = (style: typeof item.serviceStyle) => {
     const base = itemRef.current;
@@ -1060,6 +1078,30 @@ function LineItemCardFn({
       onChange(
         updateDesignFields(itemRef.current, { serviceCostEach: dtfTotalCalculatedCost }),
       );
+    }
+  };
+
+  const applyTransfersCost = () => {
+    if (dtfTWholesaleCostNum > 0) {
+      onChange(updateDesignFields(itemRef.current, { serviceCostEach: dtfTWholesaleCostNum }));
+    }
+  };
+
+  const applySpCost = () => {
+    if (spVendorCostTotal > 0) {
+      onChange(updateDesignFields(itemRef.current, { serviceCostEach: spVendorCostTotal }));
+    }
+  };
+
+  const applyEmbCost = () => {
+    if (embVendorCostTotal > 0) {
+      onChange(updateDesignFields(itemRef.current, { serviceCostEach: embVendorCostTotal }));
+    }
+  };
+
+  const applyPromoCost = () => {
+    if (promoVendorCost > 0) {
+      onChange(updateDesignFields(itemRef.current, { serviceCostEach: promoVendorCost }));
     }
   };
 
@@ -1699,64 +1741,67 @@ function LineItemCardFn({
                       ? 'EMBROIDERY COST CALCULATOR'
                       : isScreenPrinting
                         ? 'SCREEN PRINTING CALCULATOR'
-                        : 'DTF COST CALCULATOR'}
+                        : isDTF
+                          ? 'DTF PRINTING CALCULATOR'
+                          : isDTFTransfers
+                            ? 'DTF TRANSFERS (WHOLESALE) CALCULATOR'
+                            : 'PROMOTIONAL PRODUCTS CALCULATOR'}
                   </Text>
                 </View>
                 <View style={styles.calcBody}>
 
-                  {/* DTF Service Calculator */}
-                  {(isDTF || isDTFTransfers) && (
+                  {/* ═══ 1. DTF Printing Calculator ═══ */}
+                  {isDTF && (
                     <View>
-
-                      {/* ── Controls: Vendor | Preset | Suggested Sell | Locations ── */}
                       <View style={styles.dtfControlsRow}>
-                        <OverlayMenu menuWidth={180} align="left"
-                          trigger={({ open }) => (
-                            <TouchableOpacity style={styles.dtfControlChip} onPress={open} activeOpacity={0.75}>
-                              <Text style={styles.dtfControlChipLabel}>VENDOR</Text>
-                              <View style={styles.dtfControlChipValueRow}>
-                                <Text style={styles.dtfControlChipValue} numberOfLines={1}>
-                                  {dtfVendor || 'Select…'}
-                                </Text>
-                                <ChevronDown size={9} color={Colors.light.textSecondary} />
-                              </View>
-                            </TouchableOpacity>
-                          )}
-                        >
-                          {({ close }) => (
-                            <>
-                              {DTF_VENDORS.map((v) => (
-                                <TouchableOpacity key={v} style={styles.dtfMenuRow} onPress={() => { setDtfVendor(v); close(); }}>
-                                  <Text style={[styles.dtfMenuRowText, dtfVendor === v && styles.dtfMenuRowActive]}>{v}</Text>
-                                </TouchableOpacity>
-                              ))}
-                            </>
-                          )}
-                        </OverlayMenu>
+                        <View style={[styles.dtfControlChip, { opacity: 0.55 }]}>
+                          <Text style={styles.dtfControlChipLabel}>VENDOR</Text>
+                          <Text style={[styles.dtfControlChipValue, { fontSize: 10 }]} numberOfLines={1}>
+                            No Vendors Configured
+                          </Text>
+                        </View>
 
-                        <OverlayMenu menuWidth={210} align="left"
-                          trigger={({ open }) => (
-                            <TouchableOpacity style={styles.dtfControlChip} onPress={open} activeOpacity={0.75}>
-                              <Text style={styles.dtfControlChipLabel}>PRICING PRESET</Text>
-                              <View style={styles.dtfControlChipValueRow}>
-                                <Text style={styles.dtfControlChipValue} numberOfLines={1}>
-                                  {dtfPreset || 'Select…'}
-                                </Text>
-                                <ChevronDown size={9} color={Colors.light.textSecondary} />
-                              </View>
-                            </TouchableOpacity>
-                          )}
-                        >
-                          {({ close }) => (
-                            <>
-                              {DTF_PRESETS.map((p) => (
-                                <TouchableOpacity key={p} style={styles.dtfMenuRow} onPress={() => { setDtfPreset(p); close(); }}>
-                                  <Text style={[styles.dtfMenuRowText, dtfPreset === p && styles.dtfMenuRowActive]}>{p}</Text>
-                                </TouchableOpacity>
-                              ))}
-                            </>
-                          )}
-                        </OverlayMenu>
+                        {productionPresets.length === 0 ? (
+                          <View style={[styles.dtfControlChip, { opacity: 0.55 }]}>
+                            <Text style={styles.dtfControlChipLabel}>PRICING PRESET</Text>
+                            <Text style={[styles.dtfControlChipValue, { fontSize: 10 }]} numberOfLines={1}>
+                              No Presets Configured
+                            </Text>
+                          </View>
+                        ) : (
+                          <OverlayMenu menuWidth={210} align="left"
+                            trigger={({ open }) => (
+                              <TouchableOpacity style={styles.dtfControlChip} onPress={open} activeOpacity={0.75}>
+                                <Text style={styles.dtfControlChipLabel}>PRICING PRESET</Text>
+                                <View style={styles.dtfControlChipValueRow}>
+                                  <Text style={styles.dtfControlChipValue} numberOfLines={1}>
+                                    {dtfPreset || 'Select…'}
+                                  </Text>
+                                  <ChevronDown size={9} color={Colors.light.textSecondary} />
+                                </View>
+                              </TouchableOpacity>
+                            )}
+                          >
+                            {({ close }) => (
+                              <>
+                                {productionPresets.map((p: any) => (
+                                  <TouchableOpacity key={p.id} style={styles.dtfMenuRow}
+                                    onPress={() => {
+                                      setDtfPreset(p.name);
+                                      if (p.suggestedSellPrice != null) {
+                                        setDtfSuggestedPrice(String(Math.round(p.suggestedSellPrice * 100)));
+                                      }
+                                      close();
+                                    }}>
+                                    <Text style={[styles.dtfMenuRowText, dtfPreset === p.name && styles.dtfMenuRowActive]}>
+                                      {p.name}
+                                    </Text>
+                                  </TouchableOpacity>
+                                ))}
+                              </>
+                            )}
+                          </OverlayMenu>
+                        )}
 
                         <View style={styles.dtfSuggestedGroup}>
                           <Text style={styles.dtfControlChipLabel}>SUGGESTED SELL</Text>
@@ -1775,16 +1820,10 @@ function LineItemCardFn({
                             />
                           </View>
                         </View>
-
-                        <View style={styles.dtfLocationsGroup}>
-                          <Text style={styles.dtfControlChipLabel}>LOCATIONS</Text>
-                          <Text style={styles.dtfLocationsValue}>{hasSecondLocation ? '2' : '1'}</Text>
-                        </View>
                       </View>
 
-                      {/* ── Location #1 equation: W × H = sq in × Rate = Subtotal ── */}
                       <Text style={styles.calcLocationLabel}>
-                        Location #1 {item.location1 ? `(${item.location1})` : ''}
+                        Location #1{item.location1 ? ` (${item.location1})` : ''}
                       </Text>
                       <View style={styles.dtfCalcRow}>
                         <View style={styles.dtfInputGroupFixed}>
@@ -1850,14 +1889,13 @@ function LineItemCardFn({
                         </View>
                         <Text style={styles.dtfOperator}>=</Text>
                         <View style={styles.dtfTotalCol}>
-                          <Text style={styles.dtfInputLabel}>SUBTOTAL</Text>
+                          <Text style={styles.dtfInputLabel}>COST</Text>
                           <View style={styles.dtfDisplayBox}>
                             <Text style={styles.dtfTotalColVal}>${dtfCalculatedCost1.toFixed(2)}</Text>
                           </View>
                         </View>
                       </View>
 
-                      {/* ── Location #2 equation (only when hasSecondLocation) ── */}
                       {hasSecondLocation && (
                         <>
                           <View style={styles.dtfLocationDivider} />
@@ -1924,7 +1962,7 @@ function LineItemCardFn({
                             </View>
                             <Text style={styles.dtfOperator}>=</Text>
                             <View style={styles.dtfTotalCol}>
-                              <Text style={styles.dtfInputLabel}>SUBTOTAL</Text>
+                              <Text style={styles.dtfInputLabel}>COST</Text>
                               <View style={styles.dtfDisplayBox}>
                                 <Text style={styles.dtfTotalColVal}>${dtfCalculatedCost2.toFixed(2)}</Text>
                               </View>
@@ -1933,113 +1971,273 @@ function LineItemCardFn({
                         </>
                       )}
 
-                      {/* ── Service Cost footer ── */}
-                      <View style={styles.dtfServiceCostRow}>
-                        <View style={styles.dtfServiceCostBlock}>
-                          <Text style={styles.dtfServiceCostLabel}>SERVICE COST</Text>
-                          <Text style={styles.dtfServiceCostValue}>${dtfTotalCalculatedCost.toFixed(2)}</Text>
-                        </View>
-                        <TouchableOpacity
-                          style={[
-                            styles.applyBtn,
-                            dtfTotalCalculatedCost === 0 && styles.applyBtnDisabled,
-                          ]}
-                          onPress={applyDTFCost}
-                          disabled={dtfTotalCalculatedCost === 0}
-                        >
-                          <Text style={styles.applyBtnText}>Apply</Text>
-                        </TouchableOpacity>
-                      </View>
+                      {(() => {
+                        const vc = dtfTotalCalculatedCost;
+                        const ss = parseCents(dtfSuggestedPrice);
+                        const profit = ss - vc;
+                        const margin = ss > 0 ? (profit / ss) * 100 : 0;
+                        return (
+                          <View style={styles.calcSummarySection}>
+                            <View style={styles.calcSummaryRow}>
+                              <Text style={styles.calcSummaryLabel}>VENDOR COST</Text>
+                              <Text style={styles.calcSummaryValue}>{formatCurrency(vc)}</Text>
+                            </View>
+                            <View style={styles.calcSummaryRow}>
+                              <Text style={styles.calcSummaryLabel}>SUGGESTED SELL</Text>
+                              <Text style={styles.calcSummaryValue}>{formatCurrency(ss)}</Text>
+                            </View>
+                            <View style={styles.calcSummaryRow}>
+                              <Text style={styles.calcSummaryLabel}>ESTIMATED PROFIT</Text>
+                              <Text style={[styles.calcSummaryValue, { color: profit >= 0 ? '#16a34a' : Colors.light.error }]}>
+                                {formatCurrency(profit)}
+                              </Text>
+                            </View>
+                            <View style={styles.calcSummaryRow}>
+                              <Text style={styles.calcSummaryLabel}>MARGIN %</Text>
+                              <Text style={styles.calcSummaryValue}>
+                                {isFinite(margin) && ss > 0 ? `${margin.toFixed(1)}%` : '—'}
+                              </Text>
+                            </View>
+                            <TouchableOpacity
+                              style={[styles.applyBtn, vc === 0 && styles.applyBtnDisabled]}
+                              disabled={vc === 0}
+                              onPress={applyDTFCost}
+                            >
+                              <Text style={styles.applyBtnText}>Apply to Line Item</Text>
+                            </TouchableOpacity>
+                          </View>
+                        );
+                      })()}
                     </View>
                   )}
 
-                  {/* Embroidery Calculator */}
+                  {/* ═══ 2. DTF Transfers (Wholesale) Calculator ═══ */}
+                  {isDTFTransfers && (
+                    <View>
+                      <View style={styles.dtfControlsRow}>
+                        <View style={[styles.dtfControlChip, { opacity: 0.55 }]}>
+                          <Text style={styles.dtfControlChipLabel}>VENDOR</Text>
+                          <Text style={[styles.dtfControlChipValue, { fontSize: 10 }]} numberOfLines={1}>
+                            No Vendors Configured
+                          </Text>
+                        </View>
+
+                        {productionPresets.length === 0 ? (
+                          <View style={[styles.dtfControlChip, { opacity: 0.55 }]}>
+                            <Text style={styles.dtfControlChipLabel}>PRICING PRESET</Text>
+                            <Text style={[styles.dtfControlChipValue, { fontSize: 10 }]} numberOfLines={1}>
+                              No Presets Configured
+                            </Text>
+                          </View>
+                        ) : (
+                          <OverlayMenu menuWidth={210} align="left"
+                            trigger={({ open }) => (
+                              <TouchableOpacity style={styles.dtfControlChip} onPress={open} activeOpacity={0.75}>
+                                <Text style={styles.dtfControlChipLabel}>PRICING PRESET</Text>
+                                <View style={styles.dtfControlChipValueRow}>
+                                  <Text style={styles.dtfControlChipValue} numberOfLines={1}>
+                                    {dtfPreset || 'Select…'}
+                                  </Text>
+                                  <ChevronDown size={9} color={Colors.light.textSecondary} />
+                                </View>
+                              </TouchableOpacity>
+                            )}
+                          >
+                            {({ close }) => (
+                              <>
+                                {productionPresets.map((p: any) => (
+                                  <TouchableOpacity key={p.id} style={styles.dtfMenuRow}
+                                    onPress={() => {
+                                      setDtfPreset(p.name);
+                                      if (p.suggestedSellPrice != null) {
+                                        setDtfTWholesaleCost(String(p.suggestedSellPrice));
+                                      }
+                                      close();
+                                    }}>
+                                    <Text style={[styles.dtfMenuRowText, dtfPreset === p.name && styles.dtfMenuRowActive]}>
+                                      {p.name}
+                                    </Text>
+                                  </TouchableOpacity>
+                                ))}
+                              </>
+                            )}
+                          </OverlayMenu>
+                        )}
+                      </View>
+
+                      <View style={styles.calcRowSection}>
+                        <Text style={styles.dtfInputLabel}>GANG SHEET WIDTH</Text>
+                        <View style={styles.calcGangWidthRow}>
+                          {(['22', '24', '30'] as const).map((w) => (
+                            <TouchableOpacity
+                              key={w}
+                              style={[styles.calcGangWidthChip, dtfTGangWidth === w && styles.calcGangWidthChipActive]}
+                              onPress={() => setDtfTGangWidth(w)}
+                              activeOpacity={0.75}
+                            >
+                              <Text style={[styles.calcGangWidthChipText, dtfTGangWidth === w && styles.calcGangWidthChipTextActive]}>
+                                {w}"
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                          <TouchableOpacity
+                            style={[styles.calcGangWidthChip, dtfTGangWidth === 'custom' && styles.calcGangWidthChipActive]}
+                            onPress={() => setDtfTGangWidth('custom')}
+                            activeOpacity={0.75}
+                          >
+                            <Text style={[styles.calcGangWidthChipText, dtfTGangWidth === 'custom' && styles.calcGangWidthChipTextActive]}>
+                              Custom
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                        {dtfTGangWidth === 'custom' && (
+                          <View style={[styles.dtfInputWrapper, { marginTop: 8, alignSelf: 'flex-start' }]}>
+                            <TextInput
+                              style={[styles.dtfInput, { width: 70 }]}
+                              value={dtfTCustomWidth}
+                              onChangeText={(t) => setDtfTCustomWidth(t.replace(/[^0-9.]/g, ''))}
+                              keyboardType="decimal-pad"
+                              placeholder="0"
+                              placeholderTextColor={Colors.light.textSecondary}
+                            />
+                            <Text style={styles.dtfInputSuffix}>in</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      <View style={styles.calcFieldsRow}>
+                        <View style={styles.calcFieldItem}>
+                          <Text style={styles.dtfInputLabel}>WHOLESALE COST</Text>
+                          <View style={styles.dtfInputWrapper}>
+                            <Text style={styles.dtfDollar}>$</Text>
+                            <TextInput
+                              style={[styles.dtfRateInput, { flex: 1 }]}
+                              value={focusedDtfTField === 'wc' ? dtfTWholesaleCost : (dtfTWholesaleCostNum > 0 ? dtfTWholesaleCostNum.toFixed(2) : '')}
+                              onChangeText={(t) => setDtfTWholesaleCost(t.replace(/[^0-9.]/g, ''))}
+                              onFocus={() => setFocusedDtfTField('wc')}
+                              onBlur={() => setFocusedDtfTField(null)}
+                              keyboardType="decimal-pad"
+                              placeholder="0.00"
+                              placeholderTextColor={Colors.light.textSecondary}
+                              selectTextOnFocus
+                            />
+                          </View>
+                        </View>
+                        <View style={styles.calcFieldItem}>
+                          <Text style={styles.dtfInputLabel}>MARKUP %</Text>
+                          <View style={styles.dtfInputWrapper}>
+                            <TextInput
+                              style={[styles.dtfRateInput, { flex: 1 }]}
+                              value={dtfTMarkupPct}
+                              onChangeText={(t) => setDtfTMarkupPct(t.replace(/[^0-9.]/g, ''))}
+                              keyboardType="decimal-pad"
+                              placeholder="100"
+                              placeholderTextColor={Colors.light.textSecondary}
+                              selectTextOnFocus
+                            />
+                            <Text style={styles.dtfInputSuffix}>%</Text>
+                          </View>
+                        </View>
+                        <View style={styles.calcFieldItem}>
+                          <Text style={styles.dtfInputLabel}>SELL PRICE / SHEET</Text>
+                          <View style={[styles.dtfDisplayBox, { paddingHorizontal: 10, minWidth: 80 }]}>
+                            <Text style={styles.dtfTotalColVal}>{formatCurrency(dtfTSuggestedSell)}</Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      {(() => {
+                        const vc = dtfTWholesaleCostNum;
+                        const ss = dtfTSuggestedSell;
+                        const profit = ss - vc;
+                        const margin = ss > 0 ? (profit / ss) * 100 : 0;
+                        return (
+                          <View style={styles.calcSummarySection}>
+                            <View style={styles.calcSummaryRow}>
+                              <Text style={styles.calcSummaryLabel}>VENDOR COST</Text>
+                              <Text style={styles.calcSummaryValue}>{formatCurrency(vc)}</Text>
+                            </View>
+                            <View style={styles.calcSummaryRow}>
+                              <Text style={styles.calcSummaryLabel}>SUGGESTED SELL</Text>
+                              <Text style={styles.calcSummaryValue}>{formatCurrency(ss)}</Text>
+                            </View>
+                            <View style={styles.calcSummaryRow}>
+                              <Text style={styles.calcSummaryLabel}>ESTIMATED PROFIT</Text>
+                              <Text style={[styles.calcSummaryValue, { color: profit >= 0 ? '#16a34a' : Colors.light.error }]}>
+                                {formatCurrency(profit)}
+                              </Text>
+                            </View>
+                            <View style={styles.calcSummaryRow}>
+                              <Text style={styles.calcSummaryLabel}>MARGIN %</Text>
+                              <Text style={styles.calcSummaryValue}>
+                                {isFinite(margin) && ss > 0 ? `${margin.toFixed(1)}%` : '—'}
+                              </Text>
+                            </View>
+                            <TouchableOpacity
+                              style={[styles.applyBtn, vc === 0 && styles.applyBtnDisabled]}
+                              disabled={vc === 0}
+                              onPress={applyTransfersCost}
+                            >
+                              <Text style={styles.applyBtnText}>Apply to Line Item</Text>
+                            </TouchableOpacity>
+                          </View>
+                        );
+                      })()}
+                    </View>
+                  )}
+
+                  {/* ═══ 3. Embroidery Calculator ═══ */}
                   {isEmbroidery && (
                     <View>
-
-                      {/* ── Controls: Vendor | Location | Preset | Suggested Sell ── */}
                       <View style={styles.dtfControlsRow}>
+                        <View style={[styles.dtfControlChip, { opacity: 0.55 }]}>
+                          <Text style={styles.dtfControlChipLabel}>VENDOR</Text>
+                          <Text style={[styles.dtfControlChipValue, { fontSize: 10 }]} numberOfLines={1}>
+                            No Vendors Configured
+                          </Text>
+                        </View>
 
-                        <OverlayMenu menuWidth={180} align="left"
-                          trigger={({ open }) => (
-                            <TouchableOpacity style={styles.dtfControlChip} onPress={open} activeOpacity={0.75}>
-                              <Text style={styles.dtfControlChipLabel}>VENDOR</Text>
-                              <View style={styles.dtfControlChipValueRow}>
-                                <Text style={styles.dtfControlChipValue} numberOfLines={1}>
-                                  {embVendor || 'Select…'}
-                                </Text>
-                                <ChevronDown size={9} color={Colors.light.textSecondary} />
-                              </View>
-                            </TouchableOpacity>
-                          )}
-                        >
-                          {({ close }) => (
-                            <>
-                              {EMB_VENDORS.map((v) => (
-                                <TouchableOpacity key={v} style={styles.dtfMenuRow}
-                                  onPress={() => { setEmbVendor(v); close(); }}>
-                                  <Text style={[styles.dtfMenuRowText, embVendor === v && styles.dtfMenuRowActive]}>
-                                    {v}
+                        {productionPresets.length === 0 ? (
+                          <View style={[styles.dtfControlChip, { opacity: 0.55 }]}>
+                            <Text style={styles.dtfControlChipLabel}>PRICING PRESET</Text>
+                            <Text style={[styles.dtfControlChipValue, { fontSize: 10 }]} numberOfLines={1}>
+                              No Presets Configured
+                            </Text>
+                          </View>
+                        ) : (
+                          <OverlayMenu menuWidth={210} align="left"
+                            trigger={({ open }) => (
+                              <TouchableOpacity style={styles.dtfControlChip} onPress={open} activeOpacity={0.75}>
+                                <Text style={styles.dtfControlChipLabel}>PRICING PRESET</Text>
+                                <View style={styles.dtfControlChipValueRow}>
+                                  <Text style={styles.dtfControlChipValue} numberOfLines={1}>
+                                    {embPreset || 'Select…'}
                                   </Text>
-                                </TouchableOpacity>
-                              ))}
-                            </>
-                          )}
-                        </OverlayMenu>
-
-                        <OverlayMenu menuWidth={190} align="left"
-                          trigger={({ open }) => (
-                            <TouchableOpacity style={styles.dtfControlChip} onPress={open} activeOpacity={0.75}>
-                              <Text style={styles.dtfControlChipLabel}>LOCATION</Text>
-                              <View style={styles.dtfControlChipValueRow}>
-                                <Text style={styles.dtfControlChipValue} numberOfLines={1}>
-                                  {embLocation || 'Select…'}
-                                </Text>
-                                <ChevronDown size={9} color={Colors.light.textSecondary} />
-                              </View>
-                            </TouchableOpacity>
-                          )}
-                        >
-                          {({ close }) => (
-                            <>
-                              {EMB_LOCATIONS.map((loc) => (
-                                <TouchableOpacity key={loc} style={styles.dtfMenuRow}
-                                  onPress={() => { setEmbLocation(loc); close(); }}>
-                                  <Text style={[styles.dtfMenuRowText, embLocation === loc && styles.dtfMenuRowActive]}>
-                                    {loc}
-                                  </Text>
-                                </TouchableOpacity>
-                              ))}
-                            </>
-                          )}
-                        </OverlayMenu>
-
-                        <OverlayMenu menuWidth={200} align="left"
-                          trigger={({ open }) => (
-                            <TouchableOpacity style={styles.dtfControlChip} onPress={open} activeOpacity={0.75}>
-                              <Text style={styles.dtfControlChipLabel}>PRICING PRESET</Text>
-                              <View style={styles.dtfControlChipValueRow}>
-                                <Text style={styles.dtfControlChipValue} numberOfLines={1}>
-                                  {embPreset || 'Select…'}
-                                </Text>
-                                <ChevronDown size={9} color={Colors.light.textSecondary} />
-                              </View>
-                            </TouchableOpacity>
-                          )}
-                        >
-                          {({ close }) => (
-                            <>
-                              {EMB_PRESETS.map((p) => (
-                                <TouchableOpacity key={p} style={styles.dtfMenuRow}
-                                  onPress={() => { setEmbPreset(p); close(); }}>
-                                  <Text style={[styles.dtfMenuRowText, embPreset === p && styles.dtfMenuRowActive]}>
-                                    {p}
-                                  </Text>
-                                </TouchableOpacity>
-                              ))}
-                            </>
-                          )}
-                        </OverlayMenu>
+                                  <ChevronDown size={9} color={Colors.light.textSecondary} />
+                                </View>
+                              </TouchableOpacity>
+                            )}
+                          >
+                            {({ close }) => (
+                              <>
+                                {productionPresets.map((p: any) => (
+                                  <TouchableOpacity key={p.id} style={styles.dtfMenuRow}
+                                    onPress={() => {
+                                      setEmbPreset(p.name);
+                                      if (p.suggestedSellPrice != null) {
+                                        setEmbSuggestedPrice(String(Math.round(p.suggestedSellPrice * 100)));
+                                      }
+                                      close();
+                                    }}>
+                                    <Text style={[styles.dtfMenuRowText, embPreset === p.name && styles.dtfMenuRowActive]}>
+                                      {p.name}
+                                    </Text>
+                                  </TouchableOpacity>
+                                ))}
+                              </>
+                            )}
+                          </OverlayMenu>
+                        )}
 
                         <View style={styles.dtfSuggestedGroup}>
                           <Text style={styles.dtfControlChipLabel}>SUGGESTED SELL</Text>
@@ -2047,8 +2245,8 @@ function LineItemCardFn({
                             <Text style={styles.dtfDollar}>$</Text>
                             <TextInput
                               style={styles.dtfRateInput}
-                              value={formatCents(embSuggestedPrice)}
-                              onChangeText={(t) => setEmbSuggestedPrice(t.replace(/\D/g, ''))}
+                              value={focusedEmbSuggested && embSuggestedPrice === '' ? '' : formatCents(embSuggestedPrice)}
+                              onChangeText={(t) => setEmbSuggestedPrice(applyPosEdit(t))}
                               onFocus={() => setFocusedEmbSuggested(true)}
                               onBlur={() => setFocusedEmbSuggested(false)}
                               keyboardType="number-pad"
@@ -2058,133 +2256,167 @@ function LineItemCardFn({
                             />
                           </View>
                         </View>
-
                       </View>
 
-                      {/* ── Quantity + Stitch Count ── */}
-                      <View style={styles.embInputsRow}>
-                        <View style={styles.embQtyGroup}>
-                          <Text style={styles.dtfInputLabel}>QUANTITY</Text>
-                          <View style={styles.dtfInputWrapper}>
-                            <TextInput
-                              style={[styles.dtfRateInput, { flex: 1 }]}
-                              value={embQuantity}
-                              onChangeText={(t) => setEmbQuantity(t.replace(/\D/g, ''))}
-                              keyboardType="number-pad"
-                              placeholder="0"
-                              placeholderTextColor={Colors.light.textSecondary}
-                              selectTextOnFocus
-                            />
-                            <Text style={styles.dtfInputSuffix}>pcs</Text>
-                          </View>
-                        </View>
-
-                        <View style={styles.embStitchGroup}>
-                          <Text style={styles.dtfInputLabel}>STITCH COUNT</Text>
-                          <View style={styles.embStitchWrapper}>
-                            <TextInput
-                              style={styles.embStitchInput}
-                              value={embStitchCount}
-                              onChangeText={(t) => setEmbStitchCount(t.replace(/\D/g, ''))}
-                              keyboardType="number-pad"
-                              placeholder="e.g. 5000"
-                              placeholderTextColor={Colors.light.textSecondary}
-                              selectTextOnFocus
-                            />
-                            {embStitchCount !== '' && (
-                              <Text style={styles.embStitchSuffix}>stitches</Text>
-                            )}
-                          </View>
-                        </View>
-                      </View>
-
-                      {/* ── Specialty Options (reserved — no logic) ── */}
-                      <View style={styles.spAdditionalOptions}>
-                        <Text style={styles.spAdditionalOptionsLabel}>SPECIALTY OPTIONS</Text>
-                        <Text style={styles.spAdditionalOptionsHint}>
-                          3D puff, appliqué, metallic thread, special backing, rush — coming soon.
-                        </Text>
-                      </View>
-
-                      {/* ── Service Cost footer ── */}
-                      <View style={styles.dtfServiceCostRow}>
-                        <View style={styles.dtfServiceCostBlock}>
-                          <Text style={styles.dtfServiceCostLabel}>SERVICE COST</Text>
-                          <Text style={styles.dtfServiceCostValue}>
-                            ${embServiceCost.toFixed(2)}
+                      {locationSlots.every((l) => !l) ? (
+                        <View style={styles.calcNoLocationsNote}>
+                          <Text style={styles.calcNoLocationsText}>
+                            Add decoration locations in Design Details to use this calculator.
                           </Text>
                         </View>
-                        <TouchableOpacity
-                          style={[styles.applyBtn, embServiceCost === 0 && styles.applyBtnDisabled]}
-                          disabled={embServiceCost === 0}
-                        >
-                          <Text style={styles.applyBtnText}>Apply</Text>
-                        </TouchableOpacity>
-                      </View>
+                      ) : (
+                        locationSlots.map((loc, idx) => {
+                          if (!loc) return null;
+                          return (
+                            <View key={idx} style={styles.calcLocationCard}>
+                              <View style={styles.calcLocationCardHeader}>
+                                <Text style={styles.calcLocationCardTitle}>
+                                  Location {idx + 1}: {loc}
+                                </Text>
+                              </View>
+                              <View style={styles.calcLocationCardBody}>
+                                <View style={styles.calcFieldItem}>
+                                  <Text style={styles.dtfInputLabel}>STITCH COUNT</Text>
+                                  <View style={styles.dtfInputWrapper}>
+                                    <TextInput
+                                      style={[styles.dtfRateInput, { flex: 1 }]}
+                                      value={embLocations[idx]?.stitchCount ?? ''}
+                                      onChangeText={(t) => updateEmbLocation(idx, 'stitchCount', t.replace(/\D/g, ''))}
+                                      keyboardType="number-pad"
+                                      placeholder="e.g. 5000"
+                                      placeholderTextColor={Colors.light.textSecondary}
+                                      selectTextOnFocus
+                                    />
+                                  </View>
+                                </View>
+                                <View style={styles.calcFieldItem}>
+                                  <Text style={styles.dtfInputLabel}>VENDOR COST</Text>
+                                  <View style={styles.dtfInputWrapper}>
+                                    <Text style={styles.dtfDollar}>$</Text>
+                                    <TextInput
+                                      style={[styles.dtfRateInput, { flex: 1 }]}
+                                      value={embLocations[idx]?.vendorCost ?? ''}
+                                      onChangeText={(t) => updateEmbLocation(idx, 'vendorCost', t.replace(/[^0-9.]/g, ''))}
+                                      keyboardType="decimal-pad"
+                                      placeholder="0.00"
+                                      placeholderTextColor={Colors.light.textSecondary}
+                                      selectTextOnFocus
+                                    />
+                                  </View>
+                                </View>
+                                <View style={styles.calcFieldItem}>
+                                  <Text style={styles.dtfInputLabel}>SELL PRICE</Text>
+                                  <View style={styles.dtfInputWrapper}>
+                                    <Text style={styles.dtfDollar}>$</Text>
+                                    <TextInput
+                                      style={[styles.dtfRateInput, { flex: 1 }]}
+                                      value={embLocations[idx]?.sellPrice ?? ''}
+                                      onChangeText={(t) => updateEmbLocation(idx, 'sellPrice', t.replace(/[^0-9.]/g, ''))}
+                                      keyboardType="decimal-pad"
+                                      placeholder="0.00"
+                                      placeholderTextColor={Colors.light.textSecondary}
+                                      selectTextOnFocus
+                                    />
+                                  </View>
+                                </View>
+                              </View>
+                            </View>
+                          );
+                        })
+                      )}
 
+                      {(() => {
+                        const vc = embVendorCostTotal;
+                        const ss = embSuggestedSellTotal;
+                        const profit = ss - vc;
+                        const margin = ss > 0 ? (profit / ss) * 100 : 0;
+                        return (
+                          <View style={styles.calcSummarySection}>
+                            <View style={styles.calcSummaryRow}>
+                              <Text style={styles.calcSummaryLabel}>VENDOR COST</Text>
+                              <Text style={styles.calcSummaryValue}>{formatCurrency(vc)}</Text>
+                            </View>
+                            <View style={styles.calcSummaryRow}>
+                              <Text style={styles.calcSummaryLabel}>SUGGESTED SELL</Text>
+                              <Text style={styles.calcSummaryValue}>{formatCurrency(ss)}</Text>
+                            </View>
+                            <View style={styles.calcSummaryRow}>
+                              <Text style={styles.calcSummaryLabel}>ESTIMATED PROFIT</Text>
+                              <Text style={[styles.calcSummaryValue, { color: profit >= 0 ? '#16a34a' : Colors.light.error }]}>
+                                {formatCurrency(profit)}
+                              </Text>
+                            </View>
+                            <View style={styles.calcSummaryRow}>
+                              <Text style={styles.calcSummaryLabel}>MARGIN %</Text>
+                              <Text style={styles.calcSummaryValue}>
+                                {isFinite(margin) && ss > 0 ? `${margin.toFixed(1)}%` : '—'}
+                              </Text>
+                            </View>
+                            <TouchableOpacity
+                              style={[styles.applyBtn, vc === 0 && styles.applyBtnDisabled]}
+                              disabled={vc === 0}
+                              onPress={applyEmbCost}
+                            >
+                              <Text style={styles.applyBtnText}>Apply to Line Item</Text>
+                            </TouchableOpacity>
+                          </View>
+                        );
+                      })()}
                     </View>
                   )}
 
-                  {/* ── Screen Printing Calculator ── */}
+                  {/* ═══ 4. Screen Printing Calculator ═══ */}
                   {isScreenPrinting && (
                     <View>
-
-                      {/* ── Controls: Decorator | Preset | Suggested Sell | Quantity ── */}
                       <View style={styles.dtfControlsRow}>
+                        <View style={[styles.dtfControlChip, { opacity: 0.55 }]}>
+                          <Text style={styles.dtfControlChipLabel}>VENDOR</Text>
+                          <Text style={[styles.dtfControlChipValue, { fontSize: 10 }]} numberOfLines={1}>
+                            No Vendors Configured
+                          </Text>
+                        </View>
 
-                        <OverlayMenu menuWidth={200} align="left"
-                          trigger={({ open }) => (
-                            <TouchableOpacity style={styles.dtfControlChip} onPress={open} activeOpacity={0.75}>
-                              <Text style={styles.dtfControlChipLabel}>DECORATOR</Text>
-                              <View style={styles.dtfControlChipValueRow}>
-                                <Text style={styles.dtfControlChipValue} numberOfLines={1}>
-                                  {spDecorator || 'Select…'}
-                                </Text>
-                                <ChevronDown size={9} color={Colors.light.textSecondary} />
-                              </View>
-                            </TouchableOpacity>
-                          )}
-                        >
-                          {({ close }) => (
-                            <>
-                              {SP_DECORATORS.map((d) => (
-                                <TouchableOpacity key={d} style={styles.dtfMenuRow}
-                                  onPress={() => { setSpDecorator(d); close(); }}>
-                                  <Text style={[styles.dtfMenuRowText, spDecorator === d && styles.dtfMenuRowActive]}>
-                                    {d}
+                        {productionPresets.length === 0 ? (
+                          <View style={[styles.dtfControlChip, { opacity: 0.55 }]}>
+                            <Text style={styles.dtfControlChipLabel}>PRICING PRESET</Text>
+                            <Text style={[styles.dtfControlChipValue, { fontSize: 10 }]} numberOfLines={1}>
+                              No Presets Configured
+                            </Text>
+                          </View>
+                        ) : (
+                          <OverlayMenu menuWidth={210} align="left"
+                            trigger={({ open }) => (
+                              <TouchableOpacity style={styles.dtfControlChip} onPress={open} activeOpacity={0.75}>
+                                <Text style={styles.dtfControlChipLabel}>PRICING PRESET</Text>
+                                <View style={styles.dtfControlChipValueRow}>
+                                  <Text style={styles.dtfControlChipValue} numberOfLines={1}>
+                                    {spPreset || 'Select…'}
                                   </Text>
-                                </TouchableOpacity>
-                              ))}
-                            </>
-                          )}
-                        </OverlayMenu>
-
-                        <OverlayMenu menuWidth={210} align="left"
-                          trigger={({ open }) => (
-                            <TouchableOpacity style={styles.dtfControlChip} onPress={open} activeOpacity={0.75}>
-                              <Text style={styles.dtfControlChipLabel}>PRICING PRESET</Text>
-                              <View style={styles.dtfControlChipValueRow}>
-                                <Text style={styles.dtfControlChipValue} numberOfLines={1}>
-                                  {spPreset || 'Select…'}
-                                </Text>
-                                <ChevronDown size={9} color={Colors.light.textSecondary} />
-                              </View>
-                            </TouchableOpacity>
-                          )}
-                        >
-                          {({ close }) => (
-                            <>
-                              {SP_PRESETS.map((p) => (
-                                <TouchableOpacity key={p} style={styles.dtfMenuRow}
-                                  onPress={() => { setSpPreset(p); close(); }}>
-                                  <Text style={[styles.dtfMenuRowText, spPreset === p && styles.dtfMenuRowActive]}>
-                                    {p}
-                                  </Text>
-                                </TouchableOpacity>
-                              ))}
-                            </>
-                          )}
-                        </OverlayMenu>
+                                  <ChevronDown size={9} color={Colors.light.textSecondary} />
+                                </View>
+                              </TouchableOpacity>
+                            )}
+                          >
+                            {({ close }) => (
+                              <>
+                                {productionPresets.map((p: any) => (
+                                  <TouchableOpacity key={p.id} style={styles.dtfMenuRow}
+                                    onPress={() => {
+                                      setSpPreset(p.name);
+                                      if (p.suggestedSellPrice != null) {
+                                        setSpSuggestedPrice(String(Math.round(p.suggestedSellPrice * 100)));
+                                      }
+                                      close();
+                                    }}>
+                                    <Text style={[styles.dtfMenuRowText, spPreset === p.name && styles.dtfMenuRowActive]}>
+                                      {p.name}
+                                    </Text>
+                                  </TouchableOpacity>
+                                ))}
+                              </>
+                            )}
+                          </OverlayMenu>
+                        )}
 
                         <View style={styles.dtfSuggestedGroup}>
                           <Text style={styles.dtfControlChipLabel}>SUGGESTED SELL</Text>
@@ -2192,8 +2424,8 @@ function LineItemCardFn({
                             <Text style={styles.dtfDollar}>$</Text>
                             <TextInput
                               style={styles.dtfRateInput}
-                              value={formatCents(spSuggestedPrice)}
-                              onChangeText={(t) => setSpSuggestedPrice(t.replace(/\D/g, ''))}
+                              value={focusedSpSuggested && spSuggestedPrice === '' ? '' : formatCents(spSuggestedPrice)}
+                              onChangeText={(t) => setSpSuggestedPrice(applyPosEdit(t))}
                               onFocus={() => setFocusedSpSuggested(true)}
                               onBlur={() => setFocusedSpSuggested(false)}
                               keyboardType="number-pad"
@@ -2203,138 +2435,293 @@ function LineItemCardFn({
                             />
                           </View>
                         </View>
+                      </View>
 
-                        <View style={styles.dtfSuggestedGroup}>
-                          <Text style={styles.dtfControlChipLabel}>QUANTITY</Text>
+                      {locationSlots.every((l) => !l) ? (
+                        <View style={styles.calcNoLocationsNote}>
+                          <Text style={styles.calcNoLocationsText}>
+                            Add decoration locations in Design Details to use this calculator.
+                          </Text>
+                        </View>
+                      ) : (
+                        locationSlots.map((loc, idx) => {
+                          if (!loc) return null;
+                          return (
+                            <View key={idx} style={styles.calcLocationCard}>
+                              <View style={styles.calcLocationCardHeader}>
+                                <Text style={styles.calcLocationCardTitle}>
+                                  Location {idx + 1}: {loc}
+                                </Text>
+                              </View>
+                              <View style={styles.calcLocationCardBody}>
+                                <View style={styles.calcFieldItem}>
+                                  <Text style={styles.dtfInputLabel}># OF COLORS</Text>
+                                  <View style={styles.dtfInputWrapper}>
+                                    <TextInput
+                                      style={[styles.dtfRateInput, { flex: 1 }]}
+                                      value={spLocations[idx]?.colors ?? ''}
+                                      onChangeText={(t) => updateSpLocation(idx, 'colors', t.replace(/\D/g, ''))}
+                                      keyboardType="number-pad"
+                                      placeholder="0"
+                                      placeholderTextColor={Colors.light.textSecondary}
+                                      selectTextOnFocus
+                                    />
+                                  </View>
+                                </View>
+                                <View style={styles.calcFieldItem}>
+                                  <Text style={styles.dtfInputLabel}># OF SCREENS</Text>
+                                  <View style={styles.dtfInputWrapper}>
+                                    <TextInput
+                                      style={[styles.dtfRateInput, { flex: 1 }]}
+                                      value={spLocations[idx]?.screens ?? ''}
+                                      onChangeText={(t) => updateSpLocation(idx, 'screens', t.replace(/\D/g, ''))}
+                                      keyboardType="number-pad"
+                                      placeholder="0"
+                                      placeholderTextColor={Colors.light.textSecondary}
+                                      selectTextOnFocus
+                                    />
+                                  </View>
+                                </View>
+                                <View style={styles.calcFieldItem}>
+                                  <Text style={styles.dtfInputLabel}>VENDOR COST</Text>
+                                  <View style={styles.dtfInputWrapper}>
+                                    <Text style={styles.dtfDollar}>$</Text>
+                                    <TextInput
+                                      style={[styles.dtfRateInput, { flex: 1 }]}
+                                      value={spLocations[idx]?.vendorCost ?? ''}
+                                      onChangeText={(t) => updateSpLocation(idx, 'vendorCost', t.replace(/[^0-9.]/g, ''))}
+                                      keyboardType="decimal-pad"
+                                      placeholder="0.00"
+                                      placeholderTextColor={Colors.light.textSecondary}
+                                      selectTextOnFocus
+                                    />
+                                  </View>
+                                </View>
+                                <View style={styles.calcFieldItem}>
+                                  <Text style={styles.dtfInputLabel}>SELL PRICE</Text>
+                                  <View style={styles.dtfInputWrapper}>
+                                    <Text style={styles.dtfDollar}>$</Text>
+                                    <TextInput
+                                      style={[styles.dtfRateInput, { flex: 1 }]}
+                                      value={spLocations[idx]?.sellPrice ?? ''}
+                                      onChangeText={(t) => updateSpLocation(idx, 'sellPrice', t.replace(/[^0-9.]/g, ''))}
+                                      keyboardType="decimal-pad"
+                                      placeholder="0.00"
+                                      placeholderTextColor={Colors.light.textSecondary}
+                                      selectTextOnFocus
+                                    />
+                                  </View>
+                                </View>
+                              </View>
+                            </View>
+                          );
+                        })
+                      )}
+
+                      {(() => {
+                        const vc = spVendorCostTotal;
+                        const ss = spSuggestedSellTotal;
+                        const profit = ss - vc;
+                        const margin = ss > 0 ? (profit / ss) * 100 : 0;
+                        return (
+                          <View style={styles.calcSummarySection}>
+                            <View style={styles.calcSummaryRow}>
+                              <Text style={styles.calcSummaryLabel}>VENDOR COST</Text>
+                              <Text style={styles.calcSummaryValue}>{formatCurrency(vc)}</Text>
+                            </View>
+                            <View style={styles.calcSummaryRow}>
+                              <Text style={styles.calcSummaryLabel}>SUGGESTED SELL</Text>
+                              <Text style={styles.calcSummaryValue}>{formatCurrency(ss)}</Text>
+                            </View>
+                            <View style={styles.calcSummaryRow}>
+                              <Text style={styles.calcSummaryLabel}>ESTIMATED PROFIT</Text>
+                              <Text style={[styles.calcSummaryValue, { color: profit >= 0 ? '#16a34a' : Colors.light.error }]}>
+                                {formatCurrency(profit)}
+                              </Text>
+                            </View>
+                            <View style={styles.calcSummaryRow}>
+                              <Text style={styles.calcSummaryLabel}>MARGIN %</Text>
+                              <Text style={styles.calcSummaryValue}>
+                                {isFinite(margin) && ss > 0 ? `${margin.toFixed(1)}%` : '—'}
+                              </Text>
+                            </View>
+                            <TouchableOpacity
+                              style={[styles.applyBtn, vc === 0 && styles.applyBtnDisabled]}
+                              disabled={vc === 0}
+                              onPress={applySpCost}
+                            >
+                              <Text style={styles.applyBtnText}>Apply to Line Item</Text>
+                            </TouchableOpacity>
+                          </View>
+                        );
+                      })()}
+                    </View>
+                  )}
+
+                  {/* ═══ 5. Promotional Products Calculator ═══ */}
+                  {isPromotional && (
+                    <View>
+                      <View style={[styles.dtfControlsRow, { marginBottom: 14 }]}>
+                        <View style={[styles.dtfControlChip, { opacity: 0.55 }]}>
+                          <Text style={styles.dtfControlChipLabel}>VENDOR</Text>
+                          <Text style={[styles.dtfControlChipValue, { fontSize: 10 }]} numberOfLines={1}>
+                            No Vendors Configured
+                          </Text>
+                        </View>
+                        {productionPresets.length === 0 ? (
+                          <View style={[styles.dtfControlChip, { opacity: 0.55 }]}>
+                            <Text style={styles.dtfControlChipLabel}>PRICING PRESET</Text>
+                            <Text style={[styles.dtfControlChipValue, { fontSize: 10 }]} numberOfLines={1}>
+                              No Presets Configured
+                            </Text>
+                          </View>
+                        ) : (
+                          <OverlayMenu menuWidth={210} align="left"
+                            trigger={({ open }) => (
+                              <TouchableOpacity style={styles.dtfControlChip} onPress={open} activeOpacity={0.75}>
+                                <Text style={styles.dtfControlChipLabel}>PRICING PRESET</Text>
+                                <View style={styles.dtfControlChipValueRow}>
+                                  <Text style={styles.dtfControlChipValue} numberOfLines={1}>Select…</Text>
+                                  <ChevronDown size={9} color={Colors.light.textSecondary} />
+                                </View>
+                              </TouchableOpacity>
+                            )}
+                          >
+                            {({ close }) => (
+                              <>
+                                {productionPresets.map((p: any) => (
+                                  <TouchableOpacity key={p.id} style={styles.dtfMenuRow}
+                                    onPress={() => {
+                                      if (p.suggestedSellPrice != null) setPromoProductCost(String(p.suggestedSellPrice));
+                                      close();
+                                    }}>
+                                    <Text style={styles.dtfMenuRowText}>{p.name}</Text>
+                                  </TouchableOpacity>
+                                ))}
+                              </>
+                            )}
+                          </OverlayMenu>
+                        )}
+                      </View>
+
+                      <View style={styles.calcFieldsRow}>
+                        <View style={styles.calcFieldItem}>
+                          <Text style={styles.dtfInputLabel}>PRODUCT COST</Text>
                           <View style={styles.dtfInputWrapper}>
+                            <Text style={styles.dtfDollar}>$</Text>
                             <TextInput
                               style={[styles.dtfRateInput, { flex: 1 }]}
-                              value={spQuantity}
-                              onChangeText={(t) => setSpQuantity(t.replace(/\D/g, ''))}
-                              keyboardType="number-pad"
-                              placeholder="0"
+                              value={focusedPromoField === 'pc' ? promoProductCost : (promoProductCostNum > 0 ? promoProductCostNum.toFixed(2) : '')}
+                              onChangeText={(t) => setPromoProductCost(t.replace(/[^0-9.]/g, ''))}
+                              onFocus={() => setFocusedPromoField('pc')}
+                              onBlur={() => setFocusedPromoField(null)}
+                              keyboardType="decimal-pad"
+                              placeholder="0.00"
                               placeholderTextColor={Colors.light.textSecondary}
                               selectTextOnFocus
                             />
-                            <Text style={styles.dtfInputSuffix}>pcs</Text>
                           </View>
                         </View>
-
+                        <View style={styles.calcFieldItem}>
+                          <Text style={styles.dtfInputLabel}>FREIGHT</Text>
+                          <View style={styles.dtfInputWrapper}>
+                            <Text style={styles.dtfDollar}>$</Text>
+                            <TextInput
+                              style={[styles.dtfRateInput, { flex: 1 }]}
+                              value={focusedPromoField === 'fr' ? promoFreight : (promoFreightNum > 0 ? promoFreightNum.toFixed(2) : '')}
+                              onChangeText={(t) => setPromoFreight(t.replace(/[^0-9.]/g, ''))}
+                              onFocus={() => setFocusedPromoField('fr')}
+                              onBlur={() => setFocusedPromoField(null)}
+                              keyboardType="decimal-pad"
+                              placeholder="0.00"
+                              placeholderTextColor={Colors.light.textSecondary}
+                              selectTextOnFocus
+                            />
+                          </View>
+                        </View>
+                        <View style={styles.calcFieldItem}>
+                          <Text style={styles.dtfInputLabel}>HANDLING</Text>
+                          <View style={styles.dtfInputWrapper}>
+                            <Text style={styles.dtfDollar}>$</Text>
+                            <TextInput
+                              style={[styles.dtfRateInput, { flex: 1 }]}
+                              value={focusedPromoField === 'hd' ? promoHandling : (promoHandlingNum > 0 ? promoHandlingNum.toFixed(2) : '')}
+                              onChangeText={(t) => setPromoHandling(t.replace(/[^0-9.]/g, ''))}
+                              onFocus={() => setFocusedPromoField('hd')}
+                              onBlur={() => setFocusedPromoField(null)}
+                              keyboardType="decimal-pad"
+                              placeholder="0.00"
+                              placeholderTextColor={Colors.light.textSecondary}
+                              selectTextOnFocus
+                            />
+                          </View>
+                        </View>
                       </View>
 
-                      {/* ── Print Locations Count Picker ── */}
-                      <View style={styles.spLocationCountRow}>
-                        <Text style={styles.spLocationCountLabel}>PRINT LOCATIONS</Text>
-                        <View style={styles.spLocationCountPicker}>
-                          {([1, 2, 3, 4] as const).map((n) => (
-                            <TouchableOpacity
-                              key={n}
-                              style={[styles.spCountChip, spLocationCount === n && styles.spCountChipActive]}
-                              onPress={() => setSpLocationCount(n)}
-                              activeOpacity={0.75}
-                            >
-                              <Text style={[styles.spCountChipText, spLocationCount === n && styles.spCountChipTextActive]}>
-                                {n}
+                      <View style={styles.calcFieldsRow}>
+                        <View style={styles.calcFieldItem}>
+                          <Text style={styles.dtfInputLabel}>MARKUP %</Text>
+                          <View style={styles.dtfInputWrapper}>
+                            <TextInput
+                              style={[styles.dtfRateInput, { flex: 1 }]}
+                              value={promoMarkupPct}
+                              onChangeText={(t) => setPromoMarkupPct(t.replace(/[^0-9.]/g, ''))}
+                              keyboardType="decimal-pad"
+                              placeholder="100"
+                              placeholderTextColor={Colors.light.textSecondary}
+                              selectTextOnFocus
+                            />
+                            <Text style={styles.dtfInputSuffix}>%</Text>
+                          </View>
+                        </View>
+                        <View style={styles.calcFieldItem}>
+                          <Text style={styles.dtfInputLabel}>SUGGESTED SELL PRICE</Text>
+                          <View style={[styles.dtfDisplayBox, { paddingHorizontal: 10, minWidth: 100 }]}>
+                            <Text style={styles.dtfTotalColVal}>{formatCurrency(promoSuggestedSell)}</Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      {(() => {
+                        const vc = promoVendorCost;
+                        const ss = promoSuggestedSell;
+                        const profit = ss - vc;
+                        const margin = ss > 0 ? (profit / ss) * 100 : 0;
+                        return (
+                          <View style={styles.calcSummarySection}>
+                            <View style={styles.calcSummaryRow}>
+                              <Text style={styles.calcSummaryLabel}>VENDOR COST</Text>
+                              <Text style={styles.calcSummaryValue}>{formatCurrency(vc)}</Text>
+                            </View>
+                            <View style={styles.calcSummaryRow}>
+                              <Text style={styles.calcSummaryLabel}>SUGGESTED SELL</Text>
+                              <Text style={styles.calcSummaryValue}>{formatCurrency(ss)}</Text>
+                            </View>
+                            <View style={styles.calcSummaryRow}>
+                              <Text style={styles.calcSummaryLabel}>ESTIMATED PROFIT</Text>
+                              <Text style={[styles.calcSummaryValue, { color: profit >= 0 ? '#16a34a' : Colors.light.error }]}>
+                                {formatCurrency(profit)}
                               </Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      </View>
-
-                      {/* ── Location Cards ── */}
-                      {([0, 1, 2, 3] as const).slice(0, spLocationCount).map((idx) => (
-                        <View key={idx} style={styles.spLocationCard}>
-                          <Text style={styles.spLocationCardTitle}>Location {idx + 1}</Text>
-                          <View style={styles.spLocationInputsRow}>
-                            <OverlayMenu menuWidth={200} align="left"
-                              trigger={({ open }) => (
-                                <TouchableOpacity style={styles.spLocNameChip} onPress={open} activeOpacity={0.75}>
-                                  <Text style={styles.dtfControlChipLabel}>LOCATION</Text>
-                                  <View style={styles.dtfControlChipValueRow}>
-                                    <Text style={styles.dtfControlChipValue} numberOfLines={1}>
-                                      {spLocations[idx].name || 'Select…'}
-                                    </Text>
-                                    <ChevronDown size={9} color={Colors.light.textSecondary} />
-                                  </View>
-                                </TouchableOpacity>
-                              )}
+                            </View>
+                            <View style={styles.calcSummaryRow}>
+                              <Text style={styles.calcSummaryLabel}>MARGIN %</Text>
+                              <Text style={styles.calcSummaryValue}>
+                                {isFinite(margin) && ss > 0 ? `${margin.toFixed(1)}%` : '—'}
+                              </Text>
+                            </View>
+                            <TouchableOpacity
+                              style={[styles.applyBtn, vc === 0 && styles.applyBtnDisabled]}
+                              disabled={vc === 0}
+                              onPress={applyPromoCost}
                             >
-                              {({ close }) => (
-                                <>
-                                  {SP_PRINT_LOCATIONS.map((loc) => (
-                                    <TouchableOpacity key={loc} style={styles.dtfMenuRow}
-                                      onPress={() => { updateSpLocation(idx, 'name', loc); close(); }}>
-                                      <Text style={[styles.dtfMenuRowText, spLocations[idx].name === loc && styles.dtfMenuRowActive]}>
-                                        {loc}
-                                      </Text>
-                                    </TouchableOpacity>
-                                  ))}
-                                </>
-                              )}
-                            </OverlayMenu>
-
-                            <View style={styles.spInputGroup}>
-                              <Text style={styles.dtfInputLabel}>COLORS</Text>
-                              <View style={styles.spNumInputWrapper}>
-                                <TextInput
-                                  style={styles.spNumInputField}
-                                  value={spLocations[idx].colors}
-                                  onChangeText={(t) => updateSpLocation(idx, 'colors', t.replace(/\D/g, ''))}
-                                  keyboardType="number-pad"
-                                  placeholder="0"
-                                  placeholderTextColor={Colors.light.textSecondary}
-                                  selectTextOnFocus
-                                />
-                              </View>
-                            </View>
-
-                            <View style={styles.spInputGroup}>
-                              <Text style={styles.dtfInputLabel}>SCREENS</Text>
-                              <View style={styles.spNumInputWrapper}>
-                                <TextInput
-                                  style={styles.spNumInputField}
-                                  value={spLocations[idx].screens}
-                                  onChangeText={(t) => updateSpLocation(idx, 'screens', t.replace(/\D/g, ''))}
-                                  keyboardType="number-pad"
-                                  placeholder="0"
-                                  placeholderTextColor={Colors.light.textSecondary}
-                                  selectTextOnFocus
-                                />
-                              </View>
-                            </View>
+                              <Text style={styles.applyBtnText}>Apply to Line Item</Text>
+                            </TouchableOpacity>
                           </View>
-
-                          <TextInput
-                            style={styles.spNotesInput}
-                            value={spLocations[idx].notes}
-                            onChangeText={(t) => updateSpLocation(idx, 'notes', t)}
-                            placeholder="Notes (optional)"
-                            placeholderTextColor={Colors.light.textSecondary}
-                          />
-                        </View>
-                      ))}
-
-                      {/* ── Additional Options (reserved — no logic) ── */}
-                      <View style={styles.spAdditionalOptions}>
-                        <Text style={styles.spAdditionalOptionsLabel}>ADDITIONAL OPTIONS</Text>
-                        <Text style={styles.spAdditionalOptionsHint}>
-                          Specialty ink, PMS match, rush, fold & bag, names & numbers — coming soon.
-                        </Text>
-                      </View>
-
-                      {/* ── Service Cost footer ── */}
-                      <View style={styles.dtfServiceCostRow}>
-                        <View style={styles.dtfServiceCostBlock}>
-                          <Text style={styles.dtfServiceCostLabel}>SERVICE COST</Text>
-                          <Text style={styles.dtfServiceCostValue}>$0.00</Text>
-                        </View>
-                        <TouchableOpacity style={[styles.applyBtn, styles.applyBtnDisabled]} disabled>
-                          <Text style={styles.applyBtnText}>Apply</Text>
-                        </TouchableOpacity>
-                      </View>
-
+                        );
+                      })()}
                     </View>
                   )}
+
                 </View>
               </View>
               )}
@@ -3730,5 +4117,111 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.light.textSecondary,
     fontWeight: '600',
+  },
+  calcSummarySection: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    marginTop: 16,
+    paddingTop: 14,
+    gap: 7,
+  },
+  calcSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  calcSummaryLabel: {
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+    fontWeight: '600',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  calcSummaryValue: {
+    fontSize: 13,
+    color: Colors.light.text,
+    fontWeight: '700',
+  },
+  calcGangWidthRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  calcGangWidthChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: Colors.light.surface,
+  },
+  calcGangWidthChipActive: {
+    backgroundColor: Colors.light.tint,
+    borderColor: Colors.light.tint,
+  },
+  calcGangWidthChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.light.textSecondary,
+  },
+  calcGangWidthChipTextActive: {
+    color: '#fff',
+  },
+  calcFieldsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 12,
+    alignItems: 'flex-end',
+  },
+  calcFieldItem: {
+    gap: 5,
+    minWidth: 110,
+  },
+  calcLocationCard: {
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 8,
+    marginTop: 10,
+    overflow: 'hidden',
+  },
+  calcLocationCardHeader: {
+    backgroundColor: Colors.light.highlightBg,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+  },
+  calcLocationCardTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  calcLocationCardBody: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    padding: 12,
+    alignItems: 'flex-end',
+  },
+  calcNoLocationsNote: {
+    backgroundColor: Colors.light.highlightBg,
+    borderRadius: 8,
+    padding: 14,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
+  calcNoLocationsText: {
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  calcRowSection: {
+    marginTop: 12,
   },
 });

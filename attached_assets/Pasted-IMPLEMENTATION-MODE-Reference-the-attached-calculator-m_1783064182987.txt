@@ -1,0 +1,441 @@
+IMPLEMENTATION MODE
+
+Reference the attached calculator mockup image throughout this implementation. It is the approved UI and workflow reference.
+
+If the current implementation conflicts with the attached mockup or the requirements below, replace the implementation. Do NOT preserve placeholder behavior, demo workflows, or previous assumptions.
+
+This task is focused ONLY on refining and correcting the service calculators.
+
+Do NOT redesign the overall Quote Builder layout.
+
+Do NOT move any sections.
+
+Do NOT redesign Design Details, Products + Sizes, Pricing Adjustments, or Line Item Costs.
+
+The calculator panel must remain directly beneath Products + Sizes exactly as shown in the approved mockup.
+
+===========================================================
+OBJECTIVE
+===========================================================
+
+These calculators are production tools, not generic forms.
+
+Their purpose is to calculate SERVICE COSTS for each production method using information already entered elsewhere in the Line Item.
+
+The calculators should reduce duplicate work, clearly show what we pay versus what we charge, and populate the Service Cost into the Service bucket within Line Item Costs when Apply is pressed.
+
+The goal is NOT to redesign the Quote Builder.
+
+The goal is to make every calculator feel like a production workstation that a real print shop would use.
+
+===========================================================
+GLOBAL REQUIREMENTS
+===========================================================
+
+1. Remove ALL placeholder/demo data.
+
+Never populate fake vendors.
+
+Never populate demo pricing.
+
+Never populate demo pricing presets.
+
+Never populate sample calculations.
+
+If Production Vendors have not yet been configured, display:
+
+"No Production Vendors Available"
+
+with a button:
+
+"Manage Production Vendors"
+
+If Pricing Presets have not yet been configured, display:
+
+"No Pricing Presets Available"
+
+with a button:
+
+"Manage Pricing Presets"
+
+The application should never fabricate production data.
+
+-----------------------------------------------------------
+
+2. Remove duplicate inputs.
+
+The calculator must NEVER ask for:
+
+• Quantity
+• Number of Locations
+• Decoration Locations
+
+These already exist elsewhere in the Line Item.
+
+The calculator should consume existing Line Item information instead of asking for it again.
+
+-----------------------------------------------------------
+
+3. Standardize every calculator footer.
+
+Every calculator should end with the exact same summary section:
+
+Vendor Cost
+
+Suggested Sell
+
+Estimated Profit
+
+Margin %
+
+[ Apply ]
+
+Definitions:
+
+Vendor Cost
+= what we pay our production vendor.
+
+Suggested Sell
+= recommended customer selling price.
+
+Estimated Profit
+= Suggested Sell − Vendor Cost.
+
+Margin %
+= calculated automatically.
+
+Apply pushes ONLY the Vendor Cost into the Service bucket inside Line Item Costs.
+
+-----------------------------------------------------------
+
+4. Do NOT invent business rules.
+
+If a required value depends on a future feature (Production Vendors, Pricing Presets, Vendor Pricing Tables, etc.), build the UI and data flow only.
+
+Do NOT fabricate calculations.
+
+Do NOT fabricate pricing.
+
+Do NOT fabricate fallback logic.
+
+Do NOT fabricate assumptions.
+
+Gracefully indicate that configuration is required instead.
+
+===========================================================
+NO DATA SHOULD EXIST IN TWO PLACES
+===========================================================
+
+Every value in the Quote Builder has ONE source of truth.
+
+The calculators consume existing Line Item information.
+
+They do not redefine it.
+
+Examples:
+
+• Decoration Locations come from Design Details.
+
+• Quantity comes from Products + Sizes.
+
+• Product Cost belongs in the Product bucket of Line Item Costs.
+
+• Pricing Adjustments belong in the Pricing Adjustments section.
+
+• Service Cost is calculated by the calculator.
+
+If information already exists elsewhere, do not ask the user for it again.
+
+===========================================================
+DTF PRINTING CALCULATOR
+===========================================================
+
+Keep the existing Width × Height workflow.
+
+Continue displaying one calculation block for every decoration location.
+
+Each decoration location should contain:
+
+• Width
+• Height
+• Square Inches
+• Vendor Rate
+• Vendor Cost
+
+The top toolbar should contain:
+
+Production Vendor
+
+Pricing Preset
+
+Suggested Sell
+
+Selecting a Pricing Preset should populate the Suggested Sell only.
+
+Vendor Cost is calculated by summing every decoration location.
+
+Each location calculates:
+
+Width × Height = Square Inches × Vendor Rate = Vendor Cost
+
+The footer Vendor Cost equals the sum of every decoration location.
+
+Do NOT calculate markup inside this calculator.
+
+===========================================================
+SCREEN PRINTING CALCULATOR
+===========================================================
+
+Completely rethink this workflow.
+
+Each decoration location should contain ONLY production information.
+
+Per Location:
+
+• Location (automatically populated from Design Details)
+• Number of Colors
+• Number of Screens
+• Special Ink (optional add-on)
+• Ink Change (optional add-on)
+• Fold & Bag (optional add-on)
+• Film Match (optional add-on)
+
+Remove Vendor Cost and Sell Price from each individual location.
+
+Those are JOB totals, not location values.
+
+Below all locations display a production summary.
+
+Vendor Cost Breakdown
+
+• Screen Setup
+• Film Positives
+• Ink Charges
+• Specialty Charges
+• Other Production Charges
+
+Then display:
+
+Vendor Cost
+
+Suggested Sell
+
+Estimated Profit
+
+Margin %
+
+Apply
+
+Pricing Presets determine the default Suggested Sell.
+
+The user may manually override Suggested Sell without modifying the Pricing Preset.
+
+Manual overrides must never affect Vendor Cost calculations.
+
+Do NOT ask for Quantity.
+
+Do NOT ask for Number of Locations.
+
+Those are already defined elsewhere.
+
+===========================================================
+EMBROIDERY CALCULATOR
+===========================================================
+
+Keep the existing layout.
+
+Each decoration location should contain:
+
+Placement
+
+Stitch Count
+
+Vendor Cost
+
+Sell Price
+
+Placement should automatically populate from the selected decoration Locations in Design Details.
+
+If the user changes the decoration Locations, the calculator should immediately reflect those changes.
+
+The user should never redefine placement inside the calculator.
+
+Vendor Cost should calculate from the selected Production Vendor pricing.
+
+Sell Price should populate from the selected Pricing Preset.
+
+Display footer totals:
+
+Vendor Cost
+
+Suggested Sell
+
+Estimated Profit
+
+Margin %
+
+Apply
+
+Do NOT ask for Quantity.
+
+Digitizing should NOT exist inside this calculator.
+
+Digitizing belongs in Pricing Adjustments.
+
+If no embroidery file exists, the calculator may recommend adding Digitizing, but it must never automatically add charges.
+
+===========================================================
+PROMOTIONAL PRODUCTS CALCULATOR
+===========================================================
+
+Replace the current implementation.
+
+This calculator represents sourcing products from vendors.
+
+It should support:
+
+Production Vendor
+
+Product Cost
+
+Freight
+
+Setup Charge
+
+Additional Vendor Fees
+
+Vendor Cost
+
+Pricing Preset
+
+Suggested Sell
+
+Estimated Profit
+
+Margin %
+
+Apply
+
+This is not a decoration calculator.
+
+It is a sourcing calculator.
+
+===========================================================
+DTF TRANSFERS (WHOLESALE) CALCULATOR
+===========================================================
+
+DTF Transfers are NOT DTF Printing.
+
+They are wholesale transfer purchases.
+
+They should NOT use decoration locations.
+
+Replace the current location-based workflow with a gang sheet workflow.
+
+The calculator should contain:
+
+Production Vendor
+
+Pricing Preset
+
+Gang Sheet Width
+
+(Default options:)
+
+• 22"
+
+• 24"
+
+• 30"
+
+(Default = 30")
+
+Include a Custom width option.
+
+Gang Sheet Height
+
+Wholesale Cost
+
+Markup %
+
+Suggested Sell
+
+Estimated Profit
+
+Margin %
+
+Apply
+
+The calculation should be:
+
+Width × Height = Square Inches × Vendor Rate = Wholesale Cost
+
+This calculator prices wholesale gang sheets only.
+
+===========================================================
+IMPORTANT BUSINESS RULES
+===========================================================
+
+These calculators calculate SERVICE COST ONLY.
+
+Product Cost belongs in the Product bucket inside Line Item Costs.
+
+In a future implementation Product Cost will automatically populate from Products + Sizes.
+
+Do NOT duplicate Product Cost inside the calculators.
+
+Do NOT duplicate Pricing Adjustments inside the calculators.
+
+Do NOT redesign Pricing Adjustments during this task.
+
+Maintain complete backwards compatibility with the existing Quote Builder.
+
+===========================================================
+SUCCESS CRITERIA
+===========================================================
+
+• All five calculators visually match the attached reference layout.
+
+• No placeholder vendors remain.
+
+• No placeholder pricing presets remain.
+
+• No placeholder pricing remains.
+
+• No duplicate quantity inputs exist.
+
+• No duplicate location inputs exist.
+
+• Decoration Locations automatically flow from Design Details into the calculators.
+
+• Quantity automatically flows from Products + Sizes.
+
+• Every calculator uses the same footer summary.
+
+• Every calculator clearly separates Vendor Cost from Suggested Sell.
+
+• Estimated Profit and Margin calculate automatically.
+
+• Apply correctly updates the Service bucket inside Line Item Costs.
+
+• Existing quote functionality remains unchanged.
+
+===========================================================
+DELIVERABLES
+===========================================================
+
+When complete provide:
+
+1. Updated screenshots of all five calculators.
+
+2. List every modified file.
+
+3. Explain any assumptions made.
+
+4. Identify any remaining work that depends on future implementation of:
+   • Production Vendors
+   • Pricing Presets
+   • Vendor Pricing Tables
+   • Product Cost auto-population
+
+Do not mark this task complete until every calculator matches both the attached mockup and the requirements above.
