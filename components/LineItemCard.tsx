@@ -864,14 +864,13 @@ function LineItemCardFn({
   const isDTF = item.serviceStyle === 'Direct to Film';
   const isEmbroidery = item.serviceStyle === 'Embroidery';
   const isDTFTransfers = item.serviceStyle === 'DTF Transfers';
-  const isDesignWork = item.serviceStyle === 'Design Work';
   const isScreenPrinting = item.serviceStyle === 'Screen Printing';
   const hasSecondLocation = !!(item.location2 && item.location2.length > 0);
   const hasCalculator = isDTF || isDTFTransfers || isEmbroidery || isScreenPrinting || isPromotional;
 
   const quantity = useMemo(
-    () => getTotalQuantity(item.sizes, isPromotional || isDesignWork),
-    [item.sizes, isPromotional, isDesignWork],
+    () => getTotalQuantity(item.sizes, isPromotional),
+    [item.sizes, isPromotional],
   );
   const lineItemCalcs = useMemo(() => calculateLineItemSubtotal(item, upcharges), [item, upcharges]);
 

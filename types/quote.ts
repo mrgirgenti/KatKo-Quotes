@@ -1,4 +1,4 @@
-export type ServiceStyle = 'Screen Printing' | 'Direct to Film' | 'Embroidery' | 'Promotional' | 'DTF Transfers' | 'Design Work';
+export type ServiceStyle = 'Screen Printing' | 'Direct to Film' | 'Embroidery' | 'Promotional' | 'DTF Transfers';
 export type OrderType = 'New' | 'Re-Order';
 
 export type QuoteStatus = 'draft' | 'needs_review' | 'quoting' | 'quoted' | 'invoice_sent' | 'paid' | 'active' | 'production_started' | 'completed' | 'expired';
@@ -449,7 +449,6 @@ export const SERVICE_STYLES: ServiceStyle[] = [
   'Embroidery',
   'Promotional',
   'DTF Transfers',
-  'Design Work',
 ];
 
 export const ORDER_TYPES: OrderType[] = ['New', 'Re-Order'];

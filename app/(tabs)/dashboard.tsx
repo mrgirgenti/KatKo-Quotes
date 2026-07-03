@@ -80,7 +80,6 @@ export default function DashboardScreen() {
       { label: 'Embroidery',      count: 0 },
       { label: 'Promotional',     count: 0 },
       { label: 'DTF Transfers',   count: 0 },
-      { label: 'Design Work',     count: 0 },
     ];
     completedProjects.forEach((q) => {
       const usedServices = new Set(q.lineItems.map((i) => i.serviceStyle));
@@ -286,7 +285,6 @@ const SERVICE_ICON_CONFIG: Record<ServiceStyle, { icon: any; color: string; bg: 
   'Embroidery':      { icon: Scissors, color: '#7C3AED', bg: '#F5F3FF' },
   'Promotional':     { icon: Gift,     color: '#059669', bg: '#ECFDF5' },
   'DTF Transfers':   { icon: Zap,      color: '#DC2626', bg: '#FEF2F2' },
-  'Design Work':     { icon: Pencil,   color: '#D97706', bg: '#FFFBEB' },
 };
 
 const styles = StyleSheet.create({
