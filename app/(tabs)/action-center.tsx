@@ -225,6 +225,7 @@ function DrawerPanel({
                 </Text>
               </View>
             </View>
+            <View style={s.detailDivider} />
             {item.organizationName ? (
               <View style={s.drawerIconRow}>
                 <Building2 size={14} color="#9CA3AF" />
@@ -938,6 +939,7 @@ const s = StyleSheet.create({
     letterSpacing: 0.8, textTransform: 'uppercase',
   },
   drawerSecBody: { padding: 12, gap: 8 },
+  detailDivider: { height: 1, backgroundColor: '#F3F4F6', marginHorizontal: 4, marginVertical: 2 },
   drawerCommentText: { fontSize: 12, color: '#374151', lineHeight: 18 },
   drawerFooter: {
     flexDirection: 'column', gap: 8, padding: 12,
