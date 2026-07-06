@@ -13,6 +13,7 @@ import { QuotesProvider } from '@/contexts/QuotesContext';
 import { UserProvider } from '@/contexts/UserContext';
 import { CrmProvider } from '@/contexts/CrmContext';
 import { ActionsProvider } from '@/contexts/ActionsContext';
+import { ContactProfileProvider } from '@/contexts/ContactProfileContext';
 import { setClerkTokenGetter } from '@/lib/clerkToken';
 
 const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
@@ -229,6 +230,7 @@ function RootLayoutNav() {
       <Stack.Screen name="profile" options={{ title: 'Profile', presentation: 'modal' }} />
       <Stack.Screen name="clients/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="crm/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="contact/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="portal/[orgId]" options={{ headerShown: false }} />
     </Stack>
   );
@@ -256,8 +258,10 @@ export default function RootLayout() {
             <QuotesProvider>
               <CrmProvider>
                 <ActionsProvider>
-                  <AuthGate />
-                  <RootLayoutNav />
+                  <ContactProfileProvider>
+                    <AuthGate />
+                    <RootLayoutNav />
+                  </ContactProfileProvider>
                 </ActionsProvider>
               </CrmProvider>
             </QuotesProvider>

@@ -1,0 +1,363 @@
+IMPLEMENTATION MODE
+
+Implement a comprehensive Contact Profile experience for Katalyst KO OS.
+
+This should become the universal way to view and edit contacts throughout the application.
+
+Reference the existing design system, architecture documentation, and UI patterns. The new Contact Profile should feel like a natural extension of the current application—not a separate experience.
+
+If an existing implementation conflicts with the approved design or architecture, delete and replace it. Do not preserve legacy UI for backward compatibility.
+
+DO NOT spend time researching or planning. Begin implementation immediately.
+
+---------------------------------------
+OBJECTIVE
+---------------------------------------
+
+Currently:
+
+- Clicking a contact from within an Organization does nothing.
+- Clicking a contact from the Contacts page simply opens the Organization page.
+- There is no dedicated way to view or edit an individual contact.
+
+This implementation should solve that by creating a reusable Contact Profile component.
+
+The Contact Profile should become the standard contact experience throughout the application.
+
+---------------------------------------
+CONTACT PROFILE BEHAVIOR
+---------------------------------------
+
+Desktop:
+- Clicking any contact anywhere in the application opens a right-side slide-over panel.
+- The current page remains visible behind it.
+- Clicking outside or Close dismisses the panel.
+
+Mobile:
+- Clicking a contact opens the exact same Contact Profile content as a full-screen page.
+- Do NOT use a bottom sheet.
+- Do NOT truncate the profile.
+- The entire profile should be fully viewable.
+- Back returns to the previous screen.
+
+Tablet:
+- Either full-screen or centered modal depending on available space.
+- Maintain the same component.
+
+The CONTENT should be identical.
+
+Only the container changes depending on screen size.
+
+---------------------------------------
+UNIVERSAL CONTACT LINKS
+---------------------------------------
+
+Anywhere a contact name appears, clicking it should open the Contact Profile.
+
+Examples include:
+
+• Organizations
+• Contacts
+• Quotes
+• Projects
+• Production
+• Invoices
+• Client Hub
+• Future modules
+
+There should only be one Contact Profile component reused everywhere.
+
+---------------------------------------
+HEADER
+---------------------------------------
+
+Display:
+
+Photo (future support)
+
+Full Name
+
+Job Title
+
+Organization
+
+Status Tags
+
+Examples:
+
+Primary Contact
+
+Decision Maker
+
+Billing Contact
+
+Marketing Contact
+
+VIP
+
+Quick Actions:
+
+Call
+
+Text
+
+Email
+
+Edit Contact
+
+---------------------------------------
+CONTACT INFORMATION
+---------------------------------------
+
+Fields:
+
+First Name
+
+Last Name
+
+Preferred Name
+
+Job Title
+
+Department
+
+Email
+
+Mobile Phone
+
+Office Phone
+
+Extension
+
+Preferred Contact Method
+
+Address (optional)
+
+---------------------------------------
+PERSONAL DETAILS
+---------------------------------------
+
+Add relationship-focused fields.
+
+All optional.
+
+Birthday
+
+Wedding Anniversary
+
+Spouse Name
+
+Children
+
+Favorite Sports Team
+
+Favorite Drink
+
+Shirt Size
+
+Hat Size
+
+General Personal Notes
+
+These are intentionally included because relationship-building is a core part of Katalyst KO's business philosophy.
+
+---------------------------------------
+BUSINESS DETAILS
+---------------------------------------
+
+Organization
+
+Role
+
+Primary Contact
+
+Decision Maker
+
+Preferred Decoration Method
+
+Preferred Apparel Brand
+
+Typical Order Size
+
+Tax Exempt
+
+Purchase Order Required
+
+Preferred Shipping Method
+
+---------------------------------------
+NOTES
+---------------------------------------
+
+Large notes section.
+
+Do not make this tiny.
+
+Users should be encouraged to keep ongoing relationship notes here.
+
+---------------------------------------
+ACTIVITY
+---------------------------------------
+
+Include summary cards or sections for:
+
+Recent Quotes
+
+Recent Projects
+
+Recent Invoices
+
+Recent Activity Timeline
+
+Each section should include:
+
+View All
+
+Only display recent items initially.
+
+---------------------------------------
+RELATIONSHIP REMINDERS
+---------------------------------------
+
+Create a compact relationship section showing things such as:
+
+Birthday
+
+Wedding Anniversary
+
+Favorite Drink
+
+Favorite Sports Team
+
+Shirt Size
+
+Hat Size
+
+Last Gift Sent (future-ready)
+
+Last Personal Touch (future-ready)
+
+This section should automatically hide empty values.
+
+---------------------------------------
+ORGANIZATION
+---------------------------------------
+
+Do NOT create a large Organization card.
+
+Simply display the Organization near the top of the profile.
+
+Example:
+
+Organization
+
+Apex Construction >
+
+Clicking the organization opens the Organization Profile.
+
+---------------------------------------
+RESPONSIVE REQUIREMENTS
+---------------------------------------
+
+Desktop:
+
+Slide-over panel
+
+Mobile:
+
+Full-screen Contact Profile
+
+Tablet:
+
+Adaptive
+
+The content itself should not change.
+
+---------------------------------------
+UI REQUIREMENTS
+---------------------------------------
+
+Follow existing Katalyst KO design system.
+
+Black section headers
+
+Orange action buttons
+
+White cards
+
+Existing spacing
+
+Existing typography
+
+Rounded corners
+
+Maintain visual consistency.
+
+---------------------------------------
+FUTURE READY
+---------------------------------------
+
+Design this so additional tabs or sections can easily be added later.
+
+Examples:
+
+Files
+
+Emails
+
+SMS History
+
+Tasks
+
+Marketing Activity
+
+Documents
+
+Do not build these yet.
+
+Only make the profile architecture extensible.
+
+---------------------------------------
+PERFORMANCE
+---------------------------------------
+
+Do not duplicate components.
+
+Create one reusable Contact Profile component that can render:
+
+Desktop slide-over
+
+Tablet modal
+
+Mobile full screen
+
+---------------------------------------
+IMPLEMENTATION REQUIREMENTS
+---------------------------------------
+
+Implement immediately.
+
+Do not spend excessive time analyzing.
+
+Use existing architecture.
+
+Minimize unnecessary code.
+
+Preserve current styling.
+
+Update documentation if new reusable components are introduced.
+
+---------------------------------------
+DELIVERABLES
+---------------------------------------
+
+When complete, report:
+
+• Files modified
+• New reusable components created
+• New routes (if applicable)
+• Desktop behavior
+• Tablet behavior
+• Mobile behavior
+• Every location where contacts are now clickable
+• Any future enhancement opportunities discovered during implementation

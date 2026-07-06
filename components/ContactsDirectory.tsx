@@ -6,6 +6,7 @@ import {
 import { useRouter } from 'expo-router';
 import { OrgAvatar } from '@/components/OrgAvatar';
 import OverlayMenu from '@/components/OverlayMenu';
+import { useContactProfile } from '@/contexts/ContactProfileContext';
 import {
   Search, X, Users, ChevronDown, Check,
   Wifi, ArrowUpDown, Trash2,
@@ -86,6 +87,7 @@ function PersonRow({ person, onPress, isSelected, onToggleSelect, visibleCols }:
 }) {
   const router = useRouter();
   const { deleteContact } = useCrm();
+  const { openContact } = useContactProfile();
   const name = `${person.firstName} ${person.lastName}`.trim() || 'Unnamed';
   const last = fmtLastLogin(person.lastLoginAt);
 
@@ -135,6 +137,10 @@ function PersonRow({ person, onPress, isSelected, onToggleSelect, visibleCols }:
         >
           {({ close }) => (
             <>
+              <TouchableOpacity style={styles.actionsMenuItem} onPress={() => { close(); openContact(person.id, person.orgId); }}>
+                <Users size={14} color={Colors.light.text} />
+                <Text style={styles.actionsMenuItemText}>View Profile</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.actionsMenuItem} onPress={() => { close(); router.push(`/crm/${person.orgId}` as any); }}>
                 <Edit3 size={14} color={Colors.light.text} />
                 <Text style={styles.actionsMenuItemText}>Edit Contact</Text>
@@ -145,7 +151,7 @@ function PersonRow({ person, onPress, isSelected, onToggleSelect, visibleCols }:
               </TouchableOpacity>
               <TouchableOpacity style={styles.actionsMenuItem} onPress={() => { close(); router.push(`/crm/${person.orgId}` as any); }}>
                 <Users size={14} color={Colors.light.text} />
-                <Text style={styles.actionsMenuItemText}>View Profile</Text>
+                <Text style={styles.actionsMenuItemText}>View Organization</Text>
               </TouchableOpacity>
               <View style={styles.rowMenuDivider} />
               <TouchableOpacity style={[styles.actionsMenuItem, { borderBottomWidth: 0 }]} onPress={() => {
@@ -346,7 +352,11 @@ export default function ContactsDirectory() {
     else setSelectedIds(new Set(filtered.map((p) => p.id)));
   }, [filtered, allSelected, clearSelection]);
 
-  const goToPerson = useCallback((p: Person) => router.push(`/crm/${p.orgId}` as any), [router]);
+  const { openContact } = useContactProfile();
+  const goToPerson = useCallback(
+    (p: Person) => openContact(p.id, p.orgId),
+    [openContact],
+  );
 
   const toggleSort = useCallback((field: ColId) => {
     if (sortField === field) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));

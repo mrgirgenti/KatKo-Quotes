@@ -7,11 +7,41 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
-import { Plus, Edit3, Trash2, Users, MoreHorizontal } from 'lucide-react-native';
+import { Plus, Edit3, Trash2, Users, MoreHorizontal, User } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import OverlayMenu from '@/components/OverlayMenu';
+import { useContactProfile } from '@/contexts/ContactProfileContext';
 import { formatPhone } from '@/utils/phone';
 import type { Contact, HubAccessState } from '@/types/crm';
+
+function ContactNameCell({ contact }: { contact: Contact }) {
+  const { openContact } = useContactProfile();
+  return (
+    <TouchableOpacity
+      style={[nameStyles.cell, { width: CW.name }]}
+      onPress={() => openContact(contact.id, contact.organizationId || '')}
+      activeOpacity={0.7}
+    >
+      <Text style={nameStyles.text} numberOfLines={1}>
+        {contact.firstName} {contact.lastName}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+const nameStyles = StyleSheet.create({
+  cell: {
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  text: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FF5A00',
+    textDecorationLine: 'underline',
+  },
+});
 
 function fmtDate(iso?: string | null): string {
   if (!iso) return '—';
@@ -136,11 +166,7 @@ export default function ContactsPeopleTable({
               const isLast = idx === contacts.length - 1;
               return (
                 <View key={c.id} style={[styles.row, !isLast && styles.rowBorder]}>
-                  <View style={[styles.td, { width: CW.name }]}>
-                    <Text style={styles.nameText} numberOfLines={1}>
-                      {c.firstName} {c.lastName}
-                    </Text>
-                  </View>
+                  <ContactNameCell contact={c} />
                   <View style={[styles.td, { width: CW.role }]}>
                     <Text style={styles.cellText} numberOfLines={1}>
                       {c.role || '—'}

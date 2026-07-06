@@ -71,6 +71,7 @@ export interface Contact {
   departmentId?: string;
   firstName: string;
   lastName: string;
+  title?: string;
   role?: ContactRole;
   email?: string;
   phone?: string;
@@ -79,6 +80,29 @@ export interface Contact {
   isPrimary?: boolean;
   status?: 'active' | 'inactive';
   linkedUserId?: string;
+  // Extended profile fields
+  preferredName?: string;
+  mobilePhone?: string;
+  officePhone?: string;
+  extension?: string;
+  preferredContactMethod?: string;
+  // Personal details
+  birthday?: string;
+  weddingAnniversary?: string;
+  spouseName?: string;
+  children?: string;
+  favoriteSportsTeam?: string;
+  favoriteDrink?: string;
+  shirtSize?: string;
+  hatSize?: string;
+  personalNotes?: string;
+  // Business preferences
+  preferredDecorationMethod?: string;
+  preferredApparelBrand?: string;
+  typicalOrderSize?: string;
+  taxExempt?: boolean;
+  purchaseOrderRequired?: boolean;
+  preferredShippingMethod?: string;
   // ── Derived hub fields (single source of truth, see lib/contacts.ts) ──
   hubAccess?: HubAccessState;
   hubStatus?: 'No Access' | 'Invited' | 'Active' | 'Disabled';

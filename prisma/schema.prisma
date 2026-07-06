@@ -217,6 +217,29 @@ model Contact {
   isPrimary      Boolean   @default(false)
   status         String    @default("active")
   linkedUserId   String?
+  // Extended profile fields
+  preferredName             String?
+  mobilePhone               String?
+  officePhone               String?
+  extension                 String?
+  preferredContactMethod    String?
+  // Personal details
+  birthday                  String?
+  weddingAnniversary        String?
+  spouseName                String?
+  children                  String?
+  favoriteSportsTeam        String?
+  favoriteDrink             String?
+  shirtSize                 String?
+  hatSize                   String?
+  personalNotes             String?
+  // Business preferences
+  preferredDecorationMethod String?
+  preferredApparelBrand     String?
+  typicalOrderSize          String?
+  taxExempt                 Boolean  @default(false)
+  purchaseOrderRequired     Boolean  @default(false)
+  preferredShippingMethod   String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 

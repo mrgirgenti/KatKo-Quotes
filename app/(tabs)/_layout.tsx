@@ -4,6 +4,7 @@ import { View, Platform, StyleSheet } from 'react-native';
 import { Sidebar } from '@/components/Sidebar';
 import { MobileShell } from '@/components/MobileDrawer';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { ContactProfileSheet } from '@/contexts/ContactProfileContext';
 
 export default function TabLayout() {
   const { isMobile, isTablet } = useBreakpoint();
@@ -24,6 +25,8 @@ export default function TabLayout() {
         <Sidebar key={mounted ? 'sidebar' : 'sidebar-init'} defaultCollapsed={isTablet} />
         <View style={styles.webContent}>
           <Slot />
+          {/* Desktop-only contact profile slide-over (Modal portal, always above page) */}
+          {mounted && <ContactProfileSheet />}
         </View>
       </View>
     );
