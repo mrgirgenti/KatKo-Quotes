@@ -62,7 +62,7 @@ export default function EditQuoteScreen() {
   const router = useRouter();
   const { allQuotes, isLoading: quotesLoading, updateQuoteAsync } = useQuotes();
   const { currentUserId, isOrgAdmin } = useUser();
-  const { isMobile } = useBreakpoint();
+  const { isMobile, isDesktop } = useBreakpoint();
 
   const originalQuote = useMemo(() => {
     return allQuotes.find((q) => q.id === id);
@@ -340,6 +340,7 @@ export default function EditQuoteScreen() {
         </View>
       </Modal>
 
+      <View style={[styles.workArea, isDesktop && styles.workAreaDesktop]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
@@ -451,7 +452,7 @@ export default function EditQuoteScreen() {
           </View>
         </View>
 
-        {calculations && (
+        {!isDesktop && calculations && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Quote Summary</Text>
             <CalculationDisplay
@@ -469,6 +470,38 @@ export default function EditQuoteScreen() {
 
         <View style={styles.bottomPadding} />
       </ScrollView>
+
+      {isDesktop && (
+        <View style={styles.summaryColOuter}>
+          <ScrollView
+            style={styles.summaryColScroll}
+            contentContainerStyle={styles.summaryColContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={styles.sectionTitle}>Quote Summary</Text>
+            {calculations ? (
+              <CalculationDisplay
+                calculations={calculations}
+                lineItems={lineItems}
+                hasOnlineFee={hasOnlineFee}
+                hasSalesTax={hasSalesTax}
+                hasCardFee={hasCardFee}
+                upcharges={upcharges}
+                discountEntry={discountEntry}
+                onDiscountChange={setDiscountEntry}
+              />
+            ) : (
+              <View style={styles.summaryEmpty}>
+                <Text style={styles.summaryEmptyText}>
+                  Add line items with quantities to calculate the quote.
+                </Text>
+              </View>
+            )}
+            <View style={styles.bottomPadding} />
+          </ScrollView>
+        </View>
+      )}
+      </View>
 
       <View style={styles.actionBar}>
         <TouchableOpacity style={styles.cancelButton} onPress={handleCancel} disabled={isSaving}>
@@ -640,6 +673,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600' as const,
     color: '#fff',
+  },
+  workArea: {
+    flex: 1,
+  },
+  workAreaDesktop: {
+    flexDirection: 'row' as const,
+  },
+  summaryColOuter: {
+    width: 340,
+    borderLeftWidth: 1,
+    borderLeftColor: Colors.light.border,
+    backgroundColor: Colors.light.background,
+  },
+  summaryColScroll: {
+    flex: 1,
+  },
+  summaryColContent: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  summaryEmpty: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    alignItems: 'center' as const,
+  },
+  summaryEmptyText: {
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+    textAlign: 'center' as const,
+    lineHeight: 20,
   },
   bottomPadding: {
     height: 100,

@@ -827,8 +827,8 @@ function LineItemCardFn({
   const [promoMarkupPct, setPromoMarkupPct] = useState('100');
   const [focusedPromoField, setFocusedPromoField] = useState<string | null>(null);
 
-  const { isMobile } = useBreakpoint();
-  const useSideBySide = Platform.OS === 'web' && !isMobile;
+  const { isMobile, isDesktop } = useBreakpoint();
+  const useSideBySide = Platform.OS === 'web' && isDesktop;
   const { upcharges } = useProductPricing();
 
   const dbServiceStyles = useEnabledServiceStyles();

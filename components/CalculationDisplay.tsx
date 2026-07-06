@@ -122,7 +122,7 @@ export function CalculationDisplay({
       </View>
 
       <View style={[styles.tableRow, styles.markupRow]}>
-        <Text style={styles.markupCell}>
+        <Text style={styles.markupCell} numberOfLines={1}>
           Markup ({formatPercentage(calculations.markupPercentage)})
         </Text>
         <Text style={styles.markupCellRight}>
@@ -289,7 +289,7 @@ export function CalculationDisplay({
         {/* Discount display row (shows whenever a discount is computed) */}
         {hasDiscount && (
           <View style={styles.discountDisplayRow}>
-            <Text style={styles.discountDisplayLabel}>{discountDisplayLabel}</Text>
+            <Text style={styles.discountDisplayLabel} numberOfLines={1}>{discountDisplayLabel}</Text>
             <Text style={styles.discountDisplayValue}>
               {qty > 0 ? `−${formatCurrency((calculations.discountAmount ?? 0) / qty)}` : '—'}
             </Text>
@@ -299,7 +299,7 @@ export function CalculationDisplay({
 
         {/* Online fee */}
         <View style={styles.clientQuoteRow}>
-          <Text style={styles.clientQuoteLabel}>{`Online Fee (${ONLINE_FEE_LABEL})`}</Text>
+          <Text style={styles.clientQuoteLabel} numberOfLines={1}>{`Online Fee (${ONLINE_FEE_LABEL})`}</Text>
           <Text style={styles.clientQuoteValue}>
             {formatCurrency(qty > 0 ? calculations.onlineFee / qty : 0)}
           </Text>
@@ -329,14 +329,14 @@ export function CalculationDisplay({
           <Text style={styles.feesHeaderCellRight}>Total</Text>
         </View>
         <View style={styles.feeRow}>
-          <Text style={styles.feeLabel}>{`Card Fee (${CARD_FEE_LABEL})`}</Text>
+          <Text style={styles.feeLabel} numberOfLines={1}>{`Card Fee (${CARD_FEE_LABEL})`}</Text>
           <Text style={styles.feeValue}>
             {formatCurrency(qty > 0 ? calculations.cardFee / qty : 0)}
           </Text>
           <Text style={styles.feeValue}>{formatCurrency(calculations.cardFee)}</Text>
         </View>
         <View style={styles.feeRow}>
-          <Text style={styles.feeLabel}>{`Sales Tax (${SALES_TAX_LABEL})`}</Text>
+          <Text style={styles.feeLabel} numberOfLines={1}>{`Sales Tax (${SALES_TAX_LABEL})`}</Text>
           <Text style={styles.feeValue}>
             {formatCurrency(qty > 0 ? calculations.salesTax / qty : 0)}
           </Text>
@@ -423,6 +423,7 @@ const styles = StyleSheet.create({
   },
   cell: {
     flex: 1,
+    minWidth: 0,
     fontSize: 14,
     color: Colors.light.text,
   },
@@ -447,6 +448,7 @@ const styles = StyleSheet.create({
   },
   cogCell: {
     flex: 1,
+    minWidth: 0,
     fontSize: 14,
     fontWeight: '700' as const,
     color: Colors.light.tint,
@@ -467,6 +469,7 @@ const styles = StyleSheet.create({
   },
   markupCell: {
     flex: 1,
+    minWidth: 0,
     fontSize: 14,
     fontWeight: '700' as const,
     color: Colors.light.tint,
@@ -571,6 +574,7 @@ const styles = StyleSheet.create({
   },
   clientQuoteLabel: {
     flex: 1,
+    minWidth: 0,
     fontSize: 13,
     color: Colors.light.text,
   },
@@ -750,6 +754,7 @@ const styles = StyleSheet.create({
   },
   discountDisplayLabel: {
     flex: 1,
+    minWidth: 0,
     fontSize: 13,
     color: '#DC2626',
     fontWeight: '600' as const,
@@ -801,6 +806,7 @@ const styles = StyleSheet.create({
   },
   feeLabel: {
     flex: 1,
+    minWidth: 0,
     fontSize: 13,
     color: Colors.light.textSecondary,
   },

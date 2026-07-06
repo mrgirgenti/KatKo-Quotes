@@ -1,0 +1,29 @@
+Fix responsive layout issues in the quote builder.
+
+The current desktop layout breaks when the browser width is reduced below ~95% / medium desktop sizes. Text wraps, inputs get clipped, numbers in the Quote Summary collide, and sections become visually cramped.
+
+Implement responsive breakpoints so the quote builder adapts instead of compressing indefinitely.
+
+Requirements:
+1. Collapse or minimize the left sidebar at smaller desktop widths to preserve workspace width.
+2. At medium widths, move Quote Summary into a collapsible side drawer or sticky summary panel instead of letting it squeeze the main quote workspace.
+3. Stack Design Details above Products + Sizes when horizontal space is limited.
+4. Prevent Quote Summary rows from text/number collisions. At smaller widths, display summary rows as label + each/total stacked values instead of forcing tight columns.
+5. Add sensible min-widths to tables, size grids, calculators, and pricing sections. Use internal horizontal scrolling only where unavoidable.
+6. Long product names, dropdown values, labels, and numbers should truncate with ellipsis instead of wrapping or bleeding.
+7. Inputs should never be clipped. They should either resize cleanly, stack vertically, or take full available width.
+8. Preserve the approved visual design: black section headers, orange actions, white cards, existing typography and spacing.
+9. Do not create a separate mobile app experience. This should be the same quote builder adapting responsively.
+10. If an existing implementation conflicts with the approved design or architecture, delete and replace it. Do not preserve legacy UI for backward compatibility.
+
+Priority:
+- First fix the quote builder layout structure.
+- Then fix Quote Summary responsiveness.
+- Then fix Design Details and Products + Sizes wrapping.
+- Then fix calculators/tables/min-width behavior.
+
+After implementation, report:
+- Files changed
+- Breakpoints added
+- Layout behavior at desktop, medium desktop, tablet, and mobile widths
+- Any remaining areas that still need design review
