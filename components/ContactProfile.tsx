@@ -137,6 +137,55 @@ function RelationshipReminders({ c }: { c: Contact }) {
   );
 }
 
+// ── Edit Modal helpers (must be module-level — defining components inside
+// another component function creates a new type on every render, which causes
+// React to unmount/remount the TextInput on every keystroke, losing focus) ──
+
+type SetFn = <K extends keyof EditForm>(key: K, val: EditForm[K]) => void;
+
+function EditField({
+  form, set, label, field, placeholder, multiline, keyboardType,
+}: {
+  form: EditForm; set: SetFn;
+  label: string; field: keyof EditForm; placeholder?: string;
+  multiline?: boolean; keyboardType?: any;
+}) {
+  return (
+    <View style={e.field}>
+      <Text style={e.label}>{label}</Text>
+      <TextInput
+        style={[e.input, multiline && e.inputMulti]}
+        value={String(form[field] ?? '')}
+        onChangeText={(v) => set(field as any, v as any)}
+        placeholder={placeholder}
+        placeholderTextColor="#9CA3AF"
+        multiline={multiline}
+        keyboardType={keyboardType}
+        autoCorrect={false}
+      />
+    </View>
+  );
+}
+
+function EditToggle({
+  form, set, label, field,
+}: {
+  form: EditForm; set: SetFn;
+  label: string; field: 'isPrimary' | 'taxExempt' | 'purchaseOrderRequired';
+}) {
+  return (
+    <View style={e.toggleRow}>
+      <Text style={e.toggleLabel}>{label}</Text>
+      <Switch
+        value={Boolean(form[field])}
+        onValueChange={(v) => set(field, v)}
+        trackColor={{ false: '#E5E7EB', true: Colors.light.primary }}
+        thumbColor="#fff"
+      />
+    </View>
+  );
+}
+
 // ── Edit Modal ─────────────────────────────────────────────────────────────
 type EditForm = {
   firstName: string; lastName: string; title: string; preferredName: string;
@@ -195,7 +244,7 @@ function EditContactModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const { updateContact } = useCrm();
+  const { updateContactAsync } = useCrm();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<EditForm>(() => initForm(contact));
 
@@ -216,7 +265,7 @@ function EditContactModal({
     }
     setSaving(true);
     try {
-      await updateContact({
+      await updateContactAsync({
         orgId,
         contact: {
           ...contact,
@@ -228,49 +277,12 @@ function EditContactModal({
       });
       onSaved();
       onClose();
-    } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Failed to save contact.');
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to save contact.');
     } finally {
       setSaving(false);
     }
   };
-
-  function Field({
-    label, field, placeholder, multiline, keyboardType,
-  }: {
-    label: string; field: keyof EditForm; placeholder?: string;
-    multiline?: boolean; keyboardType?: any;
-  }) {
-    return (
-      <View style={e.field}>
-        <Text style={e.label}>{label}</Text>
-        <TextInput
-          style={[e.input, multiline && e.inputMulti]}
-          value={String(form[field] ?? '')}
-          onChangeText={(v) => set(field as any, v as any)}
-          placeholder={placeholder}
-          placeholderTextColor="#9CA3AF"
-          multiline={multiline}
-          keyboardType={keyboardType}
-          autoCorrect={false}
-        />
-      </View>
-    );
-  }
-
-  function Toggle({ label, field }: { label: string; field: 'isPrimary' | 'taxExempt' | 'purchaseOrderRequired' }) {
-    return (
-      <View style={e.toggleRow}>
-        <Text style={e.toggleLabel}>{label}</Text>
-        <Switch
-          value={Boolean(form[field])}
-          onValueChange={(v) => set(field, v)}
-          trackColor={{ false: '#E5E7EB', true: Colors.light.primary }}
-          thumbColor="#fff"
-        />
-      </View>
-    );
-  }
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -291,45 +303,45 @@ function EditContactModal({
         >
           <Text style={e.sec}>BASIC INFO</Text>
           <View style={e.row2}>
-            <View style={{ flex: 1 }}><Field label="First Name *" field="firstName" /></View>
+            <View style={{ flex: 1 }}><EditField form={form} set={set} label="First Name *" field="firstName" /></View>
             <View style={{ width: 10 }} />
-            <View style={{ flex: 1 }}><Field label="Last Name" field="lastName" /></View>
+            <View style={{ flex: 1 }}><EditField form={form} set={set} label="Last Name" field="lastName" /></View>
           </View>
-          <Field label="Job Title" field="title" />
-          <Field label="Preferred Name" field="preferredName" />
-          <Toggle label="Primary Contact" field="isPrimary" />
+          <EditField form={form} set={set} label="Job Title" field="title" />
+          <EditField form={form} set={set} label="Preferred Name" field="preferredName" />
+          <EditToggle form={form} set={set} label="Primary Contact" field="isPrimary" />
 
           <Text style={e.sec}>CONTACT INFORMATION</Text>
-          <Field label="Email" field="email" placeholder="email@example.com" keyboardType="email-address" />
-          <Field label="Mobile Phone" field="mobilePhone" placeholder="(555) 000-0000" keyboardType="phone-pad" />
-          <Field label="Office Phone" field="officePhone" placeholder="(555) 000-0000" keyboardType="phone-pad" />
-          <Field label="Extension" field="extension" placeholder="e.g. 123" keyboardType="numeric" />
-          <Field label="Direct Phone (legacy)" field="phone" placeholder="(555) 000-0000" keyboardType="phone-pad" />
-          <Field label="Preferred Contact Method" field="preferredContactMethod" placeholder="e.g. Email, Mobile" />
-          <Field label="Department" field="department" />
-          <Field label="Role" field="role" />
+          <EditField form={form} set={set} label="Email" field="email" placeholder="email@example.com" keyboardType="email-address" />
+          <EditField form={form} set={set} label="Mobile Phone" field="mobilePhone" placeholder="(555) 000-0000" keyboardType="phone-pad" />
+          <EditField form={form} set={set} label="Office Phone" field="officePhone" placeholder="(555) 000-0000" keyboardType="phone-pad" />
+          <EditField form={form} set={set} label="Extension" field="extension" placeholder="e.g. 123" keyboardType="numeric" />
+          <EditField form={form} set={set} label="Direct Phone (legacy)" field="phone" placeholder="(555) 000-0000" keyboardType="phone-pad" />
+          <EditField form={form} set={set} label="Preferred Contact Method" field="preferredContactMethod" placeholder="e.g. Email, Mobile" />
+          <EditField form={form} set={set} label="Department" field="department" />
+          <EditField form={form} set={set} label="Role" field="role" />
 
           <Text style={e.sec}>PERSONAL DETAILS</Text>
-          <Field label="Birthday (MM-DD)" field="birthday" placeholder="e.g. 03-15" />
-          <Field label="Wedding Anniversary (MM-DD)" field="weddingAnniversary" placeholder="e.g. 06-10" />
-          <Field label="Spouse / Partner Name" field="spouseName" />
-          <Field label="Children" field="children" placeholder="e.g. Emma (7), Jack (5)" />
-          <Field label="Favorite Sports Team" field="favoriteSportsTeam" />
-          <Field label="Favorite Drink" field="favoriteDrink" />
-          <Field label="Shirt Size" field="shirtSize" placeholder="e.g. L, XL, 2XL" />
-          <Field label="Hat Size" field="hatSize" placeholder="e.g. L/XL" />
-          <Field label="Personal Notes" field="personalNotes" multiline placeholder="Notes about the person..." />
+          <EditField form={form} set={set} label="Birthday (MM-DD)" field="birthday" placeholder="e.g. 03-15" />
+          <EditField form={form} set={set} label="Wedding Anniversary (MM-DD)" field="weddingAnniversary" placeholder="e.g. 06-10" />
+          <EditField form={form} set={set} label="Spouse / Partner Name" field="spouseName" />
+          <EditField form={form} set={set} label="Children" field="children" placeholder="e.g. Emma (7), Jack (5)" />
+          <EditField form={form} set={set} label="Favorite Sports Team" field="favoriteSportsTeam" />
+          <EditField form={form} set={set} label="Favorite Drink" field="favoriteDrink" />
+          <EditField form={form} set={set} label="Shirt Size" field="shirtSize" placeholder="e.g. L, XL, 2XL" />
+          <EditField form={form} set={set} label="Hat Size" field="hatSize" placeholder="e.g. L/XL" />
+          <EditField form={form} set={set} label="Personal Notes" field="personalNotes" multiline placeholder="Notes about the person..." />
 
           <Text style={e.sec}>BUSINESS DETAILS</Text>
-          <Field label="Preferred Decoration Method" field="preferredDecorationMethod" placeholder="e.g. Screen Print, DTF" />
-          <Field label="Preferred Apparel Brand" field="preferredApparelBrand" placeholder="e.g. Gildan, Next Level" />
-          <Field label="Typical Order Size" field="typicalOrderSize" placeholder="e.g. 50-100 pcs" />
-          <Toggle label="Tax Exempt" field="taxExempt" />
-          <Toggle label="Purchase Order Required" field="purchaseOrderRequired" />
-          <Field label="Preferred Shipping Method" field="preferredShippingMethod" placeholder="e.g. Will Call, UPS Ground" />
+          <EditField form={form} set={set} label="Preferred Decoration Method" field="preferredDecorationMethod" placeholder="e.g. Screen Print, DTF" />
+          <EditField form={form} set={set} label="Preferred Apparel Brand" field="preferredApparelBrand" placeholder="e.g. Gildan, Next Level" />
+          <EditField form={form} set={set} label="Typical Order Size" field="typicalOrderSize" placeholder="e.g. 50-100 pcs" />
+          <EditToggle form={form} set={set} label="Tax Exempt" field="taxExempt" />
+          <EditToggle form={form} set={set} label="Purchase Order Required" field="purchaseOrderRequired" />
+          <EditField form={form} set={set} label="Preferred Shipping Method" field="preferredShippingMethod" placeholder="e.g. Will Call, UPS Ground" />
 
           <Text style={e.sec}>RELATIONSHIP NOTES</Text>
-          <Field label="Notes" field="notes" multiline placeholder="Ongoing relationship notes..." />
+          <EditField form={form} set={set} label="Notes" field="notes" multiline placeholder="Ongoing relationship notes..." />
 
           <View style={{ height: 32 }} />
         </ScrollView>
