@@ -33,6 +33,7 @@ import {
   SIZE_LABELS_ROW2,
   EMPTY_SIZES,
   LOCATIONS,
+  LOCATION_MENU_ITEMS,
   type SizeQuantities,
 } from '@/types/quote';
 import { GarmentSvgPreview } from './GarmentSvgPreview';
@@ -805,17 +806,21 @@ function LocDropdown({
       >
         {({ close }) => (
           <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
-            {LOCATIONS.map((loc) => (
-              <TouchableOpacity
-                key={loc}
-                style={[styles.overlayItem, value === loc && styles.overlayItemActive]}
-                onPress={() => { onChange(loc); close(); }}
-              >
-                <Text style={[styles.overlayItemText, value === loc && styles.overlayItemTextActive]}>
-                  {loc}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {LOCATION_MENU_ITEMS.map((loc, idx) =>
+              loc === null ? (
+                <View key={`sep-${idx}`} style={styles.overlayDivider} />
+              ) : (
+                <TouchableOpacity
+                  key={loc}
+                  style={[styles.overlayItem, value === loc && styles.overlayItemActive]}
+                  onPress={() => { onChange(loc); close(); }}
+                >
+                  <Text style={[styles.overlayItemText, value === loc && styles.overlayItemTextActive]}>
+                    {loc}
+                  </Text>
+                </TouchableOpacity>
+              )
+            )}
           </ScrollView>
         )}
       </OverlayMenu>
@@ -1234,6 +1239,12 @@ const styles = StyleSheet.create({
   },
 
   // OverlayMenu items
+  overlayDivider: {
+    height: 1,
+    backgroundColor: Colors.light.border,
+    marginVertical: 4,
+    marginHorizontal: 10,
+  },
   overlayItem: {
     paddingHorizontal: 14,
     paddingVertical: 10,

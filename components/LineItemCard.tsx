@@ -33,6 +33,7 @@ import {
   EMPTY_SIZES,
   APPAREL_PROVIDERS,
   LOCATIONS,
+  LOCATION_MENU_ITEMS,
   APPLICATORS,
   PROJECT_PRIORITIES,
   type SizeQuantities,
@@ -1638,22 +1639,26 @@ function LineItemCardFn({
                             >
                               {({ close }) => (
                                 <>
-                                  {LOCATIONS.map((loc) => (
-                                    <TouchableOpacity
-                                      key={loc}
-                                      style={styles.menuItem}
-                                      onPress={() => { close(); onChange(updateLocation(i, loc)); }}
-                                    >
-                                      <Text
-                                        style={[
-                                          styles.menuItemText,
-                                          locVal === loc && styles.menuItemActive,
-                                        ]}
+                                  {LOCATION_MENU_ITEMS.map((loc, idx) =>
+                                    loc === null ? (
+                                      <View key={`sep-${idx}`} style={styles.menuDivider} />
+                                    ) : (
+                                      <TouchableOpacity
+                                        key={loc}
+                                        style={styles.menuItem}
+                                        onPress={() => { close(); onChange(updateLocation(i, loc)); }}
                                       >
-                                        {loc}
-                                      </Text>
-                                    </TouchableOpacity>
-                                  ))}
+                                        <Text
+                                          style={[
+                                            styles.menuItemText,
+                                            locVal === loc && styles.menuItemActive,
+                                          ]}
+                                        >
+                                          {loc}
+                                        </Text>
+                                      </TouchableOpacity>
+                                    )
+                                  )}
                                 </>
                               )}
                             </OverlayMenu>

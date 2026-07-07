@@ -488,15 +488,35 @@ export const APPLICATORS = [
 export const LOCATIONS = [
   'Left Chest',
   'Right Chest',
+  'Pocket (literal)',
   'Center Chest',
   'Full Front',
-  'Upper Back',
+  'Oversize Front',
   'Full Back',
-  'Neck Tag',
+  'Collar/Upper Back',
+  'Oversize Back',
   'Left Sleeve',
   'Right Sleeve',
-  'Pocket (literal)',
+  'Neck Tag',
 ] as const;
+
+/** Same list with `null` sentinel for visual section dividers in dropdowns. */
+export const LOCATION_MENU_ITEMS: (typeof LOCATIONS[number] | null)[] = [
+  'Left Chest',
+  'Right Chest',
+  'Pocket (literal)',
+  'Center Chest',
+  'Full Front',
+  'Oversize Front',
+  null,
+  'Full Back',
+  'Collar/Upper Back',
+  'Oversize Back',
+  null,
+  'Left Sleeve',
+  'Right Sleeve',
+  'Neck Tag',
+];
 
 export function getEffectiveStatus(quote: Quote): QuoteStatus {
   if (quote.status === 'quoted') {
