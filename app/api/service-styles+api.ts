@@ -4,15 +4,9 @@ export function rowToStyle(r: any) {
   return {
     id: r.id,
     name: r.name,
-    supplier: r.supplier ?? undefined,
-    defaultMargin: r.default_margin != null ? parseFloat(r.default_margin) : undefined,
-    defaultProductionDays: r.default_production_days ?? undefined,
-    defaultProductionCosts: Array.isArray(r.default_production_costs)
-      ? r.default_production_costs
-      : [],
-    defaultArtworkRequirements: r.default_artwork_requirements ?? undefined,
-    defaultTaxBehavior: r.default_tax_behavior ?? 'taxable',
-    description: r.description ?? undefined,
+    supplier: r.supplier ?? '',
+    defaultMargin: r.default_margin ?? '',
+    quantityMode: r.quantity_mode ?? '',
     enabled: r.enabled,
     sortOrder: r.sort_order ?? 0,
   };
@@ -37,11 +31,7 @@ export async function POST(request: Request) {
       name,
       supplier,
       defaultMargin,
-      defaultProductionDays,
-      defaultProductionCosts = [],
-      defaultArtworkRequirements,
-      defaultTaxBehavior = 'taxable',
-      description,
+      quantityMode,
       enabled = true,
       sortOrder = 0,
     } = body;
@@ -52,23 +42,10 @@ export async function POST(request: Request) {
 
     const { rows } = await pool.query(
       `INSERT INTO "ServiceStyle"
-         (id, name, supplier, default_margin, default_production_days,
-          default_production_costs, default_artwork_requirements, default_tax_behavior,
-          description, enabled, sort_order, created_at, updated_at)
-       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9, $10, now(), now())
+         (id, name, supplier, default_margin, quantity_mode, enabled, sort_order, created_at, updated_at)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, now(), now())
        RETURNING *`,
-      [
-        name,
-        supplier ?? null,
-        defaultMargin ?? null,
-        defaultProductionDays ?? null,
-        JSON.stringify(defaultProductionCosts),
-        defaultArtworkRequirements ?? null,
-        defaultTaxBehavior,
-        description ?? null,
-        enabled,
-        sortOrder,
-      ],
+      [name, supplier ?? null, defaultMargin ?? null, quantityMode ?? null, enabled, sortOrder],
     );
 
     return Response.json(rowToStyle(rows[0]), { status: 201 });

@@ -1,0 +1,272 @@
+```text
+IMPLEMENTATION MODE
+
+Update Settings cost configuration sections to match the attached spreadsheet and add import functionality.
+
+Use the attached spreadsheet as the source of truth:
+KatalystKO_Cost_Configuration_Defaults.xlsx
+
+Do not preserve the existing Replit-created columns if they conflict with this spreadsheet. Delete and replace conflicting structures.
+
+---------------------------------------
+SECTIONS TO UPDATE
+---------------------------------------
+
+Update these Settings sections:
+
+1. Production Library
+2. Other Charges Library
+3. Service Styles
+
+---------------------------------------
+PRODUCTION LIBRARY COLUMNS
+---------------------------------------
+
+Replace current columns with:
+
+- Name
+- Category
+- Calc Type
+- Default Rate
+- Applies To
+- Enabled
+- Associated Service
+- Notes
+
+Example entries include:
+- Design Fee
+- Digitizing
+- Sample Print
+- Screen Setup
+- Film Positive
+- Ink Color Change
+- Specialty Ink Setup
+- Specialty Ink Charge
+- PMS Color Match
+
+---------------------------------------
+OTHER CHARGES LIBRARY COLUMNS
+---------------------------------------
+
+Replace current columns with:
+
+- Name
+- Category
+- Calc Type
+- Default Rate
+- Scope
+- Enabled
+- Associated Service
+- Notes
+
+Example entries include:
+- Rush Fee
+- Shipping
+- Local Delivery
+- Fulfillment
+- Restocking Fee
+- Bagging & Tagging
+- Unbagging
+- Individual Folding
+- Freight Surcharge
+
+---------------------------------------
+SERVICE STYLES COLUMNS
+---------------------------------------
+
+Replace current columns with:
+
+- Service Style
+- Supplier
+- Default Margin
+- Quantity Mode
+- Enabled
+
+Example entries include:
+- DTF Printing
+- Embroidery
+- Screen Printing
+- Laser Engraving
+- Promotional Products
+- Signs & Banners
+- Stickers & Labels
+- DTF Prints (Wholesale)
+
+---------------------------------------
+IMPORT FUNCTIONALITY
+---------------------------------------
+
+Add import capability for each section:
+
+1. Import Production Library
+2. Import Other Charges Library
+3. Import Service Styles
+
+Supported file types:
+- CSV
+- XLSX
+
+The import should:
+- Read the matching sheet if XLSX is uploaded
+- Match columns by header name
+- Validate required columns
+- Preview rows before final import
+- Allow user to confirm import
+- Add new entries
+- Update existing entries when the name/service style matches
+- Show success/error feedback
+- Preserve enabled/disabled values
+- Support percentage values for Default Margin and percentage-based Default Rate
+- Handle dollar values and numeric values cleanly
+- Reject imports with missing required columns
+
+---------------------------------------
+IMPORT MATCHING RULES
+---------------------------------------
+
+Production Library:
+- Match existing records by Name
+
+Other Charges Library:
+- Match existing records by Name
+
+Service Styles:
+- Match existing records by Service Style
+
+If a matching record exists:
+- Update it
+
+If no matching record exists:
+- Create it
+
+Do not create duplicate rows.
+
+---------------------------------------
+VALIDATION
+---------------------------------------
+
+Production Library required fields:
+- Name
+- Category
+- Calc Type
+- Default Rate
+- Applies To
+- Enabled
+- Associated Service
+
+Other Charges Library required fields:
+- Name
+- Category
+- Calc Type
+- Default Rate
+- Scope
+- Enabled
+- Associated Service
+
+Service Styles required fields:
+- Service Style
+- Supplier
+- Default Margin
+- Quantity Mode
+- Enabled
+
+Allowed Enabled values:
+- Yes
+- No
+- true
+- false
+
+Normalize internally as boolean if that matches the existing data model, but display as Yes/No in the UI.
+
+---------------------------------------
+UI REQUIREMENTS
+---------------------------------------
+
+For each section:
+- Add an Import button
+- Add a Download Template button if reasonable
+- Keep Add/Edit/Delete actions
+- Keep table layout clean and readable
+- Use existing Settings page styling
+- Maintain black headers, orange actions, white cards, rounded corners, and existing typography
+
+Do not overbuild this.
+
+The workflow should be simple:
+
+Import > Preview > Confirm > Done
+
+---------------------------------------
+XLSX IMPORT BEHAVIOR
+---------------------------------------
+
+If importing the attached spreadsheet:
+- Production Library should read the “Production Library” sheet
+- Other Charges Library should read the “Other Charges Library” sheet
+- Service Styles should read the “Service Styles” sheet
+
+If importing from a section-specific CSV:
+- Use the uploaded CSV headers
+
+---------------------------------------
+CSV TEMPLATE BEHAVIOR
+---------------------------------------
+
+Each section should have its own template download with the correct headers.
+
+Production Library CSV headers:
+Name, Category, Calc Type, Default Rate, Applies To, Enabled, Associated Service, Notes
+
+Other Charges Library CSV headers:
+Name, Category, Calc Type, Default Rate, Scope, Enabled, Associated Service, Notes
+
+Service Styles CSV headers:
+Service Style, Supplier, Default Margin, Quantity Mode, Enabled
+
+---------------------------------------
+DEFAULT RATE HANDLING
+---------------------------------------
+
+Default Rate must support:
+- Plain numbers
+- Currency-looking values
+- Percentage values
+- Text ranges when needed, such as "$20-200"
+
+Do not force all Default Rate values into a strict decimal-only format.
+
+PMS Color Match, for example, may use "$20-200".
+
+---------------------------------------
+DEFAULT MARGIN HANDLING
+---------------------------------------
+
+Default Margin should support:
+- 0.55
+- 55%
+- 55
+
+Normalize as needed so the calculator reads it correctly.
+
+Display it clearly as a percentage in the UI.
+
+---------------------------------------
+DOCUMENTATION
+---------------------------------------
+
+Update relevant docs if these Settings schemas are documented anywhere.
+
+---------------------------------------
+DELIVERABLES
+---------------------------------------
+
+When complete, report:
+
+- Files modified
+- Data model/schema changes
+- Import components added
+- Validation rules added
+- How duplicates are prevented
+- How XLSX vs CSV import works
+- Any migration notes for existing records
+```

@@ -5,14 +5,13 @@ function rowToEntry(r: any) {
     id: r.id,
     name: r.name,
     category: r.category,
-    calculationType: r.calculation_type,
-    rate: parseFloat(r.rate ?? '0'),
-    minimum: parseFloat(r.minimum ?? '0'),
-    increment: parseFloat(r.increment ?? '0'),
-    scope: r.scope,
-    taxable: r.taxable,
+    calcType: r.calc_type,
+    defaultRate: r.default_rate ?? '0',
+    appliesTo: r.applies_to ?? '',
+    scope: r.scope ?? '',
     enabled: r.enabled,
-    description: r.description ?? undefined,
+    associatedService: r.associated_service ?? '',
+    notes: r.notes ?? '',
     sortOrder: r.sort_order ?? 0,
   };
 }
@@ -30,14 +29,13 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const allowed: Record<string, string> = {
       name: 'name',
       category: 'category',
-      calculationType: 'calculation_type',
-      rate: 'rate',
-      minimum: 'minimum',
-      increment: 'increment',
+      calcType: 'calc_type',
+      defaultRate: 'default_rate',
+      appliesTo: 'applies_to',
       scope: 'scope',
-      taxable: 'taxable',
       enabled: 'enabled',
-      description: 'description',
+      associatedService: 'associated_service',
+      notes: 'notes',
       sortOrder: 'sort_order',
     };
 
@@ -60,10 +58,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       values,
     );
 
-    if (rows.length === 0) {
-      return Response.json({ error: 'Not found' }, { status: 404 });
-    }
-
+    if (rows.length === 0) return Response.json({ error: 'Not found' }, { status: 404 });
     return Response.json(rowToEntry(rows[0]));
   } catch (err: any) {
     console.error('[cost-library PATCH]', err);
@@ -77,9 +72,7 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
 
   try {
     const { rowCount } = await pool.query(`DELETE FROM "CostEntry" WHERE id = $1`, [id]);
-    if ((rowCount ?? 0) === 0) {
-      return Response.json({ error: 'Not found' }, { status: 404 });
-    }
+    if ((rowCount ?? 0) === 0) return Response.json({ error: 'Not found' }, { status: 404 });
     return Response.json({ ok: true });
   } catch (err: any) {
     console.error('[cost-library DELETE]', err);

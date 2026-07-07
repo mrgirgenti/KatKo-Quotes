@@ -5,14 +5,13 @@ function rowToEntry(r: any) {
     id: r.id,
     name: r.name,
     category: r.category,
-    calculationType: r.calculation_type,
-    rate: parseFloat(r.rate ?? '0'),
-    minimum: parseFloat(r.minimum ?? '0'),
-    increment: parseFloat(r.increment ?? '0'),
-    scope: r.scope,
-    taxable: r.taxable,
+    calcType: r.calc_type,
+    defaultRate: r.default_rate ?? '0',
+    appliesTo: r.applies_to ?? '',
+    scope: r.scope ?? '',
     enabled: r.enabled,
-    description: r.description ?? undefined,
+    associatedService: r.associated_service ?? '',
+    notes: r.notes ?? '',
     sortOrder: r.sort_order ?? 0,
   };
 }
@@ -42,14 +41,13 @@ export async function POST(request: Request) {
     const {
       name,
       category,
-      calculationType = 'flat',
-      rate = 0,
-      minimum = 0,
-      increment = 0,
-      scope = 'per_piece',
-      taxable = true,
+      calcType = 'flat',
+      defaultRate = '0',
+      appliesTo,
+      scope,
       enabled = true,
-      description,
+      associatedService,
+      notes,
       sortOrder = 0,
     } = body;
 
@@ -59,10 +57,12 @@ export async function POST(request: Request) {
 
     const { rows } = await pool.query(
       `INSERT INTO "CostEntry"
-         (id, name, category, calculation_type, rate, minimum, increment, scope, taxable, enabled, description, sort_order, created_at, updated_at)
-       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now(), now())
+         (id, name, category, calc_type, default_rate, applies_to, scope,
+          enabled, associated_service, notes, sort_order, created_at, updated_at)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now())
        RETURNING *`,
-      [name, category, calculationType, rate, minimum, increment, scope, taxable, enabled, description ?? null, sortOrder],
+      [name, category, calcType, defaultRate, appliesTo ?? null, scope ?? null,
+       enabled, associatedService ?? null, notes ?? null, sortOrder],
     );
 
     return Response.json(rowToEntry(rows[0]), { status: 201 });

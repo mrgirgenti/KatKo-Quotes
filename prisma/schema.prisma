@@ -780,39 +780,37 @@ model ProjectFavorite {
 // ─── Cost Configuration ───────────────────────────────────────────────────────
 
 model CostEntry {
-  id              String   @id @default(uuid())
-  name            String
-  category        String
-  calculationType String   @default("flat")
-  rate            Decimal  @default(0) @db.Decimal(12, 4)
-  minimum         Decimal  @default(0) @db.Decimal(12, 4)
-  increment       Decimal  @default(0) @db.Decimal(12, 4)
-  scope           String   @default("per_piece")
-  taxable         Boolean  @default(true)
-  enabled         Boolean  @default(true)
-  description     String?
-  sortOrder       Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                String   @id @default(uuid())
+  name              String
+  category          String
+  calcType          String   @default("flat") @map("calc_type")
+  defaultRate       String   @default("0") @map("default_rate")
+  appliesTo         String?  @map("applies_to")
+  scope             String?
+  enabled           Boolean  @default(true)
+  associatedService String?  @map("associated_service")
+  notes             String?
+  sortOrder         Int      @default(0) @map("sort_order")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   @@index([category])
   @@index([enabled])
+  @@map("CostEntry")
 }
 
 model ServiceStyle {
-  id                          String   @id @default(uuid())
-  name                        String   @unique
-  supplier                    String?
-  defaultMargin               Decimal? @db.Decimal(5, 2)
-  defaultProductionDays       Int?
-  defaultProductionCosts      Json     @default("[]")
-  defaultArtworkRequirements  String?
-  defaultTaxBehavior          String   @default("taxable")
-  description                 String?
-  enabled                     Boolean  @default(true)
-  sortOrder                   Int      @default(0)
-  createdAt                   DateTime @default(now())
-  updatedAt                   DateTime @updatedAt
+  id            String   @id @default(uuid())
+  name          String
+  supplier      String?
+  defaultMargin String?  @map("default_margin")
+  quantityMode  String?  @map("quantity_mode")
+  enabled       Boolean  @default(true)
+  sortOrder     Int      @default(0) @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("ServiceStyle")
 }
 
 model ProductionPricingPreset {

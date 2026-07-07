@@ -52,6 +52,12 @@ config.resolver = {
         filePath: path.resolve(__dirname, "node_modules/jspdf/dist/jspdf.es.min.js"),
       };
     }
+    if (moduleName === "xlsx") {
+      return {
+        type: "sourceFile",
+        filePath: path.resolve(__dirname, "node_modules/xlsx/xlsx.mjs"),
+      };
+    }
     const resolve = originalResolveRequest ?? context.resolveRequest;
     return resolve(context, moduleName, platform);
   },

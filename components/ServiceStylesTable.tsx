@@ -17,7 +17,6 @@ import LibraryManagementMenu, {
   type ImportMode,
   type LibraryImportPreview,
 } from '@/components/LibraryManagementMenu';
-import type { CostLibraryEntry } from '@/components/CostLibraryTable';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -25,32 +24,26 @@ export interface ServiceStyleEntry {
   id: string;
   name: string;
   supplier?: string;
-  defaultMargin?: number;
-  defaultProductionDays?: number;
-  defaultProductionCosts: string[];
-  defaultArtworkRequirements?: string;
-  defaultTaxBehavior: string;
-  description?: string;
+  defaultMargin?: string;
+  quantityMode?: string;
   enabled: boolean;
   sortOrder: number;
 }
 
-const TAX_BEHAVIOR_OPTIONS = [
-  { value: 'taxable', label: 'Taxable' },
-  { value: 'non_taxable', label: 'Non-Taxable' },
-  { value: 'exempt', label: 'Tax Exempt' },
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const QUANTITY_MODE_OPTIONS = [
+  { value: '', label: '—' },
+  { value: 'per_piece', label: 'Per Piece' },
+  { value: 'flat', label: 'Flat' },
+  { value: 'tiered', label: 'Tiered' },
 ];
+
+const CSV_HEADERS = ['name', 'supplier', 'defaultMargin', 'quantityMode', 'enabled'] as const;
 
 // ── CSV helpers ───────────────────────────────────────────────────────────────
 
-const SERVICE_STYLE_CSV_HEADERS = [
-  'name', 'supplier', 'defaultMargin', 'defaultProductionDays',
-  'defaultArtworkRequirements', 'defaultTaxBehavior', 'description', 'enabled',
-] as const;
-
-const VALID_TAX_BEHAVIORS = ['taxable', 'non_taxable', 'exempt'];
-
-function ssSplitCsvLine(line: string): string[] {
+function splitCsvLine(line: string): string[] {
   const result: string[] = [];
   let cur = '';
   let inQ = false;
@@ -65,46 +58,51 @@ function ssSplitCsvLine(line: string): string[] {
   return result;
 }
 
-function ssParseCsvText(text: string): Array<Record<string, string>> {
+function parseCsvText(text: string): Array<Record<string, string>> {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
-  const headers = ssSplitCsvLine(lines[0]).map(h => h.trim().replace(/^"|"$/g, ''));
+  const headers = splitCsvLine(lines[0]).map(h => h.trim().replace(/^"|"$/g, ''));
   return lines.slice(1).filter(l => l.trim()).map(l => {
-    const vals = ssSplitCsvLine(l);
+    const vals = splitCsvLine(l);
     return Object.fromEntries(headers.map((h, i) => [h, (vals[i] ?? '').trim().replace(/^"|"$/g, '')]));
   });
 }
 
-function ssCsvCell(v: unknown): string {
+function csvCell(v: unknown): string {
   return `"${String(v ?? '').replace(/"/g, '""')}"`;
 }
 
-function ssSerializeToCsv(rows: Record<string, unknown>[], headers: readonly string[]): string {
-  return [headers.map(ssCsvCell).join(','), ...rows.map(r => headers.map(h => ssCsvCell(r[h])).join(','))].join('\n');
+function serializeToCsv(rows: Record<string, unknown>[], headers: readonly string[]): string {
+  return [headers.map(csvCell).join(','), ...rows.map(r => headers.map(h => csvCell(r[h])).join(','))].join('\n');
 }
 
-function ssParseBool(v: unknown): boolean {
+function parseBool(v: unknown): boolean {
   if (typeof v === 'boolean') return v;
   const s = String(v ?? '').toLowerCase();
   return s === 'true' || s === '1' || s === 'yes';
 }
 
-function taxBehaviorLabel(v: string) {
-  return TAX_BEHAVIOR_OPTIONS.find((o) => o.value === v)?.label ?? 'Taxable';
+function normalizeMargin(raw: string): string {
+  const s = raw.trim();
+  if (!s) return '';
+  const stripped = s.replace(/%$/, '').trim();
+  const n = parseFloat(stripped);
+  if (!Number.isFinite(n)) return s;
+  if (n > 1 && n <= 100) return `${n}%`;
+  if (n >= 0 && n <= 1) return `${(n * 100).toFixed(1)}%`;
+  return s;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+function quantityModeLabel(val: string): string {
+  return (QUANTITY_MODE_OPTIONS.find((o) => o.value === val)?.label ?? val) || '—';
+}
 
 function emptyStyle(): Omit<ServiceStyleEntry, 'id'> {
   return {
     name: '',
     supplier: '',
-    defaultMargin: undefined,
-    defaultProductionDays: undefined,
-    defaultProductionCosts: [],
-    defaultArtworkRequirements: '',
-    defaultTaxBehavior: 'taxable',
-    description: '',
+    defaultMargin: '',
+    quantityMode: '',
     enabled: true,
     sortOrder: 0,
   };
@@ -125,7 +123,7 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 }
 
 const tog = StyleSheet.create({
-  base: { minWidth: 46, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, borderWidth: 1 },
+  base: { minWidth: 46, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, borderWidth: 1 },
   on: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
   off: { backgroundColor: Colors.light.background, borderColor: Colors.light.border },
   text: { fontSize: 11, fontWeight: '700' as const },
@@ -161,7 +159,7 @@ function DrawerDropdown<T extends string>({
         <>
           {options.map((opt) => (
             <TouchableOpacity
-              key={opt.value}
+              key={`opt-${opt.value}`}
               style={ddn.item}
               onPress={() => { close(); onSelect(opt.value); }}
             >
@@ -182,93 +180,6 @@ const ddn = StyleSheet.create({
   item: { paddingHorizontal: 14, paddingVertical: 10 },
   itemText: { fontSize: 13, color: Colors.light.text },
   itemActive: { color: Colors.light.tint, fontWeight: '600' as const },
-});
-
-// ── Production Costs Multi-Select ─────────────────────────────────────────────
-
-function ProductionCostsSelector({
-  selected,
-  onToggle,
-}: {
-  selected: string[];
-  onToggle: (id: string) => void;
-}) {
-  const { data: costItems = [], isLoading } = useQuery<CostLibraryEntry[]>({
-    queryKey: ['cost-library', 'production'],
-    queryFn: async () => {
-      const r = await fetch('/api/cost-library?category=production');
-      if (!r.ok) throw new Error('Failed to load');
-      return r.json();
-    },
-    networkMode: 'always',
-    staleTime: 30_000,
-  });
-
-  const enabled = costItems.filter((c) => c.enabled);
-
-  if (isLoading) {
-    return (
-      <View style={pcs.loading}>
-        <ActivityIndicator size="small" color={Colors.light.tint} />
-        <Text style={pcs.loadingText}>Loading cost library…</Text>
-      </View>
-    );
-  }
-
-  if (enabled.length === 0) {
-    return (
-      <View style={pcs.empty}>
-        <Text style={pcs.emptyText}>No production costs configured yet.</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View>
-      {enabled.map((item) => {
-        const isSelected = selected.includes(item.id);
-        return (
-          <TouchableOpacity
-            key={item.id}
-            style={[pcs.row, isSelected && pcs.rowSelected]}
-            onPress={() => onToggle(item.id)}
-            activeOpacity={0.7}
-          >
-            <View style={[pcs.checkbox, isSelected && pcs.checkboxSelected]}>
-              {isSelected && <Text style={pcs.checkMark}>✓</Text>}
-            </View>
-            <View style={pcs.rowInfo}>
-              <Text style={pcs.rowName} numberOfLines={1}>{item.name}</Text>
-              <Text style={pcs.rowMeta} numberOfLines={1}>
-                {item.calculationType === 'flat' ? `$${item.rate.toFixed(2)}` :
-                 item.calculationType === 'percentage' ? `${item.rate}%` :
-                 item.calculationType === 'hourly' ? `$${item.rate.toFixed(2)}/hr` :
-                 item.calculationType === 'per_unit' ? `$${item.rate.toFixed(2)}/unit` :
-                 item.calculationType === 'per_design' ? `$${item.rate.toFixed(2)}/design` :
-                 `$${item.rate.toFixed(2)}`}
-                {' · '}{item.scope === 'per_piece' ? 'Per Piece' : item.scope === 'per_line' ? 'Per Line' : 'Per Order'}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
-
-const pcs = StyleSheet.create({
-  loading: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12 },
-  loadingText: { fontSize: 12, color: Colors.light.textSecondary },
-  empty: { padding: 12 },
-  emptyText: { fontSize: 12, color: Colors.light.textSecondary, fontStyle: 'italic' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.light.border },
-  rowSelected: { backgroundColor: '#EFF6FF' },
-  checkbox: { width: 18, height: 18, borderRadius: 4, borderWidth: 1.5, borderColor: Colors.light.border, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
-  checkboxSelected: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
-  checkMark: { fontSize: 11, color: '#fff', fontWeight: '700' as const, lineHeight: 14 },
-  rowInfo: { flex: 1 },
-  rowName: { fontSize: 13, color: Colors.light.text, fontWeight: '500' as const },
-  rowMeta: { fontSize: 11, color: Colors.light.textSecondary, marginTop: 1 },
 });
 
 // ── Drawer ────────────────────────────────────────────────────────────────────
@@ -295,16 +206,6 @@ function ServiceStyleDrawer({ visible, entry, isSaving, isDeleting, onSave, onDe
     setForm((prev) => ({ ...prev, [k]: v }));
   }, []);
 
-  function toggleProductionCost(id: string) {
-    setForm((prev) => {
-      const current = prev.defaultProductionCosts ?? [];
-      const next = current.includes(id)
-        ? current.filter((x) => x !== id)
-        : [...current, id];
-      return { ...prev, defaultProductionCosts: next };
-    });
-  }
-
   function handleSave() {
     if (!form.name.trim()) return;
     onSave({ ...form, ...(entry ? { id: entry.id } : {}) });
@@ -327,17 +228,17 @@ function ServiceStyleDrawer({ visible, entry, isSaving, isDeleting, onSave, onDe
             <Text style={dr.sectionLabel}>Basic Information</Text>
             <View style={dr.sectionCard}>
               <View style={dr.fieldRow}>
-                <Text style={dr.fieldLabel}>Name</Text>
+                <Text style={dr.fieldLabel}>Service Style Name</Text>
                 <TextInput
                   style={dr.textInput}
                   value={form.name}
                   onChangeText={(t) => set('name', t)}
-                  placeholder="e.g. Screen Print, Embroidery"
+                  placeholder="e.g. Screen Printing"
                   placeholderTextColor={Colors.light.textSecondary}
                 />
               </View>
               <View style={[dr.fieldRow, dr.noBorder]}>
-                <Text style={dr.fieldLabel}>Default Supplier</Text>
+                <Text style={dr.fieldLabel}>Supplier</Text>
                 <TextInput
                   style={dr.textInput}
                   value={form.supplier ?? ''}
@@ -348,79 +249,28 @@ function ServiceStyleDrawer({ visible, entry, isSaving, isDeleting, onSave, onDe
               </View>
             </View>
 
-            {/* Defaults */}
-            <Text style={dr.sectionLabel}>Defaults</Text>
+            {/* Configuration */}
+            <Text style={dr.sectionLabel}>Configuration</Text>
             <View style={dr.sectionCard}>
               <View style={dr.fieldRow}>
-                <Text style={dr.fieldLabel}>Default Markup %</Text>
-                <View style={dr.numWrap}>
-                  <TextInput
-                    style={dr.numInput}
-                    value={form.defaultMargin != null ? String(form.defaultMargin) : ''}
-                    onChangeText={(t) => {
-                      const n = parseFloat(t.replace(/[^0-9.]/g, ''));
-                      set('defaultMargin', Number.isFinite(n) ? n : undefined);
-                    }}
-                    keyboardType="decimal-pad"
-                    placeholder="e.g. 35"
-                    placeholderTextColor={Colors.light.textSecondary}
-                  />
-                  <Text style={dr.numSuffix}>%</Text>
-                </View>
-              </View>
-              <View style={[dr.fieldRow, dr.noBorder]}>
-                <Text style={dr.fieldLabel}>Production Days</Text>
-                <View style={dr.numWrap}>
-                  <TextInput
-                    style={dr.numInput}
-                    value={form.defaultProductionDays != null ? String(form.defaultProductionDays) : ''}
-                    onChangeText={(t) => {
-                      const n = parseInt(t.replace(/[^0-9]/g, ''), 10);
-                      set('defaultProductionDays', Number.isFinite(n) ? n : undefined);
-                    }}
-                    keyboardType="number-pad"
-                    placeholder="e.g. 5"
-                    placeholderTextColor={Colors.light.textSecondary}
-                  />
-                  <Text style={dr.numSuffix}>days</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Default Production Costs */}
-            <Text style={dr.sectionLabel}>Default Production Costs</Text>
-            <Text style={dr.sectionHint}>These costs auto-populate in the Quote Builder when this service style is selected.</Text>
-            <View style={dr.sectionCard}>
-              <ProductionCostsSelector
-                selected={form.defaultProductionCosts ?? []}
-                onToggle={toggleProductionCost}
-              />
-            </View>
-
-            {/* Artwork & Tax */}
-            <Text style={dr.sectionLabel}>Artwork & Tax</Text>
-            <View style={dr.sectionCard}>
-              <View style={dr.fieldRow}>
-                <Text style={dr.fieldLabel}>Default Tax Behavior</Text>
-                <DrawerDropdown
-                  value={form.defaultTaxBehavior as any}
-                  label={taxBehaviorLabel(form.defaultTaxBehavior)}
-                  options={TAX_BEHAVIOR_OPTIONS as any}
-                  onSelect={(v) => set('defaultTaxBehavior', v)}
+                <Text style={dr.fieldLabel}>Default Margin</Text>
+                <TextInput
+                  style={[dr.textInput, { maxWidth: 130 }]}
+                  value={form.defaultMargin ?? ''}
+                  onChangeText={(t) => set('defaultMargin', t)}
+                  placeholder="e.g. 45%, 0.45"
+                  placeholderTextColor={Colors.light.textSecondary}
                 />
               </View>
               <View style={[dr.fieldRow, dr.noBorder]}>
-                <Text style={dr.fieldLabel}>Artwork Requirements</Text>
+                <Text style={dr.fieldLabel}>Quantity Mode</Text>
+                <DrawerDropdown
+                  value={(form.quantityMode ?? '') as any}
+                  label={quantityModeLabel(form.quantityMode ?? '')}
+                  options={QUANTITY_MODE_OPTIONS as any}
+                  onSelect={(v) => set('quantityMode', v)}
+                />
               </View>
-              <TextInput
-                style={[dr.textInput, dr.textarea, { margin: 0, maxWidth: '100%', borderTopWidth: 0, borderTopLeftRadius: 0, borderTopRightRadius: 0 }]}
-                value={form.defaultArtworkRequirements ?? ''}
-                onChangeText={(t) => set('defaultArtworkRequirements', t)}
-                placeholder="e.g. 300 DPI PNG, vector preferred, separated layers"
-                placeholderTextColor={Colors.light.textSecondary}
-                multiline
-                numberOfLines={3}
-              />
             </View>
 
             {/* Behavior */}
@@ -432,34 +282,18 @@ function ServiceStyleDrawer({ visible, entry, isSaving, isDeleting, onSave, onDe
               </View>
               <View style={[dr.fieldRow, dr.noBorder]}>
                 <Text style={dr.fieldLabel}>Display Order</Text>
-                <View style={dr.numWrap}>
-                  <TextInput
-                    style={dr.numInput}
-                    value={String(form.sortOrder ?? 0)}
-                    onChangeText={(t) => {
-                      const n = parseInt(t.replace(/[^0-9]/g, ''), 10);
-                      set('sortOrder', Number.isFinite(n) ? n : 0);
-                    }}
-                    keyboardType="number-pad"
-                    placeholder="0"
-                    placeholderTextColor={Colors.light.textSecondary}
-                  />
-                </View>
+                <TextInput
+                  style={[dr.textInput, { maxWidth: 90 }]}
+                  value={String(form.sortOrder ?? 0)}
+                  onChangeText={(t) => {
+                    const n = parseInt(t.replace(/[^0-9]/g, ''), 10);
+                    set('sortOrder', Number.isFinite(n) ? n : 0);
+                  }}
+                  keyboardType="number-pad"
+                  placeholder="0"
+                  placeholderTextColor={Colors.light.textSecondary}
+                />
               </View>
-            </View>
-
-            {/* Description */}
-            <Text style={dr.sectionLabel}>Description / Notes</Text>
-            <View style={dr.sectionCard}>
-              <TextInput
-                style={[dr.textInput, dr.textarea]}
-                value={form.description ?? ''}
-                onChangeText={(t) => set('description', t)}
-                placeholder="Optional description or internal notes…"
-                placeholderTextColor={Colors.light.textSecondary}
-                multiline
-                numberOfLines={3}
-              />
             </View>
           </ScrollView>
 
@@ -497,22 +331,17 @@ function ServiceStyleDrawer({ visible, entry, isSaving, isDeleting, onSave, onDe
 const dr = StyleSheet.create({
   modalRoot: { flex: 1, flexDirection: 'row' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
-  panel: { width: 440, backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: -2, height: 0 }, shadowOpacity: 0.12, shadowRadius: 16, flexDirection: 'column' },
+  panel: { width: 420, backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: -2, height: 0 }, shadowOpacity: 0.12, shadowRadius: 16, flexDirection: 'column' },
   panelHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: Colors.light.border },
   panelTitle: { fontSize: 15, fontWeight: '700' as const, color: Colors.light.text },
   scroll: { flex: 1 },
   scrollContent: { padding: 20, paddingBottom: 8 },
   sectionLabel: { fontSize: 10, fontWeight: '700' as const, color: Colors.light.textSecondary, letterSpacing: 0.6, textTransform: 'uppercase' as const, marginBottom: 4, marginTop: 16 },
-  sectionHint: { fontSize: 11, color: Colors.light.textSecondary, marginBottom: 6 },
   sectionCard: { borderWidth: 1, borderColor: Colors.light.border, borderRadius: 8, backgroundColor: Colors.light.surface, overflow: 'hidden' },
   fieldRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.light.border, minHeight: 52 },
   noBorder: { borderBottomWidth: 0 },
   fieldLabel: { fontSize: 13, color: Colors.light.text, fontWeight: '500' as const, flex: 1 },
   textInput: { flex: 1, borderWidth: 1, borderColor: Colors.light.border, borderRadius: 6, paddingHorizontal: 10, height: 38, fontSize: 13, color: Colors.light.text, backgroundColor: Colors.light.surface, maxWidth: 220 },
-  textarea: { height: 80, textAlignVertical: 'top' as const, paddingTop: 8, maxWidth: '100%' },
-  numWrap: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: Colors.light.border, borderRadius: 6, paddingHorizontal: 10, height: 38, backgroundColor: Colors.light.surface, maxWidth: 120 },
-  numInput: { flex: 1, fontSize: 13, color: Colors.light.text, paddingVertical: 0 },
-  numSuffix: { fontSize: 12, color: Colors.light.textSecondary, marginLeft: 4 },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderTopWidth: 1, borderTopColor: Colors.light.border, backgroundColor: Colors.light.background },
   footerRight: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   deleteBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7 },
@@ -526,7 +355,7 @@ const dr = StyleSheet.create({
 
 // ── Column widths ─────────────────────────────────────────────────────────────
 
-const COL = { name: 180, supplier: 140, margin: 100, days: 100, taxBehavior: 120, enabled: 80, actions: 80 } as const;
+const COL = { name: 200, supplier: 150, margin: 130, qtyMode: 140, enabled: 80, actions: 70 } as const;
 const TABLE_MIN = Object.values(COL).reduce((a, b) => a + b, 0) + 24;
 
 // ── Main Component ────────────────────────────────────────────────────────────
@@ -580,11 +409,15 @@ export function ServiceStylesTable() {
   const drawerVisible = drawerEntry !== undefined;
 
   async function handleSave(data: Omit<ServiceStyleEntry, 'id'> & { id?: string }) {
-    if (data.id) {
-      const { id, ...patch } = data;
+    const payload = {
+      ...data,
+      defaultMargin: data.defaultMargin ? normalizeMargin(data.defaultMargin) : '',
+    };
+    if (payload.id) {
+      const { id, ...patch } = payload;
       await updateMutation.mutateAsync({ id, ...patch });
     } else {
-      await createMutation.mutateAsync(data as Omit<ServiceStyleEntry, 'id'>);
+      await createMutation.mutateAsync(payload as Omit<ServiceStyleEntry, 'id'>);
     }
     setDrawerEntry(undefined);
   }
@@ -594,61 +427,30 @@ export function ServiceStylesTable() {
     setDrawerEntry(undefined);
   }
 
-  // ── Library management: import / export / template ──────────────────────────
+  // ── Import / Export ──────────────────────────────────────────────────────────
 
-  function handleParseImport(content: string, format: 'csv' | 'json'): LibraryImportPreview {
-    let rawRows: Record<string, unknown>[] = [];
+  function handleParseImport(content: string): LibraryImportPreview {
+    const rawRows = parseCsvText(content) as Record<string, unknown>[];
     const errors: string[] = [];
-
-    if (format === 'json') {
-      try {
-        const parsed = JSON.parse(content);
-        rawRows = Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return { validCount: 0, invalidCount: 0, duplicateCount: 0, errors: ['Invalid JSON file.'], rows: [] };
-      }
-    } else {
-      rawRows = ssParseCsvText(content) as Record<string, unknown>[];
-    }
-
     const validRows: Omit<ServiceStyleEntry, 'id'>[] = [];
     let invalidCount = 0;
 
     rawRows.forEach((raw, idx) => {
       const rowNum = idx + 2;
-      const rowErrors: string[] = [];
-
-      const name = String(raw.name ?? '').trim();
-      if (!name) rowErrors.push(`Row ${rowNum}: "name" is required`);
-
-      const taxBehavior = String(raw.defaultTaxBehavior ?? 'taxable').trim();
-      if (!VALID_TAX_BEHAVIORS.includes(taxBehavior)) {
-        rowErrors.push(`Row ${rowNum}: unknown defaultTaxBehavior "${taxBehavior}"`);
-      }
-
-      if (rowErrors.length > 0) {
-        if (errors.length < 10) errors.push(...rowErrors);
+      const name = (raw.name ?? raw['Service Style'] ?? '') as string;
+      const trimmedName = String(name).trim();
+      if (!trimmedName) {
+        if (errors.length < 10) errors.push(`Row ${rowNum}: "name" is required`);
         invalidCount++;
         return;
       }
 
-      const margin = raw.defaultMargin !== undefined && String(raw.defaultMargin).trim() !== ''
-        ? parseFloat(String(raw.defaultMargin))
-        : undefined;
-      const days = raw.defaultProductionDays !== undefined && String(raw.defaultProductionDays).trim() !== ''
-        ? parseInt(String(raw.defaultProductionDays))
-        : undefined;
-
       validRows.push({
-        name,
+        name: trimmedName,
         supplier: String(raw.supplier ?? '').trim() || undefined,
-        defaultMargin: Number.isFinite(margin) ? margin : undefined,
-        defaultProductionDays: Number.isFinite(days) ? days : undefined,
-        defaultProductionCosts: [],
-        defaultArtworkRequirements: String(raw.defaultArtworkRequirements ?? '').trim() || undefined,
-        defaultTaxBehavior: VALID_TAX_BEHAVIORS.includes(taxBehavior) ? taxBehavior : 'taxable',
-        description: String(raw.description ?? '').trim() || undefined,
-        enabled: ssParseBool(raw.enabled ?? 'true'),
+        defaultMargin: String(raw.defaultMargin ?? '').trim() || undefined,
+        quantityMode: String(raw.quantityMode ?? '').trim() || undefined,
+        enabled: parseBool(raw.enabled ?? 'true'),
         sortOrder: parseInt(String(raw.sortOrder ?? 0)) || 0,
       });
     });
@@ -664,42 +466,26 @@ export function ServiceStylesTable() {
 
     for (const row of typedRows) {
       const existingId = existingByName.get(row.name.toLowerCase());
+      const payload = { ...row, defaultMargin: row.defaultMargin ? normalizeMargin(row.defaultMargin) : '' };
       if (mode === 'skip' && existingId) continue;
       if (mode === 'replace' && existingId) {
-        await fetch(`/api/service-styles/${existingId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(row),
-        });
+        await fetch(`/api/service-styles/${existingId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       } else {
-        await fetch('/api/service-styles', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(row),
-        });
+        await fetch('/api/service-styles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       }
     }
     queryClient.invalidateQueries({ queryKey: ['service-styles'] });
   }
 
   function getExportData(format: 'csv' | 'json'): string {
-    const exportRows = rows.map(({ id: _id, defaultProductionCosts: _dpc, sortOrder: _so, ...rest }) => rest);
+    const exportRows = rows.map(({ id: _id, sortOrder: _so, ...rest }) => rest);
     if (format === 'json') return JSON.stringify(exportRows, null, 2);
-    return ssSerializeToCsv(exportRows as Record<string, unknown>[], SERVICE_STYLE_CSV_HEADERS);
+    return serializeToCsv(exportRows as Record<string, unknown>[], CSV_HEADERS);
   }
 
   function getTemplateData(): string {
-    const example = {
-      name: 'Screen Printing',
-      supplier: 'SanMar',
-      defaultMargin: 45,
-      defaultProductionDays: 7,
-      defaultArtworkRequirements: 'Vector art required at 300dpi',
-      defaultTaxBehavior: 'taxable',
-      description: 'Standard screen print service',
-      enabled: true,
-    };
-    return ssSerializeToCsv([example] as Record<string, unknown>[], SERVICE_STYLE_CSV_HEADERS);
+    const example = { name: 'Screen Printing', supplier: 'SanMar', defaultMargin: '45%', quantityMode: 'per_piece', enabled: true };
+    return serializeToCsv([example] as Record<string, unknown>[], CSV_HEADERS);
   }
 
   return (
@@ -714,7 +500,8 @@ export function ServiceStylesTable() {
             </TouchableOpacity>
             <LibraryManagementMenu
               libraryName="Service Styles"
-              onParseImport={handleParseImport}
+              xlsxSheetName="Service Styles"
+              onParseImport={(content, _fmt) => handleParseImport(content)}
               onConfirmImport={handleConfirmImport}
               getExportData={getExportData}
               getTemplateData={getTemplateData}
@@ -731,11 +518,10 @@ export function ServiceStylesTable() {
           <ScrollView horizontal showsHorizontalScrollIndicator style={styles.hScroll}>
             <View style={{ minWidth: TABLE_MIN }}>
               <View style={styles.colHead}>
-                <Text style={[styles.colHeadText, { width: COL.name }]}>Name</Text>
+                <Text style={[styles.colHeadText, { width: COL.name }]}>Service Style</Text>
                 <Text style={[styles.colHeadText, { width: COL.supplier }]}>Supplier</Text>
-                <Text style={[styles.colHeadText, { width: COL.margin, textAlign: 'right' }]}>Markup</Text>
-                <Text style={[styles.colHeadText, { width: COL.days, textAlign: 'right' }]}>Prod. Days</Text>
-                <Text style={[styles.colHeadText, { width: COL.taxBehavior }]}>Tax</Text>
+                <Text style={[styles.colHeadText, { width: COL.margin }]}>Default Margin</Text>
+                <Text style={[styles.colHeadText, { width: COL.qtyMode }]}>Quantity Mode</Text>
                 <Text style={[styles.colHeadText, { width: COL.enabled, textAlign: 'center' }]}>Enabled</Text>
                 <Text style={[styles.colHeadText, { width: COL.actions, textAlign: 'center' }]}>Actions</Text>
               </View>
@@ -747,23 +533,15 @@ export function ServiceStylesTable() {
               ) : (
                 rows.map((row) => (
                   <View key={row.id} style={[styles.row, !row.enabled && styles.rowDisabled]}>
-                    <View style={{ width: COL.name }}>
-                      <Text style={styles.cellText} numberOfLines={1}>{row.name}</Text>
-                      {(row.defaultProductionCosts?.length ?? 0) > 0 && (
-                        <Text style={styles.cellBadge}>{row.defaultProductionCosts.length} cost{row.defaultProductionCosts.length !== 1 ? 's' : ''}</Text>
-                      )}
-                    </View>
-                    <Text style={[styles.cellText, styles.cellSecondary, { width: COL.supplier }]} numberOfLines={1}>
+                    <Text style={[styles.cell, { width: COL.name }]} numberOfLines={1}>{row.name}</Text>
+                    <Text style={[styles.cell, styles.cellSecondary, { width: COL.supplier }]} numberOfLines={1}>
                       {row.supplier || '—'}
                     </Text>
-                    <Text style={[styles.cellText, styles.cellMono, { width: COL.margin, textAlign: 'right' }]}>
-                      {row.defaultMargin != null ? `${row.defaultMargin}%` : '—'}
+                    <Text style={[styles.cell, styles.cellMono, { width: COL.margin }]} numberOfLines={1}>
+                      {row.defaultMargin || '—'}
                     </Text>
-                    <Text style={[styles.cellText, styles.cellMono, { width: COL.days, textAlign: 'right' }]}>
-                      {row.defaultProductionDays != null ? `${row.defaultProductionDays}d` : '—'}
-                    </Text>
-                    <Text style={[styles.cellText, styles.cellSecondary, { width: COL.taxBehavior }]} numberOfLines={1}>
-                      {taxBehaviorLabel(row.defaultTaxBehavior)}
+                    <Text style={[styles.cell, styles.cellSecondary, { width: COL.qtyMode }]} numberOfLines={1}>
+                      {quantityModeLabel(row.quantityMode ?? '')}
                     </Text>
                     <View style={{ width: COL.enabled, alignItems: 'center' }}>
                       <Toggle on={row.enabled} onToggle={() => updateMutation.mutate({ id: row.id, enabled: !row.enabled })} />
@@ -809,10 +587,9 @@ const styles = StyleSheet.create({
   colHeadText: { fontSize: 9, fontWeight: '700' as const, color: Colors.light.textSecondary, letterSpacing: 0.4, textTransform: 'uppercase' as const, paddingRight: 8 },
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.light.border },
   rowDisabled: { opacity: 0.5 },
-  cellText: { fontSize: 13, color: Colors.light.text, paddingRight: 8 },
+  cell: { fontSize: 13, color: Colors.light.text, paddingRight: 8 },
   cellSecondary: { color: Colors.light.textSecondary },
   cellMono: { fontVariant: ['tabular-nums' as any] },
-  cellBadge: { fontSize: 10, color: Colors.light.tint, fontWeight: '600' as const, marginTop: 1 },
   loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 20, justifyContent: 'center' },
   loadingText: { fontSize: 13, color: Colors.light.textSecondary },
   emptyRow: { padding: 24, alignItems: 'center' },

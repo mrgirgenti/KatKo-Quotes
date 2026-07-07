@@ -9,7 +9,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { Plus, Pencil, Trash2, ChevronDown, X, AlertTriangle } from 'lucide-react-native';
+import { Plus, Pencil, Trash2, ChevronDown, X } from 'lucide-react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Colors from '@/constants/colors';
 import OverlayMenu from '@/components/OverlayMenu';
@@ -17,34 +17,69 @@ import LibraryManagementMenu, {
   type ImportMode,
   type LibraryImportPreview,
 } from '@/components/LibraryManagementMenu';
-import { ADJUSTMENT_CALC_TYPES, type AdjustmentCalcType } from '@/types/quote';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type CostCategory = 'production' | 'other';
-export type CostScope = 'per_piece' | 'per_line' | 'per_order';
 
-export const COST_SCOPES: { value: CostScope; label: string }[] = [
-  { value: 'per_piece', label: 'Per Piece' },
-  { value: 'per_line', label: 'Per Line Item' },
-  { value: 'per_order', label: 'Per Order' },
-];
+export interface CostLibraryEntry {
+  id: string;
+  name: string;
+  category: CostCategory;
+  calcType: string;
+  defaultRate: string;
+  appliesTo?: string;
+  scope?: string;
+  enabled: boolean;
+  associatedService?: string;
+  notes?: string;
+  sortOrder?: number;
+}
 
-export const COST_CATEGORIES: { value: CostCategory; label: string }[] = [
-  { value: 'production', label: 'Production' },
-  { value: 'other', label: 'Other' },
-];
+export interface CostLibraryTableProps {
+  category: CostCategory;
+  title: string;
+  addLabel: string;
+  namePlaceholder?: string;
+}
 
-// ── CSV helpers ───────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
 
-const COST_LIBRARY_CSV_HEADERS = [
-  'name', 'category', 'calculationType', 'rate', 'minimum',
-  'increment', 'scope', 'taxable', 'enabled', 'description',
+export const CALC_TYPES = [
+  { value: 'flat', label: 'Flat Rate' },
+  { value: 'percentage', label: 'Percentage' },
+  { value: 'per_design', label: 'Per Design' },
+  { value: 'hourly', label: 'Hourly' },
+  { value: 'per_unit', label: 'Per Unit' },
+  { value: 'per_color', label: 'Per Color' },
+  { value: 'custom', label: 'Custom / Range' },
 ] as const;
 
-const VALID_COST_CATEGORIES: CostCategory[] = ['production', 'other'];
-const VALID_CALC_TYPES = ['flat', 'hourly', 'per_unit', 'per_design', 'percentage', 'custom'];
-const VALID_COST_SCOPES: CostScope[] = ['per_piece', 'per_line', 'per_order'];
+const APPLIES_TO_OPTIONS = [
+  { value: '', label: '—' },
+  { value: 'per_piece', label: 'Per Piece' },
+  { value: 'per_design', label: 'Per Design' },
+  { value: 'per_order', label: 'Per Order' },
+  { value: 'per_color', label: 'Per Color' },
+  { value: 'per_location', label: 'Per Location' },
+];
+
+const SCOPE_OPTIONS = [
+  { value: '', label: '—' },
+  { value: 'per_order', label: 'Per Order' },
+  { value: 'per_piece', label: 'Per Piece' },
+  { value: 'per_line', label: 'Per Line Item' },
+];
+
+const COST_CATEGORIES = [
+  { value: 'production' as const, label: 'Production' },
+  { value: 'other' as const, label: 'Other' },
+];
+
+const VALID_CALC_TYPES = CALC_TYPES.map((t) => t.value as string);
+const VALID_CATEGORIES: CostCategory[] = ['production', 'other'];
+
+// ── CSV helpers ───────────────────────────────────────────────────────────────
 
 function splitCsvLine(line: string): string[] {
   const result: string[] = [];
@@ -79,73 +114,37 @@ function serializeToCsv(rows: Record<string, unknown>[], headers: readonly strin
   return [headers.map(csvCell).join(','), ...rows.map(r => headers.map(h => csvCell(r[h])).join(','))].join('\n');
 }
 
-function parseBoolField(v: unknown): boolean {
+function parseBool(v: unknown): boolean {
   if (typeof v === 'boolean') return v;
   const s = String(v ?? '').toLowerCase();
   return s === 'true' || s === '1' || s === 'yes';
 }
 
-export interface CostLibraryEntry {
-  id: string;
-  name: string;
-  category: CostCategory;
-  calculationType: AdjustmentCalcType;
-  rate: number;
-  minimum: number;
-  increment: number;
-  scope: CostScope;
-  taxable: boolean;
-  enabled: boolean;
-  description?: string;
-  sortOrder?: number;
-}
-
-export interface CostLibraryTableProps {
-  category: CostCategory;
-  title: string;
-  addLabel: string;
-  namePlaceholder?: string;
-}
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function calcTypeLabel(type: AdjustmentCalcType): string {
-  return ADJUSTMENT_CALC_TYPES.find((t) => t.value === type)?.label ?? 'Flat Rate';
+function calcTypeLabel(type: string): string {
+  return CALC_TYPES.find((t) => t.value === type)?.label ?? type;
 }
 
-function scopeLabel(scope: CostScope): string {
-  return COST_SCOPES.find((s) => s.value === scope)?.label ?? 'Per Piece';
+function appliesToLabel(val: string): string {
+  return (APPLIES_TO_OPTIONS.find((o) => o.value === val)?.label ?? val) || '—';
 }
 
-function categoryLabel(cat: CostCategory): string {
-  return cat === 'production' ? 'Production' : 'Other';
-}
-
-function formatRate(entry: CostLibraryEntry): string {
-  switch (entry.calculationType) {
-    case 'percentage':
-      return `${entry.rate}%`;
-    case 'hourly':
-      return `$${entry.rate.toFixed(2)}/hr`;
-    case 'per_unit':
-      return `$${entry.rate.toFixed(2)}/unit`;
-    default:
-      return `$${entry.rate.toFixed(2)}`;
-  }
+function scopeLabel(val: string): string {
+  return (SCOPE_OPTIONS.find((o) => o.value === val)?.label ?? val) || '—';
 }
 
 function emptyEntry(category: CostCategory): Omit<CostLibraryEntry, 'id'> {
   return {
     name: '',
     category,
-    calculationType: 'flat',
-    rate: 0,
-    minimum: 0,
-    increment: 0,
-    scope: 'per_order',
-    taxable: true,
+    calcType: 'flat',
+    defaultRate: '',
+    appliesTo: '',
+    scope: '',
     enabled: true,
-    description: '',
+    associatedService: '',
+    notes: '',
     sortOrder: 0,
   };
 }
@@ -153,40 +152,31 @@ function emptyEntry(category: CostCategory): Omit<CostLibraryEntry, 'id'> {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function CategoryBadge({ category }: { category: CostCategory }) {
-  const isProduction = category === 'production';
+  const isProd = category === 'production';
   return (
-    <View style={[badge.pill, isProduction ? badge.production : badge.other]}>
-      <Text style={[badge.text, isProduction ? badge.productionText : badge.otherText]}>
-        {categoryLabel(category)}
+    <View style={[bdg.pill, isProd ? bdg.prod : bdg.other]}>
+      <Text style={[bdg.text, isProd ? bdg.prodText : bdg.otherText]}>
+        {isProd ? 'Production' : 'Other'}
       </Text>
     </View>
   );
 }
 
-const badge = StyleSheet.create({
-  pill: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    alignSelf: 'flex-start',
-  },
-  production: { backgroundColor: '#EEF2FF' },
+const bdg = StyleSheet.create({
+  pill: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10, alignSelf: 'flex-start' },
+  prod: { backgroundColor: '#EEF2FF' },
   other: { backgroundColor: '#F0FDF4' },
-  text: { fontSize: 11, fontWeight: '600' as const },
-  productionText: { color: '#4338CA' },
+  text: { fontSize: 10, fontWeight: '600' as const },
+  prodText: { color: '#4338CA' },
   otherText: { color: '#16A34A' },
 });
 
 function Toggle({
   on,
   onToggle,
-  onLabel = 'On',
-  offLabel = 'Off',
 }: {
   on: boolean;
   onToggle: () => void;
-  onLabel?: string;
-  offLabel?: string;
 }) {
   return (
     <TouchableOpacity
@@ -194,13 +184,13 @@ function Toggle({
       onPress={onToggle}
       activeOpacity={0.8}
     >
-      <Text style={[tog.text, on ? tog.textOn : tog.textOff]}>{on ? onLabel : offLabel}</Text>
+      <Text style={[tog.text, on ? tog.textOn : tog.textOff]}>{on ? 'On' : 'Off'}</Text>
     </TouchableOpacity>
   );
 }
 
 const tog = StyleSheet.create({
-  base: { minWidth: 46, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, borderWidth: 1 },
+  base: { minWidth: 46, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, borderWidth: 1 },
   on: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
   off: { backgroundColor: Colors.light.background, borderColor: Colors.light.border },
   text: { fontSize: 11, fontWeight: '700' as const },
@@ -250,117 +240,11 @@ function DrawerDropdown<T extends string>({
 }
 
 const ddn = StyleSheet.create({
-  btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: Colors.light.border, borderRadius: 6, paddingHorizontal: 10, height: 38, backgroundColor: Colors.light.surface },
+  btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: Colors.light.border, borderRadius: 6, paddingHorizontal: 10, height: 38, backgroundColor: Colors.light.surface, minWidth: 160 },
   text: { fontSize: 13, color: Colors.light.text, flex: 1 },
   item: { paddingHorizontal: 14, paddingVertical: 10 },
   itemText: { fontSize: 13, color: Colors.light.text },
   itemActive: { color: Colors.light.tint, fontWeight: '600' as const },
-});
-
-function DrawerNumInput({
-  value,
-  onChange,
-  prefix,
-  suffix,
-  placeholder = '0',
-}: {
-  value: number;
-  onChange: (v: number) => void;
-  prefix?: string;
-  suffix?: string;
-  placeholder?: string;
-}) {
-  return (
-    <View style={dni.wrap}>
-      {prefix ? <Text style={dni.affix}>{prefix}</Text> : null}
-      <TextInput
-        style={dni.input}
-        value={value ? String(value) : ''}
-        onChangeText={(t) => {
-          const n = parseFloat(t.replace(/[^0-9.]/g, ''));
-          onChange(Number.isFinite(n) ? n : 0);
-        }}
-        keyboardType="decimal-pad"
-        placeholder={placeholder}
-        placeholderTextColor={Colors.light.textSecondary}
-      />
-      {suffix ? <Text style={dni.affix}>{suffix}</Text> : null}
-    </View>
-  );
-}
-
-const dni = StyleSheet.create({
-  wrap: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: Colors.light.border, borderRadius: 6, paddingHorizontal: 10, height: 38, backgroundColor: Colors.light.surface },
-  input: { flex: 1, fontSize: 13, color: Colors.light.text, paddingVertical: 0 },
-  affix: { fontSize: 12, color: Colors.light.textSecondary, marginHorizontal: 2 },
-});
-
-// ── Category Confirmation Dialog ──────────────────────────────────────────────
-
-interface CategoryConfirmProps {
-  visible: boolean;
-  fromCategory: CostCategory;
-  toCategory: CostCategory;
-  onCancel: () => void;
-  onConfirm: () => void;
-}
-
-function CategoryConfirmDialog({
-  visible,
-  fromCategory,
-  toCategory,
-  onCancel,
-  onConfirm,
-}: CategoryConfirmProps) {
-  return (
-    <Modal visible={visible} transparent animationType="fade">
-      <View style={cd.overlay}>
-        <View style={cd.box}>
-          <View style={cd.iconRow}>
-            <AlertTriangle size={22} color="#B45309" />
-            <Text style={cd.title}>Changing Cost Category</Text>
-          </View>
-          <Text style={cd.body}>
-            This item is currently classified as:
-          </Text>
-          <Text style={cd.highlight}>{categoryLabel(fromCategory)}</Text>
-          <Text style={cd.body}>Changing it to:</Text>
-          <Text style={cd.highlight}>{categoryLabel(toCategory)}</Text>
-          <Text style={cd.body}>may affect:</Text>
-          <Text style={cd.bullets}>
-            {'• Existing Quotes\n• Pricing Calculations\n• Reporting\n• Financial History\n• Future Quotes'}
-          </Text>
-          <Text style={cd.warning}>
-            Only continue if this item was originally created incorrectly.
-          </Text>
-          <View style={cd.btnRow}>
-            <TouchableOpacity style={cd.cancelBtn} onPress={onCancel} activeOpacity={0.8}>
-              <Text style={cd.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={cd.confirmBtn} onPress={onConfirm} activeOpacity={0.8}>
-              <Text style={cd.confirmText}>Continue</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-const cd = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  box: { backgroundColor: '#fff', borderRadius: 12, padding: 24, width: '100%', maxWidth: 420, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12 },
-  iconRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  title: { fontSize: 16, fontWeight: '700' as const, color: Colors.light.text },
-  body: { fontSize: 13, color: Colors.light.textSecondary, marginTop: 6 },
-  highlight: { fontSize: 14, fontWeight: '700' as const, color: Colors.light.text, marginTop: 2 },
-  bullets: { fontSize: 13, color: Colors.light.textSecondary, marginTop: 6, lineHeight: 22 },
-  warning: { fontSize: 12, color: '#B45309', backgroundColor: '#FFFBEB', borderRadius: 6, padding: 10, marginTop: 12, lineHeight: 18 },
-  btnRow: { flexDirection: 'row', gap: 10, marginTop: 20, justifyContent: 'flex-end' },
-  cancelBtn: { paddingHorizontal: 18, paddingVertical: 9, borderRadius: 7, borderWidth: 1, borderColor: Colors.light.border },
-  cancelText: { fontSize: 13, color: Colors.light.text, fontWeight: '600' as const },
-  confirmBtn: { paddingHorizontal: 18, paddingVertical: 9, borderRadius: 7, backgroundColor: Colors.light.tint },
-  confirmText: { fontSize: 13, color: '#fff', fontWeight: '700' as const },
 });
 
 // ── Edit Drawer ───────────────────────────────────────────────────────────────
@@ -391,235 +275,188 @@ function CostEntryDrawer({
   const [form, setForm] = useState<Omit<CostLibraryEntry, 'id'>>(() =>
     entry ? { ...entry } : emptyEntry(defaultCategory),
   );
-  const [pendingCategory, setPendingCategory] = useState<CostCategory | null>(null);
-  const [showCatConfirm, setShowCatConfirm] = useState(false);
 
   useEffect(() => {
     setForm(entry ? { ...entry } : emptyEntry(defaultCategory));
-    setPendingCategory(null);
-    setShowCatConfirm(false);
   }, [entry, defaultCategory, visible]);
 
   const set = useCallback(<K extends keyof typeof form>(k: K, v: (typeof form)[K]) => {
     setForm((prev) => ({ ...prev, [k]: v }));
   }, []);
 
-  function handleCategoryRequest(newCat: CostCategory) {
-    if (newCat === form.category) return;
-    if (!isNew) {
-      setPendingCategory(newCat);
-      setShowCatConfirm(true);
-    } else {
-      set('category', newCat);
-    }
-  }
-
-  function confirmCategoryChange() {
-    if (pendingCategory) set('category', pendingCategory);
-    setPendingCategory(null);
-    setShowCatConfirm(false);
-  }
-
-  function cancelCategoryChange() {
-    setPendingCategory(null);
-    setShowCatConfirm(false);
-  }
-
   function handleSave() {
     if (!form.name.trim()) return;
     onSave({ ...form, ...(entry ? { id: entry.id } : {}) });
   }
 
-  function handleDelete() {
-    if (entry) onDelete(entry.id);
+  const isProduction = form.category === 'production';
+  const appFieldOptions = isProduction ? APPLIES_TO_OPTIONS : SCOPE_OPTIONS;
+  const appFieldValue = isProduction ? (form.appliesTo ?? '') : (form.scope ?? '');
+  const appFieldLabel = isProduction
+    ? appliesToLabel(form.appliesTo ?? '')
+    : scopeLabel(form.scope ?? '');
+
+  function setAppField(v: string) {
+    if (isProduction) set('appliesTo', v);
+    else set('scope', v);
   }
 
-  const ratePrefix = form.calculationType === 'percentage' ? undefined : '$';
-  const rateSuffix = form.calculationType === 'percentage' ? '%' : form.calculationType === 'hourly' ? '/hr' : undefined;
-
   return (
-    <>
-      <Modal visible={visible} transparent animationType="none">
-        <View style={dr.modalRoot}>
-          <TouchableOpacity style={dr.backdrop} onPress={onClose} activeOpacity={1} />
-          <View style={dr.panel}>
-            {/* Header */}
-            <View style={dr.panelHeader}>
-              <Text style={dr.panelTitle}>{isNew ? 'New Cost Entry' : 'Edit Cost Entry'}</Text>
-              <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <X size={18} color={Colors.light.textSecondary} />
-              </TouchableOpacity>
-            </View>
+    <Modal visible={visible} transparent animationType="none">
+      <View style={dr.modalRoot}>
+        <TouchableOpacity style={dr.backdrop} onPress={onClose} activeOpacity={1} />
+        <View style={dr.panel}>
+          <View style={dr.panelHeader}>
+            <Text style={dr.panelTitle}>{isNew ? 'New Cost Entry' : 'Edit Cost Entry'}</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={18} color={Colors.light.textSecondary} />
+            </TouchableOpacity>
+          </View>
 
-            <ScrollView style={dr.scroll} contentContainerStyle={dr.scrollContent}>
-              {/* Basic Information */}
-              <Text style={dr.sectionLabel}>Basic Information</Text>
-              <View style={dr.sectionCard}>
-                <View style={dr.fieldRow}>
-                  <Text style={dr.fieldLabel}>Name</Text>
-                  <TextInput
-                    style={dr.textInput}
-                    value={form.name}
-                    onChangeText={(t) => set('name', t)}
-                    placeholder="e.g. Screen Print Setup"
-                    placeholderTextColor={Colors.light.textSecondary}
-                  />
-                </View>
-
-                <View style={dr.fieldRow}>
-                  <Text style={dr.fieldLabel}>Category</Text>
-                  <DrawerDropdown
-                    value={form.category}
-                    label={categoryLabel(form.category)}
-                    options={COST_CATEGORIES}
-                    onSelect={handleCategoryRequest}
-                  />
-                </View>
-
-                <View style={[dr.fieldRow, dr.noBorder]}>
-                  <Text style={dr.fieldLabel}>Calculation Type</Text>
-                  <DrawerDropdown
-                    value={form.calculationType}
-                    label={calcTypeLabel(form.calculationType)}
-                    options={ADJUSTMENT_CALC_TYPES}
-                    onSelect={(v) => set('calculationType', v)}
-                  />
-                </View>
-              </View>
-
-              {/* Pricing */}
-              <Text style={dr.sectionLabel}>Pricing</Text>
-              <View style={dr.sectionCard}>
-                <View style={dr.fieldRow}>
-                  <Text style={dr.fieldLabel}>Default Rate</Text>
-                  <View style={dr.numFieldWrap}>
-                    <DrawerNumInput
-                      value={form.rate}
-                      onChange={(v) => set('rate', v)}
-                      prefix={ratePrefix}
-                      suffix={rateSuffix}
-                    />
-                  </View>
-                </View>
-                <View style={dr.fieldRow}>
-                  <Text style={dr.fieldLabel}>Minimum</Text>
-                  <View style={dr.numFieldWrap}>
-                    <DrawerNumInput
-                      value={form.minimum}
-                      onChange={(v) => set('minimum', v)}
-                      prefix="$"
-                    />
-                  </View>
-                </View>
-                <View style={[dr.fieldRow, dr.noBorder]}>
-                  <Text style={dr.fieldLabel}>Increment</Text>
-                  <View style={dr.numFieldWrap}>
-                    <DrawerNumInput
-                      value={form.increment}
-                      onChange={(v) => set('increment', v)}
-                    />
-                  </View>
-                </View>
-              </View>
-
-              {/* Behavior */}
-              <Text style={dr.sectionLabel}>Behavior</Text>
-              <View style={dr.sectionCard}>
-                <View style={dr.fieldRow}>
-                  <Text style={dr.fieldLabel}>Scope</Text>
-                  <DrawerDropdown
-                    value={form.scope}
-                    label={scopeLabel(form.scope)}
-                    options={COST_SCOPES}
-                    onSelect={(v) => set('scope', v)}
-                  />
-                </View>
-                <View style={dr.fieldRow}>
-                  <Text style={dr.fieldLabel}>Taxable</Text>
-                  <Toggle
-                    on={form.taxable}
-                    onToggle={() => set('taxable', !form.taxable)}
-                    onLabel="Yes"
-                    offLabel="No"
-                  />
-                </View>
-                <View style={dr.fieldRow}>
-                  <Text style={dr.fieldLabel}>Enabled</Text>
-                  <Toggle
-                    on={form.enabled}
-                    onToggle={() => set('enabled', !form.enabled)}
-                  />
-                </View>
-                <View style={[dr.fieldRow, dr.noBorder]}>
-                  <Text style={dr.fieldLabel}>Display Order</Text>
-                  <View style={dr.numFieldWrap}>
-                    <DrawerNumInput
-                      value={form.sortOrder ?? 0}
-                      onChange={(v) => set('sortOrder', v)}
-                      placeholder="0"
-                    />
-                  </View>
-                </View>
-              </View>
-
-              {/* Description */}
-              <Text style={dr.sectionLabel}>Description</Text>
-              <View style={dr.sectionCard}>
+          <ScrollView style={dr.scroll} contentContainerStyle={dr.scrollContent}>
+            {/* Basic Information */}
+            <Text style={dr.sectionLabel}>Basic Information</Text>
+            <View style={dr.sectionCard}>
+              <View style={dr.fieldRow}>
+                <Text style={dr.fieldLabel}>Name</Text>
                 <TextInput
-                  style={[dr.textInput, dr.textarea]}
-                  value={form.description ?? ''}
-                  onChangeText={(t) => set('description', t)}
-                  placeholder="Optional description..."
+                  style={dr.textInput}
+                  value={form.name}
+                  onChangeText={(t) => set('name', t)}
+                  placeholder="e.g. Screen Print Setup"
                   placeholderTextColor={Colors.light.textSecondary}
-                  multiline
-                  numberOfLines={3}
                 />
               </View>
-            </ScrollView>
 
-            {/* Footer */}
-            <View style={dr.footer}>
-              {!isNew && (
-                <TouchableOpacity
-                  style={dr.deleteBtn}
-                  onPress={handleDelete}
-                  disabled={isDeleting}
-                  activeOpacity={0.8}
-                >
-                  <Trash2 size={14} color={Colors.light.error} />
-                  <Text style={dr.deleteBtnText}>Delete</Text>
-                </TouchableOpacity>
-              )}
-              <View style={dr.footerRight}>
-                <TouchableOpacity style={dr.cancelBtn} onPress={onClose} activeOpacity={0.8}>
-                  <Text style={dr.cancelText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[dr.saveBtn, (!form.name.trim() || isSaving) && dr.saveBtnDisabled]}
-                  onPress={handleSave}
-                  disabled={!form.name.trim() || isSaving}
-                  activeOpacity={0.85}
-                >
-                  {isSaving ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text style={dr.saveBtnText}>{isNew ? 'Create' : 'Save'}</Text>
-                  )}
-                </TouchableOpacity>
+              <View style={dr.fieldRow}>
+                <Text style={dr.fieldLabel}>Category</Text>
+                <DrawerDropdown
+                  value={form.category}
+                  label={form.category === 'production' ? 'Production' : 'Other'}
+                  options={COST_CATEGORIES}
+                  onSelect={(v) => set('category', v)}
+                />
               </View>
+
+              <View style={[dr.fieldRow, dr.noBorder]}>
+                <Text style={dr.fieldLabel}>Calc Type</Text>
+                <DrawerDropdown
+                  value={form.calcType as any}
+                  label={calcTypeLabel(form.calcType)}
+                  options={CALC_TYPES as any}
+                  onSelect={(v) => set('calcType', v)}
+                />
+              </View>
+            </View>
+
+            {/* Rate & Application */}
+            <Text style={dr.sectionLabel}>Rate & Application</Text>
+            <View style={dr.sectionCard}>
+              <View style={dr.fieldRow}>
+                <Text style={dr.fieldLabel}>Default Rate</Text>
+                <TextInput
+                  style={dr.textInput}
+                  value={form.defaultRate}
+                  onChangeText={(t) => set('defaultRate', t)}
+                  placeholder="e.g. $25, 15%, $20-200"
+                  placeholderTextColor={Colors.light.textSecondary}
+                />
+              </View>
+              <View style={[dr.fieldRow, dr.noBorder]}>
+                <Text style={dr.fieldLabel}>{isProduction ? 'Applies To' : 'Scope'}</Text>
+                <DrawerDropdown
+                  value={appFieldValue as any}
+                  label={appFieldLabel}
+                  options={appFieldOptions as any}
+                  onSelect={setAppField}
+                />
+              </View>
+            </View>
+
+            {/* Classification */}
+            <Text style={dr.sectionLabel}>Classification</Text>
+            <View style={dr.sectionCard}>
+              <View style={dr.fieldRow}>
+                <Text style={dr.fieldLabel}>Associated Service</Text>
+                <TextInput
+                  style={dr.textInput}
+                  value={form.associatedService ?? ''}
+                  onChangeText={(t) => set('associatedService', t)}
+                  placeholder="e.g. Screen Print"
+                  placeholderTextColor={Colors.light.textSecondary}
+                />
+              </View>
+              <View style={[dr.fieldRow, dr.noBorder]}>
+                <Text style={dr.fieldLabel}>Notes</Text>
+              </View>
+              <TextInput
+                style={[dr.textInput, dr.textarea, { margin: 0, borderTopWidth: 0, borderTopLeftRadius: 0, borderTopRightRadius: 0, maxWidth: '100%' }]}
+                value={form.notes ?? ''}
+                onChangeText={(t) => set('notes', t)}
+                placeholder="Optional notes…"
+                placeholderTextColor={Colors.light.textSecondary}
+                multiline
+                numberOfLines={3}
+              />
+            </View>
+
+            {/* Behavior */}
+            <Text style={dr.sectionLabel}>Behavior</Text>
+            <View style={dr.sectionCard}>
+              <View style={dr.fieldRow}>
+                <Text style={dr.fieldLabel}>Enabled</Text>
+                <Toggle on={form.enabled} onToggle={() => set('enabled', !form.enabled)} />
+              </View>
+              <View style={[dr.fieldRow, dr.noBorder]}>
+                <Text style={dr.fieldLabel}>Display Order</Text>
+                <TextInput
+                  style={[dr.textInput, { maxWidth: 90 }]}
+                  value={String(form.sortOrder ?? 0)}
+                  onChangeText={(t) => {
+                    const n = parseInt(t.replace(/[^0-9]/g, ''), 10);
+                    set('sortOrder', Number.isFinite(n) ? n : 0);
+                  }}
+                  keyboardType="number-pad"
+                  placeholder="0"
+                  placeholderTextColor={Colors.light.textSecondary}
+                />
+              </View>
+            </View>
+          </ScrollView>
+
+          <View style={dr.footer}>
+            {!isNew && (
+              <TouchableOpacity
+                style={dr.deleteBtn}
+                onPress={() => entry && onDelete(entry.id)}
+                disabled={isDeleting}
+                activeOpacity={0.8}
+              >
+                <Trash2 size={14} color={Colors.light.error} />
+                <Text style={dr.deleteBtnText}>Delete</Text>
+              </TouchableOpacity>
+            )}
+            <View style={dr.footerRight}>
+              <TouchableOpacity style={dr.cancelBtn} onPress={onClose} activeOpacity={0.8}>
+                <Text style={dr.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[dr.saveBtn, (!form.name.trim() || isSaving) && dr.saveBtnDisabled]}
+                onPress={handleSave}
+                disabled={!form.name.trim() || isSaving}
+                activeOpacity={0.85}
+              >
+                {isSaving ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={dr.saveBtnText}>{isNew ? 'Create' : 'Save'}</Text>
+                )}
+              </TouchableOpacity>
             </View>
           </View>
         </View>
-      </Modal>
-
-      <CategoryConfirmDialog
-        visible={showCatConfirm}
-        fromCategory={entry?.category ?? defaultCategory}
-        toCategory={pendingCategory ?? defaultCategory}
-        onCancel={cancelCategoryChange}
-        onConfirm={confirmCategoryChange}
-      />
-    </>
+      </View>
+    </Modal>
   );
 }
 
@@ -631,14 +468,13 @@ const dr = StyleSheet.create({
   panelTitle: { fontSize: 15, fontWeight: '700' as const, color: Colors.light.text },
   scroll: { flex: 1 },
   scrollContent: { padding: 20, paddingBottom: 8 },
-  sectionLabel: { fontSize: 10, fontWeight: '700' as const, color: Colors.light.textSecondary, letterSpacing: 0.6, textTransform: 'uppercase' as const, marginBottom: 6, marginTop: 16 },
+  sectionLabel: { fontSize: 10, fontWeight: '700' as const, color: Colors.light.textSecondary, letterSpacing: 0.6, textTransform: 'uppercase' as const, marginBottom: 4, marginTop: 16 },
   sectionCard: { borderWidth: 1, borderColor: Colors.light.border, borderRadius: 8, backgroundColor: Colors.light.surface, overflow: 'hidden' },
   fieldRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.light.border, minHeight: 52 },
   noBorder: { borderBottomWidth: 0 },
   fieldLabel: { fontSize: 13, color: Colors.light.text, fontWeight: '500' as const, flex: 1 },
   textInput: { flex: 1, borderWidth: 1, borderColor: Colors.light.border, borderRadius: 6, paddingHorizontal: 10, height: 38, fontSize: 13, color: Colors.light.text, backgroundColor: Colors.light.surface, maxWidth: 220 },
-  textarea: { height: 80, textAlignVertical: 'top' as const, paddingTop: 8, maxWidth: '100%' },
-  numFieldWrap: { maxWidth: 140 },
+  textarea: { height: 80, textAlignVertical: 'top' as const, paddingTop: 8 },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderTopWidth: 1, borderTopColor: Colors.light.border, backgroundColor: Colors.light.background },
   footerRight: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   deleteBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7 },
@@ -650,16 +486,18 @@ const dr = StyleSheet.create({
   saveBtnText: { fontSize: 13, color: '#fff', fontWeight: '700' as const },
 });
 
-// ── Table Columns ─────────────────────────────────────────────────────────────
+// ── Table columns ─────────────────────────────────────────────────────────────
 
 const COL = {
-  name: 200,
-  category: 110,
-  calc: 130,
-  rate: 110,
-  scope: 130,
+  name: 180,
+  category: 100,
+  calc: 120,
+  rate: 120,
+  appField: 130,
   enabled: 80,
-  actions: 80,
+  service: 150,
+  notes: 150,
+  actions: 70,
 } as const;
 
 const TABLE_MIN_WIDTH = Object.values(COL).reduce((a, b) => a + b, 0) + 24;
@@ -670,7 +508,6 @@ export function CostLibraryTable({
   category,
   title,
   addLabel,
-  namePlaceholder = 'Name',
 }: CostLibraryTableProps) {
   const queryClient = useQueryClient();
   const queryKey = ['cost-library', category];
@@ -724,21 +561,8 @@ export function CostLibraryTable({
     onSuccess: invalidate,
   });
 
-  // Drawer state
   const [drawerEntry, setDrawerEntry] = useState<CostLibraryEntry | null | undefined>(undefined);
   const drawerVisible = drawerEntry !== undefined;
-
-  function openNew() {
-    setDrawerEntry(null);
-  }
-
-  function openEdit(row: CostLibraryEntry) {
-    setDrawerEntry(row);
-  }
-
-  function closeDrawer() {
-    setDrawerEntry(undefined);
-  }
 
   async function handleSave(data: Omit<CostLibraryEntry, 'id'> & { id?: string }) {
     if (data.id) {
@@ -747,56 +571,38 @@ export function CostLibraryTable({
     } else {
       await createMutation.mutateAsync(data as Omit<CostLibraryEntry, 'id'>);
     }
-    closeDrawer();
+    setDrawerEntry(undefined);
   }
 
   async function handleDelete(id: string) {
     await deleteMutation.mutateAsync(id);
-    closeDrawer();
+    setDrawerEntry(undefined);
   }
 
-  function quickToggleEnabled(row: CostLibraryEntry) {
-    updateMutation.mutate({ id: row.id, enabled: !row.enabled });
-  }
+  // ── Import / Export / Template ──────────────────────────────────────────────
 
-  // ── Library management: import / export / template ──────────────────────────
+  const isProduction = category === 'production';
+  const APP_FIELD_HEADER = isProduction ? 'appliesTo' : 'scope';
+  const CSV_HEADERS = ['name', 'category', 'calcType', 'defaultRate', APP_FIELD_HEADER, 'enabled', 'associatedService', 'notes'] as const;
 
-  function handleParseImport(content: string, format: 'csv' | 'json'): LibraryImportPreview {
-    let rawRows: Record<string, unknown>[] = [];
+  function handleParseImport(content: string): LibraryImportPreview {
+    const rawRows = parseCsvText(content) as Record<string, unknown>[];
     const errors: string[] = [];
-
-    if (format === 'json') {
-      try {
-        const parsed = JSON.parse(content);
-        rawRows = Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return { validCount: 0, invalidCount: 0, duplicateCount: 0, errors: ['Invalid JSON file.'], rows: [] };
-      }
-    } else {
-      rawRows = parseCsvText(content) as Record<string, unknown>[];
-    }
-
     const validRows: Omit<CostLibraryEntry, 'id'>[] = [];
     let invalidCount = 0;
 
     rawRows.forEach((raw, idx) => {
       const rowNum = idx + 2;
       const rowErrors: string[] = [];
-
       const name = String(raw.name ?? '').trim();
       if (!name) rowErrors.push(`Row ${rowNum}: "name" is required`);
 
       const cat = String(raw.category ?? category).trim() as CostCategory;
-      const resolvedCat: CostCategory = VALID_COST_CATEGORIES.includes(cat) ? cat : category;
+      const resolvedCat: CostCategory = VALID_CATEGORIES.includes(cat) ? cat : category;
 
-      const calcType = String(raw.calculationType ?? 'flat').trim();
-      if (!VALID_CALC_TYPES.includes(calcType)) {
-        rowErrors.push(`Row ${rowNum}: unknown calculationType "${calcType}"`);
-      }
-
-      const scope = String(raw.scope ?? 'per_order').trim();
-      if (!VALID_COST_SCOPES.includes(scope as CostScope)) {
-        rowErrors.push(`Row ${rowNum}: unknown scope "${scope}"`);
+      const calcType = String(raw.calcType ?? 'flat').trim();
+      if (calcType && !VALID_CALC_TYPES.includes(calcType)) {
+        rowErrors.push(`Row ${rowNum}: unknown calcType "${calcType}"`);
       }
 
       if (rowErrors.length > 0) {
@@ -808,14 +614,13 @@ export function CostLibraryTable({
       validRows.push({
         name,
         category: resolvedCat,
-        calculationType: calcType as AdjustmentCalcType,
-        rate: parseFloat(String(raw.rate ?? 0)) || 0,
-        minimum: parseFloat(String(raw.minimum ?? 0)) || 0,
-        increment: parseFloat(String(raw.increment ?? 0)) || 0,
-        scope: scope as CostScope,
-        taxable: parseBoolField(raw.taxable ?? 'true'),
-        enabled: parseBoolField(raw.enabled ?? 'true'),
-        description: String(raw.description ?? '').trim(),
+        calcType: VALID_CALC_TYPES.includes(calcType) ? calcType : 'flat',
+        defaultRate: String(raw.defaultRate ?? '').trim(),
+        appliesTo: String(raw.appliesTo ?? '').trim() || undefined,
+        scope: String(raw.scope ?? '').trim() || undefined,
+        enabled: parseBool(raw.enabled ?? 'true'),
+        associatedService: String(raw.associatedService ?? '').trim() || undefined,
+        notes: String(raw.notes ?? '').trim() || undefined,
         sortOrder: parseInt(String(raw.sortOrder ?? 0)) || 0,
       });
     });
@@ -852,39 +657,39 @@ export function CostLibraryTable({
   function getExportData(format: 'csv' | 'json'): string {
     const exportRows = rows.map(({ id: _id, sortOrder: _so, ...rest }) => rest);
     if (format === 'json') return JSON.stringify(exportRows, null, 2);
-    return serializeToCsv(exportRows as Record<string, unknown>[], COST_LIBRARY_CSV_HEADERS);
+    return serializeToCsv(exportRows as Record<string, unknown>[], CSV_HEADERS);
   }
 
   function getTemplateData(): string {
-    const example = {
+    const example: Record<string, unknown> = {
       name: 'Screen Print Setup',
       category,
-      calculationType: 'flat',
-      rate: 25,
-      minimum: 0,
-      increment: 0,
-      scope: 'per_order',
-      taxable: true,
+      calcType: 'flat',
+      defaultRate: '$25',
+      [APP_FIELD_HEADER]: isProduction ? 'per_order' : 'per_order',
       enabled: true,
-      description: 'Example production cost',
+      associatedService: 'Screen Printing',
+      notes: 'Example entry',
     };
-    return serializeToCsv([example] as Record<string, unknown>[], COST_LIBRARY_CSV_HEADERS);
+    return serializeToCsv([example], CSV_HEADERS);
   }
+
+  const appFieldHeader = isProduction ? 'Applies To' : 'Scope';
 
   return (
     <>
       <View style={styles.section}>
-        {/* Table header bar */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>{title}</Text>
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.addHdrBtn} onPress={openNew} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.addBtn} onPress={() => setDrawerEntry(null)} activeOpacity={0.85}>
               <Plus size={12} color="#fff" />
-              <Text style={styles.addHdrBtnText}>{addLabel}</Text>
+              <Text style={styles.addBtnText}>{addLabel}</Text>
             </TouchableOpacity>
             <LibraryManagementMenu
               libraryName={title}
-              onParseImport={handleParseImport}
+              xlsxSheetName={title}
+              onParseImport={(content, _fmt) => handleParseImport(content)}
               onConfirmImport={handleConfirmImport}
               getExportData={getExportData}
               getTemplateData={getTemplateData}
@@ -900,14 +705,15 @@ export function CostLibraryTable({
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator style={styles.hScroll}>
             <View style={{ minWidth: TABLE_MIN_WIDTH }}>
-              {/* Column headings */}
               <View style={styles.colHead}>
                 <Text style={[styles.colHeadText, { width: COL.name }]}>Name</Text>
                 <Text style={[styles.colHeadText, { width: COL.category }]}>Category</Text>
                 <Text style={[styles.colHeadText, { width: COL.calc }]}>Calc Type</Text>
-                <Text style={[styles.colHeadText, { width: COL.rate }]}>Rate</Text>
-                <Text style={[styles.colHeadText, { width: COL.scope }]}>Scope</Text>
+                <Text style={[styles.colHeadText, { width: COL.rate }]}>Default Rate</Text>
+                <Text style={[styles.colHeadText, { width: COL.appField }]}>{appFieldHeader}</Text>
                 <Text style={[styles.colHeadText, { width: COL.enabled, textAlign: 'center' }]}>Enabled</Text>
+                <Text style={[styles.colHeadText, { width: COL.service }]}>Assoc. Service</Text>
+                <Text style={[styles.colHeadText, { width: COL.notes }]}>Notes</Text>
                 <Text style={[styles.colHeadText, { width: COL.actions, textAlign: 'center' }]}>Actions</Text>
               </View>
 
@@ -918,33 +724,33 @@ export function CostLibraryTable({
               ) : (
                 rows.map((row) => (
                   <View key={row.id} style={[styles.row, !row.enabled && styles.rowDisabled]}>
-                    <Text style={[styles.cellText, { width: COL.name }]} numberOfLines={1}>{row.name}</Text>
+                    <Text style={[styles.cell, { width: COL.name }]} numberOfLines={1}>{row.name}</Text>
                     <View style={{ width: COL.category }}>
                       <CategoryBadge category={row.category} />
                     </View>
-                    <Text style={[styles.cellText, { width: COL.calc }]} numberOfLines={1}>
-                      {calcTypeLabel(row.calculationType)}
+                    <Text style={[styles.cell, { width: COL.calc }]} numberOfLines={1}>
+                      {calcTypeLabel(row.calcType)}
                     </Text>
-                    <Text style={[styles.cellText, styles.cellMono, { width: COL.rate }]}>
-                      {formatRate(row)}
+                    <Text style={[styles.cell, styles.cellMono, { width: COL.rate }]} numberOfLines={1}>
+                      {row.defaultRate || '—'}
                     </Text>
-                    <Text style={[styles.cellText, { width: COL.scope }]} numberOfLines={1}>
-                      {scopeLabel(row.scope)}
+                    <Text style={[styles.cell, { width: COL.appField }]} numberOfLines={1}>
+                      {isProduction ? appliesToLabel(row.appliesTo ?? '') : scopeLabel(row.scope ?? '')}
                     </Text>
                     <View style={{ width: COL.enabled, alignItems: 'center' }}>
-                      <Toggle on={row.enabled} onToggle={() => quickToggleEnabled(row)} />
+                      <Toggle on={row.enabled} onToggle={() => updateMutation.mutate({ id: row.id, enabled: !row.enabled })} />
                     </View>
+                    <Text style={[styles.cell, styles.cellSecondary, { width: COL.service }]} numberOfLines={1}>
+                      {row.associatedService || '—'}
+                    </Text>
+                    <Text style={[styles.cell, styles.cellSecondary, { width: COL.notes }]} numberOfLines={1}>
+                      {row.notes || '—'}
+                    </Text>
                     <View style={{ width: COL.actions, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-                      <TouchableOpacity
-                        onPress={() => openEdit(row)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
+                      <TouchableOpacity onPress={() => setDrawerEntry(row)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                         <Pencil size={15} color={Colors.light.tint} />
                       </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => deleteMutation.mutate(row.id)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
+                      <TouchableOpacity onPress={() => deleteMutation.mutate(row.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                         <Trash2 size={15} color={Colors.light.error} />
                       </TouchableOpacity>
                     </View>
@@ -964,104 +770,29 @@ export function CostLibraryTable({
         isDeleting={deleteMutation.isPending}
         onSave={handleSave}
         onDelete={handleDelete}
-        onClose={closeDrawer}
+        onClose={() => setDrawerEntry(undefined)}
       />
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  section: {
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: 8,
-    backgroundColor: Colors.light.surface,
-    overflow: 'hidden',
-    marginTop: 12,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#000000',
-    paddingHorizontal: 16,
-    height: 36,
-  },
-  headerTitle: {
-    fontSize: 11,
-    fontWeight: '700' as const,
-    color: '#fff',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase' as const,
-  },
-  headerActions: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 8,
-  },
-  addHdrBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.light.tint,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-  },
-  addHdrBtnText: { fontSize: 11, fontWeight: '700' as const, color: '#fff' },
+  section: { borderWidth: 1, borderColor: Colors.light.border, borderRadius: 8, backgroundColor: Colors.light.surface, overflow: 'hidden', marginTop: 12 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#000', paddingHorizontal: 16, height: 36 },
+  headerTitle: { fontSize: 11, fontWeight: '700' as const, color: '#fff', letterSpacing: 0.6, textTransform: 'uppercase' as const },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  addBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.light.tint, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
+  addBtnText: { fontSize: 11, fontWeight: '700' as const, color: '#fff' },
   hScroll: { backgroundColor: Colors.light.surface },
-  colHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    backgroundColor: Colors.light.background,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-  },
-  colHeadText: {
-    fontSize: 9,
-    fontWeight: '700' as const,
-    color: Colors.light.textSecondary,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase' as const,
-    paddingRight: 8,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-  },
+  colHead: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 7, backgroundColor: Colors.light.background, borderBottomWidth: 1, borderBottomColor: Colors.light.border },
+  colHeadText: { fontSize: 9, fontWeight: '700' as const, color: Colors.light.textSecondary, letterSpacing: 0.4, textTransform: 'uppercase' as const, paddingRight: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.light.border },
   rowDisabled: { opacity: 0.5 },
-  cellText: {
-    fontSize: 13,
-    color: Colors.light.text,
-    paddingRight: 8,
-  },
-  cellMono: {
-    fontVariant: ['tabular-nums' as any],
-  },
-  loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    padding: 20,
-    justifyContent: 'center',
-  },
+  cell: { fontSize: 13, color: Colors.light.text, paddingRight: 8 },
+  cellSecondary: { color: Colors.light.textSecondary },
+  cellMono: { fontVariant: ['tabular-nums' as any] },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 20, justifyContent: 'center' },
   loadingText: { fontSize: 13, color: Colors.light.textSecondary },
-  emptyRow: {
-    padding: 24,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 13,
-    color: Colors.light.textSecondary,
-    textAlign: 'center',
-  },
-  menuItem: { paddingHorizontal: 14, paddingVertical: 10 },
-  menuItemText: { fontSize: 13, color: Colors.light.text },
-  menuItemActive: { color: Colors.light.tint, fontWeight: '600' as const },
+  emptyRow: { padding: 24, alignItems: 'center' },
+  emptyText: { fontSize: 13, color: Colors.light.textSecondary, textAlign: 'center' },
 });

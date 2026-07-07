@@ -1,5 +1,16 @@
 import { pool } from '@/lib/pool';
-import { rowToStyle } from '@/app/api/service-styles+api';
+
+function rowToStyle(r: any) {
+  return {
+    id: r.id,
+    name: r.name,
+    supplier: r.supplier ?? '',
+    defaultMargin: r.default_margin ?? '',
+    quantityMode: r.quantity_mode ?? '',
+    enabled: r.enabled,
+    sortOrder: r.sort_order ?? 0,
+  };
+}
 
 export async function PATCH(request: Request, { params }: { params: { id: string } | null }) {
   const id = (params ?? {}).id;
@@ -15,10 +26,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       name: 'name',
       supplier: 'supplier',
       defaultMargin: 'default_margin',
-      defaultProductionDays: 'default_production_days',
-      defaultArtworkRequirements: 'default_artwork_requirements',
-      defaultTaxBehavior: 'default_tax_behavior',
-      description: 'description',
+      quantityMode: 'quantity_mode',
       enabled: 'enabled',
       sortOrder: 'sort_order',
     };
@@ -30,14 +38,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       }
     }
 
-    if ('defaultProductionCosts' in body) {
-      fields.push(`default_production_costs = $${idx++}::jsonb`);
-      values.push(JSON.stringify(body.defaultProductionCosts ?? []));
-    }
-
-    if (fields.length === 0) {
-      return Response.json({ error: 'No fields to update' }, { status: 400 });
-    }
+    if (fields.length === 0) return Response.json({ error: 'No fields to update' }, { status: 400 });
 
     fields.push(`updated_at = now()`);
     values.push(id);

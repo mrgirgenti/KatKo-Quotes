@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { X, ChevronLeft, Check } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { type QuoteAdjustment } from '@/types/quote';
+import { type QuoteAdjustment, type AdjustmentCalcType } from '@/types/quote';
 import { calcAdjustmentAmount, adjustmentTypeLabel } from '@/utils/adjustments';
 import { formatCurrency } from '@/utils/quoteCalculations';
 import { useEnabledLibraryItems, type LibraryKind } from '@/lib/costLibraryStore';
@@ -22,18 +22,33 @@ function genId(): string {
   return `adj_${Date.now().toString(36)}_${idSeq.toString(36)}`;
 }
 
+/** Parse a free-text rate like "$25", "15%", "$20-200" into a number (first value for ranges). */
+function parseRate(raw: string | undefined): number {
+  const s = String(raw ?? '').replace(/[$\s]/g, '');
+  const first = s.split(/[-–]/)[0].replace(/%$/, '');
+  const n = parseFloat(first);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function isPerPiece(item: CostLibraryEntry): boolean {
+  return item.appliesTo === 'per_piece' || item.scope === 'per_piece';
+}
+
 function rateSummary(item: CostLibraryEntry): string {
-  switch (item.calculationType) {
+  const rate = parseRate(item.defaultRate);
+  switch (item.calcType) {
     case 'flat':
-      return formatCurrency(item.rate);
+      return item.defaultRate || formatCurrency(rate);
     case 'hourly':
-      return `${formatCurrency(item.rate)}/hr`;
+      return item.defaultRate ? `${item.defaultRate}/hr` : `${formatCurrency(rate)}/hr`;
     case 'per_unit':
-      return `${formatCurrency(item.rate)}/${item.scope === 'per_piece' ? 'pc' : 'unit'}`;
+    case 'per_color':
+    case 'per_design':
+      return item.defaultRate ? `${item.defaultRate}/${isPerPiece(item) ? 'pc' : 'unit'}` : `${formatCurrency(rate)}/unit`;
     case 'percentage':
-      return `${item.rate}%`;
+      return item.defaultRate || `${rate}%`;
     default:
-      return formatCurrency(item.rate);
+      return item.defaultRate || formatCurrency(rate);
   }
 }
 
@@ -44,14 +59,6 @@ export interface AddAdjustmentModalProps {
   baseAmount?: number;
   onClose: () => void;
   onSave: (adj: QuoteAdjustment) => void;
-}
-
-/** Snap a raw value to the nearest valid step above `min` using `inc`. */
-function snapToIncrement(raw: number, min: number, inc: number): number {
-  const base = Math.max(raw, min > 0 ? min : raw);
-  if (inc <= 0) return base;
-  const steps = Math.ceil((base - (min > 0 ? min : 0)) / inc);
-  return (min > 0 ? min : 0) + steps * inc;
 }
 
 export function AddAdjustmentModal({
@@ -83,21 +90,14 @@ export function AddAdjustmentModal({
 
   const pick = (item: CostLibraryEntry) => {
     setSelectedId(item.id);
-    const initQty = item.minimum > 0 ? item.minimum : 1;
-    setQuantity(initQty);
+    setQuantity(1);
   };
 
-  const handleQtyChange = (raw: number) => {
-    if (!selected) { setQuantity(raw); return; }
-    const min = selected.minimum ?? 0;
-    const inc = selected.increment ?? 0;
-    const snapped = snapToIncrement(raw, min, inc);
-    setQuantity(Math.max(1, snapped));
-  };
+  const selectedRate = selected ? parseRate(selected.defaultRate) : 0;
 
   const preview = selected
     ? calcAdjustmentAmount(
-        { type: selected.calculationType, rate: selected.rate, quantity },
+        { type: selected.calcType as AdjustmentCalcType, rate: selectedRate, quantity },
         baseAmount,
       )
     : 0;
@@ -107,16 +107,20 @@ export function AddAdjustmentModal({
     onSave({
       id: genId(),
       name: selected.name,
-      type: selected.calculationType,
-      rate: selected.rate,
-      quantity: selected.calculationType === 'flat' || selected.calculationType === 'percentage'
+      type: selected.calcType as AdjustmentCalcType,
+      rate: selectedRate,
+      quantity: selected.calcType === 'flat' || selected.calcType === 'percentage'
         ? 1
         : quantity,
     });
     close();
   };
 
-  const perUnitLabel = selected?.scope === 'per_piece' ? 'Pieces' : 'Quantity';
+  const perUnitLabel = selected ? (isPerPiece(selected) ? 'Pieces' : 'Quantity') : 'Quantity';
+  const needsQuantity = selected?.calcType === 'hourly'
+    || selected?.calcType === 'per_unit'
+    || selected?.calcType === 'per_color'
+    || selected?.calcType === 'per_design';
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={close}>
@@ -160,7 +164,7 @@ export function AddAdjustmentModal({
                       <Text style={styles.itemName} numberOfLines={1}>{item.name || 'Untitled'}</Text>
                       <View style={styles.itemMetaRow}>
                         <View style={styles.typeBadge}>
-                          <Text style={styles.typeBadgeText}>{adjustmentTypeLabel(item.calculationType)}</Text>
+                          <Text style={styles.typeBadgeText}>{adjustmentTypeLabel(item.calcType)}</Text>
                         </View>
                         <Text style={styles.itemRate}>{rateSummary(item)}</Text>
                       </View>
@@ -176,60 +180,32 @@ export function AddAdjustmentModal({
               <View style={styles.selectedHead}>
                 <Text style={styles.selectedName}>{selected.name || 'Untitled'}</Text>
                 <View style={styles.typeBadge}>
-                  <Text style={styles.typeBadgeText}>{adjustmentTypeLabel(selected.calculationType)}</Text>
+                  <Text style={styles.typeBadgeText}>{adjustmentTypeLabel(selected.calcType)}</Text>
                 </View>
               </View>
 
-              {/* Type-specific editor */}
-              {selected.calculationType === 'flat' && (
+              {/* Rate display */}
+              <View style={styles.fieldRow}>
+                <Text style={styles.fieldLabel}>Rate</Text>
+                <Text style={styles.fieldStatic}>{selected.defaultRate || '—'}</Text>
+              </View>
+
+              {/* Quantity input for time/unit-based types */}
+              {needsQuantity && (
                 <View style={styles.fieldRow}>
-                  <Text style={styles.fieldLabel}>Flat amount</Text>
-                  <Text style={styles.fieldStatic}>{formatCurrency(selected.rate)}</Text>
+                  <Text style={styles.fieldLabel}>{perUnitLabel}</Text>
+                  <NumInput
+                    value={quantity}
+                    onChange={(v) => setQuantity(Math.max(1, v))}
+                    suffix={selected.calcType === 'hourly' ? 'hrs' : undefined}
+                  />
                 </View>
               )}
 
-              {selected.calculationType === 'hourly' && (
-                <>
-                  <View style={styles.fieldRow}>
-                    <Text style={styles.fieldLabel}>Rate</Text>
-                    <Text style={styles.fieldStatic}>{formatCurrency(selected.rate)}/hr</Text>
-                  </View>
-                  <View style={styles.fieldRow}>
-                    <View style={styles.fieldLabelWrap}>
-                      <Text style={styles.fieldLabel}>Hours</Text>
-                      {selected.minimum > 0 && (
-                        <Text style={styles.fieldHint}>Min {selected.minimum}{selected.increment > 0 ? `, step ${selected.increment}` : ''}</Text>
-                      )}
-                    </View>
-                    <NumInput value={quantity} onChange={handleQtyChange} suffix="hrs" />
-                  </View>
-                </>
-              )}
-
-              {selected.calculationType === 'per_unit' && (
-                <>
-                  <View style={styles.fieldRow}>
-                    <Text style={styles.fieldLabel}>Rate</Text>
-                    <Text style={styles.fieldStatic}>
-                      {formatCurrency(selected.rate)}/{selected.scope === 'per_piece' ? 'pc' : 'unit'}
-                    </Text>
-                  </View>
-                  <View style={styles.fieldRow}>
-                    <View style={styles.fieldLabelWrap}>
-                      <Text style={styles.fieldLabel}>{perUnitLabel}</Text>
-                      {selected.minimum > 0 && (
-                        <Text style={styles.fieldHint}>Min {selected.minimum}{selected.increment > 0 ? `, step ${selected.increment}` : ''}</Text>
-                      )}
-                    </View>
-                    <NumInput value={quantity} onChange={handleQtyChange} />
-                  </View>
-                </>
-              )}
-
-              {selected.calculationType === 'percentage' && (
+              {selected.calcType === 'percentage' && (
                 <View style={styles.fieldRow}>
-                  <Text style={styles.fieldLabel}>Percentage</Text>
-                  <Text style={styles.fieldStatic}>{selected.rate}% of Subtotal ({formatCurrency(baseAmount)})</Text>
+                  <Text style={styles.fieldLabel}>Base</Text>
+                  <Text style={styles.fieldStatic}>{formatCurrency(baseAmount)}</Text>
                 </View>
               )}
 
@@ -410,20 +386,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.border,
   },
-  fieldLabelWrap: {
-    flex: 1,
-    paddingRight: 12,
-  },
   fieldLabel: {
     fontSize: 13,
     color: Colors.light.textSecondary,
     fontWeight: '500' as const,
-  },
-  fieldHint: {
-    fontSize: 11,
-    color: Colors.light.textSecondary,
-    marginTop: 2,
-    opacity: 0.7,
   },
   fieldStatic: {
     fontSize: 14,
