@@ -1,0 +1,78 @@
+IMPLEMENTATION MODE
+
+Reference the attached login page mockup and the current implementation. The current implementation is approximately 90% complete. This is a visual refinement pass only. Do not redesign, restructure, or rebuild the page architecture. Preserve the existing layout, responsiveness, authentication flow, and component hierarchy. Only implement the refinements below.
+
+Changes Required
+1. Right Information Panel Height
+
+The light gray information panel on the right should not extend the full height of the viewport.
+
+Instead:
+
+Match the height of the white login card exactly.
+Vertically align the top and bottom edges of the gray panel with the white login card.
+Keep the existing internal padding and spacing.
+The gray panel should continue to sit immediately to the right of the login card as a companion information panel.
+2. Hero Background
+
+Replace the flat black background with a branded hero background.
+
+Requirements:
+
+Maintain the dark black appearance.
+Add a very subtle oversized Katalyst Ko logo in the background similar to the original mockup.
+The logo should feel like it is printed across fabric or a flag with gentle waves/folds.
+Apply a heavy black overlay so the logo is barely visible.
+The effect should add depth and texture without distracting from the login experience.
+This is a background enhancement only—not a focal design element.
+Keep overall contrast high so all foreground content remains highly legible.
+
+The desired effect is premium, subtle, and modern—not busy.
+
+3. Feature List Size
+
+Increase the size of the feature list in the lower-left section.
+
+This includes:
+
+Icons
+Text
+Vertical spacing
+Horizontal spacing
+
+Increase the overall scale by approximately 60% while maintaining the current two-column layout and alignment.
+
+Do not change the wording or ordering.
+
+4. Right Panel Typography
+
+All orange typography inside the right information panel should become black.
+
+This includes:
+
+"WHAT IS THE CLIENT HUB?"
+
+Leave the orange checkmark icons unchanged.
+
+No other orange elements elsewhere on the page should change.
+
+Preserve Existing Work
+
+Do not modify:
+
+Overall page layout
+Login form
+Card positioning
+Typography hierarchy
+Authentication functionality
+Responsive behavior
+Navigation/back button
+Shadows, borders, or spacing unless required above
+
+This should be treated as a polish pass, not a redesign.
+
+At completion, provide:
+
+Files modified.
+Summary of each visual refinement implemented.
+Before/after screenshots for desktop.

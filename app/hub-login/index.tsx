@@ -14,8 +14,6 @@ import HubAuthShell, {
   HUB_ORANGE, HUB_WHITE, HUB_DIM, HUB_BORDER,
 } from '@/components/HubAuthShell';
 
-const HUB_BG = '#1a1a1a';
-
 type OrgOption = { orgId: string; orgName: string; logoUrl: string | null; role: string };
 
 const FEATURES: { icon: React.ComponentType<{ size: number; color: string }>; label: string }[] = [
@@ -233,10 +231,24 @@ export default function HubLoginPage() {
       <HubAuthShell>
         <View style={s.hero}>
 
-          {/* ── Layer 1: Background color split (full bleed) ── */}
-          <View style={[StyleSheet.absoluteFillObject as any, { flexDirection: 'row' }]}>
-            <View style={{ flex: 3, backgroundColor: HUB_BG }} />
-            <View style={{ flex: 2, backgroundColor: '#BEBEBE' }} />
+          {/* ── Layer 1: Dark hero background with subtle branded logo texture ── */}
+          <View style={[StyleSheet.absoluteFillObject as any, { overflow: 'hidden' as any }]}>
+            {/* Deep charcoal base */}
+            <View style={{ flex: 1, backgroundColor: '#0d0d0d', alignItems: 'center', justifyContent: 'center' }}>
+              {/* Oversized logo — barely visible, adds depth/texture */}
+              <Image
+                source={require('@/assets/images/ko-logo-new.webp')}
+                style={{
+                  width: 1400,
+                  height: 380,
+                  opacity: 0.08,
+                  transform: [{ rotate: '-4deg' }],
+                } as any}
+                resizeMode="contain"
+              />
+            </View>
+            {/* Heavy black overlay so logo is just a whisper */}
+            <View style={[StyleSheet.absoluteFillObject as any, { backgroundColor: 'rgba(0,0,0,0.70)' }]} />
           </View>
 
           {/* ── Layer 2: Left informational content ── */}
@@ -250,12 +262,13 @@ export default function HubLoginPage() {
             <Text style={s.welcomeHeading}>{'WELCOME\nBACK.'}</Text>
             <Text style={s.welcomeSub}>{'Your projects. Your brand.\nAll in one place.'}</Text>
             <View style={s.divider} />
+            {/* Feature grid — ~60% larger icons, text, and spacing */}
             <View style={s.featureGrid}>
               {FEATURES.map((f, i) => {
                 const Icon = f.icon;
                 return (
                   <View key={i} style={s.featureItem}>
-                    <Icon size={13} color={HUB_ORANGE} />
+                    <Icon size={21} color={HUB_ORANGE} />
                     <Text style={s.featureLabel}>{f.label}</Text>
                   </View>
                 );
@@ -263,29 +276,35 @@ export default function HubLoginPage() {
             </View>
           </View>
 
-          {/* ── Layer 2b: Right informational content (desktop only) ── */}
-          {isDesktop && (
-            <View style={s.rightInfo}>
-              <Text style={s.rightHeading}>{'WHAT IS THE\nCLIENT HUB?'}</Text>
-              <Text style={s.rightSub}>Your central hub for everything we create together.</Text>
-              <View style={s.rightDivider} />
-              {BENEFITS.map((b, i) => (
-                <View key={i} style={s.benefitItem}>
-                  <View style={s.benefitCheck}>
-                    <Check size={10} color="#fff" strokeWidth={3} />
-                  </View>
-                  <Text style={s.benefitLabel}>{b}</Text>
-                </View>
-              ))}
-              <View style={s.rightDivider} />
-              <Text style={s.rightTagline}>{'Built to make your\nexperience better.'}</Text>
-            </View>
-          )}
-
-          {/* ── Layer 3: Floating login card — centered over everything ── */}
+          {/* ── Layer 3: Floating card + companion panel (card-height only) ── */}
           <View style={s.cardLayer}>
-            <View style={s.card}>
-              <CardContent />
+            <View style={s.cardRow}>
+
+              {/* White login card */}
+              <View style={[s.card, isDesktop && s.cardJoined]}>
+                <CardContent />
+              </View>
+
+              {/* Grey companion panel — height matches card via alignItems:stretch */}
+              {isDesktop && (
+                <View style={s.rightPanel}>
+                  {/* Heading: black (not orange) per spec */}
+                  <Text style={s.rightHeading}>{'WHAT IS THE\nCLIENT HUB?'}</Text>
+                  <Text style={s.rightSub}>Your central hub for everything we create together.</Text>
+                  <View style={s.rightDivider} />
+                  {BENEFITS.map((b, i) => (
+                    <View key={i} style={s.benefitItem}>
+                      <View style={s.benefitCheck}>
+                        <Check size={10} color="#fff" strokeWidth={3} />
+                      </View>
+                      <Text style={s.benefitLabel}>{b}</Text>
+                    </View>
+                  ))}
+                  <View style={s.rightDivider} />
+                  <Text style={s.rightTagline}>{'Built to make your\nexperience better.'}</Text>
+                </View>
+              )}
+
             </View>
           </View>
 
@@ -372,13 +391,13 @@ const c = StyleSheet.create({
 // ─── Hero layout styles ────────────────────────────────────────────────────
 const s = StyleSheet.create({
 
-  // Full-screen hero — establishes the stacking context for absolute children
+  // Full-screen hero — stacking context for all absolute layers
   hero: {
     flex: 1,
     ...(Platform.OS === 'web' ? { minHeight: '100vh' as any } : {}),
   },
 
-  // Left informational content — absolute, anchored to the left edge
+  // Left informational content — absolute, pointer-events off (backdrop only)
   leftInfo: {
     position: 'absolute',
     top: 0,
@@ -393,7 +412,6 @@ const s = StyleSheet.create({
   },
 
   panelLogo: { width: 210, height: 56, marginBottom: 44 },
-
   hubLabel: {
     fontSize: 11, fontWeight: '700', color: HUB_ORANGE,
     letterSpacing: 3, textTransform: 'uppercase', marginBottom: 10,
@@ -404,43 +422,16 @@ const s = StyleSheet.create({
   },
   welcomeSub: { fontSize: 14, color: HUB_DIM, lineHeight: 22, marginBottom: 28 },
   divider: { height: 1, backgroundColor: HUB_BORDER, marginVertical: 22 },
+
+  // Feature grid — scaled ~60%: icon 13→21, text 13→19, gap 8→13, padding 7→11
   featureGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   featureItem: {
     width: '50%', flexDirection: 'row', alignItems: 'center',
-    gap: 8, paddingVertical: 7,
+    gap: 13, paddingVertical: 11,
   },
-  featureLabel: { fontSize: 13, color: '#b0b0b0', flex: 1 },
+  featureLabel: { fontSize: 19, color: '#b0b0b0', flex: 1 },
 
-  // Right informational content — absolute, anchored to the right edge
-  rightInfo: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    right: 0,
-    width: '35%' as any,
-    paddingRight: 52,
-    paddingLeft: 32,
-    paddingVertical: 52,
-    justifyContent: 'center',
-    ...(Platform.OS === 'web' ? { pointerEvents: 'none' as any } : {}),
-  },
-
-  rightHeading: {
-    fontSize: 22, fontWeight: '900', color: HUB_ORANGE,
-    letterSpacing: 0.5, lineHeight: 28, marginBottom: 12,
-    textTransform: 'uppercase',
-  },
-  rightSub: { fontSize: 13, color: '#333', lineHeight: 20 },
-  benefitItem: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
-  benefitCheck: {
-    width: 20, height: 20, borderRadius: 10, backgroundColor: HUB_ORANGE,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  benefitLabel: { fontSize: 13, color: '#222', flex: 1 },
-  rightTagline: { fontSize: 13, color: '#444', lineHeight: 20, fontStyle: 'italic' },
-  rightDivider: { height: 1, backgroundColor: '#A8A8A8', marginVertical: 18 },
-
-  // Floating card layer — absolute fill, card centered within it
+  // Floating card layer — absolute fill, centers the card+companion unit
   cardLayer: {
     position: 'absolute',
     top: 0,
@@ -452,18 +443,64 @@ const s = StyleSheet.create({
     zIndex: 10,
   },
 
-  // The card — fixed width, white, deep shadow so it reads as elevated
+  // Card + companion panel sit side by side as a single floating unit
+  cardRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 24px 64px rgba(0,0,0,0.65)' as any,
+      borderRadius: 16,
+    } : {}),
+  },
+
+  // White login card
   card: {
     width: 440,
     backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 36,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 24 },
-    shadowOpacity: 0.55,
-    shadowRadius: 56,
-    elevation: 24,
+    // Native shadow (web shadow lives on cardRow via boxShadow)
+    ...(Platform.OS !== 'web' ? {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 24 },
+      shadowOpacity: 0.55,
+      shadowRadius: 56,
+      elevation: 24,
+    } : {}),
   },
+
+  // When companion panel is present, flatten the card's right edge
+  cardJoined: {
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+
+  // Grey companion panel — card-height only (via alignItems:stretch on parent)
+  rightPanel: {
+    width: 300,
+    backgroundColor: '#BEBEBE',
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
+    paddingHorizontal: 28,
+    paddingVertical: 32,
+    justifyContent: 'center',
+  },
+
+  // Right panel typography — heading is BLACK per spec (not orange)
+  rightHeading: {
+    fontSize: 18, fontWeight: '900', color: '#111111',
+    letterSpacing: 0.5, lineHeight: 24, marginBottom: 10,
+    textTransform: 'uppercase',
+  },
+  rightSub: { fontSize: 12, color: '#333', lineHeight: 19 },
+  benefitItem: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  benefitCheck: {
+    width: 18, height: 18, borderRadius: 9, backgroundColor: HUB_ORANGE,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  benefitLabel: { fontSize: 12, color: '#222', flex: 1 },
+  rightTagline: { fontSize: 12, color: '#444', lineHeight: 18, fontStyle: 'italic' },
+  rightDivider: { height: 1, backgroundColor: '#A8A8A8', marginVertical: 14 },
 
   // Mobile
   mobilePage: { flex: 1, alignItems: 'center', paddingHorizontal: 20, paddingVertical: 48 },
