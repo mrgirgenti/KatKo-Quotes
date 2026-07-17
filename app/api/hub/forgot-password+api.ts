@@ -31,7 +31,10 @@ export async function POST(request: Request) {
       const resetUrl = `${origin}/hub-login/reset?token=${token}`;
       const name = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'there';
       const { subject, html, text } = buildPasswordResetEmail({ clientName: name, resetUrl });
-      await sendEmail({ to: user.email, subject, html, text });
+      sendEmail({ to: user.email, subject, html, text }).catch(err =>
+        console.error('[hub/forgot-password] email send failed:', err),
+      );
+      console.log(`[hub/forgot-password] reset link for ${user.email}: ${resetUrl}`);
     }
 
     return Response.json({ ok: true });
