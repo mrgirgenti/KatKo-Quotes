@@ -198,8 +198,9 @@ function AuthGate() {
     if (!isLoaded) return;
     if (!pathname) return;
     const isPortal = pathname.startsWith('/portal');
+    const isHubPublic = pathname.startsWith('/hub-login') || pathname.startsWith('/hub-request');
     const isAuthRoute = pathname === '/sign-in' || pathname === '/sign-up' || pathname === '/forgot-password';
-    if (isPortal) return;
+    if (isPortal || isHubPublic) return;
     if (!isSignedIn && !isAuthRoute) {
       router.replace('/sign-in');
     } else if (isSignedIn && isAuthRoute) {
