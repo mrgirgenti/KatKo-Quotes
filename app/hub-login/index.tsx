@@ -107,123 +107,120 @@ export default function HubLoginPage() {
     router.replace(`/portal/${orgId}` as any);
   };
 
-  const CardContent = () => {
-    if (orgs) {
-      return (
-        <>
-          <Text style={c.title}>Choose Your Hub</Text>
-          <Text style={c.subtitle}>You're linked to multiple Client Hubs.</Text>
-          <View style={{ marginTop: 14 }}>
-            {orgs.map(org => (
-              <TouchableOpacity
-                key={org.orgId}
-                style={c.orgRow}
-                onPress={() => handleOrgSelect(org.orgId)}
-                activeOpacity={0.75}
-              >
-                <View style={c.orgAvatar}>
-                  {org.logoUrl
-                    ? <Image source={{ uri: org.logoUrl }} style={{ width: 42, height: 42, borderRadius: 6 }} />
-                    : <Text style={c.orgAvatarLetter}>{org.orgName[0]?.toUpperCase()}</Text>}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={c.orgName}>{org.orgName}</Text>
-                  <Text style={c.orgRole}>{org.role === 'ORG_ADMIN' ? 'Super Admin' : 'Member'}</Text>
-                </View>
-                <ArrowRight size={16} color={HUB_ORANGE} />
-              </TouchableOpacity>
-            ))}
-          </View>
-          <TouchableOpacity style={c.backLink} onPress={() => { setOrgs(null); setPendingSession(null); }}>
-            <Text style={c.backLinkText}>← Back to login</Text>
+  // Plain JSX variable — NOT a component. Defining CardContent as `() => JSX`
+  // inside a render function creates a new component type on every keystroke,
+  // which makes React unmount+remount the inputs and drop focus after one char.
+  const cardContent = orgs ? (
+    <>
+      <Text style={c.title}>Choose Your Hub</Text>
+      <Text style={c.subtitle}>You're linked to multiple Client Hubs.</Text>
+      <View style={{ marginTop: 14 }}>
+        {orgs.map(org => (
+          <TouchableOpacity
+            key={org.orgId}
+            style={c.orgRow}
+            onPress={() => handleOrgSelect(org.orgId)}
+            activeOpacity={0.75}
+          >
+            <View style={c.orgAvatar}>
+              {org.logoUrl
+                ? <Image source={{ uri: org.logoUrl }} style={{ width: 42, height: 42, borderRadius: 6 }} />
+                : <Text style={c.orgAvatarLetter}>{org.orgName[0]?.toUpperCase()}</Text>}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={c.orgName}>{org.orgName}</Text>
+              <Text style={c.orgRole}>{org.role === 'ORG_ADMIN' ? 'Super Admin' : 'Member'}</Text>
+            </View>
+            <ArrowRight size={16} color={HUB_ORANGE} />
           </TouchableOpacity>
-        </>
-      );
-    }
+        ))}
+      </View>
+      <TouchableOpacity style={c.backLink} onPress={() => { setOrgs(null); setPendingSession(null); }}>
+        <Text style={c.backLinkText}>← Back to login</Text>
+      </TouchableOpacity>
+    </>
+  ) : (
+    <>
+      <Text style={c.title}>Log in to Your Client Hub</Text>
 
-    return (
-      <>
-        <Text style={c.title}>Log in to Your Client Hub</Text>
+      {needsSetup ? (
+        <View style={c.setupBanner}>
+          <Text style={c.setupTitle}>Password not set up yet</Text>
+          <Text style={c.setupBody}>
+            Use "Forgot your password?" below to set one up — it only takes a minute.
+          </Text>
+          <TouchableOpacity style={c.setupCta} onPress={() => router.push('/hub-login/forgot' as any)}>
+            <Text style={c.setupCtaText}>Set up my password</Text>
+            <ArrowRight size={13} color={HUB_ORANGE} />
+          </TouchableOpacity>
+        </View>
+      ) : error ? (
+        <View style={c.errorBanner}>
+          <Text style={c.errorText}>{error}</Text>
+        </View>
+      ) : null}
 
-        {needsSetup ? (
-          <View style={c.setupBanner}>
-            <Text style={c.setupTitle}>Password not set up yet</Text>
-            <Text style={c.setupBody}>
-              Use "Forgot your password?" below to set one up — it only takes a minute.
-            </Text>
-            <TouchableOpacity style={c.setupCta} onPress={() => router.push('/hub-login/forgot' as any)}>
-              <Text style={c.setupCtaText}>Set up my password</Text>
-              <ArrowRight size={13} color={HUB_ORANGE} />
-            </TouchableOpacity>
-          </View>
-        ) : error ? (
-          <View style={c.errorBanner}>
-            <Text style={c.errorText}>{error}</Text>
-          </View>
-        ) : null}
+      <Text style={c.label}>Email Address</Text>
+      <TextInput
+        style={c.input}
+        placeholder="you@email.com"
+        placeholderTextColor="#b0b0b0"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
+        autoComplete="email"
+        onSubmitEditing={handleLogin}
+      />
 
-        <Text style={c.label}>Email Address</Text>
+      <Text style={c.label}>Password</Text>
+      <View style={c.passwordWrap}>
         <TextInput
-          style={c.input}
-          placeholder="you@email.com"
+          style={[c.input, { flex: 1, marginBottom: 0 }]}
+          placeholder="••••••••••••"
           placeholderTextColor="#b0b0b0"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          autoComplete="email"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!showPassword}
+          autoComplete="current-password"
           onSubmitEditing={handleLogin}
         />
-
-        <Text style={c.label}>Password</Text>
-        <View style={c.passwordWrap}>
-          <TextInput
-            style={[c.input, { flex: 1, marginBottom: 0 }]}
-            placeholder="••••••••••••"
-            placeholderTextColor="#b0b0b0"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            autoComplete="current-password"
-            onSubmitEditing={handleLogin}
-          />
-          <TouchableOpacity style={c.eyeBtn} onPress={() => setShowPassword(v => !v)}>
-            {showPassword ? <EyeOff size={18} color="#aaa" /> : <Eye size={18} color="#aaa" />}
-          </TouchableOpacity>
-        </View>
-
-        <View style={c.rememberRow}>
-          <TouchableOpacity style={c.checkboxRow} onPress={() => setRememberMe(v => !v)} activeOpacity={0.7}>
-            <View style={[c.checkbox, rememberMe && c.checkboxOn]}>
-              {rememberMe ? <Check size={11} color="#fff" strokeWidth={3} /> : null}
-            </View>
-            <Text style={c.rememberLabel}>Remember me</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/hub-login/forgot' as any)}>
-            <Text style={c.forgotLink}>Forgot your password?</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity
-          style={[c.loginBtn, loading && { opacity: 0.7 }]}
-          onPress={handleLogin}
-          disabled={loading}
-          activeOpacity={0.85}
-        >
-          {loading
-            ? <ActivityIndicator color="#fff" size="small" />
-            : <Text style={c.loginBtnText}>LOG IN</Text>}
+        <TouchableOpacity style={c.eyeBtn} onPress={() => setShowPassword(v => !v)}>
+          {showPassword ? <EyeOff size={18} color="#aaa" /> : <Eye size={18} color="#aaa" />}
         </TouchableOpacity>
+      </View>
 
-        <View style={c.requestRow}>
-          <Text style={c.requestLabel}>Don't have access yet?</Text>
-          <TouchableOpacity onPress={() => router.push('/hub-request' as any)}>
-            <Text style={c.requestLink}> REQUEST AN INVITATION</Text>
-          </TouchableOpacity>
-        </View>
-      </>
-    );
-  };
+      <View style={c.rememberRow}>
+        <TouchableOpacity style={c.checkboxRow} onPress={() => setRememberMe(v => !v)} activeOpacity={0.7}>
+          <View style={[c.checkbox, rememberMe && c.checkboxOn]}>
+            {rememberMe ? <Check size={11} color="#fff" strokeWidth={3} /> : null}
+          </View>
+          <Text style={c.rememberLabel}>Remember me</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/hub-login/forgot' as any)}>
+          <Text style={c.forgotLink}>Forgot your password?</Text>
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity
+        style={[c.loginBtn, loading && { opacity: 0.7 }]}
+        onPress={handleLogin}
+        disabled={loading}
+        activeOpacity={0.85}
+      >
+        {loading
+          ? <ActivityIndicator color="#fff" size="small" />
+          : <Text style={c.loginBtnText}>LOG IN</Text>}
+      </TouchableOpacity>
+
+      <View style={c.requestRow}>
+        <Text style={c.requestLabel}>Don't have access yet?</Text>
+        <TouchableOpacity onPress={() => router.push('/hub-request' as any)}>
+          <Text style={c.requestLink}> REQUEST AN INVITATION</Text>
+        </TouchableOpacity>
+      </View>
+    </>
+  );
 
   // ─── Desktop / Tablet: Hero layout ────────────────────────────────────────
   if (isDesktop || isTablet) {
@@ -282,7 +279,7 @@ export default function HubLoginPage() {
 
               {/* White login card */}
               <View style={[s.card, isDesktop && s.cardJoined]}>
-                <CardContent />
+                {cardContent}
               </View>
 
               {/* Grey companion panel — height matches card via alignItems:stretch */}
@@ -323,7 +320,7 @@ export default function HubLoginPage() {
           resizeMode="contain"
         />
         <View style={s.card}>
-          <CardContent />
+          {cardContent}
         </View>
         <Text style={s.mobileFooter}>© Katalyst Ko</Text>
       </View>
