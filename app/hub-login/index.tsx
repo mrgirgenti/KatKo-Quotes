@@ -271,8 +271,8 @@ export default function HubLoginPage() {
                 <Text style={s.rightSub}>
                   Your central hub for everything we create together.
                 </Text>
-                <View style={s.divider} />
-                <View style={{ marginTop: 4 }}>
+                <View style={s.rightDivider} />
+                <View>
                   {BENEFITS.map((b, i) => (
                     <View key={i} style={s.benefitItem}>
                       <View style={s.benefitCheck}>
@@ -282,7 +282,7 @@ export default function HubLoginPage() {
                     </View>
                   ))}
                 </View>
-                <View style={s.divider} />
+                <View style={s.rightDivider} />
                 <Text style={s.rightTagline}>Built to make your{'\n'}experience better.</Text>
               </View>
             </View>
@@ -412,28 +412,29 @@ const s = StyleSheet.create({
     shadowOpacity: 0.5, shadowRadius: 40, elevation: 18,
   },
 
-  /* Right info panel */
+  /* Right info panel — #BEBEBE light grey background */
   rightPanel: {
     width: 300,
-    borderLeftWidth: 1, borderLeftColor: HUB_BORDER,
+    backgroundColor: '#BEBEBE',
     paddingHorizontal: 36, paddingTop: 44, paddingBottom: 44,
     flexDirection: 'column',
     justifyContent: 'center',
   },
   rightContent: { flex: 1, justifyContent: 'center' },
   rightHeading: {
-    fontSize: 22, fontWeight: '900', color: HUB_ORANGE,
-    letterSpacing: -0.5, lineHeight: 28, marginBottom: 12,
+    fontSize: 20, fontWeight: '900', color: HUB_ORANGE,
+    letterSpacing: 0.5, lineHeight: 26, marginBottom: 10,
     textTransform: 'uppercase',
   },
-  rightSub: { fontSize: 13, color: HUB_DIM, lineHeight: 20 },
+  rightSub: { fontSize: 13, color: '#333333', lineHeight: 20 },
   benefitItem: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
   benefitCheck: {
     width: 20, height: 20, borderRadius: 10, backgroundColor: HUB_ORANGE,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  benefitLabel: { fontSize: 13, color: '#cccccc', flex: 1 },
-  rightTagline: { fontSize: 13, color: HUB_DIM, lineHeight: 20, fontStyle: 'italic' },
+  benefitLabel: { fontSize: 13, color: '#222222', flex: 1 },
+  rightTagline: { fontSize: 13, color: '#444444', lineHeight: 20, fontStyle: 'italic' },
+  rightDivider: { height: 1, backgroundColor: '#A8A8A8', marginVertical: 18 },
 
   /* Mobile */
   mobilePage: { flex: 1, alignItems: 'center', paddingHorizontal: 20, paddingVertical: 48 },
