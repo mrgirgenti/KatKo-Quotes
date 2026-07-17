@@ -17,7 +17,7 @@ export default function HubRequestPendingPage() {
     <HubAuthShell scroll={!wide}>
       <View style={wide ? s.desktopCenter : s.mobilePage}>
         <Image
-          source={require('@/assets/images/ko-logo-horizontal.png')}
+          source={require('@/assets/images/ko-logo-new.webp')}
           style={wide ? s.desktopLogo : s.mobileLogo}
           resizeMode="contain"
         />

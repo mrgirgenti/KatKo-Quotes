@@ -236,7 +236,7 @@ export default function ClientQuoteView() {
       {/* Top bar */}
       <View style={s.topBar}>
         <Image
-          source={require('../../../assets/images/ko-logo-horizontal.png')}
+          source={require('../../../assets/images/ko-logo-new.webp')}
           style={s.topBarLogo}
           resizeMode="contain"
         />

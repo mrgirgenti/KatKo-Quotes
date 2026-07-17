@@ -73,7 +73,7 @@ import { categoryToGarmentType } from '@/utils/garmentPreview';
 const DISPLAY_W = 430;
 const DISPLAY_H = (CANVAS_H / CANVAS_W) * DISPLAY_W;
 const SCALE = DISPLAY_W / CANVAS_W;
-const KO_LOGO_URL = '/ko-logo-horizontal.png';
+const KO_LOGO_URL = '/ko-logo-new.webp';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface UploadedArtwork {

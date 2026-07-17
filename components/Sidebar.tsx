@@ -16,7 +16,7 @@ const EXPANDED_WIDTH = 240;
 const COLLAPSED_WIDTH = 64;
 const LOGO_AVAILABLE_W = EXPANDED_WIDTH - 32; // 16px padding each side
 
-const FALLBACK_LOGO_URI = '/ko-logo-horizontal.png';
+const FALLBACK_LOGO_URI = '/ko-logo-new.webp';
 
 const SIDEBAR_STORAGE_KEY = 'kk_sidebar_collapsed';
 

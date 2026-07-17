@@ -43,7 +43,7 @@ export default function HubRequestJoinPage() {
       <View style={wide ? s.desktopRow : s.mobilePage}>
         {wide ? (
           <View style={s.leftPanel}>
-            <Image source={require('@/assets/images/ko-logo-horizontal.png')} style={s.leftLogo} resizeMode="contain" />
+            <Image source={require('@/assets/images/ko-logo-new.webp')} style={s.leftLogo} resizeMode="contain" />
             <View style={s.divider} />
             <Text style={s.leftHeading}>Almost There.</Text>
             <Text style={s.leftSub}>
@@ -52,7 +52,7 @@ export default function HubRequestJoinPage() {
             </Text>
           </View>
         ) : (
-          <Image source={require('@/assets/images/ko-logo-horizontal.png')} style={s.mobileLogo} resizeMode="contain" />
+          <Image source={require('@/assets/images/ko-logo-new.webp')} style={s.mobileLogo} resizeMode="contain" />
         )}
 
         <View style={wide ? s.formCol : s.mobileForm}>

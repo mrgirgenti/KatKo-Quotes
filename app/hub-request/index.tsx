@@ -51,7 +51,7 @@ export default function HubRequestEntryPage() {
         {wide ? (
           <View style={s.leftPanel}>
             <Image
-              source={require('@/assets/images/ko-logo-horizontal.png')}
+              source={require('@/assets/images/ko-logo-new.webp')}
               style={s.leftLogo}
               resizeMode="contain"
             />
@@ -63,7 +63,7 @@ export default function HubRequestEntryPage() {
           </View>
         ) : (
           <Image
-            source={require('@/assets/images/ko-logo-horizontal.png')}
+            source={require('@/assets/images/ko-logo-new.webp')}
             style={s.mobileLogo}
             resizeMode="contain"
           />

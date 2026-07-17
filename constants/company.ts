@@ -18,6 +18,6 @@ export const COMPANY = {
   addressLines: ['921 S Val Vista Dr Unit 116', 'Mesa, Arizona 85204', 'United States'],
   logoUrl: KO_LOGO_HORIZONTAL_LIGHT_URI,
   logoUrlDark: KO_LOGO_HORIZONTAL_URI,
-  logoFallback: '/ko-logo-horizontal.png',
-  logoFallbackLight: '/ko-logo-horizontal-light.png',
+  logoFallback: '/ko-logo-new.webp',
+  logoFallbackLight: '/ko-logo-new.webp',
 } as const;

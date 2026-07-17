@@ -16,7 +16,7 @@ export default function HubAuthShell({ children, scroll = false }: HubAuthShellP
   const inner = (
     <View style={s.page}>
       <Image
-        source={require('@/assets/images/ko-logo-horizontal.png')}
+        source={require('@/assets/images/ko-logo-new.webp')}
         style={s.watermark}
         resizeMode="contain"
       />

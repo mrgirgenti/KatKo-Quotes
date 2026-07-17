@@ -47,7 +47,7 @@ export default function HubForgotPage() {
     <HubAuthShell scroll={!(isDesktop || isTablet)}>
       <View style={isDesktop || isTablet ? s.desktopCenter : s.mobilePage}>
         <Image
-          source={require('@/assets/images/ko-logo-horizontal.png')}
+          source={require('@/assets/images/ko-logo-new.webp')}
           style={isDesktop || isTablet ? s.desktopLogo : s.mobileLogo}
           resizeMode="contain"
         />

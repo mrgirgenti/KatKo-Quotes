@@ -43,7 +43,7 @@ import {
 } from '@/utils/quoteCalculations';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 
-const LOGO_URI = '/ko-logo-horizontal-light.png';
+const LOGO_URI = '/ko-logo-new.webp';
 
 const createEmptyLineItem = (): LineItem => ({
   id: generateId(),

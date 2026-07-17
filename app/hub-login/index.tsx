@@ -233,7 +233,7 @@ export default function HubLoginPage() {
           {/* ─── Left Brand Panel ─── */}
           <View style={s.leftPanel}>
             <Image
-              source={require('@/assets/images/ko-logo-horizontal.png')}
+              source={require('@/assets/images/ko-logo-new.webp')}
               style={s.panelLogo}
               resizeMode="contain"
             />
@@ -297,7 +297,7 @@ export default function HubLoginPage() {
     <HubAuthShell scroll>
       <View style={s.mobilePage}>
         <Image
-          source={require('@/assets/images/ko-logo-horizontal.png')}
+          source={require('@/assets/images/ko-logo-new.webp')}
           style={s.mobileLogo}
           resizeMode="contain"
         />
@@ -374,21 +374,21 @@ const s = StyleSheet.create({
     ...(Platform.OS === 'web' ? { minHeight: '100vh' as any } : {}),
   },
 
-  /* Left panel — flex:3 so it scales proportionally (~30% of screen) */
+  /* Left panel — fixed 480px sidebar */
   leftPanel: {
-    flex: 3,
+    width: 480,
     borderRightWidth: 1, borderRightColor: HUB_BORDER,
-    paddingHorizontal: 44, paddingTop: 44, paddingBottom: 44,
+    paddingHorizontal: 48, paddingTop: 44, paddingBottom: 44,
   },
-  panelLogo: { width: 160, height: 44, marginBottom: 52 },
+  panelLogo: { width: 180, height: 48, marginBottom: 52 },
   leftContent: { flex: 1, justifyContent: 'center' },
   hubLabel: {
     fontSize: 11, fontWeight: '700', color: HUB_ORANGE,
     letterSpacing: 3, textTransform: 'uppercase', marginBottom: 10,
   },
   welcomeHeading: {
-    fontSize: 64, fontWeight: '900', color: HUB_WHITE,
-    lineHeight: 68, marginBottom: 14, letterSpacing: -2,
+    fontSize: 72, fontWeight: '900', color: HUB_WHITE,
+    lineHeight: 76, marginBottom: 14, letterSpacing: -2,
   },
   welcomeSub: { fontSize: 14, color: HUB_DIM, lineHeight: 22, marginBottom: 28 },
   divider: { height: 1, backgroundColor: HUB_BORDER, marginVertical: 22 },
@@ -399,21 +399,21 @@ const s = StyleSheet.create({
   },
   featureLabel: { fontSize: 13, color: '#b0b0b0', flex: 1 },
 
-  /* Center form column — flex:4 (~40% of screen), tighter padding */
+  /* Center — flexible region, card is fixed 440px centered within it */
   centerCol: {
-    flex: 4, alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 24, paddingVertical: 48,
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 48,
   },
   card: {
-    width: '100%', maxWidth: 480, backgroundColor: '#ffffff',
+    width: 440, backgroundColor: '#ffffff',
     borderRadius: 14, padding: 36,
     shadowColor: '#000', shadowOffset: { width: 0, height: 16 },
     shadowOpacity: 0.5, shadowRadius: 40, elevation: 18,
   },
 
-  /* Right info panel — flex:3 (~30% of screen), #BEBEBE background */
+  /* Right panel — fixed 360px sidebar, #BEBEBE background */
   rightPanel: {
-    flex: 3,
+    width: 360,
     backgroundColor: '#BEBEBE',
     paddingHorizontal: 40, paddingTop: 44, paddingBottom: 44,
     justifyContent: 'center',

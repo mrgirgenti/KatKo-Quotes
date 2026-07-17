@@ -171,7 +171,7 @@ export default function HubRequestActivatePage() {
         >
           <View style={s.desktopRow}>
             <View style={s.leftPanel}>
-              <Image source={require('@/assets/images/ko-logo-horizontal.png')} style={s.leftLogo} resizeMode="contain" />
+              <Image source={require('@/assets/images/ko-logo-new.webp')} style={s.leftLogo} resizeMode="contain" />
               <View style={s.leftDivider} />
               <Text style={s.leftHeading}>Activate Your Hub.</Text>
               <Text style={s.leftSub}>
@@ -190,7 +190,7 @@ export default function HubRequestActivatePage() {
   return (
     <HubAuthShell scroll>
       <View style={s.mobilePage}>
-        <Image source={require('@/assets/images/ko-logo-horizontal.png')} style={s.mobileLogo} resizeMode="contain" />
+        <Image source={require('@/assets/images/ko-logo-new.webp')} style={s.mobileLogo} resizeMode="contain" />
         <FormContent />
       </View>
     </HubAuthShell>
