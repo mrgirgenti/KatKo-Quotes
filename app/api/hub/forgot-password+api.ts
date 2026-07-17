@@ -27,7 +27,13 @@ export async function POST(request: Request) {
         [token, expiry, user.id],
       );
 
-      const origin = request.headers.get('origin') || '';
+      const origin =
+        request.headers.get('origin') ||
+        (process.env.REPLIT_DOMAINS
+          ? `https://${process.env.REPLIT_DOMAINS.split(',')[0].trim()}`
+          : process.env.REPLIT_DEV_DOMAIN
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+          : '');
       const resetUrl = `${origin}/hub-login/reset?token=${token}`;
       const name = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'there';
       const { subject, html, text } = buildPasswordResetEmail({ clientName: name, resetUrl });
