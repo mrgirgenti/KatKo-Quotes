@@ -13,6 +13,7 @@
 - [Schema-DB column drift](schema-db-drift.md) — schema.prisma can have fields (e.g. `rush`, `address`) that were never migrated to the real DB; any raw SQL referencing them 500s. Always verify actual columns via information_schema before trusting the schema file.
 - [Safari WebKit scrollbar](safari-scrollbar-fix.md) — scrollbar-width:none is Firefox/Chrome only; add *::-webkit-scrollbar{display:none} in both SSR head (+html.tsx) and runtime CSS injection (_layout.tsx) to kill the blue track in Safari.
 - [Expo SSR deployment](expo-ssr-deployment.md) — autoscale prod run MUST be `expo serve` (not `expo start`) or health check fails; never use `static` target (kills API routes).
+- [Expo SSR origin hang](expo-ssr-origin-hang.md) — `expo export` hangs at "Static rendering is enabled." when app.json expo-router `origin` points to an unreachable host (e.g. rork.com); fix = correct prod URL. Export is slow (~2-3 min) for large apps — not a hang unless >5 min.
 - [Clerk auth FROZEN](clerk-frozen.md) — Auth is complete & frozen. Never plan, touch, validate, or mention Clerk/auth unless user explicitly requests it.
 - [Quote sub-route lookups](quote-subroute-lookups.md) — no 'sale' status exists (don't gate on it); Production Mode is navigation-only vs Start Production (mutating); sub-routes lack detail page's directQuote fallback.
 - [CRM org-header variants](crm-org-header-variants.md) — only v2LPHeader/v2MobileHeader render (FLAG_ORG_LAYOUT_V2=true); legacy leftPanel is dead code; logo Change/Remove live in OrgLogoUploader (hideActions to hide).
