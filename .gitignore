@@ -5,8 +5,9 @@ node_modules/
 
 # Expo
 .expo/
-dist/
 web-build/
+# dist/ is committed pre-built; only exclude source maps
+dist/**/*.map
 expo-env.d.ts
 
 # Native

@@ -7,7 +7,8 @@ description: How to deploy this Expo Router app (web.output "server") so API rou
 
 This app uses `web.output: "server"` (SSR + ~27 API routes). Deploy target = **autoscale**.
 
-- **build:** `bunx expo export --platform web` → produces `dist/` (client + server bundles). This succeeds.
+- **build (current):** `echo "dist is pre-built and committed"` — instant no-op. `dist/` is committed to the repo (maps excluded). Rebuild locally with `bunx expo export --platform web` (~2.5 min) and commit the updated `dist/` before re-deploying. Source maps go in .gitignore (`dist/**/*.map`) to keep the commit ~34MB instead of 62MB.
+- **Why pre-built:** Replit autoscale build timeout is ~2 minutes; `expo export` for this 3336-module app takes ~2.5 minutes → build gets killed. Pre-building and committing dist/ sidesteps the timeout entirely.
 - **run (production):** MUST be the production server `bunx expo serve --port 5000`, NOT the dev command.
 
 **Why:** The dev run command `expo start --web` launches the Metro **development bundler**, which is slow to boot and is not a production server. On autoscale the deployer waits for an HTTP 200 on `/` (startup probe); `expo start` never becomes healthy fast enough → promote/health-check phase times out → build marked `failed`, even though the build/export phase succeeded (logs show `Exported: dist`). `expo serve` just serves the prebuilt `dist/` (incl. API routes) and boots fast, so the probe passes.

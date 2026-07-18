@@ -1,0 +1,886 @@
+{
+  "apiRoutes": [
+    {
+      "file": "_expo/functions/api/orgs+api.js",
+      "page": "/api/orgs",
+      "namedRegex": "^/api/orgs(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/files+api.js",
+      "page": "/api/files",
+      "namedRegex": "^/api/files(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/users+api.js",
+      "page": "/api/users",
+      "namedRegex": "^/api/users(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/auth/me+api.js",
+      "page": "/api/auth/me",
+      "namedRegex": "^/api/auth/me(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/actions+api.js",
+      "page": "/api/actions",
+      "namedRegex": "^/api/actions(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/migrate+api.js",
+      "page": "/api/migrate",
+      "namedRegex": "^/api/migrate(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/vendors+api.js",
+      "page": "/api/vendors",
+      "namedRegex": "^/api/vendors(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/products+api.js",
+      "page": "/api/products",
+      "namedRegex": "^/api/products(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/projects+api.js",
+      "page": "/api/projects",
+      "namedRegex": "^/api/projects(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/hub/login+api.js",
+      "page": "/api/hub/login",
+      "namedRegex": "^/api/hub/login(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/send-email+api.js",
+      "page": "/api/send-email",
+      "namedRegex": "^/api/send\\-email(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/portal/team+api.js",
+      "page": "/api/portal/team",
+      "namedRegex": "^/api/portal/team(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/client-hubs+api.js",
+      "page": "/api/client-hubs",
+      "namedRegex": "^/api/client\\-hubs(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/hub/activate+api.js",
+      "page": "/api/hub/activate",
+      "namedRegex": "^/api/hub/activate(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/cost-library+api.js",
+      "page": "/api/cost-library",
+      "namedRegex": "^/api/cost\\-library(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/portal/submit+api.js",
+      "page": "/api/portal/submit",
+      "namedRegex": "^/api/portal/submit(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/products/bulk+api.js",
+      "page": "/api/products/bulk",
+      "namedRegex": "^/api/products/bulk(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/products/audit+api.js",
+      "page": "/api/products/audit",
+      "namedRegex": "^/api/products/audit(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/service-styles+api.js",
+      "page": "/api/service-styles",
+      "namedRegex": "^/api/service\\-styles(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/hub/check-email+api.js",
+      "page": "/api/hub/check-email",
+      "namedRegex": "^/api/hub/check\\-email(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/hub/new-request+api.js",
+      "page": "/api/hub/new-request",
+      "namedRegex": "^/api/hub/new\\-request(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/client-catalogs+api.js",
+      "page": "/api/client-catalogs",
+      "namedRegex": "^/api/client\\-catalogs(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/hub/join-request+api.js",
+      "page": "/api/hub/join-request",
+      "namedRegex": "^/api/hub/join\\-request(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/production-presets+api.js",
+      "page": "/api/production-presets",
+      "namedRegex": "^/api/production\\-presets(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/products/categories+api.js",
+      "page": "/api/products/categories",
+      "namedRegex": "^/api/products/categories(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/hub/forgot-password+api.js",
+      "page": "/api/hub/forgot-password",
+      "namedRegex": "^/api/hub/forgot\\-password(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/portal/reset-password+api.js",
+      "page": "/api/portal/reset-password",
+      "namedRegex": "^/api/portal/reset\\-password(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/portal/forgot-password+api.js",
+      "page": "/api/portal/forgot-password",
+      "namedRegex": "^/api/portal/forgot\\-password(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/products/placement-templates+api.js",
+      "page": "/api/products/placement-templates",
+      "namedRegex": "^/api/products/placement\\-templates(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/products/bulk-resolve-templates+api.js",
+      "page": "/api/products/bulk-resolve-templates",
+      "namedRegex": "^/api/products/bulk\\-resolve\\-templates(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/projects/backfill-configured-product+api.js",
+      "page": "/api/projects/backfill-configured-product",
+      "namedRegex": "^/api/projects/backfill\\-configured\\-product(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "_expo/functions/api/products/[id]/colors/[colorId]/assets/[assetId]+api.js",
+      "page": "/api/products/[id]/colors/[colorId]/assets/[assetId]",
+      "namedRegex": "^/api/products/(?<id>[^/]+?)/colors/(?<colorId>[^/]+?)/assets/(?<assetId>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id",
+        "colorId": "colorId",
+        "assetId": "assetId"
+      }
+    },
+    {
+      "file": "_expo/functions/api/orgs/[id]/contacts/[contactId]+api.js",
+      "page": "/api/orgs/[id]/contacts/[contactId]",
+      "namedRegex": "^/api/orgs/(?<id>[^/]+?)/contacts/(?<contactId>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id",
+        "contactId": "contactId"
+      }
+    },
+    {
+      "file": "_expo/functions/api/portal/[orgId]/files/[fileId]+api.js",
+      "page": "/api/portal/[orgId]/files/[fileId]",
+      "namedRegex": "^/api/portal/(?<orgId>[^/]+?)/files/(?<fileId>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "orgId": "orgId",
+        "fileId": "fileId"
+      }
+    },
+    {
+      "file": "_expo/functions/api/portal/[orgId]/projects/[projectId]/quote-response+api.js",
+      "page": "/api/portal/[orgId]/projects/[projectId]/quote-response",
+      "namedRegex": "^/api/portal/(?<orgId>[^/]+?)/projects/(?<projectId>[^/]+?)/quote\\-response(?:/)?$",
+      "routeKeys": {
+        "orgId": "orgId",
+        "projectId": "projectId"
+      }
+    },
+    {
+      "file": "_expo/functions/api/portal/[orgId]/projects/[projectId]+api.js",
+      "page": "/api/portal/[orgId]/projects/[projectId]",
+      "namedRegex": "^/api/portal/(?<orgId>[^/]+?)/projects/(?<projectId>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "orgId": "orgId",
+        "projectId": "projectId"
+      }
+    },
+    {
+      "file": "_expo/functions/api/products/[id]/colors/[colorId]/assets+api.js",
+      "page": "/api/products/[id]/colors/[colorId]/assets",
+      "namedRegex": "^/api/products/(?<id>[^/]+?)/colors/(?<colorId>[^/]+?)/assets(?:/)?$",
+      "routeKeys": {
+        "id": "id",
+        "colorId": "colorId"
+      }
+    },
+    {
+      "file": "_expo/functions/api/products/[id]/colors/[colorId]+api.js",
+      "page": "/api/products/[id]/colors/[colorId]",
+      "namedRegex": "^/api/products/(?<id>[^/]+?)/colors/(?<colorId>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id",
+        "colorId": "colorId"
+      }
+    },
+    {
+      "file": "_expo/functions/api/products/[id]/placements/[placementId]+api.js",
+      "page": "/api/products/[id]/placements/[placementId]",
+      "namedRegex": "^/api/products/(?<id>[^/]+?)/placements/(?<placementId>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id",
+        "placementId": "placementId"
+      }
+    },
+    {
+      "file": "_expo/functions/api/products/[id]/vendor-sources/[vsId]+api.js",
+      "page": "/api/products/[id]/vendor-sources/[vsId]",
+      "namedRegex": "^/api/products/(?<id>[^/]+?)/vendor\\-sources/(?<vsId>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id",
+        "vsId": "vsId"
+      }
+    },
+    {
+      "file": "_expo/functions/api/products/placement-templates/[key]/placements/[placementId]+api.js",
+      "page": "/api/products/placement-templates/[key]/placements/[placementId]",
+      "namedRegex": "^/api/products/placement\\-templates/(?<key>[^/]+?)/placements/(?<placementId>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "key": "key",
+        "placementId": "placementId"
+      }
+    },
+    {
+      "file": "_expo/functions/api/actions/[id]+api.js",
+      "page": "/api/actions/[id]",
+      "namedRegex": "^/api/actions/(?<id>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/client-catalogs/[id]+api.js",
+      "page": "/api/client-catalogs/[id]",
+      "namedRegex": "^/api/client\\-catalogs/(?<id>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/files/[id]+api.js",
+      "page": "/api/files/[id]",
+      "namedRegex": "^/api/files/(?<id>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/orgs/[id]/activity+api.js",
+      "page": "/api/orgs/[id]/activity",
+      "namedRegex": "^/api/orgs/(?<id>[^/]+?)/activity(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/orgs/[id]/contacts+api.js",
+      "page": "/api/orgs/[id]/contacts",
+      "namedRegex": "^/api/orgs/(?<id>[^/]+?)/contacts(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/orgs/[id]+api.js",
+      "page": "/api/orgs/[id]",
+      "namedRegex": "^/api/orgs/(?<id>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/portal/[orgId]/favorites+api.js",
+      "page": "/api/portal/[orgId]/favorites",
+      "namedRegex": "^/api/portal/(?<orgId>[^/]+?)/favorites(?:/)?$",
+      "routeKeys": {
+        "orgId": "orgId"
+      }
+    },
+    {
+      "file": "_expo/functions/api/portal/[orgId]/files+api.js",
+      "page": "/api/portal/[orgId]/files",
+      "namedRegex": "^/api/portal/(?<orgId>[^/]+?)/files(?:/)?$",
+      "routeKeys": {
+        "orgId": "orgId"
+      }
+    },
+    {
+      "file": "_expo/functions/api/portal/[orgId]/projects+api.js",
+      "page": "/api/portal/[orgId]/projects",
+      "namedRegex": "^/api/portal/(?<orgId>[^/]+?)/projects(?:/)?$",
+      "routeKeys": {
+        "orgId": "orgId"
+      }
+    },
+    {
+      "file": "_expo/functions/api/portal/[orgId]/upload+api.js",
+      "page": "/api/portal/[orgId]/upload",
+      "namedRegex": "^/api/portal/(?<orgId>[^/]+?)/upload(?:/)?$",
+      "routeKeys": {
+        "orgId": "orgId"
+      }
+    },
+    {
+      "file": "_expo/functions/api/portal/[orgId]/products+api.js",
+      "page": "/api/portal/[orgId]/products",
+      "namedRegex": "^/api/portal/(?<orgId>[^/]+?)/products(?:/)?$",
+      "routeKeys": {
+        "orgId": "orgId"
+      }
+    },
+    {
+      "file": "_expo/functions/api/portal/quote/[id]+api.js",
+      "page": "/api/portal/quote/[id]",
+      "namedRegex": "^/api/portal/quote/(?<id>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/portal/team/[userId]+api.js",
+      "page": "/api/portal/team/[userId]",
+      "namedRegex": "^/api/portal/team/(?<userId>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "userId": "userId"
+      }
+    },
+    {
+      "file": "_expo/functions/api/portal/[orgId]+api.js",
+      "page": "/api/portal/[orgId]",
+      "namedRegex": "^/api/portal/(?<orgId>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "orgId": "orgId"
+      }
+    },
+    {
+      "file": "_expo/functions/api/products/[id]/colors/bulk+api.js",
+      "page": "/api/products/[id]/colors/bulk",
+      "namedRegex": "^/api/products/(?<id>[^/]+?)/colors/bulk(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/products/[id]/catalogs+api.js",
+      "page": "/api/products/[id]/catalogs",
+      "namedRegex": "^/api/products/(?<id>[^/]+?)/catalogs(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/products/[id]/colors+api.js",
+      "page": "/api/products/[id]/colors",
+      "namedRegex": "^/api/products/(?<id>[^/]+?)/colors(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/products/[id]/effective-placements+api.js",
+      "page": "/api/products/[id]/effective-placements",
+      "namedRegex": "^/api/products/(?<id>[^/]+?)/effective\\-placements(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/products/[id]/placements+api.js",
+      "page": "/api/products/[id]/placements",
+      "namedRegex": "^/api/products/(?<id>[^/]+?)/placements(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/products/[id]/vendor-sources+api.js",
+      "page": "/api/products/[id]/vendor-sources",
+      "namedRegex": "^/api/products/(?<id>[^/]+?)/vendor\\-sources(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/products/assets/[assetId]+api.js",
+      "page": "/api/products/assets/[assetId]",
+      "namedRegex": "^/api/products/assets/(?<assetId>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "assetId": "assetId"
+      }
+    },
+    {
+      "file": "_expo/functions/api/products/placement-templates/[key]/placements+api.js",
+      "page": "/api/products/placement-templates/[key]/placements",
+      "namedRegex": "^/api/products/placement\\-templates/(?<key>[^/]+?)/placements(?:/)?$",
+      "routeKeys": {
+        "key": "key"
+      }
+    },
+    {
+      "file": "_expo/functions/api/products/placement-templates/[key]+api.js",
+      "page": "/api/products/placement-templates/[key]",
+      "namedRegex": "^/api/products/placement\\-templates/(?<key>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "key": "key"
+      }
+    },
+    {
+      "file": "_expo/functions/api/products/[id]+api.js",
+      "page": "/api/products/[id]",
+      "namedRegex": "^/api/products/(?<id>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/projects/[id]/activity+api.js",
+      "page": "/api/projects/[id]/activity",
+      "namedRegex": "^/api/projects/(?<id>[^/]+?)/activity(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/projects/[id]/invoice+api.js",
+      "page": "/api/projects/[id]/invoice",
+      "namedRegex": "^/api/projects/(?<id>[^/]+?)/invoice(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/projects/[id]/quote+api.js",
+      "page": "/api/projects/[id]/quote",
+      "namedRegex": "^/api/projects/(?<id>[^/]+?)/quote(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/projects/[id]/backfill+api.js",
+      "page": "/api/projects/[id]/backfill",
+      "namedRegex": "^/api/projects/(?<id>[^/]+?)/backfill(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/projects/[id]+api.js",
+      "page": "/api/projects/[id]",
+      "namedRegex": "^/api/projects/(?<id>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/users/[id]+api.js",
+      "page": "/api/users/[id]",
+      "namedRegex": "^/api/users/(?<id>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/vendors/[id]+api.js",
+      "page": "/api/vendors/[id]",
+      "namedRegex": "^/api/vendors/(?<id>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/app-settings/[key]+api.js",
+      "page": "/api/app-settings/[key]",
+      "namedRegex": "^/api/app\\-settings/(?<key>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "key": "key"
+      }
+    },
+    {
+      "file": "_expo/functions/api/cost-library/[id]+api.js",
+      "page": "/api/cost-library/[id]",
+      "namedRegex": "^/api/cost\\-library/(?<id>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/service-styles/[id]+api.js",
+      "page": "/api/service-styles/[id]",
+      "namedRegex": "^/api/service\\-styles/(?<id>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "_expo/functions/api/production-presets/[id]+api.js",
+      "page": "/api/production-presets/[id]",
+      "namedRegex": "^/api/production\\-presets/(?<id>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    }
+  ],
+  "htmlRoutes": [
+    {
+      "file": "./hub-request/index.tsx",
+      "page": "/hub-request/index",
+      "namedRegex": "^/hub\\-request(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./hub-login/index.tsx",
+      "page": "/hub-login/index",
+      "namedRegex": "^/hub\\-login(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./(tabs)/index.tsx",
+      "page": "/(tabs)/index",
+      "namedRegex": "^(?:/\\(tabs\\))?(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./hub-request/new.tsx",
+      "page": "/hub-request/new",
+      "namedRegex": "^/hub\\-request/new(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./hub-request/join.tsx",
+      "page": "/hub-request/join",
+      "namedRegex": "^/hub\\-request/join(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./hub-login/reset.tsx",
+      "page": "/hub-login/reset",
+      "namedRegex": "^/hub\\-login/reset(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./(tabs)/tasks.tsx",
+      "page": "/(tabs)/tasks",
+      "namedRegex": "^(?:/\\(tabs\\))?/tasks(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./(tabs)/sales.tsx",
+      "page": "/(tabs)/sales",
+      "namedRegex": "^(?:/\\(tabs\\))?/sales(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./modal.tsx",
+      "page": "/modal",
+      "namedRegex": "^/modal(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./hub-login/forgot.tsx",
+      "page": "/hub-login/forgot",
+      "namedRegex": "^/hub\\-login/forgot(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./hub-request/pending.tsx",
+      "page": "/hub-request/pending",
+      "namedRegex": "^/hub\\-request/pending(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./(tabs)/reports.tsx",
+      "page": "/(tabs)/reports",
+      "namedRegex": "^(?:/\\(tabs\\))?/reports(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./(tabs)/history.tsx",
+      "page": "/(tabs)/history",
+      "namedRegex": "^(?:/\\(tabs\\))?/history(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./(tabs)/clients.tsx",
+      "page": "/(tabs)/clients",
+      "namedRegex": "^(?:/\\(tabs\\))?/clients(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./sign-up.tsx",
+      "page": "/sign-up",
+      "namedRegex": "^/sign\\-up(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./sign-in.tsx",
+      "page": "/sign-in",
+      "namedRegex": "^/sign\\-in(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./profile.tsx",
+      "page": "/profile",
+      "namedRegex": "^/profile(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./hub-request/activate.tsx",
+      "page": "/hub-request/activate",
+      "namedRegex": "^/hub\\-request/activate(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./(tabs)/settings.tsx",
+      "page": "/(tabs)/settings",
+      "namedRegex": "^(?:/\\(tabs\\))?/settings(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./(tabs)/projects.tsx",
+      "page": "/(tabs)/projects",
+      "namedRegex": "^(?:/\\(tabs\\))?/projects(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./(tabs)/payments.tsx",
+      "page": "/(tabs)/payments",
+      "namedRegex": "^(?:/\\(tabs\\))?/payments(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./(tabs)/invoices.tsx",
+      "page": "/(tabs)/invoices",
+      "namedRegex": "^(?:/\\(tabs\\))?/invoices(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./(tabs)/catalogs.tsx",
+      "page": "/(tabs)/catalogs",
+      "namedRegex": "^(?:/\\(tabs\\))?/catalogs(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "expo-router/build/views/Sitemap.js",
+      "page": "/_sitemap",
+      "namedRegex": "^/_sitemap(?:/)?$",
+      "routeKeys": {},
+      "generated": true
+    },
+    {
+      "file": "./(tabs)/dashboard.tsx",
+      "page": "/(tabs)/dashboard",
+      "namedRegex": "^(?:/\\(tabs\\))?/dashboard(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./quote/edit.tsx",
+      "page": "/quote/edit",
+      "namedRegex": "^/quote/edit(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./(tabs)/production.tsx",
+      "page": "/(tabs)/production",
+      "namedRegex": "^(?:/\\(tabs\\))?/production(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./(tabs)/client-hubs.tsx",
+      "page": "/(tabs)/client-hubs",
+      "namedRegex": "^(?:/\\(tabs\\))?/client\\-hubs(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./(tabs)/catalog-admin.tsx",
+      "page": "/(tabs)/catalog-admin",
+      "namedRegex": "^(?:/\\(tabs\\))?/catalog\\-admin(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./(tabs)/action-center.tsx",
+      "page": "/(tabs)/action-center",
+      "namedRegex": "^(?:/\\(tabs\\))?/action\\-center(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./catalog-costs.tsx",
+      "page": "/catalog-costs",
+      "namedRegex": "^/catalog\\-costs(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./catalog-audit.tsx",
+      "page": "/catalog-audit",
+      "namedRegex": "^/catalog\\-audit(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./forgot-password.tsx",
+      "page": "/forgot-password",
+      "namedRegex": "^/forgot\\-password(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./catalog-sources.tsx",
+      "page": "/catalog-sources",
+      "namedRegex": "^/catalog\\-sources(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./sourcing-vendors.tsx",
+      "page": "/sourcing-vendors",
+      "namedRegex": "^/sourcing\\-vendors(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./product/templates.tsx",
+      "page": "/product/templates",
+      "namedRegex": "^/product/templates(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./quote/sales-tracking.tsx",
+      "page": "/quote/sales-tracking",
+      "namedRegex": "^/quote/sales\\-tracking(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./portal/reset-password.tsx",
+      "page": "/portal/reset-password",
+      "namedRegex": "^/portal/reset\\-password(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./production-settings/vendors.tsx",
+      "page": "/production-settings/vendors",
+      "namedRegex": "^/production\\-settings/vendors(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./production-settings/presets.tsx",
+      "page": "/production-settings/presets",
+      "namedRegex": "^/production\\-settings/presets(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./production-settings/calculators.tsx",
+      "page": "/production-settings/calculators",
+      "namedRegex": "^/production\\-settings/calculators(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./quote/production/[id].tsx",
+      "page": "/quote/production/[id]",
+      "namedRegex": "^/quote/production/(?<id>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "./quote/[id].tsx",
+      "page": "/quote/[id]",
+      "namedRegex": "^/quote/(?<id>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "./product/[id].tsx",
+      "page": "/product/[id]",
+      "namedRegex": "^/product/(?<id>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "./portal/quote/[id].tsx",
+      "page": "/portal/quote/[id]",
+      "namedRegex": "^/portal/quote/(?<id>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "./portal/[orgId].tsx",
+      "page": "/portal/[orgId]",
+      "namedRegex": "^/portal/(?<orgId>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "orgId": "orgId"
+      }
+    },
+    {
+      "file": "./crm/[id].tsx",
+      "page": "/crm/[id]",
+      "namedRegex": "^/crm/(?<id>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "./contact/[id].tsx",
+      "page": "/contact/[id]",
+      "namedRegex": "^/contact/(?<id>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    },
+    {
+      "file": "./clients/[id].tsx",
+      "page": "/clients/[id]",
+      "namedRegex": "^/clients/(?<id>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    }
+  ],
+  "notFoundRoutes": [
+    {
+      "file": "./+not-found.tsx",
+      "page": "/+not-found",
+      "namedRegex": "^(?:/(?<notfound>.+?))?(?:/)?$",
+      "routeKeys": {
+        "notfound": "not-found"
+      }
+    }
+  ],
+  "redirects": [],
+  "rewrites": []
+}
