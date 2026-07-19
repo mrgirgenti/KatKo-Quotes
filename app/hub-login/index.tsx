@@ -222,106 +222,118 @@ export default function HubLoginPage() {
     </>
   );
 
-  // ─── Desktop / Tablet: Hero layout ────────────────────────────────────────
+  // ─── Wide layout (Desktop + Tablet): flex-row, no absolute positioning ───
   if (isDesktop || isTablet) {
     return (
-      <HubAuthShell>
-        <View style={s.hero}>
-
-          {/* ── Layer 1: Dark hero background with subtle branded logo texture ── */}
+      <HubAuthShell scroll>
+        <View style={s.page}>
+          {/* Background: dark base + faint logo texture */}
           <View style={[StyleSheet.absoluteFillObject as any, { overflow: 'hidden' as any }]}>
-            {/* Deep charcoal base */}
             <View style={{ flex: 1, backgroundColor: '#0d0d0d', alignItems: 'center', justifyContent: 'center' }}>
-              {/* Oversized logo — barely visible, adds depth/texture */}
               <Image
                 source={require('@/assets/images/ko-logo-new.webp')}
-                style={{
-                  width: 1400,
-                  height: 380,
-                  opacity: 0.08,
-                  transform: [{ rotate: '-4deg' }],
-                } as any}
+                style={{ width: 1400, height: 380, opacity: 0.08, transform: [{ rotate: '-4deg' }] } as any}
                 resizeMode="contain"
               />
             </View>
-            {/* Heavy black overlay so logo is just a whisper */}
             <View style={[StyleSheet.absoluteFillObject as any, { backgroundColor: 'rgba(0,0,0,0.70)' }]} />
           </View>
 
-          {/* ── Layer 2: Left informational content ── */}
-          <View style={s.leftInfo}>
-            <Image
-              source={require('@/assets/images/ko-logo-new.webp')}
-              style={s.panelLogo}
-              resizeMode="contain"
-            />
-            <Text style={s.hubLabel}>CLIENT HUB</Text>
-            <Text style={s.welcomeHeading}>{'WELCOME\nBACK.'}</Text>
-            <Text style={s.welcomeSub}>{'Your projects. Your brand.\nAll in one place.'}</Text>
-            <View style={s.divider} />
-            {/* Feature grid — ~60% larger icons, text, and spacing */}
-            <View style={s.featureGrid}>
-              {FEATURES.map((f, i) => {
-                const Icon = f.icon;
-                return (
-                  <View key={i} style={s.featureItem}>
-                    <Icon size={21} color={HUB_ORANGE} />
-                    <Text style={s.featureLabel}>{f.label}</Text>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
+          {/* Content row — flows naturally, no absolute collision */}
+          <View style={s.contentRow}>
 
-          {/* ── Layer 3: Floating card + companion panel (card-height only) ── */}
-          <View style={s.cardLayer}>
-            <View style={s.cardRow}>
-
-              {/* White login card */}
-              <View style={[s.card, isDesktop && s.cardJoined]}>
-                {cardContent}
-              </View>
-
-              {/* Grey companion panel — height matches card via alignItems:stretch */}
-              {isDesktop && (
-                <View style={s.rightPanel}>
-                  {/* Heading: black (not orange) per spec */}
-                  <Text style={s.rightHeading}>{'WHAT IS THE\nCLIENT HUB?'}</Text>
-                  <Text style={s.rightSub}>Your central hub for everything we create together.</Text>
-                  <View style={s.rightDivider} />
-                  {BENEFITS.map((b, i) => (
-                    <View key={i} style={s.benefitItem}>
-                      <View style={s.benefitCheck}>
-                        <Check size={10} color="#fff" strokeWidth={3} />
-                      </View>
-                      <Text style={s.benefitLabel}>{b}</Text>
+            {/* ── Left column: marketing ── */}
+            <View style={s.leftCol}>
+              <Image
+                source={require('@/assets/images/ko-logo-new.webp')}
+                style={s.panelLogo}
+                resizeMode="contain"
+              />
+              <Text style={s.hubLabel}>CLIENT HUB</Text>
+              <Text style={isDesktop ? s.welcomeHeading : s.welcomeHeadingTablet}>{'WELCOME\nBACK.'}</Text>
+              <Text style={s.welcomeSub}>{'Your projects. Your brand.\nAll in one place.'}</Text>
+              <View style={s.divider} />
+              <View style={s.featureGrid}>
+                {FEATURES.map((f, i) => {
+                  const Icon = f.icon;
+                  return (
+                    <View key={i} style={s.featureItem}>
+                      <Icon size={isDesktop ? 21 : 16} color={HUB_ORANGE} />
+                      <Text style={isDesktop ? s.featureLabel : s.featureLabelTablet}>{f.label}</Text>
                     </View>
-                  ))}
-                  <View style={s.rightDivider} />
-                  <Text style={s.rightTagline}>{'Built to make your\nexperience better.'}</Text>
-                </View>
-              )}
-
+                  );
+                })}
+              </View>
             </View>
-          </View>
 
+            {/* ── Right column: login card (+ companion panel on desktop) ── */}
+            <View style={s.rightCol}>
+              <View style={s.cardRow}>
+                <View style={[s.card, isDesktop && s.cardJoined, isTablet && { width: 360, padding: 28 }]}>
+                  {cardContent}
+                </View>
+                {isDesktop && (
+                  <View style={s.rightPanel}>
+                    <Text style={s.rightHeading}>{'WHAT IS THE\nCLIENT HUB?'}</Text>
+                    <Text style={s.rightSub}>Your central hub for everything we create together.</Text>
+                    <View style={s.rightDivider} />
+                    {BENEFITS.map((b, i) => (
+                      <View key={i} style={s.benefitItem}>
+                        <View style={s.benefitCheck}>
+                          <Check size={10} color="#fff" strokeWidth={3} />
+                        </View>
+                        <Text style={s.benefitLabel}>{b}</Text>
+                      </View>
+                    ))}
+                    <View style={s.rightDivider} />
+                    <Text style={s.rightTagline}>{'Built to make your\nexperience better.'}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+
+          </View>
         </View>
       </HubAuthShell>
     );
   }
 
-  // ─── Mobile ───────────────────────────────────────────────────────────────
+  // ─── Mobile: full marketing content stacked above login card ──────────────
   return (
     <HubAuthShell scroll>
       <View style={s.mobilePage}>
+        {/* Logo */}
         <Image
           source={require('@/assets/images/ko-logo-new.webp')}
           style={s.mobileLogo}
           resizeMode="contain"
         />
-        <View style={s.card}>
+
+        {/* Marketing */}
+        <Text style={s.mobileHubLabel}>CLIENT HUB</Text>
+        <Text style={s.mobileHeading}>{'WELCOME\nBACK.'}</Text>
+        <Text style={s.mobileSub}>{'Your projects. Your brand.\nAll in one place.'}</Text>
+
+        {/* Feature grid */}
+        <View style={s.mobileFeatureGrid}>
+          {FEATURES.map((f, i) => {
+            const Icon = f.icon;
+            return (
+              <View key={i} style={s.mobileFeatureItem}>
+                <Icon size={15} color={HUB_ORANGE} />
+                <Text style={s.mobileFeatureLabel}>{f.label}</Text>
+              </View>
+            );
+          })}
+        </View>
+
+        <View style={s.mobileDivider} />
+
+        {/* Login card */}
+        <View style={s.mobileCard}>
           {cardContent}
         </View>
+
         <Text style={s.mobileFooter}>© Katalyst Ko</Text>
       </View>
     </HubAuthShell>
@@ -385,27 +397,38 @@ const c = StyleSheet.create({
   backLinkText: { fontSize: 13, color: HUB_ORANGE },
 });
 
-// ─── Hero layout styles ────────────────────────────────────────────────────
+// ─── Wide layout styles ────────────────────────────────────────────────────
 const s = StyleSheet.create({
 
-  // Full-screen hero — stacking context for all absolute layers
-  hero: {
+  // Page wrapper — stacking context for the absolute background
+  page: {
     flex: 1,
     ...(Platform.OS === 'web' ? { minHeight: '100vh' as any } : {}),
   },
 
-  // Left informational content — absolute, pointer-events off (backdrop only)
-  leftInfo: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    width: '45%' as any,
+  // Horizontal row — fills the page height, flows left→right in flex
+  contentRow: {
+    flex: 1,
+    flexDirection: 'row',
+    ...(Platform.OS === 'web' ? { minHeight: '100vh' as any } : {}),
+  },
+
+  // Left column: marketing content, takes all remaining space
+  leftCol: {
+    flex: 1,
+    minWidth: 220,
     paddingLeft: 52,
     paddingRight: 32,
     paddingVertical: 52,
     justifyContent: 'center',
-    ...(Platform.OS === 'web' ? { pointerEvents: 'none' as any } : {}),
+  },
+
+  // Right column: centers the card (+ optional companion) vertically
+  rightCol: {
+    paddingVertical: 48,
+    paddingHorizontal: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   panelLogo: { width: 210, height: 56, marginBottom: 44 },
@@ -417,30 +440,22 @@ const s = StyleSheet.create({
     fontSize: 80, fontWeight: '900', color: HUB_WHITE,
     lineHeight: 86, marginBottom: 16, letterSpacing: -2,
   },
+  welcomeHeadingTablet: {
+    fontSize: 52, fontWeight: '900', color: HUB_WHITE,
+    lineHeight: 58, marginBottom: 14, letterSpacing: -1,
+  },
   welcomeSub: { fontSize: 14, color: HUB_DIM, lineHeight: 22, marginBottom: 28 },
   divider: { height: 1, backgroundColor: HUB_BORDER, marginVertical: 22 },
 
-  // Feature grid — scaled ~60%: icon 13→21, text 13→19, gap 8→13, padding 7→11
   featureGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   featureItem: {
     width: '50%', flexDirection: 'row', alignItems: 'center',
     gap: 13, paddingVertical: 11,
   },
   featureLabel: { fontSize: 19, color: '#b0b0b0', flex: 1 },
+  featureLabelTablet: { fontSize: 13, color: '#b0b0b0', flex: 1 },
 
-  // Floating card layer — absolute fill, centers the card+companion unit
-  cardLayer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
-  },
-
-  // Card + companion panel sit side by side as a single floating unit
+  // Card + companion side by side
   cardRow: {
     flexDirection: 'row',
     alignItems: 'stretch',
@@ -450,13 +465,11 @@ const s = StyleSheet.create({
     } : {}),
   },
 
-  // White login card
   card: {
     width: 440,
     backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 36,
-    // Native shadow (web shadow lives on cardRow via boxShadow)
     ...(Platform.OS !== 'web' ? {
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 24 },
@@ -466,13 +479,11 @@ const s = StyleSheet.create({
     } : {}),
   },
 
-  // When companion panel is present, flatten the card's right edge
   cardJoined: {
     borderTopRightRadius: 0,
     borderBottomRightRadius: 0,
   },
 
-  // Grey companion panel — card-height only (via alignItems:stretch on parent)
   rightPanel: {
     width: 300,
     backgroundColor: '#BEBEBE',
@@ -483,7 +494,6 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // Right panel typography — heading is BLACK per spec (not orange)
   rightHeading: {
     fontSize: 18, fontWeight: '900', color: '#111111',
     letterSpacing: 0.5, lineHeight: 24, marginBottom: 10,
@@ -499,8 +509,53 @@ const s = StyleSheet.create({
   rightTagline: { fontSize: 12, color: '#444', lineHeight: 18, fontStyle: 'italic' },
   rightDivider: { height: 1, backgroundColor: '#A8A8A8', marginVertical: 14 },
 
-  // Mobile
-  mobilePage: { flex: 1, alignItems: 'center', paddingHorizontal: 20, paddingVertical: 48 },
-  mobileLogo: { width: 200, height: 58, marginBottom: 28 },
+  // ─── Mobile styles ──────────────────────────────────────────────────────
+  mobilePage: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 48,
+    paddingBottom: 48,
+  },
+  mobileLogo: { width: 200, height: 54, marginBottom: 28 },
+  mobileHubLabel: {
+    fontSize: 10, fontWeight: '700', color: HUB_ORANGE,
+    letterSpacing: 3, textTransform: 'uppercase', marginBottom: 8,
+  },
+  mobileHeading: {
+    fontSize: 52, fontWeight: '900', color: HUB_WHITE,
+    lineHeight: 56, marginBottom: 12, letterSpacing: -1,
+    textAlign: 'center',
+  },
+  mobileSub: {
+    fontSize: 13, color: HUB_DIM, lineHeight: 20, marginBottom: 20,
+    textAlign: 'center',
+  },
+  mobileFeatureGrid: {
+    flexDirection: 'row', flexWrap: 'wrap',
+    width: '100%', marginBottom: 8,
+  },
+  mobileFeatureItem: {
+    width: '50%', flexDirection: 'row', alignItems: 'center',
+    gap: 8, paddingVertical: 7,
+  },
+  mobileFeatureLabel: { fontSize: 13, color: '#b0b0b0', flex: 1 },
+  mobileDivider: {
+    width: '100%', height: 1,
+    backgroundColor: HUB_BORDER, marginVertical: 20,
+  },
+  mobileCard: {
+    width: '100%',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    ...(Platform.OS !== 'web' ? {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.45,
+      shadowRadius: 32,
+      elevation: 16,
+    } : { boxShadow: '0 12px 40px rgba(0,0,0,0.5)' as any }),
+  },
   mobileFooter: { marginTop: 24, fontSize: 12, color: '#3a3a3a' },
 });
