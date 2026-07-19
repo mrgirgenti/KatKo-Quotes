@@ -237,6 +237,9 @@ export default function NewQuoteScreen() {
       onSuccess: (saved: any) => {
         router.push(`/quote/${saved.id}` as any);
       },
+      onError: () => {
+        Alert.alert('Save Failed', 'Could not save the quote. Please check your connection and try again.');
+      },
     });
   }, [
     personOrganization,

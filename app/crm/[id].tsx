@@ -251,7 +251,7 @@ export default function OrgProfileScreen() {
   const [hubLinkCopied, setHubLinkCopied] = useState(false);
   const handleCopyHubLink = useCallback(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined' && org) {
-      const link = `${window.location.origin}/portal/${org.id}`;
+      const link = `${window.location.origin}/hub-login`;
       navigator.clipboard.writeText(link);
       setHubLinkCopied(true);
       setTimeout(() => setHubLinkCopied(false), 2000);
@@ -771,7 +771,7 @@ export default function OrgProfileScreen() {
           style={styles.hubSettingsBtn}
           onPress={() => {
             if (localHubEnabled) {
-              if (Platform.OS === 'web') (window as any).open(`/portal/${org.id}`, '_blank');
+              if (Platform.OS === 'web') (window as any).open('/hub-login', '_blank');
             } else {
               handleHubToggle();
             }
@@ -1365,8 +1365,8 @@ export default function OrgProfileScreen() {
         <Stack.Screen options={{ title: org.name, headerShown: false }} />
         <PageBackHeader title="Organization Details" />
 
-        {isDesktop ? (
-          /* ── DESKTOP: 2-column CRM layout ── */
+        {(isDesktop || isTablet) ? (
+          /* ── DESKTOP/TABLET: 2-column CRM layout ── */
           <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.v2Layout, { alignItems: 'flex-start' }]}>
 
             {/* ── LEFT PANEL: Identity + Contacts ── */}

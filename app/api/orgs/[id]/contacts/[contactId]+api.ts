@@ -101,9 +101,9 @@ async function upsertMembership(orgId: string, userId: string, stampInvite: bool
   return res.rows[0].id;
 }
 
-function portalUrlFrom(request: Request, orgId: string): string {
+function hubLoginUrl(request: Request): string {
   const origin = request.headers.get('origin') || '';
-  return `${origin}/portal/${orgId}`;
+  return `${origin}/hub-login`;
 }
 
 async function handleAction(request: Request, orgId: string, contactId: string, action: string) {
@@ -128,7 +128,7 @@ async function handleAction(request: Request, orgId: string, contactId: string, 
       const { subject, html, text } = buildClientInviteEmail({
         clientName: displayName,
         orgName: contact.orgName || 'your organization',
-        portalUrl: portalUrlFrom(request, orgId),
+        portalUrl: hubLoginUrl(request),
       });
       const emailResult = await sendEmail({ to: contact.email, subject, html, text });
 
