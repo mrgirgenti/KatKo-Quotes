@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { getClerkToken } from '@/lib/clerkToken';
 import { TABLE_COL, TABLE_CELL } from '@/constants/tableLayout';
 import ProjectDocument from '@/components/ProjectDocument';
 import {
@@ -1355,6 +1356,7 @@ export default function ClientPortal() {
   const [orgLogoDims, setOrgLogoDims] = useState<{ w: number; h: number } | null>(null);
   const [orgDisplayName, setOrgDisplayName] = useState<string>('');
   const [hubDisabled, setHubDisabled] = useState(false);
+  const [adminCheckLoading, setAdminCheckLoading] = useState(true);
 
   useEffect(() => {
     if (!orgId) return;
@@ -1385,6 +1387,63 @@ export default function ClientPortal() {
     if (!orgLogoUrl) { setOrgLogoDims(null); return; }
     Image.getSize(orgLogoUrl, (w, h) => setOrgLogoDims({ w, h }), () => setOrgLogoDims(null));
   }, [orgLogoUrl]);
+
+  // ── Session restore + admin bypass ──
+  // Priority 1: restore a hub-login session from localStorage/sessionStorage.
+  // Priority 2: Clerk-authenticated internal users skip client login entirely.
+  useEffect(() => {
+    if (!orgId) { setAdminCheckLoading(false); return; }
+
+    // 1. Restore a session saved by hub-login
+    if (typeof window !== 'undefined') {
+      const raw = localStorage.getItem('hubSession') || sessionStorage.getItem('hubSession');
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw) as ClientSession & { expiresAt?: number };
+          if ((!parsed.expiresAt || parsed.expiresAt > Date.now()) && parsed.orgId === orgId) {
+            setSession(parsed);
+            setStep('dashboard');
+            setAdminCheckLoading(false);
+            return;
+          }
+        } catch {}
+      }
+    }
+
+    // 2. Clerk admin bypass for internal team members
+    async function checkAdminAccess() {
+      try {
+        const token = await getClerkToken();
+        if (!token) return;
+        const meRes = await fetch('/api/auth/me', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!meRes.ok) return;
+        const me = await meRes.json();
+        if (me.userType === 'CLIENT') return;
+        let orgName = '';
+        try {
+          const orgRes = await fetch(`/api/portal/${orgId}`);
+          if (orgRes.ok) { const d = await orgRes.json(); orgName = d.name || ''; }
+        } catch {}
+        const adminSession: ClientSession = {
+          userId: me.id,
+          userName: me.name || `${me.firstName || ''} ${me.lastName || ''}`.trim() || me.email,
+          userEmail: me.email,
+          role: 'ADMIN',
+          orgId: orgId as string,
+          orgName,
+          avatarColor: me.avatarColor || '#FF5A00',
+          avatarUri: me.avatarUri || null,
+        };
+        setSession(adminSession);
+        setStep('dashboard');
+      } catch {}
+      finally { setAdminCheckLoading(false); }
+    }
+    checkAdminAccess();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId]);
 
   const SIDEBAR_INNER_W = 174; // sidebar 210px - 18px*2 padding
   const LOGO_MAX = SIDEBAR_INNER_W * 0.9;
@@ -1673,6 +1732,10 @@ export default function ClientPortal() {
   }, [session]);
 
   const handleSignOut = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('hubSession');
+      sessionStorage.removeItem('hubSession');
+    }
     setSession(null);
     setStep('email');
     setActiveView('home');
@@ -4513,7 +4576,7 @@ export default function ClientPortal() {
     />
   );
 
-  if (hubDisabled) {
+  if (hubDisabled && !session) {
     return (
       <View style={[styles.root, { alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FAFB' }]}>
         <Stack.Screen options={{ headerShown: false }} />
@@ -4540,7 +4603,7 @@ export default function ClientPortal() {
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* ── EMAIL STEP ── */}
-      {step === 'email' && (
+      {step === 'email' && !adminCheckLoading && (
         <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
           <View style={styles.topBar}>
             {logoSrc ? (

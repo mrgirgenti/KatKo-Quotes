@@ -771,7 +771,7 @@ export default function OrgProfileScreen() {
           style={styles.hubSettingsBtn}
           onPress={() => {
             if (localHubEnabled) {
-              if (Platform.OS === 'web') (window as any).open('/hub-login', '_blank');
+              if (Platform.OS === 'web') (window as any).open(`/portal/${org.id}`, '_blank');
             } else {
               handleHubToggle();
             }
