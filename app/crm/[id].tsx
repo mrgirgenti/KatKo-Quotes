@@ -69,6 +69,7 @@ import { OrgLogoUploader } from '@/components/OrgLogoUploader';
 import { ProjectCard } from '@/components/ProjectCard';
 import { metricValueStyle, metricLabelStyle } from '@/components/Metric';
 import { Sidebar } from '@/components/Sidebar';
+import { MobileTopBar, MobileDrawerOverlay } from '@/components/MobileDrawer';
 import { useCrm } from '@/contexts/CrmContext';
 import { useQuotes } from '@/contexts/QuotesContext';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -214,7 +215,8 @@ export default function OrgProfileScreen() {
   } = useCrm();
   const { quotes } = useQuotes();
   const queryClient = useQueryClient();
-  const { isDesktop, isTablet } = useBreakpoint();
+  const { isDesktop, isTablet, isMobile } = useBreakpoint();
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const handleProjectActionComplete = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['projects'] });
@@ -1363,7 +1365,11 @@ export default function OrgProfileScreen() {
     return (
       <View style={styles.container}>
         <Stack.Screen options={{ title: org.name, headerShown: false }} />
-        <PageBackHeader title="Organization Details" />
+        {isMobile ? <MobileTopBar onOpenDrawer={() => setDrawerOpen(true)} /> : null}
+        <View style={{ flex: 1, flexDirection: 'row', overflow: 'hidden' as any }}>
+          {!isMobile ? <Sidebar defaultCollapsed={isTablet} /> : null}
+          <View style={{ flex: 1, overflow: 'hidden' as any }}>
+            <PageBackHeader title="Organization Details" />
 
         {(isDesktop || isTablet) ? (
           /* ── DESKTOP/TABLET: 2-column CRM layout ── */
@@ -2565,6 +2571,9 @@ export default function OrgProfileScreen() {
           </Pressable>
         </Modal>
 
+          </View>
+        </View>
+        {isMobile ? <MobileDrawerOverlay isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} /> : null}
       </View>
     );
   }
