@@ -102,8 +102,11 @@ async function upsertMembership(orgId: string, userId: string, stampInvite: bool
 }
 
 function hubLoginUrl(request: Request): string {
-  const origin = request.headers.get('origin') || '';
-  return `${origin}/hub-login`;
+  const origin = request.headers.get('origin');
+  if (origin) return `${origin}/hub-login`;
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
+  const proto = request.headers.get('x-forwarded-proto') || 'https';
+  return `${proto}://${host}/hub-login`;
 }
 
 async function handleAction(request: Request, orgId: string, contactId: string, action: string) {
